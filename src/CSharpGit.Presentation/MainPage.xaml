@@ -281,14 +281,14 @@
             <Button Grid.Column="2" Content="Checkout tracking" Command="{Binding CheckoutRemoteCommand}" />
           </Grid>
 
-          <Separator />
+          <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,4" />
           <TextBlock Text="Stash" FontWeight="SemiBold" />
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
             <TextBox Text="{Binding StashMessage, Mode=TwoWay}" PlaceholderText="Optional stash message" />
             <Button Grid.Column="1" Content="Create stash" Command="{Binding CreateStashCommand}" />
           </Grid>
 
-          <Separator />
+          <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,4" />
           <TextBlock Text="Remote / explicit push" FontWeight="SemiBold" />
           <Grid ColumnDefinitions="180,*,Auto" ColumnSpacing="8">
             <ComboBox ItemsSource="{Binding Remotes}" SelectedItem="{Binding SelectedRemote, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Remote" />
@@ -300,7 +300,7 @@
             <Button Content="Fetch all" Command="{Binding FetchAllCommand}" />
           </StackPanel>
 
-          <Separator />
+          <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,4" />
           <TextBlock Text="Interactive rebase" FontWeight="SemiBold" />
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
             <TextBox Text="{Binding RebaseOnto, Mode=TwoWay}" PlaceholderText="onto (for example HEAD~3)" />
@@ -316,7 +316,7 @@
           </Grid>
           <Button Content="Start rebase" Command="{Binding StartRebaseCommand}" HorizontalAlignment="Left" />
 
-          <Separator />
+          <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,4" />
           <TextBlock Text="Merge tool settings" FontWeight="SemiBold" />
           <Grid ColumnDefinitions="140,160,160" ColumnSpacing="8">
             <ComboBox ItemsSource="{Binding MergeToolNames}" IsEditable="True" Text="{Binding MergeToolName, Mode=TwoWay}" Header="Preset/name" />
