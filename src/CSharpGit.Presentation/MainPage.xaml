@@ -54,6 +54,7 @@
               <Button Content="Keep deletion" Command="{Binding KeepDeletionCommand}" />
               <Button Content="Mark resolved" Command="{Binding StageConflictCommand}" />
               <Button Content="Merge tool" Command="{Binding MergeToolCommand}" />
+              <Button Content="Merge tool: all" Command="{Binding MergeToolWorkflowCommand}" />
             </StackPanel>
           </Grid>
         </Grid>
@@ -271,6 +272,13 @@
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
             <ComboBox ItemsSource="{Binding LocalBranches}" SelectedItem="{Binding SelectedMergeBranch, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Branch to merge" />
             <Button Grid.Column="1" Content="Merge into current" Command="{Binding MergeCommand}" />
+          </Grid>
+
+          <TextBlock Text="Tracking branch" FontWeight="SemiBold" Margin="0,4,0,0" />
+          <Grid ColumnDefinitions="200,*,Auto" ColumnSpacing="8">
+            <ComboBox ItemsSource="{Binding RemoteBranches}" SelectedItem="{Binding SelectedRemoteBranch, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Remote branch" />
+            <TextBox Grid.Column="1" Text="{Binding NewBranchName, Mode=TwoWay}" PlaceholderText="Local branch name" />
+            <Button Grid.Column="2" Content="Checkout tracking" Command="{Binding CheckoutRemoteCommand}" />
           </Grid>
 
           <Separator />
