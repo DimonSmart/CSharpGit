@@ -1,0 +1,32 @@
+<UserControl x:Class="CSharpGit.Presentation.Controls.OperationBanner"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+          BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+          BorderThickness="0,0,0,1"
+          Padding="12,8">
+    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <FontIcon Glyph="&#xE7BA;" />
+        <TextBlock Text="{Binding OperationDisplay}" FontWeight="SemiBold" VerticalAlignment="Center" />
+      </StackPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+        <Button Content="Continue" Command="{Binding ContinueOperationCommand}" />
+        <Button Content="Abort" Command="{Binding AbortOperationCommand}" />
+        <Button Content="Skip" Command="{Binding SkipOperationCommand}" />
+      </StackPanel>
+      <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+        <ListView ItemsSource="{Binding Conflicts}" SelectedItem="{Binding SelectedConflict, Mode=TwoWay}" DisplayMemberPath="Display" MaxHeight="90" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="12,0,0,0" VerticalAlignment="Center">
+          <Button Content="Open" Command="{Binding OpenConflictCommand}" />
+          <Button Content="{Binding CurrentSideLabel}" Command="{Binding ChooseCurrentCommand}" />
+          <Button Content="{Binding IncomingSideLabel}" Command="{Binding ChooseIncomingCommand}" />
+          <Button Content="Keep deletion" Command="{Binding KeepDeletionCommand}" />
+          <Button Content="Mark resolved" Command="{Binding StageConflictCommand}" />
+          <Button Content="Merge tool" Command="{Binding MergeToolCommand}" />
+          <Button Content="Merge tool: all" Command="{Binding MergeToolWorkflowCommand}" />
+        </StackPanel>
+      </Grid>
+    </Grid>
+  </Border>
+</UserControl>
