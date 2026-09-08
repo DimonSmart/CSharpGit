@@ -12,25 +12,27 @@
     </StackPanel>
 
     <Grid x:Name="RepositoryWorkspace" Visibility="{Binding RepositoryVisibility}" RowDefinitions="Auto,Auto,*,Auto">
-      <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto" Padding="12,8" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
-        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-          <TextBlock Text="{Binding Repository.WorkingDirectory}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="520" />
-          <TextBlock x:Name="ToolbarBranchText" Opacity="0.72" />
-        </StackPanel>
-        <Button Grid.Column="1" Content="Fetch" Click="Fetch_Click" Margin="4,0" />
-        <Button Grid.Column="2" Content="Pull" Click="Pull_Click" Margin="4,0" />
-        <Button Grid.Column="3" Content="Push" Click="Push_Click" Margin="4,0" />
-        <Button Grid.Column="4" Content="Refresh" Click="RefreshAll_Click" Margin="4,0" />
-        <Button Grid.Column="5" Content="⋯" Width="38" Margin="4,0,0,0">
-          <Button.Flyout>
-            <MenuFlyout>
-              <MenuFlyoutItem Text="More Git operations…" Click="MoreOperations_Click" />
-              <MenuFlyoutItem Text="Appearance…" Click="Appearance_Click" />
-            </MenuFlyout>
-          </Button.Flyout>
-        </Button>
-        <ProgressRing x:Name="BusyIndicator" Grid.Column="0" IsActive="{Binding IsBusy}" Width="20" Height="20" HorizontalAlignment="Right" Margin="0,0,10,0" />
-      </Grid>
+      <Border Grid.Row="0" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Padding="12,8">
+        <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto">
+          <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Repository.WorkingDirectory}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="520" />
+            <TextBlock x:Name="ToolbarBranchText" Opacity="0.72" />
+          </StackPanel>
+          <Button Grid.Column="1" Content="Fetch" Click="Fetch_Click" Margin="4,0" />
+          <Button Grid.Column="2" Content="Pull" Click="Pull_Click" Margin="4,0" />
+          <Button Grid.Column="3" Content="Push" Click="Push_Click" Margin="4,0" />
+          <Button Grid.Column="4" Content="Refresh" Click="RefreshAll_Click" Margin="4,0" />
+          <Button Grid.Column="5" Content="⋯" Width="38" Margin="4,0,0,0">
+            <Button.Flyout>
+              <MenuFlyout>
+                <MenuFlyoutItem Text="More Git operations…" Click="MoreOperations_Click" />
+                <MenuFlyoutItem Text="Appearance…" Click="Appearance_Click" />
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+          <ProgressRing x:Name="BusyIndicator" Grid.Column="0" IsActive="{Binding IsBusy}" Width="20" Height="20" HorizontalAlignment="Right" Margin="0,0,10,0" />
+        </Grid>
+      </Border>
 
       <Border Grid.Row="1" Visibility="{Binding OperationVisibility}" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Padding="12,8">
         <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
