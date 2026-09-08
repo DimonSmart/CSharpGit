@@ -1,5 +1,5 @@
 <Page x:Class="CSharpGit.Presentation.MainPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:CSharpGit.Presentation.Controls">
-  <Grid x:Name="RootLayout" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Padding="20" RequestedTheme="{Binding SelectedTheme, Mode=TwoWay}">
+  <Grid x:Name="RootLayout" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" RequestedTheme="{Binding SelectedTheme, Mode=TwoWay}" KeyDown="Page_KeyDown">
     <StackPanel Width="520" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="18" Visibility="{Binding PickerVisibility}">
       <FontIcon Glyph="&#xE8B7;" FontSize="56" HorizontalAlignment="Center" />
       <TextBlock Text="Open a Git repository" Style="{StaticResource TitleTextBlockStyle}" TextAlignment="Center" />
@@ -10,147 +10,322 @@
         <TextBlock Text="Opening repository…" VerticalAlignment="Center" />
       </StackPanel>
     </StackPanel>
-    <Grid x:Name="RepositoryWorkspace" Visibility="{Binding RepositoryVisibility}" RowDefinitions="Auto,470,*" ColumnDefinitions="3*,6,2*">
-      <StackPanel Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="10" Margin="0,0,0,12">
-        <TextBlock Text="History" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center" />
-        <ComboBox ItemsSource="{Binding Scopes}" DisplayMemberPath="Label" SelectedItem="{Binding SelectedScope, Mode=TwoWay}" Header="Scope" Width="180" />
-        <TextBox Text="{Binding FilterText, Mode=TwoWay}" PlaceholderText="Commit message" Header="Filter" Width="260" />
-        <Button Content="Apply" Command="{Binding RefreshHistoryCommand}" VerticalAlignment="Bottom" />
-        <Button Content="Refresh all" Command="{Binding RefreshAllCommand}" VerticalAlignment="Bottom" />
-        <ComboBox Header="Theme" ItemsSource="{Binding Themes}" DisplayMemberPath="Label" SelectedItem="{Binding SelectedThemeName, Mode=TwoWay}" Width="120" />
-        <ProgressRing x:Name="BusyIndicator" IsActive="{Binding IsBusy}" Width="24" />
-        <TextBlock Text="Git operation in progress…" Visibility="{Binding BusyVisibility}" VerticalAlignment="Center" Opacity="0.75" />
-      </StackPanel>
-      <Grid Grid.Row="1" Grid.ColumnSpan="3" ColumnDefinitions="3*,6,2*" Margin="0,0,0,12">
-        <StackPanel>
-          <TextBlock Text="Working tree and index" Style="{StaticResource SubtitleTextBlockStyle}" />
-          <ListView ItemsSource="{Binding Changes}" SelectedItem="{Binding SelectedChange, Mode=TwoWay}" MaxHeight="185">
-            <ListView.ItemTemplate><DataTemplate>
-              <Grid ColumnDefinitions="*,240" Padding="4"><TextBlock Text="{Binding Path}" /><TextBlock Grid.Column="1" Text="{Binding StatusDisplay}" /></Grid>
-            </DataTemplate></ListView.ItemTemplate>
-          </ListView>
+
+    <Grid x:Name="RepositoryWorkspace" Visibility="{Binding RepositoryVisibility}" RowDefinitions="Auto,Auto,*,Auto">
+      <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto" Padding="12,8" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+          <TextBlock Text="{Binding Repository.WorkingDirectory}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="520" />
+          <TextBlock x:Name="ToolbarBranchText" Opacity="0.72" />
         </StackPanel>
-        <controls:GridSplitter Grid.Column="1" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" HorizontalAlignment="Stretch" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-        <StackPanel Grid.Column="2" Spacing="6" Margin="16,0,0,0">
-          <TextBlock Text="{Binding HeadDisplay}" FontWeight="SemiBold" />
-          <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="Stage file" Command="{Binding StageCommand}" /><Button Content="Unstage file" Command="{Binding UnstageCommand}" /><Button Content="Discard file…" Command="{Binding RequestDiscardCommand}" /></StackPanel>
-          <TextBox x:Name="CommitMessageEditor" Header="Commit message" Text="{Binding CommitMessage, Mode=TwoWay}" />
-          <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="Commit index" Command="{Binding CommitCommand}" /><Button Content="Intentional empty commit" Command="{Binding EmptyCommitCommand}" /><Button Content="Amend" Command="{Binding AmendCommand}" /></StackPanel>
-          <InfoBar IsOpen="True" Severity="Warning" Title="The index is empty" Message="Choose whether to stage all working-tree changes, create an intentional empty commit, or cancel. Nothing has been staged yet." Visibility="{Binding EmptyIndexChoiceVisibility}" IsClosable="False">
-            <InfoBar.ActionButton><Button Content="Stage all and commit" Command="{Binding StageAllAndCommitCommand}" /></InfoBar.ActionButton>
-          </InfoBar>
-          <StackPanel Orientation="Horizontal" Spacing="8" Visibility="{Binding EmptyIndexChoiceVisibility}"><Button Content="Create empty commit" Command="{Binding ConfirmEmptyCommitCommand}" /><Button Content="Cancel" Command="{Binding CancelCommitCommand}" /></StackPanel>
-          <InfoBar IsOpen="True" Severity="Warning" Title="Confirm discarding all changes to the file" Message="This action irreversibly replaces the selected file with its HEAD version (or deletes an untracked file)." Visibility="{Binding DiscardConfirmationVisibility}" IsClosable="False">
-            <InfoBar.ActionButton><Button Content="Confirm discard" Command="{Binding ConfirmDiscardCommand}" /></InfoBar.ActionButton>
-          </InfoBar>
-          <Button Content="Cancel" Command="{Binding CancelDiscardCommand}" Visibility="{Binding DiscardConfirmationVisibility}" HorizontalAlignment="Left" />
-        </StackPanel>
-        <Grid Grid.ColumnSpan="3" Margin="0,205,0,0" ColumnDefinitions="*,*,*,*" ColumnSpacing="12">
-          <StackPanel Spacing="4">
-            <TextBlock Text="Local branches" FontWeight="SemiBold" />
-            <ComboBox ItemsSource="{Binding LocalBranches}" SelectedItem="{Binding SelectedLocalBranch, Mode=TwoWay}" DisplayMemberPath="Name" />
-            <StackPanel Orientation="Horizontal" Spacing="6"><Button Content="Switch" Command="{Binding SwitchBranchCommand}" /><Button Content="Delete (-d)" Command="{Binding DeleteBranchCommand}" /></StackPanel>
-            <TextBox Header="New local branch" Text="{Binding NewBranchName, Mode=TwoWay}" />
-            <Button Content="Create and switch" Command="{Binding CreateBranchCommand}" HorizontalAlignment="Left" />
-          </StackPanel>
-          <StackPanel Grid.Column="1" Spacing="4">
-            <TextBlock Text="Remote branches and tags" FontWeight="SemiBold" />
-            <ComboBox ItemsSource="{Binding RemoteBranches}" SelectedItem="{Binding SelectedRemoteBranch, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Remote branch" />
-            <Button Content="Check out to a new tracking branch" Command="{Binding CheckoutRemoteCommand}" HorizontalAlignment="Left" />
-            <ComboBox ItemsSource="{Binding Tags}" SelectedItem="{Binding SelectedTag, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Tag" />
-            <Button Content="Checkout tag (detached)" Command="{Binding CheckoutTagCommand}" HorizontalAlignment="Left" />
-          </StackPanel>
-          <StackPanel Grid.Column="2" Spacing="4">
-            <TextBlock Text="Remotes" FontWeight="SemiBold" />
-            <ComboBox ItemsSource="{Binding Remotes}" SelectedItem="{Binding SelectedRemote, Mode=TwoWay}" DisplayMemberPath="Name" />
-            <StackPanel Orientation="Horizontal" Spacing="6"><Button Content="Fetch" Command="{Binding FetchCommand}" /><Button Content="Fetch All" Command="{Binding FetchAllCommand}" /><Button Content="Pull" Command="{Binding PullCommand}" /></StackPanel>
-            <TextBox Header="Remote branch for explicit push" Text="{Binding PushBranchName, Mode=TwoWay}" />
-            <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="Push" Command="{Binding PushCommand}" /><CheckBox Content="Set upstream" IsChecked="{Binding SetUpstream, Mode=TwoWay}" /></StackPanel>
-          </StackPanel>
-          <StackPanel Grid.Column="3" Spacing="4">
-            <TextBlock Text="Stash and merge" FontWeight="SemiBold" />
-            <TextBox Header="Stash message" Text="{Binding StashMessage, Mode=TwoWay}" />
-            <Button Content="Create stash" Command="{Binding CreateStashCommand}" HorizontalAlignment="Left" />
-            <ComboBox ItemsSource="{Binding Stashes}" SelectedItem="{Binding SelectedStash, Mode=TwoWay}" DisplayMemberPath="Display" PlaceholderText="stash entry" />
-            <StackPanel Orientation="Horizontal" Spacing="6"><Button Content="Apply" Command="{Binding ApplyStashCommand}" /><Button Content="Pop" Command="{Binding PopStashCommand}" /></StackPanel>
-            <ComboBox ItemsSource="{Binding LocalBranches}" SelectedItem="{Binding SelectedMergeBranch, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Branch to merge" />
-            <Button Content="Merge into current branch" Command="{Binding MergeCommand}" HorizontalAlignment="Left" />
-            <TextBlock Text="{Binding OperationDisplay}" TextWrapping="Wrap" FontSize="12" />
-            <TextBlock Text="Interactive rebase" FontWeight="SemiBold" Margin="0,6,0,0" />
-            <StackPanel Orientation="Horizontal" Spacing="6"><TextBox Width="125" PlaceholderText="onto (HEAD~3)" Text="{Binding RebaseOnto, Mode=TwoWay}" /><Button Content="Build plan" Command="{Binding LoadRebasePlanCommand}" /></StackPanel>
-            <ListView ItemsSource="{Binding RebasePlan}" SelectedItem="{Binding SelectedRebaseItem, Mode=TwoWay}" DisplayMemberPath="Display" Height="90" />
-            <StackPanel Orientation="Horizontal" Spacing="4"><Button Content="↑" Command="{Binding MoveRebaseUpCommand}" /><Button Content="↓" Command="{Binding MoveRebaseDownCommand}" /><ComboBox Width="100" ItemsSource="{Binding RebaseActions}" SelectedItem="{Binding RebaseAction, Mode=TwoWay}" /><Button Content="Apply" Command="{Binding ApplyRebaseItemCommand}" /></StackPanel>
-            <TextBox Header="New message for reword" Text="{Binding RebaseMessage, Mode=TwoWay}" />
-            <Button Content="Start rebase" Command="{Binding StartRebaseCommand}" HorizontalAlignment="Left" />
-          </StackPanel>
-        </Grid>
+        <Button Grid.Column="1" Content="Fetch" Click="Fetch_Click" Margin="4,0" />
+        <Button Grid.Column="2" Content="Pull" Click="Pull_Click" Margin="4,0" />
+        <Button Grid.Column="3" Content="Push" Click="Push_Click" Margin="4,0" />
+        <Button Grid.Column="4" Content="Refresh" Click="RefreshAll_Click" Margin="4,0" />
+        <Button Grid.Column="5" Content="⋯" Width="38" Margin="4,0,0,0">
+          <Button.Flyout>
+            <MenuFlyout>
+              <MenuFlyoutItem Text="More Git operations…" Click="MoreOperations_Click" />
+              <MenuFlyoutItem Text="Appearance…" Click="Appearance_Click" />
+            </MenuFlyout>
+          </Button.Flyout>
+        </Button>
+        <ProgressRing x:Name="BusyIndicator" Grid.Column="0" IsActive="{Binding IsBusy}" Width="20" Height="20" HorizontalAlignment="Right" Margin="0,0,10,0" />
       </Grid>
-      <controls:GridSplitter Grid.Row="1" Grid.ColumnSpan="3" ResizeDirection="Rows" ResizeBehavior="CurrentAndNext" VerticalAlignment="Bottom" Height="6" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-      <Border Grid.Row="2" Grid.ColumnSpan="3" VerticalAlignment="Top" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Padding="10" Visibility="{Binding OperationVisibility}" CornerRadius="6" Margin="0,0,0,8" MaxHeight="300">
-        <StackPanel Spacing="6">
-          <TextBlock Text="Conflicts and Git operation in progress" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding OperationDisplay}" />
-          <TextBlock Text="{Binding ConfiguredMergeToolDisplay}" FontSize="12" />
-          <StackPanel Orientation="Horizontal" Spacing="6">
-            <ComboBox Width="120" Header="Preset/name" ItemsSource="{Binding MergeToolNames}" IsEditable="True" Text="{Binding MergeToolName, Mode=TwoWay}" />
-            <ComboBox Width="150" Header="Type" ItemsSource="{Binding MergeToolKinds}" SelectedItem="{Binding MergeToolKind, Mode=TwoWay}" />
-            <ComboBox Width="150" Header="Git config" ItemsSource="{Binding MergeToolScopes}" SelectedItem="{Binding MergeToolScope, Mode=TwoWay}" />
-            <TextBox Width="200" Header="Executable/path or command" Text="{Binding MergeToolExecutable, Mode=TwoWay}" />
-            <TextBox Width="260" Header="Arguments: $BASE $LOCAL $REMOTE $MERGED" Text="{Binding MergeToolArguments, Mode=TwoWay}" />
-            <Button Content="Save configuration" Command="{Binding ConfigureMergeToolCommand}" VerticalAlignment="Bottom" />
+
+      <Border Grid.Row="1" Visibility="{Binding OperationVisibility}" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Padding="12,8">
+        <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <FontIcon Glyph="&#xE7BA;" />
+            <TextBlock Text="{Binding OperationDisplay}" FontWeight="SemiBold" VerticalAlignment="Center" />
           </StackPanel>
-          <ListView ItemsSource="{Binding Conflicts}" SelectedItem="{Binding SelectedConflict, Mode=TwoWay}" DisplayMemberPath="Display" MaxHeight="100" />
-          <StackPanel Orientation="Horizontal" Spacing="6">
-            <Button Content="Open manually" Command="{Binding OpenConflictCommand}" />
-            <Button Content="{Binding CurrentSideLabel}" Command="{Binding ChooseCurrentCommand}" />
-            <Button Content="{Binding IncomingSideLabel}" Command="{Binding ChooseIncomingCommand}" />
-            <Button Content="Keep deletion" Command="{Binding KeepDeletionCommand}" />
-            <Button Content="Stage resolved" Command="{Binding StageConflictCommand}" />
-            <Button Content="Merge tool for file" Command="{Binding MergeToolCommand}" />
-            <Button Content="Merge tool: all conflicts" Command="{Binding MergeToolWorkflowCommand}" />
-          </StackPanel>
-          <StackPanel Orientation="Horizontal" Spacing="6">
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
             <Button Content="Continue" Command="{Binding ContinueOperationCommand}" />
             <Button Content="Abort" Command="{Binding AbortOperationCommand}" />
             <Button Content="Skip" Command="{Binding SkipOperationCommand}" />
           </StackPanel>
-        </StackPanel>
+          <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+            <ListView ItemsSource="{Binding Conflicts}" SelectedItem="{Binding SelectedConflict, Mode=TwoWay}" DisplayMemberPath="Display" MaxHeight="90" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="12,0,0,0" VerticalAlignment="Center">
+              <Button Content="Open" Command="{Binding OpenConflictCommand}" />
+              <Button Content="{Binding CurrentSideLabel}" Command="{Binding ChooseCurrentCommand}" />
+              <Button Content="{Binding IncomingSideLabel}" Command="{Binding ChooseIncomingCommand}" />
+              <Button Content="Keep deletion" Command="{Binding KeepDeletionCommand}" />
+              <Button Content="Mark resolved" Command="{Binding StageConflictCommand}" />
+              <Button Content="Merge tool" Command="{Binding MergeToolCommand}" />
+            </StackPanel>
+          </Grid>
+        </Grid>
       </Border>
-      <Grid Grid.Row="2" RowDefinitions="*,Auto" Margin="0,0,8,0">
-        <ListView x:Name="HistoryList" ItemsSource="{Binding History}" SelectedItem="{Binding SelectedHistoryRow, Mode=TwoWay}">
-          <ListView.ItemTemplate><DataTemplate>
-            <Grid ColumnDefinitions="70,*,130,145,95" Padding="4">
-              <TextBlock Text="{Binding Topology.Display}" FontFamily="Consolas" />
-              <StackPanel Grid.Column="1"><TextBlock Text="{Binding Commit.Subject}" TextTrimming="CharacterEllipsis" /><TextBlock Text="{Binding Commit.ReferencesDisplay}" FontSize="11" Opacity="0.65" /></StackPanel>
-              <TextBlock Grid.Column="2" Text="{Binding Commit.Author}" TextTrimming="CharacterEllipsis" />
-              <TextBlock Grid.Column="3" Text="{Binding Commit.AuthoredAt}" />
-              <TextBlock Grid.Column="4" Text="{Binding Commit.ShortHash}" FontFamily="Consolas" />
+
+      <Grid Grid.Row="2" ColumnDefinitions="260,6,*" MinHeight="240">
+        <Border Grid.Column="0" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,1,0" Padding="8">
+          <Grid RowDefinitions="Auto,*">
+            <TextBlock Text="Repository" FontWeight="SemiBold" Margin="8,4,8,8" />
+            <TreeView x:Name="RepositoryTree" Grid.Row="1" SelectionMode="Single" ItemInvoked="RepositoryTree_ItemInvoked" RightTapped="RepositoryTree_RightTapped" DoubleTapped="RepositoryTree_DoubleTapped">
+              <TreeView.ItemTemplate>
+                <DataTemplate>
+                  <TreeViewItem ItemsSource="{Binding Children}" IsExpanded="{Binding IsExpanded, Mode=OneWay}" Padding="2">
+                    <TreeViewItem.Content>
+                      <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
+                    </TreeViewItem.Content>
+                  </TreeViewItem>
+                </DataTemplate>
+              </TreeView.ItemTemplate>
+            </TreeView>
+          </Grid>
+        </Border>
+
+        <controls:GridSplitter Grid.Column="1" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" HorizontalAlignment="Stretch" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+        <Grid Grid.Column="2">
+          <Grid x:Name="HistoryPane" RowDefinitions="Auto,3*,6,2*" Padding="10,8,10,8">
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8" Margin="0,0,0,8">
+              <TextBox x:Name="HistoryFilter" Text="{Binding FilterText, Mode=TwoWay}" PlaceholderText="Search commits…" KeyDown="HistoryFilter_KeyDown" />
+              <ComboBox x:Name="ScopeCombo" Grid.Column="1" ItemsSource="{Binding Scopes}" DisplayMemberPath="Label" SelectedItem="{Binding SelectedScope, Mode=TwoWay}" MinWidth="155" />
+              <StackPanel x:Name="ReferenceScopePanel" Grid.Column="1" Orientation="Horizontal" Spacing="6" Visibility="Collapsed" VerticalAlignment="Center">
+                <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="4" Padding="8,4">
+                  <TextBlock x:Name="ActiveReferenceText" />
+                </Border>
+                <Button Content="All refs" Click="ClearReference_Click" />
+              </StackPanel>
+              <Button Grid.Column="2" Content="Apply" Click="ApplyHistoryFilter_Click" />
+              <Button Grid.Column="3" Content="Refresh" Click="RefreshHistory_Click" />
             </Grid>
-          </DataTemplate></ListView.ItemTemplate>
-        </ListView>
-        <Button Grid.Row="1" Content="Load more" Command="{Binding LoadMoreCommand}" HorizontalAlignment="Center" Margin="0,8" />
+
+            <Grid Grid.Row="1" RowDefinitions="Auto,*,Auto">
+              <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Padding="8,4">
+                <Grid ColumnDefinitions="64,*,140,160,90">
+                  <TextBlock Text="GRAPH" FontSize="11" Opacity="0.58" />
+                  <TextBlock Grid.Column="1" Text="MESSAGE" FontSize="11" Opacity="0.58" />
+                  <TextBlock Grid.Column="2" Text="AUTHOR" FontSize="11" Opacity="0.58" />
+                  <TextBlock Grid.Column="3" Text="DATE" FontSize="11" Opacity="0.58" />
+                  <TextBlock Grid.Column="4" Text="HASH" FontSize="11" Opacity="0.58" />
+                </Grid>
+              </Border>
+              <ListView x:Name="HistoryList" Grid.Row="1" SelectedItem="{Binding SelectedHistoryRow, Mode=TwoWay}" IsItemClickEnabled="False">
+                <ListView.ItemContainerStyle>
+                  <Style TargetType="ListViewItem">
+                    <Setter Property="MinHeight" Value="30" />
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                  </Style>
+                </ListView.ItemContainerStyle>
+                <ListView.ItemTemplate>
+                  <DataTemplate>
+                    <Grid ColumnDefinitions="64,*,140,160,90" Padding="6,3">
+                      <TextBlock Text="{Binding Topology.Display}" FontFamily="Consolas" VerticalAlignment="Center" />
+                      <Grid Grid.Column="1" ColumnDefinitions="Auto,*" MinWidth="120">
+                        <TextBlock Text="{Binding Commit.Subject}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <ItemsControl Grid.Column="1" ItemsSource="{Binding Commit.References}" Margin="8,0,0,0" VerticalAlignment="Center">
+                          <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                          </ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                              <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="4" Padding="5,1" Margin="0,0,4,0">
+                                <TextBlock Text="{Binding}" FontSize="11" Opacity="0.82" />
+                              </Border>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </Grid>
+                      <TextBlock Grid.Column="2" Text="{Binding Commit.Author}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="3" Text="{Binding Commit.AuthoredAt}" VerticalAlignment="Center" FontSize="12" />
+                      <TextBlock Grid.Column="4" Text="{Binding Commit.ShortHash}" FontFamily="Consolas" VerticalAlignment="Center" />
+                    </Grid>
+                  </DataTemplate>
+                </ListView.ItemTemplate>
+              </ListView>
+              <Button x:Name="LoadMoreHistoryButton" Grid.Row="2" Content="Load more" Click="LoadMoreHistory_Click" HorizontalAlignment="Center" Margin="0,6,0,0" />
+            </Grid>
+
+            <controls:GridSplitter Grid.Row="2" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" VerticalAlignment="Stretch" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+            <Pivot x:Name="DetailsTabs" Grid.Row="3" Visibility="{Binding DetailsVisibility}">
+              <PivotItem Header="Commit">
+                <ScrollViewer x:Name="DetailsScroller" HorizontalScrollMode="Auto" HorizontalScrollBarVisibility="Auto" VerticalScrollMode="Auto" VerticalScrollBarVisibility="Auto">
+                  <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*" RowSpacing="6" ColumnSpacing="12" Padding="8">
+                    <TextBlock Grid.ColumnSpan="2" Text="{Binding SelectedCommit.Commit.Message}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                    <TextBlock Grid.Row="1" Text="Author" Opacity="0.58" /><TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedCommit.Commit.Author}" />
+                    <TextBlock Grid.Row="2" Text="Date" Opacity="0.58" /><TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedCommit.Commit.AuthoredAt}" />
+                    <TextBlock Grid.Row="3" Text="Hash" Opacity="0.58" /><TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedCommit.Commit.Hash}" FontFamily="Consolas" TextWrapping="Wrap" />
+                    <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Spacing="4">
+                      <TextBlock Text="{Binding SelectedCommit.Commit.ParentsDisplay}" FontFamily="Consolas" TextWrapping="Wrap" />
+                      <TextBlock Text="{Binding SelectedCommit.Commit.ReferencesDisplay}" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </Grid>
+                </ScrollViewer>
+              </PivotItem>
+              <PivotItem x:Name="FilesTab" Header="Files">
+                <ListView x:Name="CommitFilesList" SelectionChanged="CommitFilesList_SelectionChanged" DoubleTapped="CommitFilesList_DoubleTapped" KeyDown="CommitFilesList_KeyDown">
+                  <ListView.ItemTemplate>
+                    <DataTemplate>
+                      <Grid ColumnDefinitions="32,*,70,70" Padding="6,3">
+                        <TextBlock Text="{Binding Status}" FontFamily="Consolas" FontWeight="SemiBold" />
+                        <TextBlock Grid.Column="1" Text="{Binding Path}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="2" Text="{Binding AddedDisplay}" HorizontalAlignment="Right" />
+                        <TextBlock Grid.Column="3" Text="{Binding RemovedDisplay}" HorizontalAlignment="Right" />
+                      </Grid>
+                    </DataTemplate>
+                  </ListView.ItemTemplate>
+                </ListView>
+              </PivotItem>
+              <PivotItem Header="Diff">
+                <Grid>
+                  <InfoBar IsOpen="True" Severity="Informational" Title="Binary file" Message="Binary file — text diff is not available." Visibility="{Binding BinaryVisibility}" IsClosable="False" VerticalAlignment="Top" />
+                  <ListView ItemsSource="{Binding SelectedDiff.Lines}" Visibility="{Binding DiffVisibility}" FontFamily="Consolas" HorizontalContentAlignment="Stretch">
+                    <ListView.ItemTemplate>
+                      <DataTemplate>
+                        <Grid ColumnDefinitions="74,*" Padding="4,1">
+                          <TextBlock Text="{Binding Kind}" FontWeight="SemiBold" FontSize="11" Opacity="0.68" />
+                          <TextBlock Grid.Column="1" Text="{Binding Text}" TextWrapping="NoWrap" />
+                        </Grid>
+                      </DataTemplate>
+                    </ListView.ItemTemplate>
+                  </ListView>
+                </Grid>
+              </PivotItem>
+            </Pivot>
+          </Grid>
+
+          <Grid x:Name="WorkingTreePane" Visibility="Collapsed" RowDefinitions="Auto,*,Auto" Padding="12">
+            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+              <StackPanel>
+                <TextBlock Text="Working tree" Style="{StaticResource TitleTextBlockStyle}" />
+                <TextBlock Text="Staged and unstaged changes are shown independently." Opacity="0.62" />
+              </StackPanel>
+              <Button Grid.Column="1" Content="Back to history" Click="ShowHistory_Click" VerticalAlignment="Center" />
+            </Grid>
+
+            <Grid Grid.Row="1" RowDefinitions="*,12,*">
+              <Grid Grid.Row="0" RowDefinitions="Auto,*,Auto">
+                <TextBlock x:Name="UnstagedHeader" Text="Unstaged changes" FontWeight="SemiBold" Margin="0,0,0,6" />
+                <ListView x:Name="UnstagedChangesList" Grid.Row="1" SelectionChanged="UnstagedChangesList_SelectionChanged">
+                  <ListView.ItemTemplate>
+                    <DataTemplate><Grid ColumnDefinitions="32,*" Padding="6,3"><TextBlock Text="{Binding WorkingTreeStatus}" FontFamily="Consolas" /><TextBlock Grid.Column="1" Text="{Binding Path}" /></Grid></DataTemplate>
+                  </ListView.ItemTemplate>
+                </ListView>
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+                  <Button Content="Stage" Command="{Binding StageCommand}" />
+                  <Button Content="Discard…" Command="{Binding RequestDiscardCommand}" />
+                </StackPanel>
+              </Grid>
+
+              <Grid Grid.Row="2" RowDefinitions="Auto,*,Auto">
+                <TextBlock x:Name="StagedHeader" Text="Staged changes" FontWeight="SemiBold" Margin="0,0,0,6" />
+                <ListView x:Name="StagedChangesList" Grid.Row="1" SelectionChanged="StagedChangesList_SelectionChanged">
+                  <ListView.ItemTemplate>
+                    <DataTemplate><Grid ColumnDefinitions="32,*" Padding="6,3"><TextBlock Text="{Binding IndexStatus}" FontFamily="Consolas" /><TextBlock Grid.Column="1" Text="{Binding Path}" /></Grid></DataTemplate>
+                  </ListView.ItemTemplate>
+                </ListView>
+                <Button Grid.Row="2" Content="Unstage" Command="{Binding UnstageCommand}" HorizontalAlignment="Left" Margin="0,6,0,0" />
+              </Grid>
+            </Grid>
+
+            <Border Grid.Row="2" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="0,10,0,0" Margin="0,10,0,0">
+              <StackPanel Spacing="8">
+                <TextBox x:Name="CommitMessageEditor" Header="Commit message" Text="{Binding CommitMessage, Mode=TwoWay}" AcceptsReturn="True" MinHeight="74" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Content="Commit" Command="{Binding CommitCommand}" />
+                  <Button Content="Amend" Command="{Binding AmendCommand}" />
+                </StackPanel>
+                <InfoBar IsOpen="True" Severity="Warning" Title="The index is empty" Message="Choose whether to stage all working-tree changes, create an intentional empty commit, or cancel. Nothing has been staged implicitly." Visibility="{Binding EmptyIndexChoiceVisibility}" IsClosable="False">
+                  <InfoBar.ActionButton><Button Content="Stage all and commit" Command="{Binding StageAllAndCommitCommand}" /></InfoBar.ActionButton>
+                </InfoBar>
+                <StackPanel Orientation="Horizontal" Spacing="8" Visibility="{Binding EmptyIndexChoiceVisibility}">
+                  <Button Content="Create empty commit" Command="{Binding ConfirmEmptyCommitCommand}" />
+                  <Button Content="Cancel" Command="{Binding CancelCommitCommand}" />
+                </StackPanel>
+                <InfoBar IsOpen="True" Severity="Warning" Title="Confirm discarding all changes to the file" Message="This action irreversibly replaces the selected file with its HEAD version (or deletes an untracked file)." Visibility="{Binding DiscardConfirmationVisibility}" IsClosable="False">
+                  <InfoBar.ActionButton><Button Content="Confirm discard" Command="{Binding ConfirmDiscardCommand}" /></InfoBar.ActionButton>
+                </InfoBar>
+                <Button Content="Cancel discard" Command="{Binding CancelDiscardCommand}" Visibility="{Binding DiscardConfirmationVisibility}" HorizontalAlignment="Left" />
+              </StackPanel>
+            </Border>
+          </Grid>
+        </Grid>
       </Grid>
-      <controls:GridSplitter Grid.Row="2" Grid.Column="1" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" HorizontalAlignment="Stretch" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-      <ScrollViewer x:Name="DetailsScroller" Grid.Row="2" Grid.Column="2" Visibility="{Binding DetailsVisibility}" Margin="8,0,0,0" HorizontalScrollMode="Auto" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-        <StackPanel Spacing="8">
-          <TextBlock Text="Commit details" Style="{StaticResource SubtitleTextBlockStyle}" />
-          <TextBlock Text="{Binding SelectedCommit.Commit.Message}" TextWrapping="Wrap" />
-          <TextBlock Text="{Binding SelectedCommit.Commit.Author}" />
-          <TextBlock Text="{Binding SelectedCommit.Commit.AuthoredAt}" />
-          <TextBlock Text="{Binding SelectedCommit.Commit.Hash}" FontFamily="Consolas" TextWrapping="Wrap" />
-          <TextBlock Text="{Binding SelectedCommit.Commit.ParentsDisplay}" FontFamily="Consolas" TextWrapping="Wrap" />
-          <TextBlock Text="{Binding SelectedCommit.Commit.ReferencesDisplay}" TextWrapping="Wrap" />
-          <TextBlock Text="Changed files" FontWeight="SemiBold" Margin="0,8,0,0" />
-          <ListView ItemsSource="{Binding SelectedCommit.Files}" SelectedItem="{Binding SelectedFile, Mode=TwoWay}" MaxHeight="180">
-            <ListView.ItemTemplate><DataTemplate><TextBlock Text="{Binding Path}" /></DataTemplate></ListView.ItemTemplate>
-          </ListView>
-          <InfoBar IsOpen="True" Severity="Informational" Title="Binary data" Message="A text diff is not available for a binary file." Visibility="{Binding BinaryVisibility}" IsClosable="False" />
-          <ListView ItemsSource="{Binding SelectedDiff.Lines}" Visibility="{Binding DiffVisibility}" FontFamily="Consolas">
-            <ListView.ItemTemplate><DataTemplate><Grid ColumnDefinitions="80,*"><TextBlock Text="{Binding Kind}" FontWeight="SemiBold" /><TextBlock Grid.Column="1" Text="{Binding Text}" /></Grid></DataTemplate></ListView.ItemTemplate>
-          </ListView>
+
+      <Border Grid.Row="3" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="12,5">
+        <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="16">
+          <TextBlock x:Name="StatusBranchText" />
+          <TextBlock x:Name="StatusTrackingText" Grid.Column="1" Opacity="0.66" />
+          <TextBlock x:Name="StatusChangesText" Grid.Column="2" Opacity="0.66" />
+          <TextBlock x:Name="StatusOperationText" Grid.Column="4" Opacity="0.66" />
+        </Grid>
+      </Border>
+    </Grid>
+
+    <InfoBar IsOpen="{Binding HasError}" Severity="Error" Title="Error" Message="{Binding ErrorMessage}" IsClosable="False" VerticalAlignment="Bottom" Margin="16,0,16,36" />
+
+    <ContentDialog x:Name="GitOperationsDialog" Title="Git operations" CloseButtonText="Close" DefaultButton="Close">
+      <ScrollViewer MaxHeight="650" VerticalScrollBarVisibility="Auto">
+        <StackPanel Width="620" Spacing="12">
+          <TextBlock Text="Branches" FontWeight="SemiBold" />
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBox Text="{Binding NewBranchName, Mode=TwoWay}" PlaceholderText="New local branch" />
+            <Button Grid.Column="1" Content="Create and switch" Command="{Binding CreateBranchCommand}" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <ComboBox ItemsSource="{Binding LocalBranches}" SelectedItem="{Binding SelectedMergeBranch, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Branch to merge" />
+            <Button Grid.Column="1" Content="Merge into current" Command="{Binding MergeCommand}" />
+          </Grid>
+
+          <Separator />
+          <TextBlock Text="Stash" FontWeight="SemiBold" />
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBox Text="{Binding StashMessage, Mode=TwoWay}" PlaceholderText="Optional stash message" />
+            <Button Grid.Column="1" Content="Create stash" Command="{Binding CreateStashCommand}" />
+          </Grid>
+
+          <Separator />
+          <TextBlock Text="Remote / explicit push" FontWeight="SemiBold" />
+          <Grid ColumnDefinitions="180,*,Auto" ColumnSpacing="8">
+            <ComboBox ItemsSource="{Binding Remotes}" SelectedItem="{Binding SelectedRemote, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Remote" />
+            <TextBox Grid.Column="1" Text="{Binding PushBranchName, Mode=TwoWay}" PlaceholderText="Remote branch name" />
+            <CheckBox Grid.Column="2" Content="Set upstream" IsChecked="{Binding SetUpstream, Mode=TwoWay}" VerticalAlignment="Center" />
+          </Grid>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Content="Push" Command="{Binding PushCommand}" />
+            <Button Content="Fetch all" Command="{Binding FetchAllCommand}" />
+          </StackPanel>
+
+          <Separator />
+          <TextBlock Text="Interactive rebase" FontWeight="SemiBold" />
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBox Text="{Binding RebaseOnto, Mode=TwoWay}" PlaceholderText="onto (for example HEAD~3)" />
+            <Button Grid.Column="1" Content="Build plan" Command="{Binding LoadRebasePlanCommand}" />
+          </Grid>
+          <ListView ItemsSource="{Binding RebasePlan}" SelectedItem="{Binding SelectedRebaseItem, Mode=TwoWay}" DisplayMemberPath="Display" Height="130" />
+          <Grid ColumnDefinitions="Auto,Auto,140,*,Auto" ColumnSpacing="6">
+            <Button Content="↑" Command="{Binding MoveRebaseUpCommand}" />
+            <Button Grid.Column="1" Content="↓" Command="{Binding MoveRebaseDownCommand}" />
+            <ComboBox Grid.Column="2" ItemsSource="{Binding RebaseActions}" SelectedItem="{Binding RebaseAction, Mode=TwoWay}" />
+            <TextBox Grid.Column="3" Text="{Binding RebaseMessage, Mode=TwoWay}" PlaceholderText="New message for reword" />
+            <Button Grid.Column="4" Content="Apply" Command="{Binding ApplyRebaseItemCommand}" />
+          </Grid>
+          <Button Content="Start rebase" Command="{Binding StartRebaseCommand}" HorizontalAlignment="Left" />
+
+          <Separator />
+          <TextBlock Text="Merge tool settings" FontWeight="SemiBold" />
+          <Grid ColumnDefinitions="140,160,160" ColumnSpacing="8">
+            <ComboBox ItemsSource="{Binding MergeToolNames}" IsEditable="True" Text="{Binding MergeToolName, Mode=TwoWay}" Header="Preset/name" />
+            <ComboBox Grid.Column="1" ItemsSource="{Binding MergeToolKinds}" SelectedItem="{Binding MergeToolKind, Mode=TwoWay}" Header="Type" />
+            <ComboBox Grid.Column="2" ItemsSource="{Binding MergeToolScopes}" SelectedItem="{Binding MergeToolScope, Mode=TwoWay}" Header="Git config" />
+          </Grid>
+          <TextBox Header="Executable/path or command" Text="{Binding MergeToolExecutable, Mode=TwoWay}" />
+          <TextBox Header="Arguments: $BASE $LOCAL $REMOTE $MERGED" Text="{Binding MergeToolArguments, Mode=TwoWay}" />
+          <Button Content="Save merge tool configuration" Command="{Binding ConfigureMergeToolCommand}" HorizontalAlignment="Left" />
         </StackPanel>
       </ScrollViewer>
-    </Grid>
-    <InfoBar IsOpen="{Binding HasError}" Severity="Error" Title="Error" Message="{Binding ErrorMessage}" IsClosable="False" VerticalAlignment="Bottom" />
+    </ContentDialog>
+
+    <ContentDialog x:Name="AppearanceDialog" Title="Appearance" CloseButtonText="Close" DefaultButton="Close">
+      <StackPanel Width="320" Spacing="8">
+        <TextBlock Text="Theme" FontWeight="SemiBold" />
+        <ComboBox ItemsSource="{Binding Themes}" DisplayMemberPath="Label" SelectedItem="{Binding SelectedThemeName, Mode=TwoWay}" />
+        <TextBlock Text="System follows the operating system appearance." TextWrapping="Wrap" Opacity="0.66" />
+      </StackPanel>
+    </ContentDialog>
   </Grid>
 </Page>
