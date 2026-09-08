@@ -10,6 +10,11 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphRowVisual.cs" Link="CommitGraph/CommitGraphRowVisual.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphMetrics.cs" Link="CommitGraph/CommitGraphMetrics.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphGeometryBuilder.cs" Link="CommitGraph/CommitGraphGeometryBuilder.cs" />
+  </ItemGroup>
   <!-- The test launches the binary, so build it without creating a TFM-incompatible assembly reference. -->
   <Target Name="BuildDesktopApplication" BeforeTargets="Build">
     <MSBuild Projects="../../src/CSharpGit.Presentation/CSharpGit.Presentation.csproj"
