@@ -383,6 +383,10 @@ public sealed partial class MainPage : Page
                 AddMenuItem(flyout, "Copy branch name", true, () => CopyTextAsync(branch.Name));
                 break;
 
+            case RepositoryTreeNodeKind.Group when node.Name == "Remotes":
+                AddMenuItem(flyout, "Fetch all", !_viewModel.IsBusy, async () => await ExecuteCommandAsync(_viewModel.FetchAllCommand));
+                break;
+
             case RepositoryTreeNodeKind.Remote when node.Value is GitRemote remote:
                 AddMenuItem(flyout, "Fetch", !_viewModel.IsBusy, async () =>
                 {
@@ -433,6 +437,7 @@ public sealed partial class MainPage : Page
     private static RepositoryTreeNode? ResolveNode(object? value) => value switch
     {
         RepositoryTreeNode node => node,
+        TreeViewNode { Content: RepositoryTreeNode node } => node,
         TreeViewItem { DataContext: RepositoryTreeNode node } => node,
         FrameworkElement { DataContext: RepositoryTreeNode node } => node,
         _ => null
