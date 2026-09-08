@@ -8,3 +8,19 @@ public interface IHistoryService
     Task<CommitDetails> ReadCommitAsync(Repository repository, string hash, CancellationToken cancellationToken = default);
     Task<FileDiff> ReadDiffAsync(Repository repository, string hash, string path, CancellationToken cancellationToken = default);
 }
+
+public interface IReferenceHistoryService
+{
+    Task<HistoryPage> ReadHistoryAsync(
+        Repository repository,
+        string reference,
+        string? filter,
+        int skip,
+        int take = 100,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyDictionary<string, string>> ReadFileStatusesAsync(
+        Repository repository,
+        string commitHash,
+        CancellationToken cancellationToken = default);
+}
