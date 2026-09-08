@@ -3,6 +3,9 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# IDD
+.idd/factory
+
 # dotenv files
 .env
 
@@ -480,3 +483,11 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+bin/
+obj/
+obj.verify/
+.vs/
+.idea/
+.templateengine/
+*.user
+*.suo

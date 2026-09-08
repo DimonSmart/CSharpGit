@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CSharpGit.Domain/CSharpGit.Domain.csproj" />
+    <Project Path="src/CSharpGit.Application/CSharpGit.Application.csproj" />
+    <Project Path="src/CSharpGit.Git/CSharpGit.Git.csproj" />
+    <Project Path="src/CSharpGit.Infrastructure/CSharpGit.Infrastructure.csproj" />
+    <Project Path="src/CSharpGit.Presentation/CSharpGit.Presentation.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CSharpGit.Application.Tests/CSharpGit.Application.Tests.csproj" />
+    <Project Path="tests/CSharpGit.Git.Tests/CSharpGit.Git.Tests.csproj" />
+    <Project Path="tests/CSharpGit.Desktop.Tests/CSharpGit.Desktop.Tests.csproj" />
+  </Folder>
+</Solution>
