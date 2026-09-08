@@ -13,6 +13,18 @@ public sealed class NativeFolderPickerContractTests
         Assert.Contains("WindowNative.GetWindowHandle(_window)", app);
     }
 
+    [Fact]
+    public void DesktopEntryPointKeepsWin32MessageLoopInStaApartment()
+    {
+        var root = FindRepositoryRoot();
+        var program = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Platforms", "Desktop", "Program.cs"));
+
+        Assert.Contains("[STAThread]", program);
+        Assert.Contains("public static void Main(string[] args)", program);
+        Assert.DoesNotContain("async Task Main", program);
+        Assert.Contains("host.RunAsync().GetAwaiter().GetResult();", program);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

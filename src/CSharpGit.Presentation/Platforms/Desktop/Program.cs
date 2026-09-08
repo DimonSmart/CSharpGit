@@ -5,7 +5,7 @@ namespace CSharpGit.Presentation;
 public static class Program
 {
     [STAThread]
-    public static async Task Main(string[] args)
+    public static void Main(string[] args)
     {
         var host = UnoPlatformHostBuilder.Create()
             .App(() => new App())
@@ -15,6 +15,6 @@ public static class Program
             .UseLinuxFrameBuffer()
             .Build();
 
-        await host.RunAsync();
+        host.RunAsync().GetAwaiter().GetResult();
     }
 }
