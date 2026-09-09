@@ -19,7 +19,7 @@ public sealed class DesktopUiContractTests
         Assert.Contains("host.RunAsync()", program);
         Assert.All(new[] { ".UseWin32()", ".UseMacOS()", ".UseX11()" }, platform => Assert.Contains(platform, program));
         Assert.True(Count(xaml, "GridSplitter") >= 3, "All principal panes must remain resizable.");
-        Assert.Contains("ContentControl", splitter);
+        Assert.Contains("UserControl", splitter);
         Assert.Contains("HasVisualSurfaceForCheck", splitter);
         Assert.Contains("ResizeCompleted", splitter);
         Assert.Contains("layout.json", splitter);
