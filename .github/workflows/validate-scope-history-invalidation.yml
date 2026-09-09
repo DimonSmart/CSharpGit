@@ -1,0 +1,55 @@
+name: Validate scoped history invalidation
+
+on:
+  push:
+    branches:
+      - fix/commit-graph-history-lifecycle
+    paths:
+      - .github/workflows/validate-scope-history-invalidation.yml
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: fix/commit-graph-history-lifecycle
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Prepare environment and apply patch
+        run: |
+          touch ~/.gitconfig
+          python3 tools/apply_scope_history_invalidation.py
+          git diff --check
+
+      - name: Run Git tests
+        run: dotnet test tests/CSharpGit.Git.Tests/CSharpGit.Git.Tests.csproj --configuration Release
+
+      - name: Run application tests
+        run: dotnet test tests/CSharpGit.Application.Tests/CSharpGit.Application.Tests.csproj --configuration Release
+
+      - name: Restore desktop application
+        run: dotnet restore src/CSharpGit.Presentation/CSharpGit.Presentation.csproj
+
+      - name: Run desktop smoke tests
+        run: xvfb-run -a dotnet test tests/CSharpGit.Desktop.Tests/CSharpGit.Desktop.Tests.csproj --configuration Release
+
+      - name: Build full solution
+        run: dotnet build CSharpGit.slnx --configuration Release
+
+      - name: Commit validated patch
+        run: |
+          git rm .github/workflows/validate-scope-history-invalidation.yml tools/apply_scope_history_invalidation.py
+          git add -A
+          git diff --cached --check
+          git config user.name "CSharpGit maintenance"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "Invalidate normal history loads on scoped navigation"
+          git push origin HEAD:fix/commit-graph-history-lifecycle
