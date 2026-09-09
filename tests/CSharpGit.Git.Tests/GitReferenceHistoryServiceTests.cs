@@ -51,7 +51,7 @@ public sealed class GitReferenceHistoryServiceTests : IDisposable
         var repository = await new GitCliRepositoryService().OpenAsync(_temporaryDirectory);
         var page = await new GitReferenceHistoryService().ReadHistoryAsync(repository, "main", null, 0, 20);
 
-        var merge = Assert.Single(page.Rows.Where(row => row.Commit.Subject == "merge feature"));
+        var merge = Assert.Single(page.Rows, row => row.Commit.Subject == "merge feature");
         var parentEdges = merge.Topology.Edges.Where(edge => edge.FromLane == merge.Topology.Lane).ToList();
         Assert.Equal(2, parentEdges.Count);
         Assert.Equal(2, parentEdges.Select(edge => edge.TrackId).Distinct().Count());
