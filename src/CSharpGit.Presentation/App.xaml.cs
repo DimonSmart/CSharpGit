@@ -50,13 +50,25 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             .ConfigureServices(services =>
             {
                 var checkRepository = Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_REPOSITORY");
-                if (string.IsNullOrWhiteSpace(checkRepository))
-                    services.AddSingleton<IFolderPicker>(_ => new NativeFolderPicker(() =>
+                services.AddSingleton<RecentRepositoryFolderPicker>(_ =>
+                {
+                    IFolderPicker innerPicker;
+                    if (string.IsNullOrWhiteSpace(checkRepository))
                     {
-                        if (_window is null) throw new InvalidOperationException("The main window has not been created.");
-                        return WinRT.Interop.WindowNative.GetWindowHandle(_window);
-                    }));
-                else services.AddSingleton<IFolderPicker>(new FixedFolderPicker(checkRepository));
+                        innerPicker = new NativeFolderPicker(() =>
+                        {
+                            if (_window is null) throw new InvalidOperationException("The main window has not been created.");
+                            return WinRT.Interop.WindowNative.GetWindowHandle(_window);
+                        });
+                    }
+                    else
+                    {
+                        innerPicker = new FixedFolderPicker(checkRepository);
+                    }
+
+                    return new RecentRepositoryFolderPicker(innerPicker);
+                });
+                services.AddSingleton<IFolderPicker>(provider => provider.GetRequiredService<RecentRepositoryFolderPicker>());
                 services.AddSingleton<IRepositoryService, GitCliRepositoryService>();
                 services.AddSingleton<IRepositoryStateService>(provider => (GitCliRepositoryService)provider.GetRequiredService<IRepositoryService>());
                 services.AddSingleton<IWorkingTreeService>(provider => (GitCliRepositoryService)provider.GetRequiredService<IRepositoryService>());
@@ -90,7 +102,11 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             SessionFileLoggerProvider.CurrentLogPath);
 
         _window = new Window { Title = "CSharpGit" };
-        _window.Content = _host.Services.GetRequiredService<MainPage>();
+        var mainPage = _host.Services.GetRequiredService<MainPage>();
+        mainPage.InitializeRecentRepositories(
+            AppSettingsContext.Current,
+            _host.Services.GetRequiredService<RecentRepositoryFolderPicker>());
+        _window.Content = mainPage;
         if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_RESULT")))
             _window.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 1400, Height = 900 });
 

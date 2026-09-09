@@ -40,10 +40,11 @@ public sealed class RecentRepositoryItem
     public ICommand RemoveCommand { get; }
 }
 
-public sealed class RecentRepositoriesViewModel
+public sealed class RecentRepositoriesViewModel : IDisposable
 {
     private readonly IAppSettingsService _settings;
     private readonly Func<RecentRepositoryItem, Task> _openRecentAsync;
+    private bool _disposed;
 
     internal RecentRepositoriesViewModel(
         IAppSettingsService settings,
@@ -61,7 +62,17 @@ public sealed class RecentRepositoriesViewModel
 
     public ICommand OpenRepositoryCommand { get; }
 
-    private void Settings_Changed(object? sender, EventArgs e) => Reload();
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _settings.Changed -= Settings_Changed;
+    }
+
+    private void Settings_Changed(object? sender, EventArgs e)
+    {
+        if (!_disposed) Reload();
+    }
 
     private void Reload()
     {
