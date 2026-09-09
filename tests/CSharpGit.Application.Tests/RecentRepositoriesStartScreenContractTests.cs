@@ -26,6 +26,8 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("Open repository", recentView);
         Assert.Contains("RemoveCommand", recentView);
         Assert.Contains("TileOpacity", recentView);
+        Assert.Contains("VariableSizedWrapGrid", recentView);
+        Assert.DoesNotContain("ItemsWrapGrid", recentView);
         Assert.Contains("Folder not found", recentViewModel);
 
         Assert.Contains("Directory.Exists(item.Path)", integration);
