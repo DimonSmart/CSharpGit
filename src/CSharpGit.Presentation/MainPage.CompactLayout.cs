@@ -263,7 +263,7 @@ public sealed partial class MainPage
     }
 
     private static T CompactResource<T>(string key) where T : class
-        => Application.Current.Resources[key] as T
+        => Microsoft.UI.Xaml.Application.Current.Resources[key] as T
            ?? throw new InvalidOperationException($"Compact UI resource '{key}' was not loaded.");
 
     private static void SetColumns(Grid grid, double second, double third, double fourth)
