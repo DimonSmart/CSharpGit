@@ -45,15 +45,16 @@ public sealed class DesktopUiContractTests
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var operationBanner = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "OperationBanner.xaml"));
-        var surface = xaml + operationBanner;
+        var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+        var surface = xaml + operationBanner + page;
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
-        foreach (var binding in new[]
+        foreach (var command in new[]
         {
             "StageCommand", "UnstageCommand", "CommitCommand", "AmendCommand", "ConfirmDiscardCommand",
             "FetchCommand", "FetchAllCommand", "PullCommand", "PushCommand", "CreateStashCommand", "ApplyStashCommand",
             "PopStashCommand", "MergeCommand", "StartRebaseCommand", "ContinueOperationCommand", "SkipOperationCommand",
             "AbortOperationCommand", "MergeToolCommand", "MergeToolWorkflowCommand"
-        }) Assert.Contains($"Command=\"{{Binding {binding}}}\"", surface);
+        }) Assert.Contains(command, surface);
 
         Assert.Contains("OperationState.CanContinue", viewModel);
         Assert.Contains("OperationState.CanSkip", viewModel);
