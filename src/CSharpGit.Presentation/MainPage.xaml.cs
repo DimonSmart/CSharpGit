@@ -84,6 +84,16 @@ public sealed partial class MainPage : Page
         {
             _ = RefreshCommitFilesAsync();
         }
+        else if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.SelectedHistoryRow) && _activeReference is not null)
+        {
+            var selectedHash = _viewModel.SelectedHistoryRow?.Commit.Hash;
+            var visibleSelection = selectedHash is null
+                ? null
+                : _scopedHistory.FirstOrDefault(row => string.Equals(row.Commit.Hash, selectedHash, StringComparison.Ordinal));
+            visibleSelection ??= _scopedHistory.FirstOrDefault();
+            if (!ReferenceEquals(visibleSelection, _viewModel.SelectedHistoryRow))
+                _viewModel.SelectedHistoryRow = visibleSelection;
+        }
         else if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.HasMore) && _activeReference is null)
         {
             LoadMoreHistoryButton.IsEnabled = _viewModel.HasMore;
@@ -222,6 +232,7 @@ public sealed partial class MainPage : Page
 
     private async Task ShowReferenceHistoryAsync(string reference, string label)
     {
+        _viewModel.InvalidateHistoryLoad();
         _activeReference = reference;
         ActiveReferenceText.Text = label;
         ScopeCombo.Visibility = Visibility.Collapsed;
@@ -235,14 +246,16 @@ public sealed partial class MainPage : Page
     {
         if (_viewModel.Repository is null || _activeReference is null) return;
 
+        var selectedHash = reset ? _viewModel.SelectedHistoryRow?.Commit.Hash : null;
+        var skip = reset ? 0 : _scopedHistory.Count;
         if (reset)
         {
             _referenceHistoryCts?.Cancel();
             _referenceHistoryCts?.Dispose();
             _referenceHistoryCts = new CancellationTokenSource();
-            _scopedHistory.Clear();
         }
         _referenceHistoryCts ??= new CancellationTokenSource();
+        var repository = _viewModel.Repository;
         var reference = _activeReference;
         var token = _referenceHistoryCts.Token;
         _isScopedHistoryLoading = true;
@@ -250,19 +263,32 @@ public sealed partial class MainPage : Page
         try
         {
             var page = await _referenceHistoryService.ReadHistoryAsync(
-                _viewModel.Repository,
+                repository,
                 reference,
                 _viewModel.FilterText,
-                _scopedHistory.Count,
+                skip,
                 100,
                 token);
-            if (token.IsCancellationRequested || !string.Equals(reference, _activeReference, StringComparison.Ordinal)) return;
+            if (token.IsCancellationRequested
+                || !ReferenceEquals(repository, _viewModel.Repository)
+                || !string.Equals(reference, _activeReference, StringComparison.Ordinal))
+                return;
+
+            if (reset) _scopedHistory.Clear();
             foreach (var row in page.Rows) _scopedHistory.Add(row);
             _scopedHasMore = page.HasMore;
             HistoryList.ItemsSource = _scopedHistory;
-            if (reset && _scopedHistory.FirstOrDefault() is { } first)
+
+            if (reset)
             {
-                HistoryList.SelectedItem = first;
+                var restored = selectedHash is null
+                    ? _scopedHistory.FirstOrDefault()
+                    : _scopedHistory.FirstOrDefault(row => string.Equals(row.Commit.Hash, selectedHash, StringComparison.Ordinal))
+                      ?? _scopedHistory.FirstOrDefault();
+                _viewModel.SelectedHistoryRow = restored;
+            }
+            else if (_viewModel.SelectedHistoryRow is null && _scopedHistory.FirstOrDefault() is { } first)
+            {
                 _viewModel.SelectedHistoryRow = first;
             }
         }
@@ -283,6 +309,7 @@ public sealed partial class MainPage : Page
 
     private void ShowAllHistory()
     {
+        var selectedHash = _viewModel.SelectedHistoryRow?.Commit.Hash;
         _referenceHistoryCts?.Cancel();
         _activeReference = null;
         ScopeCombo.Visibility = Visibility.Visible;
@@ -291,7 +318,15 @@ public sealed partial class MainPage : Page
         WorkingTreePane.Visibility = Visibility.Collapsed;
         HistoryList.ItemsSource = _viewModel.History;
         LoadMoreHistoryButton.IsEnabled = _viewModel.HasMore;
-        if (_viewModel.SelectedScope != _viewModel.Scopes[0]) _viewModel.SelectedScope = _viewModel.Scopes[0];
+
+        var restored = selectedHash is null
+            ? _viewModel.History.FirstOrDefault()
+            : _viewModel.History.FirstOrDefault(row => string.Equals(row.Commit.Hash, selectedHash, StringComparison.Ordinal))
+              ?? _viewModel.History.FirstOrDefault();
+        _viewModel.SelectedHistoryRow = restored;
+
+        if (_viewModel.SelectedScope != _viewModel.Scopes[0])
+            _viewModel.SelectedScope = _viewModel.Scopes[0];
     }
 
     private void ShowWorkingTree()
@@ -659,6 +694,23 @@ public sealed partial class MainPage : Page
             Check(WorkingTreePane.Visibility == Visibility.Visible && HistoryPane.Visibility == Visibility.Collapsed, "working tree mode did not open", failures);
             Check(_unstagedChanges.Count + _stagedChanges.Count >= _viewModel.Changes.Count, "working tree staged/unstaged views lost changes", failures);
             ShowAllHistory();
+
+            if (_viewModel.History.FirstOrDefault() is { } selectedBeforeRefresh)
+            {
+                _viewModel.SelectedHistoryRow = selectedBeforeRefresh;
+                var selectedHash = selectedBeforeRefresh.Commit.Hash;
+                await _viewModel.RefreshAsyncForDesktopCheck();
+                Check(_viewModel.SelectedHistoryRow?.Commit.Hash == selectedHash, "history refresh did not preserve the selected commit", failures);
+                Check(_viewModel.History.Any(row => ReferenceEquals(row, _viewModel.SelectedHistoryRow)), "history refresh kept a stale selected row instance", failures);
+            }
+
+            if (_viewModel.LocalBranches.FirstOrDefault(branch => branch.IsCurrent) is { } currentBranch)
+            {
+                await ShowReferenceHistoryAsync(currentBranch.Name, $"Branch: {currentBranch.Name}");
+                Check(_scopedHistory.Any(row => ReferenceEquals(row, _viewModel.SelectedHistoryRow)), "scoped history selection is not part of the current ItemsSource", failures);
+                ShowAllHistory();
+                Check(_viewModel.SelectedHistoryRow is null || _viewModel.History.Any(row => ReferenceEquals(row, _viewModel.SelectedHistoryRow)), "all-history selection is not part of the current ItemsSource", failures);
+            }
 
             _viewModel.CommitMessage = "draft retained by close guard";
             Check(_viewModel.HasUnappliedCommitMessage, "commit draft close guard is inactive", failures);
