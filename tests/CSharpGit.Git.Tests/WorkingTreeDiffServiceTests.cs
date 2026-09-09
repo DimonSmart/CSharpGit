@@ -237,8 +237,8 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
     private async Task<WorkingTreeChange> ReadChangeAsync(Repository repository, string path)
     {
         var state = await _service.ReadAsync(repository);
-        return Assert.Single(state.Changes.Where(change =>
-            string.Equals(change.Path, path, StringComparison.Ordinal)));
+        return Assert.Single(state.Changes, change =>
+            string.Equals(change.Path, path, StringComparison.Ordinal));
     }
 
     private static string Text(FileDiff diff) =>
