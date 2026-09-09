@@ -64,6 +64,7 @@ public sealed class DesktopUiContractTests
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+        var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
         var app = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
         var program = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Platforms", "Desktop", "Program.cs"));
 
@@ -72,10 +73,12 @@ public sealed class DesktopUiContractTests
         Assert.Contains("StageAllAsync", viewModel);
         Assert.Contains("HasUnappliedCommitMessage", page);
         Assert.Contains("Keep editing", page);
-        Assert.Contains("!viewModel.HasUnappliedCommitMessage", app);
+        Assert.Contains("RequiresCloseConfirmation", lifecycle);
+        Assert.Contains("!page.RequiresCloseConfirmation", app);
         Assert.Contains("eventArgs.Cancel = true", app);
         Assert.Contains("_closeConfirmationInProgress", app);
         Assert.Contains("page.DispatcherQueue.TryEnqueue", app);
+        Assert.Contains("page?.BeginShutdown()", app);
         Assert.DoesNotContain("_window.Closed += async", app);
         Assert.Contains("application?.StopHost()", program);
     }
