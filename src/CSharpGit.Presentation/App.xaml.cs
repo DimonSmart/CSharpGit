@@ -16,6 +16,10 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     private readonly IHost _host;
     private Window? _window;
     private bool _closeConfirmed;
+    private bool _closeConfirmationInProgress;
+    private bool _shutdownRequested;
+    private bool _closeCheckStarted;
+    private int _hostStopped;
 
     public App()
     {
@@ -64,19 +68,43 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         _window.Content = _host.Services.GetRequiredService<MainPage>();
         if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_RESULT")))
             _window.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 1400, Height = 900 });
-        _window.Closed += async (_, _) => await _host.StopAsync();
-        _window.AppWindow.Closing += async (_, eventArgs) =>
+
+        _window.AppWindow.Closing += (_, eventArgs) =>
         {
-            if (_closeConfirmed || _window.Content is not MainPage page) return;
-            eventArgs.Cancel = true;
-            if (await page.ConfirmCloseAsync())
+            if (_closeConfirmed)
             {
-                _closeConfirmed = true;
-                _window.Close();
+                BeginShutdown();
+                return;
             }
+
+            if (_window.Content is not MainPage page ||
+                page.DataContext is not OpenRepositoryViewModel viewModel ||
+                !viewModel.HasUnappliedCommitMessage)
+            {
+                BeginShutdown();
+                return;
+            }
+
+            eventArgs.Cancel = true;
+            if (_closeConfirmationInProgress) return;
+            _closeConfirmationInProgress = true;
+            _ = ConfirmAndCloseAsync(page);
         };
+
         _window.Activated += async (_, _) =>
         {
+            if (_shutdownRequested) return;
+
+            if (Environment.GetEnvironmentVariable("CSHARPGIT_CLOSE_CHECK") == "1")
+            {
+                if (_closeCheckStarted) return;
+                _closeCheckStarted = true;
+                if (_window.Content is FrameworkElement { DataContext: OpenRepositoryViewModel closeCheckViewModel })
+                    await closeCheckViewModel.OpenRepositoryAsyncForDesktopCheck();
+                _window.DispatcherQueue.TryEnqueue(() => _window?.Close());
+                return;
+            }
+
             // The desktop check owns refresh timing. Window activation is not a
             // repository change and must not race its deterministic initial load.
             if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_RESULT"))) return;
@@ -84,6 +112,40 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 await viewModel.RefreshWhenActivatedAsync();
         };
         _window.Activate();
+    }
+
+    private async Task ConfirmAndCloseAsync(MainPage page)
+    {
+        try
+        {
+            if (!await page.ConfirmCloseAsync()) return;
+            _closeConfirmed = true;
+            BeginShutdown();
+            page.DispatcherQueue.TryEnqueue(() => _window?.Close());
+        }
+        finally
+        {
+            _closeConfirmationInProgress = false;
+        }
+    }
+
+    private void BeginShutdown() => _shutdownRequested = true;
+
+    internal void StopHost()
+    {
+        if (Interlocked.Exchange(ref _hostStopped, 1) != 0) return;
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        try
+        {
+            _host.StopAsync(timeout.Token).GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            _host.Dispose();
+        }
     }
 
     private sealed class FixedFolderPicker(string path) : IFolderPicker
