@@ -35,11 +35,16 @@ public sealed class CompactDiffLineTests
         Assert.Null(hunk.OldLineNumber);
         Assert.Null(hunk.NewLineNumber);
 
-        Assert.Equal((10, 10), (lines[1].OldLineNumber, lines[1].NewLineNumber));
-        Assert.Equal((11, null), (lines[2].OldLineNumber, lines[2].NewLineNumber));
-        Assert.Equal((null, 11), (lines[3].OldLineNumber, lines[3].NewLineNumber));
-        Assert.Equal((12, 12), (lines[4].OldLineNumber, lines[4].NewLineNumber));
-        Assert.Equal((null, 13), (lines[5].OldLineNumber, lines[5].NewLineNumber));
+        Assert.Equal(10, lines[1].OldLineNumber);
+        Assert.Equal(10, lines[1].NewLineNumber);
+        Assert.Equal(11, lines[2].OldLineNumber);
+        Assert.Null(lines[2].NewLineNumber);
+        Assert.Null(lines[3].OldLineNumber);
+        Assert.Equal(11, lines[3].NewLineNumber);
+        Assert.Equal(12, lines[4].OldLineNumber);
+        Assert.Equal(12, lines[4].NewLineNumber);
+        Assert.Null(lines[5].OldLineNumber);
+        Assert.Equal(13, lines[5].NewLineNumber);
         Assert.Equal(DiffLineKind.Header, lines[6].Kind);
     }
 
