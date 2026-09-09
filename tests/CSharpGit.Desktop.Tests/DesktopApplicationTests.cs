@@ -15,27 +15,16 @@ public sealed class DesktopApplicationTests
         await using var fixture = await GitFixture.CreateAsync();
         await RunCheckAsync(application!, fixture.Repository, false, fixture.Home);
         await RunCheckAsync(application!, fixture.Worktree, true, fixture.Home);
+        await RunNormalCloseCheckAsync(application!, fixture.Repository, fixture.Home);
     }
 
     private static async Task RunCheckAsync(string application, string repository, bool worktree, string isolatedHome)
     {
         var result = Path.Combine(isolatedHome, $"ui-{Guid.NewGuid():N}.json");
-        var start = new ProcessStartInfo(application)
-        {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            WorkingDirectory = repository
-        };
+        var start = CreateStartInfo(application, repository, isolatedHome);
         start.Environment["CSHARPGIT_UI_CHECK_REPOSITORY"] = repository;
         start.Environment["CSHARPGIT_UI_CHECK_RESULT"] = result;
         start.Environment["CSHARPGIT_UI_CHECK_WORKTREE"] = worktree ? "1" : "0";
-        start.Environment["GIT_CONFIG_GLOBAL"] = Path.Combine(isolatedHome, ".gitconfig");
-        start.Environment["GIT_CONFIG_NOSYSTEM"] = "1";
-        start.Environment["HOME"] = isolatedHome;
-        start.Environment["XDG_CONFIG_HOME"] = isolatedHome;
-        start.Environment["LOCALAPPDATA"] = isolatedHome;
-        start.Environment["APPDATA"] = isolatedHome;
 
         using var process = Process.Start(start) ?? throw new InvalidOperationException("Desktop application could not be started.");
         var standardOutput = process.StandardOutput.ReadToEndAsync();
@@ -59,6 +48,61 @@ public sealed class DesktopApplicationTests
         var failures = document.RootElement.GetProperty("Failures").EnumerateArray().Select(item => item.GetString()).ToArray();
         Assert.True(document.RootElement.GetProperty("Passed").GetBoolean(), string.Join(Environment.NewLine, failures));
         Assert.Equal(worktree, document.RootElement.GetProperty("IsWorktree").GetBoolean());
+    }
+
+    private static async Task RunNormalCloseCheckAsync(string application, string repository, string isolatedHome)
+    {
+        var start = CreateStartInfo(application, repository, isolatedHome);
+        start.Environment["CSHARPGIT_UI_CHECK_REPOSITORY"] = repository;
+        start.Environment["CSHARPGIT_CLOSE_CHECK"] = "1";
+
+        using var process = Process.Start(start) ?? throw new InvalidOperationException("Desktop application could not be started for the close check.");
+        var standardOutput = process.StandardOutput.ReadToEndAsync();
+        var standardError = process.StandardError.ReadToEndAsync();
+        var timedOut = false;
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            try
+            {
+                await process.WaitForExitAsync(timeout.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                timedOut = true;
+            }
+        }
+        finally
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(true);
+                await process.WaitForExitAsync();
+            }
+        }
+
+        var output = await standardOutput;
+        var error = await standardError;
+        Assert.False(timedOut, $"Desktop application hung while closing normally.{Environment.NewLine}{output}{Environment.NewLine}{error}");
+        Assert.Equal(0, process.ExitCode);
+    }
+
+    private static ProcessStartInfo CreateStartInfo(string application, string repository, string isolatedHome)
+    {
+        var start = new ProcessStartInfo(application)
+        {
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = repository
+        };
+        start.Environment["GIT_CONFIG_GLOBAL"] = Path.Combine(isolatedHome, ".gitconfig");
+        start.Environment["GIT_CONFIG_NOSYSTEM"] = "1";
+        start.Environment["HOME"] = isolatedHome;
+        start.Environment["XDG_CONFIG_HOME"] = isolatedHome;
+        start.Environment["LOCALAPPDATA"] = isolatedHome;
+        start.Environment["APPDATA"] = isolatedHome;
+        return start;
     }
 
     private static string? FindApplication()
