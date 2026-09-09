@@ -66,12 +66,22 @@
   </DataTemplate>
 
   <Style x:Key="CompactDiffItemContainerStyle" TargetType="ListViewItem">
-    <Setter Property="MinHeight" Value="20" />
-    <Setter Property="Height" Value="20" />
+    <Setter Property="MinHeight" Value="0" />
     <Setter Property="Margin" Value="0" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListViewItem">
+          <ContentPresenter Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Padding="{TemplateBinding Padding}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
   </Style>
 
   <DataTemplate x:Key="CompactDiffItemTemplate">
