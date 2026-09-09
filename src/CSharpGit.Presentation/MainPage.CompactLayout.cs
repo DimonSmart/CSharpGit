@@ -9,16 +9,6 @@ public sealed partial class MainPage
 {
     private bool _compactLayoutApplied;
 
-    protected override void OnApplyTemplate()
-    {
-        base.OnApplyTemplate();
-        if (_compactLayoutApplied) return;
-
-        Loaded -= ApplyCompactLayoutWhenLoaded;
-        Loaded += ApplyCompactLayoutWhenLoaded;
-        _ = DispatcherQueue.TryEnqueue(ApplyCompactWorkspaceLayout);
-    }
-
     private void ApplyCompactLayoutWhenLoaded(object sender, RoutedEventArgs args)
     {
         ApplyCompactWorkspaceLayout();
