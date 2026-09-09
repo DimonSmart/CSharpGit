@@ -5,9 +5,10 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
 
-public sealed class GitReferenceHistoryService : IReferenceHistoryService
+public sealed class GitReferenceHistoryService : IReferenceHistoryService, IHistoryService
 {
     private readonly string _gitExecutable;
+    private readonly GitCliRepositoryService _detailsService;
 
     public GitReferenceHistoryService() : this(new GitCliOptions()) { }
 
@@ -15,9 +16,27 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
     {
         ArgumentNullException.ThrowIfNull(options);
         _gitExecutable = string.IsNullOrWhiteSpace(options.ExecutablePath) ? "git" : options.ExecutablePath;
+        _detailsService = new GitCliRepositoryService(options);
     }
 
-    public async Task<HistoryPage> ReadHistoryAsync(
+    public Task<HistoryPage> ReadHistoryAsync(
+        Repository repository,
+        HistoryQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        if (query.Skip < 0 || query.Take is < 1 or > 1000) throw new ArgumentOutOfRangeException(nameof(query));
+
+        return ReadHistoryCoreAsync(
+            repository,
+            query.Filter,
+            query.Skip,
+            query.Take,
+            query.Scope == HistoryScope.AllReferences ? ["--all"] : ["HEAD"],
+            cancellationToken);
+    }
+
+    public Task<HistoryPage> ReadHistoryAsync(
         Repository repository,
         string reference,
         string? filter,
@@ -25,31 +44,23 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
         int take = 100,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(repository);
         ValidateReference(reference);
         if (skip < 0 || take is < 1 or > 1000) throw new ArgumentOutOfRangeException(nameof(take));
-
-        var arguments = new List<string>
-        {
-            "log",
-            "--topo-order",
-            "--date=iso-strict",
-            $"--max-count={skip + take + 1}",
-            "--format=%H%x00%P%x00%an%x00%aI%x00%D%x00%B%x1e"
-        };
-        if (!string.IsNullOrWhiteSpace(filter))
-        {
-            arguments.Add("--regexp-ignore-case");
-            arguments.Add($"--grep={filter.Trim()}");
-        }
-        arguments.Add(reference);
-
-        var output = await RunGitAsync(repository.WorkingDirectory, cancellationToken, arguments.ToArray());
-        var commits = ParseHistory(output).ToList();
-        var hasMore = commits.Count > skip + take;
-        var rows = BuildTopology(commits.Take(skip + take).ToList());
-        return new HistoryPage(rows.Skip(skip).ToList(), hasMore);
+        return ReadHistoryCoreAsync(repository, filter, skip, take, [reference], cancellationToken);
     }
+
+    public Task<CommitDetails> ReadCommitAsync(
+        Repository repository,
+        string hash,
+        CancellationToken cancellationToken = default) =>
+        _detailsService.ReadCommitAsync(repository, hash, cancellationToken);
+
+    public Task<FileDiff> ReadDiffAsync(
+        Repository repository,
+        string hash,
+        string path,
+        CancellationToken cancellationToken = default) =>
+        _detailsService.ReadDiffAsync(repository, hash, path, cancellationToken);
 
     public async Task<IReadOnlyDictionary<string, string>> ReadFileStatusesAsync(
         Repository repository,
@@ -74,6 +85,38 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
             if (status.Length > 0 && path.Length > 0) result[path] = status[0].ToString();
         }
         return result;
+    }
+
+    private async Task<HistoryPage> ReadHistoryCoreAsync(
+        Repository repository,
+        string? filter,
+        int skip,
+        int take,
+        IReadOnlyList<string> revisions,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
+
+        var arguments = new List<string>
+        {
+            "log",
+            "--topo-order",
+            "--date=iso-strict",
+            $"--max-count={skip + take + 1}",
+            "--format=%H%x00%P%x00%an%x00%aI%x00%D%x00%B%x1e"
+        };
+        if (!string.IsNullOrWhiteSpace(filter))
+        {
+            arguments.Add("--regexp-ignore-case");
+            arguments.Add($"--grep={filter.Trim()}");
+        }
+        arguments.AddRange(revisions);
+
+        var output = await RunGitAsync(repository.WorkingDirectory, cancellationToken, arguments.ToArray());
+        var commits = ParseHistory(output).ToList();
+        var hasMore = commits.Count > skip + take;
+        var rows = BuildTopology(commits.Take(skip + take).ToList());
+        return new HistoryPage(rows.Skip(skip).ToList(), hasMore);
     }
 
     private async Task<string> RunGitAsync(string workingDirectory, CancellationToken cancellationToken, params string[] arguments)
@@ -125,31 +168,58 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
 
     private static IReadOnlyList<HistoryRow> BuildTopology(IReadOnlyList<CommitHistoryItem> commits)
     {
-        var lanes = new List<string>();
+        var lanes = new List<LaneState>();
         var rows = new List<HistoryRow>(commits.Count);
+        var nextTrackId = 0;
+
         foreach (var commit in commits)
         {
-            var lane = lanes.IndexOf(commit.Hash);
+            var lane = lanes.FindIndex(state => state.Commit == commit.Hash);
             if (lane < 0)
             {
                 lane = lanes.Count;
-                lanes.Add(commit.Hash);
+                lanes.Add(new LaneState(commit.Hash, nextTrackId++));
             }
 
-            var edges = new List<TopologyEdge>();
+            var before = lanes.ToList();
+            var nodeTrackId = before[lane].TrackId;
+            var incoming = before
+                .Select((state, index) => new TopologyEdge(index, index, state.TrackId))
+                .ToList();
+
             lanes.RemoveAt(lane);
+            var parentEdges = new List<TopologyEdge>();
             for (var parentIndex = 0; parentIndex < commit.Parents.Count; parentIndex++)
             {
                 var parent = commit.Parents[parentIndex];
-                var parentLane = lanes.IndexOf(parent);
+                var parentLane = lanes.FindIndex(state => state.Commit == parent);
                 if (parentLane < 0)
                 {
                     parentLane = Math.Min(lane + parentIndex, lanes.Count);
-                    lanes.Insert(parentLane, parent);
+                    var trackId = parentIndex == 0 ? nodeTrackId : nextTrackId++;
+                    lanes.Insert(parentLane, new LaneState(parent, trackId));
                 }
-                edges.Add(new TopologyEdge(lane, parentLane));
+                parentEdges.Add(new TopologyEdge(lane, parentLane, lanes[parentLane].TrackId));
             }
-            rows.Add(new HistoryRow(commit, new CommitTopology(lane, edges)));
+
+            var outgoing = new List<TopologyEdge>();
+            for (var beforeLane = 0; beforeLane < before.Count; beforeLane++)
+            {
+                if (beforeLane == lane) continue;
+                var state = before[beforeLane];
+                var afterLane = lanes.FindIndex(candidate => candidate.Commit == state.Commit);
+                if (afterLane >= 0)
+                    outgoing.Add(new TopologyEdge(beforeLane, afterLane, state.TrackId));
+            }
+            outgoing.AddRange(parentEdges);
+
+            rows.Add(new HistoryRow(
+                commit,
+                new CommitTopology(lane, outgoing)
+                {
+                    NodeTrackId = nodeTrackId,
+                    IncomingEdges = incoming
+                }));
         }
         return rows;
     }
@@ -173,4 +243,6 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
         if (string.IsNullOrWhiteSpace(hash) || hash.Any(character => !Uri.IsHexDigit(character)))
             throw new ArgumentException("Invalid commit hash.", nameof(hash));
     }
+
+    private sealed record LaneState(string Commit, int TrackId);
 }

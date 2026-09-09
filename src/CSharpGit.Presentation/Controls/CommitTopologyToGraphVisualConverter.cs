@@ -13,30 +13,32 @@ public sealed class CommitTopologyToGraphVisualConverter : IValueConverter
             return null;
         }
 
+        var exactTopology = topology.IncomingEdges.Count > 0;
+        var allEdges = topology.IncomingEdges.Concat(topology.Edges).ToList();
         var laneCount = Math.Max(
             topology.Lane + 1,
-            topology.Edges
+            allEdges
                 .SelectMany(edge => new[] { edge.FromLane, edge.ToLane })
                 .DefaultIfEmpty(0)
                 .Max() + 1);
 
-        var incoming = Enumerable.Range(0, laneCount)
-            .Select(lane => new CommitGraphSegment(lane, lane, lane))
-            .ToList();
+        var incoming = exactTopology
+            ? topology.IncomingEdges.Select(ToSegment).ToList()
+            : Enumerable.Range(0, laneCount)
+                .Select(lane => new CommitGraphSegment(lane, lane, lane))
+                .ToList();
 
-        var outgoing = Enumerable.Range(0, laneCount)
-            .Where(lane => lane != topology.Lane)
-            .Select(lane => new CommitGraphSegment(lane, lane, lane))
-            .ToList();
-
-        foreach (var edge in topology.Edges)
-        {
-            outgoing.Add(new CommitGraphSegment(edge.FromLane, edge.ToLane, edge.FromLane));
-        }
+        var outgoing = exactTopology
+            ? topology.Edges.Select(ToSegment).ToList()
+            : Enumerable.Range(0, laneCount)
+                .Where(lane => lane != topology.Lane)
+                .Select(lane => new CommitGraphSegment(lane, lane, lane))
+                .Concat(topology.Edges.Select(edge => new CommitGraphSegment(edge.FromLane, edge.ToLane, edge.FromLane)))
+                .ToList();
 
         return new CommitGraphRowVisual(
             topology.Lane,
-            topology.Lane,
+            exactTopology ? topology.NodeTrackId : topology.Lane,
             laneCount,
             incoming,
             outgoing);
@@ -44,4 +46,7 @@ public sealed class CommitTopologyToGraphVisualConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException();
+
+    private static CommitGraphSegment ToSegment(TopologyEdge edge) =>
+        new(edge.FromLane, edge.ToLane, edge.TrackId);
 }

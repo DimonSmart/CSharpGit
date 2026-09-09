@@ -18,10 +18,13 @@ public sealed record CommitHistoryItem(
     public string ReferencesDisplay => string.Join(", ", References);
 }
 
-public sealed record TopologyEdge(int FromLane, int ToLane);
+public sealed record TopologyEdge(int FromLane, int ToLane, int TrackId = 0);
 
 public sealed record CommitTopology(int Lane, IReadOnlyList<TopologyEdge> Edges)
 {
+    public int NodeTrackId { get; init; } = Lane;
+    public IReadOnlyList<TopologyEdge> IncomingEdges { get; init; } = [];
+
     public string Display => string.Concat(Enumerable.Range(0, Math.Max(Lane + 1, Edges.Select(x => x.ToLane + 1).DefaultIfEmpty(1).Max()))
         .Select(index => index == Lane ? "● " : "│ "));
 }

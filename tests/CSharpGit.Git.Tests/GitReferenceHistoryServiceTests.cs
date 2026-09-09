@@ -30,6 +30,40 @@ public sealed class GitReferenceHistoryServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task PreservesContinuousTracksAcrossMergeRows()
+    {
+        InitializeRepository();
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "file.txt"), "initial\n");
+        RunGit("add", "file.txt");
+        RunGit("commit", "-m", "initial");
+
+        RunGit("switch", "-c", "feature/demo");
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "feature.txt"), "feature\n");
+        RunGit("add", "feature.txt");
+        RunGit("commit", "-m", "feature commit");
+
+        RunGit("switch", "main");
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "main.txt"), "main\n");
+        RunGit("add", "main.txt");
+        RunGit("commit", "-m", "main commit");
+        RunGit("merge", "--no-ff", "feature/demo", "-m", "merge feature");
+
+        var repository = await new GitCliRepositoryService().OpenAsync(_temporaryDirectory);
+        var page = await new GitReferenceHistoryService().ReadHistoryAsync(repository, "main", null, 0, 20);
+
+        var merge = Assert.Single(page.Rows.Where(row => row.Commit.Subject == "merge feature"));
+        var parentEdges = merge.Topology.Edges.Where(edge => edge.FromLane == merge.Topology.Lane).ToList();
+        Assert.Equal(2, parentEdges.Count);
+        Assert.Equal(2, parentEdges.Select(edge => edge.TrackId).Distinct().Count());
+
+        var mergeIndex = page.Rows.ToList().IndexOf(merge);
+        Assert.True(mergeIndex >= 0 && mergeIndex + 1 < page.Rows.Count);
+        var rowAfterMerge = page.Rows[mergeIndex + 1];
+        Assert.Contains(rowAfterMerge.Topology.IncomingEdges, edge => edge.TrackId == parentEdges[0].TrackId);
+        Assert.Contains(rowAfterMerge.Topology.IncomingEdges, edge => edge.TrackId == parentEdges[1].TrackId);
+    }
+
+    [Fact]
     public async Task ReadsCompactFileStatusForCommit()
     {
         InitializeRepository();
