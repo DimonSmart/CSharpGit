@@ -12,6 +12,7 @@ public sealed partial class MainPage
     private readonly ObservableCollection<ChangedFileTreeNode> _changedFileTreeRoots = [];
     private readonly ObservableCollection<CompactDiffLine> _compactDiffLines = [];
     private bool _changesSurfaceInitialized;
+    private bool _changedFileTreeRefreshQueued;
 
     private void ChangesSurface_Loaded(object sender, RoutedEventArgs args)
     {
@@ -27,8 +28,19 @@ public sealed partial class MainPage
         RebuildCompactDiff();
     }
 
-    private void CommitFiles_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs args) =>
+    private void CommitFiles_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs args)
+    {
+        if (!_changesSurfaceInitialized || _changedFileTreeRefreshQueued) return;
+        _changedFileTreeRefreshQueued = true;
+        if (DispatcherQueue.TryEnqueue(() =>
+        {
+            _changedFileTreeRefreshQueued = false;
+            RebuildChangedFileTree();
+        })) return;
+
+        _changedFileTreeRefreshQueued = false;
         RebuildChangedFileTree();
+    }
 
     private void ChangesViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
