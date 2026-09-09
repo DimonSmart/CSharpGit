@@ -2,6 +2,7 @@ using CSharpGit.Application.Abstractions;
 using CSharpGit.Application;
 using CSharpGit.Git;
 using CSharpGit.Infrastructure;
+using CSharpGit.Presentation.Diagnostics;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,7 +35,9 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             .ConfigureLogging(logging =>
             {
                 logging.ClearProviders();
+                logging.SetMinimumLevel(LogLevel.Trace);
                 logging.AddSimpleConsole(options => options.SingleLine = true);
+                logging.AddProvider(new SessionFileLoggerProvider());
             })
             .ConfigureServices(services =>
             {
@@ -64,6 +67,16 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
         await _host.StartAsync();
+        var loggerFactory = _host.Services.GetRequiredService<ILoggerFactory>();
+        CommitGraphDiagnostics.Initialize(loggerFactory);
+        var startupLogger = loggerFactory.CreateLogger("CSharpGit.Startup");
+        startupLogger.LogInformation(
+            "Application started. version={Version} os={OS} process={ProcessId} log={LogPath}",
+            typeof(App).Assembly.GetName().Version,
+            Environment.OSVersion,
+            Environment.ProcessId,
+            SessionFileLoggerProvider.CurrentLogPath);
+
         _window = new Window { Title = "CSharpGit" };
         _window.Content = _host.Services.GetRequiredService<MainPage>();
         if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_RESULT")))
