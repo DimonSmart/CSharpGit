@@ -1,5 +1,4 @@
 using CSharpGit.Presentation.Controls.CommitGraph;
-using CSharpGit.Presentation.Diagnostics;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -35,8 +34,6 @@ public sealed class CommitGraphControl : Canvas
         Brush(0xD7, 0xD0, 0x6B),
     ];
 
-    private static long _nextControlId;
-    private readonly long _controlId = Interlocked.Increment(ref _nextControlId);
     private readonly XamlPath[] _trackPaths = new XamlPath[8];
     private readonly XamlPath _nodePath;
     private CommitGraphRowVisual? _renderedGraph;
@@ -76,31 +73,13 @@ public sealed class CommitGraphControl : Canvas
         Children.Add(_nodePath);
         UpdateBrushes();
 
-        CommitGraphDiagnostics.Trace(
-            "ControlCreated",
-            $"control={_controlId} renderer=StableXamlPaths fixedChildren={Children.Count}");
-
-        Loaded += (_, _) =>
-        {
-            Log("Loaded", "control entered visual tree");
-            UpdateGeometry("Loaded");
-        };
-        Unloaded += (_, _) => Log("Unloaded", "control leaving visual tree");
-        DataContextChanged += (_, _) =>
-        {
-            Log("DataContextChanged", "data context changed");
-            UpdateGeometry("DataContextChanged");
-        };
-        SizeChanged += (_, _) =>
-        {
-            Log("SizeChanged", "actual size changed");
-            UpdateGeometry("SizeChanged");
-        };
+        Loaded += (_, _) => UpdateGeometry();
+        DataContextChanged += (_, _) => UpdateGeometry();
+        SizeChanged += (_, _) => UpdateGeometry();
         ActualThemeChanged += (_, _) =>
         {
-            Log("ThemeChanged", $"theme={ActualTheme}");
             UpdateBrushes();
-            UpdateGeometry("ActualThemeChanged");
+            UpdateGeometry();
         };
     }
 
@@ -113,14 +92,7 @@ public sealed class CommitGraphControl : Canvas
         var desiredHeight = double.IsFinite(Height) && Height >= 0
             ? Height
             : metrics.DefaultRowHeight;
-        var desired = new Size(desiredWidth, desiredHeight);
-
-        CommitGraphDiagnostics.Trace(
-            "Measure",
-            $"control={_controlId} renderer=StableXamlPaths available={availableSize.Width:0.##}x{availableSize.Height:0.##} "
-            + $"desired={desired.Width:0.##}x{desired.Height:0.##} {CommitGraphDiagnostics.DescribeContext(DataContext)} "
-            + CommitGraphDiagnostics.DescribeGraph(Graph));
-        return desired;
+        return new Size(desiredWidth, desiredHeight);
     }
 
     private static void OnGraphChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
@@ -130,16 +102,11 @@ public sealed class CommitGraphControl : Canvas
             return;
         }
 
-        CommitGraphDiagnostics.Trace(
-            "GraphChanged",
-            $"control={control._controlId} renderer=StableXamlPaths {CommitGraphDiagnostics.DescribeContext(control.DataContext)} "
-            + $"old=[{CommitGraphDiagnostics.DescribeGraph(args.OldValue as CommitGraphRowVisual)}] "
-            + $"new=[{CommitGraphDiagnostics.DescribeGraph(args.NewValue as CommitGraphRowVisual)}]");
         control.InvalidateMeasure();
-        control.UpdateGeometry("GraphChanged");
+        control.UpdateGeometry();
     }
 
-    private void UpdateGeometry(string reason)
+    private void UpdateGeometry()
     {
         var graph = Graph;
         var metrics = CommitGraphMetrics.Default;
@@ -152,11 +119,6 @@ public sealed class CommitGraphControl : Canvas
             && Math.Abs(_renderedHeight - height) <= 0.01
             && _renderedTheme == theme)
         {
-            CommitGraphDiagnostics.Trace(
-                "XamlRenderSkipped",
-                $"control={_controlId} reason={reason} unchanged graph/height/theme actual={ActualWidth:0.##}x{ActualHeight:0.##} "
-                + $"renderedHeight={height:0.##} {CommitGraphDiagnostics.DescribeContext(DataContext)} "
-                + CommitGraphDiagnostics.DescribeGraph(graph));
             return;
         }
 
@@ -168,14 +130,10 @@ public sealed class CommitGraphControl : Canvas
         _renderedGraph = graph;
         _renderedHeight = height;
         _renderedTheme = theme;
-        var renderCount = Interlocked.Increment(ref _renderCount);
+        Interlocked.Increment(ref _renderCount);
 
         if (graph is null)
         {
-            CommitGraphDiagnostics.Trace(
-                "XamlRender",
-                $"control={_controlId} reason={reason} renderCount={renderCount} graph=null actual={ActualWidth:0.##}x{ActualHeight:0.##} "
-                + CommitGraphDiagnostics.DescribeContext(DataContext));
             return;
         }
 
@@ -229,13 +187,6 @@ public sealed class CommitGraphControl : Canvas
             };
             _nodePath.Fill = GetTrackBrush(node.TrackId);
         }
-
-        CommitGraphDiagnostics.Trace(
-            "XamlRender",
-            $"control={_controlId} reason={reason} renderCount={renderCount} fixedChildren={Children.Count} "
-            + $"actual={ActualWidth:0.##}x{ActualHeight:0.##} renderedHeight={height:0.##} "
-            + $"{CommitGraphDiagnostics.DescribeContext(DataContext)} {CommitGraphDiagnostics.DescribeGraph(graph)} "
-            + CommitGraphDiagnostics.DescribeGeometry(geometry));
     }
 
     internal bool HasCurrentRenderForCheck()
@@ -287,13 +238,6 @@ public sealed class CommitGraphControl : Canvas
         var palette = ActualTheme == ElementTheme.Dark ? DarkPalette : LightPalette;
         return palette[PaletteIndex(trackId)];
     }
-
-    private void Log(string eventName, string details)
-        => CommitGraphDiagnostics.Trace(
-            eventName,
-            $"control={_controlId} renderer=StableXamlPaths {details} actual={ActualWidth:0.##}x{ActualHeight:0.##} "
-            + $"renderCount={Volatile.Read(ref _renderCount)} fixedChildren={Children.Count} "
-            + $"{CommitGraphDiagnostics.DescribeContext(DataContext)} {CommitGraphDiagnostics.DescribeGraph(Graph)}");
 
     private static int PaletteIndex(int trackId)
         => CommitGraphGeometryBuilder.GetPaletteIndex(trackId, LightPalette.Length);

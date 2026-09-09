@@ -1,6 +1,5 @@
 using CSharpGit.Domain;
 using CSharpGit.Presentation.Controls.CommitGraph;
-using CSharpGit.Presentation.Diagnostics;
 using Microsoft.UI.Xaml.Data;
 
 namespace CSharpGit.Presentation.Controls;
@@ -11,7 +10,6 @@ public sealed class CommitTopologyToGraphVisualConverter : IValueConverter
     {
         if (value is not CommitTopology topology)
         {
-            CommitGraphDiagnostics.Trace("ConvertSkipped", $"valueType={value?.GetType().FullName ?? "null"}");
             return null;
         }
 
@@ -38,16 +36,12 @@ public sealed class CommitTopologyToGraphVisualConverter : IValueConverter
                 .Concat(topology.Edges.Select(edge => new CommitGraphSegment(edge.FromLane, edge.ToLane, edge.FromLane)))
                 .ToList();
 
-        var visual = new CommitGraphRowVisual(
+        return new CommitGraphRowVisual(
             topology.Lane,
             exactTopology ? topology.NodeTrackId : topology.Lane,
             laneCount,
             incoming,
             outgoing);
-        CommitGraphDiagnostics.Trace(
-            "TopologyConverted",
-            $"topology=[{CommitGraphDiagnostics.DescribeTopology(topology)}] visual=[{CommitGraphDiagnostics.DescribeGraph(visual)}]");
-        return visual;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>

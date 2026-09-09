@@ -15,6 +15,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     private readonly string _filePath;
     private readonly SemaphoreSlim _writeGate = new(1, 1);
     private CommitTimeDisplayMode _commitTimeDisplayMode;
+    private bool _loggingEnabled;
+    private ApplicationLogLevel _logLevel;
 
     public JsonAppSettingsService()
         : this(GetDefaultFilePath())
@@ -24,10 +26,17 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     internal JsonAppSettingsService(string filePath)
     {
         _filePath = filePath;
-        _commitTimeDisplayMode = LoadCommitTimeDisplayMode();
+        var state = LoadSettings();
+        _commitTimeDisplayMode = state.CommitTimeDisplayMode;
+        _loggingEnabled = state.LoggingEnabled;
+        _logLevel = state.LogLevel;
     }
 
     public CommitTimeDisplayMode CommitTimeDisplayMode => _commitTimeDisplayMode;
+
+    public bool LoggingEnabled => _loggingEnabled;
+
+    public ApplicationLogLevel LogLevel => _logLevel;
 
     public event EventHandler? Changed;
 
@@ -41,34 +50,57 @@ public sealed class JsonAppSettingsService : IAppSettingsService
 
         _commitTimeDisplayMode = mode;
         Changed?.Invoke(this, EventArgs.Empty);
-        await PersistAsync(mode, cancellationToken);
+        await PersistAsync(cancellationToken);
     }
 
-    private CommitTimeDisplayMode LoadCommitTimeDisplayMode()
+    public async Task SetLoggingSettingsAsync(
+        bool enabled,
+        ApplicationLogLevel level,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Enum.IsDefined(typeof(ApplicationLogLevel), level))
+            throw new ArgumentOutOfRangeException(nameof(level));
+        if (_loggingEnabled == enabled && _logLevel == level) return;
+
+        _loggingEnabled = enabled;
+        _logLevel = level;
+        Changed?.Invoke(this, EventArgs.Empty);
+        await PersistAsync(cancellationToken);
+    }
+
+    private SettingsState LoadSettings()
     {
         try
         {
-            if (!File.Exists(_filePath)) return CommitTimeDisplayMode.Smart;
+            if (!File.Exists(_filePath)) return SettingsState.Default;
             var document = JsonSerializer.Deserialize<SettingsDocument>(File.ReadAllText(_filePath), SerializerOptions);
-            return document is not null && Enum.IsDefined(typeof(CommitTimeDisplayMode), document.CommitTimeDisplayMode)
+            if (document is null) return SettingsState.Default;
+
+            var commitTimeDisplayMode = Enum.IsDefined(typeof(CommitTimeDisplayMode), document.CommitTimeDisplayMode)
                 ? document.CommitTimeDisplayMode
                 : CommitTimeDisplayMode.Smart;
+            var logLevel = document.LogLevel is { } configuredLevel
+                           && Enum.IsDefined(typeof(ApplicationLogLevel), configuredLevel)
+                ? configuredLevel
+                : ApplicationLogLevel.Information;
+
+            return new SettingsState(commitTimeDisplayMode, document.LoggingEnabled, logLevel);
         }
         catch (JsonException)
         {
-            return CommitTimeDisplayMode.Smart;
+            return SettingsState.Default;
         }
         catch (IOException)
         {
-            return CommitTimeDisplayMode.Smart;
+            return SettingsState.Default;
         }
         catch (UnauthorizedAccessException)
         {
-            return CommitTimeDisplayMode.Smart;
+            return SettingsState.Default;
         }
     }
 
-    private async Task PersistAsync(CommitTimeDisplayMode mode, CancellationToken cancellationToken)
+    private async Task PersistAsync(CancellationToken cancellationToken)
     {
         await _writeGate.WaitAsync(cancellationToken);
         try
@@ -76,7 +108,13 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             var directory = Path.GetDirectoryName(_filePath);
             if (!string.IsNullOrWhiteSpace(directory)) Directory.CreateDirectory(directory);
 
-            var json = JsonSerializer.Serialize(new SettingsDocument(mode), SerializerOptions);
+            var document = new SettingsDocument
+            {
+                CommitTimeDisplayMode = _commitTimeDisplayMode,
+                LoggingEnabled = _loggingEnabled,
+                LogLevel = _logLevel
+            };
+            var json = JsonSerializer.Serialize(document, SerializerOptions);
             var temporaryPath = _filePath + ".tmp";
             await File.WriteAllTextAsync(temporaryPath, json, cancellationToken);
             File.Move(temporaryPath, _filePath, true);
@@ -94,5 +132,21 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         return Path.Combine(root, "CSharpGit.Presentation", "settings.json");
     }
 
-    private sealed record SettingsDocument(CommitTimeDisplayMode CommitTimeDisplayMode);
+    private readonly record struct SettingsState(
+        CommitTimeDisplayMode CommitTimeDisplayMode,
+        bool LoggingEnabled,
+        ApplicationLogLevel LogLevel)
+    {
+        public static SettingsState Default { get; } = new(
+            CommitTimeDisplayMode.Smart,
+            false,
+            ApplicationLogLevel.Information);
+    }
+
+    private sealed class SettingsDocument
+    {
+        public CommitTimeDisplayMode CommitTimeDisplayMode { get; init; } = CommitTimeDisplayMode.Smart;
+        public bool LoggingEnabled { get; init; }
+        public ApplicationLogLevel? LogLevel { get; init; }
+    }
 }
