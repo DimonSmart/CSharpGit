@@ -69,7 +69,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_RESULT")))
             _window.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 1400, Height = 900 });
 
-        _window.AppWindow.Closing += (_, eventArgs) =>
+        _window.AppWindow.Closing += (sender, eventArgs) =>
         {
             var page = _window.Content as MainPage;
             if (_closeConfirmed)
