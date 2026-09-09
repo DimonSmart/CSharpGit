@@ -12,12 +12,17 @@ public sealed class DesktopUiContractTests
         var xaml = document.ToString(SaveOptions.DisableFormatting);
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var program = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Platforms", "Desktop", "Program.cs"));
+        var splitter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "GridSplitter.cs"));
 
         Assert.Contains("OpenRepositoryCommand", xaml);
         Assert.Contains("UnoPlatformHostBuilder.Create", program);
         Assert.Contains("host.RunAsync()", program);
         Assert.All(new[] { ".UseWin32()", ".UseMacOS()", ".UseX11()" }, platform => Assert.Contains(platform, program));
         Assert.True(Count(xaml, "GridSplitter") >= 3, "All principal panes must remain resizable.");
+        Assert.Contains("ContentControl", splitter);
+        Assert.Contains("HasVisualSurfaceForCheck", splitter);
+        Assert.Contains("ResizeCompleted", splitter);
+        Assert.Contains("layout.json", splitter);
         Assert.Contains("HorizontalScrollBarVisibility=\"Auto\"", xaml);
         Assert.Contains("VerticalScrollBarVisibility=\"Auto\"", xaml);
         Assert.Contains("TextTrimming=\"CharacterEllipsis\"", xaml);
@@ -60,13 +65,19 @@ public sealed class DesktopUiContractTests
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var app = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
+        var program = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Platforms", "Desktop", "Program.cs"));
 
         Assert.All(new[] { "StageAllAndCommitCommand", "ConfirmEmptyCommitCommand", "CancelCommitCommand" }, command => Assert.Contains(command, xaml));
         Assert.Contains("!Changes.Any(change => change.IsStaged)", viewModel);
         Assert.Contains("StageAllAsync", viewModel);
         Assert.Contains("HasUnappliedCommitMessage", page);
         Assert.Contains("Keep editing", page);
+        Assert.Contains("!viewModel.HasUnappliedCommitMessage", app);
         Assert.Contains("eventArgs.Cancel = true", app);
+        Assert.Contains("_closeConfirmationInProgress", app);
+        Assert.Contains("page.DispatcherQueue.TryEnqueue", app);
+        Assert.DoesNotContain("_window.Closed += async", app);
+        Assert.Contains("application?.StopHost()", program);
     }
 
     private static int Count(string value, string fragment) =>
