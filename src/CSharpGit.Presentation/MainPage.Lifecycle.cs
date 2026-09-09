@@ -11,6 +11,7 @@ public sealed partial class MainPage
         if (Interlocked.Exchange(ref _shutdownStarted, 1) != 0) return;
 
         Loaded -= RunDesktopCheckWhenRequested;
+        DetachRepositoryTreeStateTracking();
         _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
         CloseSettingsWindow();
 
