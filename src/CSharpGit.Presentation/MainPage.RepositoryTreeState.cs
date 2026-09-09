@@ -12,9 +12,15 @@ public sealed partial class MainPage
     protected override void OnApplyTemplate()
     {
         base.OnApplyTemplate();
+
         Loaded -= RepositoryTreeState_Loaded;
         Loaded += RepositoryTreeState_Loaded;
         TryAttachRepositoryTreeStateTracking();
+
+        if (_compactLayoutApplied) return;
+        Loaded -= ApplyCompactLayoutWhenLoaded;
+        Loaded += ApplyCompactLayoutWhenLoaded;
+        _ = DispatcherQueue.TryEnqueue(ApplyCompactWorkspaceLayout);
     }
 
     private void RepositoryTreeState_Loaded(object sender, RoutedEventArgs args)
@@ -58,6 +64,7 @@ public sealed partial class MainPage
     private void DetachRepositoryTreeStateTracking()
     {
         Loaded -= RepositoryTreeState_Loaded;
+        Loaded -= ApplyCompactLayoutWhenLoaded;
         if (!_repositoryTreeStateTrackingAttached) return;
 
         RepositoryTree.Expanding -= RepositoryTree_Expanding;
