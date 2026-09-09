@@ -28,11 +28,16 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
             $"csharpgit-{DateTime.Now:yyyyMMdd-HHmmss}-p{Environment.ProcessId}.log");
 
         _writerTask = Task.Run(WriteLoopAsync);
+        WriteDirect("CSharpGit.Diagnostics", "FileLoggerStarted",
+            $"process={Environment.ProcessId} log={CurrentLogPath}");
     }
 
     public static string CurrentLogPath { get; private set; } = string.Empty;
 
     public ILogger CreateLogger(string categoryName) => new SessionFileLogger(this, categoryName);
+
+    internal void WriteDirect(string category, string eventName, string message)
+        => Write(category, LogLevel.Trace, new EventId(4100, eventName), message, null);
 
     public void Dispose()
     {
@@ -67,21 +72,12 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
             FileShare.ReadWrite,
             bufferSize: 16 * 1024,
             useAsync: true);
-        await using var writer = new StreamWriter(stream);
-        var pending = 0;
+        await using var writer = new StreamWriter(stream) { AutoFlush = true };
 
         await foreach (var line in _lines.Reader.ReadAllAsync())
         {
             await writer.WriteLineAsync(line);
-            pending++;
-            if (pending >= 32)
-            {
-                await writer.FlushAsync();
-                pending = 0;
-            }
         }
-
-        await writer.FlushAsync();
     }
 
     private static void DeleteOldLogs(string directory, int keep)
