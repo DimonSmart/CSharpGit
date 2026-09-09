@@ -1,0 +1,72 @@
+<Page x:Class="CSharpGit.Presentation.SettingsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" RowDefinitions="56,*">
+    <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Padding="18,0">
+      <TextBlock Text="Settings" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center" />
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="210,*">
+      <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+              BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+              BorderThickness="0,0,1,0"
+              Padding="8,12">
+        <ListView SelectionMode="Single" SelectedIndex="0">
+          <ListViewItem IsSelected="True" HorizontalContentAlignment="Stretch">
+            <StackPanel Orientation="Horizontal" Spacing="10" Padding="6,2">
+              <FontIcon Glyph="&#xE713;" FontSize="16" />
+              <TextBlock Text="General" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListViewItem>
+        </ListView>
+      </Border>
+
+      <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="28,24" Spacing="14" MaxWidth="760" HorizontalAlignment="Left">
+          <TextBlock Text="General" Style="{StaticResource TitleTextBlockStyle}" />
+          <TextBlock Text="Commit time display" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <TextBlock Text="Choose how commit timestamps are shown throughout CSharpGit. The setting is global, applies immediately, and is saved for future launches. Hover a commit time to see its exact local date, time, and time-zone offset."
+                     TextWrapping="Wrap" Opacity="0.72" MaxWidth="680" />
+
+          <ListView x:Name="CommitTimeModeList"
+                    ItemsSource="{Binding CommitTimeModes}"
+                    SelectedItem="{Binding SelectedCommitTimeMode, Mode=TwoWay}"
+                    SelectionMode="Single"
+                    SelectionChanged="CommitTimeModeList_SelectionChanged"
+                    MaxWidth="680"
+                    HorizontalAlignment="Stretch">
+            <ListView.ItemContainerStyle>
+              <Style TargetType="ListViewItem">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Margin" Value="0,0,0,8" />
+              </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.ItemTemplate>
+              <DataTemplate>
+                <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Padding="14,12">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Opacity="0.68" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="{Binding Example}" VerticalAlignment="Center" Opacity="0.78" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ListView.ItemTemplate>
+          </ListView>
+
+          <InfoBar x:Name="SettingsError"
+                   IsOpen="False"
+                   Severity="Error"
+                   Title="Could not save settings"
+                   IsClosable="True" />
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+</Page>

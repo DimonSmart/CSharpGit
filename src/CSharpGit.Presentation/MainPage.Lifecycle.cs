@@ -12,6 +12,7 @@ public sealed partial class MainPage
 
         Loaded -= RunDesktopCheckWhenRequested;
         _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        CloseSettingsWindow();
 
         _referenceHistoryCts?.Cancel();
         _referenceHistoryCts?.Dispose();

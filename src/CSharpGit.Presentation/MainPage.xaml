@@ -125,6 +125,7 @@
             <Button.Flyout>
               <MenuFlyout>
                 <MenuFlyoutItem Text="More Git operations…" Click="MoreOperations_Click" />
+                <MenuFlyoutItem Text="Settings…" Click="Settings_Click" />
                 <MenuFlyoutItem Text="Appearance…" Click="Appearance_Click" />
               </MenuFlyout>
             </Button.Flyout>
@@ -226,7 +227,7 @@
                         </ItemsControl>
                       </Grid>
                       <TextBlock Grid.Column="2" Text="{Binding Commit.Author}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                      <TextBlock Grid.Column="3" Text="{Binding Commit.AuthoredAt}" VerticalAlignment="Center" FontSize="12" />
+                      <controls:CommitTimeText Grid.Column="3" Value="{Binding Commit.AuthoredAt}" VerticalAlignment="Center" FontSize="12" />
                       <TextBlock Grid.Column="4" Text="{Binding Commit.ShortHash}" FontFamily="Consolas" VerticalAlignment="Center" />
                     </Grid>
                   </DataTemplate>
@@ -265,7 +266,7 @@
                       </ItemsControl>
                       <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="74,*" RowSpacing="6" ColumnSpacing="10">
                         <TextBlock Text="Author" Opacity="0.58" /><TextBlock Grid.Column="1" Text="{Binding SelectedCommit.Commit.Author}" />
-                        <TextBlock Grid.Row="1" Text="Date" Opacity="0.58" /><TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedCommit.Commit.AuthoredAt}" />
+                        <TextBlock Grid.Row="1" Text="Date" Opacity="0.58" /><controls:CommitTimeText Grid.Row="1" Grid.Column="1" Value="{Binding SelectedCommit.Commit.AuthoredAt}" />
                         <TextBlock Grid.Row="2" Text="Hash" Opacity="0.58" /><TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedCommit.Commit.Hash}" FontFamily="Consolas" TextWrapping="Wrap" />
                         <TextBlock Grid.Row="3" Text="Parents" Opacity="0.58" /><TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedCommit.Commit.ParentsDisplay}" FontFamily="Consolas" TextWrapping="Wrap" />
                       </Grid>
