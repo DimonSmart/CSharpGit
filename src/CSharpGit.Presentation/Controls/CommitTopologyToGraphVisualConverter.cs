@@ -13,7 +13,7 @@ public sealed class CommitTopologyToGraphVisualConverter : IValueConverter
             return null;
         }
 
-        var exactTopology = topology.IncomingEdges.Count > 0;
+        var exactTopology = topology.HasExactGraphTopology;
         var allEdges = topology.IncomingEdges.Concat(topology.Edges).ToList();
         var laneCount = Math.Max(
             topology.Lane + 1,

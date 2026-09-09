@@ -175,7 +175,8 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService, IHist
         foreach (var commit in commits)
         {
             var lane = lanes.FindIndex(state => state.Commit == commit.Hash);
-            if (lane < 0)
+            var laneAlreadyExisted = lane >= 0;
+            if (!laneAlreadyExisted)
             {
                 lane = lanes.Count;
                 lanes.Add(new LaneState(commit.Hash, nextTrackId++));
@@ -185,6 +186,7 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService, IHist
             var nodeTrackId = before[lane].TrackId;
             var incoming = before
                 .Select((state, index) => new TopologyEdge(index, index, state.TrackId))
+                .Where(edge => laneAlreadyExisted || edge.FromLane != lane)
                 .ToList();
 
             lanes.RemoveAt(lane);
@@ -218,7 +220,8 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService, IHist
                 new CommitTopology(lane, outgoing)
                 {
                     NodeTrackId = nodeTrackId,
-                    IncomingEdges = incoming
+                    IncomingEdges = incoming,
+                    HasExactGraphTopology = true
                 }));
         }
         return rows;

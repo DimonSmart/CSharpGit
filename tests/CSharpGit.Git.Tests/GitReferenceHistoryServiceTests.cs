@@ -30,6 +30,28 @@ public sealed class GitReferenceHistoryServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task BranchTipStartsAtNodeWithoutIncomingEdge()
+    {
+        InitializeRepository();
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "file.txt"), "initial\n");
+        RunGit("add", "file.txt");
+        RunGit("commit", "-m", "initial");
+        File.AppendAllText(Path.Combine(_temporaryDirectory, "file.txt"), "latest\n");
+        RunGit("commit", "-am", "latest");
+
+        var repository = await new GitCliRepositoryService().OpenAsync(_temporaryDirectory);
+        var page = await new GitReferenceHistoryService().ReadHistoryAsync(repository, "main", null, 0, 20);
+
+        var tip = page.Rows[0];
+        Assert.Equal("latest", tip.Commit.Subject);
+        Assert.True(tip.Topology.HasExactGraphTopology);
+        Assert.Empty(tip.Topology.IncomingEdges);
+        Assert.Contains(tip.Topology.Edges, edge =>
+            edge.FromLane == tip.Topology.Lane
+            && edge.TrackId == tip.Topology.NodeTrackId);
+    }
+
+    [Fact]
     public async Task PreservesContinuousTracksAcrossMergeRows()
     {
         InitializeRepository();
