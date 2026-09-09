@@ -29,6 +29,10 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
     private int _busyOperations;
     private bool _isMutating;
     private readonly SemaphoreSlim _mutationGate = new(1, 1);
+    private CancellationTokenSource? _historyLoadCts;
+    private long _historyLoadGeneration;
+    private long _commitLoadGeneration;
+    private long _diffLoadGeneration;
     private ElementTheme _selectedTheme = ElementTheme.Default;
     private string _filterText = string.Empty;
     private UiChoice<HistoryScope> _selectedScope;
@@ -218,7 +222,7 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
     public string RepositoryKind => Repository?.IsWorktree == true ? "Git worktree" : "Git repository";
     public string FilterText { get => _filterText; set { _filterText = value; Notify(); } }
     public UiChoice<HistoryScope> SelectedScope { get => _selectedScope; set { if (_selectedScope == value) return; _selectedScope = value; Notify(); _ = LoadHistoryAsync(true); } }
-    public HistoryRow? SelectedHistoryRow { get => _selectedHistoryRow; set { if (_selectedHistoryRow == value) return; _selectedHistoryRow = value; Notify(); _ = LoadCommitAsync(); } }
+    public HistoryRow? SelectedHistoryRow { get => _selectedHistoryRow; set { if (ReferenceEquals(_selectedHistoryRow, value)) return; _selectedHistoryRow = value; Notify(); _ = LoadCommitAsync(); } }
     public CommitDetails? SelectedCommit { get => _selectedCommit; private set { _selectedCommit = value; Notify(); Notify(nameof(DetailsVisibility)); } }
     public ChangedFile? SelectedFile { get => _selectedFile; set { if (_selectedFile == value) return; _selectedFile = value; Notify(); _ = LoadDiffAsync(); } }
     public FileDiff? SelectedDiff { get => _selectedDiff; private set { _selectedDiff = value; Notify(); Notify(nameof(DiffVisibility)); Notify(nameof(BinaryVisibility)); } }
@@ -511,26 +515,72 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
         foreach (var value in values) target.Add(value);
     }
 
+    internal void InvalidateHistoryLoad()
+    {
+        Interlocked.Increment(ref _historyLoadGeneration);
+        _historyLoadCts?.Cancel();
+    }
+
     private async Task LoadHistoryAsync(bool reset)
     {
         if (Repository is null) return;
+
+        var repository = Repository;
+        var selectedHash = reset ? SelectedHistoryRow?.Commit.Hash : null;
+        var skip = reset ? 0 : History.Count;
+        var scope = SelectedScope.Value;
+        var filter = FilterText;
+        var generation = Interlocked.Increment(ref _historyLoadGeneration);
+        var cancellation = new CancellationTokenSource();
+        var previousCancellation = Interlocked.Exchange(ref _historyLoadCts, cancellation);
+        if (previousCancellation is not null)
+        {
+            previousCancellation.Cancel();
+            previousCancellation.Dispose();
+        }
+
         EnterBusy();
         try
         {
-            if (reset)
-            {
-                History.Clear();
-                SelectedHistoryRow = null;
-                SelectedCommit = null;
-                SelectedDiff = null;
-            }
-            var scope = SelectedScope.Value;
-            var page = await _historyService.ReadHistoryAsync(Repository, new HistoryQuery(scope, FilterText, History.Count));
+            var page = await _historyService.ReadHistoryAsync(
+                repository,
+                new HistoryQuery(scope, filter, skip),
+                cancellation.Token);
+
+            if (cancellation.IsCancellationRequested
+                || generation != Volatile.Read(ref _historyLoadGeneration)
+                || !ReferenceEquals(repository, Repository))
+                return;
+
+            if (reset) History.Clear();
             foreach (var row in page.Rows) History.Add(row);
             HasMore = page.HasMore;
+
+            if (reset)
+            {
+                var restored = selectedHash is null
+                    ? History.FirstOrDefault()
+                    : History.FirstOrDefault(row => string.Equals(row.Commit.Hash, selectedHash, StringComparison.Ordinal))
+                      ?? History.FirstOrDefault();
+                SelectedHistoryRow = restored;
+                if (restored is null)
+                {
+                    SelectedCommit = null;
+                    SelectedFile = null;
+                    SelectedDiff = null;
+                }
+            }
+            else if (SelectedHistoryRow is null && History.FirstOrDefault() is { } first)
+            {
+                SelectedHistoryRow = first;
+            }
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            if (generation != Volatile.Read(ref _historyLoadGeneration)) return;
             ErrorMessage = $"Could not read history: {exception.Message}";
             _logger.LogWarning(exception, "History loading failed");
         }
@@ -539,20 +589,67 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
 
     private async Task LoadCommitAsync()
     {
-        if (Repository is null || SelectedHistoryRow is null) return;
+        var repository = Repository;
+        var selectedRow = SelectedHistoryRow;
+        var generation = Interlocked.Increment(ref _commitLoadGeneration);
+        if (repository is null || selectedRow is null)
+        {
+            SelectedCommit = null;
+            SelectedFile = null;
+            SelectedDiff = null;
+            return;
+        }
+
         try
         {
-            SelectedCommit = await _historyService.ReadCommitAsync(Repository, SelectedHistoryRow.Commit.Hash);
+            var commit = await _historyService.ReadCommitAsync(repository, selectedRow.Commit.Hash);
+            if (generation != Volatile.Read(ref _commitLoadGeneration)
+                || !ReferenceEquals(repository, Repository)
+                || !ReferenceEquals(selectedRow, SelectedHistoryRow))
+                return;
+
+            SelectedCommit = commit;
             SelectedFile = SelectedCommit.Files.FirstOrDefault();
         }
-        catch (Exception exception) when (exception is not OperationCanceledException) { ErrorMessage = $"Could not read commit: {exception.Message}"; }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            if (generation == Volatile.Read(ref _commitLoadGeneration)
+                && ReferenceEquals(repository, Repository)
+                && ReferenceEquals(selectedRow, SelectedHistoryRow))
+                ErrorMessage = $"Could not read commit: {exception.Message}";
+        }
     }
 
     private async Task LoadDiffAsync()
     {
-        if (Repository is null || SelectedCommit is null || SelectedFile is null) { SelectedDiff = null; return; }
-        try { SelectedDiff = await _historyService.ReadDiffAsync(Repository, SelectedCommit.Commit.Hash, SelectedFile.Path); }
-        catch (Exception exception) when (exception is not OperationCanceledException) { ErrorMessage = $"Could not read change: {exception.Message}"; }
+        var repository = Repository;
+        var selectedCommit = SelectedCommit;
+        var selectedFile = SelectedFile;
+        var generation = Interlocked.Increment(ref _diffLoadGeneration);
+        if (repository is null || selectedCommit is null || selectedFile is null)
+        {
+            SelectedDiff = null;
+            return;
+        }
+
+        try
+        {
+            var diff = await _historyService.ReadDiffAsync(repository, selectedCommit.Commit.Hash, selectedFile.Path);
+            if (generation != Volatile.Read(ref _diffLoadGeneration)
+                || !ReferenceEquals(repository, Repository)
+                || !ReferenceEquals(selectedCommit, SelectedCommit)
+                || !ReferenceEquals(selectedFile, SelectedFile))
+                return;
+            SelectedDiff = diff;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            if (generation == Volatile.Read(ref _diffLoadGeneration)
+                && ReferenceEquals(repository, Repository)
+                && ReferenceEquals(selectedCommit, SelectedCommit)
+                && ReferenceEquals(selectedFile, SelectedFile))
+                ErrorMessage = $"Could not read change: {exception.Message}";
+        }
     }
 
     private void Notify([CallerMemberName] string? propertyName = null) =>

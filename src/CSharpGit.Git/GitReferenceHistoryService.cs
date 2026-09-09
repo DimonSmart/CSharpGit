@@ -97,26 +97,91 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService, IHist
     {
         ArgumentNullException.ThrowIfNull(repository);
 
+        if (string.IsNullOrWhiteSpace(filter))
+        {
+            var commits = await ReadHistoryPrefixAsync(repository, skip + take + 1, revisions, cancellationToken);
+            var hasMore = commits.Count > skip + take;
+            var rows = BuildTopology(commits.Take(skip + take).ToList());
+            return new HistoryPage(rows.Skip(skip).ToList(), hasMore);
+        }
+
+        var matchArguments = new List<string>
+        {
+            "log",
+            "--topo-order",
+            $"--max-count={skip + take + 1}",
+            "--format=%H",
+            "--regexp-ignore-case",
+            $"--grep={filter.Trim()}"
+        };
+        matchArguments.AddRange(revisions);
+
+        var matchOutput = await RunGitAsync(repository.WorkingDirectory, cancellationToken, matchArguments.ToArray());
+        var matchingHashes = matchOutput
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+        var hasFilteredMore = matchingHashes.Count > skip + take;
+        var requestedHashes = matchingHashes.Skip(skip).Take(take).ToList();
+        if (requestedHashes.Count == 0)
+            return new HistoryPage([], hasFilteredMore);
+
+        var commitsThroughPage = await ReadHistoryThroughAsync(
+            repository,
+            revisions,
+            requestedHashes[^1],
+            cancellationToken);
+        var rowsByHash = BuildTopology(commitsThroughPage)
+            .ToDictionary(row => row.Commit.Hash, StringComparer.Ordinal);
+        var requestedRows = requestedHashes
+            .Select(hash => rowsByHash.TryGetValue(hash, out var row)
+                ? row
+                : throw new InvalidOperationException($"Commit {hash} was not found in the unfiltered topology traversal."))
+            .ToList();
+
+        return new HistoryPage(requestedRows, hasFilteredMore);
+    }
+
+    private async Task<List<CommitHistoryItem>> ReadHistoryThroughAsync(
+        Repository repository,
+        IReadOnlyList<string> revisions,
+        string targetHash,
+        CancellationToken cancellationToken)
+    {
+        var maxCount = 256;
+        while (true)
+        {
+            var commits = await ReadHistoryPrefixAsync(repository, maxCount, revisions, cancellationToken);
+            var targetIndex = commits.FindIndex(commit => string.Equals(commit.Hash, targetHash, StringComparison.Ordinal));
+            if (targetIndex >= 0)
+                return commits.Take(targetIndex + 1).ToList();
+
+            if (commits.Count < maxCount)
+                throw new InvalidOperationException($"Filtered commit {targetHash} was not found in the unfiltered history traversal.");
+
+            if (maxCount == int.MaxValue)
+                throw new InvalidOperationException($"History traversal is too large to resolve filtered commit {targetHash}.");
+
+            maxCount = (int)Math.Min((long)maxCount * 2, int.MaxValue);
+        }
+    }
+
+    private async Task<List<CommitHistoryItem>> ReadHistoryPrefixAsync(
+        Repository repository,
+        int maxCount,
+        IReadOnlyList<string> revisions,
+        CancellationToken cancellationToken)
+    {
         var arguments = new List<string>
         {
             "log",
             "--topo-order",
             "--date=iso-strict",
-            $"--max-count={skip + take + 1}",
+            $"--max-count={maxCount}",
             "--format=%H%x00%P%x00%an%x00%aI%x00%D%x00%B%x1e"
         };
-        if (!string.IsNullOrWhiteSpace(filter))
-        {
-            arguments.Add("--regexp-ignore-case");
-            arguments.Add($"--grep={filter.Trim()}");
-        }
         arguments.AddRange(revisions);
-
         var output = await RunGitAsync(repository.WorkingDirectory, cancellationToken, arguments.ToArray());
-        var commits = ParseHistory(output).ToList();
-        var hasMore = commits.Count > skip + take;
-        var rows = BuildTopology(commits.Take(skip + take).ToList());
-        return new HistoryPage(rows.Skip(skip).ToList(), hasMore);
+        return ParseHistory(output).ToList();
     }
 
     private async Task<string> RunGitAsync(string workingDirectory, CancellationToken cancellationToken, params string[] arguments)
@@ -166,7 +231,7 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService, IHist
         }
     }
 
-    private static IReadOnlyList<HistoryRow> BuildTopology(IReadOnlyList<CommitHistoryItem> commits)
+    internal static IReadOnlyList<HistoryRow> BuildTopology(IReadOnlyList<CommitHistoryItem> commits)
     {
         var lanes = new List<LaneState>();
         var rows = new List<HistoryRow>(commits.Count);
@@ -190,18 +255,17 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService, IHist
                 .ToList();
 
             lanes.RemoveAt(lane);
-            var parentEdges = new List<TopologyEdge>();
+
+            // Parent insertion can shift lanes that already exist. Build the complete
+            // lower-boundary state first, then resolve numeric lane indexes by identity.
             for (var parentIndex = 0; parentIndex < commit.Parents.Count; parentIndex++)
             {
                 var parent = commit.Parents[parentIndex];
-                var parentLane = lanes.FindIndex(state => state.Commit == parent);
-                if (parentLane < 0)
-                {
-                    parentLane = Math.Min(lane + parentIndex, lanes.Count);
-                    var trackId = parentIndex == 0 ? nodeTrackId : nextTrackId++;
-                    lanes.Insert(parentLane, new LaneState(parent, trackId));
-                }
-                parentEdges.Add(new TopologyEdge(lane, parentLane, lanes[parentLane].TrackId));
+                if (lanes.Any(state => state.Commit == parent)) continue;
+
+                var parentLane = Math.Min(lane + parentIndex, lanes.Count);
+                var trackId = parentIndex == 0 ? nodeTrackId : nextTrackId++;
+                lanes.Insert(parentLane, new LaneState(parent, trackId));
             }
 
             var outgoing = new List<TopologyEdge>();
@@ -213,7 +277,13 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService, IHist
                 if (afterLane >= 0)
                     outgoing.Add(new TopologyEdge(beforeLane, afterLane, state.TrackId));
             }
-            outgoing.AddRange(parentEdges);
+
+            foreach (var parent in commit.Parents)
+            {
+                var parentLane = lanes.FindIndex(state => state.Commit == parent);
+                if (parentLane >= 0)
+                    outgoing.Add(new TopologyEdge(lane, parentLane, lanes[parentLane].TrackId));
+            }
 
             rows.Add(new HistoryRow(
                 commit,
