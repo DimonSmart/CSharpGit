@@ -6,6 +6,7 @@ on:
       - fix/commit-graph-stable-xaml
     paths:
       - .github/workflows/validate-stable-xaml-graph.yml
+      - src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphControl.cs
 
 jobs:
   validate:
