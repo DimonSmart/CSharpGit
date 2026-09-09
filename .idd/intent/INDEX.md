@@ -31,3 +31,4 @@ opened.
 | IDD-0009 | Spec | Desktop experience | Main window, responsiveness, concurrency, appearance and errors | — |
 | IDD-0010 | Spec | History-first main workspace | Repository tree, history-first layout, contextual actions and working tree mode | — |
 | IDD-0011 | Spec | Settings and commit time | Global settings window and Smart/Relative/Absolute commit-time display | — |
+| IDD-0012 | Spec | Repository tree navigation | Branch ordering, compact initial expansion and session expansion state | — |
