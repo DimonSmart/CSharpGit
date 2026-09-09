@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.Controls.CommitGraph;
 using Microsoft.Extensions.Logging;
@@ -33,7 +34,7 @@ internal static class CommitGraphDiagnostics
     public static string DescribeGraph(CommitGraphRowVisual? graph)
     {
         if (graph is null) return "graph=null";
-        return $"nodeLane={graph.NodeLane} nodeTrack={graph.NodeTrackId} lanes={graph.LaneCount} "
+        return $"visualId={RuntimeHelpers.GetHashCode(graph)} nodeLane={graph.NodeLane} nodeTrack={graph.NodeTrackId} lanes={graph.LaneCount} "
                + $"incoming=[{DescribeSegments(graph.IncomingSegments)}] outgoing=[{DescribeSegments(graph.OutgoingSegments)}]";
     }
 
