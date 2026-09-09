@@ -132,9 +132,17 @@ public sealed class CommitGraphControl : Canvas
             $"control={_controlId} reason={reason} version={version} loaded={_isLoaded} "
             + $"actual={ActualWidth:0.##}x{ActualHeight:0.##} {CommitGraphDiagnostics.DescribeContext(DataContext)} "
             + CommitGraphDiagnostics.DescribeGraph(Graph));
+
+        // Uno/Skia ListView measures and arranges virtualized rows before Loaded.
+        // Build the shape tree synchronously while detached so the first layout pass
+        // sees the real graph primitives instead of an empty Canvas. Loaded/resize
+        // still re-render through the versioned UI queue below.
         if (!_isLoaded)
         {
-            CommitGraphDiagnostics.Trace("RenderDeferred", $"control={_controlId} reason={reason} version={version} not-loaded");
+            CommitGraphDiagnostics.Trace(
+                "RenderPreloaded",
+                $"control={_controlId} reason={reason} version={version} not-loaded");
+            RenderGraph(reason, version);
             return;
         }
 
@@ -201,11 +209,6 @@ public sealed class CommitGraphControl : Canvas
 
     internal bool HasCurrentRenderForCheck()
     {
-        if (!_isLoaded)
-        {
-            return true;
-        }
-
         if (!ReferenceEquals(_renderedGraph, Graph))
         {
             return false;
