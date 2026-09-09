@@ -33,20 +33,29 @@ jobs:
       - name: Verify session log is written immediately
         shell: bash
         run: |
+          TEST_REPO="$RUNNER_TEMP/csharpgit-log-repo"
           LOG_HOME="$RUNNER_TEMP/csharpgit-log-home"
-          mkdir -p "$LOG_HOME"
-          set +e
-          HOME="$LOG_HOME" XDG_DATA_HOME="$LOG_HOME/.local/share" xvfb-run -a timeout 4s src/CSharpGit.Presentation/bin/Release/net10.0-desktop/CSharpGit.Presentation
-          status=$?
-          set -e
-          if [ "$status" -ne 0 ] && [ "$status" -ne 124 ]; then
-            exit "$status"
-          fi
+          mkdir -p "$TEST_REPO" "$LOG_HOME"
+          touch "$LOG_HOME/.gitconfig"
+          git -C "$TEST_REPO" init -b main
+          git -C "$TEST_REPO" config user.name "Graph Log Check"
+          git -C "$TEST_REPO" config user.email "graph-log@example.invalid"
+          printf 'root\n' > "$TEST_REPO/root.txt"
+          git -C "$TEST_REPO" add root.txt
+          git -C "$TEST_REPO" commit -m "Graph log fixture"
+
+          HOME="$LOG_HOME" \
+          XDG_DATA_HOME="$LOG_HOME/.local/share" \
+          CSHARPGIT_CLOSE_CHECK=1 \
+          CSHARPGIT_UI_CHECK_REPOSITORY="$TEST_REPO" \
+          xvfb-run -a src/CSharpGit.Presentation/bin/Release/net10.0-desktop/CSharpGit.Presentation
+
           log=$(find "$LOG_HOME" -type f -name 'csharpgit-*.log' -size +0c | head -n 1)
           test -n "$log"
           grep -q 'FileLoggerStarted' "$log"
           grep -q 'DiagnosticsInitialized' "$log"
-          echo "Verified non-empty log: $log"
+          grep -q 'CSharpGit.CommitGraph' "$log"
+          echo "Verified non-empty graph log: $log"
           wc -c "$log"
       - name: Build solution
         run: dotnet build CSharpGit.slnx --configuration Release
