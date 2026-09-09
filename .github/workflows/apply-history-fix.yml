@@ -24,6 +24,9 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Prepare Git test environment
+        run: touch ~/.gitconfig
+
       - name: Apply changes
         run: |
           python3 tools/apply_history_fix.py
