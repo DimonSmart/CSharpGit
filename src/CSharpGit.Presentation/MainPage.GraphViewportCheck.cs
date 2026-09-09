@@ -1,4 +1,5 @@
 using CSharpGit.Presentation.Controls;
+using CSharpGit.Presentation.Controls.CommitGraph;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -9,6 +10,24 @@ public sealed partial class MainPage
 {
     private async Task RunCommitGraphViewportLifecycleCheckAsync(List<string> failures)
     {
+        var preloadProbe = new CommitGraphControl
+        {
+            Graph = new CommitGraphRowVisual(
+                NodeLane: 0,
+                NodeTrackId: 0,
+                LaneCount: 2,
+                IncomingSegments: [],
+                OutgoingSegments:
+                [
+                    new CommitGraphSegment(0, 0, 0),
+                    new CommitGraphSegment(0, 1, 1),
+                ])
+        };
+        Check(preloadProbe.Children.Count == 3,
+            "detached commit graph did not build primitives before its first layout pass", failures);
+        Check(preloadProbe.HasCurrentRenderForCheck(),
+            "detached commit graph preload does not match its current graph", failures);
+
         ShowAllHistory();
         await WaitUntilAsync(
             () => HistoryList.ActualHeight > 0 && HistoryList.ActualWidth > 0,
