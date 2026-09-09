@@ -25,7 +25,9 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Apply changes
-        run: python3 tools/apply_history_fix.py
+        run: |
+          python3 tools/apply_history_fix.py
+          python3 -c "from pathlib import Path; p=Path('tests/CSharpGit.Git.Tests/GitReferenceHistoryTopologyRegressionTests.cs'); s=p.read_text(); s=s.replace('var qTrack = Assert.Single(first.Topology.Edges.Where(edge => edge.FromLane == first.Topology.Lane && edge.ToLane == 2)).TrackId;', 'var qTrack = Assert.Single(first.Topology.Edges, edge => edge.FromLane == first.Topology.Lane && edge.ToLane == 2).TrackId;'); p.write_text(s)"
 
       - name: Validate diff
         run: git diff --check
