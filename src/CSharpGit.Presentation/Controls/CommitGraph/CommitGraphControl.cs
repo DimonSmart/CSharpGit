@@ -4,8 +4,8 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Shapes;
 using Windows.Foundation;
+using XamlPath = Microsoft.UI.Xaml.Shapes.Path;
 
 namespace CSharpGit.Presentation.Controls;
 
@@ -37,8 +37,8 @@ public sealed class CommitGraphControl : Canvas
 
     private static long _nextControlId;
     private readonly long _controlId = Interlocked.Increment(ref _nextControlId);
-    private readonly Path[] _trackPaths = new Path[8];
-    private readonly Path _nodePath;
+    private readonly XamlPath[] _trackPaths = new XamlPath[8];
+    private readonly XamlPath _nodePath;
     private CommitGraphRowVisual? _renderedGraph;
     private double _renderedHeight;
     private long _renderCount;
@@ -62,7 +62,7 @@ public sealed class CommitGraphControl : Canvas
         var metrics = CommitGraphMetrics.Default;
         for (var paletteIndex = 0; paletteIndex < _trackPaths.Length; paletteIndex++)
         {
-            var path = new Path
+            var path = new XamlPath
             {
                 StrokeThickness = metrics.LineThickness,
                 IsHitTestVisible = false,
@@ -71,7 +71,7 @@ public sealed class CommitGraphControl : Canvas
             Children.Add(path);
         }
 
-        _nodePath = new Path { IsHitTestVisible = false };
+        _nodePath = new XamlPath { IsHitTestVisible = false };
         Children.Add(_nodePath);
         UpdateBrushes();
 
