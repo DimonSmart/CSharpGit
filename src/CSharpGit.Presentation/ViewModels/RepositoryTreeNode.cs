@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CSharpGit.Domain;
+using Microsoft.UI.Xaml;
 
 namespace CSharpGit.Presentation.ViewModels;
 
@@ -50,6 +51,16 @@ public sealed class RepositoryTreeNode
     public bool IsExpanded { get; private set; }
     public ObservableCollection<RepositoryTreeNode> Children { get; } = [];
     public string DisplayName => IsCurrent ? $"✓ {Name}" : Name;
+    public string? IconGlyph => Kind switch
+    {
+        RepositoryTreeNodeKind.WorkingTree => "\uE8B7",
+        RepositoryTreeNodeKind.Group when Name == "Branches" => "\uE8F0",
+        RepositoryTreeNodeKind.Group when Name == "Remotes" => "\uE8AF",
+        RepositoryTreeNodeKind.Group when Name == "Tags" => "\uE8EC",
+        RepositoryTreeNodeKind.Group when Name == "Stashes" => "\uE8F1",
+        _ => null
+    };
+    public Visibility IconVisibility => IconGlyph is null ? Visibility.Collapsed : Visibility.Visible;
 
     private static bool IsBranchNode(RepositoryTreeNode node) =>
         node.Kind is RepositoryTreeNodeKind.LocalBranch or RepositoryTreeNodeKind.RemoteBranch;

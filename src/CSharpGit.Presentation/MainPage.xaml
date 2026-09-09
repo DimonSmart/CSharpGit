@@ -149,7 +149,10 @@
                 <DataTemplate>
                   <TreeViewItem ItemsSource="{Binding Children}" IsExpanded="{Binding IsExpanded, Mode=OneWay}" MinHeight="34" Padding="2,0" HorizontalContentAlignment="Stretch">
                     <TreeViewItem.Content>
-                      <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <FontIcon Glyph="{Binding IconGlyph}" FontSize="16" Visibility="{Binding IconVisibility}" />
+                        <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      </StackPanel>
                     </TreeViewItem.Content>
                   </TreeViewItem>
                 </DataTemplate>
