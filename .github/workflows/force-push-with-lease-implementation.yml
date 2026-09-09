@@ -45,6 +45,22 @@ jobs:
           git config --global user.email "ci@example.invalid"
       - name: Apply implementation
         run: python .github/force-push-with-lease-implementation.py
+      - name: Update existing push failure contract test
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path("tests/CSharpGit.Git.Tests/GitCliRepositoryServiceTests.cs")
+          text = path.read_text(encoding="utf-8")
+          old = "var authenticationFailure = await Assert.ThrowsAsync<CSharpGit.Application.Exceptions.RepositoryOpenException>("
+          new = "var authenticationFailure = await Assert.ThrowsAsync<CSharpGit.Application.Exceptions.PushRejectedException>("
+          if text.count(old) != 1:
+              raise RuntimeError(f"expected one legacy push assertion, found {text.count(old)}")
+          text = text.replace(old, new, 1)
+          marker = '        Assert.Contains("Authentication failed", authenticationFailure.Message, StringComparison.OrdinalIgnoreCase);\n'
+          replacement = marker + '        Assert.Equal(CSharpGit.Application.Exceptions.PushResultKind.AuthenticationOrTransportFailure, authenticationFailure.ResultKind);\n'
+          if text.count(marker) != 1:
+              raise RuntimeError(f"expected one authentication assertion, found {text.count(marker)}")
+          path.write_text(text.replace(marker, replacement, 1), encoding="utf-8")
       - name: Check diff
         run: git diff --check
       - name: Build desktop solution
@@ -77,6 +93,22 @@ jobs:
           target.write_text(text, encoding="utf-8")
       - name: Apply verified implementation
         run: python .github/force-push-with-lease-implementation.py
+      - name: Update existing push failure contract test
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path("tests/CSharpGit.Git.Tests/GitCliRepositoryServiceTests.cs")
+          text = path.read_text(encoding="utf-8")
+          old = "var authenticationFailure = await Assert.ThrowsAsync<CSharpGit.Application.Exceptions.RepositoryOpenException>("
+          new = "var authenticationFailure = await Assert.ThrowsAsync<CSharpGit.Application.Exceptions.PushRejectedException>("
+          if text.count(old) != 1:
+              raise RuntimeError(f"expected one legacy push assertion, found {text.count(old)}")
+          text = text.replace(old, new, 1)
+          marker = '        Assert.Contains("Authentication failed", authenticationFailure.Message, StringComparison.OrdinalIgnoreCase);\n'
+          replacement = marker + '        Assert.Equal(CSharpGit.Application.Exceptions.PushResultKind.AuthenticationOrTransportFailure, authenticationFailure.ResultKind);\n'
+          if text.count(marker) != 1:
+              raise RuntimeError(f"expected one authentication assertion, found {text.count(marker)}")
+          path.write_text(text.replace(marker, replacement, 1), encoding="utf-8")
       - name: Remove temporary implementation workflow
         run: rm .github/force-push-with-lease-implementation.py .github/force-push-with-lease-implementation.py.gz.b64 .github/workflows/force-push-with-lease-implementation.yml
       - name: Commit to main
