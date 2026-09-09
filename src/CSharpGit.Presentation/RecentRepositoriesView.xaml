@@ -18,7 +18,7 @@
                   Padding="0">
           <GridView.ItemsPanel>
             <ItemsPanelTemplate>
-              <ItemsWrapGrid Orientation="Horizontal" ItemWidth="344" ItemHeight="156" />
+              <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="344" ItemHeight="156" />
             </ItemsPanelTemplate>
           </GridView.ItemsPanel>
           <GridView.ItemContainerStyle>
