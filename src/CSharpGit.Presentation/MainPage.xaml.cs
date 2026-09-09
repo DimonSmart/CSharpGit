@@ -712,6 +712,9 @@ public sealed partial class MainPage : Page
                 Check(_viewModel.SelectedHistoryRow is null || _viewModel.History.Any(row => ReferenceEquals(row, _viewModel.SelectedHistoryRow)), "all-history selection is not part of the current ItemsSource", failures);
             }
 
+            if (Environment.GetEnvironmentVariable("CSHARPGIT_GRAPH_VIEWPORT_CHECK") == "1")
+                await RunCommitGraphViewportLifecycleCheckAsync(failures);
+
             _viewModel.CommitMessage = "draft retained by close guard";
             Check(_viewModel.HasUnappliedCommitMessage, "commit draft close guard is inactive", failures);
             _viewModel.SelectedChange = _viewModel.Changes.FirstOrDefault(change => change.IsUnstaged);

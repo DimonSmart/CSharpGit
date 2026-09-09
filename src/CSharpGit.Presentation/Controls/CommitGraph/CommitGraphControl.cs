@@ -35,6 +35,11 @@ public sealed class CommitGraphControl : Canvas
         Brush(0xD7, 0xD0, 0x6B),
     ];
 
+    private long _renderVersion;
+    private bool _isLoaded;
+    private CommitGraphRowVisual? _renderedGraph;
+    private double _renderedHeight;
+
     public static readonly DependencyProperty GraphProperty = DependencyProperty.Register(
         nameof(Graph),
         typeof(CommitGraphRowVisual),
@@ -50,8 +55,21 @@ public sealed class CommitGraphControl : Canvas
     public CommitGraphControl()
     {
         IsHitTestVisible = false;
-        SizeChanged += (_, _) => RenderGraph();
-        ActualThemeChanged += (_, _) => RenderGraph();
+        Loaded += (_, _) =>
+        {
+            _isLoaded = true;
+            ScheduleRender();
+        };
+        Unloaded += (_, _) =>
+        {
+            _isLoaded = false;
+            Interlocked.Increment(ref _renderVersion);
+            _renderedGraph = null;
+            Children.Clear();
+        };
+        DataContextChanged += (_, _) => ScheduleRender();
+        SizeChanged += (_, _) => ScheduleRender();
+        ActualThemeChanged += (_, _) => ScheduleRender();
     }
 
     protected override Size MeasureOverride(Size availableSize)
@@ -75,15 +93,36 @@ public sealed class CommitGraphControl : Canvas
         }
 
         control.InvalidateMeasure();
-        control.RenderGraph();
+        control.ScheduleRender();
+    }
+
+    private void ScheduleRender()
+    {
+        var version = Interlocked.Increment(ref _renderVersion);
+        if (!_isLoaded)
+        {
+            return;
+        }
+
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (!_isLoaded || version != Volatile.Read(ref _renderVersion))
+            {
+                return;
+            }
+
+            RenderGraph();
+        });
     }
 
     private void RenderGraph()
     {
         Children.Clear();
+        _renderedGraph = Graph;
 
         if (Graph is null)
         {
+            _renderedHeight = 0;
             return;
         }
 
@@ -92,6 +131,7 @@ public sealed class CommitGraphControl : Canvas
             ? ActualHeight
             : metrics.DefaultRowHeight;
         var geometry = CommitGraphGeometryBuilder.Build(Graph, height, metrics);
+        _renderedHeight = height;
 
         foreach (var bezier in geometry.Beziers)
         {
@@ -107,6 +147,37 @@ public sealed class CommitGraphControl : Canvas
         {
             AddNode(node);
         }
+    }
+
+    internal bool HasCurrentRenderForCheck()
+    {
+        if (!_isLoaded)
+        {
+            return true;
+        }
+
+        if (!ReferenceEquals(_renderedGraph, Graph))
+        {
+            return false;
+        }
+
+        if (Graph is null)
+        {
+            return Children.Count == 0;
+        }
+
+        var metrics = CommitGraphMetrics.Default;
+        var height = double.IsFinite(ActualHeight) && ActualHeight > 0
+            ? ActualHeight
+            : metrics.DefaultRowHeight;
+        if (Math.Abs(_renderedHeight - height) > 0.01)
+        {
+            return false;
+        }
+
+        var geometry = CommitGraphGeometryBuilder.Build(Graph, height, metrics);
+        var expectedChildren = geometry.Beziers.Count + geometry.Lines.Count + (geometry.Node is null ? 0 : 1);
+        return Children.Count == expectedChildren;
     }
 
     private void AddBezier(GraphBezierPrimitive primitive, double thickness)
