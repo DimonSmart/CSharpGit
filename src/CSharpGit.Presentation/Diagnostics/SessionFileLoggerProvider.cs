@@ -1,12 +1,18 @@
 using System.Globalization;
+using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 
 namespace CSharpGit.Presentation.Diagnostics;
 
 internal sealed class SessionFileLoggerProvider : ILoggerProvider
 {
-    private readonly object _gate = new();
-    private readonly StreamWriter _writer;
+    private readonly Channel<string> _lines = Channel.CreateUnbounded<string>(new UnboundedChannelOptions
+    {
+        SingleReader = true,
+        SingleWriter = false,
+        AllowSynchronousContinuations = false
+    });
+    private readonly Task _writerTask;
 
     public SessionFileLoggerProvider()
     {
@@ -21,14 +27,7 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
             directory,
             $"csharpgit-{DateTime.Now:yyyyMMdd-HHmmss}-p{Environment.ProcessId}.log");
 
-        _writer = new StreamWriter(new FileStream(
-            CurrentLogPath,
-            FileMode.CreateNew,
-            FileAccess.Write,
-            FileShare.ReadWrite))
-        {
-            AutoFlush = true
-        };
+        _writerTask = Task.Run(WriteLoopAsync);
     }
 
     public static string CurrentLogPath { get; private set; } = string.Empty;
@@ -37,10 +36,9 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
 
     public void Dispose()
     {
-        lock (_gate)
-        {
-            _writer.Dispose();
-        }
+        _lines.Writer.TryComplete();
+        try { _writerTask.Wait(TimeSpan.FromSeconds(2)); }
+        catch (AggregateException) { }
     }
 
     private void Write(string category, LogLevel level, EventId eventId, string message, Exception? exception)
@@ -51,16 +49,39 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
         var eventText = eventId.Id == 0 && string.IsNullOrWhiteSpace(eventId.Name)
             ? string.Empty
             : $" event={eventId.Id}:{eventId.Name}";
-        var line = $"{timestamp} [{level}] [tid={Environment.CurrentManagedThreadId}] [{category}]{eventText} {message}";
+        _lines.Writer.TryWrite(
+            $"{timestamp} [{level}] [tid={Environment.CurrentManagedThreadId}] [{category}]{eventText} {message}");
 
-        lock (_gate)
+        if (exception is not null)
         {
-            _writer.WriteLine(line);
-            if (exception is not null)
+            _lines.Writer.TryWrite(exception.ToString());
+        }
+    }
+
+    private async Task WriteLoopAsync()
+    {
+        await using var stream = new FileStream(
+            CurrentLogPath,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.ReadWrite,
+            bufferSize: 16 * 1024,
+            useAsync: true);
+        await using var writer = new StreamWriter(stream);
+        var pending = 0;
+
+        await foreach (var line in _lines.Reader.ReadAllAsync())
+        {
+            await writer.WriteLineAsync(line);
+            pending++;
+            if (pending >= 32)
             {
-                _writer.WriteLine(exception);
+                await writer.FlushAsync();
+                pending = 0;
             }
         }
+
+        await writer.FlushAsync();
     }
 
     private static void DeleteOldLogs(string directory, int keep)
