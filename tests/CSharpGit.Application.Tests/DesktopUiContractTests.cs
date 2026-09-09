@@ -10,6 +10,7 @@ public sealed class DesktopUiContractTests
         var root = FindRepositoryRoot();
         var document = XDocument.Load(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var xaml = document.ToString(SaveOptions.DisableFormatting);
+        var operationBanner = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "OperationBanner.xaml"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var program = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Platforms", "Desktop", "Program.cs"));
         var splitter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "GridSplitter.cs"));
@@ -31,7 +32,8 @@ public sealed class DesktopUiContractTests
         Assert.All(new[] { "System", "Light", "Dark" }, theme => Assert.Contains(theme, viewModel));
         Assert.Contains("IsActive=\"{Binding IsBusy}\"", xaml);
         Assert.Contains("Opening repository…", xaml);
-        Assert.Contains("Git operation in progress", xaml);
+        Assert.Contains("OperationBanner", xaml);
+        Assert.Contains("OperationDisplay", operationBanner);
         Assert.Contains("!IsBusy", viewModel);
         Assert.Contains("SemaphoreSlim", viewModel);
         Assert.Contains("RaiseCanExecuteChanged", viewModel);
@@ -42,14 +44,16 @@ public sealed class DesktopUiContractTests
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var operationBanner = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "OperationBanner.xaml"));
+        var surface = xaml + operationBanner;
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         foreach (var binding in new[]
         {
-            "StageCommand", "UnstageCommand", "CommitCommand", "EmptyCommitCommand", "AmendCommand", "ConfirmDiscardCommand",
+            "StageCommand", "UnstageCommand", "CommitCommand", "AmendCommand", "ConfirmDiscardCommand",
             "FetchCommand", "FetchAllCommand", "PullCommand", "PushCommand", "CreateStashCommand", "ApplyStashCommand",
             "PopStashCommand", "MergeCommand", "StartRebaseCommand", "ContinueOperationCommand", "SkipOperationCommand",
             "AbortOperationCommand", "MergeToolCommand", "MergeToolWorkflowCommand"
-        }) Assert.Contains($"Command=\"{{Binding {binding}}}\"", xaml);
+        }) Assert.Contains($"Command=\"{{Binding {binding}}}\"", surface);
 
         Assert.Contains("OperationState.CanContinue", viewModel);
         Assert.Contains("OperationState.CanSkip", viewModel);
