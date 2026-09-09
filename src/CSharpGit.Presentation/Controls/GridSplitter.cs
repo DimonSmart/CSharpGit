@@ -35,10 +35,16 @@ public sealed class GridSplitter : ContentControl
     public GridSplitter()
     {
         MinWidth = MinHeight = 6;
+        HorizontalContentAlignment = HorizontalAlignment.Stretch;
+        VerticalContentAlignment = VerticalAlignment.Stretch;
 
+        var transparent = new SolidColorBrush(Windows.UI.Color.FromArgb(1, 0, 0, 0));
+        Background = transparent;
         var surface = new Grid
         {
-            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(1, 0, 0, 0))
+            Background = transparent,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
         };
         _indicator = new Border
         {
@@ -55,7 +61,13 @@ public sealed class GridSplitter : ContentControl
         PointerCaptureLost += OnPointerCaptureLost;
         PointerEntered += (_, _) => SetIndicatorOpacity(_lastPosition is null ? 0.78 : 1.0);
         PointerExited += (_, _) => { if (_lastPosition is null) SetIndicatorOpacity(0.42); };
-        Loaded += (_, _) => DispatcherQueue.TryEnqueue(RestoreSavedSize);
+        Loaded += (_, _) =>
+        {
+            // Some current XAML sites still set Background from the old implementation.
+            // Keep the full 6 px surface transparent and draw only the 1 px indicator.
+            Background = transparent;
+            DispatcherQueue.TryEnqueue(RestoreSavedSize);
+        };
         UpdateDirectionVisuals();
     }
 
@@ -224,13 +236,13 @@ public sealed class GridSplitter : ContentControl
         {
             var a = grid.ColumnDefinitions[first];
             var b = grid.ColumnDefinitions[second];
-            state = SplitterState.Create(a.ActualWidth, b.ActualWidth, a.Width.IsStar, b.Width.IsStar);
+            state = SplitterState.Create(a.ActualWidth, b.ActualWidth);
         }
         else
         {
             var a = grid.RowDefinitions[first];
             var b = grid.RowDefinitions[second];
-            state = SplitterState.Create(a.ActualHeight, b.ActualHeight, a.Height.IsStar, b.Height.IsStar);
+            state = SplitterState.Create(a.ActualHeight, b.ActualHeight);
         }
 
         lock (SettingsLock)
@@ -339,11 +351,10 @@ public sealed class GridSplitter : ContentControl
 
     private sealed record SplitterState(double FirstSize, double SecondSize, double FirstFraction)
     {
-        public static SplitterState Create(double first, double second, bool firstStar, bool secondStar)
+        public static SplitterState Create(double first, double second)
         {
             var total = first + second;
-            var fraction = total > 0 ? first / total : 0.5;
-            return new SplitterState(first, second, firstStar && secondStar ? fraction : fraction);
+            return new SplitterState(first, second, total > 0 ? first / total : 0.5);
         }
     }
 }
