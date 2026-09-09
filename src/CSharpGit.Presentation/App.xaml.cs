@@ -14,6 +14,7 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class App : Microsoft.UI.Xaml.Application
 {
+    private readonly SessionFileLoggerProvider _sessionFileLoggerProvider;
     private readonly IHost _host;
     private Window? _window;
     private bool _closeConfirmed;
@@ -25,6 +26,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     public App()
     {
         InitializeComponent();
+        _sessionFileLoggerProvider = new SessionFileLoggerProvider();
         _host = Host.CreateDefaultBuilder()
             .ConfigureAppConfiguration(configuration =>
             {
@@ -37,7 +39,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 logging.ClearProviders();
                 logging.SetMinimumLevel(LogLevel.Trace);
                 logging.AddSimpleConsole(options => options.SingleLine = true);
-                logging.AddProvider(new SessionFileLoggerProvider());
+                logging.AddProvider(_sessionFileLoggerProvider);
             })
             .ConfigureServices(services =>
             {
@@ -66,9 +68,14 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
+        CommitGraphDiagnostics.Initialize(_sessionFileLoggerProvider);
+        _sessionFileLoggerProvider.WriteDirect(
+            "CSharpGit.Startup",
+            "ApplicationLaunching",
+            $"version={typeof(App).Assembly.GetName().Version} os={Environment.OSVersion} process={Environment.ProcessId} log={SessionFileLoggerProvider.CurrentLogPath}");
+
         await _host.StartAsync();
         var loggerFactory = _host.Services.GetRequiredService<ILoggerFactory>();
-        CommitGraphDiagnostics.Initialize(loggerFactory);
         var startupLogger = loggerFactory.CreateLogger("CSharpGit.Startup");
         startupLogger.LogInformation(
             "Application started. version={Version} os={OS} process={ProcessId} log={LogPath}",
