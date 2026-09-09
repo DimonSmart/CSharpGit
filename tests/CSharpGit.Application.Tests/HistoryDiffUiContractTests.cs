@@ -7,6 +7,7 @@ public sealed class HistoryDiffUiContractTests
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var compactResources = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "CompactWorkspaceResources.xaml"));
         var changes = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs"));
         var tree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "ChangedFileTreeNode.cs"));
         var diff = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "CompactDiffLine.cs"));
@@ -19,6 +20,10 @@ public sealed class HistoryDiffUiContractTests
         Assert.Contains("DiffLineKindToBrushConverter", xaml);
         Assert.DoesNotContain("<PivotItem Header=\"Diff\">", xaml);
         Assert.DoesNotContain("ItemsSource=\"{Binding SelectedCommit.Files}\"", xaml);
+
+        Assert.Contains("x:Key=\"CompactDiffItemContainerStyle\"", compactResources);
+        Assert.Contains("<Setter Property=\"Height\" Value=\"20\" />", compactResources);
+        Assert.Contains("<Grid ColumnDefinitions=\"38,38,*\" Height=\"20\">", compactResources);
 
         Assert.Contains("ChangedFileTreeNode.Build", changes);
         Assert.Contains("CompactDiffLine.Build", changes);
