@@ -41,6 +41,9 @@ jobs:
       - name: Run application contract tests
         run: dotnet test tests/CSharpGit.Application.Tests/CSharpGit.Application.Tests.csproj --configuration Release
 
+      - name: Restore desktop application
+        run: dotnet restore src/CSharpGit.Presentation/CSharpGit.Presentation.csproj
+
       - name: Run desktop smoke tests
         run: xvfb-run -a dotnet test tests/CSharpGit.Desktop.Tests/CSharpGit.Desktop.Tests.csproj --configuration Release
 
