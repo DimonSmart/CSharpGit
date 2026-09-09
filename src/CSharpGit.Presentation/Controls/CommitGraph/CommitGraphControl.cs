@@ -41,6 +41,7 @@ public sealed class CommitGraphControl : Canvas
     private readonly XamlPath _nodePath;
     private CommitGraphRowVisual? _renderedGraph;
     private double _renderedHeight;
+    private ElementTheme? _renderedTheme;
     private long _renderCount;
 
     public static readonly DependencyProperty GraphProperty = DependencyProperty.Register(
@@ -145,6 +146,19 @@ public sealed class CommitGraphControl : Canvas
         var height = double.IsFinite(ActualHeight) && ActualHeight > 0
             ? ActualHeight
             : metrics.DefaultRowHeight;
+        var theme = ActualTheme;
+
+        if (ReferenceEquals(_renderedGraph, graph)
+            && Math.Abs(_renderedHeight - height) <= 0.01
+            && _renderedTheme == theme)
+        {
+            CommitGraphDiagnostics.Trace(
+                "XamlRenderSkipped",
+                $"control={_controlId} reason={reason} unchanged graph/height/theme actual={ActualWidth:0.##}x{ActualHeight:0.##} "
+                + $"renderedHeight={height:0.##} {CommitGraphDiagnostics.DescribeContext(DataContext)} "
+                + CommitGraphDiagnostics.DescribeGraph(graph));
+            return;
+        }
 
         foreach (var path in _trackPaths)
             path.Data = null;
@@ -153,6 +167,7 @@ public sealed class CommitGraphControl : Canvas
 
         _renderedGraph = graph;
         _renderedHeight = height;
+        _renderedTheme = theme;
         var renderCount = Interlocked.Increment(ref _renderCount);
 
         if (graph is null)
@@ -225,7 +240,9 @@ public sealed class CommitGraphControl : Canvas
 
     internal bool HasCurrentRenderForCheck()
     {
-        if (!ReferenceEquals(_renderedGraph, Graph) || Volatile.Read(ref _renderCount) == 0)
+        if (!ReferenceEquals(_renderedGraph, Graph)
+            || _renderedTheme != ActualTheme
+            || Volatile.Read(ref _renderCount) == 0)
         {
             return false;
         }
