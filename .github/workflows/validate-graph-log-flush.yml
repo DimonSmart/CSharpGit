@@ -1,0 +1,34 @@
+name: Validate graph log flush
+
+on:
+  push:
+    branches:
+      - fix/graph-log-flush
+    paths:
+      - .github/workflows/validate-graph-log-flush.yml
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/graph-log-flush
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Prepare Git test environment
+        run: touch ~/.gitconfig
+      - name: Validate diff
+        run: git diff --check origin/main...HEAD
+      - name: Run Git tests
+        run: dotnet test tests/CSharpGit.Git.Tests/CSharpGit.Git.Tests.csproj --configuration Release
+      - name: Run application tests
+        run: dotnet test tests/CSharpGit.Application.Tests/CSharpGit.Application.Tests.csproj --configuration Release
+      - name: Restore desktop application
+        run: dotnet restore src/CSharpGit.Presentation/CSharpGit.Presentation.csproj
+      - name: Run desktop tests
+        run: xvfb-run -a dotnet test tests/CSharpGit.Desktop.Tests/CSharpGit.Desktop.Tests.csproj --configuration Release
+      - name: Build solution
+        run: dotnet build CSharpGit.slnx --configuration Release
