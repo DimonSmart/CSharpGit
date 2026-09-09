@@ -373,28 +373,63 @@
               <Button Grid.Column="1" Content="Back to history" Click="ShowHistory_Click" VerticalAlignment="Center" />
             </Grid>
 
-            <Grid Grid.Row="1" RowDefinitions="*,12,*">
-              <Grid Grid.Row="0" RowDefinitions="Auto,*,Auto">
-                <TextBlock x:Name="UnstagedHeader" Text="Unstaged changes" FontWeight="SemiBold" Margin="0,0,0,6" />
-                <ListView x:Name="UnstagedChangesList" Grid.Row="1" SelectionChanged="UnstagedChangesList_SelectionChanged">
-                  <ListView.ItemTemplate>
-                    <DataTemplate><Grid ColumnDefinitions="32,*" Padding="6,3"><TextBlock Text="{Binding WorkingTreeStatus}" FontFamily="Consolas" /><TextBlock Grid.Column="1" Text="{Binding Path}" /></Grid></DataTemplate>
-                  </ListView.ItemTemplate>
-                </ListView>
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
-                  <Button Content="Stage" Command="{Binding StageCommand}" />
-                  <Button Content="Discard…" Command="{Binding RequestDiscardCommand}" />
-                </StackPanel>
+            <Grid Grid.Row="1" ColumnDefinitions="330,6,*" MinHeight="180">
+              <Grid Grid.Column="0" RowDefinitions="*,12,*">
+                <Grid Grid.Row="0" RowDefinitions="Auto,*,Auto">
+                  <TextBlock x:Name="UnstagedHeader" Text="Unstaged changes" FontWeight="SemiBold" Margin="0,0,0,6" />
+                  <ListView x:Name="UnstagedChangesList" Grid.Row="1" SelectionChanged="UnstagedChangesList_SelectionChanged">
+                    <ListView.ItemTemplate>
+                      <DataTemplate><Grid ColumnDefinitions="32,*" Padding="6,3"><TextBlock Text="{Binding WorkingTreeStatus}" FontFamily="Consolas" /><TextBlock Grid.Column="1" Text="{Binding Path}" /></Grid></DataTemplate>
+                    </ListView.ItemTemplate>
+                  </ListView>
+                  <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+                    <Button Content="Stage" Command="{Binding StageCommand}" />
+                    <Button Content="Discard…" Command="{Binding RequestDiscardCommand}" />
+                  </StackPanel>
+                </Grid>
+
+                <Grid Grid.Row="2" RowDefinitions="Auto,*,Auto">
+                  <TextBlock x:Name="StagedHeader" Text="Staged changes" FontWeight="SemiBold" Margin="0,0,0,6" />
+                  <ListView x:Name="StagedChangesList" Grid.Row="1" SelectionChanged="StagedChangesList_SelectionChanged">
+                    <ListView.ItemTemplate>
+                      <DataTemplate><Grid ColumnDefinitions="32,*" Padding="6,3"><TextBlock Text="{Binding IndexStatus}" FontFamily="Consolas" /><TextBlock Grid.Column="1" Text="{Binding Path}" /></Grid></DataTemplate>
+                    </ListView.ItemTemplate>
+                  </ListView>
+                  <Button Grid.Row="2" Content="Unstage" Command="{Binding UnstageCommand}" HorizontalAlignment="Left" Margin="0,6,0,0" />
+                </Grid>
               </Grid>
 
-              <Grid Grid.Row="2" RowDefinitions="Auto,*,Auto">
-                <TextBlock x:Name="StagedHeader" Text="Staged changes" FontWeight="SemiBold" Margin="0,0,0,6" />
-                <ListView x:Name="StagedChangesList" Grid.Row="1" SelectionChanged="StagedChangesList_SelectionChanged">
-                  <ListView.ItemTemplate>
-                    <DataTemplate><Grid ColumnDefinitions="32,*" Padding="6,3"><TextBlock Text="{Binding IndexStatus}" FontFamily="Consolas" /><TextBlock Grid.Column="1" Text="{Binding Path}" /></Grid></DataTemplate>
-                  </ListView.ItemTemplate>
-                </ListView>
-                <Button Grid.Row="2" Content="Unstage" Command="{Binding UnstageCommand}" HorizontalAlignment="Left" Margin="0,6,0,0" />
+              <controls:GridSplitter Grid.Column="1" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
+                                     MinimumFirst="220" MinimumSecond="280"
+                                     HorizontalAlignment="Stretch" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+              <Grid Grid.Column="2" RowDefinitions="36,22,*" Margin="10,0,0,0">
+                <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Padding="8,0">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBlock x:Name="WorkingTreeDiffHeader" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                    <TextBlock x:Name="WorkingTreeDiffKindText" Grid.Column="1" FontSize="11" FontWeight="SemiBold" Opacity="0.72" VerticalAlignment="Center" />
+                  </Grid>
+                </Border>
+
+                <Border Grid.Row="1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                  <Grid ColumnDefinitions="38,38,*">
+                    <TextBlock Text="OLD" FontSize="9" Opacity="0.52" HorizontalAlignment="Right" Margin="0,0,5,0" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="NEW" FontSize="9" Opacity="0.52" HorizontalAlignment="Right" Margin="0,0,5,0" VerticalAlignment="Center" />
+                  </Grid>
+                </Border>
+
+                <Grid Grid.Row="2">
+                  <InfoBar x:Name="WorkingTreeBinaryInfo" IsOpen="True" Severity="Informational" Title="Binary file"
+                           Message="Binary file — text diff is not available." Visibility="Collapsed" IsClosable="False" VerticalAlignment="Top" />
+                  <InfoBar x:Name="WorkingTreeNoChangesInfo" IsOpen="True" Severity="Informational" Title="No changes"
+                           Message="The selected delta no longer exists." Visibility="Collapsed" IsClosable="False" VerticalAlignment="Top" />
+                  <ListView x:Name="WorkingTreeCompactDiffList" Visibility="Collapsed" SelectionMode="None"
+                            HorizontalContentAlignment="Stretch"
+                            ScrollViewer.HorizontalScrollMode="Auto"
+                            ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                            ScrollViewer.VerticalScrollMode="Auto"
+                            ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                </Grid>
               </Grid>
             </Grid>
 
@@ -412,7 +447,7 @@
                   <Button Content="Create empty commit" Command="{Binding ConfirmEmptyCommitCommand}" />
                   <Button Content="Cancel" Command="{Binding CancelCommitCommand}" />
                 </StackPanel>
-                <InfoBar IsOpen="True" Severity="Warning" Title="Confirm discarding all changes to the file" Message="This action irreversibly replaces the selected file with its HEAD version (or deletes an untracked file)." Visibility="{Binding DiscardConfirmationVisibility}" IsClosable="False">
+                <InfoBar IsOpen="True" Severity="Warning" Title="Confirm discarding unstaged changes" Message="This action restores the working-tree version from the index (or deletes an untracked file). Staged changes are preserved." Visibility="{Binding DiscardConfirmationVisibility}" IsClosable="False">
                   <InfoBar.ActionButton><Button Content="Confirm discard" Command="{Binding ConfirmDiscardCommand}" /></InfoBar.ActionButton>
                 </InfoBar>
                 <Button Content="Cancel discard" Command="{Binding CancelDiscardCommand}" Visibility="{Binding DiscardConfirmationVisibility}" HorizontalAlignment="Left" />

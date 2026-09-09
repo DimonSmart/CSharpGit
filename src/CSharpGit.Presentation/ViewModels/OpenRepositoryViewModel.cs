@@ -42,6 +42,8 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
     private FileDiff? _selectedDiff;
     private bool _hasMore;
     private WorkingTreeChange? _selectedChange;
+    private WorkingTreeDiffKind? _selectedWorkingTreeDiffKind;
+    private FileDiff? _selectedWorkingTreeDiff;
     private WorkingTreeChange? _pendingDiscard;
     private string _commitMessage = string.Empty;
     private bool _isEmptyIndexChoiceOpen;
@@ -86,15 +88,15 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
         RefreshHistoryCommand = new AsyncCommand(() => LoadHistoryAsync(true), () => Repository is not null);
         LoadMoreCommand = new AsyncCommand(() => LoadHistoryAsync(false), () => Repository is not null && HasMore);
         RefreshAllCommand = new AsyncCommand(RefreshAllAsync, () => Repository is not null);
-        StageCommand = new AsyncCommand(() => MutateAsync(() => _workingTreeService.StageFileAsync(Repository!, SelectedChange!)), () => CanMutate() && SelectedChange is { IsUnstaged: true });
-        UnstageCommand = new AsyncCommand(() => MutateAsync(() => _workingTreeService.UnstageFileAsync(Repository!, SelectedChange!)), () => CanMutate() && SelectedChange is { IsStaged: true });
+        StageCommand = new AsyncCommand(() => MutateAsync(() => _workingTreeService.StageFileAsync(Repository!, SelectedChange!)), () => CanMutate() && SelectedWorkingTreeDiffKind == WorkingTreeDiffKind.Unstaged && SelectedChange is { IsUnstaged: true });
+        UnstageCommand = new AsyncCommand(() => MutateAsync(() => _workingTreeService.UnstageFileAsync(Repository!, SelectedChange!)), () => CanMutate() && SelectedWorkingTreeDiffKind == WorkingTreeDiffKind.Staged && SelectedChange is { IsStaged: true });
         CommitCommand = new AsyncCommand(RequestCommitAsync, () => CanMutate() && !string.IsNullOrWhiteSpace(CommitMessage));
         EmptyCommitCommand = new AsyncCommand(() => CommitAsync(false, true), () => CanMutate() && !string.IsNullOrWhiteSpace(CommitMessage));
         AmendCommand = new AsyncCommand(() => CommitAsync(true, false), () => CanMutate() && !string.IsNullOrWhiteSpace(CommitMessage));
         StageAllAndCommitCommand = new AsyncCommand(StageAllAndCommitAsync, () => CanMutate() && IsEmptyIndexChoiceOpen);
         ConfirmEmptyCommitCommand = new AsyncCommand(ConfirmEmptyCommitAsync, () => CanMutate() && IsEmptyIndexChoiceOpen);
         CancelCommitCommand = new AsyncCommand(CancelCommitAsync, () => IsEmptyIndexChoiceOpen);
-        RequestDiscardCommand = new AsyncCommand(RequestDiscardAsync, () => CanMutate() && SelectedChange is not null);
+        RequestDiscardCommand = new AsyncCommand(RequestDiscardAsync, () => CanMutate() && SelectedWorkingTreeDiffKind == WorkingTreeDiffKind.Unstaged && SelectedChange is { IsUnstaged: true });
         ConfirmDiscardCommand = new AsyncCommand(ConfirmDiscardAsync, () => CanMutate() && PendingDiscard is not null);
         CancelDiscardCommand = new AsyncCommand(CancelDiscardAsync, () => PendingDiscard is not null);
         SwitchBranchCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.SwitchBranchAsync(Repository!, SelectedLocalBranch!.Name)), () => CanMutate() && SelectedLocalBranch is not null);
@@ -231,6 +233,27 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
     public Visibility DiffVisibility => SelectedDiff is { IsBinary: false } ? Visibility.Visible : Visibility.Collapsed;
     public Visibility BinaryVisibility => SelectedDiff?.IsBinary == true ? Visibility.Visible : Visibility.Collapsed;
     public WorkingTreeChange? SelectedChange { get => _selectedChange; set { _selectedChange = value; Notify(); RaiseCommands(); } }
+    public WorkingTreeDiffKind? SelectedWorkingTreeDiffKind
+    {
+        get => _selectedWorkingTreeDiffKind;
+        set
+        {
+            if (_selectedWorkingTreeDiffKind == value) return;
+            _selectedWorkingTreeDiffKind = value;
+            Notify();
+            RaiseCommands();
+        }
+    }
+    public FileDiff? SelectedWorkingTreeDiff
+    {
+        get => _selectedWorkingTreeDiff;
+        set
+        {
+            if (ReferenceEquals(_selectedWorkingTreeDiff, value)) return;
+            _selectedWorkingTreeDiff = value;
+            Notify();
+        }
+    }
     public WorkingTreeChange? PendingDiscard { get => _pendingDiscard; private set { _pendingDiscard = value; Notify(); Notify(nameof(DiscardConfirmationVisibility)); RaiseCommands(); } }
     public Visibility DiscardConfirmationVisibility => PendingDiscard is null ? Visibility.Collapsed : Visibility.Visible;
     public string CommitMessage { get => _commitMessage; set { _commitMessage = value; Notify(); RaiseCommands(); } }
