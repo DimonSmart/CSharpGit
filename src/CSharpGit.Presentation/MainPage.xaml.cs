@@ -232,6 +232,7 @@ public sealed partial class MainPage : Page
 
     private async Task ShowReferenceHistoryAsync(string reference, string label)
     {
+        _viewModel.InvalidateHistoryLoad();
         _activeReference = reference;
         ActiveReferenceText.Text = label;
         ScopeCombo.Visibility = Visibility.Collapsed;

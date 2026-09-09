@@ -515,6 +515,12 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
         foreach (var value in values) target.Add(value);
     }
 
+    internal void InvalidateHistoryLoad()
+    {
+        Interlocked.Increment(ref _historyLoadGeneration);
+        _historyLoadCts?.Cancel();
+    }
+
     private async Task LoadHistoryAsync(bool reset)
     {
         if (Repository is null) return;

@@ -15,6 +15,8 @@ public sealed class HistoryLifecycleContractTests
         Assert.Contains("CancellationTokenSource? _historyLoadCts", viewModel);
         Assert.Contains("generation != Volatile.Read(ref _historyLoadGeneration)", viewModel);
         Assert.Contains("ReferenceEquals(selectedRow, SelectedHistoryRow)", viewModel);
+        Assert.Contains("internal void InvalidateHistoryLoad()", viewModel);
+        Assert.Contains("_viewModel.InvalidateHistoryLoad();", page);
         Assert.DoesNotContain("HistoryList.SelectedItem = first", page);
         Assert.Contains("_scopedHistory.Any(row => ReferenceEquals(row, _viewModel.SelectedHistoryRow))", page);
     }
