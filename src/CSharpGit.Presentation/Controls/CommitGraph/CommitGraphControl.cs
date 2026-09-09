@@ -1,4 +1,5 @@
 using CSharpGit.Presentation.Controls.CommitGraph;
+using CSharpGit.Presentation.Diagnostics;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -35,6 +36,8 @@ public sealed class CommitGraphControl : Canvas
         Brush(0xD7, 0xD0, 0x6B),
     ];
 
+    private static long _nextControlId;
+    private readonly long _controlId = Interlocked.Increment(ref _nextControlId);
     private long _renderVersion;
     private bool _isLoaded;
     private CommitGraphRowVisual? _renderedGraph;
@@ -55,21 +58,36 @@ public sealed class CommitGraphControl : Canvas
     public CommitGraphControl()
     {
         IsHitTestVisible = false;
+        Log("ControlCreated", "constructor");
         Loaded += (_, _) =>
         {
             _isLoaded = true;
-            ScheduleRender();
+            Log("Loaded", "control entered visual tree");
+            ScheduleRender("Loaded");
         };
         Unloaded += (_, _) =>
         {
+            Log("Unloaded", "control leaving visual tree");
             _isLoaded = false;
             Interlocked.Increment(ref _renderVersion);
             _renderedGraph = null;
             Children.Clear();
         };
-        DataContextChanged += (_, _) => ScheduleRender();
-        SizeChanged += (_, _) => ScheduleRender();
-        ActualThemeChanged += (_, _) => ScheduleRender();
+        DataContextChanged += (_, _) =>
+        {
+            Log("DataContextChanged", "data context changed");
+            ScheduleRender("DataContextChanged");
+        };
+        SizeChanged += (_, _) =>
+        {
+            Log("SizeChanged", "actual size changed");
+            ScheduleRender("SizeChanged");
+        };
+        ActualThemeChanged += (_, _) =>
+        {
+            Log("ThemeChanged", $"theme={ActualTheme}");
+            ScheduleRender("ActualThemeChanged");
+        };
     }
 
     protected override Size MeasureOverride(Size availableSize)
@@ -81,8 +99,13 @@ public sealed class CommitGraphControl : Canvas
         var desiredHeight = double.IsFinite(Height) && Height >= 0
             ? Height
             : metrics.DefaultRowHeight;
-
-        return new Size(desiredWidth, desiredHeight);
+        var desired = new Size(desiredWidth, desiredHeight);
+        CommitGraphDiagnostics.Trace(
+            "Measure",
+            $"control={_controlId} available={availableSize.Width:0.##}x{availableSize.Height:0.##} "
+            + $"desired={desired.Width:0.##}x{desired.Height:0.##} {CommitGraphDiagnostics.DescribeContext(DataContext)} "
+            + CommitGraphDiagnostics.DescribeGraph(Graph));
+        return desired;
     }
 
     private static void OnGraphChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
@@ -92,30 +115,46 @@ public sealed class CommitGraphControl : Canvas
             return;
         }
 
+        CommitGraphDiagnostics.Trace(
+            "GraphChanged",
+            $"control={control._controlId} {CommitGraphDiagnostics.DescribeContext(control.DataContext)} "
+            + $"old=[{CommitGraphDiagnostics.DescribeGraph(args.OldValue as CommitGraphRowVisual)}] "
+            + $"new=[{CommitGraphDiagnostics.DescribeGraph(args.NewValue as CommitGraphRowVisual)}]");
         control.InvalidateMeasure();
-        control.ScheduleRender();
+        control.ScheduleRender("GraphChanged");
     }
 
-    private void ScheduleRender()
+    private void ScheduleRender(string reason)
     {
         var version = Interlocked.Increment(ref _renderVersion);
+        CommitGraphDiagnostics.Trace(
+            "RenderScheduled",
+            $"control={_controlId} reason={reason} version={version} loaded={_isLoaded} "
+            + $"actual={ActualWidth:0.##}x{ActualHeight:0.##} {CommitGraphDiagnostics.DescribeContext(DataContext)} "
+            + CommitGraphDiagnostics.DescribeGraph(Graph));
         if (!_isLoaded)
         {
+            CommitGraphDiagnostics.Trace("RenderDeferred", $"control={_controlId} reason={reason} version={version} not-loaded");
             return;
         }
 
         DispatcherQueue.TryEnqueue(() =>
         {
-            if (!_isLoaded || version != Volatile.Read(ref _renderVersion))
+            var currentVersion = Volatile.Read(ref _renderVersion);
+            if (!_isLoaded || version != currentVersion)
             {
+                CommitGraphDiagnostics.Trace(
+                    "RenderSkipped",
+                    $"control={_controlId} reason={reason} queuedVersion={version} currentVersion={currentVersion} loaded={_isLoaded} "
+                    + CommitGraphDiagnostics.DescribeContext(DataContext));
                 return;
             }
 
-            RenderGraph();
+            RenderGraph(reason, version);
         });
     }
 
-    private void RenderGraph()
+    private void RenderGraph(string reason, long version)
     {
         Children.Clear();
         _renderedGraph = Graph;
@@ -123,6 +162,10 @@ public sealed class CommitGraphControl : Canvas
         if (Graph is null)
         {
             _renderedHeight = 0;
+            CommitGraphDiagnostics.Trace(
+                "Render",
+                $"control={_controlId} reason={reason} version={version} graph=null children=0 "
+                + $"actual={ActualWidth:0.##}x{ActualHeight:0.##} {CommitGraphDiagnostics.DescribeContext(DataContext)}");
             return;
         }
 
@@ -147,6 +190,13 @@ public sealed class CommitGraphControl : Canvas
         {
             AddNode(node);
         }
+
+        CommitGraphDiagnostics.Trace(
+            "Render",
+            $"control={_controlId} reason={reason} version={version} children={Children.Count} "
+            + $"actual={ActualWidth:0.##}x{ActualHeight:0.##} renderedHeight={_renderedHeight:0.##} "
+            + $"{CommitGraphDiagnostics.DescribeContext(DataContext)} {CommitGraphDiagnostics.DescribeGraph(Graph)} "
+            + CommitGraphDiagnostics.DescribeGeometry(geometry));
     }
 
     internal bool HasCurrentRenderForCheck()
@@ -179,6 +229,13 @@ public sealed class CommitGraphControl : Canvas
         var expectedChildren = geometry.Beziers.Count + geometry.Lines.Count + (geometry.Node is null ? 0 : 1);
         return Children.Count == expectedChildren;
     }
+
+    private void Log(string eventName, string details)
+        => CommitGraphDiagnostics.Trace(
+            eventName,
+            $"control={_controlId} {details} loaded={_isLoaded} version={Volatile.Read(ref _renderVersion)} "
+            + $"actual={ActualWidth:0.##}x{ActualHeight:0.##} children={Children.Count} "
+            + $"{CommitGraphDiagnostics.DescribeContext(DataContext)} {CommitGraphDiagnostics.DescribeGraph(Graph)}");
 
     private void AddBezier(GraphBezierPrimitive primitive, double thickness)
     {
