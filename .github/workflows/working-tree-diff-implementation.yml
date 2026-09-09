@@ -1,0 +1,55 @@
+name: Implement Working Tree Diff
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/working-tree-diff-implementation.py
+      - .github/workflows/working-tree-diff-implementation.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.204'
+      - name: Apply implementation
+        run: python .github/working-tree-diff-implementation.py
+      - name: Build desktop solution
+        run: dotnet build CSharpGit.slnx -c Release
+      - name: Run tests
+        if: runner.os == 'Linux'
+        run: dotnet test CSharpGit.slnx -c Release --no-build
+
+  commit:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Apply verified implementation
+        run: python .github/working-tree-diff-implementation.py
+      - name: Remove temporary implementation workflow
+        run: rm .github/working-tree-diff-implementation.py .github/workflows/working-tree-diff-implementation.yml
+      - name: Commit to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Add Working Tree file diff"
+          git push origin HEAD:main
