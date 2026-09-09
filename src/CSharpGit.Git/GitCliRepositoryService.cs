@@ -6,7 +6,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
 
-public sealed class GitCliRepositoryService : IRepositoryService, IRepositoryStateService, IHistoryService, IWorkingTreeService, IReferenceService, IRepositoryWorkflowService
+public sealed partial class GitCliRepositoryService : IRepositoryService, IRepositoryStateService, IHistoryService, IWorkingTreeService, IReferenceService, IRepositoryWorkflowService
 {
     private readonly string _gitExecutable;
 
@@ -503,27 +503,33 @@ public sealed class GitCliRepositoryService : IRepositoryService, IRepositorySta
 
     public async Task DiscardFileAsync(Repository repository, WorkingTreeChange change, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(change);
         ValidateChange(change);
+        if (!change.IsUnstaged)
+            throw new InvalidOperationException("Only unstaged working-tree changes can be discarded.");
+
+        cancellationToken.ThrowIfCancellationRequested();
         if (change.IndexStatus == '?')
         {
-            var fullPath = Path.GetFullPath(Path.Combine(repository.WorkingDirectory, change.Path));
-            var root = Path.GetFullPath(repository.WorkingDirectory) + Path.DirectorySeparatorChar;
-            if (!fullPath.StartsWith(root, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
-                throw new ArgumentException("The file path is outside the repository.", nameof(change));
+            var fullPath = ResolveSafeWorkingTreePath(repository, change.Path);
             if (File.Exists(fullPath)) File.Delete(fullPath);
             return;
         }
-        var hasHead = (await RunOptionalGitAsync(repository.WorkingDirectory, cancellationToken, "rev-parse", "--verify", "HEAD")).Length > 0;
-        if (change.IndexStatus == 'A' && change.OriginalPath is null)
+
+        // For an unstaged rename, the index still contains OriginalPath. Remove the
+        // renamed working-tree file and restore the indexed path without touching the index.
+        if (change.WorkingTreeStatus == 'R' && change.OriginalPath is not null)
         {
-            if (hasHead) await RunGitForMutationAsync(repository, cancellationToken, "restore", "--staged", "--", change.Path);
-            else await RunGitForMutationAsync(repository, cancellationToken, "rm", "--cached", "--ignore-unmatch", "--", change.Path);
-            var fullPath = Path.GetFullPath(Path.Combine(repository.WorkingDirectory, change.Path));
-            if (File.Exists(fullPath)) File.Delete(fullPath);
+            var renamedPath = ResolveSafeWorkingTreePath(repository, change.Path);
+            if (File.Exists(renamedPath)) File.Delete(renamedPath);
+            await RunGitForMutationAsync(repository, cancellationToken, "restore", "--worktree", "--", change.OriginalPath);
             return;
         }
-        await RunGitForMutationAsync(repository, cancellationToken, PathArguments("restore", change, "--source=HEAD", "--staged", "--worktree"));
+
+        // Default restore source is the index. Do not use --staged or --source=HEAD:
+        // staged content must survive discarding the additional working-tree delta.
+        await RunGitForMutationAsync(repository, cancellationToken, "restore", "--worktree", "--", change.Path);
     }
 
     public async Task CommitAsync(Repository repository, string message, bool amend = false, bool intentionalEmpty = false, CancellationToken cancellationToken = default)

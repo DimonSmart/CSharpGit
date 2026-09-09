@@ -72,6 +72,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 services.AddSingleton<IRepositoryService, GitCliRepositoryService>();
                 services.AddSingleton<IRepositoryStateService>(provider => (GitCliRepositoryService)provider.GetRequiredService<IRepositoryService>());
                 services.AddSingleton<IWorkingTreeService>(provider => (GitCliRepositoryService)provider.GetRequiredService<IRepositoryService>());
+                services.AddSingleton<IWorkingTreeDiffService>(provider => (GitCliRepositoryService)provider.GetRequiredService<IRepositoryService>());
                 services.AddSingleton<IReferenceService>(provider => (GitCliRepositoryService)provider.GetRequiredService<IRepositoryService>());
                 services.AddSingleton<IRepositoryWorkflowService>(provider => (GitCliRepositoryService)provider.GetRequiredService<IRepositoryService>());
                 services.AddSingleton<GitReferenceHistoryService>();

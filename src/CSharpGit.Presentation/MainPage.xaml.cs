@@ -33,12 +33,13 @@ public sealed partial class MainPage : Page
     private bool _isScopedHistoryLoading;
     private bool _wasBusy;
 
-    public MainPage(OpenRepositoryViewModel viewModel, IReferenceHistoryService referenceHistoryService, IReferenceService referenceService)
+    public MainPage(OpenRepositoryViewModel viewModel, IReferenceHistoryService referenceHistoryService, IReferenceService referenceService, IWorkingTreeDiffService? workingTreeDiffService = null)
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
         _referenceHistoryService = referenceHistoryService;
         _referenceService = referenceService;
+        _workingTreeDiffService = workingTreeDiffService;
 
         RepositoryTree.ItemsSource = _repositoryTreeRoots;
         HistoryList.ItemsSource = _viewModel.History;
@@ -55,6 +56,7 @@ public sealed partial class MainPage : Page
         _viewModel.Stashes.CollectionChanged += (_, _) => RebuildRepositoryTree();
         Loaded += RunDesktopCheckWhenRequested;
         RefreshPresentationCollections();
+        InitializeWorkingTreeDiffSurface();
     }
 
     public async Task<bool> ConfirmCloseAsync()
