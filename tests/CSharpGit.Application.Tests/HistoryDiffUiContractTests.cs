@@ -22,7 +22,9 @@ public sealed class HistoryDiffUiContractTests
         Assert.DoesNotContain("ItemsSource=\"{Binding SelectedCommit.Files}\"", xaml);
 
         Assert.Contains("x:Key=\"CompactDiffItemContainerStyle\"", compactResources);
-        Assert.Contains("<Setter Property=\"Height\" Value=\"20\" />", compactResources);
+        Assert.Contains("<ControlTemplate TargetType=\"ListViewItem\">", compactResources);
+        Assert.Contains("<Setter Property=\"MinHeight\" Value=\"0\" />", compactResources);
+        Assert.DoesNotContain("<Setter Property=\"Height\" Value=\"20\" />", compactResources);
         Assert.Contains("<Grid ColumnDefinitions=\"38,38,*\" Height=\"20\">", compactResources);
 
         Assert.Contains("ChangedFileTreeNode.Build", changes);
