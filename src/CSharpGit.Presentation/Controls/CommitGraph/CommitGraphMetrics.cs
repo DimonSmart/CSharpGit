@@ -12,7 +12,7 @@ public readonly record struct CommitGraphMetrics(
         HorizontalMargin: 8,
         LineThickness: 2,
         NodeRadius: 4,
-        DefaultRowHeight: 32);
+        DefaultRowHeight: 34);
 
     public double CalculateWidth(int laneCount)
     {
