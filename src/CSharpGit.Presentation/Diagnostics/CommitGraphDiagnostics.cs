@@ -1,24 +1,23 @@
 using System.Runtime.CompilerServices;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.Controls.CommitGraph;
-using Microsoft.Extensions.Logging;
 
 namespace CSharpGit.Presentation.Diagnostics;
 
 internal static class CommitGraphDiagnostics
 {
-    private static ILogger? _logger;
+    private static SessionFileLoggerProvider? _provider;
     private static long _sequence;
 
-    public static void Initialize(ILoggerFactory loggerFactory)
+    public static void Initialize(SessionFileLoggerProvider provider)
     {
-        _logger = loggerFactory.CreateLogger("CSharpGit.CommitGraph");
+        _provider = provider;
         Info("DiagnosticsInitialized", $"log={SessionFileLoggerProvider.CurrentLogPath}");
     }
 
-    public static void Info(string eventName, string details) => Write(LogLevel.Information, eventName, details);
+    public static void Info(string eventName, string details) => Write(eventName, details);
 
-    public static void Trace(string eventName, string details) => Write(LogLevel.Trace, eventName, details);
+    public static void Trace(string eventName, string details) => Write(eventName, details);
 
     public static string DescribeContext(object? context) => context switch
     {
@@ -50,12 +49,13 @@ internal static class CommitGraphDiagnostics
         return $"geometry={geometry.Width:0.##}x{geometry.Height:0.##} {node} lines=[{lines}] curves=[{curves}]";
     }
 
-    private static void Write(LogLevel level, string eventName, string details)
+    private static void Write(string eventName, string details)
     {
-        var logger = _logger;
-        if (logger is null) return;
+        var provider = _provider;
+        if (provider is null) return;
         var sequence = Interlocked.Increment(ref _sequence);
-        logger.Log(level, new EventId(4100, eventName), "seq={Sequence} {EventName} {Details}", sequence, eventName, details);
+        provider.WriteDirect("CSharpGit.CommitGraph", eventName,
+            $"seq={sequence} {eventName} {details}");
     }
 
     private static string DescribeEdges(IEnumerable<TopologyEdge> edges)
