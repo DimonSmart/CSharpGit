@@ -30,5 +30,23 @@ jobs:
         run: dotnet restore src/CSharpGit.Presentation/CSharpGit.Presentation.csproj
       - name: Run desktop tests
         run: xvfb-run -a dotnet test tests/CSharpGit.Desktop.Tests/CSharpGit.Desktop.Tests.csproj --configuration Release
+      - name: Verify session log is written immediately
+        shell: bash
+        run: |
+          LOG_HOME="$RUNNER_TEMP/csharpgit-log-home"
+          mkdir -p "$LOG_HOME"
+          set +e
+          HOME="$LOG_HOME" XDG_DATA_HOME="$LOG_HOME/.local/share" xvfb-run -a timeout 4s src/CSharpGit.Presentation/bin/Release/net10.0-desktop/CSharpGit.Presentation
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ] && [ "$status" -ne 124 ]; then
+            exit "$status"
+          fi
+          log=$(find "$LOG_HOME" -type f -name 'csharpgit-*.log' -size +0c | head -n 1)
+          test -n "$log"
+          grep -q 'FileLoggerStarted' "$log"
+          grep -q 'DiagnosticsInitialized' "$log"
+          echo "Verified non-empty log: $log"
+          wc -c "$log"
       - name: Build solution
         run: dotnet build CSharpGit.slnx --configuration Release
