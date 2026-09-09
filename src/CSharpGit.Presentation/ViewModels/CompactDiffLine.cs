@@ -43,24 +43,25 @@ public sealed record CompactDiffLine(
                 continue;
             }
 
-            switch (source.Kind)
+            // Once inside a hunk the unified-diff prefix is authoritative. This
+            // also handles source lines whose content itself starts with "++" or
+            // "--", which the coarse raw parser can otherwise mistake for file
+            // headers.
+            if (text.StartsWith('+'))
             {
-                case DiffLineKind.Added:
-                    result.Add(new CompactDiffLine(text, DiffLineKind.Added, null, newLine));
-                    newLine++;
-                    break;
-                case DiffLineKind.Removed:
-                    result.Add(new CompactDiffLine(text, DiffLineKind.Removed, oldLine, null));
-                    oldLine++;
-                    break;
-                case DiffLineKind.Context:
-                    result.Add(new CompactDiffLine(text, DiffLineKind.Context, oldLine, newLine));
-                    oldLine++;
-                    newLine++;
-                    break;
-                default:
-                    result.Add(new CompactDiffLine(text, DiffLineKind.Header, null, null));
-                    break;
+                result.Add(new CompactDiffLine(text, DiffLineKind.Added, null, newLine));
+                newLine++;
+            }
+            else if (text.StartsWith('-'))
+            {
+                result.Add(new CompactDiffLine(text, DiffLineKind.Removed, oldLine, null));
+                oldLine++;
+            }
+            else
+            {
+                result.Add(new CompactDiffLine(text, DiffLineKind.Context, oldLine, newLine));
+                oldLine++;
+                newLine++;
             }
         }
 
