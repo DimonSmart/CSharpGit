@@ -66,14 +66,17 @@
   </DataTemplate>
 
   <Style x:Key="CompactDiffItemContainerStyle" TargetType="ListViewItem">
-    <Setter Property="MinHeight" Value="19" />
+    <Setter Property="MinHeight" Value="20" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="Margin" Value="0" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
   </Style>
 
   <DataTemplate x:Key="CompactDiffItemTemplate">
     <Border Background="{Binding Kind, Converter={StaticResource CompactDiffLineKindToBrushConverter}}">
-      <Grid ColumnDefinitions="38,38,*" MinHeight="19">
+      <Grid ColumnDefinitions="38,38,*" Height="20">
         <TextBlock Text="{Binding OldLineNumber}" FontFamily="Consolas" FontSize="10" Opacity="0.58"
                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,5,0" />
         <TextBlock Grid.Column="1" Text="{Binding NewLineNumber}" FontFamily="Consolas" FontSize="10" Opacity="0.58"
