@@ -26,7 +26,13 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     public App()
     {
         InitializeComponent();
-        _sessionFileLoggerProvider = new SessionFileLoggerProvider();
+
+        var appSettings = AppSettingsContext.Current;
+        _sessionFileLoggerProvider = new SessionFileLoggerProvider(
+            appSettings.LoggingEnabled,
+            ToMicrosoftLogLevel(appSettings.LogLevel));
+        appSettings.Changed += AppSettings_Changed;
+
         _host = Host.CreateDefaultBuilder()
             .ConfigureAppConfiguration(configuration =>
             {
@@ -68,7 +74,6 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
-        CommitGraphDiagnostics.Initialize(_sessionFileLoggerProvider);
         _sessionFileLoggerProvider.WriteDirect(
             "CSharpGit.Startup",
             "ApplicationLaunching",
@@ -133,6 +138,25 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         _window.Activate();
     }
 
+    private void AppSettings_Changed(object? sender, EventArgs e)
+    {
+        var settings = AppSettingsContext.Current;
+        _sessionFileLoggerProvider.Configure(
+            settings.LoggingEnabled,
+            ToMicrosoftLogLevel(settings.LogLevel));
+    }
+
+    private static LogLevel ToMicrosoftLogLevel(ApplicationLogLevel level) => level switch
+    {
+        ApplicationLogLevel.Trace => LogLevel.Trace,
+        ApplicationLogLevel.Debug => LogLevel.Debug,
+        ApplicationLogLevel.Information => LogLevel.Information,
+        ApplicationLogLevel.Warning => LogLevel.Warning,
+        ApplicationLogLevel.Error => LogLevel.Error,
+        ApplicationLogLevel.Critical => LogLevel.Critical,
+        _ => LogLevel.Information
+    };
+
     private async Task ConfirmAndCloseAsync(MainPage page)
     {
         try
@@ -158,6 +182,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     internal void StopHost()
     {
         if (Interlocked.Exchange(ref _hostStopped, 1) != 0) return;
+        AppSettingsContext.Current.Changed -= AppSettings_Changed;
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
         try
         {

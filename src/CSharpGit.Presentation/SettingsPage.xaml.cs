@@ -13,7 +13,20 @@ public sealed partial class SettingsPage : Page
     {
         InitializeComponent();
         DataContext = _viewModel;
-        Loaded += (_, _) => _selectionReady = true;
+        Loaded += (_, _) =>
+        {
+            _selectionReady = true;
+            LogLevelComboBox.IsEnabled = LoggingToggle.IsOn;
+        };
+    }
+
+    private void SettingsNavigation_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (GeneralSettingsPanel is null || DiagnosticsSettingsPanel is null) return;
+
+        var showDiagnostics = SettingsNavigation.SelectedIndex == 1;
+        GeneralSettingsPanel.Visibility = showDiagnostics ? Visibility.Collapsed : Visibility.Visible;
+        DiagnosticsSettingsPanel.Visibility = showDiagnostics ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private async void CommitTimeModeList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -27,8 +40,41 @@ public sealed partial class SettingsPage : Page
         }
         catch (Exception exception)
         {
-            SettingsError.Message = exception.Message;
-            SettingsError.IsOpen = true;
+            ShowSettingsError(exception);
         }
+    }
+
+    private async void LoggingToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_selectionReady) return;
+        LogLevelComboBox.IsEnabled = LoggingToggle.IsOn;
+        await ApplyLoggingSettingsAsync();
+    }
+
+    private async void LogLevelComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_selectionReady) return;
+        await ApplyLoggingSettingsAsync();
+    }
+
+    private async Task ApplyLoggingSettingsAsync()
+    {
+        if (LogLevelComboBox.SelectedItem is not ApplicationLogLevelOption option) return;
+
+        SettingsError.IsOpen = false;
+        try
+        {
+            await _viewModel.ApplyLoggingSettingsAsync(LoggingToggle.IsOn, option);
+        }
+        catch (Exception exception)
+        {
+            ShowSettingsError(exception);
+        }
+    }
+
+    private void ShowSettingsError(Exception exception)
+    {
+        SettingsError.Message = exception.Message;
+        SettingsError.IsOpen = true;
     }
 }

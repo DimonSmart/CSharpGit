@@ -12,32 +12,49 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
         SingleWriter = false,
         AllowSynchronousContinuations = false
     });
+    private readonly string _directory;
+    private readonly string _filePath;
     private readonly Task _writerTask;
+    private int _enabled;
+    private int _minimumLevel;
 
-    public SessionFileLoggerProvider()
+    public SessionFileLoggerProvider(
+        bool enabled = false,
+        LogLevel minimumLevel = LogLevel.Information)
     {
-        var directory = Path.Combine(
+        ValidateLevel(minimumLevel);
+
+        _directory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "CSharpGit",
             "Logs");
-        Directory.CreateDirectory(directory);
-        DeleteOldLogs(directory, keep: 19);
-
-        CurrentLogPath = Path.Combine(
-            directory,
+        _filePath = Path.Combine(
+            _directory,
             $"csharpgit-{DateTime.Now:yyyyMMdd-HHmmss}-p{Environment.ProcessId}.log");
+        CurrentLogPath = _filePath;
 
+        _enabled = enabled ? 1 : 0;
+        _minimumLevel = (int)minimumLevel;
         _writerTask = Task.Run(WriteLoopAsync);
-        WriteDirect("CSharpGit.Diagnostics", "FileLoggerStarted",
-            $"process={Environment.ProcessId} log={CurrentLogPath}");
     }
 
     public static string CurrentLogPath { get; private set; } = string.Empty;
 
     public ILogger CreateLogger(string categoryName) => new SessionFileLogger(this, categoryName);
 
-    internal void WriteDirect(string category, string eventName, string message)
-        => Write(category, LogLevel.Trace, new EventId(4100, eventName), message, null);
+    public void Configure(bool enabled, LogLevel minimumLevel)
+    {
+        ValidateLevel(minimumLevel);
+        Volatile.Write(ref _minimumLevel, (int)minimumLevel);
+        Volatile.Write(ref _enabled, enabled ? 1 : 0);
+    }
+
+    internal void WriteDirect(
+        string category,
+        string eventName,
+        string message,
+        LogLevel level = LogLevel.Information)
+        => Write(category, level, new EventId(4100, eventName), message, null);
 
     public void Dispose()
     {
@@ -46,9 +63,14 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
         catch (AggregateException) { }
     }
 
+    private bool IsEnabled(LogLevel logLevel)
+        => logLevel != LogLevel.None
+           && Volatile.Read(ref _enabled) != 0
+           && (int)logLevel >= Volatile.Read(ref _minimumLevel);
+
     private void Write(string category, LogLevel level, EventId eventId, string message, Exception? exception)
     {
-        if (!category.StartsWith("CSharpGit", StringComparison.Ordinal)) return;
+        if (!IsEnabled(level) || !category.StartsWith("CSharpGit", StringComparison.Ordinal)) return;
 
         var timestamp = DateTimeOffset.Now.ToString("yyyy-MM-dd'T'HH:mm:ss.fffzzz", CultureInfo.InvariantCulture);
         var eventText = eventId.Id == 0 && string.IsNullOrWhiteSpace(eventId.Name)
@@ -65,18 +87,35 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
 
     private async Task WriteLoopAsync()
     {
-        await using var stream = new FileStream(
-            CurrentLogPath,
-            FileMode.CreateNew,
-            FileAccess.Write,
-            FileShare.ReadWrite,
-            bufferSize: 16 * 1024,
-            useAsync: true);
-        await using var writer = new StreamWriter(stream) { AutoFlush = true };
-
-        await foreach (var line in _lines.Reader.ReadAllAsync())
+        FileStream? stream = null;
+        StreamWriter? writer = null;
+        try
         {
-            await writer.WriteLineAsync(line);
+            await foreach (var line in _lines.Reader.ReadAllAsync())
+            {
+                if (writer is null)
+                {
+                    Directory.CreateDirectory(_directory);
+                    DeleteOldLogs(_directory, keep: 19);
+                    stream = new FileStream(
+                        _filePath,
+                        FileMode.CreateNew,
+                        FileAccess.Write,
+                        FileShare.ReadWrite,
+                        bufferSize: 16 * 1024,
+                        useAsync: true);
+                    writer = new StreamWriter(stream) { AutoFlush = true };
+                }
+
+                await writer.WriteLineAsync(line);
+            }
+        }
+        finally
+        {
+            if (writer is not null)
+                await writer.DisposeAsync();
+            else if (stream is not null)
+                await stream.DisposeAsync();
         }
     }
 
@@ -97,11 +136,17 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
         catch (UnauthorizedAccessException) { }
     }
 
+    private static void ValidateLevel(LogLevel level)
+    {
+        if (level == LogLevel.None || !Enum.IsDefined(typeof(LogLevel), level))
+            throw new ArgumentOutOfRangeException(nameof(level));
+    }
+
     private sealed class SessionFileLogger(SessionFileLoggerProvider provider, string category) : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
-        public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None;
+        public bool IsEnabled(LogLevel logLevel) => provider.IsEnabled(logLevel);
 
         public void Log<TState>(
             LogLevel logLevel,

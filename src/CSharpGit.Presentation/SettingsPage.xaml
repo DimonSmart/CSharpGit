@@ -11,62 +11,117 @@
               BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
               BorderThickness="0,0,1,0"
               Padding="8,12">
-        <ListView SelectionMode="Single" SelectedIndex="0">
+        <ListView x:Name="SettingsNavigation"
+                  SelectionMode="Single"
+                  SelectedIndex="0"
+                  SelectionChanged="SettingsNavigation_SelectionChanged">
           <ListViewItem IsSelected="True" HorizontalContentAlignment="Stretch">
             <StackPanel Orientation="Horizontal" Spacing="10" Padding="6,2">
               <FontIcon Glyph="&#xE713;" FontSize="16" />
               <TextBlock Text="General" VerticalAlignment="Center" />
             </StackPanel>
           </ListViewItem>
+          <ListViewItem HorizontalContentAlignment="Stretch">
+            <StackPanel Orientation="Horizontal" Spacing="10" Padding="6,2">
+              <FontIcon Glyph="&#xE9D9;" FontSize="16" />
+              <TextBlock Text="Diagnostics" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListViewItem>
         </ListView>
       </Border>
 
-      <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
-        <StackPanel Padding="28,24" Spacing="14" MaxWidth="760" HorizontalAlignment="Left">
-          <TextBlock Text="General" Style="{StaticResource TitleTextBlockStyle}" />
-          <TextBlock Text="Commit time display" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" />
-          <TextBlock Text="Choose how commit timestamps are shown throughout CSharpGit. The setting is global, applies immediately, and is saved for future launches. Hover a commit time to see its exact local date, time, and time-zone offset."
-                     TextWrapping="Wrap" Opacity="0.72" MaxWidth="680" />
+      <Grid Grid.Column="1" RowDefinitions="*,Auto">
+        <ScrollViewer x:Name="GeneralSettingsPanel" VerticalScrollBarVisibility="Auto">
+          <StackPanel Padding="28,24" Spacing="14" MaxWidth="760" HorizontalAlignment="Left">
+            <TextBlock Text="General" Style="{StaticResource TitleTextBlockStyle}" />
+            <TextBlock Text="Commit time display" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <TextBlock Text="Choose how commit timestamps are shown throughout CSharpGit. The setting is global, applies immediately, and is saved for future launches. Hover a commit time to see its exact local date, time, and time-zone offset."
+                       TextWrapping="Wrap" Opacity="0.72" MaxWidth="680" />
 
-          <ListView x:Name="CommitTimeModeList"
-                    ItemsSource="{Binding CommitTimeModes}"
-                    SelectedItem="{Binding SelectedCommitTimeMode, Mode=TwoWay}"
-                    SelectionMode="Single"
-                    SelectionChanged="CommitTimeModeList_SelectionChanged"
+            <ListView x:Name="CommitTimeModeList"
+                      ItemsSource="{Binding CommitTimeModes}"
+                      SelectedItem="{Binding SelectedCommitTimeMode, Mode=TwoWay}"
+                      SelectionMode="Single"
+                      SelectionChanged="CommitTimeModeList_SelectionChanged"
+                      MaxWidth="680"
+                      HorizontalAlignment="Stretch">
+              <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                  <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                  <Setter Property="Padding" Value="0" />
+                  <Setter Property="Margin" Value="0,0,0,8" />
+                </Style>
+              </ListView.ItemContainerStyle>
+              <ListView.ItemTemplate>
+                <DataTemplate>
+                  <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                          BorderThickness="1"
+                          CornerRadius="6"
+                          Padding="14,12">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+                      <StackPanel Spacing="4">
+                        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Opacity="0.68" />
+                      </StackPanel>
+                      <TextBlock Grid.Column="1" Text="{Binding Example}" VerticalAlignment="Center" Opacity="0.78" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ListView.ItemTemplate>
+            </ListView>
+          </StackPanel>
+        </ScrollViewer>
+
+        <ScrollViewer x:Name="DiagnosticsSettingsPanel"
+                      Visibility="Collapsed"
+                      VerticalScrollBarVisibility="Auto">
+          <StackPanel Padding="28,24" Spacing="14" MaxWidth="760" HorizontalAlignment="Left">
+            <TextBlock Text="Diagnostics" Style="{StaticResource TitleTextBlockStyle}" />
+            <TextBlock Text="File logging" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <TextBlock Text="Enable diagnostic session logs when troubleshooting CSharpGit. Logging is off by default. Changes apply immediately and are saved for future launches."
+                       TextWrapping="Wrap" Opacity="0.72" MaxWidth="680" />
+
+            <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="16,14"
                     MaxWidth="680"
                     HorizontalAlignment="Stretch">
-            <ListView.ItemContainerStyle>
-              <Style TargetType="ListViewItem">
-                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                <Setter Property="Padding" Value="0" />
-                <Setter Property="Margin" Value="0,0,0,8" />
-              </Style>
-            </ListView.ItemContainerStyle>
-            <ListView.ItemTemplate>
-              <DataTemplate>
-                <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                        BorderThickness="1"
-                        CornerRadius="6"
-                        Padding="14,12">
-                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
-                    <StackPanel Spacing="4">
-                      <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
-                      <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Opacity="0.68" />
-                    </StackPanel>
-                    <TextBlock Grid.Column="1" Text="{Binding Example}" VerticalAlignment="Center" Opacity="0.78" />
-                  </Grid>
-                </Border>
-              </DataTemplate>
-            </ListView.ItemTemplate>
-          </ListView>
+              <StackPanel Spacing="14">
+                <ToggleSwitch x:Name="LoggingToggle"
+                              Header="Enable file logging"
+                              IsOn="{Binding LoggingEnabled}"
+                              OnContent="On"
+                              OffContent="Off"
+                              Toggled="LoggingToggle_Toggled" />
 
-          <InfoBar x:Name="SettingsError"
-                   IsOpen="False"
-                   Severity="Error"
-                   Title="Could not save settings"
-                   IsClosable="True" />
-        </StackPanel>
-      </ScrollViewer>
+                <StackPanel Spacing="6">
+                  <TextBlock Text="Log level" FontWeight="SemiBold" />
+                  <ComboBox x:Name="LogLevelComboBox"
+                            ItemsSource="{Binding LogLevels}"
+                            SelectedItem="{Binding SelectedLogLevel, Mode=TwoWay}"
+                            DisplayMemberPath="Label"
+                            MinWidth="220"
+                            HorizontalAlignment="Left"
+                            SelectionChanged="LogLevelComboBox_SelectionChanged" />
+                  <TextBlock Text="Trace is the most verbose. Information is recommended for normal diagnostics; Warning and higher reduce log volume."
+                             TextWrapping="Wrap"
+                             Opacity="0.68"
+                             MaxWidth="620" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <InfoBar x:Name="SettingsError"
+                 Grid.Row="1"
+                 Margin="28,0,28,18"
+                 IsOpen="False"
+                 Severity="Error"
+                 Title="Could not save settings"
+                 IsClosable="True" />
+      </Grid>
     </Grid>
   </Grid>
 </Page>
