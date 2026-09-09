@@ -10,7 +10,7 @@ namespace CSharpGit.Presentation.Controls;
 public enum GridResizeDirection { Columns, Rows }
 public enum GridResizeBehavior { PreviousAndNext, CurrentAndNext }
 
-public sealed class GridSplitter : ContentControl
+public sealed class GridSplitter : UserControl
 {
     private static readonly object SettingsLock = new();
     private readonly Border _indicator;
@@ -39,7 +39,6 @@ public sealed class GridSplitter : ContentControl
         VerticalContentAlignment = VerticalAlignment.Stretch;
 
         var transparent = new SolidColorBrush(Windows.UI.Color.FromArgb(1, 0, 0, 0));
-        Background = transparent;
         var surface = new Grid
         {
             Background = transparent,
@@ -61,13 +60,7 @@ public sealed class GridSplitter : ContentControl
         PointerCaptureLost += OnPointerCaptureLost;
         PointerEntered += (_, _) => SetIndicatorOpacity(_lastPosition is null ? 0.78 : 1.0);
         PointerExited += (_, _) => { if (_lastPosition is null) SetIndicatorOpacity(0.42); };
-        Loaded += (_, _) =>
-        {
-            // Some current XAML sites still set Background from the old implementation.
-            // Keep the full 6 px surface transparent and draw only the 1 px indicator.
-            Background = transparent;
-            DispatcherQueue.TryEnqueue(RestoreSavedSize);
-        };
+        Loaded += (_, _) => DispatcherQueue.TryEnqueue(RestoreSavedSize);
         UpdateDirectionVisuals();
     }
 
@@ -312,7 +305,7 @@ public sealed class GridSplitter : ContentControl
                 parts.Push(element.GetType().Name);
             current = element.Parent;
         }
-        return $"{ResizeDirection}:{string.Join('/', parts)}";
+        return $"{ResizeDirection}:{string.Join("/", parts)}";
     }
 
     private static Dictionary<string, SplitterState> LoadSettings()
