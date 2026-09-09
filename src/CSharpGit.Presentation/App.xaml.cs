@@ -71,17 +71,16 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
 
         _window.AppWindow.Closing += (_, eventArgs) =>
         {
+            var page = _window.Content as MainPage;
             if (_closeConfirmed)
             {
-                BeginShutdown();
+                BeginShutdown(page);
                 return;
             }
 
-            if (_window.Content is not MainPage page ||
-                page.DataContext is not OpenRepositoryViewModel viewModel ||
-                !viewModel.HasUnappliedCommitMessage)
+            if (page is null || !page.RequiresCloseConfirmation)
             {
-                BeginShutdown();
+                BeginShutdown(page);
                 return;
             }
 
@@ -120,7 +119,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         {
             if (!await page.ConfirmCloseAsync()) return;
             _closeConfirmed = true;
-            BeginShutdown();
+            BeginShutdown(page);
             page.DispatcherQueue.TryEnqueue(() => _window?.Close());
         }
         finally
@@ -129,7 +128,12 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         }
     }
 
-    private void BeginShutdown() => _shutdownRequested = true;
+    private void BeginShutdown(MainPage? page)
+    {
+        if (_shutdownRequested) return;
+        _shutdownRequested = true;
+        page?.BeginShutdown();
+    }
 
     internal void StopHost()
     {
