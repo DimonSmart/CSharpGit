@@ -31,14 +31,14 @@ jobs:
           import base64, gzip, pathlib
           source = pathlib.Path(".github/force-push-with-lease-implementation.py.gz.b64")
           target = pathlib.Path(".github/force-push-with-lease-implementation.py")
-          text = gzip.decompress(base64.b64decode(source.read_text())).decode()
+          text = gzip.decompress(base64.b64decode(source.read_text(encoding="ascii"))).decode("utf-8")
           text = text.replace(
               "        catch (ForcePushWithLeasePreparationException\n"
               "               { Failure: ForcePushPreparationFailure.MissingUpstream })\n",
               "        catch (ForcePushWithLeasePreparationException exception)\n"
               "            when (exception.Failure == ForcePushPreparationFailure.MissingUpstream)\n",
               1)
-          target.write_text(text)
+          target.write_text(text, encoding="utf-8")
       - name: Prepare Git test environment
         run: |
           git config --global user.name "CSharpGit CI"
@@ -67,14 +67,14 @@ jobs:
           import base64, gzip, pathlib
           source = pathlib.Path(".github/force-push-with-lease-implementation.py.gz.b64")
           target = pathlib.Path(".github/force-push-with-lease-implementation.py")
-          text = gzip.decompress(base64.b64decode(source.read_text())).decode()
+          text = gzip.decompress(base64.b64decode(source.read_text(encoding="ascii"))).decode("utf-8")
           text = text.replace(
               "        catch (ForcePushWithLeasePreparationException\n"
               "               { Failure: ForcePushPreparationFailure.MissingUpstream })\n",
               "        catch (ForcePushWithLeasePreparationException exception)\n"
               "            when (exception.Failure == ForcePushPreparationFailure.MissingUpstream)\n",
               1)
-          target.write_text(text)
+          target.write_text(text, encoding="utf-8")
       - name: Apply verified implementation
         run: python .github/force-push-with-lease-implementation.py
       - name: Remove temporary implementation workflow
