@@ -47,7 +47,8 @@
                           Padding="18"
                           Opacity="{Binding TileOpacity}">
                     <Grid ColumnDefinitions="64,*" RowDefinitions="Auto,Auto,*" ColumnSpacing="14">
-                      <Border Width="64" Height="64" CornerRadius="9"
+                      <Border Grid.RowSpan="3"
+                              Width="64" Height="64" CornerRadius="9"
                               Background="{ThemeResource AccentFillColorSecondaryBrush}"
                               VerticalAlignment="Top">
                         <Grid>
@@ -79,8 +80,8 @@
                                  ToolTipService.ToolTip="{Binding Path}" />
                       <TextBlock Grid.Row="2" Grid.Column="1"
                                  Text="{Binding Metadata}"
-                                 Margin="0,16,10,0"
-                                 VerticalAlignment="Bottom"
+                                 Margin="0,8,10,0"
+                                 VerticalAlignment="Top"
                                  FontSize="12"
                                  Opacity="0.72"
                                  TextTrimming="CharacterEllipsis" />
