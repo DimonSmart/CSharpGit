@@ -39,3 +39,4 @@ opened.
 | IDD-0017 | Spec | Open diff file versions | Open Original/Changed, Reveal, safe snapshots and shared desktop shell integration | — |
 | IDD-0018 | Spec | Manual refresh and external changes | Explicit refresh ownership, debounced repository monitoring and refresh-required indicator | — |
 | IDD-0019 | Spec | Compact design system | Shared compact density with continuous History commit graph surfaces | — |
+| IDD-0020 | Spec | Release distribution | Tag-driven GitHub Releases, platform artifacts, checksums and Homebrew Cask | — |

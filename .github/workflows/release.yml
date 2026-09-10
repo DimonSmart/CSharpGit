@@ -1,0 +1,666 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+  attestations: write
+  id-token: write
+
+env:
+  DOTNET_NOLOGO: true
+  PROJECT: src/CSharpGit.Presentation/CSharpGit.Presentation.csproj
+  CHECKSUMS_NAME: SHA256SUMS.txt
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate release tag
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_NAME -notmatch '^v\d+\.\d+\.\d+$') {
+            throw "Release tags must use vMAJOR.MINOR.PATCH format."
+          }
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore CSharpGit.slnx
+
+      - name: Build
+        run: dotnet build CSharpGit.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test CSharpGit.slnx --configuration Release --no-build --verbosity minimal
+
+  package_windows:
+    name: Package Windows x64
+    needs: verify
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Set release version
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.Substring(1)
+          "VERSION=$version" >> $env:GITHUB_ENV
+          "ASSEMBLY_VERSION=$version.0" >> $env:GITHUB_ENV
+          "ASSET_NAME=CSharpGit-$env:GITHUB_REF_NAME-win-x64.zip" >> $env:GITHUB_ENV
+
+      - name: Publish Windows x64
+        shell: pwsh
+        run: |
+          $publishDir = Join-Path $env:RUNNER_TEMP "publish-win-x64"
+          Remove-Item -Recurse -Force $publishDir -ErrorAction SilentlyContinue
+
+          dotnet publish $env:PROJECT `
+            --configuration Release `
+            -f net10.0-desktop `
+            -r win-x64 `
+            --self-contained true `
+            --output $publishDir `
+            -p:TargetFrameworks=net10.0-desktop `
+            -p:UseMonoRuntime=false `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:IncludeAllContentForSelfExtract=true `
+            -p:PublishTrimmed=false `
+            -p:DebugType=None `
+            -p:DebugSymbols=false `
+            -p:Version=$env:VERSION `
+            -p:AssemblyVersion=$env:ASSEMBLY_VERSION `
+            -p:FileVersion=$env:ASSEMBLY_VERSION `
+            -p:InformationalVersion=$env:VERSION `
+            -p:ApplicationDisplayVersion=$env:VERSION
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows publish failed."
+          }
+
+          "PUBLISH_DIR=$publishDir" >> $env:GITHUB_ENV
+
+      - name: Verify Windows publish
+        shell: pwsh
+        run: |
+          $exe = Join-Path $env:PUBLISH_DIR "CSharpGit.exe"
+          if (-not (Test-Path $exe -PathType Leaf)) {
+            throw "Expected CSharpGit.exe in publish output."
+          }
+
+          if ((Get-Item $exe).Length -le 0) {
+            throw "CSharpGit.exe is empty."
+          }
+
+          $pdbs = @(Get-ChildItem $env:PUBLISH_DIR -Filter *.pdb -File -Recurse)
+          if ($pdbs.Count -ne 0) {
+            throw "Release output contains debug symbols: $($pdbs.FullName -join ', ')"
+          }
+
+          $info = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($exe)
+          if ($info.FileVersion -ne $env:ASSEMBLY_VERSION) {
+            throw "FileVersion '$($info.FileVersion)' does not match '$env:ASSEMBLY_VERSION'."
+          }
+          if ($info.ProductVersion -ne $env:VERSION) {
+            throw "ProductVersion '$($info.ProductVersion)' does not match '$env:VERSION'."
+          }
+
+          $selfContained = dotnet msbuild $env:PROJECT -nologo `
+            -getProperty:SelfContained `
+            -p:Configuration=Release `
+            -p:TargetFramework=net10.0-desktop `
+            -p:TargetFrameworks=net10.0-desktop `
+            -p:RuntimeIdentifier=win-x64 `
+            -p:SelfContained=true
+          if (($selfContained | Select-Object -Last 1).Trim().ToLowerInvariant() -ne "true") {
+            throw "Windows publish configuration is not self-contained."
+          }
+
+      - name: Package Windows artifact
+        shell: pwsh
+        run: |
+          $assetPath = Join-Path $env:RUNNER_TEMP $env:ASSET_NAME
+          Remove-Item $assetPath -Force -ErrorAction SilentlyContinue
+          Compress-Archive -Path (Join-Path $env:PUBLISH_DIR "*") -DestinationPath $assetPath -CompressionLevel Optimal
+
+          if (-not (Test-Path $assetPath -PathType Leaf) -or (Get-Item $assetPath).Length -le 0) {
+            throw "Failed to create $env:ASSET_NAME."
+          }
+
+          $extractDir = Join-Path $env:RUNNER_TEMP "verify-win-x64"
+          Remove-Item -Recurse -Force $extractDir -ErrorAction SilentlyContinue
+          Expand-Archive -Path $assetPath -DestinationPath $extractDir
+          if (-not (Test-Path (Join-Path $extractDir "CSharpGit.exe") -PathType Leaf)) {
+            throw "Packaged Windows artifact does not contain CSharpGit.exe."
+          }
+          if (Get-ChildItem $extractDir -Filter *.pdb -File -Recurse) {
+            throw "Packaged Windows artifact contains .pdb files."
+          }
+
+          $hash = (Get-FileHash $assetPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          $checksumPath = "$assetPath.sha256"
+          "$hash  $env:ASSET_NAME" | Set-Content $checksumPath -Encoding ascii
+
+          "ASSET_PATH=$assetPath" >> $env:GITHUB_ENV
+          "CHECKSUM_PATH=$checksumPath" >> $env:GITHUB_ENV
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-package
+          path: ${{ env.ASSET_PATH }}
+          if-no-files-found: error
+
+      - name: Upload Windows checksum
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-checksum
+          path: ${{ env.CHECKSUM_PATH }}
+          if-no-files-found: error
+
+      - name: Attest Windows artifact
+        uses: actions/attest@v4
+        with:
+          subject-path: ${{ env.ASSET_PATH }}
+
+  package_macos:
+    name: Package macOS (${{ matrix.rid }})
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: osx-arm64
+            os: macos-latest
+          - rid: osx-x64
+            os: macos-15-intel
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Set release version
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.Substring(1)
+          "VERSION=$version" >> $env:GITHUB_ENV
+          "ASSEMBLY_VERSION=$version.0" >> $env:GITHUB_ENV
+          "ASSET_NAME=CSharpGit-$env:GITHUB_REF_NAME-${{ matrix.rid }}-app.zip" >> $env:GITHUB_ENV
+
+      - name: Publish macOS app
+        shell: pwsh
+        run: |
+          dotnet publish $env:PROJECT `
+            --configuration Release `
+            -f net10.0-desktop `
+            -r "${{ matrix.rid }}" `
+            --self-contained true `
+            -p:TargetFrameworks=net10.0-desktop `
+            -p:PackageFormat=app `
+            -p:PublishTrimmed=false `
+            -p:DebugType=None `
+            -p:DebugSymbols=false `
+            -p:UnoMacOSIncludeDebugSymbols=false `
+            -p:Version=$env:VERSION `
+            -p:AssemblyVersion=$env:ASSEMBLY_VERSION `
+            -p:FileVersion=$env:ASSEMBLY_VERSION `
+            -p:InformationalVersion=$env:VERSION `
+            -p:ApplicationDisplayVersion=$env:VERSION
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "macOS publish failed for ${{ matrix.rid }}."
+          }
+
+          $appDir = Join-Path $env:GITHUB_WORKSPACE "src/CSharpGit.Presentation/bin/Release/net10.0-desktop/${{ matrix.rid }}/publish/CSharpGit.app"
+          "APP_DIR=$appDir" >> $env:GITHUB_ENV
+
+      - name: Verify macOS app
+        shell: pwsh
+        run: |
+          if (-not (Test-Path $env:APP_DIR -PathType Container)) {
+            throw "Expected CSharpGit.app at '$env:APP_DIR'."
+          }
+
+          $plist = Join-Path $env:APP_DIR "Contents/Info.plist"
+          if (-not (Test-Path $plist -PathType Leaf)) {
+            throw "CSharpGit.app is missing Contents/Info.plist."
+          }
+
+          $bundleVersion = (& /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" $plist).Trim()
+          if ($LASTEXITCODE -ne 0 -or $bundleVersion -ne $env:VERSION) {
+            throw "CFBundleShortVersionString '$bundleVersion' does not match '$env:VERSION'."
+          }
+
+          $bundleExecutable = (& /usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" $plist).Trim()
+          if ($LASTEXITCODE -ne 0 -or -not $bundleExecutable) {
+            throw "Could not determine CFBundleExecutable."
+          }
+
+          $executable = Join-Path $env:APP_DIR "Contents/MacOS/$bundleExecutable"
+          if (-not (Test-Path $executable -PathType Leaf)) {
+            throw "Bundle executable '$executable' does not exist."
+          }
+
+          & /usr/bin/test -x $executable
+          if ($LASTEXITCODE -ne 0) {
+            throw "Bundle executable is not executable."
+          }
+
+          if (Get-ChildItem $env:APP_DIR -Filter *.pdb -File -Recurse) {
+            throw "macOS app contains .pdb files."
+          }
+
+      - name: Package macOS app
+        shell: pwsh
+        run: |
+          $assetPath = Join-Path $env:RUNNER_TEMP $env:ASSET_NAME
+          Remove-Item $assetPath -Force -ErrorAction SilentlyContinue
+
+          & /usr/bin/ditto -c -k --sequesterRsrc --keepParent $env:APP_DIR $assetPath
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path $assetPath -PathType Leaf) -or (Get-Item $assetPath).Length -le 0) {
+            throw "Failed to create $env:ASSET_NAME."
+          }
+
+          $extractDir = Join-Path $env:RUNNER_TEMP "verify-${{ matrix.rid }}"
+          Remove-Item -Recurse -Force $extractDir -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $extractDir | Out-Null
+          & /usr/bin/ditto -x -k $assetPath $extractDir
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $extractDir "CSharpGit.app/Contents/Info.plist") -PathType Leaf)) {
+            throw "Packaged macOS artifact cannot be restored to a valid CSharpGit.app."
+          }
+
+          $hash = (Get-FileHash $assetPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          $checksumPath = "$assetPath.sha256"
+          "$hash  $env:ASSET_NAME" | Set-Content $checksumPath -Encoding ascii
+
+          "ASSET_PATH=$assetPath" >> $env:GITHUB_ENV
+          "CHECKSUM_PATH=$checksumPath" >> $env:GITHUB_ENV
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos-package-${{ matrix.rid }}
+          path: ${{ env.ASSET_PATH }}
+          if-no-files-found: error
+
+      - name: Upload macOS checksum
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos-checksum-${{ matrix.rid }}
+          path: ${{ env.CHECKSUM_PATH }}
+          if-no-files-found: error
+
+      - name: Attest macOS artifact
+        uses: actions/attest@v4
+        with:
+          subject-path: ${{ env.ASSET_PATH }}
+
+  package_linux:
+    name: Package Linux x64 (best effort)
+    needs: verify
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Set release version
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.Substring(1)
+          "VERSION=$version" >> $env:GITHUB_ENV
+          "ASSEMBLY_VERSION=$version.0" >> $env:GITHUB_ENV
+          "ASSET_NAME=CSharpGit-$env:GITHUB_REF_NAME-linux-x64.tar.gz" >> $env:GITHUB_ENV
+
+      - name: Publish Linux x64
+        shell: pwsh
+        run: |
+          $publishDir = Join-Path $env:RUNNER_TEMP "publish-linux-x64"
+          Remove-Item -Recurse -Force $publishDir -ErrorAction SilentlyContinue
+
+          dotnet publish $env:PROJECT `
+            --configuration Release `
+            -f net10.0-desktop `
+            -r linux-x64 `
+            --self-contained true `
+            --output $publishDir `
+            -p:TargetFrameworks=net10.0-desktop `
+            -p:PublishTrimmed=false `
+            -p:DebugType=None `
+            -p:DebugSymbols=false `
+            -p:Version=$env:VERSION `
+            -p:AssemblyVersion=$env:ASSEMBLY_VERSION `
+            -p:FileVersion=$env:ASSEMBLY_VERSION `
+            -p:InformationalVersion=$env:VERSION `
+            -p:ApplicationDisplayVersion=$env:VERSION
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Linux publish failed."
+          }
+
+          "PUBLISH_DIR=$publishDir" >> $env:GITHUB_ENV
+
+      - name: Verify Linux publish
+        shell: pwsh
+        run: |
+          $binary = Join-Path $env:PUBLISH_DIR "CSharpGit"
+          if (-not (Test-Path $binary -PathType Leaf)) {
+            throw "Expected CSharpGit in Linux publish output."
+          }
+
+          chmod +x $binary
+          & /usr/bin/test -x $binary
+          if ($LASTEXITCODE -ne 0) {
+            throw "Linux executable bit is not set."
+          }
+
+          if (Get-ChildItem $env:PUBLISH_DIR -Filter *.pdb -File -Recurse) {
+            throw "Linux publish output contains .pdb files."
+          }
+
+          $managedAssembly = Join-Path $env:PUBLISH_DIR "CSharpGit.dll"
+          if (-not (Test-Path $managedAssembly -PathType Leaf)) {
+            throw "Expected CSharpGit.dll for metadata verification."
+          }
+
+          $assemblyVersion = [System.Reflection.AssemblyName]::GetAssemblyName($managedAssembly).Version.ToString()
+          if ($assemblyVersion -ne $env:ASSEMBLY_VERSION) {
+            throw "AssemblyVersion '$assemblyVersion' does not match '$env:ASSEMBLY_VERSION'."
+          }
+
+          $productVersion = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($managedAssembly).ProductVersion
+          if ($productVersion -ne $env:VERSION) {
+            throw "InformationalVersion '$productVersion' does not match '$env:VERSION'."
+          }
+
+      - name: Package Linux artifact
+        shell: pwsh
+        run: |
+          $assetPath = Join-Path $env:RUNNER_TEMP $env:ASSET_NAME
+          Remove-Item $assetPath -Force -ErrorAction SilentlyContinue
+
+          tar -czf $assetPath -C $env:PUBLISH_DIR .
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path $assetPath -PathType Leaf) -or (Get-Item $assetPath).Length -le 0) {
+            throw "Failed to create $env:ASSET_NAME."
+          }
+
+          tar -tzf $assetPath | Out-Null
+          if ($LASTEXITCODE -ne 0) {
+            throw "Linux tar.gz verification failed."
+          }
+
+          $hash = (Get-FileHash $assetPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          $checksumPath = "$assetPath.sha256"
+          "$hash  $env:ASSET_NAME" | Set-Content $checksumPath -Encoding ascii
+
+          "ASSET_PATH=$assetPath" >> $env:GITHUB_ENV
+          "CHECKSUM_PATH=$checksumPath" >> $env:GITHUB_ENV
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-package
+          path: ${{ env.ASSET_PATH }}
+          if-no-files-found: error
+
+      - name: Upload Linux checksum
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-checksum
+          path: ${{ env.CHECKSUM_PATH }}
+          if-no-files-found: error
+
+      - name: Attest Linux artifact
+        uses: actions/attest@v4
+        with:
+          subject-path: ${{ env.ASSET_PATH }}
+
+  release:
+    name: Create or update GitHub Release
+    needs:
+      - verify
+      - package_windows
+      - package_macos
+      - package_linux
+    if: ${{ always() && needs.verify.result == 'success' && needs.package_windows.result == 'success' && needs.package_macos.result == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set release version
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.Substring(1)
+          "VERSION=$version" >> $env:GITHUB_ENV
+
+      - name: Download packaged artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: ${{ runner.temp }}/downloaded
+
+      - name: Verify and prepare release assets
+        shell: pwsh
+        run: |
+          $downloadDir = Join-Path $env:RUNNER_TEMP "downloaded"
+          $assetsDir = Join-Path $env:RUNNER_TEMP "release-assets"
+          Remove-Item -Recurse -Force $assetsDir -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $assetsDir | Out-Null
+
+          function Find-OneFile([string] $name) {
+            $matches = @(Get-ChildItem $downloadDir -File -Recurse | Where-Object Name -eq $name)
+            if ($matches.Count -ne 1) {
+              throw "Expected exactly one '$name', found $($matches.Count)."
+            }
+            return $matches[0]
+          }
+
+          function Verify-Checksum([System.IO.FileInfo] $asset, [System.IO.FileInfo] $fragment) {
+            $line = (Get-Content -Raw $fragment.FullName).Trim()
+            if ($line -notmatch '^(?<hash>[0-9a-fA-F]{64})\s+(?<name>.+)$') {
+              throw "Invalid checksum fragment '$($fragment.Name)'."
+            }
+            if ($Matches["name"] -ne $asset.Name) {
+              throw "Checksum fragment '$($fragment.Name)' refers to '$($Matches["name"])', expected '$($asset.Name)'."
+            }
+
+            $actual = (Get-FileHash $asset.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actual -ne $Matches["hash"].ToLowerInvariant()) {
+              throw "SHA-256 mismatch for '$($asset.Name)'."
+            }
+            return "$actual  $($asset.Name)"
+          }
+
+          $requiredNames = @(
+            "CSharpGit-$env:GITHUB_REF_NAME-win-x64.zip",
+            "CSharpGit-$env:GITHUB_REF_NAME-osx-arm64-app.zip",
+            "CSharpGit-$env:GITHUB_REF_NAME-osx-x64-app.zip"
+          )
+
+          $checksumLines = @()
+          foreach ($name in $requiredNames) {
+            $asset = Find-OneFile $name
+            $fragment = Find-OneFile "$name.sha256"
+            $checksumLines += Verify-Checksum $asset $fragment
+            Copy-Item $asset.FullName (Join-Path $assetsDir $asset.Name)
+          }
+
+          $linuxName = "CSharpGit-$env:GITHUB_REF_NAME-linux-x64.tar.gz"
+          $linuxAssets = @(Get-ChildItem $downloadDir -File -Recurse | Where-Object Name -eq $linuxName)
+          $linuxFragments = @(Get-ChildItem $downloadDir -File -Recurse | Where-Object Name -eq "$linuxName.sha256")
+          $linuxPublished = $false
+
+          if ($linuxAssets.Count -eq 1 -and $linuxFragments.Count -eq 1) {
+            try {
+              $checksumLines += Verify-Checksum $linuxAssets[0] $linuxFragments[0]
+              Copy-Item $linuxAssets[0].FullName (Join-Path $assetsDir $linuxAssets[0].Name)
+              $linuxPublished = $true
+            }
+            catch {
+              Write-Warning "Linux artifact will be omitted because verification failed: $($_.Exception.Message)"
+            }
+          }
+          elseif ($linuxAssets.Count -ne 0 -or $linuxFragments.Count -ne 0) {
+            Write-Warning "Incomplete Linux artifact/checksum pair; Linux will be omitted from this release."
+          }
+
+          $checksumsPath = Join-Path $assetsDir $env:CHECKSUMS_NAME
+          $checksumLines | Set-Content $checksumsPath -Encoding ascii
+
+          foreach ($line in Get-Content $checksumsPath) {
+            if ($line -notmatch '^(?<hash>[0-9a-f]{64})\s+(?<name>.+)$') {
+              throw "Invalid line in $env:CHECKSUMS_NAME: $line"
+            }
+            $assetPath = Join-Path $assetsDir $Matches["name"]
+            $actual = (Get-FileHash $assetPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actual -ne $Matches["hash"]) {
+              throw "Final checksum verification failed for '$($Matches["name"])'."
+            }
+          }
+
+          "ASSETS_DIR=$assetsDir" >> $env:GITHUB_ENV
+          "LINUX_PUBLISHED=$($linuxPublished.ToString().ToLowerInvariant())" >> $env:GITHUB_ENV
+
+      - name: Generate release notes
+        shell: pwsh
+        run: |
+          $tagPattern = '^v(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)$'
+          $previous = git tag --merged $env:GITHUB_REF_NAME --list "v*.*.*" |
+            ForEach-Object {
+              if ($_ -match $tagPattern -and $_ -ne $env:GITHUB_REF_NAME) {
+                [pscustomobject]@{
+                  Tag = $_
+                  Major = [int] $Matches["major"]
+                  Minor = [int] $Matches["minor"]
+                  Patch = [int] $Matches["patch"]
+                }
+              }
+            } |
+            Sort-Object Major, Minor, Patch |
+            Select-Object -Last 1
+
+          if ($previous) {
+            $changesHeading = "### Changes since $($previous.Tag)"
+            $changes = @(git log "$($previous.Tag)..$env:GITHUB_REF_NAME" --no-merges --pretty=format:"- %s (%h)")
+          }
+          else {
+            $changesHeading = "### Changes"
+            $changes = @(git log $env:GITHUB_REF_NAME --no-merges --pretty=format:"- %s (%h)")
+          }
+
+          if ($changes.Count -eq 0) {
+            $changes = @("- No commit summary available.")
+          }
+
+          $baseUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$env:GITHUB_REF_NAME"
+          $win = "CSharpGit-$env:GITHUB_REF_NAME-win-x64.zip"
+          $arm = "CSharpGit-$env:GITHUB_REF_NAME-osx-arm64-app.zip"
+          $intel = "CSharpGit-$env:GITHUB_REF_NAME-osx-x64-app.zip"
+          $linux = "CSharpGit-$env:GITHUB_REF_NAME-linux-x64.tar.gz"
+
+          $notes = @(
+            "## CSharpGit $env:GITHUB_REF_NAME",
+            "",
+            "### Download",
+            "",
+            "- Windows x64: [$win]($baseUrl/$win)",
+            "- macOS Apple Silicon: [$arm]($baseUrl/$arm)",
+            "- macOS Intel: [$intel]($baseUrl/$intel)"
+          )
+
+          if ($env:LINUX_PUBLISHED -eq "true") {
+            $notes += "- Linux x64: [$linux]($baseUrl/$linux)"
+          }
+          else {
+            $notes += "- Linux x64: not published for this version (best-effort platform)."
+          }
+
+          $notes += @(
+            "- SHA-256: [$env:CHECKSUMS_NAME]($baseUrl/$env:CHECKSUMS_NAME)",
+            "",
+            $changesHeading,
+            ""
+          )
+          $notes += $changes
+          $notes += @(
+            "",
+            "### Notes",
+            "",
+            "- CSharpGit requires `git` available through `PATH`.",
+            "- The Windows x64 package is self-contained and does not require a separately installed .NET Runtime.",
+            "- macOS builds are currently unsigned and not notarized. On first launch, use Finder → Open if Gatekeeper blocks the application.",
+            "- Linux support is best effort and may require native/X11 dependencies."
+          )
+
+          $notesPath = Join-Path $env:RUNNER_TEMP "release-notes.md"
+          $notes | Set-Content $notesPath -Encoding utf8
+          "NOTES_PATH=$notesPath" >> $env:GITHUB_ENV
+
+      - name: Create or update release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view $env:GITHUB_REF_NAME --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release edit $env:GITHUB_REF_NAME `
+              --repo $env:GITHUB_REPOSITORY `
+              --title "CSharpGit $env:GITHUB_REF_NAME" `
+              --notes-file $env:NOTES_PATH
+          }
+          else {
+            gh release create $env:GITHUB_REF_NAME `
+              --repo $env:GITHUB_REPOSITORY `
+              --verify-tag `
+              --title "CSharpGit $env:GITHUB_REF_NAME" `
+              --notes-file $env:NOTES_PATH
+          }
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to create or update GitHub Release."
+          }
+
+          Get-ChildItem $env:ASSETS_DIR -File | ForEach-Object {
+            gh release upload $env:GITHUB_REF_NAME $_.FullName `
+              --repo $env:GITHUB_REPOSITORY `
+              --clobber
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to upload release asset '$($_.Name)'."
+            }
+          }
