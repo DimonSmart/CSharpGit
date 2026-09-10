@@ -41,11 +41,6 @@ jobs:
         run: |
           New-Item -ItemType File -Force (Join-Path $HOME ".gitconfig") | Out-Null
           git config --global core.autocrlf false
-          if ($IsWindows) {
-            # Git loose objects can otherwise carry the Windows read-only attribute,
-            # which makes test fixture cleanup fail after otherwise successful tests.
-            git config --global core.sharedRepository all
-          }
           if ($IsMacOS) {
             # /var is a symlink to /private/var on macOS. Use a canonical temp root
             # so path assertions agree with paths returned by git rev-parse.
