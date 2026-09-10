@@ -191,16 +191,16 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
     public ICommand AbortOperationCommand { get; }
     public ICommand SkipOperationCommand { get; }
     public ObservableCollection<HistoryRow> History { get; } = [];
-    public ObservableCollection<WorkingTreeChange> Changes { get; } = [];
+    public ObservableCollection<WorkingTreeChange> Changes { get; } = new BulkObservableCollection<WorkingTreeChange>();
     public IReadOnlyCollection<WorkingTreeChange> SelectedUnstagedChanges => _selectedUnstagedChanges;
     public IReadOnlyCollection<WorkingTreeChange> SelectedStagedChanges => _selectedStagedChanges;
-    public ObservableCollection<GitBranch> LocalBranches { get; } = [];
-    public ObservableCollection<GitBranch> RemoteBranches { get; } = [];
-    public ObservableCollection<GitRemote> Remotes { get; } = [];
-    public ObservableCollection<GitTag> Tags { get; } = [];
-    public ObservableCollection<GitStash> Stashes { get; } = [];
+    public ObservableCollection<GitBranch> LocalBranches { get; } = new BulkObservableCollection<GitBranch>();
+    public ObservableCollection<GitBranch> RemoteBranches { get; } = new BulkObservableCollection<GitBranch>();
+    public ObservableCollection<GitRemote> Remotes { get; } = new BulkObservableCollection<GitRemote>();
+    public ObservableCollection<GitTag> Tags { get; } = new BulkObservableCollection<GitTag>();
+    public ObservableCollection<GitStash> Stashes { get; } = new BulkObservableCollection<GitStash>();
     public ObservableCollection<RebasePlanItem> RebasePlan { get; } = [];
-    public ObservableCollection<ConflictFile> Conflicts { get; } = [];
+    public ObservableCollection<ConflictFile> Conflicts { get; } = new BulkObservableCollection<ConflictFile>();
     public IReadOnlyList<string> RebaseActions { get; } = ["pick", "reword", "squash", "fixup", "drop"];
     public IReadOnlyList<UiChoice<HistoryScope>> Scopes { get; } =
     [
@@ -325,6 +325,9 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
 
     internal Task RefreshAsyncForDesktopCheck() => RefreshAllAsync();
 
+    internal Task<bool> RunMutationAsync(Func<Task> mutation, string? errorContext = null, bool includeHistory = true) =>
+        MutateAsync(mutation, errorContext, includeHistory: includeHistory);
+
     internal void SetWorkingTreeSelection(WorkingTreeDiffKind kind, IEnumerable<WorkingTreeChange> changes)
     {
         var selected = changes.ToArray();
@@ -395,41 +398,52 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
         IsBusy = _busyOperations > 0;
     }
 
-    private async Task RefreshAllAsync()
+    private Task RefreshAllAsync() => RefreshStateAsync(includeHistory: true);
+
+    private async Task RefreshStateAsync(bool includeHistory)
     {
         if (Repository is null) return;
         EnterBusy();
         try
         {
-        Repository = await _repositoryService.OpenAsync(Repository.WorkingDirectory);
-        var state = await _stateService.ReadAsync(Repository);
-        var shortHead = state.HeadCommit is { } commit ? commit[..Math.Min(10, commit.Length)] : "no commit";
-        HeadDisplay = state.IsDetached ? $"Detached HEAD: {shortHead}" : $"Current branch: {state.HeadReference}";
-        Changes.Clear();
-        foreach (var change in state.Changes) Changes.Add(change);
-        Replace(LocalBranches, state.Refs.LocalBranches);
-        Notify(nameof(CanForcePushWithLease));
-        Replace(RemoteBranches, state.Refs.RemoteBranches);
-        Replace(Remotes, state.Refs.Remotes);
-        Replace(Tags, state.Refs.Tags);
-        Replace(Stashes, state.Stashes);
-        SelectedLocalBranch = LocalBranches.FirstOrDefault(branch => branch.IsCurrent) ?? LocalBranches.FirstOrDefault();
-        SelectedMergeBranch = LocalBranches.FirstOrDefault(branch => !branch.IsCurrent);
-        SelectedStash = Stashes.FirstOrDefault();
-        OperationDisplay = state.Operation == RepositoryOperation.None ? "No operation in progress" : $"Operation in progress: {state.Operation}";
-        CurrentOperation = state.Operation;
-        OperationState = state.CurrentOperation;
-        var configuredTool = state.LocalConfiguration.GetValueOrDefault("merge.tool") ?? state.GlobalConfiguration.GetValueOrDefault("merge.tool");
-        ConfiguredMergeToolDisplay = configuredTool is null ? "Merge tool is not configured" : $"Active merge tool: {configuredTool}";
-        Replace(Conflicts, state.CurrentOperation.Conflicts);
-        SelectedConflict = Conflicts.FirstOrDefault();
-        SelectedRemote ??= Remotes.FirstOrDefault();
-        await LoadHistoryAsync(true);
+            var repository = Repository;
+            var state = await _stateService.ReadAsync(repository);
+            if (!ReferenceEquals(repository, Repository)) return;
+
+            var shortHead = state.HeadCommit is { } commit ? commit[..Math.Min(10, commit.Length)] : "no commit";
+            HeadDisplay = state.IsDetached ? $"Detached HEAD: {shortHead}" : $"Current branch: {state.HeadReference}";
+            Replace(Changes, state.Changes);
+            Replace(LocalBranches, state.Refs.LocalBranches);
+            Notify(nameof(CanForcePushWithLease));
+            Replace(RemoteBranches, state.Refs.RemoteBranches);
+            Replace(Remotes, state.Refs.Remotes);
+            Replace(Tags, state.Refs.Tags);
+            Replace(Stashes, state.Stashes);
+            SelectedLocalBranch = LocalBranches.FirstOrDefault(branch => branch.IsCurrent) ?? LocalBranches.FirstOrDefault();
+            SelectedMergeBranch = LocalBranches.FirstOrDefault(branch => !branch.IsCurrent);
+            SelectedStash = Stashes.FirstOrDefault();
+            OperationDisplay = state.Operation == RepositoryOperation.None ? "No operation in progress" : $"Operation in progress: {state.Operation}";
+            CurrentOperation = state.Operation;
+            OperationState = state.CurrentOperation;
+            var configuredTool = state.LocalConfiguration.GetValueOrDefault("merge.tool") ?? state.GlobalConfiguration.GetValueOrDefault("merge.tool");
+            ConfiguredMergeToolDisplay = configuredTool is null ? "Merge tool is not configured" : $"Active merge tool: {configuredTool}";
+            Replace(Conflicts, state.CurrentOperation.Conflicts);
+            SelectedConflict = Conflicts.FirstOrDefault();
+            SelectedRemote = SelectedRemote is null
+                ? Remotes.FirstOrDefault()
+                : Remotes.FirstOrDefault(remote => string.Equals(remote.Name, SelectedRemote.Name, StringComparison.Ordinal))
+                  ?? Remotes.FirstOrDefault();
+
+            if (includeHistory)
+                await LoadHistoryAsync(true);
         }
-        finally { ExitBusy(); }
+        finally
+        {
+            ExitBusy();
+        }
     }
 
-    private async Task<bool> MutateAsync(Func<Task> mutation, string? errorContext = null, Action? beforeMutation = null)
+    private async Task<bool> MutateAsync(Func<Task> mutation, string? errorContext = null, Action? beforeMutation = null, bool includeHistory = true)
     {
         var succeeded = false;
         if (!await _mutationGate.WaitAsync(0)) return false;
@@ -443,7 +457,7 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
             Exception? failure = null;
             try { await mutation(); }
             catch (Exception exception) when (exception is not OperationCanceledException) { failure = exception; }
-            try { await RefreshAllAsync(); }
+            try { await RefreshStateAsync(includeHistory); }
             catch (Exception exception) when (exception is not OperationCanceledException) { failure ??= exception; }
             if (failure is not null)
                 ErrorMessage = errorContext is null ? $"Git: {failure.Message}" : $"{errorContext}\nGit: {failure.Message}";
@@ -540,7 +554,7 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
         await MutateAsync(
             () => _workingTreeService.StageFileAsync(Repository!, change),
             "Could not stage file",
-            ClearWorkingTreePresentationSelection);
+            includeHistory: false);
     }
 
     private async Task UnstageActiveAsync()
@@ -550,7 +564,7 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
         await MutateAsync(
             () => _workingTreeService.UnstageFileAsync(Repository!, change),
             "Could not unstage file",
-            ClearWorkingTreePresentationSelection);
+            includeHistory: false);
     }
 
     private async Task StageSelectedAsync()
@@ -560,7 +574,7 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
         await MutateAsync(
             () => _workingTreeService.StageFilesAsync(Repository!, changes),
             "Could not stage selected files",
-            ClearWorkingTreePresentationSelection);
+            includeHistory: false);
     }
 
     private async Task StageAllWorkingTreeAsync()
@@ -568,7 +582,7 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
         await MutateAsync(
             () => _workingTreeService.StageAllAsync(Repository!),
             "Could not stage all files",
-            ClearWorkingTreePresentationSelection);
+            includeHistory: false);
     }
 
     private async Task UnstageSelectedAsync()
@@ -578,7 +592,7 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
         await MutateAsync(
             () => _workingTreeService.UnstageFilesAsync(Repository!, changes),
             "Could not unstage selected files",
-            ClearWorkingTreePresentationSelection);
+            includeHistory: false);
     }
 
     private async Task UnstageAllWorkingTreeAsync()
@@ -586,7 +600,7 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
         await MutateAsync(
             () => _workingTreeService.UnstageAllAsync(Repository!),
             "Could not unstage all files",
-            ClearWorkingTreePresentationSelection);
+            includeHistory: false);
     }
 
     private void ClearWorkingTreePresentationSelection()
@@ -644,7 +658,11 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
     {
         var change = PendingDiscard;
         PendingDiscard = null;
-        if (change is not null) await MutateAsync(() => _workingTreeService.DiscardFileAsync(Repository!, change));
+        if (change is not null)
+            await MutateAsync(
+                () => _workingTreeService.DiscardFileAsync(Repository!, change),
+                "Could not discard file",
+                includeHistory: false);
     }
 
     private void RaiseCommands()
@@ -654,8 +672,17 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
 
     private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values)
     {
+        var snapshot = values.ToArray();
+        if (target.SequenceEqual(snapshot)) return;
+
+        if (target is BulkObservableCollection<T> bulk)
+        {
+            bulk.ReplaceAll(snapshot);
+            return;
+        }
+
         target.Clear();
-        foreach (var value in values) target.Add(value);
+        foreach (var value in snapshot) target.Add(value);
     }
 
     internal void InvalidateHistoryLoad()

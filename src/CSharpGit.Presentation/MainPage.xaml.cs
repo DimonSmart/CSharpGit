@@ -48,15 +48,16 @@ public sealed partial class MainPage : Page
         CommitFilesList.ItemsSource = _commitFiles;
 
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
-        _viewModel.Changes.CollectionChanged += (_, _) => RefreshPresentationCollections();
-        _viewModel.LocalBranches.CollectionChanged += (_, _) => RebuildRepositoryTree();
-        _viewModel.RemoteBranches.CollectionChanged += (_, _) => RebuildRepositoryTree();
-        _viewModel.Remotes.CollectionChanged += (_, _) => RebuildRepositoryTree();
-        _viewModel.Tags.CollectionChanged += (_, _) => RebuildRepositoryTree();
-        _viewModel.Stashes.CollectionChanged += (_, _) => RebuildRepositoryTree();
+        _viewModel.Changes.CollectionChanged += (_, _) => QueueRepositoryPresentationRefresh(workingTreeChanged: true);
+        _viewModel.LocalBranches.CollectionChanged += (_, _) => QueueRepositoryPresentationRefresh();
+        _viewModel.RemoteBranches.CollectionChanged += (_, _) => QueueRepositoryPresentationRefresh();
+        _viewModel.Remotes.CollectionChanged += (_, _) => QueueRepositoryPresentationRefresh();
+        _viewModel.Tags.CollectionChanged += (_, _) => QueueRepositoryPresentationRefresh();
+        _viewModel.Stashes.CollectionChanged += (_, _) => QueueRepositoryPresentationRefresh();
         Loaded += RunDesktopCheckWhenRequested;
         RefreshPresentationCollections();
         InitializeWorkingTreeDiffSurface();
+        InitializeCommitActions();
     }
 
     public async Task<bool> ConfirmCloseAsync()
@@ -112,13 +113,22 @@ public sealed partial class MainPage : Page
 
     private void RefreshPresentationCollections()
     {
-        _unstagedChanges.Clear();
-        _stagedChanges.Clear();
-        foreach (var change in _viewModel.Changes)
+        _workingTreeSelectionSync = true;
+        try
         {
-            if (change.IsUnstaged) _unstagedChanges.Add(change);
-            if (change.IsStaged) _stagedChanges.Add(change);
+            _unstagedChanges.Clear();
+            _stagedChanges.Clear();
+            foreach (var change in _viewModel.Changes)
+            {
+                if (change.IsUnstaged) _unstagedChanges.Add(change);
+                if (change.IsStaged) _stagedChanges.Add(change);
+            }
         }
+        finally
+        {
+            _workingTreeSelectionSync = false;
+        }
+
         UnstagedHeader.Text = $"Unstaged changes ({_unstagedChanges.Count})";
         StagedHeader.Text = $"Staged changes ({_stagedChanges.Count})";
         RebuildRepositoryTree();
