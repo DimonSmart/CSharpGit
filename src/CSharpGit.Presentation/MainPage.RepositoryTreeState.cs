@@ -14,6 +14,7 @@ public sealed partial class MainPage
         base.OnApplyTemplate();
 
         InitializeHistoryInfiniteScroll();
+        InitializeLoadingOverlays();
 
         Loaded -= RepositoryTreeState_Loaded;
         Loaded += RepositoryTreeState_Loaded;
@@ -23,6 +24,7 @@ public sealed partial class MainPage
     private void RepositoryTreeState_Loaded(object sender, RoutedEventArgs args)
     {
         Loaded -= RepositoryTreeState_Loaded;
+        InitializeLoadingOverlays();
         TryAttachRepositoryTreeStateTracking();
     }
 
@@ -61,6 +63,7 @@ public sealed partial class MainPage
     private void DetachRepositoryTreeStateTracking()
     {
         Loaded -= RepositoryTreeState_Loaded;
+        DetachLoadingOverlays();
         if (!_repositoryTreeStateTrackingAttached) return;
 
         RepositoryTree.Expanding -= RepositoryTree_Expanding;
