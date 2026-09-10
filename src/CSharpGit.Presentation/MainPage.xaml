@@ -203,7 +203,7 @@
                       ItemTemplate="{StaticResource RepositoryTreeItemTemplate}"
                       SelectionMode="Single"
                       ItemInvoked="RepositoryTree_ItemInvoked"
-                      RightTapped="RepositoryTree_RightTapped"
+                      RightTapped="RepositoryTreeBranchDeletion_RightTapped"
                       DoubleTapped="RepositoryTree_DoubleTapped" />
           </Grid>
         </Border>
