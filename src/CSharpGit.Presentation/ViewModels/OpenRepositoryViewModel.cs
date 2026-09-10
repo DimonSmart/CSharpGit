@@ -12,7 +12,7 @@ namespace CSharpGit.Presentation.ViewModels;
 
 public sealed record UiChoice<T>(string Label, T Value);
 
-public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
+public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
 {
     private readonly IFolderPicker _folderPicker;
     private readonly IRepositoryService _repositoryService;
