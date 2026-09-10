@@ -34,9 +34,14 @@ public sealed partial class MainPage
         _revertItem.Click += RevertCommit_Click;
 
         _resetItem = new MenuFlyoutSubItem { Text = "Reset current branch to here" };
-        foreach (var mode in Enum.GetValues<ResetMode>())
+        foreach (var (mode, label) in new[]
+                 {
+                     (ResetMode.Soft, "Soft…"),
+                     (ResetMode.Mixed, "Mixed…"),
+                     (ResetMode.Hard, "Hard…")
+                 })
         {
-            var item = new MenuFlyoutItem { Text = $"{mode}…", Tag = mode };
+            var item = new MenuFlyoutItem { Text = label, Tag = mode };
             item.Click += ResetCommit_Click;
             _resetItem.Items.Add(item);
         }
