@@ -21,23 +21,16 @@ internal static class TestDirectory
                 Directory.Delete(path, recursive: true);
                 return;
             }
-            catch (UnauthorizedAccessException) when (attempt < attempts) { }
-            catch (IOException) when (attempt < attempts) { }
+            catch (UnauthorizedAccessException)
+            {
+                if (attempt == attempts) return;
+            }
+            catch (IOException)
+            {
+                if (attempt == attempts) return;
+            }
 
             Thread.Sleep(100 * attempt);
         }
-
-        // Cleanup must not turn a successful Git behavior assertion into a failed
-        // test on Windows while Git releases a final file handle or object attribute.
-        try
-        {
-            foreach (var file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
-            {
-                try { File.SetAttributes(file, FileAttributes.Normal); } catch { }
-            }
-            Directory.Delete(path, recursive: true);
-        }
-        catch (IOException) { }
-        catch (UnauthorizedAccessException) { }
     }
 }
