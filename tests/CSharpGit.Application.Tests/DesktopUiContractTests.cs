@@ -16,6 +16,8 @@ public sealed class DesktopUiContractTests
         var splitter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "GridSplitter.cs"));
 
         Assert.Contains("OpenRepositoryCommand", xaml);
+        Assert.Contains("HistoryFilter", xaml);
+        Assert.Contains("UpdateSourceTrigger=PropertyChanged", xaml);
         Assert.Contains("UnoPlatformHostBuilder.Create", program);
         Assert.Contains("host.RunAsync()", program);
         Assert.Contains(".UseWin32(", program);
