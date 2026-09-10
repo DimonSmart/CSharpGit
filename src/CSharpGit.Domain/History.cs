@@ -34,7 +34,13 @@ public sealed record HistoryRow(CommitHistoryItem Commit, CommitTopology Topolog
 
 public sealed record HistoryPage(IReadOnlyList<HistoryRow> Rows, bool HasMore);
 
-public sealed record ChangedFile(string Path, int? AddedLines, int? RemovedLines, bool IsBinary);
+public sealed record ChangedFile(
+    string Path,
+    int? AddedLines,
+    int? RemovedLines,
+    bool IsBinary,
+    string? OriginalPath = null,
+    string Status = "M");
 
 public sealed record CommitDetails(CommitHistoryItem Commit, IReadOnlyList<ChangedFile> Files);
 
