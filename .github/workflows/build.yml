@@ -37,7 +37,7 @@ jobs:
           global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore CSharpGit.slnx
+        run: dotnet restore CSharpGit.slnx --property:Configuration=Release
 
       - name: Build
         run: dotnet build CSharpGit.slnx --configuration Release --no-restore
