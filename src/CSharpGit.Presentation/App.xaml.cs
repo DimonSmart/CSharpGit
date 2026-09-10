@@ -73,12 +73,19 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                     return new RecentRepositoryFolderPicker(innerPicker);
                 });
                 services.AddSingleton<IFolderPicker>(provider => provider.GetRequiredService<RecentRepositoryFolderPicker>());
-                services.AddSingleton<IRepositoryService, GitCliRepositoryService>();
-                services.AddSingleton<IRepositoryStateService>(provider => (GitCliRepositoryService)provider.GetRequiredService<IRepositoryService>());
-                services.AddSingleton<IWorkingTreeService>(provider => (GitCliRepositoryService)provider.GetRequiredService<IRepositoryService>());
-                services.AddSingleton<IWorkingTreeDiffService>(provider => (GitCliRepositoryService)provider.GetRequiredService<IRepositoryService>());
-                services.AddSingleton<IReferenceService>(provider => (GitCliRepositoryService)provider.GetRequiredService<IRepositoryService>());
-                services.AddSingleton<IRepositoryWorkflowService>(provider => (GitCliRepositoryService)provider.GetRequiredService<IRepositoryService>());
+
+                services.AddSingleton<GitCliRepositoryService>();
+                services.AddSingleton<IRepositoryService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
+                services.AddSingleton<IRepositoryStateService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
+                services.AddSingleton<IWorkingTreeService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
+                services.AddSingleton<IWorkingTreeDiffService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
+                services.AddSingleton<IReferenceService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
+
+                services.AddSingleton<IRepositoryFileVersionService, GitRepositoryFileVersionService>();
+                services.AddSingleton<IRepositoryPathService, RepositoryPathService>();
+                services.AddSingleton<IDesktopShellService, DesktopShellService>();
+                services.AddSingleton<IRepositoryWorkflowService, DesktopRepositoryWorkflowService>();
+
                 services.AddSingleton<GitReferenceHistoryService>();
                 services.AddSingleton<IHistoryService>(provider => provider.GetRequiredService<GitReferenceHistoryService>());
                 services.AddSingleton<IReferenceHistoryService>(provider => provider.GetRequiredService<GitReferenceHistoryService>());
