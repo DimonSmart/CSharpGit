@@ -122,7 +122,7 @@ public sealed partial class MainPage
             IsRefreshRequired ? ExternalRepositoryChangeTooltip : null);
 
         if (_refreshIcon is not null)
-            _refreshIcon.Foreground = IsRefreshRequired ? new SolidColorBrush(Microsoft.UI.Colors.Red) : null;
+            _refreshIcon.Foreground = IsRefreshRequired ? new SolidColorBrush(Microsoft.UI.Colors.Red) : null!;
     }
 
     private static Button? FindRefreshButton(DependencyObject root)
@@ -158,8 +158,8 @@ public sealed partial class MainPage
         var childCount = VisualTreeHelper.GetChildrenCount(root);
         for (var i = 0; i < childCount; i++)
         {
-            var icon = FindRefreshIcon(VisualTreeHelper.GetChild(root, i));
-            if (icon is not null) return icon;
+            var nestedIcon = FindRefreshIcon(VisualTreeHelper.GetChild(root, i));
+            if (nestedIcon is not null) return nestedIcon;
         }
 
         return null;
