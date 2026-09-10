@@ -48,9 +48,7 @@ public static class CommitGraphGeometryBuilder
         CommitGraphMetrics? metrics = null)
     {
         var actualMetrics = metrics ?? CommitGraphMetrics.Default;
-        var actualHeight = double.IsFinite(height) && height > 0
-            ? height
-            : actualMetrics.DefaultRowHeight;
+        var actualHeight = double.IsFinite(height) && height > 0 ? height : 0;
 
         if (graph is null || graph.LaneCount <= 0)
         {
