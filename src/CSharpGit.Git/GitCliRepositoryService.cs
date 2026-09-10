@@ -18,6 +18,15 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
         _gitExecutable = string.IsNullOrWhiteSpace(options.ExecutablePath) ? "git" : options.ExecutablePath;
     }
 
+    public Task<HistoryPage> ReadHistoryThroughCommitAsync(
+        Repository repository,
+        HistoryScope scope,
+        string targetHash,
+        int trailingCount = 100,
+        CancellationToken cancellationToken = default) =>
+        new GitReferenceHistoryService(new GitCliOptions { ExecutablePath = _gitExecutable })
+            .ReadHistoryThroughCommitAsync(repository, scope, targetHash, trailingCount, cancellationToken);
+
     public async Task<Repository> OpenAsync(string path, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))

@@ -242,6 +242,25 @@ public sealed partial class MainPage : Page
         CommitFilesList.SelectedItem = selected;
     }
 
+    private async Task NavigateToReferenceAsync(string commitHash)
+    {
+        _referenceHistoryCts?.Cancel();
+        _activeReference = null;
+        ScopeCombo.Visibility = Visibility.Visible;
+        ReferenceScopePanel.Visibility = Visibility.Collapsed;
+        HistoryPane.Visibility = Visibility.Visible;
+        WorkingTreePane.Visibility = Visibility.Collapsed;
+        HistoryList.ItemsSource = _viewModel.History;
+
+        var target = await _viewModel.EnsureHistoryCommitVisibleAsync(commitHash);
+        HistoryList.ItemsSource = _viewModel.History;
+        LoadMoreHistoryButton.IsEnabled = _viewModel.HasMore;
+        if (target is null) return;
+
+        HistoryList.SelectedItem = target;
+        HistoryList.ScrollIntoView(target, ScrollIntoViewAlignment.Leading);
+    }
+
     private async Task ShowReferenceHistoryAsync(string reference, string label)
     {
         _viewModel.InvalidateHistoryLoad();
@@ -371,19 +390,19 @@ public sealed partial class MainPage : Page
                 break;
             case RepositoryTreeNodeKind.LocalBranch when node.Value is GitBranch local:
                 _viewModel.SelectedLocalBranch = local;
-                await ShowReferenceHistoryAsync(local.Name, $"Branch: {local.Name}");
+                await NavigateToReferenceAsync(local.Commit);
                 break;
             case RepositoryTreeNodeKind.RemoteBranch when node.Value is GitBranch remoteBranch:
                 _viewModel.SelectedRemoteBranch = remoteBranch;
-                await ShowReferenceHistoryAsync(remoteBranch.Name, $"Remote: {remoteBranch.Name}");
+                await NavigateToReferenceAsync(remoteBranch.Commit);
                 break;
             case RepositoryTreeNodeKind.Tag when node.Value is GitTag tag:
                 _viewModel.SelectedTag = tag;
-                await ShowReferenceHistoryAsync(tag.Name, $"Tag: {tag.Name}");
+                await NavigateToReferenceAsync(tag.Commit);
                 break;
             case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:
                 _viewModel.SelectedStash = stash;
-                await ShowReferenceHistoryAsync(stash.Commit, $"Stash: {stash.Name}");
+                await NavigateToReferenceAsync(stash.Commit);
                 break;
             case RepositoryTreeNodeKind.Group:
                 ShowAllHistory();
@@ -427,6 +446,8 @@ public sealed partial class MainPage : Page
                     await ExecuteCommandAsync(_viewModel.DeleteBranchCommand);
                 });
                 flyout.Items.Add(new MenuFlyoutSeparator());
+                AddMenuItem(flyout, "Show branch history only", !_viewModel.IsBusy,
+                    () => ShowReferenceHistoryAsync(branch.Name, $"Branch: {branch.Name}"));
                 AddMenuItem(flyout, "Copy branch name", true, () => CopyTextAsync(branch.Name));
                 break;
 
@@ -450,6 +471,8 @@ public sealed partial class MainPage : Page
                     _viewModel.NewBranchName = slash >= 0 ? remoteBranch.Name[(slash + 1)..] : remoteBranch.Name;
                     await ExecuteCommandAsync(_viewModel.CheckoutRemoteCommand);
                 });
+                AddMenuItem(flyout, "Show branch history only", !_viewModel.IsBusy,
+                    () => ShowReferenceHistoryAsync(remoteBranch.Name, $"Remote: {remoteBranch.Name}"));
                 AddMenuItem(flyout, "Copy branch name", true, () => CopyTextAsync(remoteBranch.Name));
                 break;
 

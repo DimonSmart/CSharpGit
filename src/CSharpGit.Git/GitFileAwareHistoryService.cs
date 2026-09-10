@@ -35,6 +35,14 @@ public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHist
         CancellationToken cancellationToken = default) =>
         _history.ReadHistoryAsync(repository, query, cancellationToken);
 
+    public Task<HistoryPage> ReadHistoryThroughCommitAsync(
+        Repository repository,
+        HistoryScope scope,
+        string targetHash,
+        int trailingCount = 100,
+        CancellationToken cancellationToken = default) =>
+        _history.ReadHistoryThroughCommitAsync(repository, scope, targetHash, trailingCount, cancellationToken);
+
     public Task<HistoryPage> ReadHistoryAsync(
         Repository repository,
         string reference,

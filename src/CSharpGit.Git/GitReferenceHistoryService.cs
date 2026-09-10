@@ -36,6 +36,29 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService, IHist
             cancellationToken);
     }
 
+    public async Task<HistoryPage> ReadHistoryThroughCommitAsync(
+        Repository repository,
+        HistoryScope scope,
+        string targetHash,
+        int trailingCount = 100,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
+        ValidateCommitHash(targetHash);
+        if (trailingCount is < 0 or > 1000) throw new ArgumentOutOfRangeException(nameof(trailingCount));
+
+        var revisions = scope == HistoryScope.AllReferences ? new[] { "--all" } : new[] { "HEAD" };
+        var targetIndex = await FindCommitIndexAsync(repository, revisions, targetHash, cancellationToken);
+        if (targetIndex < 0)
+            throw new InvalidOperationException($"Commit {targetHash} is not reachable from the selected history scope.");
+
+        var requestedCount = checked(targetIndex + 1 + trailingCount);
+        var commits = await ReadHistoryPrefixAsync(repository, checked(requestedCount + 1), revisions, cancellationToken);
+        var hasMore = commits.Count > requestedCount;
+        var rows = BuildTopology(commits.Take(requestedCount).ToList());
+        return new HistoryPage(rows, hasMore);
+    }
+
     public Task<HistoryPage> ReadHistoryAsync(
         Repository repository,
         string reference,
@@ -139,6 +162,36 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService, IHist
             .ToList();
 
         return new HistoryPage(requestedRows, hasFilteredMore);
+    }
+
+    private async Task<int> FindCommitIndexAsync(
+        Repository repository,
+        IReadOnlyList<string> revisions,
+        string targetHash,
+        CancellationToken cancellationToken)
+    {
+        var maxCount = 256;
+        while (true)
+        {
+            var arguments = new List<string>
+            {
+                "log",
+                "--topo-order",
+                $"--max-count={maxCount}",
+                "--format=%H"
+            };
+            arguments.AddRange(revisions);
+
+            var output = await RunGitAsync(repository.WorkingDirectory, cancellationToken, arguments.ToArray());
+            var hashes = output
+                .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+            var targetIndex = hashes.FindIndex(hash => string.Equals(hash, targetHash, StringComparison.Ordinal));
+            if (targetIndex >= 0) return targetIndex;
+            if (hashes.Count < maxCount || maxCount == int.MaxValue) return -1;
+
+            maxCount = (int)Math.Min((long)maxCount * 2, int.MaxValue);
+        }
     }
 
     private async Task<List<CommitHistoryItem>> ReadHistoryThroughAsync(
