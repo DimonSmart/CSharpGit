@@ -133,7 +133,11 @@ public sealed class ForcePushWithLeaseTests : IDisposable
             () => service.PrepareForcePushWithLeaseAsync(repository, "origin", "main"));
         Assert.Equal(ForcePushPreparationFailure.MultiplePushDestinations, multiple.Failure);
 
-        Git(_root, "remote", "set-url", "--delete", "--push", "origin", secondRemote);
+        // remote set-url --delete treats the URL as a regex, so a Windows path
+        // containing backslashes is not a portable exact-match deletion pattern.
+        // Clear the synthetic pushurl list instead; origin then falls back to its
+        // ordinary fetch URL, which is the single-destination state this test needs.
+        Git(_root, "config", "--unset-all", "remote.origin.pushurl");
         Git(_root, "checkout", "--detach", "HEAD");
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => service.PrepareForcePushWithLeaseAsync(repository, "origin", "main"));
