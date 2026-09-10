@@ -31,32 +31,64 @@ public sealed partial class MainPage
         ClearWorkingTreeDiffViewer(clearSelectionKind: true);
     }
 
-    private void WorkingTreeUnstagedSelectionChanged(object sender, SelectionChangedEventArgs args)
+    private void WorkingTreeUnstagedSelectionChanged(object sender, SelectionChangedEventArgs args) =>
+        SynchronizeWorkingTreeSelection(UnstagedChangesList, WorkingTreeDiffKind.Unstaged, args);
+
+    private void WorkingTreeStagedSelectionChanged(object sender, SelectionChangedEventArgs args) =>
+        SynchronizeWorkingTreeSelection(StagedChangesList, WorkingTreeDiffKind.Staged, args);
+
+    private void SynchronizeWorkingTreeSelection(ListView list, WorkingTreeDiffKind kind, SelectionChangedEventArgs args)
     {
-        if (_workingTreeSelectionSync || UnstagedChangesList.SelectedItem is not WorkingTreeChange change) return;
+        if (_workingTreeSelectionSync) return;
 
-        _workingTreeSelectionSync = true;
-        try { StagedChangesList.SelectedItem = null; }
-        finally { _workingTreeSelectionSync = false; }
+        var selected = list.SelectedItems.OfType<WorkingTreeChange>().ToArray();
+        _viewModel.SetWorkingTreeSelection(kind, selected);
 
-        SelectWorkingTreeChange(change, WorkingTreeDiffKind.Unstaged);
+        if (args.AddedItems.OfType<WorkingTreeChange>().LastOrDefault() is { } activated)
+        {
+            SelectWorkingTreeChange(activated, kind);
+            return;
+        }
+
+        if (_viewModel.ActiveWorkingTreeDiffKind != kind || _viewModel.ActiveWorkingTreeChange is not { } active)
+            return;
+
+        if (selected.Any(change => SameWorkingTreeChange(change, active))) return;
+
+        if (selected.LastOrDefault() is { } fallback)
+        {
+            SelectWorkingTreeChange(fallback, kind);
+            return;
+        }
+
+        QueueActiveSelectionValidation(list, kind, active);
     }
 
-    private void WorkingTreeStagedSelectionChanged(object sender, SelectionChangedEventArgs args)
+    private void QueueActiveSelectionValidation(ListView list, WorkingTreeDiffKind kind, WorkingTreeChange active)
     {
-        if (_workingTreeSelectionSync || StagedChangesList.SelectedItem is not WorkingTreeChange change) return;
+        void Validate()
+        {
+            if (_viewModel.ActiveWorkingTreeDiffKind != kind ||
+                _viewModel.ActiveWorkingTreeChange is not { } current ||
+                !SameWorkingTreeChange(current, active) ||
+                list.SelectedItems.Count != 0)
+                return;
 
-        _workingTreeSelectionSync = true;
-        try { UnstagedChangesList.SelectedItem = null; }
-        finally { _workingTreeSelectionSync = false; }
+            ClearActiveWorkingTreeChange();
+        }
 
-        SelectWorkingTreeChange(change, WorkingTreeDiffKind.Staged);
+        if (DispatcherQueue.TryEnqueue(() =>
+        {
+            if (!DispatcherQueue.TryEnqueue(Validate)) Validate();
+        })) return;
+
+        Validate();
     }
 
     private void SelectWorkingTreeChange(WorkingTreeChange change, WorkingTreeDiffKind kind)
     {
-        _viewModel.SelectedChange = change;
-        _viewModel.SelectedWorkingTreeDiffKind = kind;
+        _viewModel.ActiveWorkingTreeChange = change;
+        _viewModel.ActiveWorkingTreeDiffKind = kind;
         _desiredWorkingTreePath = change.Path;
         _ = LoadWorkingTreeDiffAsync(change, kind);
     }
@@ -64,7 +96,7 @@ public sealed partial class MainPage
     private async Task LoadWorkingTreeDiffAsync(WorkingTreeChange change, WorkingTreeDiffKind kind)
     {
         CancelWorkingTreeDiff(clearViewer: true);
-        _viewModel.SelectedWorkingTreeDiffKind = kind;
+        _viewModel.ActiveWorkingTreeDiffKind = kind;
 
         var repository = _viewModel.Repository;
         var service = _workingTreeDiffService;
@@ -131,14 +163,11 @@ public sealed partial class MainPage
             generation != _workingTreeDiffGeneration ||
             WorkingTreePane.Visibility != Visibility.Visible ||
             !ReferenceEquals(repository, _viewModel.Repository) ||
-            _viewModel.SelectedWorkingTreeDiffKind != kind ||
-            _viewModel.SelectedChange is not { } selected)
+            _viewModel.ActiveWorkingTreeDiffKind != kind ||
+            _viewModel.ActiveWorkingTreeChange is not { } selected)
             return false;
 
-        return string.Equals(selected.Path, change.Path, StringComparison.Ordinal) &&
-               selected.IndexStatus == change.IndexStatus &&
-               selected.WorkingTreeStatus == change.WorkingTreeStatus &&
-               string.Equals(selected.OriginalPath, change.OriginalPath, StringComparison.Ordinal);
+        return SameWorkingTreeChange(selected, change);
     }
 
     private void WorkingTreeChangesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs args)
@@ -163,9 +192,15 @@ public sealed partial class MainPage
 
     private void RestoreWorkingTreeSelection()
     {
-        if (WorkingTreePane.Visibility != Visibility.Visible || _desiredWorkingTreePath is null) return;
+        if (WorkingTreePane.Visibility != Visibility.Visible) return;
+        if (_viewModel.ActiveWorkingTreeChange is null || _viewModel.ActiveWorkingTreeDiffKind is null)
+        {
+            ClearWorkingTreeSelection();
+            return;
+        }
 
-        var kind = _viewModel.SelectedWorkingTreeDiffKind;
+        _desiredWorkingTreePath ??= _viewModel.ActiveWorkingTreeChange.Path;
+        var kind = _viewModel.ActiveWorkingTreeDiffKind;
         WorkingTreeChange? target = kind switch
         {
             WorkingTreeDiffKind.Unstaged => _unstagedChanges.FirstOrDefault(MatchesDesiredPath),
@@ -193,35 +228,49 @@ public sealed partial class MainPage
         _workingTreeSelectionSync = true;
         try
         {
-            UnstagedChangesList.SelectedItem = kind == WorkingTreeDiffKind.Unstaged ? target : null;
-            StagedChangesList.SelectedItem = kind == WorkingTreeDiffKind.Staged ? target : null;
+            if (kind == WorkingTreeDiffKind.Unstaged) UnstagedChangesList.SelectedItem = target;
+            else StagedChangesList.SelectedItem = target;
         }
         finally
         {
             _workingTreeSelectionSync = false;
         }
 
+        _viewModel.SetWorkingTreeSelection(kind.Value, [target]);
         SelectWorkingTreeChange(target, kind.Value);
     }
 
     private bool MatchesDesiredPath(WorkingTreeChange change) =>
         string.Equals(change.Path, _desiredWorkingTreePath, StringComparison.Ordinal);
 
+    private static bool SameWorkingTreeChange(WorkingTreeChange left, WorkingTreeChange right) =>
+        string.Equals(left.Path, right.Path, StringComparison.Ordinal) &&
+        left.IndexStatus == right.IndexStatus &&
+        left.WorkingTreeStatus == right.WorkingTreeStatus &&
+        string.Equals(left.OriginalPath, right.OriginalPath, StringComparison.Ordinal);
+
     private void ClearWorkingTreeSelection()
     {
         _workingTreeSelectionSync = true;
         try
         {
-            UnstagedChangesList.SelectedItem = null;
-            StagedChangesList.SelectedItem = null;
+            UnstagedChangesList.SelectedItems.Clear();
+            StagedChangesList.SelectedItems.Clear();
         }
         finally
         {
             _workingTreeSelectionSync = false;
         }
 
+        _viewModel.SetWorkingTreeSelection(WorkingTreeDiffKind.Unstaged, []);
+        _viewModel.SetWorkingTreeSelection(WorkingTreeDiffKind.Staged, []);
+        ClearActiveWorkingTreeChange();
+    }
+
+    private void ClearActiveWorkingTreeChange()
+    {
         _desiredWorkingTreePath = null;
-        _viewModel.SelectedChange = null;
+        _viewModel.ActiveWorkingTreeChange = null;
         ClearWorkingTreeDiffViewer(clearSelectionKind: true);
     }
 
@@ -244,7 +293,7 @@ public sealed partial class MainPage
         WorkingTreeDiffHeader.Text = string.Empty;
         WorkingTreeDiffKindText.Text = string.Empty;
         _viewModel.SelectedWorkingTreeDiff = null;
-        if (clearSelectionKind) _viewModel.SelectedWorkingTreeDiffKind = null;
+        if (clearSelectionKind) _viewModel.ActiveWorkingTreeDiffKind = null;
     }
 
     private static string BuildWorkingTreeDiffHeader(WorkingTreeChange change, WorkingTreeDiffKind kind)

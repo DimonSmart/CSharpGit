@@ -3,7 +3,7 @@ namespace CSharpGit.Application.Tests;
 public sealed class WorkingTreeDiffUiContractTests
 {
     [Fact]
-    public void WorkingTreeDiffUsesExplicitReadOnlyContractAndTypedSelection()
+    public void WorkingTreeDiffUsesExplicitReadOnlyContractAndSeparateBatchSelection()
     {
         var root = FindRepositoryRoot();
         var contract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IWorkingTreeDiffService.cs"));
@@ -16,12 +16,15 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("interface IWorkingTreeDiffService", contract);
         Assert.Contains("WorkingTreeChange change", contract);
         Assert.DoesNotContain("ReadDiffAsync", ExtractInterface(mutationContract, "IWorkingTreeService"));
-        Assert.Contains("SelectedWorkingTreeDiffKind", viewModel);
+        Assert.Contains("SelectedUnstagedChanges", viewModel);
+        Assert.Contains("SelectedStagedChanges", viewModel);
+        Assert.Contains("ActiveWorkingTreeChange", viewModel);
+        Assert.Contains("ActiveWorkingTreeDiffKind", viewModel);
         Assert.Contains("SelectedWorkingTreeDiff", viewModel);
     }
 
     [Fact]
-    public void WorkingTreeHasTwoListsResizableCompactDiffAndExclusiveSelection()
+    public void WorkingTreeHasExtendedMultiSelectionIndependentListsAndSingleActivePreview()
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
@@ -30,19 +33,57 @@ public sealed class WorkingTreeDiffUiContractTests
 
         Assert.Contains("x:Name=\"UnstagedChangesList\"", xaml);
         Assert.Contains("x:Name=\"StagedChangesList\"", xaml);
+        Assert.True(Count(xaml, "SelectionMode=\"Extended\"") >= 2);
+        Assert.Contains("Content=\"Stage selected\"", xaml);
+        Assert.Contains("Content=\"Stage all\"", xaml);
+        Assert.Contains("Content=\"Unstage selected\"", xaml);
+        Assert.Contains("Content=\"Unstage all\"", xaml);
+        Assert.Contains("DiscardConfirmationMessage", xaml);
+        Assert.Contains("SynchronizeWorkingTreeSelection", workingTree);
+        Assert.Contains("list.SelectedItems.OfType<WorkingTreeChange>()", workingTree);
+        Assert.Contains("args.AddedItems.OfType<WorkingTreeChange>().LastOrDefault()", workingTree);
+        Assert.Contains("SetWorkingTreeSelection", workingTree);
+        Assert.DoesNotContain("try { StagedChangesList.SelectedItem = null; }", workingTree);
+        Assert.DoesNotContain("try { UnstagedChangesList.SelectedItem = null; }", workingTree);
+
         Assert.Contains("x:Name=\"WorkingTreeCompactDiffList\"", xaml);
         Assert.Contains("controls:GridSplitter", xaml);
         Assert.Contains("Text=\"OLD\"", xaml);
         Assert.Contains("Text=\"NEW\"", xaml);
         Assert.Contains("WorkingTreeDiffKindText", xaml);
-        Assert.Contains("StagedChangesList.SelectedItem = null", workingTree);
-        Assert.Contains("UnstagedChangesList.SelectedItem = null", workingTree);
-
         Assert.Contains("CompactResource<Style>(\"CompactDiffItemContainerStyle\")", workingTree);
         Assert.Contains("CompactResource<DataTemplate>(\"CompactDiffItemTemplate\")", workingTree);
         Assert.Contains("CompactDiffList.ItemContainerStyle = CompactResource<Style>(\"CompactDiffItemContainerStyle\")", compactLayout);
         Assert.Contains("CompactDiffList.ItemTemplate = CompactResource<DataTemplate>(\"CompactDiffItemTemplate\")", compactLayout);
         Assert.Contains("CompactDiffLine.Build", workingTree);
+    }
+
+    [Fact]
+    public void BatchStagingUsesOnePathspecOperationAndHandlesUnbornRepositories()
+    {
+        var root = FindRepositoryRoot();
+        var contract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryStateService.cs"));
+        var staging = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCliRepositoryService.Staging.cs"));
+        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
+
+        foreach (var member in new[] { "StageFilesAsync", "UnstageFilesAsync", "UnstageAllAsync" })
+            Assert.Contains(member, ExtractInterface(contract, "IWorkingTreeService"));
+
+        Assert.Contains("HashSet<string>(StringComparer.Ordinal)", staging);
+        Assert.Contains("change.OriginalPath", staging);
+        Assert.Contains("[command, \"--\", .. BatchPaths(changes)]", staging);
+        Assert.Contains("\"restore\", \"--staged\", \"--\", .. paths", staging);
+        Assert.Contains("\"rm\", \"--cached\", \"--force\"", staging);
+        Assert.Contains("\"reset\", \"--mixed\"", staging);
+        Assert.DoesNotContain("foreach (var change in changes)\n            await", staging);
+
+        Assert.Contains("_selectedUnstagedChanges.ToArray()", viewModel);
+        Assert.Contains("_selectedStagedChanges.ToArray()", viewModel);
+        Assert.Contains("WaitAsync(0)", viewModel);
+        Assert.Contains("Conflicts.Any(conflict => !conflict.IsResolved)", viewModel);
+        Assert.Contains("ClearWorkingTreePresentationSelection", viewModel);
+        Assert.Contains("Could not stage selected files", viewModel);
+        Assert.Contains("Could not unstage selected files", viewModel);
     }
 
     [Fact]
@@ -52,6 +93,7 @@ public sealed class WorkingTreeDiffUiContractTests
         var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs"));
         var git = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCliRepositoryService.cs"));
         var gitDiff = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCliRepositoryService.WorkingTreeDiff.cs"));
+        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
 
         Assert.Contains("CancellationTokenSource", workingTree);
         Assert.Contains("_workingTreeDiffGeneration", workingTree);
@@ -66,6 +108,9 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("\"restore\", \"--worktree\", \"--\", change.Path", discard);
         Assert.DoesNotContain("\"--source=HEAD\"", discard);
         Assert.DoesNotContain("\"--staged\"", discard);
+        Assert.Contains("_selectedUnstagedChanges.Count == 1", viewModel);
+        Assert.Contains("PendingDiscard = _selectedUnstagedChanges.Count == 1", viewModel);
+        Assert.Contains("PendingDiscard.Path", viewModel);
 
         Assert.Contains("\"--cached\"", gitDiff);
         Assert.Contains("\"--no-ext-diff\"", gitDiff);
@@ -75,6 +120,9 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("process.ExitCode is not 0 and not 1", gitDiff);
         Assert.Contains("ParseDiffLines(output)", gitDiff);
     }
+
+    private static int Count(string value, string fragment) =>
+        (value.Length - value.Replace(fragment, string.Empty, StringComparison.Ordinal).Length) / fragment.Length;
 
     private static string ExtractInterface(string source, string name)
     {

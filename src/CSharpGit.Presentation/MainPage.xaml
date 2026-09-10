@@ -385,25 +385,29 @@
               <Grid Grid.Column="0" RowDefinitions="*,12,*">
                 <Grid Grid.Row="0" RowDefinitions="Auto,*,Auto">
                   <TextBlock x:Name="UnstagedHeader" Text="Unstaged changes" FontWeight="SemiBold" Margin="0,0,0,6" />
-                  <ListView x:Name="UnstagedChangesList" Grid.Row="1" SelectionChanged="UnstagedChangesList_SelectionChanged">
+                  <ListView x:Name="UnstagedChangesList" Grid.Row="1" SelectionMode="Extended">
                     <ListView.ItemTemplate>
                       <DataTemplate><Grid ColumnDefinitions="32,*" Padding="6,3"><TextBlock Text="{Binding WorkingTreeStatus}" FontFamily="Consolas" /><TextBlock Grid.Column="1" Text="{Binding Path}" /></Grid></DataTemplate>
                     </ListView.ItemTemplate>
                   </ListView>
                   <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
-                    <Button Content="Stage" Command="{Binding StageCommand}" />
+                    <Button Content="Stage selected" Command="{Binding StageSelectedCommand}" />
+                    <Button Content="Stage all" Command="{Binding StageAllCommand}" />
                     <Button Content="Discard…" Command="{Binding RequestDiscardCommand}" />
                   </StackPanel>
                 </Grid>
 
                 <Grid Grid.Row="2" RowDefinitions="Auto,*,Auto">
                   <TextBlock x:Name="StagedHeader" Text="Staged changes" FontWeight="SemiBold" Margin="0,0,0,6" />
-                  <ListView x:Name="StagedChangesList" Grid.Row="1" SelectionChanged="StagedChangesList_SelectionChanged">
+                  <ListView x:Name="StagedChangesList" Grid.Row="1" SelectionMode="Extended">
                     <ListView.ItemTemplate>
                       <DataTemplate><Grid ColumnDefinitions="32,*" Padding="6,3"><TextBlock Text="{Binding IndexStatus}" FontFamily="Consolas" /><TextBlock Grid.Column="1" Text="{Binding Path}" /></Grid></DataTemplate>
                     </ListView.ItemTemplate>
                   </ListView>
-                  <Button Grid.Row="2" Content="Unstage" Command="{Binding UnstageCommand}" HorizontalAlignment="Left" Margin="0,6,0,0" />
+                  <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+                    <Button Content="Unstage selected" Command="{Binding UnstageSelectedCommand}" />
+                    <Button Content="Unstage all" Command="{Binding UnstageAllCommand}" />
+                  </StackPanel>
                 </Grid>
               </Grid>
 
@@ -455,7 +459,7 @@
                   <Button Content="Create empty commit" Command="{Binding ConfirmEmptyCommitCommand}" />
                   <Button Content="Cancel" Command="{Binding CancelCommitCommand}" />
                 </StackPanel>
-                <InfoBar IsOpen="True" Severity="Warning" Title="Confirm discarding unstaged changes" Message="This action restores the working-tree version from the index (or deletes an untracked file). Staged changes are preserved." Visibility="{Binding DiscardConfirmationVisibility}" IsClosable="False">
+                <InfoBar IsOpen="True" Severity="Warning" Title="Confirm discarding unstaged changes" Message="{Binding DiscardConfirmationMessage}" Visibility="{Binding DiscardConfirmationVisibility}" IsClosable="False">
                   <InfoBar.ActionButton><Button Content="Confirm discard" Command="{Binding ConfirmDiscardCommand}" /></InfoBar.ActionButton>
                 </InfoBar>
                 <Button Content="Cancel discard" Command="{Binding CancelDiscardCommand}" Visibility="{Binding DiscardConfirmationVisibility}" HorizontalAlignment="Left" />
