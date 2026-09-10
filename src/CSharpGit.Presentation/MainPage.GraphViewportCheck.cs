@@ -54,6 +54,7 @@ public sealed partial class MainPage
                     Check(graph is not null, $"history row {index} has no commit graph control", failures);
                     Check(graph?.HasCurrentRenderForCheck() == true,
                         $"history row {index} did not paint its current graph after viewport recycle", failures);
+                    CheckAdjacentHistoryGraphSurfaces(index, failures);
                 }
             }
 
@@ -72,12 +73,78 @@ public sealed partial class MainPage
                 Check(HistoryList.ContainerFromItem(first) is ListViewItem firstContainer
                       && FindDescendant<CommitGraphControl>(firstContainer)?.HasCurrentRenderForCheck() == true,
                     "commit graph was stale after returning to the top of history", failures);
+                CheckAdjacentHistoryGraphSurfaces(0, failures);
             }
         }
         finally
         {
             HistoryPane.RowDefinitions[3].Height = originalDetailsHeight;
         }
+    }
+
+    private void CheckAdjacentHistoryGraphSurfaces(int anchorIndex, ICollection<string> failures)
+    {
+        const double tolerance = 0.25;
+        var checkedPair = false;
+        var firstIndex = Math.Max(0, anchorIndex - 2);
+        var lastIndex = Math.Min(_viewModel.History.Count - 2, anchorIndex + 2);
+
+        for (var index = firstIndex; index <= lastIndex; index++)
+        {
+            var firstRow = _viewModel.History[index];
+            var secondRow = _viewModel.History[index + 1];
+            if (HistoryList.ContainerFromItem(firstRow) is not ListViewItem firstContainer
+                || HistoryList.ContainerFromItem(secondRow) is not ListViewItem secondContainer)
+            {
+                continue;
+            }
+
+            var firstGraph = FindDescendant<CommitGraphControl>(firstContainer);
+            var secondGraph = FindDescendant<CommitGraphControl>(secondContainer);
+            if (firstGraph is null || secondGraph is null)
+            {
+                continue;
+            }
+
+            Point firstGraphTop;
+            Point secondGraphTop;
+            Point firstContainerTop;
+            Point secondContainerTop;
+            try
+            {
+                firstGraphTop = firstGraph.TransformToVisual(HistoryList).TransformPoint(new Point(0, 0));
+                secondGraphTop = secondGraph.TransformToVisual(HistoryList).TransformPoint(new Point(0, 0));
+                firstContainerTop = firstContainer.TransformToVisual(HistoryList).TransformPoint(new Point(0, 0));
+                secondContainerTop = secondContainer.TransformToVisual(HistoryList).TransformPoint(new Point(0, 0));
+            }
+            catch (InvalidOperationException)
+            {
+                continue;
+            }
+
+            checkedPair = true;
+            Check(Math.Abs(firstGraphTop.Y - firstContainerTop.Y) <= tolerance,
+                $"history graph row {index} starts {firstGraphTop.Y - firstContainerTop.Y:0.###} px below its row surface",
+                failures);
+            Check(Math.Abs(firstGraph.ActualHeight - firstContainer.ActualHeight) <= tolerance,
+                $"history graph row {index} height {firstGraph.ActualHeight:0.###} does not fill row height {firstContainer.ActualHeight:0.###}",
+                failures);
+            Check(Math.Abs(secondGraphTop.Y - secondContainerTop.Y) <= tolerance,
+                $"history graph row {index + 1} starts {secondGraphTop.Y - secondContainerTop.Y:0.###} px below its row surface",
+                failures);
+            Check(Math.Abs(secondGraph.ActualHeight - secondContainer.ActualHeight) <= tolerance,
+                $"history graph row {index + 1} height {secondGraph.ActualHeight:0.###} does not fill row height {secondContainer.ActualHeight:0.###}",
+                failures);
+
+            var gap = secondGraphTop.Y - (firstGraphTop.Y + firstGraph.ActualHeight);
+            Check(Math.Abs(gap) <= tolerance,
+                $"history graph surfaces between rows {index} and {index + 1} have a vertical gap of {gap:0.###} px",
+                failures);
+        }
+
+        Check(checkedPair,
+            $"no adjacent realized history rows were available around row {anchorIndex} for graph continuity verification",
+            failures);
     }
 
     private async Task RunDesktopDensityCheckAsync(List<string> failures)
