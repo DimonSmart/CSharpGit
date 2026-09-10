@@ -160,7 +160,7 @@ public sealed partial class MainPage
         var deleteLocal = deleteLocalCheckBox?.IsChecked == true && target.LocalBranch is { IsCurrent: false };
         Exception? localFailure = null;
 
-        var mutationSucceeded = await _viewModel.RunMutationAsync(
+        await _viewModel.RunMutationAsync(
             async () =>
             {
                 await _referenceService.DeleteRemoteBranchAsync(
@@ -168,6 +168,7 @@ public sealed partial class MainPage
                     target.Remote.Name,
                     target.BranchName);
 
+                _viewModel.SelectedRemoteBranch = null;
                 if (string.Equals(_activeReference, remoteBranch.Name, StringComparison.Ordinal))
                 {
                     ShowAllHistory();
@@ -198,12 +199,6 @@ public sealed partial class MainPage
             await ShowErrorAsync(
                 "Remote branch deleted; local branch retained",
                 $"Remote branch '{remoteBranch.Name}' was deleted, but local branch '{retainedLocalBranch.Name}' could not be deleted.\n\nGit: {localFailure.Message}");
-            return;
-        }
-
-        if (!mutationSucceeded)
-        {
-            return;
         }
     }
 }
