@@ -24,6 +24,7 @@ public sealed partial class MainPage
         _commitFiles.CollectionChanged += CommitFiles_CollectionChanged;
         _viewModel.PropertyChanged += ChangesViewModel_PropertyChanged;
 
+        UpdateCommitDiffHeaderRow();
         RebuildChangedFileTree();
         RebuildCompactDiff();
     }
@@ -45,9 +46,26 @@ public sealed partial class MainPage
     private void ChangesViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (args.PropertyName == nameof(OpenRepositoryViewModel.SelectedDiff))
+        {
+            UpdateCommitDiffHeaderRow();
             RebuildCompactDiff();
+        }
         else if (args.PropertyName == nameof(OpenRepositoryViewModel.SelectedFile))
             SyncChangedFileTreeSelection();
+    }
+
+    private void UpdateCommitDiffHeaderRow()
+    {
+        if (CompactDiffList.Parent is not Grid contentGrid ||
+            contentGrid.Parent is not Grid diffGrid ||
+            diffGrid.RowDefinitions.Count < 2)
+            return;
+
+        // Keep the textual header deterministic so the Uno/Skia ListView gets a bounded viewport.
+        // Binary and empty states collapse the header row completely.
+        diffGrid.RowDefinitions[0].Height = _viewModel.DiffVisibility == Visibility.Visible
+            ? new GridLength(22)
+            : new GridLength(0);
     }
 
     private void RebuildChangedFileTree()
