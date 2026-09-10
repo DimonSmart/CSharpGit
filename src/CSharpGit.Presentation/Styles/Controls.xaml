@@ -3,6 +3,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <Style x:Key="CompactButtonStyle" TargetType="Button">
+    <Setter Property="MinWidth" Value="0" />
     <Setter Property="MinHeight" Value="{StaticResource Height.Control}" />
     <Setter Property="Padding" Value="{StaticResource Padding.Control}" />
     <Setter Property="FontSize" Value="{StaticResource Font.Body}" />
@@ -24,11 +25,13 @@
 
   <Style x:Key="CompactTextBoxStyle" TargetType="TextBox">
     <Setter Property="MinHeight" Value="{StaticResource Height.Control}" />
+    <Setter Property="Padding" Value="{StaticResource Padding.Control}" />
     <Setter Property="FontSize" Value="{StaticResource Font.Body}" />
   </Style>
 
   <Style x:Key="CompactComboBoxStyle" TargetType="ComboBox">
     <Setter Property="MinHeight" Value="{StaticResource Height.Control}" />
+    <Setter Property="Padding" Value="{StaticResource Padding.Control}" />
     <Setter Property="FontSize" Value="{StaticResource Font.Body}" />
   </Style>
 

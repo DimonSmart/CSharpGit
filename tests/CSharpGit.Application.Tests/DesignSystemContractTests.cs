@@ -25,7 +25,8 @@ public sealed class DesignSystemContractTests
         {
             "Spacing.XS", "Spacing.S", "Spacing.M", "Spacing.L", "Spacing.XL", "Spacing.XXL",
             "Font.Caption", "Font.Body", "Font.Heading", "Font.Title",
-            "Height.DataRow", "Height.Control", "Height.Header", "Height.Toolbar", "Height.StatusBar", "Height.DiffRow",
+            "Height.DataRow", "Height.Control", "Height.Header", "Height.ColumnHeader", "Height.TabHeader",
+            "Height.Toolbar", "Height.StatusBar", "Height.DiffRow", "Height.CommitEditor",
             "Icon.Small", "Icon.Normal"
         })
             Assert.Contains($"x:Key=\"{key}\"", tokens);
@@ -33,7 +34,7 @@ public sealed class DesignSystemContractTests
         foreach (var style in new[]
         {
             "BodyTextStyle", "BodyStrongTextStyle", "SecondaryTextStyle", "CaptionTextStyle",
-            "PaneHeaderTextStyle", "SectionHeaderTextStyle", "TitleTextStyle", "DiffTextStyle"
+            "PaneHeaderTextStyle", "SectionHeaderTextStyle", "ToolbarProductTextStyle", "TitleTextStyle", "DiffTextStyle"
         })
             Assert.Contains($"x:Key=\"{style}\"", typography);
 
@@ -52,20 +53,30 @@ public sealed class DesignSystemContractTests
         var workspace = Read(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml");
 
         Assert.Contains("<x:Double x:Key=\"Height.DataRow\">24</x:Double>", tokens);
-        Assert.Contains("<x:Double x:Key=\"Height.Toolbar\">36</x:Double>", tokens);
+        Assert.Contains("<x:Double x:Key=\"Height.Header\">26</x:Double>", tokens);
+        Assert.Contains("<x:Double x:Key=\"Height.ColumnHeader\">24</x:Double>", tokens);
+        Assert.Contains("<x:Double x:Key=\"Height.TabHeader\">28</x:Double>", tokens);
+        Assert.Contains("<x:Double x:Key=\"Height.Toolbar\">34</x:Double>", tokens);
         Assert.Contains("<x:Double x:Key=\"Height.StatusBar\">22</x:Double>", tokens);
         Assert.Contains("<x:Double x:Key=\"Height.DiffRow\">20</x:Double>", tokens);
+        Assert.Contains("<x:Double x:Key=\"Height.CommitEditor\">60</x:Double>", tokens);
 
         Assert.Equal(2, Count(main, "ItemContainerStyle=\"{StaticResource WorkingTreeRowStyle}\""));
+        Assert.Contains("ItemContainerStyle=\"{StaticResource DenseTreeItemStyle}\"", main);
         Assert.Contains("ItemTemplate=\"{StaticResource RepositoryTreeItemTemplate}\"", main);
         Assert.Contains("ItemContainerStyle=\"{StaticResource HistoryRowStyle}\"", main);
         Assert.Contains("ItemTemplate=\"{StaticResource HistoryItemTemplate}\"", main);
+        Assert.Contains("ItemContainerStyle=\"{StaticResource ChangedFileRowStyle}\"", main);
         Assert.Contains("ItemTemplate=\"{StaticResource ChangedFileTreeItemTemplate}\"", main);
         Assert.True(Count(main, "ItemContainerStyle=\"{StaticResource DiffRowStyle}\"") >= 2);
         Assert.True(Count(main, "ItemTemplate=\"{StaticResource DiffItemTemplate}\"") >= 2);
         Assert.Contains("Style=\"{StaticResource ToolbarSurfaceStyle}\"", main);
         Assert.Contains("Style=\"{StaticResource StatusBarSurfaceStyle}\"", main);
+        Assert.Contains("Style=\"{StaticResource DenseColumnHeaderSurfaceStyle}\"", main);
         Assert.Contains("Style=\"{StaticResource PaneHeaderTextStyle}\"", main);
+
+        foreach (var name in new[] { "MainToolbar", "HistoryFilterToolbar", "HistoryColumnHeader", "ChangedFilesHeader", "StatusBar" })
+            Assert.Contains($"x:Name=\"{name}\"", main);
 
         Assert.Contains("x:Key=\"DenseListItemStyle\"", workspace);
         Assert.Contains("x:Key=\"DenseTreeItemStyle\"", workspace);
@@ -73,8 +84,33 @@ public sealed class DesignSystemContractTests
         Assert.Contains("x:Key=\"HistoryRowStyle\"", workspace);
         Assert.Contains("x:Key=\"ChangedFileRowStyle\"", workspace);
         Assert.Contains("x:Key=\"DiffRowStyle\"", workspace);
+        Assert.Contains("x:Key=\"DenseColumnHeaderSurfaceStyle\"", workspace);
+        Assert.Contains("x:Key=\"CompactPivotHeaderItemStyle\"", workspace);
+        Assert.Contains("primitives:ListViewItemPresenter", workspace);
         Assert.DoesNotContain("Height=\"24\"", workspace);
         Assert.DoesNotContain("Height=\"20\"", workspace);
+
+        Assert.DoesNotContain("Staged and unstaged changes are shown independently.", main);
+        Assert.Contains("ToolTipService.ToolTip=\"Stage selected\"", main);
+        Assert.Contains("AutomationProperties.Name=\"Stage selected\"", main);
+        Assert.Contains("ToolTipService.ToolTip=\"Discard selected changes\"", main);
+        Assert.Contains("AutomationProperties.Name=\"Discard selected changes\"", main);
+        Assert.Contains("AutomationProperties.Name=\"Commit message\"", main);
+    }
+
+    [Fact]
+    public void CommitGraphLayoutDoesNotOwnHistoryRowHeight()
+    {
+        var root = FindRepositoryRoot();
+        var metrics = Read(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphMetrics.cs");
+        var control = Read(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphControl.cs");
+        var builder = Read(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphGeometryBuilder.cs");
+
+        Assert.DoesNotContain("DefaultRowHeight", metrics);
+        Assert.DoesNotContain("DefaultRowHeight", control);
+        Assert.DoesNotContain("DefaultRowHeight", builder);
+        Assert.DoesNotContain("Height.DataRow", control);
+        Assert.DoesNotContain("desiredHeight", control);
     }
 
     [Fact]
