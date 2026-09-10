@@ -27,10 +27,11 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
         IsAvailable = Directory.Exists(Path);
         TileOpacity = IsAvailable ? 1d : 0.5d;
 
-        var openedText = CommitTimeFormatter.Format(
+        var formattedOpenedTime = CommitTimeFormatter.Format(
             LastOpenedUtc,
             commitTimeDisplayMode,
             DateTimeOffset.Now);
+        var openedText = $"Last opened {formattedOpenedTime}";
         Metadata = string.IsNullOrWhiteSpace(LastBranchName)
             ? openedText
             : $"{LastBranchName}  ·  {openedText}";
