@@ -10,10 +10,8 @@ public sealed partial class MainPage
     private ScrollViewer? _historyScrollViewer;
     private bool _isInfiniteHistoryLoading;
 
-    protected override void OnApplyTemplate()
+    private void InitializeHistoryInfiniteScroll()
     {
-        base.OnApplyTemplate();
-
         LoadMoreHistoryButton.Visibility = Visibility.Collapsed;
         HistoryList.Loaded -= HistoryList_Loaded;
         HistoryList.Loaded += HistoryList_Loaded;
