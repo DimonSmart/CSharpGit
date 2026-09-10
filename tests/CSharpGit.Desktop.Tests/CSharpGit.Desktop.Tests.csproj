@@ -12,6 +12,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/CSharpGit.Application/CSharpGit.Application.csproj" />
+    <ProjectReference Include="../../src/CSharpGit.Domain/CSharpGit.Domain.csproj" />
+    <Compile Include="../../src/CSharpGit.Presentation/RepositoryChangeMonitor.cs" Link="RepositoryChangeMonitor.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitTimeFormatter.cs" Link="CommitTime/CommitTimeFormatter.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphRowVisual.cs" Link="CommitGraph/CommitGraphRowVisual.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphMetrics.cs" Link="CommitGraph/CommitGraphMetrics.cs" />

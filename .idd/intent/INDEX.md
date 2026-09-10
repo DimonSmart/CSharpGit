@@ -37,3 +37,4 @@ opened.
 | IDD-0015 | ADR | Win32 rendering backend | Explicit Vulkan backend to avoid resize repaint artifacts while keeping GPU acceleration | — |
 | IDD-0016 | Spec | Recent repository images | Local logos, GitHub social previews, persistent cache and non-blocking start-screen integration | — |
 | IDD-0017 | Spec | Open diff file versions | Open Original/Changed, Reveal, safe snapshots and shared desktop shell integration | — |
+| IDD-0018 | Spec | Manual refresh and external changes | Explicit refresh ownership, debounced repository monitoring and refresh-required indicator | — |
