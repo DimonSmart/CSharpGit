@@ -1,0 +1,24 @@
+name: Verify domain types fix
+
+on:
+  push:
+    branches:
+      - fix/domain-commit-action-types
+    paths:
+      - .github/workflows/verify-domain-types-fix.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Initialize Git global config
+        run: touch "$HOME/.gitconfig"
+      - name: Test solution
+        run: dotnet test CSharpGit.slnx --configuration Release
