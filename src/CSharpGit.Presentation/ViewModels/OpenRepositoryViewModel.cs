@@ -198,9 +198,9 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
     public IReadOnlyList<string> MergeToolNames { get; } = MergeToolPresets.Known;
     public IReadOnlyList<MergeToolConfigurationKind> MergeToolKinds { get; } = Enum.GetValues<MergeToolConfigurationKind>();
     public IReadOnlyList<GitConfigurationScope> MergeToolScopes { get; } = Enum.GetValues<GitConfigurationScope>();
-    public Repository? Repository { get => _repository; private set { _repository = value; Notify(); Notify(nameof(RepositoryVisibility)); Notify(nameof(PickerVisibility)); Notify(nameof(RepositoryKind)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }
+    public Repository? Repository { get => _repository; private set { _repository = value; Notify(); Notify(nameof(RepositoryVisibility)); Notify(nameof(PickerVisibility)); Notify(nameof(RepositoryKind)); Notify(nameof(CanForcePushWithLease)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }
     public string? ErrorMessage { get => _errorMessage; private set { _errorMessage = value; Notify(); Notify(nameof(HasError)); } }
-    public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); Notify(nameof(BusyVisibility)); _openRepositoryCommand.RaiseCanExecuteChanged(); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
+    public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); Notify(nameof(BusyVisibility)); Notify(nameof(CanForcePushWithLease)); _openRepositoryCommand.RaiseCanExecuteChanged(); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
     public IReadOnlyList<UiChoice<ElementTheme>> Themes { get; } =
     [
         new("System", ElementTheme.Default),
@@ -276,12 +276,13 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
     public RebasePlanItem? SelectedRebaseItem { get => _selectedRebaseItem; set { _selectedRebaseItem = value; if (value is not null) { RebaseAction = value.Action.ToString().ToLowerInvariant(); RebaseMessage = value.NewMessage ?? value.Subject; } Notify(); RaiseCommands(); } }
     public string RebaseAction { get => _rebaseAction; set { _rebaseAction = value; Notify(); } }
     public string RebaseMessage { get => _rebaseMessage; set { _rebaseMessage = value; Notify(); } }
-    public RepositoryOperation CurrentOperation { get => _currentOperation; private set { _currentOperation = value; Notify(); RaiseCommands(); } }
+    public RepositoryOperation CurrentOperation { get => _currentOperation; private set { _currentOperation = value; Notify(); Notify(nameof(CanForcePushWithLease)); RaiseCommands(); } }
     public ConflictFile? SelectedConflict { get => _selectedConflict; set { _selectedConflict = value; Notify(); Notify(nameof(CurrentSideLabel)); Notify(nameof(IncomingSideLabel)); RaiseCommands(); } }
     public RepositoryOperationState OperationState { get => _operationState; private set { _operationState = value; Notify(); Notify(nameof(OperationVisibility)); RaiseCommands(); } }
     public string CurrentSideLabel => SelectedConflict?.CurrentLocalLabel ?? "Current/local";
     public string IncomingSideLabel => SelectedConflict?.IncomingRemoteLabel ?? "Incoming/remote";
     public Visibility OperationVisibility => OperationState.Kind == RepositoryOperation.None ? Visibility.Collapsed : Visibility.Visible;
+    public bool CanForcePushWithLease => Repository is not null && !IsBusy && CurrentOperation == RepositoryOperation.None && LocalBranches.Any(branch => branch.IsCurrent);
     public string MergeToolName { get => _mergeToolName; set { _mergeToolName = value; Notify(); RaiseCommands(); } }
     public MergeToolConfigurationKind MergeToolKind { get => _mergeToolKind; set { _mergeToolKind = value; Notify(); } }
     public GitConfigurationScope MergeToolScope { get => _mergeToolScope; set { _mergeToolScope = value; Notify(); } }
@@ -367,6 +368,7 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
         foreach (var change in state.Changes) Changes.Add(change);
         SelectedChange = Changes.FirstOrDefault();
         Replace(LocalBranches, state.Refs.LocalBranches);
+        Notify(nameof(CanForcePushWithLease));
         Replace(RemoteBranches, state.Refs.RemoteBranches);
         Replace(Remotes, state.Refs.Remotes);
         Replace(Tags, state.Refs.Tags);

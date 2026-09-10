@@ -1,69 +1,4 @@
-from pathlib import Path
-
-ROOT = Path.cwd()
-
-
-def read(path: str) -> str:
-    return (ROOT / path).read_text(encoding="utf-8")
-
-
-def write(path: str, content: str) -> None:
-    target = ROOT / path
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(content, encoding="utf-8")
-
-
-def replace_once(path: str, old: str, new: str) -> None:
-    text = read(path)
-    count = text.count(old)
-    if count != 1:
-        raise RuntimeError(f"{path}: expected one occurrence, found {count}: {old[:120]!r}")
-    write(path, text.replace(old, new, 1))
-
-
-vm = "src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.cs"
-replace_once(
-    vm,
-    "    public Repository? Repository { get => _repository; private set { _repository = value; Notify(); Notify(nameof(RepositoryVisibility)); Notify(nameof(PickerVisibility)); Notify(nameof(RepositoryKind)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }",
-    "    public Repository? Repository { get => _repository; private set { _repository = value; Notify(); Notify(nameof(RepositoryVisibility)); Notify(nameof(PickerVisibility)); Notify(nameof(RepositoryKind)); Notify(nameof(CanForcePushWithLease)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }")
-replace_once(
-    vm,
-    "    public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); Notify(nameof(BusyVisibility)); _openRepositoryCommand.RaiseCanExecuteChanged(); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }",
-    "    public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); Notify(nameof(BusyVisibility)); Notify(nameof(CanForcePushWithLease)); _openRepositoryCommand.RaiseCanExecuteChanged(); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }")
-replace_once(
-    vm,
-    "    public RepositoryOperation CurrentOperation { get => _currentOperation; private set { _currentOperation = value; Notify(); RaiseCommands(); } }",
-    "    public RepositoryOperation CurrentOperation { get => _currentOperation; private set { _currentOperation = value; Notify(); Notify(nameof(CanForcePushWithLease)); RaiseCommands(); } }")
-replace_once(
-    vm,
-    "    public Visibility OperationVisibility => OperationState.Kind == RepositoryOperation.None ? Visibility.Collapsed : Visibility.Visible;",
-    "    public Visibility OperationVisibility => OperationState.Kind == RepositoryOperation.None ? Visibility.Collapsed : Visibility.Visible;\n    public bool CanForcePushWithLease => Repository is not null && !IsBusy && CurrentOperation == RepositoryOperation.None && LocalBranches.Any(branch => branch.IsCurrent);")
-replace_once(
-    vm,
-    "        Replace(LocalBranches, state.Refs.LocalBranches);",
-    "        Replace(LocalBranches, state.Refs.LocalBranches);\n        Notify(nameof(CanForcePushWithLease));")
-
-xaml = "src/CSharpGit.Presentation/MainPage.xaml"
-replace_once(
-    xaml,
-    "            <Button Content=\"Force push with lease…\" Click=\"ForcePushWithLease_Click\" />",
-    "            <Button Content=\"Force push with lease…\" Click=\"ForcePushWithLease_Click\" IsEnabled=\"{Binding CanForcePushWithLease}\" />")
-replace_once(
-    xaml,
-    "                  <MenuFlyoutItem Text=\"Force push with lease…\" Click=\"ForcePushWithLease_Click\" />",
-    "                  <MenuFlyoutItem Text=\"Force push with lease…\" Click=\"ForcePushWithLease_Click\" IsEnabled=\"{Binding CanForcePushWithLease}\" />")
-
-ui_test = "tests/CSharpGit.Application.Tests/DesktopUiContractTests.cs"
-replace_once(
-    ui_test,
-    "        Assert.Contains(\"ForcePushWithLeaseAsync(repository, snapshot)\", forcePushPage);\n",
-    "        Assert.Contains(\"ForcePushWithLeaseAsync(repository, snapshot)\", forcePushPage);\n"
-    "        Assert.Equal(2, Count(xaml, \"IsEnabled=\\\"{Binding CanForcePushWithLease}\\\"\"));\n"
-    "        Assert.Contains(\"CanForcePushWithLease => Repository is not null && !IsBusy\", viewModel);\n"
-    "        Assert.Contains(\"CurrentOperation == RepositoryOperation.None\", viewModel);\n"
-    "        Assert.Contains(\"LocalBranches.Any(branch => branch.IsCurrent)\", viewModel);\n")
-
-write("tests/CSharpGit.Git.Tests/ForcePushWithLeaseRetryTests.cs", r'''using System.Diagnostics;
+using System.Diagnostics;
 using CSharpGit.Application.Exceptions;
 
 namespace CSharpGit.Git.Tests;
@@ -123,7 +58,7 @@ public sealed class ForcePushWithLeaseRetryTests : IDisposable
 
         Assert.Equal(PushResultKind.LeaseRejected, failure.ResultKind);
         Assert.True(File.Exists(_pushLog));
-        Assert.Equal(1, File.ReadAllLines(_pushLog).Length);
+        Assert.Single(File.ReadAllLines(_pushLog));
         Assert.Equal(advancedRemote, RemoteTip("main"));
     }
 
@@ -177,4 +112,3 @@ public sealed class ForcePushWithLeaseRetryTests : IDisposable
         catch (UnauthorizedAccessException) { }
     }
 }
-''')
