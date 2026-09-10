@@ -34,3 +34,4 @@ opened.
 | IDD-0012 | Spec | Repository tree navigation | Branch ordering, compact initial expansion and session expansion state | — |
 | IDD-0013 | Spec | Safe force push | Explicit force-with-lease snapshot, confirmation and CAS safety | — |
 | IDD-0014 | Spec | Commit actions and refresh stability | Selected-commit actions, exact Git semantics and stable state refresh | — |
+| IDD-0015 | ADR | Win32 rendering backend | Explicit Vulkan backend to avoid resize repaint artifacts while keeping GPU acceleration | — |
