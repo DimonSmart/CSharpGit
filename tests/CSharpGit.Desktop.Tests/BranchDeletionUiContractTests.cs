@@ -6,11 +6,13 @@ public sealed class BranchDeletionUiContractTests
     public void RepositoryTreeUsesConfirmedBranchDeletionWorkflow()
     {
         var root = FindRepositoryRoot();
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var treeState = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryTreeState.cs"));
         var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchDeletion.cs"));
 
-        Assert.Contains("RightTapped -= RepositoryTree_RightTapped", treeState, StringComparison.Ordinal);
-        Assert.Contains("RightTapped += RepositoryTreeBranchDeletion_RightTapped", treeState, StringComparison.Ordinal);
+        Assert.Contains("RightTapped=\"RepositoryTreeBranchDeletion_RightTapped\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("RightTapped -= RepositoryTree_RightTapped", treeState, StringComparison.Ordinal);
+        Assert.DoesNotContain("RightTapped += RepositoryTreeBranchDeletion_RightTapped", treeState, StringComparison.Ordinal);
         Assert.Contains("ConfirmDeleteLocalBranchAsync(branch)", workflow, StringComparison.Ordinal);
         Assert.Contains("Title = \"Delete local branch?\"", workflow, StringComparison.Ordinal);
         Assert.Contains("Title = \"Delete remote branch?\"", workflow, StringComparison.Ordinal);
