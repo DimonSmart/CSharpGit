@@ -36,6 +36,10 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Prepare Git test environment
+        shell: pwsh
+        run: New-Item -ItemType File -Force (Join-Path $HOME ".gitconfig") | Out-Null
+
       - name: Restore
         run: dotnet restore CSharpGit.slnx --property:Configuration=Release
 
