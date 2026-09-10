@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/implement-selected-commit-actions.yml
       - tools/apply_selected_commit_actions.py
+      - tools/fix_commit_action_labels.py
 
 permissions:
   contents: write
@@ -24,7 +25,9 @@ jobs:
       - name: Initialize Git global config
         run: touch "$HOME/.gitconfig"
       - name: Apply implementation patch
-        run: python3 tools/apply_selected_commit_actions.py
+        run: |
+          python3 tools/apply_selected_commit_actions.py
+          python3 tools/fix_commit_action_labels.py
       - name: Verify Git integration tests
         run: dotnet test tests/CSharpGit.Git.Tests/CSharpGit.Git.Tests.csproj --configuration Release
       - name: Verify application contract tests
