@@ -179,8 +179,5 @@ public sealed class GitReferenceHistoryTopologyRegressionTests : IDisposable
         return output.Trim();
     }
 
-    public void Dispose()
-    {
-        if (Directory.Exists(_temporaryDirectory)) Directory.Delete(_temporaryDirectory, true);
-    }
+    public void Dispose() => TestDirectory.Delete(_temporaryDirectory);
 }
