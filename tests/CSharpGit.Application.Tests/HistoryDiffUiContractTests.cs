@@ -62,6 +62,16 @@ public sealed class HistoryDiffUiContractTests
         Assert.True(compactDiff > contentRow);
     }
 
+    [Fact]
+    public void CompactLayoutKeepsCommitDiffContentRowExpandable()
+    {
+        var root = FindRepositoryRoot();
+        var compactLayout = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CompactLayout.cs"));
+
+        Assert.Contains("diffPane.RowDefinitions[1].Height = new GridLength(1, GridUnitType.Star);", compactLayout);
+        Assert.DoesNotContain("diffPane.RowDefinitions[1].Height = new GridLength(18);", compactLayout);
+    }
+
     private static string ExtractCommitChangesSurface(string xaml)
     {
         const string startMarker = "<PivotItem x:Name=\"FilesTab\" Header=\"Changes\">";
