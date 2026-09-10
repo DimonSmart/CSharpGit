@@ -13,6 +13,8 @@ public sealed partial class MainPage
     {
         base.OnApplyTemplate();
 
+        InitializeHistoryInfiniteScroll();
+
         Loaded -= RepositoryTreeState_Loaded;
         Loaded += RepositoryTreeState_Loaded;
         TryAttachRepositoryTreeStateTracking();
