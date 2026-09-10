@@ -31,7 +31,7 @@ public sealed class RepositoryPathService : IRepositoryPathService
                 throw new FileNotFoundException("The file is not present in the current working tree.", fullPath);
 
             var isFinal = index == parts.Length - 1;
-            FileAttributes attributes;
+            System.IO.FileAttributes attributes;
             try
             {
                 attributes = File.GetAttributes(current);
@@ -41,7 +41,7 @@ public sealed class RepositoryPathService : IRepositoryPathService
                 throw new InvalidOperationException("The working-tree path could not be validated safely.", exception);
             }
 
-            if ((attributes & FileAttributes.ReparsePoint) != 0 && (!isFinal || !allowFinalLink))
+            if ((attributes & System.IO.FileAttributes.ReparsePoint) != 0 && (!isFinal || !allowFinalLink))
                 throw new InvalidOperationException("Opening a path through a symbolic link or reparse point is not allowed.");
         }
 
