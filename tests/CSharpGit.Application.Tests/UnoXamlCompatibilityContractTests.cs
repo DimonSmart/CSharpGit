@@ -42,7 +42,7 @@ public sealed class UnoXamlCompatibilityContractTests
         var workspace = ReadWorkspace();
         var historyTemplate = Slice(workspace,
             "<DataTemplate x:Key=\"HistoryItemTemplate\"",
-            "</DataTemplate>");
+            "<DataTemplate x:Key=\"RepositoryTreeItemTemplate\">");
 
         Assert.Contains("<Thickness x:Key=\"Margin.HistoryColumnGap\">4,0,0,0</Thickness>", workspace);
         Assert.Equal(3, CountOccurrences(historyTemplate, "Margin=\"{StaticResource Margin.HistoryColumnGap}\""));
