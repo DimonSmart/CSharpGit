@@ -29,7 +29,7 @@ public sealed class WorkingTreeDiffUiContractTests
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs"));
-        var compactLayout = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CompactLayout.cs"));
+        var workspace = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
 
         Assert.Contains("x:Name=\"UnstagedChangesList\"", xaml);
         Assert.Contains("x:Name=\"StagedChangesList\"", xaml);
@@ -51,10 +51,12 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("Text=\"OLD\"", xaml);
         Assert.Contains("Text=\"NEW\"", xaml);
         Assert.Contains("WorkingTreeDiffKindText", xaml);
-        Assert.Contains("CompactResource<Style>(\"CompactDiffItemContainerStyle\")", workingTree);
-        Assert.Contains("CompactResource<DataTemplate>(\"CompactDiffItemTemplate\")", workingTree);
-        Assert.Contains("CompactDiffList.ItemContainerStyle = CompactResource<Style>(\"CompactDiffItemContainerStyle\")", compactLayout);
-        Assert.Contains("CompactDiffList.ItemTemplate = CompactResource<DataTemplate>(\"CompactDiffItemTemplate\")", compactLayout);
+        Assert.Contains("ItemContainerStyle=\"{StaticResource WorkingTreeRowStyle}\"", xaml);
+        Assert.Contains("ItemContainerStyle=\"{StaticResource DiffRowStyle}\"", xaml);
+        Assert.Contains("ItemTemplate=\"{StaticResource DiffItemTemplate}\"", xaml);
+        Assert.Contains("x:Key=\"WorkingTreeRowStyle\"", workspace);
+        Assert.Contains("x:Key=\"DiffRowStyle\"", workspace);
+        Assert.DoesNotContain("CompactResource<", workingTree);
         Assert.Contains("CompactDiffLine.Build", workingTree);
     }
 

@@ -3,11 +3,11 @@ namespace CSharpGit.Application.Tests;
 public sealed class HistoryDiffUiContractTests
 {
     [Fact]
-    public void HistoryDetailsUseHierarchicalChangesBesideCompactDiff()
+    public void HistoryDetailsUseHierarchicalChangesBesideSharedDenseDiff()
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
-        var compactResources = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "CompactWorkspaceResources.xaml"));
+        var workspace = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
         var changes = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs"));
         var tree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "ChangedFileTreeNode.cs"));
         var diff = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "CompactDiffLine.cs"));
@@ -16,17 +16,19 @@ public sealed class HistoryDiffUiContractTests
         Assert.Contains("x:Name=\"ChangedFilesTree\"", commitChangesSurface);
         Assert.Contains("x:Name=\"CompactDiffList\"", commitChangesSurface);
         Assert.Contains("Loaded=\"ChangesSurface_Loaded\"", commitChangesSurface);
-        Assert.Contains("OldLineNumber", commitChangesSurface);
-        Assert.Contains("NewLineNumber", commitChangesSurface);
-        Assert.Contains("DiffLineKindToBrushConverter", xaml);
+        Assert.Contains("ItemContainerStyle=\"{StaticResource DiffRowStyle}\"", commitChangesSurface);
+        Assert.Contains("ItemTemplate=\"{StaticResource DiffItemTemplate}\"", commitChangesSurface);
         Assert.DoesNotContain("<PivotItem Header=\"Diff\">", xaml);
         Assert.DoesNotContain("ItemsSource=\"{Binding SelectedCommit.Files}\"", xaml);
 
-        Assert.Contains("x:Key=\"CompactDiffItemContainerStyle\"", compactResources);
-        Assert.Contains("<ControlTemplate TargetType=\"ListViewItem\">", compactResources);
-        Assert.Contains("<Setter Property=\"MinHeight\" Value=\"0\" />", compactResources);
-        Assert.DoesNotContain("<Setter Property=\"Height\" Value=\"20\" />", compactResources);
-        Assert.Contains("<Grid ColumnDefinitions=\"38,38,*\" Height=\"20\">", compactResources);
+        Assert.Contains("x:Key=\"DiffRowStyle\"", workspace);
+        Assert.Contains("<ControlTemplate TargetType=\"ListViewItem\">", workspace);
+        Assert.Contains("Value=\"{StaticResource Height.DiffRow}\"", workspace);
+        Assert.Contains("x:Key=\"DiffItemTemplate\"", workspace);
+        Assert.Contains("ColumnDefinitions=\"38,38,*\"", workspace);
+        Assert.Contains("OldLineNumber", workspace);
+        Assert.Contains("NewLineNumber", workspace);
+        Assert.Contains("DiffLineKindToBrushConverter", workspace);
 
         Assert.Contains("ChangedFileTreeNode.Build", changes);
         Assert.Contains("CompactDiffLine.Build", changes);
@@ -63,13 +65,17 @@ public sealed class HistoryDiffUiContractTests
     }
 
     [Fact]
-    public void CompactLayoutKeepsCommitDiffContentRowExpandable()
+    public void CommitAndWorkingTreeDiffsShareOneProductionTemplate()
     {
         var root = FindRepositoryRoot();
-        var compactLayout = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CompactLayout.cs"));
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var workspace = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
 
-        Assert.Contains("diffPane.RowDefinitions[1].Height = new GridLength(1, GridUnitType.Star);", compactLayout);
-        Assert.DoesNotContain("diffPane.RowDefinitions[1].Height = new GridLength(18);", compactLayout);
+        Assert.Equal(2, Count(xaml, "ItemTemplate=\"{StaticResource DiffItemTemplate}\""));
+        Assert.Equal(2, Count(xaml, "ItemContainerStyle=\"{StaticResource DiffRowStyle}\""));
+        Assert.Equal(1, Count(workspace, "x:Key=\"DiffItemTemplate\""));
+        Assert.DoesNotContain("CompactDiffItemTemplate", xaml);
+        Assert.DoesNotContain("CompactDiffItemTemplate", workspace);
     }
 
     private static string ExtractCommitChangesSurface(string xaml)
@@ -84,6 +90,9 @@ public sealed class HistoryDiffUiContractTests
 
         return xaml[start..(end + endMarker.Length)];
     }
+
+    private static int Count(string value, string fragment) =>
+        (value.Length - value.Replace(fragment, string.Empty, StringComparison.Ordinal).Length) / fragment.Length;
 
     private static string FindRepositoryRoot()
     {

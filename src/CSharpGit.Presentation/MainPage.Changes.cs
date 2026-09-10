@@ -21,12 +21,10 @@ public sealed partial class MainPage
 
         ChangedFilesTree.ItemsSource = _changedFileTreeRoots;
         CompactDiffList.ItemsSource = _compactDiffLines;
-        CompactDiffList.MinHeight = 96;
         _commitFiles.CollectionChanged += CommitFiles_CollectionChanged;
         _viewModel.PropertyChanged += ChangesViewModel_PropertyChanged;
 
         EnsureCurrentCommitFileSelection();
-        UpdateCommitDiffHeaderRow();
         RebuildChangedFileTree();
         RebuildCompactDiff();
     }
@@ -49,7 +47,6 @@ public sealed partial class MainPage
     {
         if (args.PropertyName == nameof(OpenRepositoryViewModel.SelectedDiff))
         {
-            UpdateCommitDiffHeaderRow();
             RebuildCompactDiff();
         }
         else if (args.PropertyName == nameof(OpenRepositoryViewModel.SelectedFile))
@@ -60,18 +57,6 @@ public sealed partial class MainPage
         {
             EnsureCurrentCommitFileSelection();
         }
-    }
-
-    private void UpdateCommitDiffHeaderRow()
-    {
-        if (CompactDiffList.Parent is not Grid contentGrid ||
-            contentGrid.Parent is not Grid diffGrid ||
-            diffGrid.RowDefinitions.Count < 2)
-            return;
-
-        diffGrid.RowDefinitions[0].Height = _viewModel.DiffVisibility == Visibility.Visible
-            ? new GridLength(30)
-            : new GridLength(0);
     }
 
     private void RebuildChangedFileTree()
