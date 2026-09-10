@@ -69,28 +69,15 @@
               Content="{TemplateBinding Content}"
               ContentTemplate="{TemplateBinding ContentTemplate}"
               ContentTransitions="{TemplateBinding ContentTransitions}"
+              Padding="{TemplateBinding Padding}"
               Control.IsTemplateFocusTarget="True"
               FocusVisualMargin="{TemplateBinding FocusVisualMargin}"
               FocusVisualPrimaryBrush="{TemplateBinding FocusVisualPrimaryBrush}"
               FocusVisualPrimaryThickness="{TemplateBinding FocusVisualPrimaryThickness}"
               FocusVisualSecondaryBrush="{TemplateBinding FocusVisualSecondaryBrush}"
               FocusVisualSecondaryThickness="{TemplateBinding FocusVisualSecondaryThickness}"
-              SelectionCheckMarkVisualEnabled="False"
-              CheckBrush="{ThemeResource ListViewItemCheckBrush}"
-              CheckBoxBrush="{ThemeResource ListViewItemCheckBoxBrush}"
-              FocusBorderBrush="{ThemeResource ListViewItemFocusBorderBrush}"
-              FocusSecondaryBorderBrush="{ThemeResource ListViewItemFocusSecondaryBorderBrush}"
-              PointerOverBackground="{ThemeResource ListViewItemBackgroundPointerOver}"
-              PointerOverForeground="{ThemeResource ListViewItemForegroundPointerOver}"
-              SelectedBackground="{ThemeResource ListViewItemBackgroundSelected}"
-              SelectedForeground="{ThemeResource ListViewItemForegroundSelected}"
-              SelectedPointerOverBackground="{ThemeResource ListViewItemBackgroundSelectedPointerOver}"
-              PressedBackground="{ThemeResource ListViewItemBackgroundPressed}"
-              SelectedPressedBackground="{ThemeResource ListViewItemBackgroundSelectedPressed}"
-              DisabledOpacity="{ThemeResource ListViewItemDisabledThemeOpacity}"
               HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
-              ContentMargin="{TemplateBinding Padding}" />
+              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
         </ControlTemplate>
       </Setter.Value>
     </Setter>
