@@ -21,6 +21,9 @@ public sealed class BranchDeletionUiContractTests
         Assert.Contains("IsEnabled = !localBranch.IsCurrent", workflow, StringComparison.Ordinal);
         Assert.Contains("The local branch is currently checked out and cannot be deleted.", workflow, StringComparison.Ordinal);
         Assert.Contains("AddMenuItem(flyout, \"Delete\", !_viewModel.IsBusy, () => ConfirmDeleteRemoteBranchAsync(remoteBranch))", workflow, StringComparison.Ordinal);
+        Assert.Equal(2, CountOccurrences(workflow, "Show branch history only"));
+        Assert.Contains("ShowReferenceHistoryAsync(branch.Name", workflow, StringComparison.Ordinal);
+        Assert.Contains("ShowReferenceHistoryAsync(remoteBranch.Name", workflow, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -35,6 +38,18 @@ public sealed class BranchDeletionUiContractTests
         Assert.Contains("catch (Exception exception) when (exception is not OperationCanceledException)", workflow, StringComparison.Ordinal);
         Assert.Contains("Remote branch '{remoteBranch.Name}' was deleted, but local branch '{retainedLocalBranch.Name}' could not be deleted.", workflow, StringComparison.Ordinal);
         Assert.Contains("ShowAllHistory();", workflow, StringComparison.Ordinal);
+    }
+
+    private static int CountOccurrences(string text, string value)
+    {
+        var count = 0;
+        var index = 0;
+        while ((index = text.IndexOf(value, index, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            index += value.Length;
+        }
+        return count;
     }
 
     private static string FindRepositoryRoot()

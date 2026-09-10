@@ -34,6 +34,8 @@ public sealed partial class MainPage
                 });
                 AddMenuItem(flyout, "Delete", !branch.IsCurrent && !_viewModel.IsBusy, () => ConfirmDeleteLocalBranchAsync(branch));
                 flyout.Items.Add(new MenuFlyoutSeparator());
+                AddMenuItem(flyout, "Show branch history only", !_viewModel.IsBusy,
+                    () => ShowReferenceHistoryAsync(branch.Name, $"Branch: {branch.Name}"));
                 AddMenuItem(flyout, "Copy branch name", true, () => CopyTextAsync(branch.Name));
                 break;
 
@@ -47,6 +49,8 @@ public sealed partial class MainPage
                 });
                 AddMenuItem(flyout, "Delete", !_viewModel.IsBusy, () => ConfirmDeleteRemoteBranchAsync(remoteBranch));
                 flyout.Items.Add(new MenuFlyoutSeparator());
+                AddMenuItem(flyout, "Show branch history only", !_viewModel.IsBusy,
+                    () => ShowReferenceHistoryAsync(remoteBranch.Name, $"Remote: {remoteBranch.Name}"));
                 AddMenuItem(flyout, "Copy branch name", true, () => CopyTextAsync(remoteBranch.Name));
                 break;
 
