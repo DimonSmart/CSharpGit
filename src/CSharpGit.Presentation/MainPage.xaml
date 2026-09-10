@@ -38,7 +38,7 @@
           </Grid>
           <StackPanel Orientation="Horizontal" Spacing="8">
             <Button Content="Push" Click="Push_Click" />
-            <Button Content="Force push with lease…" Click="ForcePushWithLease_Click" />
+            <Button Content="Force push with lease…" Click="ForcePushWithLease_Click" IsEnabled="{Binding CanForcePushWithLease}" />
             <Button Content="Fetch all" Command="{Binding FetchAllCommand}" />
           </StackPanel>
 
@@ -120,7 +120,7 @@
                 <MenuFlyout>
                   <MenuFlyoutItem Text="Push" Click="Push_Click" />
                   <MenuFlyoutSeparator />
-                  <MenuFlyoutItem Text="Force push with lease…" Click="ForcePushWithLease_Click" />
+                  <MenuFlyoutItem Text="Force push with lease…" Click="ForcePushWithLease_Click" IsEnabled="{Binding CanForcePushWithLease}" />
                 </MenuFlyout>
               </Button.Flyout>
             </Button>
