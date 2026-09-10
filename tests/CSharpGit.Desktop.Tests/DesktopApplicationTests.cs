@@ -108,7 +108,7 @@ public sealed class DesktopApplicationTests
     private static string? FindApplication()
     {
         var root = FindRepositoryRoot();
-        var name = OperatingSystem.IsWindows() ? "CSharpGit.Presentation.exe" : "CSharpGit.Presentation";
+        var name = OperatingSystem.IsWindows() ? "CSharpGit.exe" : "CSharpGit";
         var configuration = new DirectoryInfo(AppContext.BaseDirectory).Parent?.Name;
         if (!string.IsNullOrWhiteSpace(configuration))
         {
