@@ -568,7 +568,6 @@ public sealed partial class MainPage : Page
     }
 
     private async void MoreOperations_Click(object sender, RoutedEventArgs e) => await GitOperationsDialog.ShowAsync();
-    private async void Appearance_Click(object sender, RoutedEventArgs e) => await AppearanceDialog.ShowAsync();
 
     private async void ApplyHistoryFilter_Click(object sender, RoutedEventArgs e) => await RefreshVisibleHistoryAsync();
     private async void RefreshHistory_Click(object sender, RoutedEventArgs e) => await RefreshVisibleHistoryAsync();
@@ -686,15 +685,40 @@ public sealed partial class MainPage : Page
                 TimeSpan.FromSeconds(10));
             Check(_viewModel.Repository is not null, "repository did not open", failures);
             Check(_viewModel.Repository?.IsWorktree == (Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_WORKTREE") == "1"), "repository kind is incorrect", failures);
-            Check(_viewModel.Themes.Select(theme => theme.Label).SequenceEqual(["System", "Light", "Dark"]), "English theme labels are missing", failures);
             Check(_viewModel.Scopes.All(scope => scope.Label is "All references" or "Current branch"), "English history scopes are missing", failures);
 
-            await DispatcherQueue.EnqueueAsync(() =>
-            {
-                _viewModel.SelectedTheme = ElementTheme.Light;
-                _viewModel.SelectedTheme = ElementTheme.Dark;
-                _viewModel.SelectedTheme = ElementTheme.Default;
-            });
+            var settings = AppSettingsContext.Current;
+            await settings.SetThemeModeAsync(ApplicationThemeMode.System);
+            await WaitUntilAsync(() => RequestedTheme == ElementTheme.Default, TimeSpan.FromSeconds(5));
+            Check(RequestedTheme == ElementTheme.Default, "System theme did not clear the root override", failures);
+
+            await settings.SetThemeModeAsync(ApplicationThemeMode.Light);
+            await WaitUntilAsync(() => RequestedTheme == ElementTheme.Light, TimeSpan.FromSeconds(5));
+            Check(RequestedTheme == ElementTheme.Light, "Light theme was not applied to the main root", failures);
+
+            OpenSettingsWindow();
+            await WaitUntilAsync(() => _settingsPage is { RequestedTheme: ElementTheme.Light }, TimeSpan.FromSeconds(5));
+            Check(_settingsPage is { RequestedTheme: ElementTheme.Light }, "new settings root did not receive the current theme", failures);
+
+            var originalCommitTimeMode = settings.CommitTimeDisplayMode;
+            var alternateCommitTimeMode = originalCommitTimeMode == CommitTimeDisplayMode.Smart
+                ? CommitTimeDisplayMode.Relative
+                : CommitTimeDisplayMode.Smart;
+            await settings.SetCommitTimeDisplayModeAsync(alternateCommitTimeMode);
+            Check(RequestedTheme == ElementTheme.Light && _settingsPage is { RequestedTheme: ElementTheme.Light }, "unrelated settings change desynchronized the theme", failures);
+            await settings.SetCommitTimeDisplayModeAsync(originalCommitTimeMode);
+
+            await settings.SetThemeModeAsync(ApplicationThemeMode.Dark);
+            await WaitUntilAsync(
+                () => RequestedTheme == ElementTheme.Dark && _settingsPage is { RequestedTheme: ElementTheme.Dark },
+                TimeSpan.FromSeconds(5));
+            Check(RequestedTheme == ElementTheme.Dark, "Dark theme was not applied to the main root", failures);
+            Check(_settingsPage is { RequestedTheme: ElementTheme.Dark }, "Dark theme was not propagated to the settings root", failures);
+
+            CloseSettingsWindow();
+            await settings.SetThemeModeAsync(ApplicationThemeMode.System);
+            await WaitUntilAsync(() => RequestedTheme == ElementTheme.Default, TimeSpan.FromSeconds(5));
+            Check(RequestedTheme == ElementTheme.Default, "Dark to System did not clear the main root override", failures);
 
             Check(RepositoryWorkspace.ActualWidth > 0 && RepositoryWorkspace.ActualHeight > 0, "workspace was not laid out", failures);
             Check(HistoryList.ActualWidth > 0 && HistoryList.ActualHeight > 0, "history list was not laid out", failures);

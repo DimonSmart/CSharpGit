@@ -6,8 +6,9 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class SettingsPage : Page
 {
-    private readonly SettingsViewModel _viewModel = new();
+    private readonly SettingsViewModel _viewModel = new(AppSettingsContext.Current);
     private bool _selectionReady;
+    private bool _settingsDetached;
 
     public SettingsPage()
     {
@@ -27,6 +28,21 @@ public sealed partial class SettingsPage : Page
         var showDiagnostics = SettingsNavigation.SelectedIndex == 1;
         GeneralSettingsPanel.Visibility = showDiagnostics ? Visibility.Collapsed : Visibility.Visible;
         DiagnosticsSettingsPanel.Visibility = showDiagnostics ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private async void ThemeModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_selectionReady || ThemeModeComboBox.SelectedItem is not ApplicationThemeOption option) return;
+
+        SettingsError.IsOpen = false;
+        try
+        {
+            await _viewModel.ApplyThemeModeAsync(option);
+        }
+        catch (Exception exception)
+        {
+            ShowSettingsError(exception);
+        }
     }
 
     private async void CommitTimeModeList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -76,5 +92,13 @@ public sealed partial class SettingsPage : Page
     {
         SettingsError.Message = exception.Message;
         SettingsError.IsOpen = true;
+    }
+
+    internal void DetachSettings()
+    {
+        if (_settingsDetached) return;
+        _settingsDetached = true;
+        _selectionReady = false;
+        _viewModel.Dispose();
     }
 }
