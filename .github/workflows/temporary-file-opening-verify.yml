@@ -1,0 +1,21 @@
+name: Temporary file opening verification
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build desktop application
+        run: dotnet build src/CSharpGit.Presentation/CSharpGit.Presentation.csproj --configuration Release
+      - name: Test application contracts
+        run: dotnet test tests/CSharpGit.Application.Tests/CSharpGit.Application.Tests.csproj --configuration Release
+      - name: Test Git integration
+        run: dotnet test tests/CSharpGit.Git.Tests/CSharpGit.Git.Tests.csproj --configuration Release
