@@ -118,6 +118,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         var themeManager = _host.Services.GetRequiredService<ApplicationThemeManager>();
         var mainPage = _host.Services.GetRequiredService<MainPage>();
         mainPage.InitializeApplicationTheme(themeManager);
+        mainPage.InitializeRepositoryChangeMonitoring();
         mainPage.InitializeRecentRepositories(
             AppSettingsContext.Current,
             _host.Services.GetRequiredService<RecentRepositoryFolderPicker>());
@@ -160,12 +161,6 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 _window.DispatcherQueue.TryEnqueue(() => _window?.Close());
                 return;
             }
-
-            // The desktop check owns refresh timing. Window activation is not a
-            // repository change and must not race its deterministic initial load.
-            if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_RESULT"))) return;
-            if (_window.Content is FrameworkElement { DataContext: OpenRepositoryViewModel viewModel })
-                await viewModel.RefreshWhenActivatedAsync();
         };
         _window.Activate();
     }

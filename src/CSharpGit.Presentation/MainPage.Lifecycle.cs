@@ -12,6 +12,7 @@ public sealed partial class MainPage
 
         Loaded -= RunDesktopCheckWhenRequested;
         DetachRepositoryTreeStateTracking();
+        ShutdownRepositoryChangeMonitoring();
         _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
         CloseSettingsWindow();
 
