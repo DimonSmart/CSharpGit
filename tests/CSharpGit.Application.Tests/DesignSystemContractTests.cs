@@ -85,11 +85,21 @@ public sealed class DesignSystemContractTests
         var main = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
         var workingTree = File.ReadAllText(Path.Combine(presentation, "MainPage.WorkingTreeDiff.cs"));
         var changes = File.ReadAllText(Path.Combine(presentation, "MainPage.Changes.cs"));
+        var mainPageSources = Directory.EnumerateFiles(presentation, "MainPage*.cs")
+            .Select(File.ReadAllText)
+            .ToArray();
 
         Assert.False(File.Exists(Path.Combine(presentation, "MainPage.CompactLayout.cs")));
         Assert.False(File.Exists(Path.Combine(presentation, "CompactWorkspaceResources.xaml")));
 
-        Assert.DoesNotContain("CompactResource<", workingTree);
+        foreach (var source in mainPageSources)
+        {
+            Assert.DoesNotContain("_compactLayoutApplied", source);
+            Assert.DoesNotContain("ApplyCompactLayoutWhenLoaded", source);
+            Assert.DoesNotContain("ApplyCompactWorkspaceLayout", source);
+            Assert.DoesNotContain("CompactResource<", source);
+        }
+
         Assert.DoesNotContain(".ItemContainerStyle =", workingTree);
         Assert.DoesNotContain(".ItemTemplate =", workingTree);
         Assert.DoesNotContain(".MinHeight =", changes);
