@@ -541,7 +541,15 @@ public sealed partial class MainPage : Page
 
     private async void Fetch_Click(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(_viewModel.FetchCommand);
     private async void Pull_Click(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(_viewModel.PullCommand);
-    private async void Push_Click(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(_viewModel.PushCommand);
+    private async void Push_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button)
+        {
+            GitOperationsDialog.Hide();
+            await Task.Delay(20);
+        }
+        await PushFromUiAsync();
+    }
 
     private async void RefreshAll_Click(object sender, RoutedEventArgs e)
     {

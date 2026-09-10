@@ -409,7 +409,7 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
         var upstream = await RunOptionalGitAsync(repository.WorkingDirectory, cancellationToken, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}");
         if (!string.IsNullOrWhiteSpace(upstream) && remote is null && branch is null)
         {
-            await RunGitForMutationAsync(repository, cancellationToken, "push");
+            await RunPushAsync(repository, cancellationToken, "push", "--porcelain");
             return;
         }
         if (string.IsNullOrWhiteSpace(remote) || string.IsNullOrWhiteSpace(branch))
@@ -417,7 +417,10 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
         ValidateRefName(remote, nameof(remote));
         ValidateRefName(branch, nameof(branch));
         var refspec = $"{current}:refs/heads/{branch}";
-        await RunGitForMutationAsync(repository, cancellationToken, setUpstream ? ["push", "--set-upstream", remote, refspec] : ["push", remote, refspec]);
+        await RunPushAsync(repository, cancellationToken,
+            setUpstream
+                ? ["push", "--porcelain", "--set-upstream", remote, refspec]
+                : ["push", "--porcelain", remote, refspec]);
     }
 
     private async Task<GitReferences> ReadReferencesAsync(Repository repository, string currentBranch, CancellationToken cancellationToken)

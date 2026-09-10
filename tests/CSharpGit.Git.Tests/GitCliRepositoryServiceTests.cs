@@ -224,9 +224,10 @@ public sealed class GitCliRepositoryServiceTests : IDisposable
         var hook = Path.Combine(bare, "hooks", "pre-receive");
         File.WriteAllText(hook, "#!/bin/sh\necho 'Authentication failed by test remote' >&2\nexit 1\n");
         if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(hook, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-        var authenticationFailure = await Assert.ThrowsAsync<CSharpGit.Application.Exceptions.RepositoryOpenException>(
+        var authenticationFailure = await Assert.ThrowsAsync<CSharpGit.Application.Exceptions.PushRejectedException>(
             () => service.PushAsync(repository));
         Assert.Contains("Authentication failed", authenticationFailure.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(CSharpGit.Application.Exceptions.PushResultKind.AuthenticationOrTransportFailure, authenticationFailure.ResultKind);
     }
 
     [Fact]
