@@ -56,6 +56,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("VariableSizedWrapGrid", recentView);
         Assert.DoesNotContain("ItemsWrapGrid", recentView);
         Assert.Contains("Width=\"64\" Height=\"64\"", recentView);
+        Assert.Contains("Grid.RowSpan=\"3\"", recentView);
         Assert.Contains("Source=\"{Binding RepositoryImage}\"", recentView);
         Assert.Contains("RepositoryGlyphOpacity", recentView);
         Assert.Contains("ImageFailed=\"RepositoryImage_ImageFailed\"", recentView);
@@ -64,6 +65,9 @@ public sealed class RecentRepositoriesStartScreenContractTests
 
         Assert.Contains("Folder not found", recentViewModel);
         Assert.Contains("INotifyPropertyChanged", recentViewModel);
+        Assert.Contains("CommitTimeFormatter.Format", recentViewModel);
+        Assert.Contains("_settings.CommitTimeDisplayMode", recentViewModel);
+        Assert.DoesNotContain("Last opened {localOpened:g}", recentViewModel);
         Assert.Contains("GetCachedState(item.Path)", recentViewModel);
         Assert.Contains("item.SetRepositoryImagePath(cached.ImagePath)", recentViewModel);
         Assert.Contains("await Task.Yield()", recentViewModel);
