@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using CSharpGit.Application.Abstractions;
+using CSharpGit.Presentation.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 
@@ -15,6 +16,7 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
 
     internal RecentRepositoryItem(
         RecentRepositorySettings settings,
+        CommitTimeDisplayMode commitTimeDisplayMode,
         Func<RecentRepositoryItem, Task> openAsync,
         Func<RecentRepositoryItem, Task> removeAsync)
     {
@@ -25,8 +27,10 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
         IsAvailable = Directory.Exists(Path);
         TileOpacity = IsAvailable ? 1d : 0.5d;
 
-        var localOpened = LastOpenedUtc.ToLocalTime();
-        var openedText = $"Last opened {localOpened:g}";
+        var openedText = CommitTimeFormatter.Format(
+            LastOpenedUtc,
+            commitTimeDisplayMode,
+            DateTimeOffset.Now);
         Metadata = string.IsNullOrWhiteSpace(LastBranchName)
             ? openedText
             : $"{LastBranchName}  ·  {openedText}";
@@ -161,7 +165,11 @@ public sealed class RecentRepositoriesViewModel : IDisposable
         RecentRepositories.Clear();
         foreach (var settings in _settings.RecentRepositories)
         {
-            var item = new RecentRepositoryItem(settings, _openRecentAsync, RemoveAsync);
+            var item = new RecentRepositoryItem(
+                settings,
+                _settings.CommitTimeDisplayMode,
+                _openRecentAsync,
+                RemoveAsync);
             var cached = _repositoryImageService.GetCachedState(item.Path);
             item.SetRepositoryImagePath(cached.ImagePath);
             item.NeedsImageRefresh = cached.ShouldRefresh;
