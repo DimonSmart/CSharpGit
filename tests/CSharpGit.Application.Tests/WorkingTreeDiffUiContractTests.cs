@@ -34,10 +34,10 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("x:Name=\"UnstagedChangesList\"", xaml);
         Assert.Contains("x:Name=\"StagedChangesList\"", xaml);
         Assert.True(Count(xaml, "SelectionMode=\"Extended\"") >= 2);
-        Assert.Contains("Content=\"Stage selected\"", xaml);
-        Assert.Contains("Content=\"Stage all\"", xaml);
-        Assert.Contains("Content=\"Unstage selected\"", xaml);
-        Assert.Contains("Content=\"Unstage all\"", xaml);
+        Assert.Contains("Command=\"{Binding StageSelectedCommand}\"", xaml);
+        Assert.Contains("Command=\"{Binding StageAllCommand}\"", xaml);
+        Assert.Contains("Command=\"{Binding UnstageSelectedCommand}\"", xaml);
+        Assert.Contains("Command=\"{Binding UnstageAllCommand}\"", xaml);
         Assert.Contains("DiscardConfirmationMessage", xaml);
         Assert.Contains("SynchronizeWorkingTreeSelection", workingTree);
         Assert.Contains("list.SelectedItems.OfType<WorkingTreeChange>()", workingTree);
