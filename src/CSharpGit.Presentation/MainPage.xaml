@@ -1,4 +1,4 @@
-<Page x:Class="CSharpGit.Presentation.MainPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:CSharpGit.Presentation.Controls">
+<Page x:Class="CSharpGit.Presentation.MainPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:CSharpGit.Presentation.Controls" xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives">
   <Page.Resources>
     <ContentDialog x:Key="GitOperationsDialog" Title="Git operations" CloseButtonText="Close" DefaultButton="Close">
       <ScrollViewer MaxHeight="650" VerticalScrollBarVisibility="Auto">
@@ -98,11 +98,11 @@
     </StackPanel>
 
     <Grid x:Name="RepositoryWorkspace" Visibility="{Binding RepositoryVisibility}" RowDefinitions="Auto,Auto,*,Auto">
-      <Border Grid.Row="0" Style="{StaticResource ToolbarSurfaceStyle}">
+      <Border x:Name="MainToolbar" Grid.Row="0" Style="{StaticResource ToolbarSurfaceStyle}">
         <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto" ColumnSpacing="{StaticResource Spacing.M}">
           <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.M}" VerticalAlignment="Center">
             <FontIcon Glyph="&#xE8B7;" FontSize="{StaticResource Icon.Normal}" />
-            <TextBlock Text="CSharpGit" Style="{StaticResource TitleTextStyle}" VerticalAlignment="Center" />
+            <TextBlock Text="CSharpGit" Style="{StaticResource ToolbarProductTextStyle}" VerticalAlignment="Center" />
           </StackPanel>
           <Border Grid.Column="1" Width="1" Height="{StaticResource Height.DiffRow}" Background="{ThemeResource DividerStrokeColorDefaultBrush}" VerticalAlignment="Center" />
           <TextBlock Grid.Column="2"
@@ -199,6 +199,7 @@
             <TreeView x:Name="RepositoryTree"
                       Grid.Row="1"
                       Style="{StaticResource DenseTreeViewStyle}"
+                      ItemContainerStyle="{StaticResource DenseTreeItemStyle}"
                       ItemTemplate="{StaticResource RepositoryTreeItemTemplate}"
                       SelectionMode="Single"
                       ItemInvoked="RepositoryTree_ItemInvoked"
@@ -222,10 +223,10 @@
               <RowDefinition Height="Auto" />
               <RowDefinition Height="*" MinHeight="160" />
               <RowDefinition Height="4" />
-              <RowDefinition Height="260" MinHeight="130" />
+              <RowDefinition Height="220" MinHeight="120" />
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Style="{StaticResource ToolbarSurfaceStyle}">
+            <Border x:Name="HistoryFilterToolbar" Grid.Row="0" Style="{StaticResource ToolbarSurfaceStyle}">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.M}">
                 <TextBox x:Name="HistoryFilter"
                          Text="{Binding FilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -257,13 +258,13 @@
             </Border>
 
             <Grid Grid.Row="1" RowDefinitions="Auto,*">
-              <Border Style="{StaticResource PaneHeaderSurfaceStyle}">
+              <Border x:Name="HistoryColumnHeader" Style="{StaticResource DenseColumnHeaderSurfaceStyle}">
                 <Grid ColumnDefinitions="120,*,160,150,90">
-                  <TextBlock Text="GRAPH" Style="{StaticResource CaptionTextStyle}" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="1" Text="MESSAGE" Style="{StaticResource CaptionTextStyle}" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="2" Text="AUTHOR" Style="{StaticResource CaptionTextStyle}" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="3" Text="DATE" Style="{StaticResource CaptionTextStyle}" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="4" Text="HASH" Style="{StaticResource CaptionTextStyle}" VerticalAlignment="Center" />
+                  <TextBlock Text="GRAPH" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="MESSAGE" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="2" Text="AUTHOR" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="3" Text="DATE" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="4" Text="HASH" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
                 </Grid>
               </Border>
               <ListView x:Name="HistoryList"
@@ -288,7 +289,7 @@
                                    ResizeDirection="Rows"
                                    ResizeBehavior="PreviousAndNext"
                                    MinimumFirst="160"
-                                   MinimumSecond="130"
+                                   MinimumSecond="120"
                                    VerticalAlignment="Stretch"
                                    Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
@@ -296,13 +297,16 @@
                    Grid.Row="3"
                    HeaderTemplate="{StaticResource PivotHeaderTemplate}"
                    Visibility="{Binding DetailsVisibility}">
+              <Pivot.Resources>
+                <Style TargetType="primitives:PivotHeaderItem" BasedOn="{StaticResource CompactPivotHeaderItemStyle}" />
+              </Pivot.Resources>
               <PivotItem Header="Commit">
                 <ScrollViewer x:Name="DetailsScroller"
                               HorizontalScrollMode="Auto"
                               HorizontalScrollBarVisibility="Auto"
                               VerticalScrollMode="Auto"
                               VerticalScrollBarVisibility="Auto"
-                              MinHeight="130">
+                              MinHeight="120">
                   <StackPanel Padding="{StaticResource Padding.Form}" Spacing="{StaticResource Spacing.M}">
                     <TextBlock Text="{Binding SelectedCommit.Commit.Message}"
                                Style="{StaticResource SectionHeaderTextStyle}"
@@ -341,7 +345,7 @@
               </PivotItem>
 
               <PivotItem x:Name="FilesTab" Header="Changes">
-                <Grid MinHeight="130" Loaded="ChangesSurface_Loaded">
+                <Grid MinHeight="120" Loaded="ChangesSurface_Loaded">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="38*" MinWidth="210" />
                     <ColumnDefinition Width="4" />
@@ -349,7 +353,7 @@
                   </Grid.ColumnDefinitions>
 
                   <Grid RowDefinitions="Auto,*">
-                    <Border Style="{StaticResource PaneHeaderSurfaceStyle}">
+                    <Border x:Name="ChangedFilesHeader" Style="{StaticResource PaneHeaderSurfaceStyle}">
                       <Grid ColumnDefinitions="*,26,46,46">
                         <TextBlock Text="Changed files" Style="{StaticResource PaneHeaderTextStyle}" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="1" Text="S" Style="{StaticResource CaptionTextStyle}" HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -361,6 +365,7 @@
                     <TreeView x:Name="ChangedFilesTree"
                               Grid.Row="1"
                               Style="{StaticResource DenseTreeViewStyle}"
+                              ItemContainerStyle="{StaticResource ChangedFileRowStyle}"
                               ItemTemplate="{StaticResource ChangedFileTreeItemTemplate}"
                               SelectionMode="Single"
                               ItemInvoked="ChangedFilesTree_ItemInvoked" />
@@ -427,12 +432,14 @@
           <Grid x:Name="WorkingTreePane"
                 Visibility="Collapsed"
                 RowDefinitions="Auto,*,Auto"
-                Padding="{StaticResource Padding.Workspace}">
-            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-              <StackPanel Spacing="{StaticResource Spacing.XS}">
-                <TextBlock Text="Working tree" Style="{StaticResource PaneHeaderTextStyle}" />
-                <TextBlock Text="Staged and unstaged changes are shown independently." Style="{StaticResource SecondaryTextStyle}" />
-              </StackPanel>
+                Padding="{StaticResource Padding.WorkspaceCompact}">
+            <Grid x:Name="WorkingTreeHeader"
+                  ColumnDefinitions="*,Auto"
+                  MinHeight="{StaticResource Height.Control}"
+                  Margin="0,0,0,4">
+              <TextBlock Text="Working tree"
+                         Style="{StaticResource PaneHeaderTextStyle}"
+                         VerticalAlignment="Center" />
               <Button Grid.Column="1"
                       Content="Back to history"
                       Click="ShowHistory_Click"
@@ -441,44 +448,73 @@
             </Grid>
 
             <Grid Grid.Row="1" ColumnDefinitions="330,4,*" MinHeight="180">
-              <Grid Grid.Column="0" RowDefinitions="*,8,*">
-                <Grid Grid.Row="0" RowDefinitions="Auto,*,Auto">
-                  <TextBlock x:Name="UnstagedHeader"
-                             Text="Unstaged changes"
-                             Style="{StaticResource BodyStrongTextStyle}"
-                             Margin="{StaticResource Margin.WorkspaceSection}" />
+              <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="*" />
+                  <RowDefinition Height="{StaticResource Spacing.S}" />
+                  <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" RowDefinitions="Auto,*">
+                  <Grid MinHeight="{StaticResource Height.Control}" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.XS}">
+                    <TextBlock x:Name="UnstagedHeader"
+                               Text="Unstaged changes"
+                               Style="{StaticResource BodyStrongTextStyle}"
+                               VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Spacing.XS}">
+                      <Button Command="{Binding StageSelectedCommand}"
+                              Style="{StaticResource IconButtonStyle}"
+                              ToolTipService.ToolTip="Stage selected"
+                              AutomationProperties.Name="Stage selected">
+                        <FontIcon Glyph="&#xE710;" FontSize="{StaticResource Icon.Small}" />
+                      </Button>
+                      <Button Command="{Binding StageAllCommand}"
+                              Style="{StaticResource IconButtonStyle}"
+                              ToolTipService.ToolTip="Stage all"
+                              AutomationProperties.Name="Stage all">
+                        <TextBlock Text="++" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" />
+                      </Button>
+                      <Button Command="{Binding RequestDiscardCommand}"
+                              Style="{StaticResource IconButtonStyle}"
+                              ToolTipService.ToolTip="Discard selected changes"
+                              AutomationProperties.Name="Discard selected changes">
+                        <FontIcon Glyph="&#xE74D;" FontSize="{StaticResource Icon.Small}" />
+                      </Button>
+                    </StackPanel>
+                  </Grid>
                   <ListView x:Name="UnstagedChangesList"
                             Grid.Row="1"
                             SelectionMode="Extended"
                             ItemContainerStyle="{StaticResource WorkingTreeRowStyle}"
                             ItemTemplate="{StaticResource UnstagedWorkingTreeItemTemplate}" />
-                  <StackPanel Grid.Row="2"
-                              Orientation="Horizontal"
-                              Spacing="{StaticResource Spacing.L}"
-                              Margin="{StaticResource Margin.WorkspaceActions}">
-                    <Button Content="Stage selected" Command="{Binding StageSelectedCommand}" Style="{StaticResource CompactButtonStyle}" />
-                    <Button Content="Stage all" Command="{Binding StageAllCommand}" Style="{StaticResource CompactButtonStyle}" />
-                    <Button Content="Discard…" Command="{Binding RequestDiscardCommand}" Style="{StaticResource CompactButtonStyle}" />
-                  </StackPanel>
                 </Grid>
 
-                <Grid Grid.Row="2" RowDefinitions="Auto,*,Auto">
-                  <TextBlock x:Name="StagedHeader"
-                             Text="Staged changes"
-                             Style="{StaticResource BodyStrongTextStyle}"
-                             Margin="{StaticResource Margin.WorkspaceSection}" />
+                <Grid Grid.Row="2" RowDefinitions="Auto,*">
+                  <Grid MinHeight="{StaticResource Height.Control}" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.XS}">
+                    <TextBlock x:Name="StagedHeader"
+                               Text="Staged changes"
+                               Style="{StaticResource BodyStrongTextStyle}"
+                               VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Spacing.XS}">
+                      <Button Command="{Binding UnstageSelectedCommand}"
+                              Style="{StaticResource IconButtonStyle}"
+                              ToolTipService.ToolTip="Unstage selected"
+                              AutomationProperties.Name="Unstage selected">
+                        <TextBlock Text="−" Style="{StaticResource BodyStrongTextStyle}" />
+                      </Button>
+                      <Button Command="{Binding UnstageAllCommand}"
+                              Style="{StaticResource IconButtonStyle}"
+                              ToolTipService.ToolTip="Unstage all"
+                              AutomationProperties.Name="Unstage all">
+                        <TextBlock Text="−−" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" />
+                      </Button>
+                    </StackPanel>
+                  </Grid>
                   <ListView x:Name="StagedChangesList"
                             Grid.Row="1"
                             SelectionMode="Extended"
                             ItemContainerStyle="{StaticResource WorkingTreeRowStyle}"
                             ItemTemplate="{StaticResource StagedWorkingTreeItemTemplate}" />
-                  <StackPanel Grid.Row="2"
-                              Orientation="Horizontal"
-                              Spacing="{StaticResource Spacing.L}"
-                              Margin="{StaticResource Margin.WorkspaceActions}">
-                    <Button Content="Unstage selected" Command="{Binding UnstageSelectedCommand}" Style="{StaticResource CompactButtonStyle}" />
-                    <Button Content="Unstage all" Command="{Binding UnstageAllCommand}" Style="{StaticResource CompactButtonStyle}" />
-                  </StackPanel>
                 </Grid>
               </Grid>
 
@@ -555,16 +591,18 @@
             <Border Grid.Row="2"
                     BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                     BorderThickness="0,1,0,0"
-                    Padding="0,8,0,0"
-                    Margin="0,8,0,0">
-              <StackPanel Spacing="{StaticResource Spacing.L}">
+                    Padding="0,4,0,0">
+              <StackPanel Spacing="{StaticResource Spacing.S}">
+                <TextBlock Text="Commit message"
+                           Style="{StaticResource BodyStrongTextStyle}" />
                 <TextBox x:Name="CommitMessageEditor"
-                         Header="Commit message"
                          Text="{Binding CommitMessage, Mode=TwoWay}"
                          AcceptsReturn="True"
+                         TextWrapping="Wrap"
                          FontSize="{StaticResource Font.Body}"
-                         MinHeight="74" />
-                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.L}">
+                         MinHeight="{StaticResource Height.CommitEditor}"
+                         AutomationProperties.Name="Commit message" />
+                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                   <Button Content="Commit" Command="{Binding CommitCommand}" Style="{StaticResource CompactButtonStyle}" />
                   <Button Content="Amend" Command="{Binding AmendCommand}" Style="{StaticResource CompactButtonStyle}" />
                 </StackPanel>
@@ -579,7 +617,7 @@
                   </InfoBar.ActionButton>
                 </InfoBar>
                 <StackPanel Orientation="Horizontal"
-                            Spacing="{StaticResource Spacing.L}"
+                            Spacing="{StaticResource Spacing.S}"
                             Visibility="{Binding EmptyIndexChoiceVisibility}">
                   <Button Content="Create empty commit" Command="{Binding ConfirmEmptyCommitCommand}" Style="{StaticResource CompactButtonStyle}" />
                   <Button Content="Cancel" Command="{Binding CancelCommitCommand}" Style="{StaticResource CompactButtonStyle}" />
@@ -605,7 +643,7 @@
         </Grid>
       </Grid>
 
-      <Border Grid.Row="3" Style="{StaticResource StatusBarSurfaceStyle}">
+      <Border x:Name="StatusBar" Grid.Row="3" Style="{StaticResource StatusBarSurfaceStyle}">
         <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="{StaticResource Spacing.XL}">
           <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.M}" VerticalAlignment="Center">
             <FontIcon Glyph="&#xE8F0;" FontSize="{StaticResource Icon.Small}" />

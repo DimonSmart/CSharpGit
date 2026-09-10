@@ -2,6 +2,8 @@ using CSharpGit.Presentation.Controls;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Windows.Foundation;
 
 namespace CSharpGit.Presentation;
 
@@ -13,6 +15,8 @@ public sealed partial class MainPage
         await WaitUntilAsync(
             () => HistoryList.ActualHeight > 0 && HistoryList.ActualWidth > 0,
             TimeSpan.FromSeconds(10));
+
+        await RunDesktopDensityCheckAsync(failures);
 
         var originalDetailsHeight = HistoryPane.RowDefinitions[3].Height;
         var initialCount = _viewModel.History.Count;
@@ -74,5 +78,166 @@ public sealed partial class MainPage
         {
             HistoryPane.RowDefinitions[3].Height = originalDetailsHeight;
         }
+    }
+
+    private async Task RunDesktopDensityCheckAsync(List<string> failures)
+    {
+        ShowAllHistory();
+        if (_viewModel.History.FirstOrDefault() is { } firstHistory)
+        {
+            HistoryList.ScrollIntoView(firstHistory);
+            await WaitUntilAsync(
+                () => HistoryList.ContainerFromItem(firstHistory) is ListViewItem,
+                TimeSpan.FromSeconds(5));
+            CheckActualHeight(HistoryList.ContainerFromItem(firstHistory) as FrameworkElement, 23, 26, "history row", failures);
+        }
+
+        if (_repositoryTreeRoots.FirstOrDefault() is { } firstRepositoryNode)
+        {
+            await WaitUntilAsync(
+                () => RepositoryTree.ContainerFromItem(firstRepositoryNode) is TreeViewItem,
+                TimeSpan.FromSeconds(5));
+            CheckActualHeight(RepositoryTree.ContainerFromItem(firstRepositoryNode) as FrameworkElement, 23, 26, "repository tree row", failures);
+        }
+
+        CheckActualHeight(MainToolbar, 0, 34, "main toolbar", failures);
+        CheckActualHeight(HistoryFilterToolbar, 0, 34, "history filter toolbar", failures);
+        CheckActualHeight(HistoryColumnHeader, 0, 26, "history column header", failures);
+        CheckActualHeight(StatusBar, 0, 22, "status bar", failures);
+
+        var pivotHeader = FindDescendant<PivotHeaderItem>(DetailsTabs);
+        CheckActualHeight(pivotHeader, 0, 28, "details tab header", failures);
+
+        var fullyVisibleHistoryRows = CountFullyVisibleListRows(HistoryList, _viewModel.History.Cast<object>());
+        Check(fullyVisibleHistoryRows >= 20,
+            $"history viewport shows only {fullyVisibleHistoryRows} fully visible rows; expected at least 20",
+            failures);
+
+        var originalDetailsTab = DetailsTabs.SelectedIndex;
+        try
+        {
+            DetailsTabs.SelectedIndex = 1;
+            await WaitUntilAsync(
+                () => _changedFileTreeRoots.Count > 0 && ChangedFilesTree.ActualHeight > 0,
+                TimeSpan.FromSeconds(10));
+
+            if (_changedFileTreeRoots.FirstOrDefault() is { } firstChangedFile)
+            {
+                await WaitUntilAsync(
+                    () => ChangedFilesTree.ContainerFromItem(firstChangedFile) is TreeViewItem,
+                    TimeSpan.FromSeconds(5));
+                CheckActualHeight(ChangedFilesTree.ContainerFromItem(firstChangedFile) as FrameworkElement, 23, 26, "changed files tree row", failures);
+            }
+
+            CheckActualHeight(ChangedFilesHeader, 0, 26, "changed files header", failures);
+
+            if (_compactDiffLines.FirstOrDefault() is { } firstDiffLine)
+            {
+                CompactDiffList.ScrollIntoView(firstDiffLine);
+                await WaitUntilAsync(
+                    () => CompactDiffList.ContainerFromItem(firstDiffLine) is ListViewItem,
+                    TimeSpan.FromSeconds(5));
+                CheckActualHeight(CompactDiffList.ContainerFromItem(firstDiffLine) as FrameworkElement, 19, 21, "diff row", failures);
+            }
+        }
+        finally
+        {
+            DetailsTabs.SelectedIndex = originalDetailsTab;
+        }
+
+        ShowWorkingTree();
+        await WaitUntilAsync(
+            () => WorkingTreePane.ActualHeight > 0 && _unstagedChanges.Count > 0,
+            TimeSpan.FromSeconds(5));
+
+        var stagedByCheck = false;
+        try
+        {
+            if (_unstagedChanges.FirstOrDefault() is { } firstUnstaged)
+            {
+                UnstagedChangesList.SelectedItem = firstUnstaged;
+                UnstagedChangesList.ScrollIntoView(firstUnstaged);
+                await WaitUntilAsync(
+                    () => UnstagedChangesList.ContainerFromItem(firstUnstaged) is ListViewItem,
+                    TimeSpan.FromSeconds(5));
+                CheckActualHeight(UnstagedChangesList.ContainerFromItem(firstUnstaged) as FrameworkElement, 23, 26, "unstaged row", failures);
+
+                if (_stagedChanges.Count == 0)
+                {
+                    await Task.Delay(20);
+                    await ExecuteCommandAsync(_viewModel.StageSelectedCommand);
+                    await WaitUntilAsync(() => !_viewModel.IsBusy, TimeSpan.FromSeconds(20));
+                    RefreshPresentationCollections();
+                    await WaitUntilAsync(() => _stagedChanges.Count > 0, TimeSpan.FromSeconds(5));
+                    stagedByCheck = true;
+                }
+            }
+
+            if (_stagedChanges.FirstOrDefault() is { } firstStaged)
+            {
+                StagedChangesList.SelectedItem = firstStaged;
+                StagedChangesList.ScrollIntoView(firstStaged);
+                await WaitUntilAsync(
+                    () => StagedChangesList.ContainerFromItem(firstStaged) is ListViewItem,
+                    TimeSpan.FromSeconds(5));
+                CheckActualHeight(StagedChangesList.ContainerFromItem(firstStaged) as FrameworkElement, 23, 26, "staged row", failures);
+            }
+        }
+        finally
+        {
+            if (stagedByCheck && _stagedChanges.FirstOrDefault() is { } staged)
+            {
+                StagedChangesList.SelectedItem = staged;
+                await Task.Delay(20);
+                await ExecuteCommandAsync(_viewModel.UnstageSelectedCommand);
+                await WaitUntilAsync(() => !_viewModel.IsBusy, TimeSpan.FromSeconds(20));
+                RefreshPresentationCollections();
+            }
+
+            ShowAllHistory();
+        }
+    }
+
+    private static void CheckActualHeight(
+        FrameworkElement? element,
+        double minimum,
+        double maximum,
+        string surface,
+        ICollection<string> failures)
+    {
+        if (element is null)
+        {
+            failures.Add($"{surface} was not realized");
+            return;
+        }
+
+        var height = element.ActualHeight;
+        Check(height >= minimum && height <= maximum,
+            $"{surface} actual height was {height:0.##}; expected {minimum:0.##}..{maximum:0.##}",
+            failures);
+    }
+
+    private static int CountFullyVisibleListRows(ListView list, IEnumerable<object> items)
+    {
+        var count = 0;
+        foreach (var item in items)
+        {
+            if (list.ContainerFromItem(item) is not ListViewItem container) continue;
+
+            Point topLeft;
+            try
+            {
+                topLeft = container.TransformToVisual(list).TransformPoint(new Point(0, 0));
+            }
+            catch (InvalidOperationException)
+            {
+                continue;
+            }
+
+            if (topLeft.Y >= -0.5 && topLeft.Y + container.ActualHeight <= list.ActualHeight + 0.5)
+                count++;
+        }
+
+        return count;
     }
 }
