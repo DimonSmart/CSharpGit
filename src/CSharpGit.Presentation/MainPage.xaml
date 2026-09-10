@@ -188,7 +188,7 @@
               </Grid>
             </Border>
 
-            <Grid Grid.Row="1" RowDefinitions="30,*,Auto">
+            <Grid Grid.Row="1" RowDefinitions="30,*">
               <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Padding="6,0">
                 <Grid ColumnDefinitions="120,*,160,150,90">
                   <TextBlock Text="GRAPH" FontSize="11" Opacity="0.58" VerticalAlignment="Center" />
@@ -233,7 +233,9 @@
                   </DataTemplate>
                 </ListView.ItemTemplate>
               </ListView>
-              <Button x:Name="LoadMoreHistoryButton" Grid.Row="2" Content="Load more" Click="LoadMoreHistory_Click" HorizontalAlignment="Center" Padding="10,3" Margin="0,3" />
+              <Button x:Name="LoadMoreHistoryButton" Grid.Row="1" Content="↓" Click="LoadMoreHistory_Click"
+                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="32" Height="32" Padding="0" Margin="0,0,10,10"
+                      ToolTipService.ToolTip="Load more commits" AutomationProperties.Name="Load more commits" />
             </Grid>
 
             <controls:GridSplitter Grid.Row="2" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
