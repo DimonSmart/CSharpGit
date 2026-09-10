@@ -27,4 +27,10 @@ replace_exact(
     """    public GitCliRepositoryService(GitCliOptions options)\n    {\n        ArgumentNullException.ThrowIfNull(options);\n        _gitExecutable = string.IsNullOrWhiteSpace(options.ExecutablePath) ? \"git\" : options.ExecutablePath;\n    }\n\n    public Task<HistoryPage> ReadHistoryThroughCommitAsync(\n        Repository repository,\n        HistoryScope scope,\n        string targetHash,\n        int trailingCount = 100,\n        CancellationToken cancellationToken = default) =>\n        new GitReferenceHistoryService(new GitCliOptions { ExecutablePath = _gitExecutable })\n            .ReadHistoryThroughCommitAsync(repository, scope, targetHash, trailingCount, cancellationToken);\n\n""",
 )
 
+replace_exact(
+    "src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.ReferenceNavigation.cs",
+    "using CSharpGit.Domain;\n",
+    "using CSharpGit.Domain;\nusing Microsoft.Extensions.Logging;\n",
+)
+
 print("History interface implementations updated.")
