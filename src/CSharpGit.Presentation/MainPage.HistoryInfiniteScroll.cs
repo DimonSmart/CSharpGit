@@ -15,9 +15,13 @@ public sealed partial class MainPage
         base.OnApplyTemplate();
 
         LoadMoreHistoryButton.Visibility = Visibility.Collapsed;
+        HistoryList.Loaded -= HistoryList_Loaded;
+        HistoryList.Loaded += HistoryList_Loaded;
         HistoryList.ApplyTemplate();
         AttachHistoryScrollViewer();
     }
+
+    private void HistoryList_Loaded(object sender, RoutedEventArgs e) => AttachHistoryScrollViewer();
 
     private void AttachHistoryScrollViewer()
     {
