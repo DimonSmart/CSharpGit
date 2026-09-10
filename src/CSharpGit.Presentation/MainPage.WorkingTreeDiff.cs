@@ -21,8 +21,6 @@ public sealed partial class MainPage
     private void InitializeWorkingTreeDiffSurface()
     {
         WorkingTreeCompactDiffList.ItemsSource = _workingTreeCompactDiffLines;
-        WorkingTreeCompactDiffList.ItemContainerStyle = CompactResource<Style>("CompactDiffItemContainerStyle");
-        WorkingTreeCompactDiffList.ItemTemplate = CompactResource<DataTemplate>("CompactDiffItemTemplate");
 
         UnstagedChangesList.SelectionChanged += WorkingTreeUnstagedSelectionChanged;
         StagedChangesList.SelectionChanged += WorkingTreeStagedSelectionChanged;

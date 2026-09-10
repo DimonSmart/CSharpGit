@@ -1,30 +1,30 @@
 <Page x:Class="CSharpGit.Presentation.SettingsPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" RowDefinitions="56,*">
-    <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Padding="18,0">
-      <TextBlock Text="Settings" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center" />
+  <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" RowDefinitions="Auto,*">
+    <Border Style="{StaticResource FormHeaderSurfaceStyle}">
+      <TextBlock Text="Settings" Style="{StaticResource TitleTextStyle}" VerticalAlignment="Center" />
     </Border>
 
-    <Grid Grid.Row="1" ColumnDefinitions="210,*">
+    <Grid Grid.Row="1" ColumnDefinitions="200,*">
       <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
               BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
               BorderThickness="0,0,1,0"
-              Padding="8,12">
+              Padding="{StaticResource Padding.Form}">
         <ListView x:Name="SettingsNavigation"
                   SelectionMode="Single"
                   SelectedIndex="0"
                   SelectionChanged="SettingsNavigation_SelectionChanged">
-          <ListViewItem IsSelected="True" HorizontalContentAlignment="Stretch">
-            <StackPanel Orientation="Horizontal" Spacing="10" Padding="6,2">
-              <FontIcon Glyph="&#xE713;" FontSize="16" />
-              <TextBlock Text="General" VerticalAlignment="Center" />
+          <ListViewItem IsSelected="True" Style="{StaticResource FormNavigationItemStyle}">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.L}">
+              <FontIcon Glyph="&#xE713;" FontSize="{StaticResource Icon.Normal}" />
+              <TextBlock Text="General" Style="{StaticResource BodyTextStyle}" VerticalAlignment="Center" />
             </StackPanel>
           </ListViewItem>
-          <ListViewItem HorizontalContentAlignment="Stretch">
-            <StackPanel Orientation="Horizontal" Spacing="10" Padding="6,2">
-              <FontIcon Glyph="&#xE9D9;" FontSize="16" />
-              <TextBlock Text="Diagnostics" VerticalAlignment="Center" />
+          <ListViewItem Style="{StaticResource FormNavigationItemStyle}">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.L}">
+              <FontIcon Glyph="&#xE9D9;" FontSize="{StaticResource Icon.Normal}" />
+              <TextBlock Text="Diagnostics" Style="{StaticResource BodyTextStyle}" VerticalAlignment="Center" />
             </StackPanel>
           </ListViewItem>
         </ListView>
@@ -32,35 +32,41 @@
 
       <Grid Grid.Column="1" RowDefinitions="*,Auto">
         <ScrollViewer x:Name="GeneralSettingsPanel" VerticalScrollBarVisibility="Auto">
-          <StackPanel Padding="28,24" Spacing="14" MaxWidth="760" HorizontalAlignment="Left">
-            <TextBlock Text="General" Style="{StaticResource TitleTextBlockStyle}" />
+          <StackPanel Padding="{StaticResource Padding.Page}"
+                      Spacing="{StaticResource Spacing.XL}"
+                      MaxWidth="760"
+                      HorizontalAlignment="Left">
+            <TextBlock Text="General" Style="{StaticResource TitleTextStyle}" />
 
-            <TextBlock Text="Appearance" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" />
-            <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                    BorderThickness="1"
-                    CornerRadius="6"
-                    Padding="16,14"
-                    MaxWidth="680"
-                    HorizontalAlignment="Stretch">
-              <StackPanel Spacing="6">
-                <TextBlock Text="Theme" FontWeight="SemiBold" />
+            <TextBlock Text="Appearance"
+                       Style="{StaticResource SectionHeaderTextStyle}"
+                       Margin="{StaticResource Margin.Section}" />
+            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
+              <StackPanel Spacing="{StaticResource Spacing.M}">
+                <TextBlock Text="Theme" Style="{StaticResource BodyStrongTextStyle}" />
                 <ComboBox x:Name="ThemeModeComboBox"
                           ItemsSource="{Binding ThemeModes}"
                           SelectedItem="{Binding SelectedThemeMode, Mode=TwoWay}"
                           DisplayMemberPath="Label"
+                          Style="{StaticResource CompactComboBoxStyle}"
                           MinWidth="220"
                           HorizontalAlignment="Left"
                           SelectionChanged="ThemeModeComboBox_SelectionChanged" />
                 <TextBlock Text="System follows the operating system appearance."
+                           Style="{StaticResource SecondaryTextStyle}"
                            TextWrapping="Wrap"
-                           Opacity="0.68"
                            MaxWidth="620" />
               </StackPanel>
             </Border>
 
-            <TextBlock Text="Commit time display" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <TextBlock Text="Commit time display"
+                       Style="{StaticResource SectionHeaderTextStyle}"
+                       Margin="{StaticResource Margin.Section}" />
             <TextBlock Text="Choose how commit timestamps are shown throughout CSharpGit. The setting is global, applies immediately, and is saved for future launches. Hover a commit time to see its exact local date, time, and time-zone offset."
-                       TextWrapping="Wrap" Opacity="0.72" MaxWidth="680" />
+                       Style="{StaticResource BodyTextStyle}"
+                       TextWrapping="Wrap"
+                       Opacity="0.72"
+                       MaxWidth="680" />
 
             <ListView x:Name="CommitTimeModeList"
                       ItemsSource="{Binding CommitTimeModes}"
@@ -68,26 +74,23 @@
                       SelectionMode="Single"
                       SelectionChanged="CommitTimeModeList_SelectionChanged"
                       MaxWidth="680"
-                      HorizontalAlignment="Stretch">
-              <ListView.ItemContainerStyle>
-                <Style TargetType="ListViewItem">
-                  <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                  <Setter Property="Padding" Value="0" />
-                  <Setter Property="Margin" Value="0,0,0,8" />
-                </Style>
-              </ListView.ItemContainerStyle>
+                      HorizontalAlignment="Stretch"
+                      ItemContainerStyle="{StaticResource FormListItemStyle}">
               <ListView.ItemTemplate>
                 <DataTemplate>
-                  <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                          BorderThickness="1"
-                          CornerRadius="6"
-                          Padding="14,12">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
-                      <StackPanel Spacing="4">
-                        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Opacity="0.68" />
+                  <Border Style="{StaticResource FormCardStyle}">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.XXL}">
+                      <StackPanel Spacing="{StaticResource Spacing.S}">
+                        <TextBlock Text="{Binding Label}" Style="{StaticResource BodyStrongTextStyle}" />
+                        <TextBlock Text="{Binding Description}"
+                                   Style="{StaticResource SecondaryTextStyle}"
+                                   TextWrapping="Wrap" />
                       </StackPanel>
-                      <TextBlock Grid.Column="1" Text="{Binding Example}" VerticalAlignment="Center" Opacity="0.78" />
+                      <TextBlock Grid.Column="1"
+                                 Text="{Binding Example}"
+                                 Style="{StaticResource SecondaryTextStyle}"
+                                 VerticalAlignment="Center"
+                                 Opacity="0.78" />
                     </Grid>
                   </Border>
                 </DataTemplate>
@@ -99,19 +102,22 @@
         <ScrollViewer x:Name="DiagnosticsSettingsPanel"
                       Visibility="Collapsed"
                       VerticalScrollBarVisibility="Auto">
-          <StackPanel Padding="28,24" Spacing="14" MaxWidth="760" HorizontalAlignment="Left">
-            <TextBlock Text="Diagnostics" Style="{StaticResource TitleTextBlockStyle}" />
-            <TextBlock Text="File logging" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <StackPanel Padding="{StaticResource Padding.Page}"
+                      Spacing="{StaticResource Spacing.XL}"
+                      MaxWidth="760"
+                      HorizontalAlignment="Left">
+            <TextBlock Text="Diagnostics" Style="{StaticResource TitleTextStyle}" />
+            <TextBlock Text="File logging"
+                       Style="{StaticResource SectionHeaderTextStyle}"
+                       Margin="{StaticResource Margin.Section}" />
             <TextBlock Text="Enable diagnostic session logs when troubleshooting CSharpGit. Logging is off by default. Changes apply immediately and are saved for future launches."
-                       TextWrapping="Wrap" Opacity="0.72" MaxWidth="680" />
+                       Style="{StaticResource BodyTextStyle}"
+                       TextWrapping="Wrap"
+                       Opacity="0.72"
+                       MaxWidth="680" />
 
-            <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                    BorderThickness="1"
-                    CornerRadius="6"
-                    Padding="16,14"
-                    MaxWidth="680"
-                    HorizontalAlignment="Stretch">
-              <StackPanel Spacing="14">
+            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
+              <StackPanel Spacing="{StaticResource Spacing.XL}">
                 <ToggleSwitch x:Name="LoggingToggle"
                               Header="Enable file logging"
                               IsOn="{Binding LoggingEnabled}"
@@ -119,18 +125,19 @@
                               OffContent="Off"
                               Toggled="LoggingToggle_Toggled" />
 
-                <StackPanel Spacing="6">
-                  <TextBlock Text="Log level" FontWeight="SemiBold" />
+                <StackPanel Spacing="{StaticResource Spacing.M}">
+                  <TextBlock Text="Log level" Style="{StaticResource BodyStrongTextStyle}" />
                   <ComboBox x:Name="LogLevelComboBox"
                             ItemsSource="{Binding LogLevels}"
                             SelectedItem="{Binding SelectedLogLevel, Mode=TwoWay}"
                             DisplayMemberPath="Label"
+                            Style="{StaticResource CompactComboBoxStyle}"
                             MinWidth="220"
                             HorizontalAlignment="Left"
                             SelectionChanged="LogLevelComboBox_SelectionChanged" />
                   <TextBlock Text="Trace is the most verbose. Information is recommended for normal diagnostics; Warning and higher reduce log volume."
+                             Style="{StaticResource SecondaryTextStyle}"
                              TextWrapping="Wrap"
-                             Opacity="0.68"
                              MaxWidth="620" />
                 </StackPanel>
               </StackPanel>
@@ -140,7 +147,7 @@
 
         <InfoBar x:Name="SettingsError"
                  Grid.Row="1"
-                 Margin="28,0,28,18"
+                 Margin="16,0,16,16"
                  IsOpen="False"
                  Severity="Error"
                  Title="Could not save settings"

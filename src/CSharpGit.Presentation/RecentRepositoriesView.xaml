@@ -4,11 +4,16 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-      <StackPanel MaxWidth="1120" Margin="48" Spacing="22" HorizontalAlignment="Center">
-        <StackPanel Spacing="6">
-          <TextBlock Text="Recent repositories" Style="{StaticResource TitleTextBlockStyle}" />
+      <StackPanel MaxWidth="1120"
+                  Margin="{StaticResource Padding.Page}"
+                  Spacing="{StaticResource Spacing.XL}"
+                  HorizontalAlignment="Center">
+        <StackPanel Spacing="{StaticResource Spacing.M}">
+          <TextBlock Text="Recent repositories" Style="{StaticResource TitleTextStyle}" />
           <TextBlock Text="Continue with a repository you opened recently, or choose another local repository."
-                     FontSize="15" Opacity="0.68" TextWrapping="Wrap" />
+                     Style="{StaticResource BodyTextStyle}"
+                     Opacity="0.68"
+                     TextWrapping="Wrap" />
         </StackPanel>
 
         <GridView ItemsSource="{Binding RecentRepositories}"
@@ -40,13 +45,13 @@
                         VerticalAlignment="Stretch"
                         HorizontalContentAlignment="Stretch"
                         VerticalContentAlignment="Stretch">
-                  <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                          BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                          BorderThickness="1"
+                  <Border Style="{StaticResource FormCardStyle}"
+                          Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                           CornerRadius="10"
-                          Padding="18"
                           Opacity="{Binding TileOpacity}">
-                    <Grid ColumnDefinitions="64,*" RowDefinitions="Auto,Auto,*" ColumnSpacing="14">
+                    <Grid ColumnDefinitions="64,*"
+                          RowDefinitions="Auto,Auto,*"
+                          ColumnSpacing="{StaticResource Spacing.XL}">
                       <Border Grid.RowSpan="3"
                               Width="64" Height="64" CornerRadius="9"
                               Background="{ThemeResource AccentFillColorSecondaryBrush}"
@@ -67,22 +72,22 @@
                       </Border>
                       <TextBlock Grid.Column="1"
                                  Text="{Binding DisplayName}"
-                                 FontSize="18"
-                                 FontWeight="SemiBold"
+                                 Style="{StaticResource TitleTextStyle}"
                                  Margin="0,1,34,0"
                                  TextTrimming="CharacterEllipsis" />
-                      <TextBlock Grid.Row="1" Grid.Column="1"
+                      <TextBlock Grid.Row="1"
+                                 Grid.Column="1"
                                  Text="{Binding Path}"
+                                 Style="{StaticResource SecondaryTextStyle}"
                                  Margin="0,5,10,0"
-                                 FontSize="12"
-                                 Opacity="0.66"
                                  TextTrimming="CharacterEllipsis"
                                  ToolTipService.ToolTip="{Binding Path}" />
-                      <TextBlock Grid.Row="2" Grid.Column="1"
+                      <TextBlock Grid.Row="2"
+                                 Grid.Column="1"
                                  Text="{Binding Metadata}"
+                                 Style="{StaticResource SecondaryTextStyle}"
                                  Margin="0,8,10,0"
                                  VerticalAlignment="Top"
-                                 FontSize="12"
                                  Opacity="0.72"
                                  TextTrimming="CharacterEllipsis" />
                     </Grid>
@@ -94,11 +99,11 @@
                         Padding="0"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Top"
-                        Margin="0,14,14,0"
+                        Margin="0,12,12,0"
                         Background="Transparent"
                         BorderThickness="0"
                         ToolTipService.ToolTip="Remove from recent">
-                  <FontIcon Glyph="&#xE711;" FontSize="12" />
+                  <FontIcon Glyph="&#xE711;" FontSize="{StaticResource Icon.Small}" />
                 </Button>
               </Grid>
             </DataTemplate>
@@ -107,14 +112,14 @@
 
         <Button Command="{Binding OpenRepositoryCommand}"
                 Width="240" Height="82"
-                Padding="14,10"
+                Padding="{StaticResource Padding.Form}"
                 HorizontalAlignment="Left"
                 HorizontalContentAlignment="Stretch">
-          <Grid ColumnDefinitions="42,*" ColumnSpacing="12">
+          <Grid ColumnDefinitions="42,*" ColumnSpacing="{StaticResource Spacing.XL}">
             <FontIcon Glyph="&#xE8B7;" FontSize="24" VerticalAlignment="Center" />
-            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-              <TextBlock Text="Open repository" FontWeight="SemiBold" FontSize="15" />
-              <TextBlock Text="Choose a folder…" FontSize="12" Opacity="0.66" />
+            <StackPanel Grid.Column="1" Spacing="{StaticResource Spacing.XS}" VerticalAlignment="Center">
+              <TextBlock Text="Open repository" Style="{StaticResource BodyStrongTextStyle}" />
+              <TextBlock Text="Choose a folder…" Style="{StaticResource SecondaryTextStyle}" />
             </StackPanel>
           </Grid>
         </Button>
