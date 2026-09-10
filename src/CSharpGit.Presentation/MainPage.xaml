@@ -417,6 +417,7 @@
                     <TextBlock Grid.Column="1" Text="NEW" FontSize="9" Opacity="0.52" HorizontalAlignment="Right" Margin="0,0,5,0" VerticalAlignment="Center" />
                   </Grid>
                 </Border>
+
                 <Grid Grid.Row="2">
                   <InfoBar x:Name="WorkingTreeBinaryInfo" IsOpen="True" Severity="Informational" Title="Binary file"
                            Message="Binary file — text diff is not available." Visibility="Collapsed" IsClosable="False" VerticalAlignment="Top" />
