@@ -51,7 +51,8 @@ public sealed class DesktopUiContractTests
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         foreach (var command in new[]
         {
-            "StageCommand", "UnstageCommand", "CommitCommand", "AmendCommand", "ConfirmDiscardCommand",
+            "StageSelectedCommand", "StageAllCommand", "UnstageSelectedCommand", "UnstageAllCommand",
+            "CommitCommand", "AmendCommand", "ConfirmDiscardCommand",
             "FetchCommand", "FetchAllCommand", "PullCommand", "CreateStashCommand", "ApplyStashCommand",
             "PopStashCommand", "MergeCommand", "StartRebaseCommand", "ContinueOperationCommand", "SkipOperationCommand",
             "AbortOperationCommand", "MergeToolCommand", "MergeToolWorkflowCommand"
