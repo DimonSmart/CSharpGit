@@ -21,9 +21,11 @@ public sealed partial class MainPage
 
         ChangedFilesTree.ItemsSource = _changedFileTreeRoots;
         CompactDiffList.ItemsSource = _compactDiffLines;
+        CompactDiffList.MinHeight = 96;
         _commitFiles.CollectionChanged += CommitFiles_CollectionChanged;
         _viewModel.PropertyChanged += ChangesViewModel_PropertyChanged;
 
+        EnsureCurrentCommitFileSelection();
         UpdateCommitDiffHeaderRow();
         RebuildChangedFileTree();
         RebuildCompactDiff();
@@ -51,7 +53,13 @@ public sealed partial class MainPage
             RebuildCompactDiff();
         }
         else if (args.PropertyName == nameof(OpenRepositoryViewModel.SelectedFile))
+        {
             SyncChangedFileTreeSelection();
+        }
+        else if (args.PropertyName == nameof(OpenRepositoryViewModel.SelectedCommit))
+        {
+            EnsureCurrentCommitFileSelection();
+        }
     }
 
     private void UpdateCommitDiffHeaderRow()
@@ -61,10 +69,8 @@ public sealed partial class MainPage
             diffGrid.RowDefinitions.Count < 2)
             return;
 
-        // Keep the textual header deterministic so the Uno/Skia ListView gets a bounded viewport.
-        // Binary and empty states collapse the header row completely.
         diffGrid.RowDefinitions[0].Height = _viewModel.DiffVisibility == Visibility.Visible
-            ? new GridLength(22)
+            ? new GridLength(30)
             : new GridLength(0);
     }
 
@@ -79,6 +85,7 @@ public sealed partial class MainPage
         foreach (var root in roots) _changedFileTreeRoots.Add(root);
 
         FilesTab.Header = _viewModel.SelectedCommit is null ? "Changes" : $"Changes ({_commitFiles.Count})";
+        EnsureCurrentCommitFileSelection();
         SyncChangedFileTreeSelection();
     }
 
@@ -89,6 +96,25 @@ public sealed partial class MainPage
         _compactDiffLines.Clear();
         if (_viewModel.SelectedDiff is not { IsBinary: false } diff) return;
         foreach (var line in CompactDiffLine.Build(diff.Lines)) _compactDiffLines.Add(line);
+    }
+
+    private void EnsureCurrentCommitFileSelection()
+    {
+        var commit = _viewModel.SelectedCommit;
+        if (commit is null || commit.Files.Count == 0) return;
+
+        var selected = _viewModel.SelectedFile;
+        var current = selected is null
+            ? commit.Files[0]
+            : commit.Files.FirstOrDefault(file => string.Equals(file.Path, selected.Path, StringComparison.Ordinal)) ?? commit.Files[0];
+
+        if (ReferenceEquals(selected, current)) return;
+
+        // ChangedFile is a record. Two different commits can therefore produce
+        // value-equal file objects, while the diff must still be reloaded for the
+        // newly selected commit.
+        _viewModel.SelectedFile = null;
+        _viewModel.SelectedFile = current;
     }
 
     private void SyncChangedFileTreeSelection()
@@ -103,6 +129,9 @@ public sealed partial class MainPage
     {
         var node = ResolveChangedFileNode(args.InvokedItem);
         if (node?.Entry is null) return;
+
+        if (!ReferenceEquals(_viewModel.SelectedFile, node.Entry.File) && _viewModel.SelectedFile == node.Entry.File)
+            _viewModel.SelectedFile = null;
         _viewModel.SelectedFile = node.Entry.File;
     }
 
