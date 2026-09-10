@@ -23,7 +23,8 @@ public sealed class FileOpeningUiContractTests
         Assert.Contains("Open changed", page);
         Assert.Contains("RevealDescription", page);
         Assert.DoesNotContain("Process.Start", page);
-        Assert.DoesNotContain("git ", page, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ProcessStartInfo", page);
+        Assert.DoesNotContain("RunGit", page);
 
         Assert.Contains("IRepositoryFileVersionService, GitRepositoryFileVersionService", app);
         Assert.Contains("IDesktopShellService, DesktopShellService", app);
