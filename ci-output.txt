@@ -1,0 +1,21 @@
+  Determining projects to restore...
+  Restored /home/runner/work/CSharpGit/CSharpGit/src/CSharpGit.Git/CSharpGit.Git.csproj (in 231 ms).
+  Restored /home/runner/work/CSharpGit/CSharpGit/tests/CSharpGit.Desktop.Tests/CSharpGit.Desktop.Tests.csproj (in 1.68 sec).
+  Restored /home/runner/work/CSharpGit/CSharpGit/tests/CSharpGit.Application.Tests/CSharpGit.Application.Tests.csproj (in 1.41 sec).
+  Restored /home/runner/work/CSharpGit/CSharpGit/src/CSharpGit.Domain/CSharpGit.Domain.csproj (in 1 ms).
+  Restored /home/runner/work/CSharpGit/CSharpGit/tests/CSharpGit.Git.Tests/CSharpGit.Git.Tests.csproj (in 1.9 sec).
+  Restored /home/runner/work/CSharpGit/CSharpGit/src/CSharpGit.Application/CSharpGit.Application.csproj (in 2 ms).
+  Restored /home/runner/work/CSharpGit/CSharpGit/src/CSharpGit.Infrastructure/CSharpGit.Infrastructure.csproj (in 7.89 sec).
+  Restored /home/runner/work/CSharpGit/CSharpGit/src/CSharpGit.Presentation/CSharpGit.Presentation.csproj (in 12.46 sec).
+  CSharpGit.Domain -> /home/runner/work/CSharpGit/CSharpGit/src/CSharpGit.Domain/bin/Release/net10.0/CSharpGit.Domain.dll
+  CSharpGit.Application -> /home/runner/work/CSharpGit/CSharpGit/src/CSharpGit.Application/bin/Release/net10.0/CSharpGit.Application.dll
+  CSharpGit.Desktop.Tests -> /home/runner/work/CSharpGit/CSharpGit/tests/CSharpGit.Desktop.Tests/bin/Release/net10.0/CSharpGit.Desktop.Tests.dll
+/home/runner/work/CSharpGit/CSharpGit/src/CSharpGit.Git/GitFileAwareHistoryService.cs(214,25): error CS0173: Type of conditional expression cannot be determined because there is no implicit conversion between 'int' and '<null>' [/home/runner/work/CSharpGit/CSharpGit/src/CSharpGit.Git/CSharpGit.Git.csproj]
+/home/runner/work/CSharpGit/CSharpGit/src/CSharpGit.Git/GitFileAwareHistoryService.cs(215,27): error CS0173: Type of conditional expression cannot be determined because there is no implicit conversion between 'int' and '<null>' [/home/runner/work/CSharpGit/CSharpGit/src/CSharpGit.Git/CSharpGit.Git.csproj]
+  CSharpGit.Application.Tests -> /home/runner/work/CSharpGit/CSharpGit/tests/CSharpGit.Application.Tests/bin/Release/net10.0/CSharpGit.Application.Tests.dll
+Test run for /home/runner/work/CSharpGit/CSharpGit/tests/CSharpGit.Application.Tests/bin/Release/net10.0/CSharpGit.Application.Tests.dll (.NETCoreApp,Version=v10.0)
+/home/runner/work/CSharpGit/CSharpGit/src/CSharpGit.Infrastructure/DesktopFileServices.cs(34,13): error CS0104: 'FileAttributes' is an ambiguous reference between 'Windows.Storage.FileAttributes' and 'System.IO.FileAttributes' [/home/runner/work/CSharpGit/CSharpGit/src/CSharpGit.Infrastructure/CSharpGit.Infrastructure.csproj]
+/home/runner/work/CSharpGit/CSharpGit/src/CSharpGit.Infrastructure/DesktopFileServices.cs(44,31): error CS0104: 'FileAttributes' is an ambiguous reference between 'Windows.Storage.FileAttributes' and 'System.IO.FileAttributes' [/home/runner/work/CSharpGit/CSharpGit/src/CSharpGit.Infrastructure/CSharpGit.Infrastructure.csproj]
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:    92, Skipped:     0, Total:    92, Duration: 6 s - CSharpGit.Application.Tests.dll (net10.0)
