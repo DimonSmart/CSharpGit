@@ -13,6 +13,7 @@
   <Thickness x:Key="Margin.WorkspaceSection">0,0,0,2</Thickness>
   <Thickness x:Key="Margin.WorkspaceActions">0,2,0,0</Thickness>
   <Thickness x:Key="Margin.DiffNumber">0,0,5,0</Thickness>
+  <Thickness x:Key="Margin.HistoryColumnGap">4,0,0,0</Thickness>
   <Thickness x:Key="Padding.DiffText">5,0</Thickness>
   <Thickness x:Key="Padding.CompactPivotHeader">8,0</Thickness>
 
@@ -50,37 +51,14 @@
     <Setter Property="BorderThickness" Value="0,1,0,0" />
   </Style>
 
-  <Style x:Key="DenseListItemStyle" TargetType="ListViewItem">
+  <Style x:Key="DenseListItemStyle"
+         TargetType="ListViewItem"
+         BasedOn="{StaticResource ListViewItemExpanded}">
     <Setter Property="MinHeight" Value="{StaticResource Height.DataRow}" />
     <Setter Property="Margin" Value="0" />
     <Setter Property="Padding" Value="{StaticResource Padding.DenseRow}" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="UseSystemFocusVisuals" Value="True" />
-    <Setter Property="FocusVisualMargin" Value="0" />
-    <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource ListViewItemFocusVisualPrimaryBrush}" />
-    <Setter Property="FocusVisualPrimaryThickness" Value="2" />
-    <Setter Property="FocusVisualSecondaryBrush" Value="{ThemeResource ListViewItemFocusVisualSecondaryBrush}" />
-    <Setter Property="FocusVisualSecondaryThickness" Value="1" />
-    <Setter Property="Template">
-      <Setter.Value>
-        <ControlTemplate TargetType="ListViewItem">
-          <primitives:ListViewItemPresenter
-              Content="{TemplateBinding Content}"
-              ContentTemplate="{TemplateBinding ContentTemplate}"
-              ContentTransitions="{TemplateBinding ContentTransitions}"
-              Padding="{TemplateBinding Padding}"
-              Control.IsTemplateFocusTarget="True"
-              FocusVisualMargin="{TemplateBinding FocusVisualMargin}"
-              FocusVisualPrimaryBrush="{TemplateBinding FocusVisualPrimaryBrush}"
-              FocusVisualPrimaryThickness="{TemplateBinding FocusVisualPrimaryThickness}"
-              FocusVisualSecondaryBrush="{TemplateBinding FocusVisualSecondaryBrush}"
-              FocusVisualSecondaryThickness="{TemplateBinding FocusVisualSecondaryThickness}"
-              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
-        </ControlTemplate>
-      </Setter.Value>
-    </Setter>
   </Style>
 
   <Style x:Key="WorkingTreeRowStyle" TargetType="ListViewItem" BasedOn="{StaticResource DenseListItemStyle}" />
@@ -175,15 +153,18 @@
       <TextBlock Grid.Column="2"
                  Text="{Binding Commit.Author}"
                  Style="{StaticResource BodyTextStyle}"
+                 Margin="{StaticResource Margin.HistoryColumnGap}"
                  TextTrimming="CharacterEllipsis"
                  VerticalAlignment="Center" />
       <controls:CommitTimeText Grid.Column="3"
                                Value="{Binding Commit.AuthoredAt}"
+                               Margin="{StaticResource Margin.HistoryColumnGap}"
                                FontSize="{StaticResource Font.Caption}"
                                VerticalAlignment="Center" />
       <TextBlock Grid.Column="4"
                  Text="{Binding Commit.ShortHash}"
                  Style="{StaticResource DiffSecondaryTextStyle}"
+                 Margin="{StaticResource Margin.HistoryColumnGap}"
                  VerticalAlignment="Center" />
     </Grid>
   </DataTemplate>
