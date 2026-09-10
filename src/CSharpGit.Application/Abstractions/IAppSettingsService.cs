@@ -25,11 +25,16 @@ public sealed record RecentRepositorySettings(
 
 public interface IAppSettingsService
 {
+    ApplicationThemeMode ThemeMode { get; }
     CommitTimeDisplayMode CommitTimeDisplayMode { get; }
     bool LoggingEnabled { get; }
     ApplicationLogLevel LogLevel { get; }
     IReadOnlyList<RecentRepositorySettings> RecentRepositories { get; }
     event EventHandler? Changed;
+
+    Task SetThemeModeAsync(
+        ApplicationThemeMode mode,
+        CancellationToken cancellationToken = default);
 
     Task SetCommitTimeDisplayModeAsync(
         CommitTimeDisplayMode mode,

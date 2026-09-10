@@ -5,7 +5,6 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage
 {
     private ContentDialog GitOperationsDialog => GetPageDialog("GitOperationsDialog");
-    private ContentDialog AppearanceDialog => GetPageDialog("AppearanceDialog");
 
     private ContentDialog GetPageDialog(string key)
     {

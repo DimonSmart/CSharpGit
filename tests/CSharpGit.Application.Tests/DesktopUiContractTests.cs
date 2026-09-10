@@ -5,7 +5,7 @@ namespace CSharpGit.Application.Tests;
 public sealed class DesktopUiContractTests
 {
     [Fact]
-    public void MainWindowKeepsLaunchLayoutScrollingClippingThemeAndBusyContracts()
+    public void MainWindowKeepsLaunchLayoutScrollingClippingAndBusyContracts()
     {
         var root = FindRepositoryRoot();
         var document = XDocument.Load(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
@@ -28,8 +28,6 @@ public sealed class DesktopUiContractTests
         Assert.Contains("VerticalScrollBarVisibility=\"Auto\"", xaml);
         Assert.Contains("TextTrimming=\"CharacterEllipsis\"", xaml);
         Assert.Contains("MaxHeight=", xaml);
-        Assert.Contains("RequestedTheme=\"{Binding SelectedTheme", xaml);
-        Assert.All(new[] { "System", "Light", "Dark" }, theme => Assert.Contains(theme, viewModel));
         Assert.Contains("IsActive=\"{Binding IsBusy}\"", xaml);
         Assert.Contains("Opening repository…", xaml);
         Assert.Contains("OperationBanner", xaml);
@@ -37,6 +35,80 @@ public sealed class DesktopUiContractTests
         Assert.Contains("!IsBusy", viewModel);
         Assert.Contains("SemaphoreSlim", viewModel);
         Assert.Contains("RaiseCanExecuteChanged", viewModel);
+    }
+
+    [Fact]
+    public void GlobalThemeLivesInSettingsAndIsAppliedBeforeActivation()
+    {
+        var root = FindRepositoryRoot();
+        var mainXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+        var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Dialogs.cs"));
+        var settingsWindow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Settings.cs"));
+        var settingsXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml"));
+        var settingsPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml.cs"));
+        var settingsViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "SettingsViewModel.cs"));
+        var repositoryViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
+        var themeManager = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ApplicationThemeManager.cs"));
+        var app = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
+        var applicationContract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IAppSettingsService.cs"));
+        var infrastructure = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure", "JsonAppSettingsService.cs"));
+
+        Assert.DoesNotContain("AppearanceDialog", mainXaml);
+        Assert.DoesNotContain("AppearanceDialog", dialogs);
+        Assert.DoesNotContain("Appearance_Click", mainPage);
+        Assert.DoesNotContain("Appearance…", mainXaml);
+        Assert.DoesNotContain("RequestedTheme=\"{Binding SelectedTheme", mainXaml);
+        Assert.DoesNotContain("RequestedTheme = RootLayout.RequestedTheme", settingsWindow);
+
+        Assert.Contains("Appearance", settingsXaml);
+        Assert.Contains("ThemeModeComboBox", settingsXaml);
+        Assert.True(
+            settingsXaml.IndexOf("Appearance", StringComparison.Ordinal) < settingsXaml.IndexOf("Commit time display", StringComparison.Ordinal),
+            "Appearance must be shown before commit-time settings.");
+        Assert.All(new[] { "ApplicationThemeMode.System, \"System\"", "ApplicationThemeMode.Light, \"Light\"", "ApplicationThemeMode.Dark, \"Dark\"" },
+            option => Assert.Contains(option, settingsViewModel));
+        Assert.Contains("ApplyThemeModeAsync", settingsPage);
+        Assert.Contains("ShowSettingsError(exception)", settingsPage);
+        Assert.Contains("Could not save settings", settingsXaml);
+        Assert.Contains("new(AppSettingsContext.Current)", settingsPage);
+        Assert.DoesNotContain("AppSettingsContext.Current", settingsViewModel);
+
+        Assert.DoesNotContain("SelectedTheme", repositoryViewModel);
+        Assert.DoesNotContain("SelectedThemeName", repositoryViewModel);
+        Assert.DoesNotContain("IReadOnlyList<UiChoice<ElementTheme>> Themes", repositoryViewModel);
+        Assert.DoesNotContain("ElementTheme", repositoryViewModel);
+
+        Assert.Contains("ApplicationThemeMode ThemeMode", applicationContract);
+        Assert.Contains("SetThemeModeAsync", applicationContract);
+        Assert.Contains("ApplicationThemeManager", app);
+        Assert.Contains("IAppSettingsService _settings", themeManager);
+        Assert.Contains("_settings.Changed += Settings_Changed", themeManager);
+        Assert.Contains("_settings.Changed -= Settings_Changed", themeManager);
+        Assert.Contains("ApplicationThemeMode.System => ElementTheme.Default", themeManager);
+        Assert.Contains("ApplicationThemeMode.Light => ElementTheme.Light", themeManager);
+        Assert.Contains("ApplicationThemeMode.Dark => ElementTheme.Dark", themeManager);
+        Assert.Contains("ApplyCurrentTheme(root);", themeManager);
+        Assert.Contains("ToElementTheme(_settings.ThemeMode)", themeManager);
+        Assert.Contains("root.DispatcherQueue", themeManager);
+        Assert.Contains("root.RequestedTheme != requestedTheme", themeManager);
+        Assert.Contains("Unregister(root)", themeManager);
+        Assert.Contains("themeManager.Register(page)", settingsWindow);
+
+        Assert.Contains("INotifyPropertyChanged", settingsViewModel);
+        Assert.Contains("_settings.Changed += Settings_Changed", settingsViewModel);
+        Assert.Contains("_settings.Changed -= Settings_Changed", settingsViewModel);
+
+        var registrationIndex = app.IndexOf("_mainThemeRegistration = themeManager.Register(mainPage)", StringComparison.Ordinal);
+        var contentIndex = app.IndexOf("_window.Content = mainPage", StringComparison.Ordinal);
+        var activationIndex = app.LastIndexOf("_window.Activate();", StringComparison.Ordinal);
+        Assert.True(registrationIndex >= 0 && registrationIndex < contentIndex && contentIndex < activationIndex,
+            "Main root theme registration must happen before content assignment and Window.Activate().");
+
+        Assert.DoesNotContain("Microsoft.UI.Xaml", applicationContract);
+        Assert.DoesNotContain("ElementTheme", applicationContract);
+        Assert.DoesNotContain("Microsoft.UI.Xaml", infrastructure);
+        Assert.DoesNotContain("ElementTheme", infrastructure);
     }
 
     [Fact]

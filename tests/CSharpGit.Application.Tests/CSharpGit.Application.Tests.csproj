@@ -9,5 +9,7 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
     <ProjectReference Include="../../src/CSharpGit.Application/CSharpGit.Application.csproj" />
+    <Compile Include="../../src/CSharpGit.Infrastructure/JsonAppSettingsService.cs" Link="Infrastructure/JsonAppSettingsService.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/SettingsViewModel.cs" Link="Presentation/SettingsViewModel.cs" />
   </ItemGroup>
 </Project>

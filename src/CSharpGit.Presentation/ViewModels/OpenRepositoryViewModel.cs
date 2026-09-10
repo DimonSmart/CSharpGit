@@ -33,7 +33,6 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
     private long _historyLoadGeneration;
     private long _commitLoadGeneration;
     private long _diffLoadGeneration;
-    private ElementTheme _selectedTheme = ElementTheme.Default;
     private string _filterText = string.Empty;
     private UiChoice<HistoryScope> _selectedScope;
     private HistoryRow? _selectedHistoryRow;
@@ -213,22 +212,6 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
     public Repository? Repository { get => _repository; private set { _repository = value; Notify(); Notify(nameof(RepositoryVisibility)); Notify(nameof(PickerVisibility)); Notify(nameof(RepositoryKind)); Notify(nameof(CanForcePushWithLease)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }
     public string? ErrorMessage { get => _errorMessage; private set { _errorMessage = value; Notify(); Notify(nameof(HasError)); } }
     public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); Notify(nameof(BusyVisibility)); Notify(nameof(CanForcePushWithLease)); _openRepositoryCommand.RaiseCanExecuteChanged(); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
-    public IReadOnlyList<UiChoice<ElementTheme>> Themes { get; } =
-    [
-        new("System", ElementTheme.Default),
-        new("Light", ElementTheme.Light),
-        new("Dark", ElementTheme.Dark)
-    ];
-    public ElementTheme SelectedTheme { get => _selectedTheme; set { _selectedTheme = value; Notify(); Notify(nameof(SelectedThemeName)); } }
-    public UiChoice<ElementTheme> SelectedThemeName
-    {
-        get => Themes.First(theme => theme.Value == SelectedTheme);
-        set
-        {
-            SelectedTheme = value.Value;
-            Notify();
-        }
-    }
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
     public Visibility BusyVisibility => IsBusy ? Visibility.Visible : Visibility.Collapsed;
     public Visibility RepositoryVisibility => Repository is null ? Visibility.Collapsed : Visibility.Visible;

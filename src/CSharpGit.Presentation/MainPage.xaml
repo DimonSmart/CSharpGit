@@ -71,17 +71,9 @@
         </StackPanel>
       </ScrollViewer>
     </ContentDialog>
-
-    <ContentDialog x:Key="AppearanceDialog" Title="Appearance" CloseButtonText="Close" DefaultButton="Close">
-      <StackPanel Width="320" Spacing="8">
-        <TextBlock Text="Theme" FontWeight="SemiBold" />
-        <ComboBox ItemsSource="{Binding Themes}" DisplayMemberPath="Label" SelectedItem="{Binding SelectedThemeName, Mode=TwoWay}" />
-        <TextBlock Text="System follows the operating system appearance." TextWrapping="Wrap" Opacity="0.66" />
-      </StackPanel>
-    </ContentDialog>
   </Page.Resources>
 
-  <Grid x:Name="RootLayout" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" RequestedTheme="{Binding SelectedTheme, Mode=TwoWay}" KeyDown="Page_KeyDown">
+  <Grid x:Name="RootLayout" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" KeyDown="Page_KeyDown">
     <StackPanel Width="520" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="18" Visibility="{Binding PickerVisibility}">
       <FontIcon Glyph="&#xE8B7;" FontSize="56" HorizontalAlignment="Center" />
       <TextBlock Text="Open a Git repository" Style="{StaticResource TitleTextBlockStyle}" TextAlignment="Center" />
@@ -135,7 +127,6 @@
               <MenuFlyout>
                 <MenuFlyoutItem Text="More Git operations…" Click="MoreOperations_Click" />
                 <MenuFlyoutItem Text="Settings…" Click="Settings_Click" />
-                <MenuFlyoutItem Text="Appearance…" Click="Appearance_Click" />
               </MenuFlyout>
             </Button.Flyout>
           </Button>
