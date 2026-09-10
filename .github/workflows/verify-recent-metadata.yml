@@ -1,0 +1,17 @@
+name: Verify recent metadata
+
+on:
+  push:
+    branches:
+      - chatgpt/fix-recent-metadata-time
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test solution
+        run: dotnet test CSharpGit.slnx --configuration Release
