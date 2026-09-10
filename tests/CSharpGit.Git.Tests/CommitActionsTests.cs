@@ -255,9 +255,5 @@ public sealed class CommitActionsTests : IDisposable
         return (process.ExitCode, output, error);
     }
 
-    public void Dispose()
-    {
-        if (Directory.Exists(_root))
-            Directory.Delete(_root, recursive: true);
-    }
+    public void Dispose() => TestDirectory.Delete(_root);
 }
