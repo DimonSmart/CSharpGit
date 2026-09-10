@@ -1,0 +1,43 @@
+name: Verify repository images
+
+on:
+  push:
+    branches:
+      - chatgpt/repository-images-20260910
+    paths-ignore:
+      - ci-output.txt
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Initialize Git global config
+        run: touch "$HOME/.gitconfig"
+      - name: Test solution
+        id: test
+        shell: bash
+        run: |
+          set +e
+          dotnet test CSharpGit.slnx --configuration Release > ci-output.txt 2>&1
+          code=$?
+          cat ci-output.txt
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Publish failure diagnostics
+        if: steps.test.outputs.exit_code != '0'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f ci-output.txt
+          git commit -m "Capture repository image CI diagnostics"
+          git push
+      - name: Fail on test error
+        if: steps.test.outputs.exit_code != '0'
+        run: exit 1
