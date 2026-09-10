@@ -98,7 +98,7 @@ public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHist
             output = await RunGitAsync(
                 repository.WorkingDirectory,
                 cancellationToken,
-                "show", "--format=", "--root", "--no-ext-diff", "--find-renames", "--find-copies",
+                "show", "--format=", "--root", "--no-ext-diff", "--find-renames", "--find-copies-harder",
                 hash, "--", pair.Original.GitPath, pair.Changed.GitPath);
         }
         else
@@ -106,7 +106,7 @@ public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHist
             output = await RunGitAsync(
                 repository.WorkingDirectory,
                 cancellationToken,
-                "diff", "--no-ext-diff", "--find-renames", "--find-copies",
+                "diff", "--no-ext-diff", "--find-renames", "--find-copies-harder",
                 firstParent, hash, "--", pair.Original.GitPath, pair.Changed.GitPath);
         }
 
@@ -137,13 +137,13 @@ public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHist
                 repository.WorkingDirectory,
                 cancellationToken,
                 "diff-tree", "--root", "--no-commit-id", format, "-r", "-z",
-                "--find-renames", "--find-copies", hash);
+                "--find-renames", "--find-copies-harder", hash);
         }
 
         return RunGitAsync(
             repository.WorkingDirectory,
             cancellationToken,
-            "diff", format, "-z", "--no-ext-diff", "--find-renames", "--find-copies",
+            "diff", format, "-z", "--no-ext-diff", "--find-renames", "--find-copies-harder",
             firstParent, hash);
     }
 
@@ -211,8 +211,8 @@ public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHist
             if (fields.Length != 3) continue;
 
             var binary = fields[0] == "-" || fields[1] == "-";
-            var added = int.TryParse(fields[0], out var addedValue) ? addedValue : null;
-            var removed = int.TryParse(fields[1], out var removedValue) ? removedValue : null;
+            int? added = int.TryParse(fields[0], out var addedValue) ? addedValue : null;
+            int? removed = int.TryParse(fields[1], out var removedValue) ? removedValue : null;
             if (fields[2].Length > 0)
             {
                 yield return new NumStatEntry(fields[2], fields[2], added, removed, binary);
