@@ -46,11 +46,23 @@
                           CornerRadius="10"
                           Padding="18"
                           Opacity="{Binding TileOpacity}">
-                    <Grid ColumnDefinitions="42,*" RowDefinitions="Auto,Auto,*" ColumnSpacing="14">
-                      <Border Width="42" Height="42" CornerRadius="8"
+                    <Grid ColumnDefinitions="64,*" RowDefinitions="Auto,Auto,*" ColumnSpacing="14">
+                      <Border Width="64" Height="64" CornerRadius="9"
                               Background="{ThemeResource AccentFillColorSecondaryBrush}"
                               VerticalAlignment="Top">
-                        <FontIcon Glyph="&#xE8B7;" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <Grid>
+                          <FontIcon Glyph="&#xE8B7;"
+                                    FontSize="25"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Opacity="{Binding RepositoryGlyphOpacity}" />
+                          <Image Source="{Binding RepositoryImage}"
+                                 Stretch="Uniform"
+                                 HorizontalAlignment="Stretch"
+                                 VerticalAlignment="Stretch"
+                                 Opacity="{Binding RepositoryImageOpacity}"
+                                 ImageFailed="RepositoryImage_ImageFailed" />
+                        </Grid>
                       </Border>
                       <TextBlock Grid.Column="1"
                                  Text="{Binding DisplayName}"

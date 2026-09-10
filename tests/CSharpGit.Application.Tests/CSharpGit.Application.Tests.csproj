@@ -10,6 +10,12 @@
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
     <ProjectReference Include="../../src/CSharpGit.Application/CSharpGit.Application.csproj" />
     <Compile Include="../../src/CSharpGit.Infrastructure/JsonAppSettingsService.cs" Link="Infrastructure/JsonAppSettingsService.cs" />
+    <Compile Include="../../src/CSharpGit.Infrastructure/RepositoryImageService.cs" Link="Infrastructure/RepositoryImageService.cs" />
+    <Compile Include="../../src/CSharpGit.Infrastructure/RepositoryImageService.Cache.cs" Link="Infrastructure/RepositoryImageService.Cache.cs" />
+    <Compile Include="../../src/CSharpGit.Infrastructure/RepositoryImageService.Utilities.cs" Link="Infrastructure/RepositoryImageService.Utilities.cs" />
+    <Compile Include="../../src/CSharpGit.Infrastructure/RepositoryImageInternals.cs" Link="Infrastructure/RepositoryImageInternals.cs" />
+    <Compile Include="../../src/CSharpGit.Infrastructure/LocalRepositoryImageProvider.cs" Link="Infrastructure/LocalRepositoryImageProvider.cs" />
+    <Compile Include="../../src/CSharpGit.Infrastructure/GitHubRepositoryImageProvider.cs" Link="Infrastructure/GitHubRepositoryImageProvider.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/SettingsViewModel.cs" Link="Presentation/SettingsViewModel.cs" />
   </ItemGroup>
 </Project>
