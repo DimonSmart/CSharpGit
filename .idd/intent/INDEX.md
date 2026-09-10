@@ -40,3 +40,4 @@ opened.
 | IDD-0018 | Spec | Manual refresh and external changes | Explicit refresh ownership, debounced repository monitoring and refresh-required indicator | — |
 | IDD-0019 | Spec | Compact design system | Shared compact density with continuous History commit graph surfaces | — |
 | IDD-0020 | Spec | Release distribution | Tag-driven GitHub Releases, platform artifacts, checksums and Homebrew Cask | — |
+| IDD-0021 | Spec | Branch deletion | Confirmed safe local/remote deletion, corresponding-branch resolution and partial-success behavior | — |
