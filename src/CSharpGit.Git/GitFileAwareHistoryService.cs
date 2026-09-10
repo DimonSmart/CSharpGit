@@ -211,8 +211,8 @@ public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHist
             if (fields.Length != 3) continue;
 
             var binary = fields[0] == "-" || fields[1] == "-";
-            var added = int.TryParse(fields[0], out var addedValue) ? addedValue : null;
-            var removed = int.TryParse(fields[1], out var removedValue) ? removedValue : null;
+            int? added = int.TryParse(fields[0], out var addedValue) ? addedValue : null;
+            int? removed = int.TryParse(fields[1], out var removedValue) ? removedValue : null;
             if (fields[2].Length > 0)
             {
                 yield return new NumStatEntry(fields[2], fields[2], added, removed, binary);
