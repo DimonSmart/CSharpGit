@@ -17,6 +17,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     private readonly SessionFileLoggerProvider _sessionFileLoggerProvider;
     private readonly IHost _host;
     private Window? _window;
+    private IDisposable? _mainThemeRegistration;
     private bool _closeConfirmed;
     private bool _closeConfirmationInProgress;
     private bool _shutdownRequested;
@@ -49,6 +50,9 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             })
             .ConfigureServices(services =>
             {
+                services.AddSingleton<IAppSettingsService>(appSettings);
+                services.AddSingleton<ApplicationThemeManager>();
+
                 var checkRepository = Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_REPOSITORY");
                 services.AddSingleton<RecentRepositoryFolderPicker>(_ =>
                 {
@@ -103,10 +107,13 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             SessionFileLoggerProvider.CurrentLogPath);
 
         _window = new Window { Title = "CSharpGit" };
+        var themeManager = _host.Services.GetRequiredService<ApplicationThemeManager>();
         var mainPage = _host.Services.GetRequiredService<MainPage>();
+        mainPage.InitializeApplicationTheme(themeManager);
         mainPage.InitializeRecentRepositories(
             AppSettingsContext.Current,
             _host.Services.GetRequiredService<RecentRepositoryFolderPicker>());
+        _mainThemeRegistration = themeManager.Register(mainPage);
         _window.Content = mainPage;
         if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_RESULT")))
             _window.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 1400, Height = 900 });
@@ -200,6 +207,8 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     {
         if (Interlocked.Exchange(ref _hostStopped, 1) != 0) return;
         AppSettingsContext.Current.Changed -= AppSettings_Changed;
+        _mainThemeRegistration?.Dispose();
+        _mainThemeRegistration = null;
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
         try
         {

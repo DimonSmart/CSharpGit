@@ -10,7 +10,11 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         WriteIndented = true,
-        Converters = { new JsonStringEnumConverter() }
+        Converters =
+        {
+            new TolerantApplicationThemeModeConverter(),
+            new JsonStringEnumConverter()
+        }
     };
     private static readonly StringComparer PathComparer = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
         ? StringComparer.OrdinalIgnoreCase
@@ -18,6 +22,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
 
     private readonly string _filePath;
     private readonly SemaphoreSlim _writeGate = new(1, 1);
+    private ApplicationThemeMode _themeMode;
     private CommitTimeDisplayMode _commitTimeDisplayMode;
     private bool _loggingEnabled;
     private ApplicationLogLevel _logLevel;
@@ -32,11 +37,14 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     {
         _filePath = filePath;
         var state = LoadSettings();
+        _themeMode = state.ThemeMode;
         _commitTimeDisplayMode = state.CommitTimeDisplayMode;
         _loggingEnabled = state.LoggingEnabled;
         _logLevel = state.LogLevel;
         _recentRepositories = state.RecentRepositories;
     }
+
+    public ApplicationThemeMode ThemeMode => _themeMode;
 
     public CommitTimeDisplayMode CommitTimeDisplayMode => _commitTimeDisplayMode;
 
@@ -47,6 +55,19 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     public IReadOnlyList<RecentRepositorySettings> RecentRepositories => _recentRepositories;
 
     public event EventHandler? Changed;
+
+    public async Task SetThemeModeAsync(
+        ApplicationThemeMode mode,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Enum.IsDefined(typeof(ApplicationThemeMode), mode))
+            throw new ArgumentOutOfRangeException(nameof(mode));
+        if (_themeMode == mode) return;
+
+        _themeMode = mode;
+        Changed?.Invoke(this, EventArgs.Empty);
+        await PersistAsync(cancellationToken);
+    }
 
     public async Task SetCommitTimeDisplayModeAsync(
         CommitTimeDisplayMode mode,
@@ -125,6 +146,9 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             var document = JsonSerializer.Deserialize<SettingsDocument>(File.ReadAllText(_filePath), SerializerOptions);
             if (document is null) return SettingsState.Default;
 
+            var themeMode = Enum.IsDefined(typeof(ApplicationThemeMode), document.ThemeMode)
+                ? document.ThemeMode
+                : ApplicationThemeMode.System;
             var commitTimeDisplayMode = Enum.IsDefined(typeof(CommitTimeDisplayMode), document.CommitTimeDisplayMode)
                 ? document.CommitTimeDisplayMode
                 : CommitTimeDisplayMode.Smart;
@@ -134,7 +158,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 : ApplicationLogLevel.Information;
             var recentRepositories = NormalizeRecentRepositories(document.RecentRepositories);
 
-            return new SettingsState(commitTimeDisplayMode, document.LoggingEnabled, logLevel, recentRepositories);
+            return new SettingsState(themeMode, commitTimeDisplayMode, document.LoggingEnabled, logLevel, recentRepositories);
         }
         catch (JsonException)
         {
@@ -160,6 +184,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
 
             var document = new SettingsDocument
             {
+                ThemeMode = _themeMode,
                 CommitTimeDisplayMode = _commitTimeDisplayMode,
                 LoggingEnabled = _loggingEnabled,
                 LogLevel = _logLevel,
@@ -230,12 +255,14 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     }
 
     private readonly record struct SettingsState(
+        ApplicationThemeMode ThemeMode,
         CommitTimeDisplayMode CommitTimeDisplayMode,
         bool LoggingEnabled,
         ApplicationLogLevel LogLevel,
         IReadOnlyList<RecentRepositorySettings> RecentRepositories)
     {
         public static SettingsState Default { get; } = new(
+            ApplicationThemeMode.System,
             CommitTimeDisplayMode.Smart,
             false,
             ApplicationLogLevel.Information,
@@ -244,9 +271,39 @@ public sealed class JsonAppSettingsService : IAppSettingsService
 
     private sealed class SettingsDocument
     {
+        public ApplicationThemeMode ThemeMode { get; init; } = ApplicationThemeMode.System;
         public CommitTimeDisplayMode CommitTimeDisplayMode { get; init; } = CommitTimeDisplayMode.Smart;
         public bool LoggingEnabled { get; init; }
         public ApplicationLogLevel? LogLevel { get; init; }
         public List<RecentRepositorySettings>? RecentRepositories { get; init; }
+    }
+
+    private sealed class TolerantApplicationThemeModeConverter : JsonConverter<ApplicationThemeMode>
+    {
+        public override ApplicationThemeMode Read(
+            ref Utf8JsonReader reader,
+            Type typeToConvert,
+            JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.String)
+            {
+                var value = reader.GetString();
+                if (Enum.TryParse<ApplicationThemeMode>(value, false, out var mode)
+                    && Enum.IsDefined(typeof(ApplicationThemeMode), mode))
+                    return mode;
+                return ApplicationThemeMode.System;
+            }
+
+            if (reader.TokenType != JsonTokenType.Null)
+            {
+                using var _ = JsonDocument.ParseValue(ref reader);
+            }
+            return ApplicationThemeMode.System;
+        }
+
+        public override void Write(
+            Utf8JsonWriter writer,
+            ApplicationThemeMode value,
+            JsonSerializerOptions options) => writer.WriteStringValue(value.ToString());
     }
 }
