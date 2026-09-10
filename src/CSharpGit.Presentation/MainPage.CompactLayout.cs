@@ -203,7 +203,7 @@ public sealed partial class MainPage
         if (CompactDiffList.Parent is Grid diffContent && diffContent.Parent is Grid diffPane)
         {
             diffPane.RowDefinitions[0].Height = new GridLength(30);
-            diffPane.RowDefinitions[1].Height = new GridLength(18);
+            diffPane.RowDefinitions[1].Height = new GridLength(1, GridUnitType.Star);
 
             if (diffPane.Children
                 .OfType<Border>()
