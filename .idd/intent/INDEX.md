@@ -38,3 +38,4 @@ opened.
 | IDD-0016 | Spec | Recent repository images | Local logos, GitHub social previews, persistent cache and non-blocking start-screen integration | — |
 | IDD-0017 | Spec | Open diff file versions | Open Original/Changed, Reveal, safe snapshots and shared desktop shell integration | — |
 | IDD-0018 | Spec | Manual refresh and external changes | Explicit refresh ownership, debounced repository monitoring and refresh-required indicator | — |
+| IDD-0019 | Spec | Compact design system | Shared compact density with continuous History commit graph surfaces | — |
