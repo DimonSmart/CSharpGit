@@ -85,14 +85,9 @@ public sealed class CommitGraphControl : Canvas
 
     protected override Size MeasureOverride(Size availableSize)
     {
-        _ = base.MeasureOverride(availableSize);
-
-        var metrics = CommitGraphMetrics.Default;
-        var desiredWidth = CommitGraphGeometryBuilder.CalculateWidth(Graph?.LaneCount ?? 0, metrics);
-        var desiredHeight = double.IsFinite(Height) && Height >= 0
-            ? Height
-            : metrics.DefaultRowHeight;
-        return new Size(desiredWidth, desiredHeight);
+        var measured = base.MeasureOverride(availableSize);
+        var desiredWidth = CommitGraphGeometryBuilder.CalculateWidth(Graph?.LaneCount ?? 0, CommitGraphMetrics.Default);
+        return new Size(desiredWidth, measured.Height);
     }
 
     private static void OnGraphChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
@@ -109,10 +104,13 @@ public sealed class CommitGraphControl : Canvas
     private void UpdateGeometry()
     {
         var graph = Graph;
+        var height = ActualHeight;
+        if (!double.IsFinite(height) || height <= 0)
+        {
+            return;
+        }
+
         var metrics = CommitGraphMetrics.Default;
-        var height = double.IsFinite(ActualHeight) && ActualHeight > 0
-            ? ActualHeight
-            : metrics.DefaultRowHeight;
         var theme = ActualTheme;
 
         if (ReferenceEquals(_renderedGraph, graph)
@@ -191,18 +189,12 @@ public sealed class CommitGraphControl : Canvas
 
     internal bool HasCurrentRenderForCheck()
     {
-        if (!ReferenceEquals(_renderedGraph, Graph)
+        var height = ActualHeight;
+        if (!double.IsFinite(height) || height <= 0
+            || !ReferenceEquals(_renderedGraph, Graph)
             || _renderedTheme != ActualTheme
-            || Volatile.Read(ref _renderCount) == 0)
-        {
-            return false;
-        }
-
-        var metrics = CommitGraphMetrics.Default;
-        var height = double.IsFinite(ActualHeight) && ActualHeight > 0
-            ? ActualHeight
-            : metrics.DefaultRowHeight;
-        if (Math.Abs(_renderedHeight - height) > 0.01)
+            || Volatile.Read(ref _renderCount) == 0
+            || Math.Abs(_renderedHeight - height) > 0.01)
         {
             return false;
         }
@@ -212,7 +204,7 @@ public sealed class CommitGraphControl : Canvas
             return _trackPaths.All(path => path.Data is null) && _nodePath.Data is null;
         }
 
-        var geometry = CommitGraphGeometryBuilder.Build(Graph, height, metrics);
+        var geometry = CommitGraphGeometryBuilder.Build(Graph, height, CommitGraphMetrics.Default);
         var expectedPaletteIndexes = geometry.Lines.Select(line => PaletteIndex(line.TrackId))
             .Concat(geometry.Beziers.Select(bezier => PaletteIndex(bezier.TrackId)))
             .ToHashSet();

@@ -4,15 +4,13 @@ public readonly record struct CommitGraphMetrics(
     double LaneWidth,
     double HorizontalMargin,
     double LineThickness,
-    double NodeRadius,
-    double DefaultRowHeight)
+    double NodeRadius)
 {
     public static CommitGraphMetrics Default { get; } = new(
         LaneWidth: 16,
         HorizontalMargin: 8,
         LineThickness: 2,
-        NodeRadius: 4,
-        DefaultRowHeight: 34);
+        NodeRadius: 4);
 
     public double CalculateWidth(int laneCount)
     {

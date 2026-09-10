@@ -163,8 +163,12 @@ public sealed class CommitGraphGeometryBuilderTests
         Assert.Equal(0, emptyGeometry.Width);
     }
 
-    [Fact]
-    public void LinesReachExactRowBoundaries()
+    [Theory]
+    [InlineData(20)]
+    [InlineData(24)]
+    [InlineData(32)]
+    [InlineData(37)]
+    public void GeometryUsesProvidedRowHeight(double height)
     {
         var graph = new CommitGraphRowVisual(
             NodeLane: 0,
@@ -173,9 +177,25 @@ public sealed class CommitGraphGeometryBuilderTests
             IncomingSegments: [new(0, 0, 0)],
             OutgoingSegments: [new(0, 0, 0)]);
 
-        var geometry = CommitGraphGeometryBuilder.Build(graph, 37);
+        var geometry = CommitGraphGeometryBuilder.Build(graph, height);
 
+        Assert.Equal(height, geometry.Height);
+        Assert.Equal(height / 2, geometry.Node?.Center.Y);
         Assert.Equal(0, geometry.Lines[0].Start.Y);
-        Assert.Equal(37, geometry.Lines[1].End.Y);
+        Assert.Equal(height, geometry.Lines[1].End.Y);
+    }
+
+    [Fact]
+    public void InvalidHeightDoesNotIntroduceLayoutOwnedFallback()
+    {
+        var geometry = CommitGraphGeometryBuilder.Build(null, double.NaN);
+
+        Assert.Equal(0, geometry.Height);
+    }
+
+    [Fact]
+    public void CommitGraphMetricsDoNotOwnHistoryRowHeight()
+    {
+        Assert.Null(typeof(CommitGraphMetrics).GetProperty("DefaultRowHeight"));
     }
 }
