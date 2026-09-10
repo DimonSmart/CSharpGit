@@ -21,6 +21,8 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
+      - name: Initialize Git global config
+        run: touch "$HOME/.gitconfig"
       - name: Apply implementation patch
         run: python3 tools/apply_selected_commit_actions.py
       - name: Verify Git integration tests
