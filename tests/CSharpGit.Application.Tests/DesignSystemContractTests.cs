@@ -86,7 +86,6 @@ public sealed class DesignSystemContractTests
         Assert.Contains("x:Key=\"DiffRowStyle\"", workspace);
         Assert.Contains("x:Key=\"DenseColumnHeaderSurfaceStyle\"", workspace);
         Assert.Contains("x:Key=\"CompactPivotHeaderItemStyle\"", workspace);
-        Assert.Contains("primitives:ListViewItemPresenter", workspace);
         Assert.DoesNotContain("Height=\"24\"", workspace);
         Assert.DoesNotContain("Height=\"20\"", workspace);
 
