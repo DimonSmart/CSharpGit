@@ -13,6 +13,10 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - name: Initialize Git user configuration
+        run: |
+          git config --global user.email "csharpgit-ci@example.invalid"
+          git config --global user.name "CSharpGit CI"
       - name: Build desktop application
         run: dotnet build src/CSharpGit.Presentation/CSharpGit.Presentation.csproj --configuration Release
       - name: Test application contracts
