@@ -12,6 +12,7 @@ permissions:
 
 env:
   DOTNET_NOLOGO: true
+  MIGRATION_REVISION: 2
 
 jobs:
   migrate:
