@@ -147,17 +147,25 @@
                 </MenuFlyout>
               </Button.Flyout>
             </Button>
-            <Button Click="RefreshAll_Click" Style="{StaticResource ToolbarButtonStyle}">
-              <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
-                <FontIcon Glyph="&#xE72C;" FontSize="{StaticResource Icon.Small}" />
-                <TextBlock Text="Refresh" Style="{StaticResource BodyTextStyle}" />
-              </StackPanel>
+            <Button x:Name="RefreshButton"
+                    Click="RefreshIndicator_Click"
+                    Style="{StaticResource IconButtonStyle}"
+                    VerticalAlignment="Center"
+                    ToolTipService.ToolTip="Refresh repository."
+                    AutomationProperties.Name="Refresh repository">
+              <Grid Width="16" Height="16">
+                <FontIcon x:Name="RefreshIcon"
+                          Glyph="&#xE72C;"
+                          FontSize="{StaticResource Icon.Normal}"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center" />
+                <ProgressRing x:Name="RefreshProgressRing"
+                              IsActive="False"
+                              Visibility="Collapsed"
+                              Width="16"
+                              Height="16" />
+              </Grid>
             </Button>
-            <ProgressRing x:Name="BusyIndicator"
-                          IsActive="{Binding IsBusy}"
-                          Width="16"
-                          Height="16"
-                          Margin="6,0,0,0" />
           </StackPanel>
           <Button Grid.Column="6" Style="{StaticResource IconButtonStyle}" VerticalAlignment="Center">
             <FontIcon Glyph="&#xE712;" FontSize="{StaticResource Icon.Normal}" />

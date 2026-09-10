@@ -8,14 +8,15 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
+    private const string RefreshRepositoryTooltip = "Refresh repository.";
     private const string ExternalRepositoryChangeTooltip = "Repository has changed externally. Refresh to see the latest state.";
+    private const string RefreshingRepositoryTooltip = "Refreshing repository…";
 
     private readonly RepositoryChangeMonitor _repositoryChangeMonitor = new();
     private bool _repositoryChangeMonitoringInitialized;
     private bool _repositoryStateRefreshObserved;
+    private bool _isRefreshInProgress;
     private Repository? _monitoredRepository;
-    private Button? _refreshButton;
-    private FontIcon? _refreshIcon;
     private bool _repositoryPresentationRefreshQueued;
     private bool _workingTreePresentationDirty;
 
@@ -28,7 +29,6 @@ public sealed partial class MainPage
 
         _repositoryChangeMonitor.RepositoryChanged += RepositoryChangeMonitor_RepositoryChanged;
         _viewModel.PropertyChanged += RepositoryRefreshTracking_PropertyChanged;
-        RootLayout.Loaded += RootLayout_RefreshIndicatorLoaded;
         UpdateRepositoryChangeMonitor();
         UpdateRefreshIndicator();
     }
@@ -38,7 +38,6 @@ public sealed partial class MainPage
         if (!_repositoryChangeMonitoringInitialized) return;
         _repositoryChangeMonitoringInitialized = false;
 
-        RootLayout.Loaded -= RootLayout_RefreshIndicatorLoaded;
         _viewModel.PropertyChanged -= RepositoryRefreshTracking_PropertyChanged;
         _repositoryChangeMonitor.RepositoryChanged -= RepositoryChangeMonitor_RepositoryChanged;
         _repositoryChangeMonitor.Dispose();
@@ -105,64 +104,47 @@ public sealed partial class MainPage
         UpdateRefreshIndicator();
     }
 
-    private void RootLayout_RefreshIndicatorLoaded(object sender, RoutedEventArgs e) => UpdateRefreshIndicator();
+    private void SetRefreshInProgress(bool value)
+    {
+        if (_isRefreshInProgress == value) return;
+        _isRefreshInProgress = value;
+        UpdateRefreshIndicator();
+    }
 
     private void UpdateRefreshIndicator()
     {
-        if (_refreshButton is null)
-        {
-            _refreshButton = FindRefreshButton(RootLayout);
-            _refreshIcon = _refreshButton is null ? null : FindRefreshIcon(_refreshButton);
-        }
+        var state = _isRefreshInProgress
+            ? RefreshIndicatorState.Refreshing
+            : IsRefreshRequired
+                ? RefreshIndicatorState.RefreshRequired
+                : RefreshIndicatorState.UpToDate;
+        var isRefreshing = state == RefreshIndicatorState.Refreshing;
 
-        if (_refreshButton is null) return;
+        RefreshIcon.Visibility = isRefreshing ? Visibility.Collapsed : Visibility.Visible;
+        RefreshProgressRing.Visibility = isRefreshing ? Visibility.Visible : Visibility.Collapsed;
+        RefreshProgressRing.IsActive = isRefreshing;
+
+        RefreshIcon.Foreground = new SolidColorBrush(
+            state == RefreshIndicatorState.RefreshRequired
+                ? Microsoft.UI.Colors.Red
+                : Microsoft.UI.Colors.LimeGreen);
+        RefreshProgressRing.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Goldenrod);
 
         ToolTipService.SetToolTip(
-            _refreshButton,
-            IsRefreshRequired ? ExternalRepositoryChangeTooltip : null);
-
-        if (_refreshIcon is not null)
-            _refreshIcon.Foreground = IsRefreshRequired ? new SolidColorBrush(Microsoft.UI.Colors.Red) : null!;
+            RefreshButton,
+            state switch
+            {
+                RefreshIndicatorState.RefreshRequired => ExternalRepositoryChangeTooltip,
+                RefreshIndicatorState.Refreshing => RefreshingRepositoryTooltip,
+                _ => RefreshRepositoryTooltip
+            });
     }
 
-    private static Button? FindRefreshButton(DependencyObject root)
+    private enum RefreshIndicatorState
     {
-        var childCount = VisualTreeHelper.GetChildrenCount(root);
-        for (var i = 0; i < childCount; i++)
-        {
-            var child = VisualTreeHelper.GetChild(root, i);
-            if (child is Button button && ContainsRefreshText(button)) return button;
-
-            var nested = FindRefreshButton(child);
-            if (nested is not null) return nested;
-        }
-
-        return null;
-    }
-
-    private static bool ContainsRefreshText(DependencyObject root)
-    {
-        if (root is TextBlock { Text: "Refresh" }) return true;
-
-        var childCount = VisualTreeHelper.GetChildrenCount(root);
-        for (var i = 0; i < childCount; i++)
-            if (ContainsRefreshText(VisualTreeHelper.GetChild(root, i))) return true;
-
-        return false;
-    }
-
-    private static FontIcon? FindRefreshIcon(DependencyObject root)
-    {
-        if (root is FontIcon { Glyph: "\uE72C" } icon) return icon;
-
-        var childCount = VisualTreeHelper.GetChildrenCount(root);
-        for (var i = 0; i < childCount; i++)
-        {
-            var nestedIcon = FindRefreshIcon(VisualTreeHelper.GetChild(root, i));
-            if (nestedIcon is not null) return nestedIcon;
-        }
-
-        return null;
+        UpToDate,
+        RefreshRequired,
+        Refreshing
     }
 
     private void QueueRepositoryPresentationRefresh(bool workingTreeChanged = false)
