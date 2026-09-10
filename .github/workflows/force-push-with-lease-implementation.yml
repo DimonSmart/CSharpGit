@@ -31,6 +31,33 @@ jobs:
           git config --global user.email "ci@example.invalid"
       - name: Apply implementation
         run: python .github/force-push-with-lease-implementation.py
+      - name: Align existing UI contract with contextual Push
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path("tests/CSharpGit.Application.Tests/DesktopUiContractTests.cs")
+          text = path.read_text(encoding="utf-8")
+          old = '''        var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+                  var surface = xaml + operationBanner + page;'''.replace('                  ', '        ')
+          new = '''        var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+                  var forcePushPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ForcePush.cs"));
+                  var surface = xaml + operationBanner + page + forcePushPage;'''.replace('                  ', '        ')
+          if text.count(old) != 1:
+              raise RuntimeError(f"expected one UI surface declaration, found {text.count(old)}")
+          text = text.replace(old, new, 1)
+          text = text.replace('"FetchCommand", "FetchAllCommand", "PullCommand", "PushCommand", "CreateStashCommand"',
+                              '"FetchCommand", "FetchAllCommand", "PullCommand", "CreateStashCommand"', 1)
+          marker = '        }) Assert.Contains(command, surface);\n'
+          addition = marker + '''
+                  Assert.Contains("Push_Click", surface);
+                  Assert.Contains("_referenceService.PushAsync", forcePushPage);
+                  Assert.Contains("Force push with lease…", surface);
+                  Assert.Contains("ForcePushWithLeaseAsync(repository, snapshot)", forcePushPage);
+          '''.replace('                  ', '        ')
+          if text.count(marker) < 1:
+              raise RuntimeError("UI command assertion marker not found")
+          text = text.replace(marker, addition, 1)
+          path.write_text(text, encoding="utf-8")
       - name: Check diff
         run: git diff --check
       - name: Build desktop solution
@@ -53,6 +80,33 @@ jobs:
           test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
       - name: Apply verified implementation
         run: python .github/force-push-with-lease-implementation.py
+      - name: Align existing UI contract with contextual Push
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path("tests/CSharpGit.Application.Tests/DesktopUiContractTests.cs")
+          text = path.read_text(encoding="utf-8")
+          old = '''        var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+                  var surface = xaml + operationBanner + page;'''.replace('                  ', '        ')
+          new = '''        var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+                  var forcePushPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ForcePush.cs"));
+                  var surface = xaml + operationBanner + page + forcePushPage;'''.replace('                  ', '        ')
+          if text.count(old) != 1:
+              raise RuntimeError(f"expected one UI surface declaration, found {text.count(old)}")
+          text = text.replace(old, new, 1)
+          text = text.replace('"FetchCommand", "FetchAllCommand", "PullCommand", "PushCommand", "CreateStashCommand"',
+                              '"FetchCommand", "FetchAllCommand", "PullCommand", "CreateStashCommand"', 1)
+          marker = '        }) Assert.Contains(command, surface);\n'
+          addition = marker + '''
+                  Assert.Contains("Push_Click", surface);
+                  Assert.Contains("_referenceService.PushAsync", forcePushPage);
+                  Assert.Contains("Force push with lease…", surface);
+                  Assert.Contains("ForcePushWithLeaseAsync(repository, snapshot)", forcePushPage);
+          '''.replace('                  ', '        ')
+          if text.count(marker) < 1:
+              raise RuntimeError("UI command assertion marker not found")
+          text = text.replace(marker, addition, 1)
+          path.write_text(text, encoding="utf-8")
       - name: Remove temporary verifier
         run: rm .github/force-push-with-lease-implementation.py .github/force-push-with-lease-implementation.py.gz .github/workflows/force-push-with-lease-implementation.yml
       - name: Commit to main
