@@ -17,6 +17,16 @@
   <Thickness x:Key="Padding.DiffText">5,0</Thickness>
   <Thickness x:Key="Padding.CompactPivotHeader">8,0</Thickness>
 
+  <Style x:Key="ReferenceBadgeStyle" TargetType="Border">
+    <Setter Property="Background" Value="{ThemeResource ControlFillColorDefaultBrush}" />
+    <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Padding" Value="{StaticResource Padding.ReferenceBadge}" />
+    <Setter Property="Margin" Value="{StaticResource Margin.ReferenceBadge}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
   <Style x:Key="ToolbarSurfaceStyle" TargetType="Border">
     <Setter Property="MinHeight" Value="{StaticResource Height.Toolbar}" />
     <Setter Property="Padding" Value="{StaticResource Padding.Toolbar}" />
@@ -139,12 +149,8 @@
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate>
-              <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                      BorderThickness="1"
-                      CornerRadius="4"
-                      Padding="{StaticResource Padding.ReferenceBadge}"
-                      Margin="{StaticResource Margin.ReferenceBadge}">
-                <TextBlock Text="{Binding}" Style="{StaticResource CaptionTextStyle}" Opacity="0.82" />
+              <Border Style="{StaticResource ReferenceBadgeStyle}">
+                <TextBlock Text="{Binding}" Style="{StaticResource CaptionTextStyle}" />
               </Border>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
