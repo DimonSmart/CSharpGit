@@ -18,7 +18,9 @@ public sealed class DesktopUiContractTests
         Assert.Contains("OpenRepositoryCommand", xaml);
         Assert.Contains("UnoPlatformHostBuilder.Create", program);
         Assert.Contains("host.RunAsync()", program);
-        Assert.All(new[] { ".UseWin32()", ".UseMacOS()", ".UseX11()" }, platform => Assert.Contains(platform, program));
+        Assert.Contains(".UseWin32(", program);
+        Assert.Contains("Win32RenderingBackend.Vulkan", program);
+        Assert.All(new[] { ".UseMacOS()", ".UseX11()" }, platform => Assert.Contains(platform, program));
         Assert.True(Count(xaml, "GridSplitter") >= 3, "All principal panes must remain resizable.");
         Assert.Contains("UserControl", splitter);
         Assert.Contains("HasVisualSurfaceForCheck", splitter);
