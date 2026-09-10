@@ -46,14 +46,14 @@ public sealed class GitRepositoryFileVersionService : IRepositoryFileVersionServ
                 repository.WorkingDirectory,
                 cancellationToken,
                 "diff-tree", "--root", "--no-commit-id", "--raw", "-r", "-z",
-                "--find-renames", "--find-copies", commitHash);
+                "--find-renames", "--find-copies-harder", commitHash);
         }
         else
         {
             raw = await RunGitAsync(
                 repository.WorkingDirectory,
                 cancellationToken,
-                "diff", "--raw", "-z", "--no-ext-diff", "--find-renames", "--find-copies",
+                "diff", "--raw", "-z", "--no-ext-diff", "--find-renames", "--find-copies-harder",
                 firstParent, commitHash);
         }
 
