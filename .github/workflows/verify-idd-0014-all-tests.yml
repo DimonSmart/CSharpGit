@@ -1,0 +1,26 @@
+name: Verify IDD-0014 all tests
+
+on:
+  push:
+    branches:
+      - idd-0014-selected-commit-actions
+    paths:
+      - .github/workflows/verify-idd-0014-all-tests.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Initialize Git global config
+        run: touch "$HOME/.gitconfig"
+      - name: Test solution
+        run: dotnet test CSharpGit.slnx --configuration Release
