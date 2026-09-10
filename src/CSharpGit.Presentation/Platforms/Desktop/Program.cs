@@ -10,7 +10,7 @@ public static class Program
         App? application = null;
         var host = UnoPlatformHostBuilder.Create()
             .App(() => application = new App())
-            .UseWin32(builder => builder.RenderingBackend(Win32RenderingBackend.Software))
+            .UseWin32(builder => builder.RenderingBackend(Win32RenderingBackend.Vulkan))
             .UseMacOS()
             .UseX11()
             .UseLinuxFrameBuffer()
