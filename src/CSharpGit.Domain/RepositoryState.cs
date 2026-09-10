@@ -89,6 +89,25 @@ public sealed record InteractiveRebasePlan(string Onto, IReadOnlyList<RebasePlan
 public enum RebaseResultKind { Completed, Conflicts, Failed }
 public sealed record RebaseResult(RebaseResultKind Kind, string Message);
 
+public enum ApplyCommitResultKind
+{
+    Completed,
+    Conflicts,
+    Failed
+}
+
+public sealed record ApplyCommitResult(
+    ApplyCommitResultKind Kind,
+    string Message,
+    string? HeadCommit = null);
+
+public enum ResetMode
+{
+    Soft,
+    Mixed,
+    Hard
+}
+
 public sealed record GitReferences(
     IReadOnlyList<GitBranch> LocalBranches,
     IReadOnlyList<GitBranch> RemoteBranches,
