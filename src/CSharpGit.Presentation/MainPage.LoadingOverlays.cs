@@ -7,39 +7,15 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private bool _loadingOverlayLifecycleHooked;
     private bool _loadingOverlaysInitialized;
     private Grid? _commitLoadingOverlay;
     private Grid? _diffLoadingOverlay;
     private ProgressRing? _commitLoadingRing;
     private ProgressRing? _diffLoadingRing;
 
-    protected override void OnApplyTemplate()
+    private void InitializeLoadingOverlays()
     {
-        base.OnApplyTemplate();
-        if (_loadingOverlayLifecycleHooked) return;
-
-        _loadingOverlayLifecycleHooked = true;
-        Loaded += LoadingOverlays_Loaded;
-        Unloaded += LoadingOverlays_Unloaded;
-    }
-
-    private void LoadingOverlays_Loaded(object sender, RoutedEventArgs e)
-    {
-        EnsureLoadingOverlays();
-        _viewModel.PropertyChanged -= LoadingOverlayViewModel_PropertyChanged;
-        _viewModel.PropertyChanged += LoadingOverlayViewModel_PropertyChanged;
-        UpdateLoadingOverlays();
-    }
-
-    private void LoadingOverlays_Unloaded(object sender, RoutedEventArgs e)
-    {
-        _viewModel.PropertyChanged -= LoadingOverlayViewModel_PropertyChanged;
-    }
-
-    private void EnsureLoadingOverlays()
-    {
-        if (_loadingOverlaysInitialized) return;
+        if (_loadingOverlaysInitialized || _viewModel is null) return;
         if (CompactDiffList.Parent is not Grid diffViewer) return;
 
         _commitLoadingOverlay = CreateLoadingOverlay("Loading commit…", out _commitLoadingRing);
@@ -49,7 +25,9 @@ public sealed partial class MainPage
         _diffLoadingOverlay = CreateLoadingOverlay("Loading diff…", out _diffLoadingRing);
         diffViewer.Children.Add(_diffLoadingOverlay);
 
+        _viewModel.PropertyChanged += LoadingOverlayViewModel_PropertyChanged;
         _loadingOverlaysInitialized = true;
+        UpdateLoadingOverlays();
     }
 
     private Grid CreateLoadingOverlay(string message, out ProgressRing progressRing)
@@ -98,5 +76,11 @@ public sealed partial class MainPage
         _commitLoadingRing!.IsActive = _viewModel.IsCommitLoading;
         _diffLoadingOverlay!.Visibility = _viewModel.DiffLoadingVisibility;
         _diffLoadingRing!.IsActive = _viewModel.IsDiffLoading;
+    }
+
+    private void DetachLoadingOverlays()
+    {
+        if (!_loadingOverlaysInitialized) return;
+        _viewModel.PropertyChanged -= LoadingOverlayViewModel_PropertyChanged;
     }
 }
