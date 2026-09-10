@@ -34,6 +34,8 @@ public sealed partial class MainPage
 
         RepositoryTree.Expanding += RepositoryTree_Expanding;
         RepositoryTree.Collapsed += RepositoryTree_Collapsed;
+        RepositoryTree.RightTapped -= RepositoryTree_RightTapped;
+        RepositoryTree.RightTapped += RepositoryTreeBranchDeletion_RightTapped;
         _viewModel.PropertyChanged += RepositoryTreeViewModel_PropertyChanged;
         _repositoryTreeStateTrackingAttached = true;
 
@@ -68,6 +70,8 @@ public sealed partial class MainPage
 
         RepositoryTree.Expanding -= RepositoryTree_Expanding;
         RepositoryTree.Collapsed -= RepositoryTree_Collapsed;
+        RepositoryTree.RightTapped -= RepositoryTreeBranchDeletion_RightTapped;
+        RepositoryTree.RightTapped += RepositoryTree_RightTapped;
         _viewModel.PropertyChanged -= RepositoryTreeViewModel_PropertyChanged;
         _repositoryTreeStateTrackingAttached = false;
     }
