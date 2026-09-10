@@ -13,6 +13,8 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - name: Initialize Git global config
+        run: touch ~/.gitconfig
       - name: Test solution
         shell: bash
         run: |
