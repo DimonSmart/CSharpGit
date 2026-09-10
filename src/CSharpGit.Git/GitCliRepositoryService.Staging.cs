@@ -39,7 +39,7 @@ public sealed partial class GitCliRepositoryService
 
         // Unborn HEAD has no tree to reset the index to. Removing every index entry
         // with --cached preserves the working-tree bytes while making the index empty.
-        await RunGitForMutationAsync(repository, cancellationToken, "rm", "--cached", "--recursive", "--force", "--ignore-unmatch", "--", ".");
+        await RunGitForMutationAsync(repository, cancellationToken, "rm", "--cached", "-r", "--force", "--ignore-unmatch", "--", ".");
     }
 
     private async Task<bool> HasHeadAsync(Repository repository, CancellationToken cancellationToken) =>
