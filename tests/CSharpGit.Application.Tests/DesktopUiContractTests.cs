@@ -46,15 +46,21 @@ public sealed class DesktopUiContractTests
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var operationBanner = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "OperationBanner.xaml"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
-        var surface = xaml + operationBanner + page;
+        var forcePushPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ForcePush.cs"));
+        var surface = xaml + operationBanner + page + forcePushPage;
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         foreach (var command in new[]
         {
             "StageCommand", "UnstageCommand", "CommitCommand", "AmendCommand", "ConfirmDiscardCommand",
-            "FetchCommand", "FetchAllCommand", "PullCommand", "PushCommand", "CreateStashCommand", "ApplyStashCommand",
+            "FetchCommand", "FetchAllCommand", "PullCommand", "CreateStashCommand", "ApplyStashCommand",
             "PopStashCommand", "MergeCommand", "StartRebaseCommand", "ContinueOperationCommand", "SkipOperationCommand",
             "AbortOperationCommand", "MergeToolCommand", "MergeToolWorkflowCommand"
         }) Assert.Contains(command, surface);
+
+        Assert.Contains("Push_Click", surface);
+        Assert.Contains("_referenceService.PushAsync", forcePushPage);
+        Assert.Contains("Force push with lease…", surface);
+        Assert.Contains("ForcePushWithLeaseAsync(repository, snapshot)", forcePushPage);
 
         Assert.Contains("OperationState.CanContinue", viewModel);
         Assert.Contains("OperationState.CanSkip", viewModel);
