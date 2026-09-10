@@ -39,6 +39,8 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
     private CommitDetails? _selectedCommit;
     private ChangedFile? _selectedFile;
     private FileDiff? _selectedDiff;
+    private bool _isCommitLoading;
+    private bool _isDiffLoading;
     private bool _hasMore;
     private WorkingTreeChange? _selectedChange;
     private WorkingTreeDiffKind? _selectedWorkingTreeDiffKind;
@@ -219,12 +221,16 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
     public string RepositoryKind => Repository?.IsWorktree == true ? "Git worktree" : "Git repository";
     public string FilterText { get => _filterText; set { _filterText = value; Notify(); } }
     public UiChoice<HistoryScope> SelectedScope { get => _selectedScope; set { if (_selectedScope == value) return; _selectedScope = value; Notify(); _ = LoadHistoryAsync(true); } }
-    public HistoryRow? SelectedHistoryRow { get => _selectedHistoryRow; set { if (ReferenceEquals(_selectedHistoryRow, value)) return; _selectedHistoryRow = value; Notify(); _ = LoadCommitAsync(); } }
-    public CommitDetails? SelectedCommit { get => _selectedCommit; private set { _selectedCommit = value; Notify(); Notify(nameof(DetailsVisibility)); } }
+    public HistoryRow? SelectedHistoryRow { get => _selectedHistoryRow; set { if (ReferenceEquals(_selectedHistoryRow, value)) return; _selectedHistoryRow = value; Notify(); Notify(nameof(DetailsVisibility)); _ = LoadCommitAsync(); } }
+    public CommitDetails? SelectedCommit { get => _selectedCommit; private set { _selectedCommit = value; Notify(); } }
     public ChangedFile? SelectedFile { get => _selectedFile; set { if (_selectedFile == value) return; _selectedFile = value; Notify(); _ = LoadDiffAsync(); } }
     public FileDiff? SelectedDiff { get => _selectedDiff; private set { _selectedDiff = value; Notify(); Notify(nameof(DiffVisibility)); Notify(nameof(BinaryVisibility)); } }
+    public bool IsCommitLoading { get => _isCommitLoading; private set { if (_isCommitLoading == value) return; _isCommitLoading = value; Notify(); Notify(nameof(CommitLoadingVisibility)); } }
+    public bool IsDiffLoading { get => _isDiffLoading; private set { if (_isDiffLoading == value) return; _isDiffLoading = value; Notify(); Notify(nameof(DiffLoadingVisibility)); } }
     public bool HasMore { get => _hasMore; private set { _hasMore = value; Notify(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
-    public Visibility DetailsVisibility => SelectedCommit is null ? Visibility.Collapsed : Visibility.Visible;
+    public Visibility DetailsVisibility => SelectedHistoryRow is null ? Visibility.Collapsed : Visibility.Visible;
+    public Visibility CommitLoadingVisibility => IsCommitLoading ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility DiffLoadingVisibility => IsDiffLoading ? Visibility.Visible : Visibility.Collapsed;
     public Visibility DiffVisibility => SelectedDiff is { IsBinary: false } ? Visibility.Visible : Visibility.Collapsed;
     public Visibility BinaryVisibility => SelectedDiff?.IsBinary == true ? Visibility.Visible : Visibility.Collapsed;
     public WorkingTreeChange? SelectedChange
@@ -750,8 +756,14 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
             SelectedCommit = null;
             SelectedFile = null;
             SelectedDiff = null;
+            if (generation == Volatile.Read(ref _commitLoadGeneration)) IsCommitLoading = false;
             return;
         }
+
+        IsCommitLoading = true;
+        SelectedCommit = null;
+        SelectedFile = null;
+        SelectedDiff = null;
 
         try
         {
@@ -762,14 +774,26 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
                 return;
 
             SelectedCommit = commit;
-            SelectedFile = SelectedCommit.Files.FirstOrDefault();
+            SelectedFile = commit.Files.FirstOrDefault();
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             if (generation == Volatile.Read(ref _commitLoadGeneration)
                 && ReferenceEquals(repository, Repository)
                 && ReferenceEquals(selectedRow, SelectedHistoryRow))
+            {
+                SelectedCommit = null;
+                SelectedFile = null;
+                SelectedDiff = null;
                 ErrorMessage = $"Could not read commit: {exception.Message}";
+            }
+        }
+        finally
+        {
+            if (generation == Volatile.Read(ref _commitLoadGeneration)
+                && ReferenceEquals(repository, Repository)
+                && ReferenceEquals(selectedRow, SelectedHistoryRow))
+                IsCommitLoading = false;
         }
     }
 
@@ -782,8 +806,12 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
         if (repository is null || selectedCommit is null || selectedFile is null)
         {
             SelectedDiff = null;
+            if (generation == Volatile.Read(ref _diffLoadGeneration)) IsDiffLoading = false;
             return;
         }
+
+        SelectedDiff = null;
+        IsDiffLoading = true;
 
         try
         {
@@ -801,7 +829,18 @@ public sealed class OpenRepositoryViewModel : INotifyPropertyChanged
                 && ReferenceEquals(repository, Repository)
                 && ReferenceEquals(selectedCommit, SelectedCommit)
                 && ReferenceEquals(selectedFile, SelectedFile))
+            {
+                SelectedDiff = null;
                 ErrorMessage = $"Could not read change: {exception.Message}";
+            }
+        }
+        finally
+        {
+            if (generation == Volatile.Read(ref _diffLoadGeneration)
+                && ReferenceEquals(repository, Repository)
+                && ReferenceEquals(selectedCommit, SelectedCommit)
+                && ReferenceEquals(selectedFile, SelectedFile))
+                IsDiffLoading = false;
         }
     }
 
