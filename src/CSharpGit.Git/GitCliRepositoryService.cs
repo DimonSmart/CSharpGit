@@ -8,31 +8,19 @@ namespace CSharpGit.Git;
 
 public sealed partial class GitCliRepositoryService : IRepositoryService, IRepositoryStateService, IWorkingTreeService, IReferenceService, IRepositoryWorkflowService
 {
-    private readonly string _gitExecutable;
+    private readonly GitCommandExecutor _executor;
 
-    public GitCliRepositoryService() : this(new GitCliOptions()) { }
+    public GitCliRepositoryService() : this(GitCommandExecutor.Default) { }
 
-    public GitCliRepositoryService(GitCliOptions options)
+    internal GitCliRepositoryService(GitCommandExecutor executor)
     {
-        ArgumentNullException.ThrowIfNull(options);
-        _gitExecutable = string.IsNullOrWhiteSpace(options.ExecutablePath) ? "git" : options.ExecutablePath;
+        _executor = executor ?? throw new ArgumentNullException(nameof(executor));
     }
-
-    public Task<HistoryPage> ReadHistoryThroughCommitAsync(
-        Repository repository,
-        HistoryScope scope,
-        string targetHash,
-        int trailingCount = 100,
-        CancellationToken cancellationToken = default) =>
-        new GitReferenceHistoryService(new GitCliOptions { ExecutablePath = _gitExecutable })
-            .ReadHistoryThroughCommitAsync(repository, scope, targetHash, trailingCount, cancellationToken);
 
     public async Task<Repository> OpenAsync(string path, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
-        {
             throw new RepositoryOpenException("The selected folder does not exist.");
-        }
 
         try
         {
@@ -181,7 +169,11 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
     public Task CreateStashAsync(Repository repository, string? message = null, CancellationToken cancellationToken = default)
     {
         var arguments = new List<string> { "stash", "push" };
-        if (!string.IsNullOrWhiteSpace(message)) { arguments.Add("--message"); arguments.Add(message.Trim()); }
+        if (!string.IsNullOrWhiteSpace(message))
+        {
+            arguments.Add("--message");
+            arguments.Add(message.Trim());
+        }
         return RunGitForMutationAsync(repository, cancellationToken, arguments.ToArray());
     }
 
@@ -484,9 +476,7 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
             var end = text.IndexOfAny([',', ']'], start);
             return int.TryParse(text[start..(end < 0 ? text.Length : end)].Trim(), out var count) ? count : 0;
         }
-        var ahead = ReadCount(value, "ahead ");
-        var behind = ReadCount(value, "behind ");
-        return (ahead, behind);
+        return (ReadCount(value, "ahead "), ReadCount(value, "behind "));
     }
 
     private static void ValidateRefName(string value, string parameterName)
@@ -529,8 +519,6 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
             return;
         }
 
-        // For an unstaged rename, the index still contains OriginalPath. Remove the
-        // renamed working-tree file and restore the indexed path without touching the index.
         if (change.WorkingTreeStatus == 'R' && change.OriginalPath is not null)
         {
             var renamedPath = ResolveSafeWorkingTreePath(repository, change.Path);
@@ -539,8 +527,6 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
             return;
         }
 
-        // Default restore source is the index. Do not use --staged or --source=HEAD:
-        // staged content must survive discarding the additional working-tree delta.
         await RunGitForMutationAsync(repository, cancellationToken, "restore", "--worktree", "--", change.Path);
     }
 
@@ -556,127 +542,31 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
         await RunGitForMutationAsync(repository, cancellationToken, arguments.ToArray());
     }
 
-    public async Task<HistoryPage> ReadHistoryAsync(Repository repository, HistoryQuery query, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(repository);
-        ArgumentNullException.ThrowIfNull(query);
-        if (query.Skip < 0 || query.Take is < 1 or > 1000) throw new ArgumentOutOfRangeException(nameof(query));
-
-        var arguments = new List<string>
-        {
-            "log", "--topo-order", "--date=iso-strict", $"--max-count={query.Skip + query.Take + 1}",
-            "--format=%H%x00%P%x00%an%x00%aI%x00%D%x00%B%x1e"
-        };
-        if (!string.IsNullOrWhiteSpace(query.Filter))
-        {
-            arguments.Add("--regexp-ignore-case");
-            arguments.Add($"--grep={query.Filter.Trim()}");
-        }
-        arguments.Add(query.Scope == HistoryScope.AllReferences ? "--all" : "HEAD");
-
-        var output = await RunGitAsync(repository.WorkingDirectory, cancellationToken, false, arguments.ToArray());
-        var commits = ParseHistory(output).ToList();
-        var hasMore = commits.Count > query.Skip + query.Take;
-        var rows = BuildTopology(commits.Take(query.Skip + query.Take).ToList());
-        return new HistoryPage(rows.Skip(query.Skip).ToList(), hasMore);
-    }
-
-    public async Task<CommitDetails> ReadCommitAsync(Repository repository, string hash, CancellationToken cancellationToken = default)
-    {
-        ValidateObjectName(hash);
-        var metadata = await RunGitAsync(repository.WorkingDirectory, cancellationToken, true,
-            "show", "-s", "--date=iso-strict", "--format=%H%x00%P%x00%an%x00%aI%x00%D%x00%B%x1e", hash);
-        var commit = ParseHistory(metadata).Single();
-        var stats = await RunGitAsync(repository.WorkingDirectory, cancellationToken, false,
-            "diff-tree", "--root", "-m", "--no-commit-id", "--numstat", "-r", "-z", hash);
-        return new CommitDetails(commit, ParseChangedFiles(stats));
-    }
-
-    public async Task<FileDiff> ReadDiffAsync(Repository repository, string hash, string path, CancellationToken cancellationToken = default)
-    {
-        ValidateObjectName(hash);
-        if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("The file path was not specified.", nameof(path));
-        var output = await RunGitAsync(repository.WorkingDirectory, cancellationToken, false,
-            "show", "--format=", "--no-ext-diff", "--find-renames", hash, "--", path);
-        var binary = output.Contains("Binary files ", StringComparison.Ordinal) || output.Contains("GIT binary patch", StringComparison.Ordinal);
-        return new FileDiff(path, binary, binary ? [] : ParseDiffLines(output));
-    }
-
-    private static IEnumerable<CommitHistoryItem> ParseHistory(string output)
-    {
-        foreach (var record in output.Split('\x1e', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var fields = record.TrimStart('\r', '\n').Split('\0', 6);
-            if (fields.Length != 6 || !DateTimeOffset.TryParse(fields[3], out var authoredAt)) continue;
-            var message = fields[5].TrimEnd('\r', '\n');
-            yield return new CommitHistoryItem(fields[0], SplitWords(fields[1]), FirstLine(message), message, fields[2], authoredAt, ParseRefs(fields[4]));
-        }
-    }
-
-    private static IReadOnlyList<HistoryRow> BuildTopology(IReadOnlyList<CommitHistoryItem> commits)
-    {
-        var lanes = new List<string>();
-        var rows = new List<HistoryRow>(commits.Count);
-        foreach (var commit in commits)
-        {
-            var lane = lanes.IndexOf(commit.Hash);
-            if (lane < 0) { lane = lanes.Count; lanes.Add(commit.Hash); }
-            var edges = new List<TopologyEdge>();
-            lanes.RemoveAt(lane);
-            for (var parentIndex = 0; parentIndex < commit.Parents.Count; parentIndex++)
-            {
-                var parent = commit.Parents[parentIndex];
-                var parentLane = lanes.IndexOf(parent);
-                if (parentLane < 0)
-                {
-                    parentLane = Math.Min(lane + parentIndex, lanes.Count);
-                    lanes.Insert(parentLane, parent);
-                }
-                edges.Add(new TopologyEdge(lane, parentLane));
-            }
-            rows.Add(new HistoryRow(commit, new CommitTopology(lane, edges)));
-        }
-        return rows;
-    }
-
-    private static IReadOnlyList<ChangedFile> ParseChangedFiles(string output)
-    {
-        var files = new List<ChangedFile>();
-        foreach (var entry in output.Split('\0', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var fields = entry.TrimStart('\r', '\n').Split('\t', 3);
-            if (fields.Length != 3) continue;
-            var binary = fields[0] == "-" || fields[1] == "-";
-            var file = new ChangedFile(fields[2], int.TryParse(fields[0], out var added) ? added : null, int.TryParse(fields[1], out var removed) ? removed : null, binary);
-            if (!files.Contains(file)) files.Add(file);
-        }
-        return files;
-    }
-
-    private static IReadOnlyList<DiffLine> ParseDiffLines(string output) => output.Split('\n')
-        .Select(line => new DiffLine(line.TrimEnd('\r'),
-            line.StartsWith("+++") || line.StartsWith("---") || line.StartsWith("@@") || line.StartsWith("diff ") || line.StartsWith("index ") ? DiffLineKind.Header :
-            line.StartsWith('+') ? DiffLineKind.Added : line.StartsWith('-') ? DiffLineKind.Removed : DiffLineKind.Context)).ToList();
-
-    private static string FirstLine(string value) => value.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
-    private static IReadOnlyList<string> SplitWords(string value) => value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-    private static IReadOnlyList<string> ParseRefs(string value) => value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-        .Select(reference => reference.StartsWith("HEAD -> ", StringComparison.Ordinal) ? reference[8..] : reference).ToList();
-    private static void ValidateObjectName(string hash)
-    {
-        if (string.IsNullOrWhiteSpace(hash) || hash.Any(character => !Uri.IsHexDigit(character))) throw new ArgumentException("Invalid commit hash.", nameof(hash));
-    }
-
     private async Task<string> RunOptionalGitAsync(string workingDirectory, CancellationToken cancellationToken, params string[] arguments)
     {
-        try
+        var result = await RunGitForResultAsync(
+            workingDirectory,
+            "RepositoryOptional",
+            GitCommandKind.Internal,
+            cancellationToken,
+            null,
+            arguments);
+        if (result.ExitCode == 0) return result.StandardOutput;
+        if (IsExpectedOptionalExitCode(arguments, result.ExitCode)) return string.Empty;
+        throw CreateRepositoryCommandFailure(result);
+    }
+
+    private static bool IsExpectedOptionalExitCode(IReadOnlyList<string> arguments, int exitCode)
+    {
+        if (arguments.Count == 0) return false;
+        return arguments[0] switch
         {
-            return await RunGitAsync(workingDirectory, cancellationToken, false, arguments);
-        }
-        catch (RepositoryOpenException)
-        {
-            return string.Empty;
-        }
+            "symbolic-ref" => exitCode == 1,
+            "rev-parse" => exitCode is 1 or 128,
+            "config" => exitCode == 1,
+            "show" => exitCode == 128,
+            _ => false
+        };
     }
 
     private async Task EnsureGitAvailableAsync(CancellationToken cancellationToken)
@@ -691,7 +581,7 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            throw new RepositoryOpenException($"Git executable '{_gitExecutable}' was not found or could not be started.", exception);
+            throw new RepositoryOpenException($"Git executable '{_executor.ExecutablePath}' was not found or could not be started.", exception);
         }
     }
 
@@ -714,12 +604,35 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
         GitCommandKind commandKind,
         params string[] arguments)
     {
-        GitProcessResult result;
+        var result = await RunGitForResultAsync(
+            workingDirectory,
+            "Repository",
+            commandKind,
+            cancellationToken,
+            environment,
+            arguments);
+
+        var output = result.StandardOutput;
+        if (result.ExitCode != 0)
+            throw CreateRepositoryCommandFailure(result);
+        if (requireOutput && string.IsNullOrWhiteSpace(output))
+            throw new RepositoryOpenException("Git command returned no output.");
+        return output;
+    }
+
+    private async Task<GitCommandResult> RunGitForResultAsync(
+        string workingDirectory,
+        string operation,
+        GitCommandKind commandKind,
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, string?>? environment,
+        IReadOnlyList<string> arguments)
+    {
         try
         {
-            result = await SharedProcessRunner.RunForResultAsync(
+            return await _executor.ExecuteForResultAsync(
                 workingDirectory,
-                "Repository",
+                operation,
                 commandKind,
                 cancellationToken,
                 environment,
@@ -731,21 +644,15 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
         }
         catch (Exception exception)
         {
-            throw new RepositoryOpenException($"Git executable '{_gitExecutable}' could not be started.", exception);
+            throw new RepositoryOpenException($"Git executable '{_executor.ExecutablePath}' could not be started.", exception);
         }
+    }
 
-        // Leading spaces are significant in machine-readable Git output. For
-        // example, porcelain status uses the first two columns for index and
-        // working-tree state, so trimming would shift an unstaged entry left.
-        var output = result.StandardOutput.TrimEnd('\r', '\n');
+    private static RepositoryOpenException CreateRepositoryCommandFailure(GitCommandResult result)
+    {
         var error = result.StandardError.Trim();
-        if (result.ExitCode != 0 || (requireOutput && string.IsNullOrWhiteSpace(output)))
-        {
-            var detail = string.IsNullOrWhiteSpace(error) ? "Git returned no diagnostic message." : error;
-            throw new RepositoryOpenException($"Git command exited with code {result.ExitCode}: {detail}");
-        }
-
-        return output;
+        var detail = string.IsNullOrWhiteSpace(error) ? "Git returned no diagnostic message." : error;
+        return new RepositoryOpenException($"Git command exited with code {result.ExitCode}: {detail}");
     }
 
     private async Task RunGitForMutationAsync(Repository repository, CancellationToken cancellationToken, params string[] arguments) =>
@@ -765,8 +672,15 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
 
     private async Task UnsetConfigurationAsync(Repository repository, string scope, string key, CancellationToken cancellationToken)
     {
-        try { await RunGitForMutationAsync(repository, cancellationToken, "config", scope, "--unset-all", key); }
-        catch (RepositoryOpenException) { /* Git returns 5 when the key is absent. */ }
+        var result = await RunGitForResultAsync(
+            repository.WorkingDirectory,
+            "Repository",
+            GitCommandKind.User,
+            cancellationToken,
+            null,
+            ["config", scope, "--unset-all", key]);
+        if (result.ExitCode is 0 or 5) return;
+        throw CreateRepositoryCommandFailure(result);
     }
 
     private async Task<RepositoryOperationState> ReadOperationStateAsync(Repository repository, RepositoryOperation operation, string status, CancellationToken cancellationToken)
@@ -817,8 +731,6 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
         var output = await RunGitAsync(repository.WorkingDirectory, cancellationToken, false, "diff", "--cached", "--numstat", "--", path);
         if (output.Split('\n').Any(line => line.StartsWith("-\t-\t", StringComparison.Ordinal))) return true;
 
-        // Some Git versions omit numstat for an unmerged entry. Inspect both
-        // index-side blobs using the same NUL-byte rule Git uses for binary data.
         foreach (var stage in new[] { 2, 3 })
         {
             var blob = await RunOptionalGitAsync(repository.WorkingDirectory, cancellationToken, "show", $":{stage}:{path}");
@@ -848,9 +760,6 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
         if (!File.Exists(messagePath)) return;
         foreach (var line in File.ReadLines(messagePath))
         {
-            // Git writes conflict paths as comment lines beginning with "#\t".
-            // Parsing that machine-like shape avoids depending on the localized
-            // heading that precedes the list.
             if (!line.StartsWith("#\t", StringComparison.Ordinal)) continue;
             var path = line[2..].TrimEnd();
             if (!string.IsNullOrWhiteSpace(path)) paths.Add(path);
@@ -954,6 +863,12 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
     }
 
     private static string? EmptyToNull(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
+
+    private static void ValidateObjectName(string hash)
+    {
+        if (string.IsNullOrWhiteSpace(hash) || hash.Any(character => !Uri.IsHexDigit(character)))
+            throw new ArgumentException("Invalid commit hash.", nameof(hash));
+    }
 
     private static void ValidatePath(string path)
     {
