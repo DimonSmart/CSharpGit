@@ -15,6 +15,7 @@ public sealed class GitConsoleUiContractTests
 
         Assert.Contains("Git Console", consoleXaml);
         Assert.Contains("CommandList", consoleXaml);
+        Assert.Contains("ItemContainerStyle=\"{StaticResource DenseListItemStyle}\"", consoleXaml);
         Assert.Contains("StandardOutputText", consoleXaml);
         Assert.Contains("StandardErrorText", consoleXaml);
         Assert.Contains("FontFamily=\"Consolas\"", consoleXaml);
