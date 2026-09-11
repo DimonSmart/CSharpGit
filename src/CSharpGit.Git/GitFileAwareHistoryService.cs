@@ -19,11 +19,22 @@ public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHist
         GitReferenceHistoryService history,
         IRepositoryFileVersionService versions,
         GitCliOptions options)
+        : this(history, versions, options, null)
+    {
+    }
+
+    internal GitFileAwareHistoryService(
+        GitReferenceHistoryService history,
+        IRepositoryFileVersionService versions,
+        GitCliOptions options,
+        IGitCommandActivitySink? activitySink)
     {
         _history = history ?? throw new ArgumentNullException(nameof(history));
         ArgumentNullException.ThrowIfNull(versions);
         ArgumentNullException.ThrowIfNull(options);
-        _runner = new GitProcessRunner(string.IsNullOrWhiteSpace(options.ExecutablePath) ? "git" : options.ExecutablePath);
+        _runner = new GitProcessRunner(
+            string.IsNullOrWhiteSpace(options.ExecutablePath) ? "git" : options.ExecutablePath,
+            activitySink);
     }
 
     internal int GitInvocationCount => _runner.InvocationCount;
@@ -158,11 +169,22 @@ public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHist
         var arguments = new List<string>();
         if (parentHash is null)
         {
-            arguments.AddRange(["show", "--format=", "--root", "--no-ext-diff", "--find-renames", "--find-copies", commitHash, "--"]);
+            // A root commit cannot contain a rename/copy relative to a parent, so similarity
+            // detection would only add work to the path-scoped diff.
+            arguments.AddRange(["show", "--format=", "--root", "--no-ext-diff", commitHash, "--"]);
         }
         else
         {
-            arguments.AddRange(["diff", "--no-ext-diff", "--find-renames", "--find-copies", parentHash, commitHash, "--"]);
+            arguments.AddRange(["diff", "--no-ext-diff"]);
+
+            // ReadChangedFilesAsync already performed rename/copy detection for the commit and
+            // carries the original path in ChangedFile. Do not repeat the expensive similarity
+            // scan for ordinary M/A/D files. Keep it only for actual rename/copy entries so the
+            // displayed patch preserves Git's rename/copy metadata.
+            if (file.Status is "R" or "C")
+                arguments.AddRange(["--find-renames", "--find-copies"]);
+
+            arguments.AddRange([parentHash, commitHash, "--"]);
         }
         arguments.AddRange(paths);
 
