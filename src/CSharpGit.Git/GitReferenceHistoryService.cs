@@ -1,5 +1,3 @@
-using System.Diagnostics;
-using System.Text;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 
@@ -8,6 +6,7 @@ namespace CSharpGit.Git;
 public sealed class GitReferenceHistoryService : IReferenceHistoryService
 {
     private readonly string _gitExecutable;
+    private readonly GitProcessRunner _runner;
     private readonly GitCliRepositoryService _detailsService;
 
     public GitReferenceHistoryService() : this(new GitCliOptions()) { }
@@ -16,6 +15,7 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
     {
         ArgumentNullException.ThrowIfNull(options);
         _gitExecutable = string.IsNullOrWhiteSpace(options.ExecutablePath) ? "git" : options.ExecutablePath;
+        _runner = new GitProcessRunner(_gitExecutable);
         _detailsService = new GitCliRepositoryService(options);
     }
 
@@ -237,34 +237,8 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
         return ParseHistory(output).ToList();
     }
 
-    private async Task<string> RunGitAsync(string workingDirectory, CancellationToken cancellationToken, params string[] arguments)
-    {
-        var startInfo = new ProcessStartInfo(_gitExecutable)
-        {
-            WorkingDirectory = workingDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
-
-        using var process = new Process { StartInfo = startInfo };
-        process.Start();
-        var stdout = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var stderr = process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken);
-        var output = (await stdout).TrimEnd('\r', '\n');
-        var error = (await stderr).Trim();
-        if (process.ExitCode != 0)
-        {
-            var detail = string.IsNullOrWhiteSpace(error) ? "Git returned no diagnostic message." : error;
-            throw new InvalidOperationException($"Git command exited with code {process.ExitCode}: {detail}");
-        }
-        return output;
-    }
+    private Task<string> RunGitAsync(string workingDirectory, CancellationToken cancellationToken, params string[] arguments) =>
+        _runner.RunAsync(workingDirectory, "ReferenceHistory", cancellationToken, arguments);
 
     private static IEnumerable<CommitHistoryItem> ParseHistory(string output)
     {
