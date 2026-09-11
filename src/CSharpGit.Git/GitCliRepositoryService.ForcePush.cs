@@ -1,5 +1,4 @@
-using System.Diagnostics;
-using System.Text;
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Application.Exceptions;
 using CSharpGit.Domain;
 
@@ -186,7 +185,7 @@ public sealed partial class GitCliRepositoryService
 
     private async Task RunPushAsync(Repository repository, CancellationToken cancellationToken, params string[] arguments)
     {
-        var result = await RunGitCapturedAsync(repository, cancellationToken, arguments);
+        var result = await RunGitCapturedAsync(repository, cancellationToken, GitCommandKind.User, arguments);
         if (result.ExitCode == 0) return;
         var detail = JoinGitOutput(result);
         throw new PushRejectedException(
@@ -239,49 +238,33 @@ public sealed partial class GitCliRepositoryService
         return $"{result.StandardOutput.Trim()}\n{result.StandardError.Trim()}";
     }
 
+    private Task<GitCommandResult> RunGitCapturedAsync(
+        Repository repository,
+        CancellationToken cancellationToken,
+        params string[] arguments) =>
+        RunGitCapturedAsync(repository, cancellationToken, GitCommandKind.Internal, arguments);
+
     private async Task<GitCommandResult> RunGitCapturedAsync(
         Repository repository,
         CancellationToken cancellationToken,
+        GitCommandKind commandKind,
         params string[] arguments)
     {
-        var startInfo = new ProcessStartInfo(_gitExecutable)
-        {
-            WorkingDirectory = repository.WorkingDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
-
-        using var process = new Process { StartInfo = startInfo };
         try
         {
-            process.Start();
+            var result = await SharedProcessRunner.RunForResultAsync(
+                repository.WorkingDirectory,
+                "RepositoryCaptured",
+                commandKind,
+                cancellationToken,
+                null,
+                arguments);
+            return new GitCommandResult(result.ExitCode, result.StandardOutput, result.StandardError);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             throw new RepositoryOpenException($"Git executable '{_gitExecutable}' could not be started.", exception);
         }
-
-        var stdout = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var stderr = process.StandardError.ReadToEndAsync(cancellationToken);
-        try
-        {
-            await process.WaitForExitAsync(cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            if (!process.HasExited)
-            {
-                try { process.Kill(entireProcessTree: true); }
-                catch { }
-            }
-            throw;
-        }
-        return new GitCommandResult(process.ExitCode, await stdout, await stderr);
     }
 
     private sealed record GitCommandResult(int ExitCode, string StandardOutput, string StandardError);
