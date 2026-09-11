@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CSharpGit.Domain;
 using Microsoft.UI.Xaml;
+using Windows.UI.Text;
 
 namespace CSharpGit.Presentation.ViewModels;
 
@@ -80,7 +81,8 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
         }
     }
     public ObservableCollection<RepositoryTreeNode> Children { get; } = [];
-    public string DisplayName => IsCurrent ? $"✓ {Name}" : Name;
+    public string DisplayName => Name;
+    public FontWeight NameFontWeight => IsCurrent ? Microsoft.UI.Text.FontWeights.Bold : Microsoft.UI.Text.FontWeights.Normal;
     public string? IconGlyph => Kind switch
     {
         RepositoryTreeNodeKind.WorkingTree => "\uE8B7",
