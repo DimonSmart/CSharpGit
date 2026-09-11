@@ -34,16 +34,31 @@
                     HorizontalContentAlignment="Stretch">
             <ListView.ItemTemplate>
               <DataTemplate>
-                <Grid ColumnDefinitions="72,*" Padding="6,3">
+                <Grid ColumnDefinitions="72,24,*,92" Padding="6,3" ColumnSpacing="4">
                   <TextBlock Text="{Binding StartedText}"
                              Style="{StaticResource SecondaryTextStyle}"
                              FontFamily="Consolas"
                              VerticalAlignment="Center" />
                   <TextBlock Grid.Column="1"
-                             Text="{Binding Summary}"
+                             Text="{Binding StatusGlyph}"
                              Style="{StaticResource BodyTextStyle}"
                              FontFamily="Consolas"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="2"
+                             Text="{Binding CommandText}"
+                             Style="{StaticResource BodyTextStyle}"
+                             FontFamily="Consolas"
+                             TextWrapping="NoWrap"
                              TextTrimming="CharacterEllipsis"
+                             ToolTipService.ToolTip="{Binding CommandText}"
+                             VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="3"
+                             Text="{Binding DurationText}"
+                             Style="{StaticResource SecondaryTextStyle}"
+                             FontFamily="Consolas"
+                             TextAlignment="Right"
+                             HorizontalAlignment="Stretch"
                              VerticalAlignment="Center" />
                 </Grid>
               </DataTemplate>

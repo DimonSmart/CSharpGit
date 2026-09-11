@@ -126,20 +126,33 @@ public sealed partial class GitConsoleView : UserControl
     {
         if (duration.TotalMilliseconds < 1000)
             return $"{Math.Max(0, duration.TotalMilliseconds):0} ms";
-        return $"{duration.TotalSeconds:0.0} s";
+        if (duration.TotalSeconds < 60)
+            return $"{duration.TotalSeconds:0.##} s";
+
+        var totalSeconds = Math.Max(0, (int)Math.Round(duration.TotalSeconds));
+        return $"{totalSeconds / 60}m {totalSeconds % 60}s";
     }
 
     private sealed record GitCommandConsoleItem(GitCommandActivity Activity)
     {
         public string StartedText => Activity.StartedAt.ToLocalTime().ToString("HH:mm:ss");
 
-        public string Summary => Activity.Status switch
+        public string StatusGlyph => Activity.Status switch
         {
-            GitCommandStatus.Running => $"◌ {Activity.DisplayCommand}…",
-            GitCommandStatus.Succeeded => $"✓ {Activity.DisplayCommand} · {FormatDuration(Activity.Duration)}",
-            GitCommandStatus.Failed => $"✕ {Activity.DisplayCommand} · exit {Activity.ExitCode} · {FormatDuration(Activity.Duration)}",
-            GitCommandStatus.Cancelled => $"○ {Activity.DisplayCommand} · cancelled",
-            _ => Activity.DisplayCommand
+            GitCommandStatus.Running => "◌",
+            GitCommandStatus.Succeeded => "✓",
+            GitCommandStatus.Failed => "✕",
+            GitCommandStatus.Cancelled => "○",
+            _ => string.Empty
+        };
+
+        public string CommandText => Activity.DisplayCommand;
+
+        public string DurationText => Activity.Status switch
+        {
+            GitCommandStatus.Running => "running…",
+            GitCommandStatus.Cancelled => "cancelled",
+            _ => FormatDuration(Activity.Duration)
         };
     }
 }
