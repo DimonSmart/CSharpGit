@@ -122,6 +122,9 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         mainPage.InitializeRecentRepositories(
             AppSettingsContext.Current,
             _host.Services.GetRequiredService<RecentRepositoryFolderPicker>());
+        mainPage.InitializeGitConsole(
+            GitCommandActivitySession.Current,
+            _host.Services.GetRequiredService<IAppSettingsService>());
         _mainThemeRegistration = themeManager.Register(mainPage);
         _window.Content = mainPage;
         if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_RESULT")))
