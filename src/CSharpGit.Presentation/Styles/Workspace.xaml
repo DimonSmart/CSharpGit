@@ -180,24 +180,43 @@
                   IsExpanded="{Binding IsExpanded, Mode=OneWay}"
                   Style="{StaticResource DenseTreeItemStyle}">
       <TreeViewItem.Content>
-        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}" VerticalAlignment="Center">
-          <FontIcon Glyph="&#xE80F;"
-                    FontSize="{StaticResource Icon.Normal}"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Visibility="{Binding LocalDefaultBranchIconVisibility}" />
-          <FontIcon Glyph="&#xE80F;"
-                    FontSize="{StaticResource Icon.Normal}"
-                    Foreground="{ThemeResource AccentFillColorDefaultBrush}"
-                    Visibility="{Binding RemoteDefaultBranchIconVisibility}" />
-          <FontIcon Glyph="{Binding IconGlyph}"
-                    FontSize="{StaticResource Icon.Normal}"
-                    Visibility="{Binding IconVisibility}" />
-          <TextBlock Text="{Binding DisplayName}"
-                     Style="{StaticResource BodyTextStyle}"
-                     FontWeight="{Binding NameFontWeight}"
-                     TextTrimming="CharacterEllipsis"
-                     VerticalAlignment="Center" />
-        </StackPanel>
+        <Grid ColumnDefinitions="2,*" MinHeight="{StaticResource Height.DataRow}">
+          <Border Grid.ColumnSpan="2"
+                  Background="{ThemeResource AccentFillColorDefaultBrush}"
+                  Opacity="0.12"
+                  Visibility="{Binding CurrentBranchAccentVisibility}"
+                  IsHitTestVisible="False" />
+          <Border Width="2"
+                  Background="{ThemeResource AccentFillColorDefaultBrush}"
+                  HorizontalAlignment="Left"
+                  Visibility="{Binding CurrentBranchAccentVisibility}"
+                  IsHitTestVisible="False" />
+          <StackPanel Grid.Column="1"
+                      Orientation="Horizontal"
+                      Spacing="{StaticResource Spacing.S}"
+                      VerticalAlignment="Center">
+            <FontIcon Glyph="&#xE80F;"
+                      FontSize="{StaticResource Icon.Normal}"
+                      Foreground="{ThemeResource AccentFillColorDefaultBrush}"
+                      Visibility="{Binding CurrentLocalBranchIconVisibility}" />
+            <FontIcon Glyph="&#xE80F;"
+                      FontSize="{StaticResource Icon.Normal}"
+                      Foreground="{ThemeResource AccentFillColorDefaultBrush}"
+                      Visibility="{Binding LocalDefaultBranchIconVisibility}" />
+            <FontIcon Glyph="&#xE80F;"
+                      FontSize="{StaticResource Icon.Normal}"
+                      Foreground="{ThemeResource AccentFillColorDefaultBrush}"
+                      Visibility="{Binding RemoteDefaultBranchIconVisibility}" />
+            <FontIcon Glyph="{Binding IconGlyph}"
+                      FontSize="{StaticResource Icon.Normal}"
+                      Visibility="{Binding IconVisibility}" />
+            <TextBlock Text="{Binding DisplayName}"
+                       Style="{StaticResource BodyTextStyle}"
+                       FontWeight="{Binding NameFontWeight}"
+                       TextTrimming="CharacterEllipsis"
+                       VerticalAlignment="Center" />
+          </StackPanel>
+        </Grid>
       </TreeViewItem.Content>
     </TreeViewItem>
   </DataTemplate>
