@@ -168,7 +168,7 @@ public sealed partial class OpenRepositoryViewModel
         SelectedChangedFiles = files;
         var first = files.FirstOrDefault();
         if (!ReferenceEquals(SelectedFile, first)) SelectedFile = first;
-        else if (first is not null) _ = LoadSelectedDiffAsync();
+        else if (first is not null && SelectedDiff is null && !IsDiffLoading) _ = LoadSelectedDiffAsync();
     }
 
     private async Task LoadSelectedDiffAsync()
