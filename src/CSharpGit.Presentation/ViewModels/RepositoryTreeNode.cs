@@ -8,7 +8,6 @@ namespace CSharpGit.Presentation.ViewModels;
 
 public enum RepositoryTreeNodeKind
 {
-    WorkingTree,
     Group,
     BranchFolder,
     LocalBranch,
@@ -86,7 +85,6 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
     public Visibility CurrentBranchAccentVisibility => IsCurrent ? Visibility.Visible : Visibility.Collapsed;
     public string? IconGlyph => Kind switch
     {
-        RepositoryTreeNodeKind.WorkingTree => "\uE8B7",
         RepositoryTreeNodeKind.Group when Name == "Branches" => "\uE8F0",
         RepositoryTreeNodeKind.Group when Name == "Remotes" => "\uE8AF",
         RepositoryTreeNodeKind.Group when Name == "Tags" => "\uE8EC",

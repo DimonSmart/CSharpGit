@@ -122,6 +122,12 @@
             <TextBlock x:Name="ToolbarBranchText" Style="{StaticResource BodyStrongTextStyle}" VerticalAlignment="Center" />
           </StackPanel>
           <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="{StaticResource Spacing.XS}" VerticalAlignment="Center">
+            <Button x:Name="CommitNavigationButton"
+                    Click="CommitNavigation_Click"
+                    Style="{StaticResource ToolbarButtonStyle}"
+                    AutomationProperties.Name="Commit changes">
+              <TextBlock x:Name="CommitNavigationText" Text="Commit (0)" Style="{StaticResource BodyTextStyle}" />
+            </Button>
             <Button Click="Fetch_Click" Style="{StaticResource ToolbarButtonStyle}">
               <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                 <FontIcon Glyph="&#xE896;" FontSize="{StaticResource Icon.Small}" />
@@ -431,17 +437,11 @@
                 RowDefinitions="Auto,*,Auto"
                 Padding="{StaticResource Padding.WorkspaceCompact}">
             <Grid x:Name="WorkingTreeHeader"
-                  ColumnDefinitions="*,Auto"
                   MinHeight="{StaticResource Height.Control}"
                   Margin="0,0,0,4">
               <TextBlock Text="Working tree"
                          Style="{StaticResource PaneHeaderTextStyle}"
                          VerticalAlignment="Center" />
-              <Button Grid.Column="1"
-                      Content="Back to history"
-                      Click="ShowHistory_Click"
-                      Style="{StaticResource CompactButtonStyle}"
-                      VerticalAlignment="Center" />
             </Grid>
 
             <Grid Grid.Row="1" ColumnDefinitions="330,4,*" MinHeight="180">
