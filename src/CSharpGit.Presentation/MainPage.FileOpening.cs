@@ -117,7 +117,7 @@ public sealed partial class MainPage
     private void FileOpeningViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (args.PropertyName is nameof(OpenRepositoryViewModel.SelectedFile)
-            or nameof(OpenRepositoryViewModel.SelectedCommit)
+            or nameof(OpenRepositoryViewModel.SelectedHistoryRow)
             or nameof(OpenRepositoryViewModel.Repository))
             _ = RefreshCommitFileActionStateAsync();
 
@@ -127,43 +127,19 @@ public sealed partial class MainPage
             _ = RefreshWorkingTreeFileActionStateAsync();
     }
 
-    private async Task RefreshCommitFileActionStateAsync()
+    private Task RefreshCommitFileActionStateAsync()
     {
-        var generation = Interlocked.Increment(ref _commitFileActionGeneration);
+        Interlocked.Increment(ref _commitFileActionGeneration);
         _commitFileVersions = null;
         _commitRevealPath = null;
-        UpdateCommitButtons();
 
         var repository = _viewModel.Repository;
-        var commit = _viewModel.SelectedCommit;
         var file = _viewModel.SelectedFile;
-        if (repository is null || commit is null || file is null || _fileVersionService is null || _repositoryPathService is null)
-            return;
+        if (repository is not null && file is not null && _repositoryPathService is not null)
+            _commitRevealPath = TryResolveReveal(repository, file.Path);
 
-        try
-        {
-            var pair = await _fileVersionService.ResolveCommitAsync(repository, commit.Commit.Hash, file.Path);
-            if (generation != Volatile.Read(ref _commitFileActionGeneration)
-                || !ReferenceEquals(repository, _viewModel.Repository)
-                || !ReferenceEquals(commit, _viewModel.SelectedCommit)
-                || !ReferenceEquals(file, _viewModel.SelectedFile))
-                return;
-
-            _commitFileVersions = pair;
-            try
-            {
-                _commitRevealPath = _repositoryPathService.ResolveExistingWorkingTreeFile(repository, pair.RevealPath, allowFinalLink: true);
-            }
-            catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or IOException or UnauthorizedAccessException)
-            {
-                _commitRevealPath = null;
-            }
-            UpdateCommitButtons();
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            if (generation == Volatile.Read(ref _commitFileActionGeneration)) UpdateCommitButtons();
-        }
+        UpdateCommitButtons();
+        return Task.CompletedTask;
     }
 
     private async Task RefreshWorkingTreeFileActionStateAsync()
@@ -208,9 +184,33 @@ public sealed partial class MainPage
 
     private void UpdateCommitButtons()
     {
-        SetVersionButton(_commitOpenOriginalButton, _commitFileVersions?.Original, "No original version is available.");
-        SetVersionButton(_commitOpenChangedButton, _commitFileVersions?.Changed, "No changed version is available.");
+        if (_commitFileVersions is not null)
+        {
+            SetVersionButton(_commitOpenOriginalButton, _commitFileVersions.Original, "No original version is available.");
+            SetVersionButton(_commitOpenChangedButton, _commitFileVersions.Changed, "No changed version is available.");
+        }
+        else
+        {
+            var file = _viewModel.SelectedFile;
+            SetAvailabilityButton(
+                _commitOpenOriginalButton,
+                file is not null && !string.Equals(file.Status, "A", StringComparison.Ordinal),
+                "Open original version",
+                "No original version is available.");
+            SetAvailabilityButton(
+                _commitOpenChangedButton,
+                file is not null && !string.Equals(file.Status, "D", StringComparison.Ordinal),
+                "Open changed version",
+                "No changed version is available.");
+        }
         SetRevealButton(_commitRevealButton, _commitRevealPath);
+    }
+
+    private static void SetAvailabilityButton(Button? button, bool enabled, string enabledText, string disabledText)
+    {
+        if (button is null) return;
+        button.IsEnabled = enabled;
+        ToolTipService.SetToolTip(button, enabled ? enabledText : disabledText);
     }
 
     private void UpdateWorkingTreeButtons()
@@ -259,14 +259,14 @@ public sealed partial class MainPage
     private async Task OpenSelectedCommitVersionAsync(DiffFileSide side)
     {
         var repository = _viewModel.Repository;
-        var commit = _viewModel.SelectedCommit;
+        var commit = _viewModel.SelectedHistoryRow?.Commit;
         var file = _viewModel.SelectedFile;
         if (repository is null || commit is null || file is null || _fileVersionService is null || _desktopShellService is null)
             return;
 
         try
         {
-            var pair = await _fileVersionService.ResolveCommitAsync(repository, commit.Commit.Hash, file.Path);
+            var pair = await _fileVersionService.ResolveCommitAsync(repository, commit.Hash, file.Path);
             var version = side == DiffFileSide.Original ? pair.Original : pair.Changed;
             await OpenResolvedVersionAsync(repository, version, side);
             _commitFileVersions = pair;
@@ -327,13 +327,13 @@ public sealed partial class MainPage
     private async Task RevealSelectedCommitFileAsync()
     {
         var repository = _viewModel.Repository;
-        var commit = _viewModel.SelectedCommit;
+        var commit = _viewModel.SelectedHistoryRow?.Commit;
         var file = _viewModel.SelectedFile;
         if (repository is null || commit is null || file is null || _fileVersionService is null || _repositoryPathService is null || _desktopShellService is null)
             return;
         try
         {
-            var pair = await _fileVersionService.ResolveCommitAsync(repository, commit.Commit.Hash, file.Path);
+            var pair = await _fileVersionService.ResolveCommitAsync(repository, commit.Hash, file.Path);
             var path = _repositoryPathService.ResolveExistingWorkingTreeFile(repository, pair.RevealPath, allowFinalLink: true);
             await _desktopShellService.RevealFileAsync(path);
         }
@@ -366,13 +366,13 @@ public sealed partial class MainPage
     {
         var source = args.OriginalSource as FrameworkElement;
         var node = ResolveChangedFileNode(source?.DataContext);
-        if (node?.Entry is null || _viewModel.Repository is null || _viewModel.SelectedCommit is null || _fileVersionService is null)
+        if (node?.Entry is null || _viewModel.Repository is null || _viewModel.SelectedHistoryRow is null || _fileVersionService is null)
             return;
 
         _viewModel.SelectedFile = node.Entry.File;
         try
         {
-            var pair = await _fileVersionService.ResolveCommitAsync(_viewModel.Repository, _viewModel.SelectedCommit.Commit.Hash, node.Entry.File.Path);
+            var pair = await _fileVersionService.ResolveCommitAsync(_viewModel.Repository, _viewModel.SelectedHistoryRow.Commit.Hash, node.Entry.File.Path);
             var side = pair.Changed.CanOpen ? DiffFileSide.Changed : DiffFileSide.Original;
             await OpenResolvedVersionAsync(_viewModel.Repository, side == DiffFileSide.Changed ? pair.Changed : pair.Original, side);
         }
@@ -406,13 +406,13 @@ public sealed partial class MainPage
     {
         var source = args.OriginalSource as FrameworkElement;
         var node = ResolveChangedFileNode(source?.DataContext);
-        if (source is null || node?.Entry is null || _viewModel.Repository is null || _viewModel.SelectedCommit is null || _fileVersionService is null)
+        if (source is null || node?.Entry is null || _viewModel.Repository is null || _viewModel.SelectedHistoryRow is null || _fileVersionService is null)
             return;
 
         _viewModel.SelectedFile = node.Entry.File;
         try
         {
-            var pair = await _fileVersionService.ResolveCommitAsync(_viewModel.Repository, _viewModel.SelectedCommit.Commit.Hash, node.Entry.File.Path);
+            var pair = await _fileVersionService.ResolveCommitAsync(_viewModel.Repository, _viewModel.SelectedHistoryRow.Commit.Hash, node.Entry.File.Path);
             _commitFileVersions = pair;
             _commitRevealPath = TryResolveReveal(_viewModel.Repository, pair.RevealPath);
             UpdateCommitButtons();

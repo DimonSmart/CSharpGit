@@ -5,7 +5,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
 
-public sealed class GitReferenceHistoryService : IReferenceHistoryService, IHistoryService
+public sealed class GitReferenceHistoryService : IReferenceHistoryService
 {
     private readonly string _gitExecutable;
     private readonly GitCliRepositoryService _detailsService;
