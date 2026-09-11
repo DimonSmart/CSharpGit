@@ -141,10 +141,6 @@ public sealed partial class MainPage : Page
         if (_viewModel.Repository is null) return;
 
         _repositoryTreeRoots.Add(new RepositoryTreeNode(
-            RepositoryTreeNodeKind.WorkingTree,
-            $"Working tree ({_viewModel.Changes.Count})"));
-
-        _repositoryTreeRoots.Add(new RepositoryTreeNode(
             RepositoryTreeNodeKind.Group,
             "Branches",
             isExpanded: true,
@@ -212,6 +208,7 @@ public sealed partial class MainPage : Page
         StatusOperationText.Text = _viewModel.IsBusy
             ? "Working…"
             : _viewModel.CurrentOperation == RepositoryOperation.None ? "Ready" : _viewModel.CurrentOperation.ToString();
+        UpdateCommitNavigationText();
     }
 
     private Task RefreshCommitFilesAsync()
@@ -236,6 +233,7 @@ public sealed partial class MainPage : Page
         ReferenceScopePanel.Visibility = Visibility.Collapsed;
         HistoryPane.Visibility = Visibility.Visible;
         WorkingTreePane.Visibility = Visibility.Collapsed;
+        UpdateCommitNavigationText();
         HistoryList.ItemsSource = _viewModel.History;
 
         var target = await _viewModel.EnsureHistoryCommitVisibleAsync(commitHash);
@@ -256,6 +254,7 @@ public sealed partial class MainPage : Page
         ReferenceScopePanel.Visibility = Visibility.Visible;
         HistoryPane.Visibility = Visibility.Visible;
         WorkingTreePane.Visibility = Visibility.Collapsed;
+        UpdateCommitNavigationText();
         await LoadScopedHistoryAsync(true);
     }
 
@@ -333,6 +332,7 @@ public sealed partial class MainPage : Page
         ReferenceScopePanel.Visibility = Visibility.Collapsed;
         HistoryPane.Visibility = Visibility.Visible;
         WorkingTreePane.Visibility = Visibility.Collapsed;
+        UpdateCommitNavigationText();
         HistoryList.ItemsSource = _viewModel.History;
         LoadMoreHistoryButton.IsEnabled = _viewModel.HasMore;
 
@@ -350,6 +350,7 @@ public sealed partial class MainPage : Page
     {
         HistoryPane.Visibility = Visibility.Collapsed;
         WorkingTreePane.Visibility = Visibility.Visible;
+        UpdateCommitNavigationText();
         if (_unstagedChanges.FirstOrDefault() is { } unstaged)
         {
             UnstagedChangesList.SelectedItem = unstaged;
@@ -362,6 +363,11 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private void UpdateCommitNavigationText() =>
+        CommitNavigationText.Text = WorkingTreePane.Visibility == Visibility.Visible
+            ? "Back to history"
+            : $"Commit ({_viewModel.Changes.Count})";
+
     private async void RepositoryTree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
     {
         if (ResolveNode(args.InvokedItem) is { } node) await SelectRepositoryNodeAsync(node);
@@ -371,9 +377,6 @@ public sealed partial class MainPage : Page
     {
         switch (node.Kind)
         {
-            case RepositoryTreeNodeKind.WorkingTree:
-                ShowWorkingTree();
-                break;
             case RepositoryTreeNodeKind.LocalBranch when node.Value is GitBranch local:
                 _viewModel.SelectedLocalBranch = local;
                 await NavigateToReferenceAsync(local.Commit);
@@ -601,7 +604,11 @@ public sealed partial class MainPage : Page
     }
 
     private void ClearReference_Click(object sender, RoutedEventArgs e) => ShowAllHistory();
-    private void ShowHistory_Click(object sender, RoutedEventArgs e) => ShowAllHistory();
+    private void CommitNavigation_Click(object sender, RoutedEventArgs e)
+    {
+        if (WorkingTreePane.Visibility == Visibility.Visible) ShowAllHistory();
+        else ShowWorkingTree();
+    }
 
     private void UnstagedChangesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -731,7 +738,7 @@ public sealed partial class MainPage : Page
 
             Check(RepositoryWorkspace.ActualWidth > 0 && RepositoryWorkspace.ActualHeight > 0, "workspace was not laid out", failures);
             Check(HistoryList.ActualWidth > 0 && HistoryList.ActualHeight > 0, "history list was not laid out", failures);
-            Check(RepositoryTree.ActualWidth > 0 && _repositoryTreeRoots.Count >= 5, "repository tree was not laid out", failures);
+            Check(RepositoryTree.ActualWidth > 0 && _repositoryTreeRoots.Count >= 4, "repository tree was not laid out", failures);
             Check(DetailsScroller.HorizontalScrollBarVisibility == ScrollBarVisibility.Auto && DetailsScroller.VerticalScrollBarVisibility == ScrollBarVisibility.Auto, "detail scrolling is not automatic", failures);
             Check(CountDescendants<Controls.GridSplitter>(RootLayout) >= 2, "resizable splitters are missing", failures);
             Check(CountDescendants<ScrollViewer>(RootLayout) > 0, "scroll viewers are missing", failures);
@@ -743,10 +750,13 @@ public sealed partial class MainPage : Page
             splitter?.ResizeForCheck(24);
             Check(splitterGrid is not null && splitterGrid.ColumnDefinitions[0].Width.IsAbsolute && Math.Abs(splitterGrid.ColumnDefinitions[0].Width.Value - oldWidth) > 1, "splitter did not resize its pane", failures);
 
+            Check(CommitNavigationText.Text == $"Commit ({_viewModel.Changes.Count})", "commit toolbar count is incorrect", failures);
             ShowWorkingTree();
             Check(WorkingTreePane.Visibility == Visibility.Visible && HistoryPane.Visibility == Visibility.Collapsed, "working tree mode did not open", failures);
+            Check(CommitNavigationText.Text == "Back to history", "commit toolbar did not become the history navigation action", failures);
             Check(_unstagedChanges.Count + _stagedChanges.Count >= _viewModel.Changes.Count, "working tree staged/unstaged views lost changes", failures);
             ShowAllHistory();
+            Check(CommitNavigationText.Text == $"Commit ({_viewModel.Changes.Count})", "commit toolbar did not restore the change count", failures);
 
             if (_viewModel.History.FirstOrDefault() is { } selectedBeforeRefresh)
             {
