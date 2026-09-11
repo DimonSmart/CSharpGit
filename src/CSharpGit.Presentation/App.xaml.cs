@@ -74,22 +74,11 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 });
                 services.AddSingleton<IFolderPicker>(provider => provider.GetRequiredService<RecentRepositoryFolderPicker>());
 
-                services.AddSingleton<GitCliRepositoryService>();
-                services.AddSingleton<IRepositoryService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
-                services.AddSingleton<IRepositoryStateService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
-                services.AddSingleton<IWorkingTreeService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
-                services.AddSingleton<IWorkingTreeDiffService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
-                services.AddSingleton<IReferenceService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
-
-                services.AddSingleton<IRepositoryFileVersionService, GitRepositoryFileVersionService>();
+                services.AddCSharpGitGit();
                 services.AddSingleton<IRepositoryPathService, RepositoryPathService>();
                 services.AddSingleton<IDesktopShellService, DesktopShellService>();
                 services.AddSingleton<IRepositoryWorkflowService, DesktopRepositoryWorkflowService>();
 
-                services.AddSingleton<GitReferenceHistoryService>();
-                services.AddSingleton<GitFileAwareHistoryService>();
-                services.AddSingleton<IHistoryService>(provider => provider.GetRequiredService<GitFileAwareHistoryService>());
-                services.AddSingleton<IReferenceHistoryService>(provider => provider.GetRequiredService<GitFileAwareHistoryService>());
                 services.AddSingleton<IRepositoryStateSessionFactory, RepositoryStateSessionFactory>();
                 services.AddTransient<OpenRepositoryViewModel>();
                 services.AddTransient<MainPage>();
