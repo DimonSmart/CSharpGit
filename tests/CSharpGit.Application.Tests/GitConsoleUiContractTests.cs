@@ -30,7 +30,7 @@ public sealed class GitConsoleUiContractTests
         Assert.Contains("GitConsoleAutoOpenMode.OnErrors", integration);
         Assert.Contains("GitCommandKind.User", integration);
         Assert.Contains("ToggleGitConsoleFromStatus", integration);
-        Assert.Contains("VirtualKey.Oem3", integration);
+        Assert.Contains("GitConsoleShortcutKey = (VirtualKey)0xC0", integration);
         Assert.Contains("ToolTipService.SetToolTip", integration);
 
         Assert.Contains("Git Console", settingsXaml);
