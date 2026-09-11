@@ -119,8 +119,9 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("\"--find-renames\"", gitDiff);
         Assert.Contains("change.OriginalPath", gitDiff);
         Assert.Contains("\"--no-index\"", gitDiff);
-        Assert.Contains("process.ExitCode is not 0 and not 1", gitDiff);
-        Assert.Contains("ParseDiffLines(output)", gitDiff);
+        Assert.Contains("result.ExitCode is not 0 and not 1", gitDiff);
+        Assert.Contains("RunGitForResultAsync", gitDiff);
+        Assert.Contains("GitDiffParser.ParseLines", gitDiff);
     }
 
     private static int Count(string value, string fragment) =>
