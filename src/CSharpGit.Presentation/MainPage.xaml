@@ -296,6 +296,7 @@
             <Pivot x:Name="DetailsTabs"
                    Grid.Row="3"
                    HeaderTemplate="{StaticResource PivotHeaderTemplate}"
+                   SelectionChanged="DetailsTabs_SelectionChanged"
                    Visibility="{Binding DetailsVisibility}">
               <Pivot.Resources>
                 <Style TargetType="primitives:PivotHeaderItem" BasedOn="{StaticResource CompactPivotHeaderItemStyle}" />
@@ -308,10 +309,10 @@
                               VerticalScrollBarVisibility="Auto"
                               MinHeight="120">
                   <StackPanel Padding="{StaticResource Padding.Form}" Spacing="{StaticResource Spacing.M}">
-                    <TextBlock Text="{Binding SelectedCommit.Commit.Message}"
+                    <TextBlock Text="{Binding SelectedHistoryRow.Commit.Message}"
                                Style="{StaticResource SectionHeaderTextStyle}"
                                TextWrapping="Wrap" />
-                    <ItemsControl ItemsSource="{Binding SelectedCommit.Commit.References}">
+                    <ItemsControl ItemsSource="{Binding SelectedHistoryRow.Commit.References}">
                       <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
                       </ItemsControl.ItemsPanel>
@@ -328,13 +329,13 @@
                           RowSpacing="{StaticResource Spacing.M}"
                           ColumnSpacing="{StaticResource Spacing.L}">
                       <TextBlock Text="Author" Style="{StaticResource SecondaryTextStyle}" />
-                      <TextBlock Grid.Column="1" Text="{Binding SelectedCommit.Commit.Author}" Style="{StaticResource BodyTextStyle}" />
+                      <TextBlock Grid.Column="1" Text="{Binding SelectedHistoryRow.Commit.Author}" Style="{StaticResource BodyTextStyle}" />
                       <TextBlock Grid.Row="1" Text="Date" Style="{StaticResource SecondaryTextStyle}" />
-                      <controls:CommitTimeText Grid.Row="1" Grid.Column="1" Value="{Binding SelectedCommit.Commit.AuthoredAt}" FontSize="{StaticResource Font.Body}" />
+                      <controls:CommitTimeText Grid.Row="1" Grid.Column="1" Value="{Binding SelectedHistoryRow.Commit.AuthoredAt}" FontSize="{StaticResource Font.Body}" />
                       <TextBlock Grid.Row="2" Text="Hash" Style="{StaticResource SecondaryTextStyle}" />
-                      <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedCommit.Commit.Hash}" Style="{StaticResource DiffTextStyle}" TextWrapping="Wrap" />
+                      <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedHistoryRow.Commit.Hash}" Style="{StaticResource DiffTextStyle}" TextWrapping="Wrap" />
                       <TextBlock Grid.Row="3" Text="Parents" Style="{StaticResource SecondaryTextStyle}" />
-                      <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedCommit.Commit.ParentsDisplay}" Style="{StaticResource DiffTextStyle}" TextWrapping="Wrap" />
+                      <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedHistoryRow.Commit.ParentsDisplay}" Style="{StaticResource DiffTextStyle}" TextWrapping="Wrap" />
                     </Grid>
                   </StackPanel>
                 </ScrollViewer>

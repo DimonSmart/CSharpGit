@@ -22,7 +22,7 @@ public sealed class ReferenceBadgeUiContractTests
         Assert.Contains("<Border Style=\"{StaticResource ReferenceBadgeStyle}\">", workspace, StringComparison.Ordinal);
         Assert.DoesNotContain("Opacity=\"0.82\"", workspace, StringComparison.Ordinal);
 
-        Assert.Contains("ItemsSource=\"{Binding SelectedCommit.Commit.References}\"", mainPage, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding SelectedHistoryRow.Commit.References}\"", mainPage, StringComparison.Ordinal);
         Assert.Contains("<Border Style=\"{StaticResource ReferenceBadgeStyle}\">", mainPage, StringComparison.Ordinal);
         Assert.Contains("<x:Double x:Key=\"Height.DataRow\">24</x:Double>", designTokens, StringComparison.Ordinal);
     }

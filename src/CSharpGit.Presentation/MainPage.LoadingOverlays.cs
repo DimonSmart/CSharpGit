@@ -8,19 +8,20 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage
 {
     private bool _loadingOverlaysInitialized;
-    private Grid? _commitLoadingOverlay;
+    private Grid? _changesLoadingOverlay;
     private Grid? _diffLoadingOverlay;
-    private ProgressRing? _commitLoadingRing;
+    private ProgressRing? _changesLoadingRing;
     private ProgressRing? _diffLoadingRing;
 
     private void InitializeLoadingOverlays()
     {
         if (_loadingOverlaysInitialized || _viewModel is null) return;
+        if (ChangedFilesTree.Parent is not Grid filesViewer) return;
         if (CompactDiffList.Parent is not Grid diffViewer) return;
 
-        _commitLoadingOverlay = CreateLoadingOverlay("Loading commit…", out _commitLoadingRing);
-        Grid.SetRow(_commitLoadingOverlay, 3);
-        HistoryPane.Children.Add(_commitLoadingOverlay);
+        _changesLoadingOverlay = CreateLoadingOverlay("Loading changes…", out _changesLoadingRing);
+        Grid.SetRow(_changesLoadingOverlay, 1);
+        filesViewer.Children.Add(_changesLoadingOverlay);
 
         _diffLoadingOverlay = CreateLoadingOverlay("Loading diff…", out _diffLoadingRing);
         diffViewer.Children.Add(_diffLoadingOverlay);
@@ -63,7 +64,7 @@ public sealed partial class MainPage
 
     private void LoadingOverlayViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(OpenRepositoryViewModel.IsCommitLoading)
+        if (e.PropertyName is nameof(OpenRepositoryViewModel.IsChangedFilesLoading)
             or nameof(OpenRepositoryViewModel.IsDiffLoading))
             UpdateLoadingOverlays();
     }
@@ -72,8 +73,8 @@ public sealed partial class MainPage
     {
         if (!_loadingOverlaysInitialized) return;
 
-        _commitLoadingOverlay!.Visibility = _viewModel.CommitLoadingVisibility;
-        _commitLoadingRing!.IsActive = _viewModel.IsCommitLoading;
+        _changesLoadingOverlay!.Visibility = _viewModel.ChangedFilesLoadingVisibility;
+        _changesLoadingRing!.IsActive = _viewModel.IsChangedFilesLoading;
         _diffLoadingOverlay!.Visibility = _viewModel.DiffLoadingVisibility;
         _diffLoadingRing!.IsActive = _viewModel.IsDiffLoading;
     }

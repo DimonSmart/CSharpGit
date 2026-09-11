@@ -12,7 +12,18 @@ public interface IHistoryService
         int trailingCount = 100,
         CancellationToken cancellationToken = default);
     Task<CommitDetails> ReadCommitAsync(Repository repository, string hash, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ChangedFile>> ReadChangedFilesAsync(
+        Repository repository,
+        string commitHash,
+        string? parentHash,
+        CancellationToken cancellationToken = default);
     Task<FileDiff> ReadDiffAsync(Repository repository, string hash, string path, CancellationToken cancellationToken = default);
+    Task<FileDiff> ReadDiffAsync(
+        Repository repository,
+        string commitHash,
+        string? parentHash,
+        ChangedFile file,
+        CancellationToken cancellationToken = default);
 }
 
 public interface IReferenceHistoryService
