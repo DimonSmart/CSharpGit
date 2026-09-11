@@ -786,7 +786,7 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
             return;
         }
 
-        if (state.Operation == RepositoryOperation.Merge && action == "continue")
+        if (action == "continue" && state.Operation is RepositoryOperation.Merge or RepositoryOperation.CherryPick or RepositoryOperation.Revert)
         {
             var supportDirectory = Path.Combine(repository.GitDirectory, "csharpgit-merge");
             Directory.CreateDirectory(supportDirectory);
