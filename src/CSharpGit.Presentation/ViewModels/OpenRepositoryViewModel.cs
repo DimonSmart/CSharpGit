@@ -31,15 +31,12 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
     private readonly SemaphoreSlim _mutationGate = new(1, 1);
     private CancellationTokenSource? _historyLoadCts;
     private long _historyLoadGeneration;
-    private long _commitLoadGeneration;
     private long _diffLoadGeneration;
     private string _filterText = string.Empty;
     private UiChoice<HistoryScope> _selectedScope;
     private HistoryRow? _selectedHistoryRow;
-    private CommitDetails? _selectedCommit;
     private ChangedFile? _selectedFile;
     private FileDiff? _selectedDiff;
-    private bool _isCommitLoading;
     private bool _isDiffLoading;
     private bool _hasMore;
     private WorkingTreeChange? _selectedChange;
@@ -211,7 +208,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
     public IReadOnlyList<string> MergeToolNames { get; } = MergeToolPresets.Known;
     public IReadOnlyList<MergeToolConfigurationKind> MergeToolKinds { get; } = Enum.GetValues<MergeToolConfigurationKind>();
     public IReadOnlyList<GitConfigurationScope> MergeToolScopes { get; } = Enum.GetValues<GitConfigurationScope>();
-    public Repository? Repository { get => _repository; private set { _repository = value; Notify(); Notify(nameof(RepositoryVisibility)); Notify(nameof(PickerVisibility)); Notify(nameof(RepositoryKind)); Notify(nameof(CanForcePushWithLease)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }
+    public Repository? Repository { get => _repository; private set { if (ReferenceEquals(_repository, value)) return; ResetCommitChangesSession(); _repository = value; Notify(); Notify(nameof(RepositoryVisibility)); Notify(nameof(PickerVisibility)); Notify(nameof(RepositoryKind)); Notify(nameof(CanForcePushWithLease)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }
     public string? ErrorMessage { get => _errorMessage; private set { _errorMessage = value; Notify(); Notify(nameof(HasError)); } }
     public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); Notify(nameof(BusyVisibility)); Notify(nameof(CanForcePushWithLease)); _openRepositoryCommand.RaiseCanExecuteChanged(); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
@@ -221,15 +218,12 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
     public string RepositoryKind => Repository?.IsWorktree == true ? "Git worktree" : "Git repository";
     public string FilterText { get => _filterText; set { _filterText = value; Notify(); } }
     public UiChoice<HistoryScope> SelectedScope { get => _selectedScope; set { if (_selectedScope == value) return; _selectedScope = value; Notify(); _ = LoadHistoryAsync(true); } }
-    public HistoryRow? SelectedHistoryRow { get => _selectedHistoryRow; set { if (ReferenceEquals(_selectedHistoryRow, value)) return; _selectedHistoryRow = value; Notify(); Notify(nameof(DetailsVisibility)); _ = LoadCommitAsync(); } }
-    public CommitDetails? SelectedCommit { get => _selectedCommit; private set { _selectedCommit = value; Notify(); } }
-    public ChangedFile? SelectedFile { get => _selectedFile; set { if (_selectedFile == value) return; _selectedFile = value; Notify(); _ = LoadDiffAsync(); } }
+    public HistoryRow? SelectedHistoryRow { get => _selectedHistoryRow; set { if (ReferenceEquals(_selectedHistoryRow, value)) return; _selectedHistoryRow = value; Notify(); Notify(nameof(DetailsVisibility)); OnSelectedHistoryRowChanged(); } }
+    public ChangedFile? SelectedFile { get => _selectedFile; set { if (_selectedFile == value) return; _selectedFile = value; Notify(); OnSelectedFileChanged(); } }
     public FileDiff? SelectedDiff { get => _selectedDiff; private set { _selectedDiff = value; Notify(); Notify(nameof(DiffVisibility)); Notify(nameof(BinaryVisibility)); } }
-    public bool IsCommitLoading { get => _isCommitLoading; private set { if (_isCommitLoading == value) return; _isCommitLoading = value; Notify(); Notify(nameof(CommitLoadingVisibility)); } }
     public bool IsDiffLoading { get => _isDiffLoading; private set { if (_isDiffLoading == value) return; _isDiffLoading = value; Notify(); Notify(nameof(DiffLoadingVisibility)); } }
     public bool HasMore { get => _hasMore; private set { _hasMore = value; Notify(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
     public Visibility DetailsVisibility => SelectedHistoryRow is null ? Visibility.Collapsed : Visibility.Visible;
-    public Visibility CommitLoadingVisibility => IsCommitLoading ? Visibility.Visible : Visibility.Collapsed;
     public Visibility DiffLoadingVisibility => IsDiffLoading ? Visibility.Visible : Visibility.Collapsed;
     public Visibility DiffVisibility => SelectedDiff is { IsBinary: false } ? Visibility.Visible : Visibility.Collapsed;
     public Visibility BinaryVisibility => SelectedDiff?.IsBinary == true ? Visibility.Visible : Visibility.Collapsed;
@@ -724,7 +718,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
                 SelectedHistoryRow = restored;
                 if (restored is null)
                 {
-                    SelectedCommit = null;
                     SelectedFile = null;
                     SelectedDiff = null;
                 }
@@ -744,104 +737,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
             _logger.LogWarning(exception, "History loading failed");
         }
         finally { ExitBusy(); }
-    }
-
-    private async Task LoadCommitAsync()
-    {
-        var repository = Repository;
-        var selectedRow = SelectedHistoryRow;
-        var generation = Interlocked.Increment(ref _commitLoadGeneration);
-        if (repository is null || selectedRow is null)
-        {
-            SelectedCommit = null;
-            SelectedFile = null;
-            SelectedDiff = null;
-            if (generation == Volatile.Read(ref _commitLoadGeneration)) IsCommitLoading = false;
-            return;
-        }
-
-        IsCommitLoading = true;
-        SelectedCommit = null;
-        SelectedFile = null;
-        SelectedDiff = null;
-
-        try
-        {
-            var commit = await _historyService.ReadCommitAsync(repository, selectedRow.Commit.Hash);
-            if (generation != Volatile.Read(ref _commitLoadGeneration)
-                || !ReferenceEquals(repository, Repository)
-                || !ReferenceEquals(selectedRow, SelectedHistoryRow))
-                return;
-
-            SelectedCommit = commit;
-            SelectedFile = commit.Files.FirstOrDefault();
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            if (generation == Volatile.Read(ref _commitLoadGeneration)
-                && ReferenceEquals(repository, Repository)
-                && ReferenceEquals(selectedRow, SelectedHistoryRow))
-            {
-                SelectedCommit = null;
-                SelectedFile = null;
-                SelectedDiff = null;
-                ErrorMessage = $"Could not read commit: {exception.Message}";
-            }
-        }
-        finally
-        {
-            if (generation == Volatile.Read(ref _commitLoadGeneration)
-                && ReferenceEquals(repository, Repository)
-                && ReferenceEquals(selectedRow, SelectedHistoryRow))
-                IsCommitLoading = false;
-        }
-    }
-
-    private async Task LoadDiffAsync()
-    {
-        var repository = Repository;
-        var selectedCommit = SelectedCommit;
-        var selectedFile = SelectedFile;
-        var generation = Interlocked.Increment(ref _diffLoadGeneration);
-        if (repository is null || selectedCommit is null || selectedFile is null)
-        {
-            SelectedDiff = null;
-            if (generation == Volatile.Read(ref _diffLoadGeneration)) IsDiffLoading = false;
-            return;
-        }
-
-        SelectedDiff = null;
-        IsDiffLoading = true;
-
-        try
-        {
-            var diff = await _historyService.ReadDiffAsync(repository, selectedCommit.Commit.Hash, selectedFile.Path);
-            if (generation != Volatile.Read(ref _diffLoadGeneration)
-                || !ReferenceEquals(repository, Repository)
-                || !ReferenceEquals(selectedCommit, SelectedCommit)
-                || !ReferenceEquals(selectedFile, SelectedFile))
-                return;
-            SelectedDiff = diff;
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            if (generation == Volatile.Read(ref _diffLoadGeneration)
-                && ReferenceEquals(repository, Repository)
-                && ReferenceEquals(selectedCommit, SelectedCommit)
-                && ReferenceEquals(selectedFile, SelectedFile))
-            {
-                SelectedDiff = null;
-                ErrorMessage = $"Could not read change: {exception.Message}";
-            }
-        }
-        finally
-        {
-            if (generation == Volatile.Read(ref _diffLoadGeneration)
-                && ReferenceEquals(repository, Repository)
-                && ReferenceEquals(selectedCommit, SelectedCommit)
-                && ReferenceEquals(selectedFile, SelectedFile))
-                IsDiffLoading = false;
-        }
     }
 
     private void Notify([CallerMemberName] string? propertyName = null) =>

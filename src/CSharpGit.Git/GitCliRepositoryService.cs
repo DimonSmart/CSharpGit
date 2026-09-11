@@ -6,7 +6,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
 
-public sealed partial class GitCliRepositoryService : IRepositoryService, IRepositoryStateService, IHistoryService, IWorkingTreeService, IReferenceService, IRepositoryWorkflowService
+public sealed partial class GitCliRepositoryService : IRepositoryService, IRepositoryStateService, IWorkingTreeService, IReferenceService, IRepositoryWorkflowService
 {
     private readonly string _gitExecutable;
 
