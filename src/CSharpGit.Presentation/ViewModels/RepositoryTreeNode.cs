@@ -83,6 +83,7 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
     public ObservableCollection<RepositoryTreeNode> Children { get; } = [];
     public string DisplayName => Name;
     public FontWeight NameFontWeight => IsCurrent ? Microsoft.UI.Text.FontWeights.Bold : Microsoft.UI.Text.FontWeights.Normal;
+    public Visibility CurrentBranchAccentVisibility => IsCurrent ? Visibility.Visible : Visibility.Collapsed;
     public string? IconGlyph => Kind switch
     {
         RepositoryTreeNodeKind.WorkingTree => "\uE8B7",
@@ -93,8 +94,12 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
         _ => null
     };
     public Visibility IconVisibility => IconGlyph is null ? Visibility.Collapsed : Visibility.Visible;
+    public Visibility CurrentLocalBranchIconVisibility =>
+        Kind == RepositoryTreeNodeKind.LocalBranch && IsCurrent
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     public Visibility LocalDefaultBranchIconVisibility =>
-        Kind == RepositoryTreeNodeKind.LocalBranch && Value is GitBranch { IsDefault: true }
+        Kind == RepositoryTreeNodeKind.LocalBranch && !IsCurrent && Value is GitBranch { IsDefault: true }
             ? Visibility.Visible
             : Visibility.Collapsed;
     public Visibility RemoteDefaultBranchIconVisibility =>
