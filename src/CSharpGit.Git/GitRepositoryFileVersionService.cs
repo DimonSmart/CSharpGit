@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using CSharpGit.Application.Abstractions;
@@ -9,6 +8,7 @@ namespace CSharpGit.Git;
 public sealed class GitRepositoryFileVersionService : IRepositoryFileVersionService
 {
     private readonly string _gitExecutable;
+    private readonly GitProcessRunner _runner;
     private readonly string _cacheRoot;
 
     public GitRepositoryFileVersionService() : this(new GitCliOptions()) { }
@@ -17,6 +17,7 @@ public sealed class GitRepositoryFileVersionService : IRepositoryFileVersionServ
     {
         ArgumentNullException.ThrowIfNull(options);
         _gitExecutable = string.IsNullOrWhiteSpace(options.ExecutablePath) ? "git" : options.ExecutablePath;
+        _runner = new GitProcessRunner(_gitExecutable);
         _cacheRoot = Path.Combine(Path.GetTempPath(), "CSharpGit", "file-versions");
         TryCleanupCache();
     }
@@ -288,42 +289,26 @@ public sealed class GitRepositoryFileVersionService : IRepositoryFileVersionServ
         string destination,
         CancellationToken cancellationToken)
     {
-        var startInfo = CreateStartInfo(workingDirectory, "cat-file", "blob", blobId);
-        using var process = new Process { StartInfo = startInfo };
-        process.Start();
-        var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
-        await using (var file = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, FileOptions.Asynchronous))
+        try
         {
-            await process.StandardOutput.BaseStream.CopyToAsync(file, cancellationToken);
-            await file.FlushAsync(cancellationToken);
+            await _runner.RunToFileAsync(
+                workingDirectory,
+                "FileVersionBlob",
+                cancellationToken,
+                destination,
+                "cat-file", "blob", blobId);
         }
-        await process.WaitForExitAsync(cancellationToken);
-        var error = (await errorTask).Trim();
-        if (process.ExitCode != 0)
-            throw new InvalidOperationException(string.IsNullOrWhiteSpace(error)
-                ? "The requested Git blob is no longer available."
-                : $"Git could not read the requested blob: {error}");
+        catch (InvalidOperationException exception)
+        {
+            throw new InvalidOperationException($"Git could not read the requested blob: {exception.Message}", exception);
+        }
     }
 
-    private async Task<string> RunGitAsync(
+    private Task<string> RunGitAsync(
         string workingDirectory,
         CancellationToken cancellationToken,
-        params string[] arguments)
-    {
-        var startInfo = CreateStartInfo(workingDirectory, arguments);
-        using var process = new Process { StartInfo = startInfo };
-        process.Start();
-        var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken);
-        var output = await outputTask;
-        var error = (await errorTask).Trim();
-        if (process.ExitCode != 0)
-            throw new InvalidOperationException(string.IsNullOrWhiteSpace(error)
-                ? $"Git exited with code {process.ExitCode}."
-                : $"Git exited with code {process.ExitCode}: {error}");
-        return output.TrimEnd('\r', '\n');
-    }
+        params string[] arguments) =>
+        _runner.RunAsync(workingDirectory, "FileVersion", cancellationToken, arguments);
 
     private async Task<string> RunOptionalGitAsync(
         string workingDirectory,
@@ -338,22 +323,6 @@ public sealed class GitRepositoryFileVersionService : IRepositoryFileVersionServ
         {
             return string.Empty;
         }
-    }
-
-    private ProcessStartInfo CreateStartInfo(string workingDirectory, params string[] arguments)
-    {
-        var startInfo = new ProcessStartInfo(_gitExecutable)
-        {
-            WorkingDirectory = workingDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
-        return startInfo;
     }
 
     private static IEnumerable<RawDiffEntry> ParseRawDiff(string output)
