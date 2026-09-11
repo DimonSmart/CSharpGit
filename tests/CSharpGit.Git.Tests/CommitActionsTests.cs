@@ -213,6 +213,7 @@ public sealed class CommitActionsTests : IDisposable
         Run("init", "-b", "main");
         Run("config", "user.email", "tests@example.invalid");
         Run("config", "user.name", "CSharpGit Tests");
+        Run("config", "core.editor", "csharpgit-editor-must-not-run");
     }
 
     private string Commit(string path, string contents, string message)

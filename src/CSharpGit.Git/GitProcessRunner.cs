@@ -217,10 +217,19 @@ internal sealed class GitProcessRunner
             UseShellExecute = false,
             CreateNoWindow = true
         };
+        startInfo.Environment["GIT_EDITOR"] = CreateNoOpEditorCommand();
         foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
         if (environment is not null)
             foreach (var variable in environment) startInfo.Environment[variable.Key] = variable.Value;
         return startInfo;
+    }
+
+    private static string CreateNoOpEditorCommand()
+    {
+        if (!OperatingSystem.IsWindows()) return "/bin/sh -c :";
+        var commandProcessor = Environment.GetEnvironmentVariable("ComSpec");
+        if (string.IsNullOrWhiteSpace(commandProcessor)) commandProcessor = "cmd.exe";
+        return $"\"{commandProcessor.Replace("\"", "\\\"")}\" /d /c rem";
     }
 
     private static void ThrowIfFailed(GitProcessResult result)
