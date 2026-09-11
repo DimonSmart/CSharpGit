@@ -83,7 +83,7 @@ public sealed partial class MainPage : Page
             RebuildRepositoryTree();
             UpdateStatusBar();
         }
-        else if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.SelectedCommit))
+        else if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.SelectedChangedFiles))
         {
             _ = RefreshCommitFilesAsync();
         }
@@ -214,32 +214,18 @@ public sealed partial class MainPage : Page
             : _viewModel.CurrentOperation == RepositoryOperation.None ? "Ready" : _viewModel.CurrentOperation.ToString();
     }
 
-    private async Task RefreshCommitFilesAsync()
+    private Task RefreshCommitFilesAsync()
     {
-        var selectedCommit = _viewModel.SelectedCommit;
+        var files = _viewModel.SelectedChangedFiles;
         _commitFiles.Clear();
-        if (selectedCommit is null || _viewModel.Repository is null)
-        {
-            FilesTab.Header = "Files";
-            return;
-        }
+        FilesTab.Header = files.Count == 0 ? "Changes" : $"Changes ({files.Count})";
 
-        FilesTab.Header = $"Files ({selectedCommit.Files.Count})";
-        IReadOnlyDictionary<string, string> statuses;
-        try
-        {
-            statuses = await _referenceHistoryService.ReadFileStatusesAsync(_viewModel.Repository, selectedCommit.Commit.Hash);
-        }
-        catch
-        {
-            statuses = new Dictionary<string, string>();
-        }
+        foreach (var file in files)
+            _commitFiles.Add(new CommitFileRow(file.Status, file));
 
-        foreach (var file in selectedCommit.Files)
-            _commitFiles.Add(new CommitFileRow(statuses.GetValueOrDefault(file.Path, "?"), file));
-
-        var selected = _commitFiles.FirstOrDefault(row => row.File == _viewModel.SelectedFile) ?? _commitFiles.FirstOrDefault();
+        var selected = _commitFiles.FirstOrDefault(row => ReferenceEquals(row.File, _viewModel.SelectedFile)) ?? _commitFiles.FirstOrDefault();
         CommitFilesList.SelectedItem = selected;
+        return Task.CompletedTask;
     }
 
     private async Task NavigateToReferenceAsync(string commitHash)

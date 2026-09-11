@@ -24,10 +24,16 @@ public sealed partial class MainPage
         _commitFiles.CollectionChanged += CommitFiles_CollectionChanged;
         _viewModel.PropertyChanged += ChangesViewModel_PropertyChanged;
 
-        EnsureCurrentCommitFileSelection();
         RebuildChangedFileTree();
         RebuildCompactDiff();
+        UpdateChangesViewActivity();
     }
+
+    private void DetailsTabs_SelectionChanged(object sender, SelectionChangedEventArgs args) =>
+        UpdateChangesViewActivity();
+
+    private void UpdateChangesViewActivity() =>
+        _viewModel.SetChangesViewActive(ReferenceEquals(DetailsTabs.SelectedItem, FilesTab));
 
     private void CommitFiles_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs args)
     {
@@ -53,7 +59,7 @@ public sealed partial class MainPage
         {
             SyncChangedFileTreeSelection();
         }
-        else if (args.PropertyName == nameof(OpenRepositoryViewModel.SelectedCommit))
+        else if (args.PropertyName == nameof(OpenRepositoryViewModel.SelectedChangedFiles))
         {
             EnsureCurrentCommitFileSelection();
         }
@@ -69,7 +75,7 @@ public sealed partial class MainPage
         _changedFileTreeRoots.Clear();
         foreach (var root in roots) _changedFileTreeRoots.Add(root);
 
-        FilesTab.Header = _viewModel.SelectedCommit is null ? "Changes" : $"Changes ({_commitFiles.Count})";
+        FilesTab.Header = _commitFiles.Count == 0 ? "Changes" : $"Changes ({_commitFiles.Count})";
         EnsureCurrentCommitFileSelection();
         SyncChangedFileTreeSelection();
     }
@@ -85,20 +91,16 @@ public sealed partial class MainPage
 
     private void EnsureCurrentCommitFileSelection()
     {
-        var commit = _viewModel.SelectedCommit;
-        if (commit is null || commit.Files.Count == 0) return;
+        if (!_viewModel.IsChangesViewActive) return;
+        var files = _viewModel.SelectedChangedFiles;
+        if (files.Count == 0) return;
 
         var selected = _viewModel.SelectedFile;
         var current = selected is null
-            ? commit.Files[0]
-            : commit.Files.FirstOrDefault(file => string.Equals(file.Path, selected.Path, StringComparison.Ordinal)) ?? commit.Files[0];
+            ? files[0]
+            : files.FirstOrDefault(file => string.Equals(file.Path, selected.Path, StringComparison.Ordinal)) ?? files[0];
 
         if (ReferenceEquals(selected, current)) return;
-
-        // ChangedFile is a record. Two different commits can therefore produce
-        // value-equal file objects, while the diff must still be reloaded for the
-        // newly selected commit.
-        _viewModel.SelectedFile = null;
         _viewModel.SelectedFile = current;
     }
 
