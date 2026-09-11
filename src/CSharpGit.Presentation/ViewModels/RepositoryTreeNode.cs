@@ -91,6 +91,14 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
         _ => null
     };
     public Visibility IconVisibility => IconGlyph is null ? Visibility.Collapsed : Visibility.Visible;
+    public Visibility LocalDefaultBranchIconVisibility =>
+        Kind == RepositoryTreeNodeKind.LocalBranch && Value is GitBranch { IsDefault: true }
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    public Visibility RemoteDefaultBranchIconVisibility =>
+        Kind == RepositoryTreeNodeKind.RemoteBranch && Value is GitBranch { IsDefault: true }
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
     internal static void ResetExpansionState()
     {
