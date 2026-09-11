@@ -1,0 +1,16 @@
+name: History navigation dependency inventory
+on:
+  push:
+    branches: [automation/history-navigation-performance-20260911]
+    paths: [.github/workflows/history-navigation-inventory-grep.yml]
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Find old history-detail dependencies
+        shell: bash
+        run: |
+          grep -RInE "SelectedCommit|IsCommitLoading|CommitLoadingVisibility|ReadCommitAsync|ReadFileStatusesAsync|ReadDiffAsync" src tests .idd/intent/IDD-0004.spec-history-and-diff.md || true
