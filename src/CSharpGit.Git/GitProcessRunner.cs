@@ -188,8 +188,9 @@ internal sealed class GitProcessRunner
             throw;
         }
 
-        var output = (await outputTask).TrimEnd('\r', '\n');
-        var error = (await errorTask).TrimEnd('\r', '\n');
+        await Task.WhenAll(outputTask, errorTask);
+        var output = outputTask.Result.TrimEnd('\r', '\n');
+        var error = errorTask.Result.TrimEnd('\r', '\n');
         cancellationToken.ThrowIfCancellationRequested();
 
         stopwatch.Stop();
