@@ -11,9 +11,16 @@ public static class GitServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddSingleton(options ?? new GitCliOptions());
-        services.AddSingleton(provider =>
-            new GitCommandExecutor(provider.GetRequiredService<GitCliOptions>()));
+        if (options is null)
+        {
+            services.AddSingleton(GitCommandExecutor.Default);
+        }
+        else
+        {
+            services.AddSingleton(options);
+            services.AddSingleton(provider =>
+                new GitCommandExecutor(provider.GetRequiredService<GitCliOptions>()));
+        }
 
         services.AddSingleton(provider =>
             new GitCliRepositoryService(provider.GetRequiredService<GitCommandExecutor>()));
