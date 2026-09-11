@@ -107,6 +107,33 @@
                       MaxWidth="760"
                       HorizontalAlignment="Left">
             <TextBlock Text="Diagnostics" Style="{StaticResource TitleTextStyle}" />
+
+            <TextBlock Text="Git Console"
+                       Style="{StaticResource SectionHeaderTextStyle}"
+                       Margin="{StaticResource Margin.Section}" />
+            <TextBlock Text="Choose when the Git Console opens automatically. Internal commands never open it by themselves. The command history is session-only and is limited to the latest 100 Git commands."
+                       Style="{StaticResource BodyTextStyle}"
+                       TextWrapping="Wrap"
+                       Opacity="0.72"
+                       MaxWidth="680" />
+            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
+              <StackPanel Spacing="{StaticResource Spacing.M}">
+                <TextBlock Text="Auto open" Style="{StaticResource BodyStrongTextStyle}" />
+                <ComboBox x:Name="GitConsoleAutoOpenComboBox"
+                          ItemsSource="{Binding GitConsoleAutoOpenModes}"
+                          SelectedItem="{Binding SelectedGitConsoleAutoOpenMode, Mode=TwoWay}"
+                          DisplayMemberPath="Label"
+                          Style="{StaticResource CompactComboBoxStyle}"
+                          MinWidth="220"
+                          HorizontalAlignment="Left"
+                          SelectionChanged="GitConsoleAutoOpenComboBox_SelectionChanged" />
+                <TextBlock Text="On errors is the default and opens the console only after a user Git command fails."
+                           Style="{StaticResource SecondaryTextStyle}"
+                           TextWrapping="Wrap"
+                           MaxWidth="620" />
+              </StackPanel>
+            </Border>
+
             <TextBlock Text="File logging"
                        Style="{StaticResource SectionHeaderTextStyle}"
                        Margin="{StaticResource Margin.Section}" />
