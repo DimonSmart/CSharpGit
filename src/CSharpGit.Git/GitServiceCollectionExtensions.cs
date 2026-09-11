@@ -24,11 +24,19 @@ public static class GitServiceCollectionExtensions
 
         services.AddSingleton(provider =>
             new GitCliRepositoryService(provider.GetRequiredService<GitCommandExecutor>()));
+        services.AddSingleton(provider =>
+            new DefaultBranchResolver(provider.GetRequiredService<GitCommandExecutor>()));
         services.AddSingleton<IRepositoryService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
-        services.AddSingleton<IRepositoryStateService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
+        services.AddSingleton<IRepositoryStateService>(provider =>
+            new DefaultBranchRepositoryStateService(
+                provider.GetRequiredService<GitCliRepositoryService>(),
+                provider.GetRequiredService<DefaultBranchResolver>()));
         services.AddSingleton<IWorkingTreeService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
         services.AddSingleton<IWorkingTreeDiffService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
-        services.AddSingleton<IReferenceService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
+        services.AddSingleton<IReferenceService>(provider =>
+            new DefaultBranchReferenceService(
+                provider.GetRequiredService<GitCliRepositoryService>(),
+                provider.GetRequiredService<DefaultBranchResolver>()));
 
         services.AddSingleton<IRepositoryFileVersionService>(provider =>
             new GitRepositoryFileVersionService(provider.GetRequiredService<GitCommandExecutor>()));

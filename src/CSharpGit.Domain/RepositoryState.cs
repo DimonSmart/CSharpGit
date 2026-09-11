@@ -65,7 +65,10 @@ public sealed record GitBranch(
     bool IsCurrent = false,
     string? Upstream = null,
     int Ahead = 0,
-    int Behind = 0);
+    int Behind = 0)
+{
+    public bool IsDefault { get; init; }
+}
 
 public sealed record GitRemote(string Name, string FetchUrl, string PushUrl);
 
