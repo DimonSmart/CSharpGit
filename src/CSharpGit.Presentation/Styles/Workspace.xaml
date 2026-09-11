@@ -194,6 +194,7 @@
                     Visibility="{Binding IconVisibility}" />
           <TextBlock Text="{Binding DisplayName}"
                      Style="{StaticResource BodyTextStyle}"
+                     FontWeight="{Binding NameFontWeight}"
                      TextTrimming="CharacterEllipsis"
                      VerticalAlignment="Center" />
         </StackPanel>
