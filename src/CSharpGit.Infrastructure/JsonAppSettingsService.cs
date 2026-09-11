@@ -26,6 +26,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     private CommitTimeDisplayMode _commitTimeDisplayMode;
     private bool _loggingEnabled;
     private ApplicationLogLevel _logLevel;
+    private GitConsoleAutoOpenMode _gitConsoleAutoOpenMode;
     private IReadOnlyList<RecentRepositorySettings> _recentRepositories;
 
     public JsonAppSettingsService()
@@ -41,6 +42,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         _commitTimeDisplayMode = state.CommitTimeDisplayMode;
         _loggingEnabled = state.LoggingEnabled;
         _logLevel = state.LogLevel;
+        _gitConsoleAutoOpenMode = state.GitConsoleAutoOpenMode;
         _recentRepositories = state.RecentRepositories;
     }
 
@@ -51,6 +53,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     public bool LoggingEnabled => _loggingEnabled;
 
     public ApplicationLogLevel LogLevel => _logLevel;
+
+    public GitConsoleAutoOpenMode GitConsoleAutoOpenMode => _gitConsoleAutoOpenMode;
 
     public IReadOnlyList<RecentRepositorySettings> RecentRepositories => _recentRepositories;
 
@@ -93,6 +97,19 @@ public sealed class JsonAppSettingsService : IAppSettingsService
 
         _loggingEnabled = enabled;
         _logLevel = level;
+        Changed?.Invoke(this, EventArgs.Empty);
+        await PersistAsync(cancellationToken);
+    }
+
+    public async Task SetGitConsoleAutoOpenModeAsync(
+        GitConsoleAutoOpenMode mode,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Enum.IsDefined(typeof(GitConsoleAutoOpenMode), mode))
+            throw new ArgumentOutOfRangeException(nameof(mode));
+        if (_gitConsoleAutoOpenMode == mode) return;
+
+        _gitConsoleAutoOpenMode = mode;
         Changed?.Invoke(this, EventArgs.Empty);
         await PersistAsync(cancellationToken);
     }
@@ -156,9 +173,19 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                            && Enum.IsDefined(typeof(ApplicationLogLevel), configuredLevel)
                 ? configuredLevel
                 : ApplicationLogLevel.Information;
+            var gitConsoleAutoOpenMode = document.GitConsoleAutoOpenMode is { } configuredGitConsoleMode
+                                         && Enum.IsDefined(typeof(GitConsoleAutoOpenMode), configuredGitConsoleMode)
+                ? configuredGitConsoleMode
+                : GitConsoleAutoOpenMode.OnErrors;
             var recentRepositories = NormalizeRecentRepositories(document.RecentRepositories);
 
-            return new SettingsState(themeMode, commitTimeDisplayMode, document.LoggingEnabled, logLevel, recentRepositories);
+            return new SettingsState(
+                themeMode,
+                commitTimeDisplayMode,
+                document.LoggingEnabled,
+                logLevel,
+                gitConsoleAutoOpenMode,
+                recentRepositories);
         }
         catch (JsonException)
         {
@@ -188,6 +215,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 CommitTimeDisplayMode = _commitTimeDisplayMode,
                 LoggingEnabled = _loggingEnabled,
                 LogLevel = _logLevel,
+                GitConsoleAutoOpenMode = _gitConsoleAutoOpenMode,
                 RecentRepositories = _recentRepositories.ToList()
             };
             var json = JsonSerializer.Serialize(document, SerializerOptions);
@@ -259,6 +287,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         CommitTimeDisplayMode CommitTimeDisplayMode,
         bool LoggingEnabled,
         ApplicationLogLevel LogLevel,
+        GitConsoleAutoOpenMode GitConsoleAutoOpenMode,
         IReadOnlyList<RecentRepositorySettings> RecentRepositories)
     {
         public static SettingsState Default { get; } = new(
@@ -266,6 +295,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             CommitTimeDisplayMode.Smart,
             false,
             ApplicationLogLevel.Information,
+            GitConsoleAutoOpenMode.OnErrors,
             []);
     }
 
@@ -275,6 +305,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         public CommitTimeDisplayMode CommitTimeDisplayMode { get; init; } = CommitTimeDisplayMode.Smart;
         public bool LoggingEnabled { get; init; }
         public ApplicationLogLevel? LogLevel { get; init; }
+        public GitConsoleAutoOpenMode? GitConsoleAutoOpenMode { get; init; }
         public List<RecentRepositorySettings>? RecentRepositories { get; init; }
     }
 
