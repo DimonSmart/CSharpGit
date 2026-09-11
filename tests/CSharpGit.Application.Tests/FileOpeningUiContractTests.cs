@@ -37,10 +37,12 @@ public sealed class FileOpeningUiContractTests
     {
         var root = FindRepositoryRoot();
         var versions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitRepositoryFileVersionService.cs"));
+        var runner = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitProcessRunner.cs"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
 
-        Assert.Contains("StandardOutput.BaseStream.CopyToAsync", versions);
-        Assert.Contains("FileMode.CreateNew", versions);
+        Assert.Contains("RunToFileAsync", versions);
+        Assert.Contains("StandardOutput.BaseStream.CopyToAsync", runner);
+        Assert.Contains("FileMode.CreateNew", runner);
         Assert.Contains("File.Move(temporaryPath, finalPath)", versions);
         Assert.Contains("FileAttributes.ReadOnly", versions);
         Assert.Contains("repository.GitDirectory", versions);
