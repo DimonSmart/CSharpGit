@@ -6,38 +6,20 @@ namespace CSharpGit.Git;
 public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHistoryService
 {
     private readonly GitReferenceHistoryService _history;
-    private readonly GitProcessRunner _runner;
+    private readonly GitCommandExecutor _executor;
 
-    public GitFileAwareHistoryService(
-        GitReferenceHistoryService history,
-        IRepositoryFileVersionService versions)
-        : this(history, versions, new GitCliOptions())
-    {
-    }
-
-    public GitFileAwareHistoryService(
-        GitReferenceHistoryService history,
-        IRepositoryFileVersionService versions,
-        GitCliOptions options)
-        : this(history, versions, options, null)
+    public GitFileAwareHistoryService(GitReferenceHistoryService history)
+        : this(history, GitCommandExecutor.Default)
     {
     }
 
     internal GitFileAwareHistoryService(
         GitReferenceHistoryService history,
-        IRepositoryFileVersionService versions,
-        GitCliOptions options,
-        IGitCommandActivitySink? activitySink)
+        GitCommandExecutor executor)
     {
         _history = history ?? throw new ArgumentNullException(nameof(history));
-        ArgumentNullException.ThrowIfNull(versions);
-        ArgumentNullException.ThrowIfNull(options);
-        _runner = new GitProcessRunner(
-            string.IsNullOrWhiteSpace(options.ExecutablePath) ? "git" : options.ExecutablePath,
-            activitySink);
+        _executor = executor ?? throw new ArgumentNullException(nameof(executor));
     }
-
-    internal int GitInvocationCount => _runner.InvocationCount;
 
     public Task<HistoryPage> ReadHistoryAsync(
         Repository repository,
@@ -62,7 +44,6 @@ public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHist
         CancellationToken cancellationToken = default) =>
         _history.ReadHistoryAsync(repository, reference, filter, skip, take, cancellationToken);
 
-    // Retained for explicit/non-navigation callers. History navigation itself does not call it.
     public async Task<CommitDetails> ReadCommitAsync(
         Repository repository,
         string hash,
@@ -89,7 +70,7 @@ public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHist
         string output;
         if (parentHash is null)
         {
-            output = await _runner.RunAsync(
+            output = await _executor.ExecuteAsync(
                 repository.WorkingDirectory,
                 "ChangedFiles",
                 cancellationToken,
@@ -98,7 +79,7 @@ public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHist
         }
         else
         {
-            output = await _runner.RunAsync(
+            output = await _executor.ExecuteAsync(
                 repository.WorkingDirectory,
                 "ChangedFiles",
                 cancellationToken,
@@ -126,8 +107,6 @@ public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHist
         return files;
     }
 
-    // Legacy overload retained for non-navigation callers. It resolves metadata once and then
-    // delegates to the same first-parent lazy operations used by the UI.
     public async Task<FileDiff> ReadDiffAsync(
         Repository repository,
         string hash,
@@ -169,33 +148,25 @@ public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHist
         var arguments = new List<string>();
         if (parentHash is null)
         {
-            // A root commit cannot contain a rename/copy relative to a parent, so similarity
-            // detection would only add work to the path-scoped diff.
             arguments.AddRange(["show", "--format=", "--root", "--no-ext-diff", commitHash, "--"]);
         }
         else
         {
             arguments.AddRange(["diff", "--no-ext-diff"]);
-
-            // ReadChangedFilesAsync already performed rename/copy detection for the commit and
-            // carries the original path in ChangedFile. Do not repeat the expensive similarity
-            // scan for ordinary M/A/D files. Keep it only for actual rename/copy entries so the
-            // displayed patch preserves Git's rename/copy metadata.
             if (file.Status is "R" or "C")
                 arguments.AddRange(["--find-renames", "--find-copies"]);
-
             arguments.AddRange([parentHash, commitHash, "--"]);
         }
         arguments.AddRange(paths);
 
-        var output = await _runner.RunAsync(
+        var output = await _executor.ExecuteAsync(
             repository.WorkingDirectory,
             "Diff",
             cancellationToken,
             arguments.ToArray());
         var binary = output.Contains("Binary files ", StringComparison.Ordinal) ||
                      output.Contains("GIT binary patch", StringComparison.Ordinal);
-        return new FileDiff(file.Path, binary, binary ? [] : ParseDiffLines(output));
+        return new FileDiff(file.Path, binary, binary ? [] : GitDiffParser.ParseLines(output));
     }
 
     public async Task<IReadOnlyDictionary<string, string>> ReadFileStatusesAsync(
@@ -254,18 +225,6 @@ public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHist
             yield return new NumStatEntry(oldPath, newPath, added, removed, binary);
         }
     }
-
-    private static IReadOnlyList<DiffLine> ParseDiffLines(string output) => output.Split('\n')
-        .Select(line => new DiffLine(
-            line.TrimEnd('\r'),
-            line.StartsWith("+++") || line.StartsWith("---") || line.StartsWith("@@") || line.StartsWith("diff ") || line.StartsWith("index ")
-                ? DiffLineKind.Header
-                : line.StartsWith('+')
-                    ? DiffLineKind.Added
-                    : line.StartsWith('-')
-                        ? DiffLineKind.Removed
-                        : DiffLineKind.Context))
-        .ToList();
 
     private static void ValidateObjectName(string value)
     {
