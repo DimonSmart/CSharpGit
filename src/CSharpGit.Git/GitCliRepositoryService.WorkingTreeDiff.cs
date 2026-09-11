@@ -1,5 +1,3 @@
-using System.Diagnostics;
-using System.Text;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Application.Exceptions;
 using CSharpGit.Domain;
@@ -63,12 +61,23 @@ public sealed partial class GitCliRepositoryService : IWorkingTreeDiffService
         await File.WriteAllBytesAsync(emptyPath, [], cancellationToken);
         try
         {
-            var output = await RunGitNoIndexAsync(
+            var result = await RunGitForResultAsync(
                 repository.WorkingDirectory,
+                "WorkingTreeNoIndexDiff",
+                GitCommandKind.Internal,
                 cancellationToken,
-                "diff", "--no-index", "--no-ext-diff", "--", emptyPath, fullPath);
+                null,
+                ["diff", "--no-index", "--no-ext-diff", "--", emptyPath, fullPath]);
 
-            if (output.Length == 0)
+            if (result.ExitCode is not 0 and not 1)
+            {
+                var detail = string.IsNullOrWhiteSpace(result.StandardError)
+                    ? "Git returned no diagnostic message."
+                    : result.StandardError.Trim();
+                throw new RepositoryOpenException($"Git command exited with code {result.ExitCode}: {detail}");
+            }
+
+            if (result.StandardOutput.Length == 0)
             {
                 return new FileDiff(
                     change.Path,
@@ -76,7 +85,7 @@ public sealed partial class GitCliRepositoryService : IWorkingTreeDiffService
                     [new DiffLine("new empty file", DiffLineKind.Header)]);
             }
 
-            return BuildWorkingTreeDiff(change.Path, output);
+            return BuildWorkingTreeDiff(change.Path, result.StandardOutput);
         }
         finally
         {
@@ -88,48 +97,11 @@ public sealed partial class GitCliRepositoryService : IWorkingTreeDiffService
 
     private static FileDiff BuildWorkingTreeDiff(string path, string output)
     {
-        var binary = output.Contains("Binary files ", StringComparison.Ordinal) ||
-                     output.Contains("GIT binary patch", StringComparison.Ordinal);
+        var binary = GitDiffParser.IsBinary(output);
         return new FileDiff(
             path,
             binary,
-            binary || output.Length == 0 ? [] : ParseDiffLines(output));
-    }
-
-    private async Task<string> RunGitNoIndexAsync(
-        string workingDirectory,
-        CancellationToken cancellationToken,
-        params string[] arguments)
-    {
-        var startInfo = new ProcessStartInfo(_gitExecutable)
-        {
-            WorkingDirectory = workingDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
-
-        using var process = new Process { StartInfo = startInfo };
-        process.Start();
-        var standardOutput = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var standardError = process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken);
-
-        var output = (await standardOutput).TrimEnd('\r', '\n');
-        var error = (await standardError).Trim();
-        if (process.ExitCode is not 0 and not 1)
-        {
-            var detail = string.IsNullOrWhiteSpace(error)
-                ? "Git returned no diagnostic message."
-                : error;
-            throw new RepositoryOpenException($"Git command exited with code {process.ExitCode}: {detail}");
-        }
-
-        return output;
+            binary || output.Length == 0 ? [] : GitDiffParser.ParseLines(output));
     }
 
     private static string ResolveSafeWorkingTreePath(Repository repository, string path)
