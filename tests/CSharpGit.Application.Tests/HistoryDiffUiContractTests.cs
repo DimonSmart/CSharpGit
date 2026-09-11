@@ -87,15 +87,15 @@ public sealed class HistoryDiffUiContractTests
     {
         var root = FindRepositoryRoot();
         var service = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitFileAwareHistoryService.cs"));
-        var runner = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitProcessRunner.cs"));
+        var executor = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCommandExecutor.cs"));
 
         Assert.Contains("\"--raw\", \"--numstat\"", service);
         Assert.Contains("\"--find-renames\", \"--find-copies\"", service);
         Assert.DoesNotContain("--find-copies-harder", service);
         Assert.Contains("string? parentHash", service);
         Assert.Contains("ChangedFile file", service);
-        Assert.Contains("process.Kill(entireProcessTree: true)", runner);
-        Assert.Contains("Task.WhenAll(outputTask, errorTask)", runner);
+        Assert.Contains("process.Kill(entireProcessTree: true)", executor);
+        Assert.Contains("Task.WhenAll(outputTask, errorTask)", executor);
     }
 
     [Fact]

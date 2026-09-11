@@ -73,7 +73,7 @@ public sealed class RepositoryFileVersionServiceTests : IDisposable
         Assert.Equal("new name.txt", pair.Changed.GitPath);
         Assert.Equal("R", pair.Status);
 
-        var history = new GitFileAwareHistoryService(new GitReferenceHistoryService(), _versionService);
+        var history = new GitFileAwareHistoryService(new GitReferenceHistoryService());
         var details = await history.ReadCommitAsync(repository, commit);
         var file = Assert.Single(details.Files);
         Assert.Equal("R", file.Status);

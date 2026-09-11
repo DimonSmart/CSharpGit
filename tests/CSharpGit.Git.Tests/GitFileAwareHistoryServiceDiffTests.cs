@@ -12,14 +12,14 @@ public sealed class GitFileAwareHistoryServiceDiffTests
         var directory = CreateTemporaryDirectory();
         try
         {
-            var setupRunner = await InitializeRepositoryAsync(directory);
+            var setupExecutor = await InitializeRepositoryAsync(directory);
             await File.WriteAllTextAsync(Path.Combine(directory, "note.txt"), "one\n");
-            await CommitAllAsync(setupRunner, directory, "initial");
-            var parent = await ResolveHeadAsync(setupRunner, directory);
+            await CommitAllAsync(setupExecutor, directory, "initial");
+            var parent = await ResolveHeadAsync(setupExecutor, directory);
 
             await File.AppendAllTextAsync(Path.Combine(directory, "note.txt"), "two\n");
-            await CommitAllAsync(setupRunner, directory, "modified");
-            var commit = await ResolveHeadAsync(setupRunner, directory);
+            await CommitAllAsync(setupExecutor, directory, "modified");
+            var commit = await ResolveHeadAsync(setupExecutor, directory);
 
             var activity = new GitCommandActivityHistory();
             var service = CreateService(activity);
@@ -48,14 +48,14 @@ public sealed class GitFileAwareHistoryServiceDiffTests
         var directory = CreateTemporaryDirectory();
         try
         {
-            var setupRunner = await InitializeRepositoryAsync(directory);
+            var setupExecutor = await InitializeRepositoryAsync(directory);
             await File.WriteAllTextAsync(Path.Combine(directory, "old.txt"), "same content\n");
-            await CommitAllAsync(setupRunner, directory, "initial");
-            var parent = await ResolveHeadAsync(setupRunner, directory);
+            await CommitAllAsync(setupExecutor, directory, "initial");
+            var parent = await ResolveHeadAsync(setupExecutor, directory);
 
-            await setupRunner.RunAsync(directory, "Setup", CancellationToken.None, "mv", "old.txt", "new.txt");
-            await CommitAllAsync(setupRunner, directory, "rename");
-            var commit = await ResolveHeadAsync(setupRunner, directory);
+            await setupExecutor.ExecuteAsync(directory, "Setup", CancellationToken.None, "mv", "old.txt", "new.txt");
+            await CommitAllAsync(setupExecutor, directory, "rename");
+            var commit = await ResolveHeadAsync(setupExecutor, directory);
 
             var activity = new GitCommandActivityHistory();
             var service = CreateService(activity);
@@ -82,34 +82,32 @@ public sealed class GitFileAwareHistoryServiceDiffTests
 
     private static GitFileAwareHistoryService CreateService(GitCommandActivityHistory activity)
     {
-        var options = new GitCliOptions();
+        var executor = new GitCommandExecutor(new GitCliOptions(), activity);
         return new GitFileAwareHistoryService(
-            new GitReferenceHistoryService(options),
-            new GitRepositoryFileVersionService(options),
-            options,
-            activity);
+            new GitReferenceHistoryService(executor),
+            executor);
     }
 
     private static Repository CreateRepository(string directory) =>
         new(directory, directory, Path.Combine(directory, ".git"), false);
 
-    private static async Task<GitProcessRunner> InitializeRepositoryAsync(string directory)
+    private static async Task<GitCommandExecutor> InitializeRepositoryAsync(string directory)
     {
-        var runner = new GitProcessRunner("git", new GitCommandActivityHistory());
-        await runner.RunAsync(directory, "Setup", CancellationToken.None, "init");
-        await runner.RunAsync(directory, "Setup", CancellationToken.None, "config", "user.email", "tests@csharpgit.local");
-        await runner.RunAsync(directory, "Setup", CancellationToken.None, "config", "user.name", "CSharpGit Tests");
-        return runner;
+        var executor = new GitCommandExecutor(new GitCliOptions(), new GitCommandActivityHistory());
+        await executor.ExecuteAsync(directory, "Setup", CancellationToken.None, "init");
+        await executor.ExecuteAsync(directory, "Setup", CancellationToken.None, "config", "user.email", "tests@csharpgit.local");
+        await executor.ExecuteAsync(directory, "Setup", CancellationToken.None, "config", "user.name", "CSharpGit Tests");
+        return executor;
     }
 
-    private static async Task CommitAllAsync(GitProcessRunner runner, string directory, string message)
+    private static async Task CommitAllAsync(GitCommandExecutor executor, string directory, string message)
     {
-        await runner.RunAsync(directory, "Setup", CancellationToken.None, "add", "--all");
-        await runner.RunAsync(directory, "Setup", CancellationToken.None, "commit", "-m", message);
+        await executor.ExecuteAsync(directory, "Setup", CancellationToken.None, "add", "--all");
+        await executor.ExecuteAsync(directory, "Setup", CancellationToken.None, "commit", "-m", message);
     }
 
-    private static Task<string> ResolveHeadAsync(GitProcessRunner runner, string directory) =>
-        runner.RunAsync(directory, "Setup", CancellationToken.None, "rev-parse", "HEAD");
+    private static Task<string> ResolveHeadAsync(GitCommandExecutor executor, string directory) =>
+        executor.ExecuteAsync(directory, "Setup", CancellationToken.None, "rev-parse", "HEAD");
 
     private static string CreateTemporaryDirectory()
     {
@@ -120,15 +118,8 @@ public sealed class GitFileAwareHistoryServiceDiffTests
 
     private static void DeleteTemporaryDirectory(string directory)
     {
-        try
-        {
-            Directory.Delete(directory, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-        catch (UnauthorizedAccessException)
-        {
-        }
+        try { Directory.Delete(directory, recursive: true); }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 }
