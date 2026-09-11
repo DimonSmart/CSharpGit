@@ -67,7 +67,7 @@ public sealed class GitCliRepositoryServiceTests : IDisposable
         var repository = await service.OpenAsync(_temporaryDirectory);
         var history = await service.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.CurrentBranch, null, 0, 20));
 
-        var commit = Assert.Single(history.Items);
+        var commit = Assert.Single(history.Rows);
         Assert.Equal("Добавлен мир 世界", commit.Commit.Subject);
 
         File.AppendAllText(Path.Combine(_temporaryDirectory, fileName), "изменение\n");
@@ -126,8 +126,8 @@ public sealed class GitCliRepositoryServiceTests : IDisposable
         var repository = await service.OpenAsync(_temporaryDirectory);
         var history = await service.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.AllReferences, null, 0, 20));
 
-        Assert.Contains(history.Items, row => row.Commit.Subject == "Feature");
-        Assert.Contains(history.Items, row => row.Commit.Subject == "Main");
+        Assert.Contains(history.Rows, row => row.Commit.Subject == "Feature");
+        Assert.Contains(history.Rows, row => row.Commit.Subject == "Main");
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public sealed class GitCliRepositoryServiceTests : IDisposable
         var service = new GitCliRepositoryService();
         var repository = await service.OpenAsync(_temporaryDirectory);
         var history = await service.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.CurrentBranch, null, 0, 20));
-        var changed = history.Items.First(row => row.Commit.Subject == "Changed").Commit;
+        var changed = history.Rows.First(row => row.Commit.Subject == "Changed").Commit;
         var details = await service.ReadCommitAsync(repository, changed.Hash);
         var file = Assert.Single(details.Files);
         var diff = await service.ReadDiffAsync(repository, changed.Hash, file.Path);
