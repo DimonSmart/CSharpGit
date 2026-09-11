@@ -60,6 +60,21 @@ public sealed partial class SettingsPage : Page
         }
     }
 
+    private async void GitConsoleAutoOpenComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_selectionReady || GitConsoleAutoOpenComboBox.SelectedItem is not GitConsoleAutoOpenOption option) return;
+
+        SettingsError.IsOpen = false;
+        try
+        {
+            await _viewModel.ApplyGitConsoleAutoOpenModeAsync(option);
+        }
+        catch (Exception exception)
+        {
+            ShowSettingsError(exception);
+        }
+    }
+
     private async void LoggingToggle_Toggled(object sender, RoutedEventArgs e)
     {
         if (!_selectionReady) return;
