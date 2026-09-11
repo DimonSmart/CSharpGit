@@ -12,6 +12,7 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage
 {
     private const double DefaultGitConsoleHeight = 280;
+    private const VirtualKey GitConsoleShortcutKey = (VirtualKey)0xC0; // OEM grave/backtick key.
     private IGitCommandActivitySource? _gitCommandActivitySource;
     private IAppSettingsService? _gitConsoleSettings;
     private GitConsoleView? _gitConsoleView;
@@ -213,7 +214,7 @@ public sealed partial class MainPage
 
     private void GitConsole_KeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (e.Key != VirtualKey.Oem3 || !IsGitConsoleModifierDown()) return;
+        if (e.Key != GitConsoleShortcutKey || !IsGitConsoleModifierDown()) return;
         ToggleGitConsoleFromKeyboard();
         e.Handled = true;
     }
