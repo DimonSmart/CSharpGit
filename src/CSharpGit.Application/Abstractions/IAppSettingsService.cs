@@ -17,6 +17,13 @@ public enum ApplicationLogLevel
     Critical
 }
 
+public enum GitConsoleAutoOpenMode
+{
+    OnErrors,
+    Always,
+    Never
+}
+
 public sealed record RecentRepositorySettings(
     string Path,
     string DisplayName,
@@ -29,6 +36,7 @@ public interface IAppSettingsService
     CommitTimeDisplayMode CommitTimeDisplayMode { get; }
     bool LoggingEnabled { get; }
     ApplicationLogLevel LogLevel { get; }
+    GitConsoleAutoOpenMode GitConsoleAutoOpenMode => GitConsoleAutoOpenMode.OnErrors;
     IReadOnlyList<RecentRepositorySettings> RecentRepositories { get; }
     event EventHandler? Changed;
 
@@ -44,6 +52,10 @@ public interface IAppSettingsService
         bool enabled,
         ApplicationLogLevel level,
         CancellationToken cancellationToken = default);
+
+    Task SetGitConsoleAutoOpenModeAsync(
+        GitConsoleAutoOpenMode mode,
+        CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     Task RecordRecentRepositoryAsync(
         string path,
