@@ -41,3 +41,4 @@ opened.
 | IDD-0019 | Spec | Compact design system | Shared compact density with continuous History commit graph surfaces | — |
 | IDD-0020 | Spec | Release distribution | Tag-driven GitHub Releases, platform artifacts, checksums and Homebrew Cask | — |
 | IDD-0021 | Spec | Branch deletion | Confirmed safe local/remote deletion, corresponding-branch resolution and partial-success behavior | — |
+| IDD-0022 | Spec | Git Console | Session Git command activity, diagnostics, status-bar entry, filtering and safe output | — |
