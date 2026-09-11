@@ -278,7 +278,7 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
     {
         try
         {
-            await RunGitAsync(repository.WorkingDirectory, cancellationToken, false, environment, arguments);
+            await RunGitAsync(repository.WorkingDirectory, cancellationToken, false, environment, GitCommandKind.User, arguments);
             return new RebaseResult(RebaseResultKind.Completed, "Interactive rebase completed successfully.");
         }
         catch (RepositoryOpenException exception)
@@ -696,50 +696,60 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
     }
 
     private Task<string> RunGitAsync(string workingDirectory, CancellationToken cancellationToken, bool requireOutput, params string[] arguments) =>
-        RunGitAsync(workingDirectory, cancellationToken, requireOutput, null, arguments);
+        RunGitAsync(workingDirectory, cancellationToken, requireOutput, null, GitCommandKind.Internal, arguments);
 
-    private async Task<string> RunGitAsync(string workingDirectory, CancellationToken cancellationToken, bool requireOutput, IReadOnlyDictionary<string, string?>? environment, params string[] arguments)
+    private Task<string> RunGitAsync(
+        string workingDirectory,
+        CancellationToken cancellationToken,
+        bool requireOutput,
+        IReadOnlyDictionary<string, string?>? environment,
+        params string[] arguments) =>
+        RunGitAsync(workingDirectory, cancellationToken, requireOutput, environment, GitCommandKind.Internal, arguments);
+
+    private async Task<string> RunGitAsync(
+        string workingDirectory,
+        CancellationToken cancellationToken,
+        bool requireOutput,
+        IReadOnlyDictionary<string, string?>? environment,
+        GitCommandKind commandKind,
+        params string[] arguments)
     {
-        var startInfo = new ProcessStartInfo(_gitExecutable)
+        GitProcessResult result;
+        try
         {
-            WorkingDirectory = workingDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        foreach (var argument in arguments)
-        {
-            startInfo.ArgumentList.Add(argument);
+            result = await SharedProcessRunner.RunForResultAsync(
+                workingDirectory,
+                "Repository",
+                commandKind,
+                cancellationToken,
+                environment,
+                arguments);
         }
-        if (environment is not null)
-            foreach (var variable in environment) startInfo.Environment[variable.Key] = variable.Value;
-
-        using var process = new Process { StartInfo = startInfo };
-        process.Start();
-        var standardOutput = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var standardError = process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken);
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw new RepositoryOpenException($"Git executable '{_gitExecutable}' could not be started.", exception);
+        }
 
         // Leading spaces are significant in machine-readable Git output. For
         // example, porcelain status uses the first two columns for index and
         // working-tree state, so trimming would shift an unstaged entry left.
-        var output = (await standardOutput).TrimEnd('\r', '\n');
-        var error = (await standardError).Trim();
-        if (process.ExitCode != 0 || (requireOutput && string.IsNullOrWhiteSpace(output)))
+        var output = result.StandardOutput.TrimEnd('\r', '\n');
+        var error = result.StandardError.Trim();
+        if (result.ExitCode != 0 || (requireOutput && string.IsNullOrWhiteSpace(output)))
         {
             var detail = string.IsNullOrWhiteSpace(error) ? "Git returned no diagnostic message." : error;
-            throw new RepositoryOpenException($"Git command exited with code {process.ExitCode}: {detail}");
+            throw new RepositoryOpenException($"Git command exited with code {result.ExitCode}: {detail}");
         }
 
         return output;
     }
 
     private async Task RunGitForMutationAsync(Repository repository, CancellationToken cancellationToken, params string[] arguments) =>
-        _ = await RunGitAsync(repository.WorkingDirectory, cancellationToken, false, arguments);
+        _ = await RunGitAsync(repository.WorkingDirectory, cancellationToken, false, null, GitCommandKind.User, arguments);
 
     private async Task RunMergeToolAsync(Repository repository, CancellationToken cancellationToken, params string[] arguments)
     {
@@ -874,7 +884,9 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
             var messageEditor = Path.Combine(supportDirectory, OperatingSystem.IsWindows() ? "message-editor.cmd" : "message-editor.sh");
             await WriteNoOpEditorAsync(messageEditor, cancellationToken);
             await RunGitAsync(repository.WorkingDirectory, cancellationToken, false,
-                new Dictionary<string, string?> { ["GIT_EDITOR"] = QuoteCommand(messageEditor) }, command, $"--{action}");
+                new Dictionary<string, string?> { ["GIT_EDITOR"] = QuoteCommand(messageEditor) },
+                GitCommandKind.User,
+                command, $"--{action}");
             return;
         }
 
