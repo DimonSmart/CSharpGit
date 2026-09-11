@@ -107,7 +107,7 @@ public sealed partial class GitCliRepositoryService
         ArgumentNullException.ThrowIfNull(snapshot);
         ValidateSnapshot(snapshot);
         if (DetectOperation(repository) != RepositoryOperation.None)
-            throw new ForcePushWithLeaseCancelledException("A Git operation started after confirmation was prepared. Start the operation again.");
+            throw new ForcePushWithLeaseCancelledException("A Git operation started after confirmation was prepared. Start the force-push workflow again.");
 
         var currentBranch = await CurrentBranchAsync(repository, cancellationToken);
         if (!string.Equals(currentBranch, snapshot.LocalBranch, StringComparison.Ordinal))
