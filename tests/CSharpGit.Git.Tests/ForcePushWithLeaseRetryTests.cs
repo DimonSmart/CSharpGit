@@ -51,7 +51,8 @@ public sealed class ForcePushWithLeaseRetryTests : IDisposable
             $"#!/bin/sh\nif [ \"$1\" = \"push\" ]; then printf 'push\\n' >> '{_pushLog}'; fi\nexec git \"$@\"\n");
         File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
 
-        var instrumentedService = new GitCliRepositoryService(new GitCliOptions { ExecutablePath = wrapper });
+        var executor = new GitCommandExecutor(new GitCliOptions { ExecutablePath = wrapper });
+        var instrumentedService = new GitCliRepositoryService(executor);
         var instrumentedRepository = await instrumentedService.OpenAsync(_root);
         var failure = await Assert.ThrowsAsync<PushRejectedException>(
             () => instrumentedService.ForcePushWithLeaseAsync(instrumentedRepository, snapshot));

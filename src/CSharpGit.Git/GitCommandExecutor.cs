@@ -6,48 +6,48 @@ using CSharpGit.Application.Abstractions;
 
 namespace CSharpGit.Git;
 
-internal sealed class GitProcessRunner
+internal sealed class GitCommandExecutor
 {
     private readonly string _gitExecutable;
     private readonly IGitCommandActivitySink _activitySink;
-    private int _invocationCount;
+    private readonly Action<int>? _processStarted;
 
-    public GitProcessRunner(string gitExecutable, IGitCommandActivitySink? activitySink = null)
+    internal static GitCommandExecutor Default { get; } = new(new GitCliOptions());
+
+    public GitCommandExecutor(GitCliOptions options)
+        : this(options, null, null)
     {
-        _gitExecutable = string.IsNullOrWhiteSpace(gitExecutable) ? "git" : gitExecutable;
-        _activitySink = activitySink ?? GitCommandActivitySession.Current;
     }
 
-    public int InvocationCount => Volatile.Read(ref _invocationCount);
+    internal GitCommandExecutor(
+        GitCliOptions options,
+        IGitCommandActivitySink? activitySink,
+        Action<int>? processStarted = null)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        _gitExecutable = string.IsNullOrWhiteSpace(options.ExecutablePath) ? "git" : options.ExecutablePath;
+        _activitySink = activitySink ?? GitCommandActivitySession.Current;
+        _processStarted = processStarted;
+    }
 
-    public Task<string> RunAsync(
+    internal string ExecutablePath => _gitExecutable;
+
+    public Task<string> ExecuteAsync(
         string workingDirectory,
         string operation,
         CancellationToken cancellationToken,
         params string[] arguments) =>
-        RunAsync(workingDirectory, operation, GitCommandKind.Internal, cancellationToken, arguments);
+        ExecuteAsync(workingDirectory, operation, GitCommandKind.Internal, cancellationToken, null, arguments);
 
-    public async Task<string> RunAsync(
+    public Task<string> ExecuteAsync(
         string workingDirectory,
         string operation,
         GitCommandKind commandKind,
         CancellationToken cancellationToken,
-        params string[] arguments)
-    {
-        Interlocked.Increment(ref _invocationCount);
-        var result = await RunProcessCoreAsync(
-            _gitExecutable,
-            workingDirectory,
-            operation,
-            commandKind,
-            cancellationToken,
-            arguments,
-            _activitySink);
-        ThrowIfFailed(result);
-        return result.StandardOutput.TrimEnd('\r', '\n');
-    }
+        params string[] arguments) =>
+        ExecuteAsync(workingDirectory, operation, commandKind, cancellationToken, null, arguments);
 
-    public async Task<GitProcessResult> RunForResultAsync(
+    public async Task<string> ExecuteAsync(
         string workingDirectory,
         string operation,
         GitCommandKind commandKind,
@@ -55,8 +55,25 @@ internal sealed class GitProcessRunner
         IReadOnlyDictionary<string, string?>? environment,
         IReadOnlyList<string> arguments)
     {
-        Interlocked.Increment(ref _invocationCount);
-        return await RunProcessCoreAsync(
+        var result = await ExecuteForResultAsync(
+            workingDirectory,
+            operation,
+            commandKind,
+            cancellationToken,
+            environment,
+            arguments);
+        ThrowIfFailed(result);
+        return result.StandardOutput;
+    }
+
+    public Task<GitCommandResult> ExecuteForResultAsync(
+        string workingDirectory,
+        string operation,
+        GitCommandKind commandKind,
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, string?>? environment,
+        IReadOnlyList<string> arguments) =>
+        ExecuteProcessCoreAsync(
             _gitExecutable,
             workingDirectory,
             operation,
@@ -64,10 +81,10 @@ internal sealed class GitProcessRunner
             cancellationToken,
             arguments,
             _activitySink,
-            environment);
-    }
+            environment,
+            _processStarted);
 
-    public async Task RunToFileAsync(
+    public async Task ExecuteToFileAsync(
         string workingDirectory,
         string operation,
         CancellationToken cancellationToken,
@@ -75,13 +92,13 @@ internal sealed class GitProcessRunner
         params string[] arguments)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Interlocked.Increment(ref _invocationCount);
 
         var startInfo = CreateStartInfo(_gitExecutable, workingDirectory, arguments, null);
         using var process = new Process { StartInfo = startInfo };
         var stopwatch = Stopwatch.StartNew();
         process.Start();
         var activityId = _activitySink.Started(_gitExecutable, workingDirectory, arguments, GitCommandKind.Internal);
+        _processStarted?.Invoke(process.Id);
         var errorTask = process.StandardError.ReadToEndAsync();
         string error;
 
@@ -106,12 +123,12 @@ internal sealed class GitProcessRunner
                 }
 
                 await copyTask;
-                await file.FlushAsync(cancellationToken);
+                await file.FlushAsync(CancellationToken.None);
             }
 
             error = await errorTask;
             stopwatch.Stop();
-            var result = new GitProcessResult(process.ExitCode, "[binary output omitted]", error.TrimEnd('\r', '\n'));
+            var result = new GitCommandResult(process.ExitCode, "[binary output omitted]", error.TrimEnd('\r', '\n'));
             _activitySink.Completed(activityId, result.ExitCode, result.StandardOutput, result.StandardError);
             Trace.WriteLine($"Git command operation={operation} duration={stopwatch.ElapsedMilliseconds}ms");
             ThrowIfFailed(result);
@@ -124,29 +141,7 @@ internal sealed class GitProcessRunner
         }
     }
 
-    internal static async Task<string> RunProcessAsync(
-        string executable,
-        string workingDirectory,
-        string operation,
-        CancellationToken cancellationToken,
-        IReadOnlyList<string> arguments,
-        Action<int>? processStarted = null)
-    {
-        var result = await RunProcessCoreAsync(
-            executable,
-            workingDirectory,
-            operation,
-            GitCommandKind.Internal,
-            cancellationToken,
-            arguments,
-            null,
-            null,
-            processStarted);
-        ThrowIfFailed(result);
-        return result.StandardOutput.TrimEnd('\r', '\n');
-    }
-
-    private static async Task<GitProcessResult> RunProcessCoreAsync(
+    private static async Task<GitCommandResult> ExecuteProcessCoreAsync(
         string executable,
         string workingDirectory,
         string operation,
@@ -166,8 +161,6 @@ internal sealed class GitProcessRunner
         var activityId = activitySink?.Started(executable, workingDirectory, arguments, commandKind);
         processStarted?.Invoke(process.Id);
 
-        // Do not cancel pipe readers independently. On cancellation the process tree is
-        // terminated first, then both streams are drained before the Process is disposed.
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
 
@@ -195,7 +188,7 @@ internal sealed class GitProcessRunner
 
         stopwatch.Stop();
         Trace.WriteLine($"Git command operation={operation} duration={stopwatch.ElapsedMilliseconds}ms");
-        var result = new GitProcessResult(process.ExitCode, output, error);
+        var result = new GitCommandResult(process.ExitCode, output, error);
         if (activityId is { } completedId)
             activitySink!.Completed(completedId, result.ExitCode, result.StandardOutput, result.StandardError);
         return result;
@@ -232,12 +225,10 @@ internal sealed class GitProcessRunner
         return $"\"{commandProcessor.Replace("\"", "\\\"")}\" /d /c rem";
     }
 
-    private static void ThrowIfFailed(GitProcessResult result)
+    private static void ThrowIfFailed(GitCommandResult result)
     {
         if (result.ExitCode == 0) return;
-        throw new InvalidOperationException(string.IsNullOrWhiteSpace(result.StandardError)
-            ? $"Git exited with code {result.ExitCode}."
-            : $"Git exited with code {result.ExitCode}: {result.StandardError.Trim()}");
+        throw new GitCommandExecutionException(result);
     }
 
     private static void KillProcessTree(Process process)
@@ -248,7 +239,6 @@ internal sealed class GitProcessRunner
         }
         catch (Exception exception) when (exception is InvalidOperationException or Win32Exception or NotSupportedException)
         {
-            // The process can win the race and exit between HasExited and Kill.
         }
     }
 
@@ -260,7 +250,6 @@ internal sealed class GitProcessRunner
         }
         catch (InvalidOperationException)
         {
-            // Already exited/disposed by the time the cancellation continuation ran.
         }
     }
 
@@ -272,7 +261,6 @@ internal sealed class GitProcessRunner
         }
         catch (IOException)
         {
-            // A killed process can close a redirected pipe while the async read completes.
         }
     }
 
@@ -301,4 +289,17 @@ internal sealed class GitProcessRunner
     }
 }
 
-internal sealed record GitProcessResult(int ExitCode, string StandardOutput, string StandardError);
+internal sealed record GitCommandResult(int ExitCode, string StandardOutput, string StandardError);
+
+internal sealed class GitCommandExecutionException : InvalidOperationException
+{
+    public GitCommandExecutionException(GitCommandResult result)
+        : base(string.IsNullOrWhiteSpace(result.StandardError)
+            ? $"Git exited with code {result.ExitCode}."
+            : $"Git exited with code {result.ExitCode}: {result.StandardError.Trim()}")
+    {
+        Result = result;
+    }
+
+    public GitCommandResult Result { get; }
+}

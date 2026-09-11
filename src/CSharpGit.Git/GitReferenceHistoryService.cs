@@ -5,18 +5,13 @@ namespace CSharpGit.Git;
 
 public sealed class GitReferenceHistoryService : IReferenceHistoryService
 {
-    private readonly string _gitExecutable;
-    private readonly GitProcessRunner _runner;
-    private readonly GitCliRepositoryService _detailsService;
+    private readonly GitCommandExecutor _executor;
 
-    public GitReferenceHistoryService() : this(new GitCliOptions()) { }
+    public GitReferenceHistoryService() : this(GitCommandExecutor.Default) { }
 
-    public GitReferenceHistoryService(GitCliOptions options)
+    internal GitReferenceHistoryService(GitCommandExecutor executor)
     {
-        ArgumentNullException.ThrowIfNull(options);
-        _gitExecutable = string.IsNullOrWhiteSpace(options.ExecutablePath) ? "git" : options.ExecutablePath;
-        _runner = new GitProcessRunner(_gitExecutable);
-        _detailsService = new GitCliRepositoryService(options);
+        _executor = executor ?? throw new ArgumentNullException(nameof(executor));
     }
 
     public Task<HistoryPage> ReadHistoryAsync(
@@ -72,18 +67,41 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
         return ReadHistoryCoreAsync(repository, filter, skip, take, [reference], cancellationToken);
     }
 
-    public Task<CommitDetails> ReadCommitAsync(
+    public async Task<CommitDetails> ReadCommitAsync(
         Repository repository,
         string hash,
-        CancellationToken cancellationToken = default) =>
-        _detailsService.ReadCommitAsync(repository, hash, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
+        ValidateCommitHash(hash);
+        var metadata = await RunGitAsync(
+            repository.WorkingDirectory,
+            cancellationToken,
+            "show", "-s", "--date=iso-strict", "--format=%H%x00%P%x00%an%x00%aI%x00%D%x00%B%x1e", hash);
+        var commit = ParseHistory(metadata).Single();
+        var stats = await RunGitAsync(
+            repository.WorkingDirectory,
+            cancellationToken,
+            "diff-tree", "--root", "-m", "--no-commit-id", "--numstat", "-r", "-z", hash);
+        return new CommitDetails(commit, ParseChangedFiles(stats));
+    }
 
-    public Task<FileDiff> ReadDiffAsync(
+    public async Task<FileDiff> ReadDiffAsync(
         Repository repository,
         string hash,
         string path,
-        CancellationToken cancellationToken = default) =>
-        _detailsService.ReadDiffAsync(repository, hash, path, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
+        ValidateCommitHash(hash);
+        ValidateGitPath(path);
+        var output = await RunGitAsync(
+            repository.WorkingDirectory,
+            cancellationToken,
+            "show", "--format=", "--no-ext-diff", "--find-renames", hash, "--", path);
+        var binary = GitDiffParser.IsBinary(output);
+        return new FileDiff(path, binary, binary ? [] : GitDiffParser.ParseLines(output));
+    }
 
     public async Task<IReadOnlyDictionary<string, string>> ReadFileStatusesAsync(
         Repository repository,
@@ -238,7 +256,7 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
     }
 
     private Task<string> RunGitAsync(string workingDirectory, CancellationToken cancellationToken, params string[] arguments) =>
-        _runner.RunAsync(workingDirectory, "ReferenceHistory", cancellationToken, arguments);
+        _executor.ExecuteAsync(workingDirectory, "ReferenceHistory", cancellationToken, arguments);
 
     private static IEnumerable<CommitHistoryItem> ParseHistory(string output)
     {
@@ -256,6 +274,24 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
                 authoredAt,
                 ParseRefs(fields[4]));
         }
+    }
+
+    private static IReadOnlyList<ChangedFile> ParseChangedFiles(string output)
+    {
+        var files = new List<ChangedFile>();
+        foreach (var entry in output.Split('\0', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var fields = entry.TrimStart('\r', '\n').Split('\t', 3);
+            if (fields.Length != 3) continue;
+            var binary = fields[0] == "-" || fields[1] == "-";
+            var file = new ChangedFile(
+                fields[2],
+                int.TryParse(fields[0], out var added) ? added : null,
+                int.TryParse(fields[1], out var removed) ? removed : null,
+                binary);
+            if (!files.Contains(file)) files.Add(file);
+        }
+        return files;
     }
 
     internal static IReadOnlyList<HistoryRow> BuildTopology(IReadOnlyList<CommitHistoryItem> commits)
@@ -283,8 +319,6 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
 
             lanes.RemoveAt(lane);
 
-            // Parent insertion can shift lanes that already exist. Build the complete
-            // lower-boundary state first, then resolve numeric lane indexes by identity.
             for (var parentIndex = 0; parentIndex < commit.Parents.Count; parentIndex++)
             {
                 var parent = commit.Parents[parentIndex];
@@ -342,6 +376,12 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
     {
         if (string.IsNullOrWhiteSpace(hash) || hash.Any(character => !Uri.IsHexDigit(character)))
             throw new ArgumentException("Invalid commit hash.", nameof(hash));
+    }
+
+    private static void ValidateGitPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || path.Contains('\0') || Path.IsPathRooted(path))
+            throw new ArgumentException("Invalid Git file path.", nameof(path));
     }
 
     private sealed record LaneState(string Commit, int TrackId);

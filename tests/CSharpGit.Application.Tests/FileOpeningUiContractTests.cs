@@ -9,6 +9,7 @@ public sealed class FileOpeningUiContractTests
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
         var abstractions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryFileVersionService.cs"));
         var app = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
+        var gitComposition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitServiceCollectionExtensions.cs"));
 
         Assert.Contains("IRepositoryFileVersionService", abstractions);
         Assert.Contains("IDesktopShellService", abstractions);
@@ -26,10 +27,12 @@ public sealed class FileOpeningUiContractTests
         Assert.DoesNotContain("ProcessStartInfo", page);
         Assert.DoesNotContain("RunGit", page);
 
-        Assert.Contains("IRepositoryFileVersionService, GitRepositoryFileVersionService", app);
+        Assert.Contains("services.AddCSharpGitGit();", app);
+        Assert.Contains("AddSingleton<IRepositoryFileVersionService>", gitComposition);
+        Assert.Contains("new GitRepositoryFileVersionService", gitComposition);
         Assert.Contains("IDesktopShellService, DesktopShellService", app);
         Assert.Contains("IRepositoryWorkflowService, DesktopRepositoryWorkflowService", app);
-        Assert.Contains("IHistoryService>(provider => provider.GetRequiredService<GitFileAwareHistoryService>()", app);
+        Assert.Contains("IHistoryService>(provider => provider.GetRequiredService<GitFileAwareHistoryService>()", gitComposition);
     }
 
     [Fact]
@@ -37,12 +40,12 @@ public sealed class FileOpeningUiContractTests
     {
         var root = FindRepositoryRoot();
         var versions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitRepositoryFileVersionService.cs"));
-        var runner = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitProcessRunner.cs"));
+        var executor = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCommandExecutor.cs"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
 
-        Assert.Contains("RunToFileAsync", versions);
-        Assert.Contains("StandardOutput.BaseStream.CopyToAsync", runner);
-        Assert.Contains("FileMode.CreateNew", runner);
+        Assert.Contains("ExecuteToFileAsync", versions);
+        Assert.Contains("StandardOutput.BaseStream.CopyToAsync", executor);
+        Assert.Contains("FileMode.CreateNew", executor);
         Assert.Contains("File.Move(temporaryPath, finalPath)", versions);
         Assert.Contains("FileAttributes.ReadOnly", versions);
         Assert.Contains("repository.GitDirectory", versions);

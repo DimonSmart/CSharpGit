@@ -42,7 +42,8 @@ public sealed class GitCliRepositoryServiceTests : IDisposable
     public async Task ReportsMissingGitExecutableClearly()
     {
         Directory.CreateDirectory(_temporaryDirectory);
-        var service = new GitCliRepositoryService(new GitCliOptions { ExecutablePath = Path.Combine(_temporaryDirectory, "missing-git") });
+        var executor = new GitCommandExecutor(new GitCliOptions { ExecutablePath = Path.Combine(_temporaryDirectory, "missing-git") });
+        var service = new GitCliRepositoryService(executor);
 
         var exception = await Assert.ThrowsAsync<RepositoryOpenException>(
             () => service.OpenAsync(_temporaryDirectory));
@@ -63,15 +64,16 @@ public sealed class GitCliRepositoryServiceTests : IDisposable
         RunGit(_temporaryDirectory, "add", fileName);
         RunGit(_temporaryDirectory, "commit", "-m", "Добавлен мир 世界");
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_temporaryDirectory);
-        var history = await service.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.CurrentBranch, null, 0, 20));
+        var repositoryService = new GitCliRepositoryService();
+        var historyService = new GitReferenceHistoryService();
+        var repository = await repositoryService.OpenAsync(_temporaryDirectory);
+        var history = await historyService.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.CurrentBranch, null, 0, 20));
 
         var commit = Assert.Single(history.Rows);
         Assert.Equal("Добавлен мир 世界", commit.Commit.Subject);
 
         File.AppendAllText(Path.Combine(_temporaryDirectory, fileName), "изменение\n");
-        var state = await service.ReadAsync(repository);
+        var state = await repositoryService.ReadAsync(repository);
         var change = Assert.Single(state.Changes);
         Assert.Equal(fileName, change.Path);
     }
@@ -122,9 +124,10 @@ public sealed class GitCliRepositoryServiceTests : IDisposable
         RunGit(_temporaryDirectory, "add", "main.txt");
         RunGit(_temporaryDirectory, "commit", "-m", "Main");
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_temporaryDirectory);
-        var history = await service.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.AllReferences, null, 0, 20));
+        var repositoryService = new GitCliRepositoryService();
+        var historyService = new GitReferenceHistoryService();
+        var repository = await repositoryService.OpenAsync(_temporaryDirectory);
+        var history = await historyService.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.AllReferences, null, 0, 20));
 
         Assert.Contains(history.Rows, row => row.Commit.Subject == "Feature");
         Assert.Contains(history.Rows, row => row.Commit.Subject == "Main");
@@ -144,13 +147,14 @@ public sealed class GitCliRepositoryServiceTests : IDisposable
         RunGit(_temporaryDirectory, "add", "sample.txt");
         RunGit(_temporaryDirectory, "commit", "-m", "Changed");
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_temporaryDirectory);
-        var history = await service.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.CurrentBranch, null, 0, 20));
+        var repositoryService = new GitCliRepositoryService();
+        var historyService = new GitReferenceHistoryService();
+        var repository = await repositoryService.OpenAsync(_temporaryDirectory);
+        var history = await historyService.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.CurrentBranch, null, 0, 20));
         var changed = history.Rows.First(row => row.Commit.Subject == "Changed").Commit;
-        var details = await service.ReadCommitAsync(repository, changed.Hash);
+        var details = await historyService.ReadCommitAsync(repository, changed.Hash);
         var file = Assert.Single(details.Files);
-        var diff = await service.ReadDiffAsync(repository, changed.Hash, file.Path);
+        var diff = await historyService.ReadDiffAsync(repository, changed.Hash, file.Path);
 
         Assert.Equal("sample.txt", file.Path);
         Assert.Contains(diff.Lines, line => line.Kind == DiffLineKind.Added && line.Text.Contains("after", StringComparison.Ordinal));

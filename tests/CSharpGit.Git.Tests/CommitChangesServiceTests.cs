@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using CSharpGit.Application;
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 
 namespace CSharpGit.Git.Tests;
@@ -7,7 +9,6 @@ public sealed class CommitChangesServiceTests : IDisposable
 {
     private readonly string _temporaryDirectory = Path.Combine(Path.GetTempPath(), $"csharpgit-commit-changes-{Guid.NewGuid():N}");
     private readonly GitCliRepositoryService _repositoryService = new();
-    private readonly GitRepositoryFileVersionService _versionService = new();
 
     [Fact]
     public async Task RootAndRenameUseOneProcessPerLazyOperationAndPreservePaths()
@@ -15,11 +16,11 @@ public sealed class CommitChangesServiceTests : IDisposable
         var repository = await CreateRepositoryAsync();
         CommitText("root.txt", "root\n", "root");
         var root = RunGitOutput("rev-parse", "HEAD");
-        var service = CreateService();
+        var service = CreateService(out var activity);
 
-        var beforeRoot = service.GitInvocationCount;
+        var beforeRoot = InvocationCount(activity);
         var rootFiles = await service.ReadChangedFilesAsync(repository, root, null);
-        Assert.Equal(beforeRoot + 1, service.GitInvocationCount);
+        Assert.Equal(beforeRoot + 1, InvocationCount(activity));
         var rootFile = Assert.Single(rootFiles);
         Assert.Equal("A", rootFile.Status);
         Assert.Equal("root.txt", rootFile.Path);
@@ -31,17 +32,17 @@ public sealed class CommitChangesServiceTests : IDisposable
         var commit = RunGitOutput("rev-parse", "HEAD");
         var parent = RunGitOutput("rev-parse", "HEAD^1");
 
-        var beforeFiles = service.GitInvocationCount;
+        var beforeFiles = InvocationCount(activity);
         var files = await service.ReadChangedFilesAsync(repository, commit, parent);
-        Assert.Equal(beforeFiles + 1, service.GitInvocationCount);
+        Assert.Equal(beforeFiles + 1, InvocationCount(activity));
         var renamed = Assert.Single(files);
         Assert.Equal("R", renamed.Status);
         Assert.Equal("old name.txt", renamed.OriginalPath);
         Assert.Equal("new name.txt", renamed.Path);
 
-        var beforeDiff = service.GitInvocationCount;
+        var beforeDiff = InvocationCount(activity);
         var diff = await service.ReadDiffAsync(repository, commit, parent, renamed);
-        Assert.Equal(beforeDiff + 1, service.GitInvocationCount);
+        Assert.Equal(beforeDiff + 1, InvocationCount(activity));
         var text = string.Join('\n', diff.Lines.Select(line => line.Text));
         Assert.Contains("rename from old name.txt", text);
         Assert.Contains("rename to new name.txt", text);
@@ -68,7 +69,7 @@ public sealed class CommitChangesServiceTests : IDisposable
         RunGit("commit", "-m", "mixed changes");
         var commit = RunGitOutput("rev-parse", "HEAD");
 
-        var service = CreateService();
+        var service = CreateService(out _);
         var files = await service.ReadChangedFilesAsync(repository, commit, parent);
         Assert.Contains(files, file => file.Status == "A" && file.Path == "added.txt");
         Assert.Contains(files, file => file.Status == "M" && file.Path == "modify.txt");
@@ -90,15 +91,22 @@ public sealed class CommitChangesServiceTests : IDisposable
         var merge = RunGitOutput("rev-parse", "HEAD");
         var firstParent = RunGitOutput("rev-parse", "HEAD^1");
 
-        var service = CreateService();
+        var service = CreateService(out _);
         var files = await service.ReadChangedFilesAsync(repository, merge, firstParent);
         var feature = Assert.Single(files, file => file.Path == "feature.txt");
         var diff = await service.ReadDiffAsync(repository, merge, firstParent, feature);
         Assert.Contains(diff.Lines, line => line.Text.Contains("+feature", StringComparison.Ordinal));
     }
 
-    private GitFileAwareHistoryService CreateService() =>
-        new(new GitReferenceHistoryService(), _versionService);
+    private static GitFileAwareHistoryService CreateService(out GitCommandActivityHistory activity)
+    {
+        activity = new GitCommandActivityHistory();
+        var executor = new GitCommandExecutor(new GitCliOptions(), activity);
+        return new GitFileAwareHistoryService(new GitReferenceHistoryService(executor), executor);
+    }
+
+    private static int InvocationCount(GitCommandActivityHistory activity) =>
+        activity.GetSnapshot(GitCommandFilter.AllCommands).Count;
 
     private async Task<Repository> CreateRepositoryAsync()
     {

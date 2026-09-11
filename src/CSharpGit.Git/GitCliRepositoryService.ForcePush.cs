@@ -82,6 +82,10 @@ public sealed partial class GitCliRepositoryService
                 "show", "-s", "--format=%s", expectedRemoteCommit);
             remoteSubject = string.IsNullOrWhiteSpace(subject) ? null : subject;
         }
+        else if (objectCheck.ExitCode is not 1 and not 128)
+        {
+            throw CreateGitFailure("Could not inspect the remote commit locally", objectCheck);
+        }
 
         return new ForcePushWithLeaseSnapshot(
             localBranch,
@@ -126,8 +130,6 @@ public sealed partial class GitCliRepositoryService
         if (!string.Equals(currentPushDestination, snapshot.RemotePushDestination, StringComparison.Ordinal))
             throw new ForcePushWithLeaseCancelledException("The remote push destination changed after confirmation was prepared. Start the operation again.");
 
-        // Do not query the remote OID here. The exact OID in the confirmed immutable
-        // snapshot is the lease and Git itself performs the compare-and-swap check.
         await RunPushAsync(repository, cancellationToken, BuildForcePushArguments(snapshot));
     }
 
@@ -196,10 +198,6 @@ public sealed partial class GitCliRepositoryService
     internal static PushResultKind ClassifyPushFailure(string output)
     {
         var text = output.ToLowerInvariant();
-
-        // Authentication/transport signals have priority. Git commonly prefixes
-        // diagnostics with "remote:", which must not turn auth failures into a
-        // generic remote-policy rejection.
         if (ContainsAny(text,
                 "authentication failed", "could not read username", "permission denied",
                 "publickey", "repository not found", "unable to access", "could not resolve host",
@@ -244,28 +242,16 @@ public sealed partial class GitCliRepositoryService
         params string[] arguments) =>
         RunGitCapturedAsync(repository, cancellationToken, GitCommandKind.Internal, arguments);
 
-    private async Task<GitCommandResult> RunGitCapturedAsync(
+    private Task<GitCommandResult> RunGitCapturedAsync(
         Repository repository,
         CancellationToken cancellationToken,
         GitCommandKind commandKind,
-        params string[] arguments)
-    {
-        try
-        {
-            var result = await SharedProcessRunner.RunForResultAsync(
-                repository.WorkingDirectory,
-                "RepositoryCaptured",
-                commandKind,
-                cancellationToken,
-                null,
-                arguments);
-            return new GitCommandResult(result.ExitCode, result.StandardOutput, result.StandardError);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            throw new RepositoryOpenException($"Git executable '{_gitExecutable}' could not be started.", exception);
-        }
-    }
-
-    private sealed record GitCommandResult(int ExitCode, string StandardOutput, string StandardError);
+        params string[] arguments) =>
+        RunGitForResultAsync(
+            repository.WorkingDirectory,
+            "RepositoryCaptured",
+            commandKind,
+            cancellationToken,
+            null,
+            arguments);
 }

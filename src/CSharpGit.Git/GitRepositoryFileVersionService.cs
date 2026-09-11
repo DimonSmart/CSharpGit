@@ -7,17 +7,14 @@ namespace CSharpGit.Git;
 
 public sealed class GitRepositoryFileVersionService : IRepositoryFileVersionService
 {
-    private readonly string _gitExecutable;
-    private readonly GitProcessRunner _runner;
+    private readonly GitCommandExecutor _executor;
     private readonly string _cacheRoot;
 
-    public GitRepositoryFileVersionService() : this(new GitCliOptions()) { }
+    public GitRepositoryFileVersionService() : this(GitCommandExecutor.Default) { }
 
-    public GitRepositoryFileVersionService(GitCliOptions options)
+    internal GitRepositoryFileVersionService(GitCommandExecutor executor)
     {
-        ArgumentNullException.ThrowIfNull(options);
-        _gitExecutable = string.IsNullOrWhiteSpace(options.ExecutablePath) ? "git" : options.ExecutablePath;
-        _runner = new GitProcessRunner(_gitExecutable);
+        _executor = executor ?? throw new ArgumentNullException(nameof(executor));
         _cacheRoot = Path.Combine(Path.GetTempPath(), "CSharpGit", "file-versions");
         TryCleanupCache();
     }
@@ -36,9 +33,7 @@ public sealed class GitRepositoryFileVersionService : IRepositoryFileVersionServ
             repository.WorkingDirectory,
             cancellationToken,
             "show", "-s", "--format=%P", commitHash);
-        var firstParent = parentOutput
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-            .FirstOrDefault();
+        var firstParent = parentOutput.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
 
         string raw;
         if (firstParent is null)
@@ -58,10 +53,9 @@ public sealed class GitRepositoryFileVersionService : IRepositoryFileVersionServ
                 firstParent, commitHash);
         }
 
-        var entry = ParseRawDiff(raw)
-            .FirstOrDefault(candidate =>
-                string.Equals(candidate.NewPath, selectedPath, StringComparison.Ordinal) ||
-                string.Equals(candidate.OldPath, selectedPath, StringComparison.Ordinal));
+        var entry = ParseRawDiff(raw).FirstOrDefault(candidate =>
+            string.Equals(candidate.NewPath, selectedPath, StringComparison.Ordinal) ||
+            string.Equals(candidate.OldPath, selectedPath, StringComparison.Ordinal));
         if (entry is null)
             throw new InvalidOperationException("The selected file is no longer part of this commit diff.");
 
@@ -151,7 +145,6 @@ public sealed class GitRepositoryFileVersionService : IRepositoryFileVersionServ
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or PlatformNotSupportedException)
             {
-                // Read-only is best effort. Isolation from the repository is the real safety boundary.
             }
 
             try
@@ -291,14 +284,14 @@ public sealed class GitRepositoryFileVersionService : IRepositoryFileVersionServ
     {
         try
         {
-            await _runner.RunToFileAsync(
+            await _executor.ExecuteToFileAsync(
                 workingDirectory,
                 "FileVersionBlob",
                 cancellationToken,
                 destination,
                 "cat-file", "blob", blobId);
         }
-        catch (InvalidOperationException exception)
+        catch (GitCommandExecutionException exception)
         {
             throw new InvalidOperationException($"Git could not read the requested blob: {exception.Message}", exception);
         }
@@ -308,21 +301,23 @@ public sealed class GitRepositoryFileVersionService : IRepositoryFileVersionServ
         string workingDirectory,
         CancellationToken cancellationToken,
         params string[] arguments) =>
-        _runner.RunAsync(workingDirectory, "FileVersion", cancellationToken, arguments);
+        _executor.ExecuteAsync(workingDirectory, "FileVersion", cancellationToken, arguments);
 
     private async Task<string> RunOptionalGitAsync(
         string workingDirectory,
         CancellationToken cancellationToken,
         params string[] arguments)
     {
-        try
-        {
-            return await RunGitAsync(workingDirectory, cancellationToken, arguments);
-        }
-        catch (InvalidOperationException)
-        {
-            return string.Empty;
-        }
+        var result = await _executor.ExecuteForResultAsync(
+            workingDirectory,
+            "FileVersionOptional",
+            GitCommandKind.Internal,
+            cancellationToken,
+            null,
+            arguments);
+        if (result.ExitCode == 0) return result.StandardOutput;
+        if (result.ExitCode is 1 or 128) return string.Empty;
+        throw new GitCommandExecutionException(result);
     }
 
     private static IEnumerable<RawDiffEntry> ParseRawDiff(string output)
