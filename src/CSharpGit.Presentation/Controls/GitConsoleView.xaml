@@ -31,10 +31,11 @@
           <ListView x:Name="CommandList"
                     SelectionMode="Single"
                     SelectionChanged="CommandList_SelectionChanged"
+                    ItemContainerStyle="{StaticResource DenseListItemStyle}"
                     HorizontalContentAlignment="Stretch">
             <ListView.ItemTemplate>
               <DataTemplate>
-                <Grid ColumnDefinitions="72,24,*,92" Padding="6,3" ColumnSpacing="4">
+                <Grid ColumnDefinitions="72,24,*,92" ColumnSpacing="{StaticResource Spacing.S}">
                   <TextBlock Text="{Binding StartedText}"
                              Style="{StaticResource SecondaryTextStyle}"
                              FontFamily="Consolas"
