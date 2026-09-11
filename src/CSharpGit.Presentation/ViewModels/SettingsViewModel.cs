@@ -19,10 +19,16 @@ public sealed record ApplicationLogLevelOption(
     string Label,
     string Description);
 
+public sealed record GitConsoleAutoOpenOption(
+    GitConsoleAutoOpenMode Mode,
+    string Label,
+    string Description);
+
 public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly IAppSettingsService _settings;
     private ApplicationThemeOption _selectedThemeMode;
+    private GitConsoleAutoOpenOption _selectedGitConsoleAutoOpenMode;
     private bool _disposed;
 
     internal SettingsViewModel(IAppSettingsService settings)
@@ -70,6 +76,14 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         LoggingEnabled = _settings.LoggingEnabled;
         SelectedLogLevel = LogLevels.First(option => option.Level == _settings.LogLevel);
 
+        GitConsoleAutoOpenModes =
+        [
+            new(GitConsoleAutoOpenMode.OnErrors, "On errors", "Open when a user Git command fails."),
+            new(GitConsoleAutoOpenMode.Always, "Always", "Open when a user Git command starts."),
+            new(GitConsoleAutoOpenMode.Never, "Never", "Open only when requested manually.")
+        ];
+        _selectedGitConsoleAutoOpenMode = FindGitConsoleMode(_settings.GitConsoleAutoOpenMode);
+
         _settings.Changed += Settings_Changed;
     }
 
@@ -98,6 +112,19 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
 
     public ApplicationLogLevelOption SelectedLogLevel { get; set; }
 
+    public IReadOnlyList<GitConsoleAutoOpenOption> GitConsoleAutoOpenModes { get; }
+
+    public GitConsoleAutoOpenOption SelectedGitConsoleAutoOpenMode
+    {
+        get => _selectedGitConsoleAutoOpenMode;
+        set
+        {
+            if (Equals(_selectedGitConsoleAutoOpenMode, value)) return;
+            _selectedGitConsoleAutoOpenMode = value;
+            Notify();
+        }
+    }
+
     public Task ApplyThemeModeAsync(
         ApplicationThemeOption option,
         CancellationToken cancellationToken = default)
@@ -124,17 +151,37 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         await _settings.SetLoggingSettingsAsync(enabled, option.Level, cancellationToken);
     }
 
+    public async Task ApplyGitConsoleAutoOpenModeAsync(
+        GitConsoleAutoOpenOption option,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(option);
+        SelectedGitConsoleAutoOpenMode = option;
+        await _settings.SetGitConsoleAutoOpenModeAsync(option.Mode, cancellationToken);
+    }
+
     private void Settings_Changed(object? sender, EventArgs e)
     {
         var selectedThemeMode = FindThemeMode(_settings.ThemeMode);
-        if (Equals(_selectedThemeMode, selectedThemeMode)) return;
+        if (!Equals(_selectedThemeMode, selectedThemeMode))
+        {
+            _selectedThemeMode = selectedThemeMode;
+            Notify(nameof(SelectedThemeMode));
+        }
 
-        _selectedThemeMode = selectedThemeMode;
-        Notify(nameof(SelectedThemeMode));
+        var selectedGitConsoleMode = FindGitConsoleMode(_settings.GitConsoleAutoOpenMode);
+        if (!Equals(_selectedGitConsoleAutoOpenMode, selectedGitConsoleMode))
+        {
+            _selectedGitConsoleAutoOpenMode = selectedGitConsoleMode;
+            Notify(nameof(SelectedGitConsoleAutoOpenMode));
+        }
     }
 
     private ApplicationThemeOption FindThemeMode(ApplicationThemeMode mode) =>
         ThemeModes.First(option => option.Mode == mode);
+
+    private GitConsoleAutoOpenOption FindGitConsoleMode(GitConsoleAutoOpenMode mode) =>
+        GitConsoleAutoOpenModes.First(option => option.Mode == mode);
 
     private void Notify([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
