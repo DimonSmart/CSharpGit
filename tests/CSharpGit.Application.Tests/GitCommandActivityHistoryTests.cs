@@ -1,4 +1,5 @@
 using System.Text;
+using CSharpGit.Application;
 using CSharpGit.Application.Abstractions;
 
 namespace CSharpGit.Application.Tests;
