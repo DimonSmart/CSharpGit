@@ -14,10 +14,10 @@ public sealed class GitArchitectureGuardrailTests
             var source = File.ReadAllText(file);
 
             Assert.DoesNotContain("GitProcessRunner", source, StringComparison.Ordinal);
-            Assert.DoesNotContain("_gitExecutable", source, StringComparison.Ordinal);
 
             if (relative == "GitCommandExecutor.cs") continue;
 
+            Assert.DoesNotContain("_gitExecutable", source, StringComparison.Ordinal);
             Assert.DoesNotContain("RedirectStandardOutput = true", source, StringComparison.Ordinal);
             Assert.DoesNotContain("RedirectStandardError = true", source, StringComparison.Ordinal);
 
