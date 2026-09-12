@@ -202,6 +202,7 @@ public sealed class GitToolsService : IGitToolsService
         var worktree = repository is null
             ? EmptyScope(GitToolConfigurationSource.Worktree)
             : await ReadEditorWorktreeAsync(repository, cancellationToken);
+        var system = await ReadEditorSystemAsync(repository, cancellationToken);
 
         ConfigValue effective;
         var gitEditor = NormalizeOptional(Environment.GetEnvironmentVariable("GIT_EDITOR"));
@@ -248,6 +249,7 @@ public sealed class GitToolsService : IGitToolsService
             global,
             local,
             worktree,
+            system,
             presets,
             [],
             validation);
@@ -284,6 +286,7 @@ public sealed class GitToolsService : IGitToolsService
         var worktree = repository is null
             ? EmptyScope(GitToolConfigurationSource.Worktree)
             : await ReadToolWorktreeAsync(repository, kind, cancellationToken);
+        var system = await ReadToolSystemAsync(repository, kind, cancellationToken);
 
         var resolved = ResolveToolExecutable(selection?.Value, path?.Value, command?.Value, presets);
         var validation = ValidateConfiguration(kind, selection?.Value, path?.Value, command?.Value, resolved, presets, supported);
@@ -300,6 +303,7 @@ public sealed class GitToolsService : IGitToolsService
             global,
             local,
             worktree,
+            system,
             presets,
             supported,
             validation);
@@ -323,6 +327,14 @@ public sealed class GitToolsService : IGitToolsService
         return value is null
             ? EmptyScope(GitToolConfigurationSource.Worktree)
             : new GitToolScopeConfiguration(GitToolConfigurationSource.Worktree, "core.editor", value.Value, value.Origin, Command: value.Value);
+    }
+
+    private async Task<GitToolScopeConfiguration> ReadEditorSystemAsync(Repository? repository, CancellationToken cancellationToken)
+    {
+        var value = await ReadConfigAtArgumentScopeAsync(repository, "core.editor", "--system", GitToolConfigurationSource.System, cancellationToken);
+        return value is null
+            ? EmptyScope(GitToolConfigurationSource.System)
+            : new GitToolScopeConfiguration(GitToolConfigurationSource.System, "core.editor", value.Value, value.Origin, Command: value.Value);
     }
 
     private async Task<GitToolScopeConfiguration> ReadToolScopeAsync(
@@ -379,6 +391,32 @@ public sealed class GitToolsService : IGitToolsService
             ParseGitBoolean(keep?.Value));
     }
 
+    private async Task<GitToolScopeConfiguration> ReadToolSystemAsync(
+        Repository? repository,
+        GitToolKind kind,
+        CancellationToken cancellationToken)
+    {
+        var selection = await ReadSelectionAtArgumentScopeAsync(repository, kind, "--system", GitToolConfigurationSource.System, cancellationToken);
+        var keep = kind == GitToolKind.Merge
+            ? await ReadConfigAtArgumentScopeAsync(repository, "mergetool.keepBackup", "--system", GitToolConfigurationSource.System, cancellationToken)
+            : null;
+        if (selection is null)
+            return new GitToolScopeConfiguration(GitToolConfigurationSource.System, null, null, null, KeepBackup: ParseGitBoolean(keep?.Value));
+
+        var path = await ReadToolFieldAtArgumentScopeAsync(repository, kind, selection.Value, "path", "--system", GitToolConfigurationSource.System, cancellationToken);
+        var command = await ReadToolFieldAtArgumentScopeAsync(repository, kind, selection.Value, "cmd", "--system", GitToolConfigurationSource.System, cancellationToken);
+        var trust = await ReadToolFieldAtArgumentScopeAsync(repository, kind, selection.Value, "trustExitCode", "--system", GitToolConfigurationSource.System, cancellationToken);
+        return new GitToolScopeConfiguration(
+            GitToolConfigurationSource.System,
+            selection.Key,
+            selection.Value,
+            selection.Origin,
+            path?.Value,
+            command?.Value,
+            ParseGitBoolean(trust?.Value),
+            ParseGitBoolean(keep?.Value));
+    }
+
     private async Task<ConfigValue?> ReadEffectiveSelectionAsync(Repository? repository, GitToolKind kind, CancellationToken cancellationToken)
     {
         foreach (var key in SelectionKeys(kind, includeCrossToolFallback: true))
@@ -400,7 +438,7 @@ public sealed class GitToolsService : IGitToolsService
     }
 
     private async Task<ConfigValue?> ReadSelectionAtArgumentScopeAsync(
-        Repository repository,
+        Repository? repository,
         GitToolKind kind,
         string scopeArgument,
         GitToolConfigurationSource source,
@@ -452,7 +490,7 @@ public sealed class GitToolsService : IGitToolsService
     }
 
     private async Task<ConfigValue?> ReadToolFieldAtArgumentScopeAsync(
-        Repository repository,
+        Repository? repository,
         GitToolKind kind,
         string tool,
         string field,
