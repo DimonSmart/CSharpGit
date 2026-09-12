@@ -74,7 +74,7 @@ public sealed class DesktopUiContractTests
             option => Assert.Contains(option, settingsViewModel));
         Assert.Contains("ApplyThemeModeAsync", settingsPage);
         Assert.Contains("ShowSettingsError(exception)", settingsPage);
-        Assert.Contains("Could not save settings", settingsXaml);
+        Assert.Contains("Could not apply settings", settingsPage);
         Assert.Contains("new(AppSettingsContext.Current)", settingsPage);
         Assert.DoesNotContain("AppSettingsContext.Current", settingsViewModel);
 

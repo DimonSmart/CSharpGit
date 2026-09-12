@@ -99,15 +99,16 @@ public sealed class HistoryDiffUiContractTests
     }
 
     [Fact]
-    public void HistoricalFileActionStateDoesNotResolveGitOnSelection()
+    public void HistoricalExternalDiffUsesTheSameResolvedPairAsFileVersionActions()
     {
         var root = FindRepositoryRoot();
         var source = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
-        var stateMethod = ExtractBetween(source, "private Task RefreshCommitFileActionStateAsync()", "private async Task RefreshWorkingTreeFileActionStateAsync()");
+        var action = ExtractBetween(source, "private async Task OpenSelectedCommitExternalDiffAsync()", "private async Task OpenSelectedWorkingTreeExternalDiffAsync()");
 
-        Assert.DoesNotContain("ResolveCommitAsync", stateMethod);
-        Assert.Contains("SelectedFile", stateMethod);
-        Assert.Contains("TryResolveReveal", stateMethod);
+        Assert.Contains("ResolveCommitAsync(repository, commit.Hash, file.Path)", action);
+        Assert.Contains("RunExternalDiffAsync(repository, pair)", action);
+        Assert.DoesNotContain("Parents", action);
+        Assert.DoesNotContain("HEAD", action);
         Assert.Contains("SelectedHistoryRow", source);
         Assert.DoesNotContain("_viewModel.SelectedCommit", source);
     }
