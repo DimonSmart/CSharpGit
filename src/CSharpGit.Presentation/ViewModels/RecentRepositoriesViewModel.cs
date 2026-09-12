@@ -97,7 +97,7 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
 
-public sealed class RecentRepositoriesViewModel : IDisposable
+public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly IAppSettingsService _settings;
     private readonly IRepositoryImageService _repositoryImageService;
@@ -128,13 +128,20 @@ public sealed class RecentRepositoriesViewModel : IDisposable
         _repositoryImageService = repositoryImageService;
         _openRecentAsync = openRecentAsync;
         OpenRepositoryCommand = new AsyncCommand(openRepositoryAsync, () => true);
+        RemoveUnavailableRepositoriesCommand = new AsyncCommand(RemoveUnavailableRepositoriesAsync, () => true);
         _settings.Changed += Settings_Changed;
         Reload();
     }
 
+    public event PropertyChangedEventHandler? PropertyChanged;
+
     public ObservableCollection<RecentRepositoryItem> RecentRepositories { get; } = [];
 
     public ICommand OpenRepositoryCommand { get; }
+
+    public ICommand RemoveUnavailableRepositoriesCommand { get; }
+
+    public bool HasUnavailableRepositories => RecentRepositories.Any(item => !item.IsAvailable);
 
     internal void StartImageLoading()
     {
@@ -164,7 +171,8 @@ public sealed class RecentRepositoriesViewModel : IDisposable
         _imageLoadCancellation = new CancellationTokenSource();
 
         RecentRepositories.Clear();
-        foreach (var settings in _settings.RecentRepositories)
+        foreach (var settings in _settings.RecentRepositories
+                     .OrderByDescending(settings => Directory.Exists(settings.Path)))
         {
             var item = new RecentRepositoryItem(
                 settings,
@@ -176,6 +184,8 @@ public sealed class RecentRepositoriesViewModel : IDisposable
             item.NeedsImageRefresh = cached.ShouldRefresh;
             RecentRepositories.Add(item);
         }
+
+        OnPropertyChanged(nameof(HasUnavailableRepositories));
 
         if (_imageLoadingStarted)
             ScheduleImageRefreshes();
@@ -217,5 +227,19 @@ public sealed class RecentRepositoriesViewModel : IDisposable
         }
     }
 
+    private async Task RemoveUnavailableRepositoriesAsync()
+    {
+        var unavailablePaths = RecentRepositories
+            .Where(item => !item.IsAvailable)
+            .Select(item => item.Path)
+            .ToArray();
+
+        foreach (var path in unavailablePaths)
+            await _settings.RemoveRecentRepositoryAsync(path);
+    }
+
     private Task RemoveAsync(RecentRepositoryItem item) => _settings.RemoveRecentRepositoryAsync(item.Path);
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
