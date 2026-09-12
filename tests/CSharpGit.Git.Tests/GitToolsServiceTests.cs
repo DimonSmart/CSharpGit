@@ -32,6 +32,7 @@ public sealed class GitToolsServiceTests : IDisposable
         SetEnvironment("USERPROFILE", _home);
         SetEnvironment("XDG_CONFIG_HOME", Path.Combine(_home, ".config"));
         SetEnvironment("GIT_CONFIG_NOSYSTEM", "1");
+        SetEnvironment("GIT_CONFIG_SYSTEM", null);
         SetEnvironment("GIT_EDITOR", null);
         SetEnvironment("VISUAL", null);
         SetEnvironment("EDITOR", null);
@@ -76,6 +77,28 @@ public sealed class GitToolsServiceTests : IDisposable
 
         Assert.Equal("vscode", fallback.EffectiveValue);
         Assert.Equal(GitToolConfigurationSource.Global, fallback.EffectiveSource);
+    }
+
+    [Fact]
+    public async Task ReadsSystemScopeSeparatelyWhileGlobalRemainsEffective()
+    {
+        var systemConfig = Path.Combine(_root, "system.gitconfig");
+        File.WriteAllText(systemConfig, "[diff]\n\tguitool = system-diff\n[core]\n\teditor = system-editor\n");
+        SetEnvironment("GIT_CONFIG_NOSYSTEM", null);
+        SetEnvironment("GIT_CONFIG_SYSTEM", systemConfig);
+        RunGit(_repositoryPath, "config", "--global", "diff.guitool", "global-diff");
+        RunGit(_repositoryPath, "config", "--global", "core.editor", "global-editor");
+
+        var diff = await _service.ReadAsync(_repository, GitToolKind.Diff);
+        var editor = await _service.ReadAsync(_repository, GitToolKind.Editor);
+
+        Assert.Equal("global-diff", diff.EffectiveValue);
+        Assert.Equal(GitToolConfigurationSource.Global, diff.EffectiveSource);
+        Assert.Equal("system-diff", diff.System.SelectionValue);
+        Assert.Contains("system.gitconfig", diff.System.Origin ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("global-editor", editor.EffectiveValue);
+        Assert.Equal("system-editor", editor.System.SelectionValue);
+        Assert.Contains("system.gitconfig", editor.System.Origin ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
