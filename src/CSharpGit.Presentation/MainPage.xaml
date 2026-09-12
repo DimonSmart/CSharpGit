@@ -1,4 +1,4 @@
-<Page x:Class="CSharpGit.Presentation.MainPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:CSharpGit.Presentation.Controls" xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives">
+<Page x:Class="CSharpGit.Presentation.MainPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:CSharpGit.Presentation.Controls" xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives" Loaded="ConfirmationDialogs_Loaded">
   <Page.Resources>
     <ContentDialog x:Key="GitOperationsDialog" Title="Git operations" CloseButtonText="Close" DefaultButton="Close">
       <ScrollViewer MaxHeight="650" VerticalScrollBarVisibility="Auto">
@@ -604,40 +604,6 @@
                 <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                   <Button Content="Commit" Command="{Binding CommitCommand}" Style="{StaticResource CompactButtonStyle}" />
                   <Button Content="Amend" Command="{Binding AmendCommand}" Style="{StaticResource CompactButtonStyle}" />
-                </StackPanel>
-                <InfoBar IsOpen="True"
-                         Severity="Warning"
-                         Title="The index is empty"
-                         Message="Choose whether to stage all working-tree changes, create an intentional empty commit, or cancel. Nothing has been staged implicitly."
-                         Visibility="{Binding EmptyIndexChoiceVisibility}"
-                         IsClosable="False">
-                  <InfoBar.ActionButton>
-                    <Button Content="Stage all and commit" Command="{Binding StageAllAndCommitCommand}" Style="{StaticResource CompactButtonStyle}" />
-                  </InfoBar.ActionButton>
-                </InfoBar>
-                <StackPanel Orientation="Horizontal"
-                            Spacing="{StaticResource Spacing.S}"
-                            Visibility="{Binding EmptyIndexChoiceVisibility}">
-                  <Button Content="Create empty commit" Command="{Binding ConfirmEmptyCommitCommand}" Style="{StaticResource CompactButtonStyle}" />
-                  <Button Content="Cancel" Command="{Binding CancelCommitCommand}" Style="{StaticResource CompactButtonStyle}" />
-                </StackPanel>
-                <InfoBar IsOpen="True"
-                         Severity="Warning"
-                         Title="Discard unstaged changes?"
-                         Message="{Binding BatchDiscardConfirmationMessage}"
-                         Visibility="{Binding BatchDiscardConfirmationVisibility}"
-                         IsClosable="False" />
-                <StackPanel Orientation="Horizontal"
-                            Spacing="{StaticResource Spacing.S}"
-                            Visibility="{Binding BatchDiscardConfirmationVisibility}">
-                  <Button Content="Cancel"
-                          Command="{Binding CancelBatchDiscardCommand}"
-                          Style="{StaticResource CompactButtonStyle}" />
-                  <Button Content="Discard"
-                          Command="{Binding ConfirmBatchDiscardCommand}"
-                          Style="{StaticResource CompactButtonStyle}"
-                          Background="{ThemeResource SystemFillColorCriticalBrush}"
-                          Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
                 </StackPanel>
               </StackPanel>
             </Border>
