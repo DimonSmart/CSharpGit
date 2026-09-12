@@ -275,7 +275,17 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
 
     private void SetHierarchyGuideSegments(IReadOnlyList<RepositoryTreeGuideSegmentKind> segments)
     {
-        HierarchyGuideSegments = segments;
+        if (IsCurrent && Kind is RepositoryTreeNodeKind.LocalBranch or RepositoryTreeNodeKind.Worktree && segments.Count > 0)
+        {
+            var adjustedSegments = segments.ToArray();
+            adjustedSegments[^1] = RepositoryTreeGuideSegmentKind.Empty;
+            HierarchyGuideSegments = adjustedSegments;
+        }
+        else
+        {
+            HierarchyGuideSegments = segments;
+        }
+
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HierarchyGuideSegments)));
     }
 
