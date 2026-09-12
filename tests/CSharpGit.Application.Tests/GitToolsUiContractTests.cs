@@ -7,6 +7,7 @@ public sealed class GitToolsUiContractTests
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml"));
+        var mainXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml.cs"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "GitToolsSettingsViewModel.cs"));
         var contract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IGitToolsService.cs"));
@@ -26,6 +27,8 @@ public sealed class GitToolsUiContractTests
         Assert.Contains("Test Diff Tool", xaml);
         Assert.Contains("Test Merge Tool", xaml);
         Assert.Contains("Remove override", xaml);
+        Assert.DoesNotContain("Merge tool settings", mainXaml, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ConfigureMergeToolCommand", mainXaml);
         Assert.Contains("IGitToolsService", page);
         Assert.Contains("ReadAsync", contract);
         Assert.Contains("RemoveOverrideAsync", contract);
@@ -47,6 +50,7 @@ public sealed class GitToolsUiContractTests
         var fileOpening = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
         var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "DesktopRepositoryWorkflowService.cs"));
         var gitTools = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitToolsService.cs"));
+        var legacyRepositoryService = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCliRepositoryService.cs"));
 
         Assert.Contains("Open in Diff Tool", fileOpening);
         Assert.Contains("RunExternalDiffAsync(repository, pair)", fileOpening);
@@ -58,6 +62,8 @@ public sealed class GitToolsUiContractTests
         Assert.Contains("\"mergetool\", \"--gui\", \"--no-prompt\"", gitTools);
         Assert.DoesNotContain("difftool.prompt", gitTools);
         Assert.DoesNotContain("mergetool.prompt", gitTools);
+        Assert.DoesNotContain("mergetool.prompt", legacyRepositoryService);
+        Assert.Contains("\"mergetool\", \"--gui\", \"--no-prompt\"", legacyRepositoryService);
     }
 
     private static string FindRepositoryRoot()
