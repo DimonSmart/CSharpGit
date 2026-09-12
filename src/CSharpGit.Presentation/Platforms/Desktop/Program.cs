@@ -4,9 +4,14 @@ namespace CSharpGit.Presentation;
 
 public static class Program
 {
+    internal static string? InitialRepositoryPath { get; private set; }
+
     [STAThread]
     public static void Main(string[] args)
     {
+        if (args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]))
+            InitialRepositoryPath = Path.GetFullPath(args[0]);
+
         App? application = null;
         var host = UnoPlatformHostBuilder.Create()
             .App(() => application = new App())
