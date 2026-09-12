@@ -25,6 +25,7 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
     private static string? _lastCurrentLocalBranch;
 
     private readonly string? _expansionKey;
+    private readonly string _baseName;
     private bool _isExpanded;
     private string? _associatedWorktreePath;
 
@@ -39,7 +40,7 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
         string? expansionKey = null)
     {
         Kind = kind;
-        Name = name;
+        Name = _baseName = name;
         ReferenceName = referenceName;
         Value = value;
         IsCurrent = isCurrent;
@@ -68,7 +69,7 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public RepositoryTreeNodeKind Kind { get; }
-    public string Name { get; }
+    public string Name { get; private set; }
     public string? ReferenceName { get; }
     public object? Value { get; }
     public bool IsCurrent { get; }
@@ -87,12 +88,7 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
     public ObservableCollection<RepositoryTreeNode> Children { get; } = [];
     public IReadOnlyList<RepositoryTreeGuideSegmentKind> HierarchyGuideSegments { get; private set; } =
         Array.Empty<RepositoryTreeGuideSegmentKind>();
-    public string DisplayName => Kind switch
-    {
-        RepositoryTreeNodeKind.Worktree when Value is WorktreeInfo worktree => BuildWorktreeDisplayName(worktree),
-        RepositoryTreeNodeKind.LocalBranch when !IsCurrent && !string.IsNullOrWhiteSpace(_associatedWorktreePath) => $"{Name}  [worktree]",
-        _ => Name
-    };
+    public string DisplayName => Name;
     public FontWeight NameFontWeight => IsCurrent ? Microsoft.UI.Text.FontWeights.Bold : Microsoft.UI.Text.FontWeights.Normal;
     public Visibility CurrentBranchAccentVisibility => IsCurrent ? Visibility.Visible : Visibility.Collapsed;
     public string? IconGlyph => Kind switch
@@ -123,6 +119,9 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
     {
         if (string.Equals(_associatedWorktreePath, path, StringComparison.Ordinal)) return;
         _associatedWorktreePath = path;
+        if (Kind == RepositoryTreeNodeKind.LocalBranch)
+            Name = !IsCurrent && !string.IsNullOrWhiteSpace(path) ? $"{_baseName}  [worktree]" : _baseName;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Name)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AssociatedWorktreePath)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DisplayName)));
     }
@@ -133,21 +132,6 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
         _localBranchBuildInitialized = false;
         _lastCurrentLocalBranch = null;
     }
-
-    private static string BuildWorktreeDisplayName(WorktreeInfo worktree)
-    {
-        var primary = worktree.Branch ?? ShortHead(worktree.Head);
-        var state = new List<string>();
-        if (worktree.IsDetached) state.Add("detached");
-        if (worktree.IsLocked)
-            state.Add(string.IsNullOrWhiteSpace(worktree.LockReason) ? "locked" : $"locked: {worktree.LockReason}");
-        if (worktree.IsPrunable) state.Add("prunable");
-        var suffix = state.Count == 0 ? string.Empty : $" [{string.Join(", ", state)}]";
-        return $"{primary}{suffix} — {worktree.Path}";
-    }
-
-    private static string ShortHead(string head) =>
-        string.IsNullOrWhiteSpace(head) ? "unknown" : head[..Math.Min(8, head.Length)];
 
     private static string? CreateExpansionKey(RepositoryTreeNodeKind kind, string name) => kind switch
     {
