@@ -313,6 +313,7 @@
                                          NodeFillBrush="{ThemeResource ControlFillColorDefaultBrush}"
                                          GlyphBrush="{ThemeResource TextFillColorPrimaryBrush}" />
           <StackPanel Grid.Column="1"
+                      Margin="4,0,0,0"
                       Orientation="Horizontal"
                       Spacing="{StaticResource Spacing.S}"
                       VerticalAlignment="Center">
