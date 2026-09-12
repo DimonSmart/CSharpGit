@@ -55,17 +55,6 @@
             <Button Grid.Column="4" Content="Apply" Command="{Binding ApplyRebaseItemCommand}" />
           </Grid>
           <Button Content="Start rebase" Command="{Binding StartRebaseCommand}" HorizontalAlignment="Left" />
-
-          <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,4" />
-          <TextBlock Text="Merge tool settings" FontWeight="SemiBold" />
-          <Grid ColumnDefinitions="140,160,160" ColumnSpacing="8">
-            <ComboBox ItemsSource="{Binding MergeToolNames}" IsEditable="True" Text="{Binding MergeToolName, Mode=TwoWay}" Header="Preset/name" />
-            <ComboBox Grid.Column="1" ItemsSource="{Binding MergeToolKinds}" SelectedItem="{Binding MergeToolKind, Mode=TwoWay}" Header="Type" />
-            <ComboBox Grid.Column="2" ItemsSource="{Binding MergeToolScopes}" SelectedItem="{Binding MergeToolScope, Mode=TwoWay}" Header="Git config" />
-          </Grid>
-          <TextBox Header="Executable/path or command" Text="{Binding MergeToolExecutable, Mode=TwoWay}" />
-          <TextBox Header="Arguments: $BASE $LOCAL $REMOTE $MERGED" Text="{Binding MergeToolArguments, Mode=TwoWay}" />
-          <Button Content="Save merge tool configuration" Command="{Binding ConfigureMergeToolCommand}" HorizontalAlignment="Left" />
         </StackPanel>
       </ScrollViewer>
     </ContentDialog>
