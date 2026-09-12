@@ -28,6 +28,7 @@ public sealed class WorkingTreeDiffUiContractTests
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var confirmations = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ConfirmationDialogs.cs"));
         var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs"));
         var workspace = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
 
@@ -38,7 +39,9 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("Command=\"{Binding StageAllCommand}\"", xaml);
         Assert.Contains("Command=\"{Binding UnstageSelectedCommand}\"", xaml);
         Assert.Contains("Command=\"{Binding UnstageAllCommand}\"", xaml);
-        Assert.Contains("DiscardConfirmationMessage", xaml);
+        Assert.Contains("BatchDiscardConfirmationMessage", confirmations);
+        Assert.Contains("ShowDiscardConfirmationAsync", confirmations);
+        Assert.DoesNotContain("BatchDiscardConfirmationVisibility", xaml);
         Assert.Contains("SynchronizeWorkingTreeSelection", workingTree);
         Assert.Contains("list.SelectedItems.OfType<WorkingTreeChange>()", workingTree);
         Assert.Contains("args.AddedItems.OfType<WorkingTreeChange>().LastOrDefault()", workingTree);
@@ -95,7 +98,7 @@ public sealed class WorkingTreeDiffUiContractTests
         var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs"));
         var git = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCliRepositoryService.cs"));
         var gitDiff = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCliRepositoryService.WorkingTreeDiff.cs"));
-        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
+        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.Discard.cs"));
 
         Assert.Contains("CancellationTokenSource", workingTree);
         Assert.Contains("_workingTreeDiffGeneration", workingTree);
@@ -110,9 +113,9 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("\"restore\", \"--worktree\", \"--\", change.Path", discard);
         Assert.DoesNotContain("\"--source=HEAD\"", discard);
         Assert.DoesNotContain("\"--staged\"", discard);
-        Assert.Contains("_selectedUnstagedChanges.Count == 1", viewModel);
-        Assert.Contains("PendingDiscard = _selectedUnstagedChanges.Count == 1", viewModel);
-        Assert.Contains("PendingDiscard.Path", viewModel);
+        Assert.Contains("WorkingTreeDiscard.CreateSelected(_selectedUnstagedChanges)", discardViewModel);
+        Assert.Contains("WorkingTreeDiscard.CreateAll(Changes)", discardViewModel);
+        Assert.Contains("WorkingTreeDiscard.ExecuteAsync", discardViewModel);
 
         Assert.Contains("\"--cached\"", gitDiff);
         Assert.Contains("\"--no-ext-diff\"", gitDiff);
