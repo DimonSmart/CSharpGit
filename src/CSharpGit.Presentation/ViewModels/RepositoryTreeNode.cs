@@ -40,7 +40,9 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
         string? expansionKey = null)
     {
         Kind = kind;
-        Name = _baseName = name;
+        Name = _baseName = kind == RepositoryTreeNodeKind.Worktree && value is WorktreeInfo worktree
+            ? BuildWorktreeName(worktree)
+            : name;
         ReferenceName = referenceName;
         Value = value;
         IsCurrent = isCurrent;
@@ -132,6 +134,21 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
         _localBranchBuildInitialized = false;
         _lastCurrentLocalBranch = null;
     }
+
+    private static string BuildWorktreeName(WorktreeInfo worktree)
+    {
+        var primary = worktree.Branch ?? ShortHead(worktree.Head);
+        var states = new List<string>();
+        if (worktree.IsDetached) states.Add("detached");
+        if (worktree.IsLocked)
+            states.Add(string.IsNullOrWhiteSpace(worktree.LockReason) ? "locked" : $"locked: {worktree.LockReason}");
+        if (worktree.IsPrunable) states.Add("prunable");
+        var state = states.Count == 0 ? string.Empty : $" [{string.Join(", ", states)}]";
+        return $"{primary}{state} — {worktree.Path}";
+    }
+
+    private static string ShortHead(string head) =>
+        string.IsNullOrWhiteSpace(head) ? "unknown" : head[..Math.Min(8, head.Length)];
 
     private static string? CreateExpansionKey(RepositoryTreeNodeKind kind, string name) => kind switch
     {
