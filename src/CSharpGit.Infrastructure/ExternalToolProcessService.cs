@@ -86,12 +86,12 @@ public sealed class ExternalToolProcessService : IExternalToolProcessService
                 var detail = string.IsNullOrWhiteSpace(error)
                     ? $"Editor exited with code {process.ExitCode}."
                     : error;
-                throw new InvalidOperationException(detail);
+                throw new InvalidOperationException($"Git editor \"{rawCommand}\" failed. {detail}");
             }
         }
         catch (Win32Exception exception)
         {
-            throw new InvalidOperationException($"Could not start the configured editor: {exception.Message}", exception);
+            throw new InvalidOperationException($"Could not start Git editor \"{rawCommand}\". {exception.Message}", exception);
         }
     }
 
