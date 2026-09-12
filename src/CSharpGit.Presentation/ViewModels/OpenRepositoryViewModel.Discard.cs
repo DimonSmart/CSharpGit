@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Windows.Input;
 using CSharpGit.Application;
-using Microsoft.UI.Xaml;
 
 namespace CSharpGit.Presentation.ViewModels;
 
@@ -33,9 +32,6 @@ public sealed partial class OpenRepositoryViewModel
         _cancelBatchDiscardCommand ??= CreateDiscardCommand(
             CancelBatchDiscardAsync,
             () => _pendingBatchDiscard is not null);
-
-    public Visibility BatchDiscardConfirmationVisibility =>
-        _pendingBatchDiscard is null ? Visibility.Collapsed : Visibility.Visible;
 
     public string BatchDiscardConfirmationMessage =>
         _pendingBatchDiscard?.ConfirmationMessage ?? string.Empty;
@@ -119,7 +115,6 @@ public sealed partial class OpenRepositoryViewModel
     private void SetPendingBatchDiscard(WorkingTreeDiscardRequest? request)
     {
         _pendingBatchDiscard = request;
-        Notify(nameof(BatchDiscardConfirmationVisibility));
         Notify(nameof(BatchDiscardConfirmationMessage));
         RaiseBatchDiscardCommands();
     }
