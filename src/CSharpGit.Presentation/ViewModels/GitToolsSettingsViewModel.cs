@@ -197,6 +197,7 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
     public string GlobalDisplay => ScopeDisplay(_snapshot?.Global);
     public string RepositoryDisplay => ScopeDisplay(_snapshot?.Repository);
     public string WorktreeDisplay => ScopeDisplay(_snapshot?.Worktree);
+    public string SystemDisplay => ScopeDisplay(_snapshot?.System);
     public string ResolvedExecutableDisplay => string.IsNullOrWhiteSpace(_snapshot?.ResolvedExecutable) ? "Not resolved" : _snapshot.ResolvedExecutable!;
     public string EffectivePathDisplay => string.IsNullOrWhiteSpace(_snapshot?.EffectivePath) ? "Git built-in / PATH" : _snapshot.EffectivePath!;
     public string EffectiveCommandDisplay => string.IsNullOrWhiteSpace(_snapshot?.EffectiveCommand) ? "Git built-in" : _snapshot.EffectiveCommand!;
@@ -383,6 +384,7 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
         Notify(nameof(GlobalDisplay));
         Notify(nameof(RepositoryDisplay));
         Notify(nameof(WorktreeDisplay));
+        Notify(nameof(SystemDisplay));
         Notify(nameof(ResolvedExecutableDisplay));
         Notify(nameof(EffectivePathDisplay));
         Notify(nameof(EffectiveCommandDisplay));
