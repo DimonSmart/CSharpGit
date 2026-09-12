@@ -275,7 +275,17 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
 
     private void SetHierarchyGuideSegments(IReadOnlyList<RepositoryTreeGuideSegmentKind> segments)
     {
-        HierarchyGuideSegments = segments;
+        if (Kind == RepositoryTreeNodeKind.LocalBranch && IsCurrent && segments.Count > 0)
+        {
+            var adjustedSegments = segments.ToArray();
+            adjustedSegments[^1] = RepositoryTreeGuideSegmentKind.Empty;
+            HierarchyGuideSegments = adjustedSegments;
+        }
+        else
+        {
+            HierarchyGuideSegments = segments;
+        }
+
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HierarchyGuideSegments)));
     }
 
@@ -298,5 +308,5 @@ public sealed record CommitFileRow(string Status, ChangedFile File)
 {
     public string Path => File.Path;
     public string AddedDisplay => File.AddedLines is { } value ? $"+{value}" : string.Empty;
-    public string RemovedDisplay => File.RemovedLines is { } value ? $"-{value}" : string.Empty;
+    public string DeletedDisplay => File.DeletedLines is { } value ? $"-{value}" : string.Empty;
 }
