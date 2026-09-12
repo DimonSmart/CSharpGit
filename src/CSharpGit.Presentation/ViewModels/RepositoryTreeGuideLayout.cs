@@ -13,6 +13,7 @@ public readonly record struct RepositoryTreeGuideLine(double X1, double Y1, doub
 public static class RepositoryTreeGuideLayout
 {
     public const double FallbackSegmentWidth = 16d;
+    public const double ExpanderBoxSize = 12d;
 
     public static IReadOnlyList<RepositoryTreeGuideSegmentKind> BuildSegments(
         IReadOnlyList<bool> ancestorHasFollowingSiblings,
@@ -38,6 +39,19 @@ public static class RepositoryTreeGuideLayout
             : totalIndentation > 0
                 ? totalIndentation
                 : segmentCount * FallbackSegmentWidth;
+
+    public static double ResolveExpanderSurfaceWidth(int segmentCount, double totalIndentation) =>
+        segmentCount > 0
+            ? ResolveIndentation(segmentCount, totalIndentation)
+            : FallbackSegmentWidth;
+
+    public static double ResolveExpanderCenterX(int segmentCount, double totalIndentation)
+    {
+        var effectiveSegmentCount = Math.Max(1, segmentCount);
+        var width = ResolveExpanderSurfaceWidth(segmentCount, totalIndentation);
+        var segmentWidth = width / effectiveSegmentCount;
+        return width - (segmentWidth / 2d);
+    }
 
     public static IReadOnlyList<RepositoryTreeGuideLine> BuildLines(
         IReadOnlyList<RepositoryTreeGuideSegmentKind> segments,
