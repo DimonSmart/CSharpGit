@@ -235,7 +235,8 @@ public sealed class GitToolsService : IGitToolsService
 
         var presets = EditorPresets();
         var resolved = _externalProcess.ResolveExecutable(effective.Value);
-        var validation = ValidateConfiguration(GitToolKind.Editor, effective.Value, null, null, resolved, presets, []);
+        var explicitEditorPath = ExtractExplicitCommandPath(effective.Value);
+        var validation = ValidateConfiguration(GitToolKind.Editor, effective.Value, explicitEditorPath, null, resolved, presets, []);
         return new GitToolConfigurationSnapshot(
             GitToolKind.Editor,
             effective.Value,
@@ -772,13 +773,38 @@ public sealed class GitToolsService : IGitToolsService
         IReadOnlyList<string> arguments) =>
         _executor.ExecuteForResultAsync(workingDirectory, operation, kind, cancellationToken, null, arguments);
 
+    private static string? ExtractExplicitCommandPath(string command)
+    {
+        var executable = ReadCommandExecutableToken(command.Trim());
+        if (string.IsNullOrWhiteSpace(executable)) return null;
+        return Path.IsPathRooted(executable)
+               || executable.Contains(Path.DirectorySeparatorChar)
+               || executable.Contains(Path.AltDirectorySeparatorChar)
+            ? executable
+            : null;
+    }
+
+    private static string ReadCommandExecutableToken(string command)
+    {
+        if (command.Length == 0) return string.Empty;
+        if (command[0] is '"' or '\'')
+        {
+            var quote = command[0];
+            var end = command.IndexOf(quote, 1);
+            return end > 1 ? command[1..end] : command[1..];
+        }
+
+        var whitespace = command.IndexOfAny([' ', '\t', '\r', '\n']);
+        return whitespace < 0 ? command : command[..whitespace];
+    }
+
     private string? ResolveToolExecutable(
         string? tool,
         string? path,
         string? command,
         IReadOnlyList<GitToolPreset> presets)
     {
-        if (!string.IsNullOrWhiteSpace(path)) return _externalProcess.ResolveExecutable(path) ?? Path.GetFullPath(path);
+        if (!string.IsNullOrWhiteSpace(path)) return _externalProcess.ResolveExecutable(path);
         if (!string.IsNullOrWhiteSpace(command)) return _externalProcess.ResolveExecutable(command);
         if (string.IsNullOrWhiteSpace(tool)) return null;
         var preset = presets.FirstOrDefault(candidate => !candidate.IsCustom && string.Equals(candidate.Value, tool, StringComparison.OrdinalIgnoreCase));
