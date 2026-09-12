@@ -52,7 +52,12 @@ public sealed record GitToolScopeConfiguration(
     bool? TrustExitCode = null,
     bool? KeepBackup = null)
 {
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(SelectionValue) || KeepBackup is not null;
+    public bool IsConfigured =>
+        !string.IsNullOrWhiteSpace(SelectionValue)
+        || !string.IsNullOrWhiteSpace(Path)
+        || !string.IsNullOrWhiteSpace(Command)
+        || TrustExitCode is not null
+        || KeepBackup is not null;
 }
 
 public sealed record GitToolConfigurationSnapshot(
