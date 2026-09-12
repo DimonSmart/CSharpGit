@@ -40,6 +40,12 @@ public static class GitServiceCollectionExtensions
 
         services.AddSingleton<IRepositoryFileVersionService>(provider =>
             new GitRepositoryFileVersionService(provider.GetRequiredService<GitCommandExecutor>()));
+        services.AddSingleton<IGitToolsService>(provider =>
+            new GitToolsService(
+                provider.GetRequiredService<GitCommandExecutor>(),
+                provider.GetRequiredService<IRepositoryFileVersionService>(),
+                provider.GetRequiredService<IRepositoryPathService>(),
+                provider.GetRequiredService<IExternalToolProcessService>()));
 
         services.AddSingleton(provider =>
             new GitReferenceHistoryService(provider.GetRequiredService<GitCommandExecutor>()));

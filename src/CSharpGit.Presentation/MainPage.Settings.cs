@@ -15,26 +15,27 @@ public sealed partial class MainPage
         _themeManager = themeManager;
     }
 
-    private void Settings_Click(object sender, RoutedEventArgs e) => OpenSettingsWindow();
+    private void Settings_Click(object sender, RoutedEventArgs e) => OpenSettingsWindow(SettingsSection.General);
 
-    private void OpenSettingsWindow()
+    private void OpenSettingsWindow(SettingsSection section = SettingsSection.General)
     {
         if (_settingsWindow is not null)
         {
+            _settingsPage?.SelectSection(section);
             _settingsWindow.Activate();
             return;
         }
 
         var themeManager = _themeManager
             ?? throw new InvalidOperationException("Application theme manager has not been initialized.");
-        var page = new SettingsPage();
+        var page = new SettingsPage(_gitToolsService, () => _viewModel.Repository, section);
         var themeRegistration = themeManager.Register(page);
         var window = new Window
         {
             Title = "CSharpGit Settings",
             Content = page
         };
-        window.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 860, Height = 590 });
+        window.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 980, Height = 720 });
         window.AppWindow.Closing += (_, _) =>
         {
             themeRegistration.Dispose();

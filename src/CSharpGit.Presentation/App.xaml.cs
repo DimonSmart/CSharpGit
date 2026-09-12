@@ -74,6 +74,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 });
                 services.AddSingleton<IFolderPicker>(provider => provider.GetRequiredService<RecentRepositoryFolderPicker>());
 
+                services.AddSingleton<IExternalToolProcessService, ExternalToolProcessService>();
                 services.AddCSharpGitGit();
                 services.AddSingleton<IRepositoryPathService, RepositoryPathService>();
                 services.AddSingleton<IDesktopShellService, DesktopShellService>();

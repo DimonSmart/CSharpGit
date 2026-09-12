@@ -42,3 +42,4 @@ opened.
 | IDD-0020 | Spec | Release distribution | Tag-driven GitHub Releases, platform artifacts, checksums and Homebrew Cask | — |
 | IDD-0021 | Spec | Branch deletion | Confirmed safe local/remote deletion, corresponding-branch resolution and partial-success behavior | — |
 | IDD-0022 | Spec | Git Console | Session Git command activity, diagnostics, status-bar entry, filtering and safe output | — |
+| IDD-0023 | Spec | External Git tools | Standard Git Editor/Diff/Merge configuration, Git Tools settings, exact-pair external diff and isolated tool tests | — |
