@@ -43,6 +43,8 @@ public sealed class GitToolsUiContractTests
         Assert.Contains("GitToolWriteScope.Global", viewModel);
         Assert.Contains("GitToolWriteScope.Repository", viewModel);
         Assert.Contains("SystemDisplay", viewModel);
+        Assert.Contains("if (!section.IsDirty) return;", viewModel);
+        Assert.Contains("IsOwnSelectionKey(Kind, key)", viewModel);
         Assert.DoesNotContain("SelectedDiffPreset", appSettings);
         Assert.DoesNotContain("SelectedMergePreset", appSettings);
         Assert.DoesNotContain("core.editor", appSettings, StringComparison.OrdinalIgnoreCase);
