@@ -10,6 +10,7 @@
         <ResourceDictionary Source="ms-appx:///Styles/Typography.xaml" />
         <ResourceDictionary Source="ms-appx:///Styles/Controls.xaml" />
         <ResourceDictionary Source="ms-appx:///Styles/Workspace.xaml" />
+        <ResourceDictionary Source="ms-appx:///Styles/RepositoryTree.xaml" />
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>
