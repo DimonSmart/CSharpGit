@@ -92,8 +92,10 @@ public sealed class DesignSystemContractTests
         Assert.DoesNotContain("Staged and unstaged changes are shown independently.", main);
         Assert.Contains("ToolTipService.ToolTip=\"Stage selected\"", main);
         Assert.Contains("AutomationProperties.Name=\"Stage selected\"", main);
-        Assert.Contains("ToolTipService.ToolTip=\"Discard selected changes\"", main);
-        Assert.Contains("AutomationProperties.Name=\"Discard selected changes\"", main);
+        Assert.Contains("ToolTipService.ToolTip=\"Discard selected\"", main);
+        Assert.Contains("AutomationProperties.Name=\"Discard selected\"", main);
+        Assert.Contains("ToolTipService.ToolTip=\"Discard all…\"", main);
+        Assert.Contains("AutomationProperties.Name=\"Discard all\"", main);
         Assert.Contains("AutomationProperties.Name=\"Commit message\"", main);
     }
 
