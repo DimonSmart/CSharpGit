@@ -90,6 +90,12 @@
     <Setter Property="UseSystemFocusVisuals" Value="True" />
   </Style>
 
+  <Style x:Key="RepositoryTreeItemStyle"
+         TargetType="TreeViewItem"
+         BasedOn="{StaticResource DenseTreeItemStyle}">
+    <Setter Property="GlyphOpacity" Value="0" />
+  </Style>
+
   <Style x:Key="ChangedFileRowStyle" TargetType="TreeViewItem" BasedOn="{StaticResource DenseTreeItemStyle}" />
 
   <Style x:Key="DiffRowStyle" TargetType="ListViewItem">
@@ -179,7 +185,7 @@
     <TreeViewItem x:Name="RepositoryTreeItem"
                   ItemsSource="{Binding Children}"
                   IsExpanded="{Binding IsExpanded, Mode=OneWay}"
-                  Style="{StaticResource DenseTreeItemStyle}">
+                  Style="{StaticResource RepositoryTreeItemStyle}">
       <TreeViewItem.Content>
         <Grid ColumnDefinitions="2,*" MinHeight="{StaticResource Height.DataRow}">
           <Border Grid.ColumnSpan="2"
@@ -196,7 +202,11 @@
                                          Segments="{Binding HierarchyGuideSegments}"
                                          TotalIndentation="{Binding TemplateSettings.Indentation.Left, ElementName=RepositoryTreeItem}"
                                          RowHeight="{StaticResource Height.DataRow}"
-                                         LineBrush="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                                         ExpandTarget="{Binding ElementName=RepositoryTreeItem}"
+                                         IsExpanded="{Binding IsExpanded, ElementName=RepositoryTreeItem}"
+                                         LineBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                         NodeFillBrush="{ThemeResource ControlFillColorDefaultBrush}"
+                                         GlyphBrush="{ThemeResource TextFillColorPrimaryBrush}" />
           <StackPanel Grid.Column="1"
                       Orientation="Horizontal"
                       Spacing="{StaticResource Spacing.S}"
