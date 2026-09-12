@@ -99,6 +99,18 @@ public sealed class HistoryDiffUiContractTests
     }
 
     [Fact]
+    public void HistoricalFileActionStateRemainsLazy()
+    {
+        var root = FindRepositoryRoot();
+        var source = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
+        var stateMethod = ExtractBetween(source, "private Task RefreshCommitFileActionStateAsync()", "private async Task RefreshWorkingTreeFileActionStateAsync()");
+
+        Assert.DoesNotContain("ResolveCommitAsync", stateMethod);
+        Assert.Contains("SelectedFile", stateMethod);
+        Assert.Contains("TryResolveReveal", stateMethod);
+    }
+
+    [Fact]
     public void HistoricalExternalDiffUsesTheSameResolvedPairAsFileVersionActions()
     {
         var root = FindRepositoryRoot();
