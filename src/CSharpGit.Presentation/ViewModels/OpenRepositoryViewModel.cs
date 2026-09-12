@@ -42,7 +42,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
     private WorkingTreeChange? _selectedChange;
     private WorkingTreeDiffKind? _selectedWorkingTreeDiffKind;
     private FileDiff? _selectedWorkingTreeDiff;
-    private WorkingTreeChange? _pendingDiscard;
     private readonly ObservableCollection<WorkingTreeChange> _selectedUnstagedChanges = [];
     private readonly ObservableCollection<WorkingTreeChange> _selectedStagedChanges = [];
     private string _commitMessage = string.Empty;
@@ -100,9 +99,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
         StageAllAndCommitCommand = new AsyncCommand(StageAllAndCommitAsync, () => CanBulkMutate() && IsEmptyIndexChoiceOpen);
         ConfirmEmptyCommitCommand = new AsyncCommand(ConfirmEmptyCommitAsync, () => CanMutate() && IsEmptyIndexChoiceOpen);
         CancelCommitCommand = new AsyncCommand(CancelCommitAsync, () => IsEmptyIndexChoiceOpen);
-        RequestDiscardCommand = new AsyncCommand(RequestDiscardAsync, () => CanMutate() && _selectedUnstagedChanges.Count == 1 && _selectedUnstagedChanges[0].IsUnstaged);
-        ConfirmDiscardCommand = new AsyncCommand(ConfirmDiscardAsync, () => CanMutate() && PendingDiscard is not null);
-        CancelDiscardCommand = new AsyncCommand(CancelDiscardAsync, () => PendingDiscard is not null);
         SwitchBranchCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.SwitchBranchAsync(Repository!, SelectedLocalBranch!.Name)), () => CanMutate() && SelectedLocalBranch is not null);
         CreateBranchCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.CreateBranchAsync(Repository!, NewBranchName)), () => CanMutate() && !string.IsNullOrWhiteSpace(NewBranchName));
         DeleteBranchCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.DeleteBranchAsync(Repository!, SelectedLocalBranch!.Name)), () => CanMutate() && SelectedLocalBranch is { IsCurrent: false });
@@ -154,9 +150,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
     public ICommand StageAllAndCommitCommand { get; }
     public ICommand ConfirmEmptyCommitCommand { get; }
     public ICommand CancelCommitCommand { get; }
-    public ICommand RequestDiscardCommand { get; }
-    public ICommand ConfirmDiscardCommand { get; }
-    public ICommand CancelDiscardCommand { get; }
     public ICommand SwitchBranchCommand { get; }
     public ICommand CreateBranchCommand { get; }
     public ICommand DeleteBranchCommand { get; }
@@ -263,15 +256,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
             Notify();
         }
     }
-    public WorkingTreeChange? PendingDiscard { get => _pendingDiscard; private set { _pendingDiscard = value; Notify(); Notify(nameof(DiscardConfirmationVisibility)); Notify(nameof(DiscardConfirmationMessage)); RaiseCommands(); } }
-    public Visibility DiscardConfirmationVisibility => PendingDiscard is null ? Visibility.Collapsed : Visibility.Visible;
-    public string DiscardConfirmationMessage => PendingDiscard is null
-        ? string.Empty
-        : $"Discard unstaged changes in '{PendingDiscard.Path}'? This restores the working-tree version from the index (or deletes an untracked file). Staged changes are preserved.";
     public string CommitMessage { get => _commitMessage; set { _commitMessage = value; Notify(); RaiseCommands(); } }
     public bool HasUnappliedCommitMessage => CommitMessage.Length > 0;
-    public bool IsEmptyIndexChoiceOpen { get => _isEmptyIndexChoiceOpen; private set { _isEmptyIndexChoiceOpen = value; Notify(); Notify(nameof(EmptyIndexChoiceVisibility)); RaiseCommands(); } }
-    public Visibility EmptyIndexChoiceVisibility => IsEmptyIndexChoiceOpen ? Visibility.Visible : Visibility.Collapsed;
+    public bool IsEmptyIndexChoiceOpen { get => _isEmptyIndexChoiceOpen; private set { _isEmptyIndexChoiceOpen = value; Notify(); RaiseCommands(); } }
     public GitBranch? SelectedLocalBranch { get => _selectedLocalBranch; set { _selectedLocalBranch = value; Notify(); RaiseCommands(); } }
     public GitBranch? SelectedRemoteBranch { get => _selectedRemoteBranch; set { _selectedRemoteBranch = value; Notify(); RaiseCommands(); } }
     public GitRemote? SelectedRemote { get => _selectedRemote; set { _selectedRemote = value; Notify(); RaiseCommands(); } }
@@ -595,7 +582,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
         SelectedChange = null;
         SelectedWorkingTreeDiffKind = null;
         SelectedWorkingTreeDiff = null;
-        PendingDiscard = null;
         RaiseCommands();
     }
 
@@ -629,28 +615,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
             CommitMessage = string.Empty;
     }
 
-    private Task RequestDiscardAsync()
-    {
-        PendingDiscard = _selectedUnstagedChanges.Count == 1 ? _selectedUnstagedChanges[0] : null;
-        return Task.CompletedTask;
-    }
-
-    private Task CancelDiscardAsync() { PendingDiscard = null; return Task.CompletedTask; }
-
-    private async Task ConfirmDiscardAsync()
-    {
-        var change = PendingDiscard;
-        PendingDiscard = null;
-        if (change is not null)
-            await MutateAsync(
-                () => _workingTreeService.DiscardFileAsync(Repository!, change),
-                "Could not discard file",
-                includeHistory: false);
-    }
-
     private void RaiseCommands()
     {
-        foreach (var command in new[] { RefreshAllCommand, StageCommand, UnstageCommand, StageSelectedCommand, StageAllCommand, UnstageSelectedCommand, UnstageAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, RequestDiscardCommand, ConfirmDiscardCommand, CancelDiscardCommand, SwitchBranchCommand, CreateBranchCommand, DeleteBranchCommand, CheckoutRemoteCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, CreateStashCommand, ApplyStashCommand, PopStashCommand, MergeCommand, LoadRebasePlanCommand, ApplyRebaseItemCommand, MoveRebaseUpCommand, MoveRebaseDownCommand, StartRebaseCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ConfigureMergeToolCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
+        foreach (var command in new[] { RefreshAllCommand, StageCommand, UnstageCommand, StageSelectedCommand, StageAllCommand, UnstageSelectedCommand, UnstageAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, SwitchBranchCommand, CreateBranchCommand, DeleteBranchCommand, CheckoutRemoteCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, CreateStashCommand, ApplyStashCommand, PopStashCommand, MergeCommand, LoadRebasePlanCommand, ApplyRebaseItemCommand, MoveRebaseUpCommand, MoveRebaseDownCommand, StartRebaseCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ConfigureMergeToolCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
     }
 
     private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values)
