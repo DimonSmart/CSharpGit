@@ -57,6 +57,28 @@ public sealed class RepositoryTreeGuideLayoutTests
     }
 
     [Fact]
+    public void BuildGeometry_provides_a_small_rounded_elbow_for_branch_connectors()
+    {
+        var geometry = RepositoryTreeGuideLayout.BuildGeometry(
+            new[]
+            {
+                RepositoryTreeGuideSegmentKind.Continue,
+                RepositoryTreeGuideSegmentKind.Empty,
+                RepositoryTreeGuideSegmentKind.Last
+            },
+            totalIndentation: 48,
+            rowHeight: 24);
+
+        Assert.Equal(
+            new[]
+            {
+                new RepositoryTreeGuideSegmentGeometry(RepositoryTreeGuideSegmentKind.Continue, 8, 16, 12, 3),
+                new RepositoryTreeGuideSegmentGeometry(RepositoryTreeGuideSegmentKind.Last, 40, 48, 12, 3)
+            },
+            geometry);
+    }
+
+    [Fact]
     public void BuildLines_uses_fallback_indentation_when_template_indentation_is_unavailable()
     {
         var lines = RepositoryTreeGuideLayout.BuildLines(
