@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
+using Windows.Foundation;
 
 namespace CSharpGit.Presentation.Controls;
 
@@ -139,25 +140,84 @@ public sealed class RepositoryTreeGuides : Canvas
         Width = guideWidth;
         _translation.X = -guideWidth;
 
-        foreach (var guideLine in RepositoryTreeGuideLayout.BuildLines(segments, TotalIndentation, RowHeight))
-            Children.Add(CreateGuideLine(guideLine));
+        foreach (var segment in RepositoryTreeGuideLayout.BuildGeometry(segments, TotalIndentation, RowHeight))
+            AddGuideSegment(segment);
 
         if (hasChildren && RowHeight > 0)
             AddExpander(segments.Count, guideWidth);
     }
 
-    private Line CreateGuideLine(RepositoryTreeGuideLine guideLine) => new()
+    private void AddGuideSegment(RepositoryTreeGuideSegmentGeometry segment)
     {
-        X1 = guideLine.X1,
-        Y1 = guideLine.Y1,
-        X2 = guideLine.X2,
-        Y2 = guideLine.Y2,
+        switch (segment.Kind)
+        {
+            case RepositoryTreeGuideSegmentKind.Continue:
+                Children.Add(CreateGuideLine(segment.CenterX, 0, segment.CenterX, RowHeight));
+                break;
+            case RepositoryTreeGuideSegmentKind.Branch:
+                Children.Add(CreateGuideLine(segment.CenterX, 0, segment.CenterX, RowHeight));
+                Children.Add(CreateRoundedBranch(segment, includeUpperStem: false));
+                break;
+            case RepositoryTreeGuideSegmentKind.Last:
+                Children.Add(CreateRoundedBranch(segment, includeUpperStem: true));
+                break;
+        }
+    }
+
+    private Line CreateGuideLine(double x1, double y1, double x2, double y2) => new()
+    {
+        X1 = x1,
+        Y1 = y1,
+        X2 = x2,
+        Y2 = y2,
         Stroke = LineBrush,
         StrokeThickness = GuideStrokeThickness,
         StrokeStartLineCap = PenLineCap.Round,
         StrokeEndLineCap = PenLineCap.Round,
         IsHitTestVisible = false
     };
+
+    private Path CreateRoundedBranch(RepositoryTreeGuideSegmentGeometry segment, bool includeUpperStem)
+    {
+        var radius = segment.CornerRadius;
+        var startY = includeUpperStem ? 0d : segment.MiddleY - radius;
+        var figure = new PathFigure
+        {
+            StartPoint = new Point(segment.CenterX, startY),
+            IsClosed = false,
+            IsFilled = false
+        };
+
+        if (includeUpperStem)
+        {
+            figure.Segments.Add(new LineSegment
+            {
+                Point = new Point(segment.CenterX, segment.MiddleY - radius)
+            });
+        }
+
+        figure.Segments.Add(new QuadraticBezierSegment
+        {
+            Point1 = new Point(segment.CenterX, segment.MiddleY),
+            Point2 = new Point(segment.CenterX + radius, segment.MiddleY)
+        });
+        figure.Segments.Add(new LineSegment
+        {
+            Point = new Point(segment.RightX, segment.MiddleY)
+        });
+
+        var geometry = new PathGeometry();
+        geometry.Figures.Add(figure);
+        return new Path
+        {
+            Data = geometry,
+            Stroke = LineBrush,
+            StrokeThickness = GuideStrokeThickness,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            IsHitTestVisible = false
+        };
+    }
 
     private void AddExpander(int segmentCount, double guideWidth)
     {
