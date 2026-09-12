@@ -122,8 +122,9 @@ public sealed class DesktopUiContractTests
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var operationBanner = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "OperationBanner.xaml"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+        var confirmationDialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ConfirmationDialogs.cs"));
         var forcePushPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ForcePush.cs"));
-        var surface = xaml + operationBanner + page + forcePushPage;
+        var surface = xaml + operationBanner + page + confirmationDialogs + forcePushPage;
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         foreach (var command in new[]
         {
@@ -151,17 +152,26 @@ public sealed class DesktopUiContractTests
     }
 
     [Fact]
-    public void CommitWorkflowRequiresExplicitEmptyIndexChoiceAndProtectsDraftOnClose()
+    public void CommitWorkflowRequiresModalExplicitEmptyIndexChoiceAndProtectsDraftOnClose()
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ConfirmationDialogs.cs"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
         var app = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
         var program = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Platforms", "Desktop", "Program.cs"));
 
-        Assert.All(new[] { "StageAllAndCommitCommand", "ConfirmEmptyCommitCommand", "CancelCommitCommand" }, command => Assert.Contains(command, xaml));
+        Assert.DoesNotContain("EmptyIndexChoiceVisibility", xaml);
+        Assert.DoesNotContain("Title=\"The index is empty\"", xaml);
+        Assert.Contains("Title = \"Nothing is staged\"", dialogs);
+        Assert.Contains("Content = \"There are working-tree changes, but nothing is staged for commit.\"", dialogs);
+        Assert.Contains("PrimaryButtonText = \"Stage all and commit\"", dialogs);
+        Assert.Contains("SecondaryButtonText = \"Create empty commit\"", dialogs);
+        Assert.Contains("CloseButtonText = \"Cancel\"", dialogs);
+        Assert.Contains("DefaultButton = ContentDialogButton.Close", dialogs);
+        Assert.All(new[] { "StageAllAndCommitCommand", "ConfirmEmptyCommitCommand", "CancelCommitCommand" }, command => Assert.Contains(command, dialogs));
         Assert.Contains("!Changes.Any(change => change.IsStaged)", viewModel);
         Assert.Contains("StageAllAsync", viewModel);
         Assert.Contains("HasUnappliedCommitMessage", page);
@@ -174,6 +184,49 @@ public sealed class DesktopUiContractTests
         Assert.Contains("page?.BeginShutdown()", app);
         Assert.DoesNotContain("_window.Closed += async", app);
         Assert.Contains("application?.StopHost()", program);
+    }
+
+    [Fact]
+    public void DestructiveConfirmationsUseContentDialogsAndStatusInfoBarsRemainInline()
+    {
+        var root = FindRepositoryRoot();
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var confirmationDialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ConfirmationDialogs.cs"));
+        var branchDeletion = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchDeletion.cs"));
+        var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
+        var forcePush = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ForcePush.cs"));
+        var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+
+        Assert.Contains("<controls:OperationBanner", xaml);
+        Assert.Contains("Binary file — text diff is not available.", xaml);
+        Assert.Contains("The selected delta no longer exists.", xaml);
+        Assert.Contains("Severity=\"Error\"", xaml);
+        Assert.DoesNotContain("BatchDiscardConfirmationVisibility", xaml);
+        Assert.DoesNotContain("EmptyIndexChoiceVisibility", xaml);
+        Assert.DoesNotContain("Title=\"Discard unstaged changes?\"", xaml);
+        Assert.DoesNotContain("Title=\"The index is empty\"", xaml);
+
+        Assert.Contains("Title = \"Discard changes?\"", confirmationDialogs);
+        Assert.Contains("DefaultButton = ContentDialogButton.Close", confirmationDialogs);
+
+        Assert.Contains("Title = \"Delete local branch?\"", branchDeletion);
+        Assert.Contains("Title = \"Delete remote branch?\"", branchDeletion);
+        Assert.True(Count(branchDeletion, "DefaultButton = ContentDialogButton.Close") >= 2);
+
+        Assert.Contains("Checkout commit", commitActions);
+        Assert.Contains("Soft reset", commitActions);
+        Assert.Contains("Mixed reset", commitActions);
+        Assert.Contains("Hard reset", commitActions);
+        Assert.True(Count(commitActions, "DefaultButton = ContentDialogButton.Close") >= 2);
+
+        Assert.Contains("Title = \"Force push with lease\"", forcePush);
+        Assert.Contains("PrimaryButtonText = \"Force push with lease\"", forcePush);
+        Assert.Contains("DefaultButton = ContentDialogButton.Close", forcePush);
+
+        Assert.Contains("Title = \"Discard commit message?\"", page);
+        Assert.Contains("PrimaryButtonText = \"Discard and close\"", page);
+        Assert.Contains("CloseButtonText = \"Keep editing\"", page);
+        Assert.Contains("DefaultButton = ContentDialogButton.Close", page);
     }
 
     private static int Count(string value, string fragment) =>
