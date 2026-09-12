@@ -59,6 +59,8 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
         {
             foreach (var child in childNodes) Children.Add(child);
         }
+
+        ApplyHierarchyGuides(Children, Array.Empty<bool>());
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -80,6 +82,8 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
         }
     }
     public ObservableCollection<RepositoryTreeNode> Children { get; } = [];
+    public IReadOnlyList<RepositoryTreeGuideSegmentKind> HierarchyGuideSegments { get; private set; } =
+        Array.Empty<RepositoryTreeGuideSegmentKind>();
     public string DisplayName => Name;
     public FontWeight NameFontWeight => IsCurrent ? Microsoft.UI.Text.FontWeights.Bold : Microsoft.UI.Text.FontWeights.Normal;
     public Visibility CurrentBranchAccentVisibility => IsCurrent ? Visibility.Visible : Visibility.Collapsed;
@@ -212,6 +216,33 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
         var segmentCount = Math.Min(referenceParts.Length, referencePrefixCount + folderIndex + 1);
         var folderPath = string.Join('/', referenceParts.Take(segmentCount));
         return $"branch-folder:{branch.Kind}:{folderPath}";
+    }
+
+    private static void ApplyHierarchyGuides(
+        IList<RepositoryTreeNode> nodes,
+        IReadOnlyList<bool> ancestorHasFollowingSiblings)
+    {
+        for (var index = 0; index < nodes.Count; index++)
+        {
+            var node = nodes[index];
+            var isLastSibling = index == nodes.Count - 1;
+            node.SetHierarchyGuideSegments(
+                RepositoryTreeGuideLayout.BuildSegments(ancestorHasFollowingSiblings, isLastSibling));
+
+            if (node.Children.Count == 0) continue;
+
+            var childAncestors = new bool[ancestorHasFollowingSiblings.Count + 1];
+            for (var ancestorIndex = 0; ancestorIndex < ancestorHasFollowingSiblings.Count; ancestorIndex++)
+                childAncestors[ancestorIndex] = ancestorHasFollowingSiblings[ancestorIndex];
+            childAncestors[^1] = !isLastSibling;
+            ApplyHierarchyGuides(node.Children, childAncestors);
+        }
+    }
+
+    private void SetHierarchyGuideSegments(IReadOnlyList<RepositoryTreeGuideSegmentKind> segments)
+    {
+        HierarchyGuideSegments = segments;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HierarchyGuideSegments)));
     }
 
     private static void SortBranchNodes(ObservableCollection<RepositoryTreeNode> nodes)

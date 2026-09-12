@@ -176,7 +176,8 @@
   </DataTemplate>
 
   <DataTemplate x:Key="RepositoryTreeItemTemplate">
-    <TreeViewItem ItemsSource="{Binding Children}"
+    <TreeViewItem x:Name="RepositoryTreeItem"
+                  ItemsSource="{Binding Children}"
                   IsExpanded="{Binding IsExpanded, Mode=OneWay}"
                   Style="{StaticResource DenseTreeItemStyle}">
       <TreeViewItem.Content>
@@ -195,6 +196,10 @@
                       Orientation="Horizontal"
                       Spacing="{StaticResource Spacing.S}"
                       VerticalAlignment="Center">
+            <controls:RepositoryTreeGuides Segments="{Binding HierarchyGuideSegments}"
+                                           TotalIndentation="{Binding TemplateSettings.Indentation.Left, ElementName=RepositoryTreeItem}"
+                                           RowHeight="{StaticResource Height.DataRow}"
+                                           LineBrush="{ThemeResource DividerStrokeColorDefaultBrush}" />
             <FontIcon Glyph="&#xE80F;"
                       FontSize="{StaticResource Icon.Normal}"
                       Foreground="{ThemeResource AccentFillColorDefaultBrush}"
