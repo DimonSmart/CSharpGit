@@ -23,4 +23,35 @@
     <UnoIcon Include="Assets\Icons\icon.png" Resize="true" />
     <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <Target Name="PrepareWindowsRuntimeAppIcon"
+          DependsOnTargets="UnoResizetizeImages"
+          Condition="'$(OS)' == 'Windows_NT'">
+    <ItemGroup>
+      <_WindowsRuntimeAppIcon Include="$(AppIconPath)"
+                              Condition="'$(AppIconPath)' != '' and Exists('$(AppIconPath)')" />
+      <_WindowsRuntimeAppIcon Include="$(IntermediateOutputPath)unoresizetizer\AppIcons\*.ico"
+                              Condition="'@(_WindowsRuntimeAppIcon)' == ''" />
+    </ItemGroup>
+    <Error Condition="'@(_WindowsRuntimeAppIcon)' == ''"
+           Text="Uno.Resizetizer did not generate the Windows application icon." />
+  </Target>
+
+  <Target Name="CopyWindowsRuntimeAppIconToOutput"
+          AfterTargets="CopyFilesToOutputDirectory"
+          DependsOnTargets="PrepareWindowsRuntimeAppIcon"
+          Condition="'$(OS)' == 'Windows_NT'">
+    <Copy SourceFiles="@(_WindowsRuntimeAppIcon)"
+          DestinationFiles="@(_WindowsRuntimeAppIcon->'$(TargetDir)CSharpGit.ico')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyWindowsRuntimeAppIconToPublish"
+          AfterTargets="Publish"
+          DependsOnTargets="PrepareWindowsRuntimeAppIcon"
+          Condition="'$(OS)' == 'Windows_NT' and '$(PublishDir)' != ''">
+    <Copy SourceFiles="@(_WindowsRuntimeAppIcon)"
+          DestinationFiles="@(_WindowsRuntimeAppIcon->'$(PublishDir)CSharpGit.ico')"
+          SkipUnchangedFiles="true" />
+  </Target>
 </Project>
