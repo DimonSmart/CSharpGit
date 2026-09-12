@@ -1,6 +1,7 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CSharpGit.Presentation.Controls">
 
   <!--
     Keep the stock TreeViewItem template so its indentation, expander slot,
@@ -23,5 +24,66 @@
   <Style x:Key="RepositoryTreeItemStyle"
          TargetType="TreeViewItem"
          BasedOn="{StaticResource DenseTreeItemStyle}" />
+
+  <!--
+    Override the Workspace template as well so its inner TreeViewItem resolves
+    RepositoryTreeItemStyle from this dictionary rather than the older custom
+    container template in Workspace.xaml.
+  -->
+  <DataTemplate x:Key="RepositoryTreeItemTemplate">
+    <TreeViewItem x:Name="RepositoryTreeItem"
+                  ItemsSource="{Binding Children}"
+                  IsExpanded="{Binding IsExpanded, Mode=OneWay}"
+                  Style="{StaticResource RepositoryTreeItemStyle}">
+      <TreeViewItem.Content>
+        <Grid ColumnDefinitions="2,*" MinHeight="{StaticResource Height.DataRow}">
+          <Border Grid.ColumnSpan="2"
+                  Background="{ThemeResource AccentFillColorDefaultBrush}"
+                  Opacity="0.12"
+                  Visibility="{Binding CurrentBranchAccentVisibility}"
+                  IsHitTestVisible="False" />
+          <Border Width="2"
+                  Background="{ThemeResource AccentFillColorDefaultBrush}"
+                  HorizontalAlignment="Left"
+                  Visibility="{Binding CurrentBranchAccentVisibility}"
+                  IsHitTestVisible="False" />
+          <controls:RepositoryTreeGuides Grid.Column="1"
+                                         Segments="{Binding HierarchyGuideSegments}"
+                                         TotalIndentation="{Binding TemplateSettings.Indentation.Left, ElementName=RepositoryTreeItem}"
+                                         RowHeight="{StaticResource Height.DataRow}"
+                                         ExpandTarget="{Binding ElementName=RepositoryTreeItem}"
+                                         IsExpanded="{Binding IsExpanded, ElementName=RepositoryTreeItem}"
+                                         LineBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                         NodeFillBrush="{ThemeResource ControlFillColorDefaultBrush}"
+                                         GlyphBrush="{ThemeResource TextFillColorPrimaryBrush}" />
+          <StackPanel Grid.Column="1"
+                      Orientation="Horizontal"
+                      Spacing="{StaticResource Spacing.S}"
+                      VerticalAlignment="Center">
+            <FontIcon Glyph="&#xE80F;"
+                      FontSize="{StaticResource Icon.Normal}"
+                      Foreground="{ThemeResource AccentFillColorDefaultBrush}"
+                      Visibility="{Binding CurrentLocalBranchIconVisibility}" />
+            <FontIcon Glyph="&#xE80F;"
+                      FontSize="{StaticResource Icon.Normal}"
+                      Foreground="{ThemeResource AccentFillColorDefaultBrush}"
+                      Visibility="{Binding LocalDefaultBranchIconVisibility}" />
+            <FontIcon Glyph="&#xE80F;"
+                      FontSize="{StaticResource Icon.Normal}"
+                      Foreground="{ThemeResource AccentFillColorDefaultBrush}"
+                      Visibility="{Binding RemoteDefaultBranchIconVisibility}" />
+            <FontIcon Glyph="{Binding IconGlyph}"
+                      FontSize="{StaticResource Icon.Normal}"
+                      Visibility="{Binding IconVisibility}" />
+            <TextBlock Text="{Binding DisplayName}"
+                       Style="{StaticResource BodyTextStyle}"
+                       FontWeight="{Binding NameFontWeight}"
+                       TextTrimming="CharacterEllipsis"
+                       VerticalAlignment="Center" />
+          </StackPanel>
+        </Grid>
+      </TreeViewItem.Content>
+    </TreeViewItem>
+  </DataTemplate>
 
 </ResourceDictionary>
