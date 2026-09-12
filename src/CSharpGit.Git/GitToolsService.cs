@@ -64,7 +64,12 @@ public sealed class GitToolsService : IGitToolsService
             await WriteOrUnsetIfChangedAsync(repository, edit.Scope, $"{prefix}.{value}.cmd", command, cancellationToken);
         }
         if (edit.UpdateTrustExitCode)
-            await WriteOrUnsetIfChangedAsync(repository, edit.Scope, $"{prefix}.{value}.trustExitCode", BoolText(edit.TrustExitCode), cancellationToken);
+        {
+            var trustKey = edit.Kind == GitToolKind.Diff
+                ? "difftool.trustExitCode"
+                : $"mergetool.{value}.trustExitCode";
+            await WriteOrUnsetIfChangedAsync(repository, edit.Scope, trustKey, BoolText(edit.TrustExitCode), cancellationToken);
+        }
         if (edit.Kind == GitToolKind.Merge && edit.UpdateKeepBackup)
             await WriteOrUnsetIfChangedAsync(repository, edit.Scope, "mergetool.keepBackup", BoolText(edit.KeepBackup), cancellationToken);
     }
@@ -275,9 +280,12 @@ public sealed class GitToolsService : IGitToolsService
         {
             path = await ReadEffectiveToolFieldAsync(repository, kind, selection.Value, "path", cancellationToken);
             command = await ReadEffectiveToolFieldAsync(repository, kind, selection.Value, "cmd", cancellationToken);
-            trust = await ReadEffectiveToolFieldAsync(repository, kind, selection.Value, "trustExitCode", cancellationToken);
+            if (kind == GitToolKind.Merge)
+                trust = await ReadEffectiveToolFieldAsync(repository, kind, selection.Value, "trustExitCode", cancellationToken);
         }
-        if (kind == GitToolKind.Merge)
+        if (kind == GitToolKind.Diff)
+            trust = await ReadEffectiveConfigValueAsync(repository, "difftool.trustExitCode", cancellationToken);
+        else
             keepBackup = await ReadEffectiveConfigValueAsync(repository, "mergetool.keepBackup", cancellationToken);
 
         var global = await ReadToolScopeAsync(repository, kind, GitToolConfigurationSource.Global, GitToolWriteScope.Global, cancellationToken);
@@ -346,15 +354,25 @@ public sealed class GitToolsService : IGitToolsService
         CancellationToken cancellationToken)
     {
         var selection = await ReadScopeSelectionAsync(repository, kind, scope, cancellationToken);
+        var trust = kind == GitToolKind.Diff
+            ? await ReadScopedConfigValueAsync(repository, "difftool.trustExitCode", scope, cancellationToken)
+            : selection is null
+                ? null
+                : await ReadScopedToolFieldAsync(repository, kind, selection.Value, "trustExitCode", scope, cancellationToken);
         var keep = kind == GitToolKind.Merge
             ? await ReadScopedConfigValueAsync(repository, "mergetool.keepBackup", scope, cancellationToken)
             : null;
         if (selection is null)
-            return new GitToolScopeConfiguration(source, null, null, null, KeepBackup: ParseGitBoolean(keep?.Value));
+            return new GitToolScopeConfiguration(
+                source,
+                null,
+                null,
+                null,
+                TrustExitCode: ParseGitBoolean(trust?.Value),
+                KeepBackup: ParseGitBoolean(keep?.Value));
 
         var path = await ReadScopedToolFieldAsync(repository, kind, selection.Value, "path", scope, cancellationToken);
         var command = await ReadScopedToolFieldAsync(repository, kind, selection.Value, "cmd", scope, cancellationToken);
-        var trust = await ReadScopedToolFieldAsync(repository, kind, selection.Value, "trustExitCode", scope, cancellationToken);
         return new GitToolScopeConfiguration(
             source,
             selection.Key,
@@ -372,15 +390,25 @@ public sealed class GitToolsService : IGitToolsService
         CancellationToken cancellationToken)
     {
         var selection = await ReadSelectionAtArgumentScopeAsync(repository, kind, "--worktree", GitToolConfigurationSource.Worktree, cancellationToken);
+        var trust = kind == GitToolKind.Diff
+            ? await ReadConfigAtArgumentScopeAsync(repository, "difftool.trustExitCode", "--worktree", GitToolConfigurationSource.Worktree, cancellationToken)
+            : selection is null
+                ? null
+                : await ReadToolFieldAtArgumentScopeAsync(repository, kind, selection.Value, "trustExitCode", "--worktree", GitToolConfigurationSource.Worktree, cancellationToken);
         var keep = kind == GitToolKind.Merge
             ? await ReadConfigAtArgumentScopeAsync(repository, "mergetool.keepBackup", "--worktree", GitToolConfigurationSource.Worktree, cancellationToken)
             : null;
         if (selection is null)
-            return new GitToolScopeConfiguration(GitToolConfigurationSource.Worktree, null, null, null, KeepBackup: ParseGitBoolean(keep?.Value));
+            return new GitToolScopeConfiguration(
+                GitToolConfigurationSource.Worktree,
+                null,
+                null,
+                null,
+                TrustExitCode: ParseGitBoolean(trust?.Value),
+                KeepBackup: ParseGitBoolean(keep?.Value));
 
         var path = await ReadToolFieldAtArgumentScopeAsync(repository, kind, selection.Value, "path", "--worktree", GitToolConfigurationSource.Worktree, cancellationToken);
         var command = await ReadToolFieldAtArgumentScopeAsync(repository, kind, selection.Value, "cmd", "--worktree", GitToolConfigurationSource.Worktree, cancellationToken);
-        var trust = await ReadToolFieldAtArgumentScopeAsync(repository, kind, selection.Value, "trustExitCode", "--worktree", GitToolConfigurationSource.Worktree, cancellationToken);
         return new GitToolScopeConfiguration(
             GitToolConfigurationSource.Worktree,
             selection.Key,
@@ -398,15 +426,25 @@ public sealed class GitToolsService : IGitToolsService
         CancellationToken cancellationToken)
     {
         var selection = await ReadSelectionAtArgumentScopeAsync(repository, kind, "--system", GitToolConfigurationSource.System, cancellationToken);
+        var trust = kind == GitToolKind.Diff
+            ? await ReadConfigAtArgumentScopeAsync(repository, "difftool.trustExitCode", "--system", GitToolConfigurationSource.System, cancellationToken)
+            : selection is null
+                ? null
+                : await ReadToolFieldAtArgumentScopeAsync(repository, kind, selection.Value, "trustExitCode", "--system", GitToolConfigurationSource.System, cancellationToken);
         var keep = kind == GitToolKind.Merge
             ? await ReadConfigAtArgumentScopeAsync(repository, "mergetool.keepBackup", "--system", GitToolConfigurationSource.System, cancellationToken)
             : null;
         if (selection is null)
-            return new GitToolScopeConfiguration(GitToolConfigurationSource.System, null, null, null, KeepBackup: ParseGitBoolean(keep?.Value));
+            return new GitToolScopeConfiguration(
+                GitToolConfigurationSource.System,
+                null,
+                null,
+                null,
+                TrustExitCode: ParseGitBoolean(trust?.Value),
+                KeepBackup: ParseGitBoolean(keep?.Value));
 
         var path = await ReadToolFieldAtArgumentScopeAsync(repository, kind, selection.Value, "path", "--system", GitToolConfigurationSource.System, cancellationToken);
         var command = await ReadToolFieldAtArgumentScopeAsync(repository, kind, selection.Value, "cmd", "--system", GitToolConfigurationSource.System, cancellationToken);
-        var trust = await ReadToolFieldAtArgumentScopeAsync(repository, kind, selection.Value, "trustExitCode", "--system", GitToolConfigurationSource.System, cancellationToken);
         return new GitToolScopeConfiguration(
             GitToolConfigurationSource.System,
             selection.Key,
