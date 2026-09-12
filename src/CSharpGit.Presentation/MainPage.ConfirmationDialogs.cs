@@ -100,7 +100,7 @@ public sealed partial class MainPage
                 DefaultButton = ContentDialogButton.Close
             };
 
-            var command = await dialog.ShowAsync() switch
+            var command = (await dialog.ShowAsync()) switch
             {
                 ContentDialogResult.Primary => _viewModel.StageAllAndCommitCommand,
                 ContentDialogResult.Secondary => _viewModel.ConfirmEmptyCommitCommand,
