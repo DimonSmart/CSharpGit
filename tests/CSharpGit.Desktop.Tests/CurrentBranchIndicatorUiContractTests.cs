@@ -15,6 +15,8 @@ public sealed class CurrentBranchIndicatorUiContractTests
         Assert.Contains("FontWeights.Bold", node, StringComparison.Ordinal);
         Assert.Contains("CurrentBranchAccentVisibility => IsCurrent", node, StringComparison.Ordinal);
         Assert.Contains("CurrentLocalBranchIconVisibility", node, StringComparison.Ordinal);
+        Assert.Contains("Kind is RepositoryTreeNodeKind.LocalBranch or RepositoryTreeNodeKind.Worktree", node, StringComparison.Ordinal);
+        Assert.Contains("adjustedSegments[^1] = RepositoryTreeGuideSegmentKind.Empty", node, StringComparison.Ordinal);
         Assert.DoesNotContain("✓", node, StringComparison.Ordinal);
 
         Assert.Contains("FontWeight=\"{Binding NameFontWeight}\"", workspace, StringComparison.Ordinal);
