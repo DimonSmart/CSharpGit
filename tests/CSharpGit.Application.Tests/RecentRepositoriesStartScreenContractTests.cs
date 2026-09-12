@@ -52,6 +52,9 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("Recent repositories", recentView);
         Assert.Contains("Open repository", recentView);
         Assert.Contains("RemoveCommand", recentView);
+        Assert.Contains("RemoveUnavailableRepositoriesCommand", recentView);
+        Assert.Contains("IsEnabled=\"{Binding HasUnavailableRepositories}\"", recentView);
+        Assert.Contains("Remove missing", recentView);
         Assert.Contains("TileOpacity", recentView);
         Assert.Contains("VariableSizedWrapGrid", recentView);
         Assert.DoesNotContain("ItemsWrapGrid", recentView);
@@ -74,6 +77,11 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("ResolveAsync(", recentViewModel);
         Assert.Contains("item.SetRepositoryImagePath(imagePath)", recentViewModel);
         Assert.Contains("CancellationTokenSource", recentViewModel);
+        Assert.Contains("OrderByDescending(settings => Directory.Exists(settings.Path))", recentViewModel);
+        Assert.Contains("HasUnavailableRepositories", recentViewModel);
+        Assert.Contains("RemoveUnavailableRepositoriesAsync", recentViewModel);
+        Assert.Contains("Where(item => !item.IsAvailable)", recentViewModel);
+        Assert.Contains("await _settings.RemoveRecentRepositoryAsync(path)", recentViewModel);
 
         Assert.Contains("Directory.Exists(item.Path)", integration);
         Assert.Contains("RecordRecentRepositoryAsync", integration);

@@ -110,19 +110,36 @@
           </GridView.ItemTemplate>
         </GridView>
 
-        <Button Command="{Binding OpenRepositoryCommand}"
-                Width="240" Height="82"
-                Padding="{StaticResource Padding.Form}"
-                HorizontalAlignment="Left"
-                HorizontalContentAlignment="Stretch">
-          <Grid ColumnDefinitions="42,*" ColumnSpacing="{StaticResource Spacing.XL}">
-            <FontIcon Glyph="&#xE8B7;" FontSize="24" VerticalAlignment="Center" />
-            <StackPanel Grid.Column="1" Spacing="{StaticResource Spacing.XS}" VerticalAlignment="Center">
-              <TextBlock Text="Open repository" Style="{StaticResource BodyStrongTextStyle}" />
-              <TextBlock Text="Choose a folder…" Style="{StaticResource SecondaryTextStyle}" />
-            </StackPanel>
-          </Grid>
-        </Button>
+        <StackPanel Orientation="Horizontal"
+                    Spacing="{StaticResource Spacing.M}"
+                    HorizontalAlignment="Left">
+          <Button Command="{Binding OpenRepositoryCommand}"
+                  Width="240" Height="82"
+                  Padding="{StaticResource Padding.Form}"
+                  HorizontalContentAlignment="Stretch">
+            <Grid ColumnDefinitions="42,*" ColumnSpacing="{StaticResource Spacing.XL}">
+              <FontIcon Glyph="&#xE8B7;" FontSize="24" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Spacing="{StaticResource Spacing.XS}" VerticalAlignment="Center">
+                <TextBlock Text="Open repository" Style="{StaticResource BodyStrongTextStyle}" />
+                <TextBlock Text="Choose a folder…" Style="{StaticResource SecondaryTextStyle}" />
+              </StackPanel>
+            </Grid>
+          </Button>
+
+          <Button Command="{Binding RemoveUnavailableRepositoriesCommand}"
+                  IsEnabled="{Binding HasUnavailableRepositories}"
+                  Width="240" Height="82"
+                  Padding="{StaticResource Padding.Form}"
+                  HorizontalContentAlignment="Stretch">
+            <Grid ColumnDefinitions="42,*" ColumnSpacing="{StaticResource Spacing.XL}">
+              <FontIcon Glyph="&#xE74D;" FontSize="24" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Spacing="{StaticResource Spacing.XS}" VerticalAlignment="Center">
+                <TextBlock Text="Remove missing" Style="{StaticResource BodyStrongTextStyle}" />
+                <TextBlock Text="Clean up recent list" Style="{StaticResource SecondaryTextStyle}" />
+              </StackPanel>
+            </Grid>
+          </Button>
+        </StackPanel>
       </StackPanel>
     </ScrollViewer>
   </Grid>
