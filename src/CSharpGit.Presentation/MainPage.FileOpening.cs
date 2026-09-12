@@ -4,6 +4,7 @@ using CSharpGit.Domain;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 
 namespace CSharpGit.Presentation;
 
@@ -64,6 +65,7 @@ public sealed partial class MainPage
     {
         InstallCommitFileActions();
         InstallWorkingTreeFileActions();
+        InstallWorkingTreeBulkActions();
 
         ChangedFilesTree.RightTapped += ChangedFilesTree_RightTapped;
         ChangedFilesTree.DoubleTapped += ChangedFilesTree_DoubleTapped;
@@ -121,6 +123,50 @@ public sealed partial class MainPage
         actions.Children.Add(_workingTreeRevealButton);
         Grid.SetColumn(actions, 2);
         headerGrid.Children.Add(actions);
+    }
+
+    private void InstallWorkingTreeBulkActions()
+    {
+        if (FindWorkingTreeHeaderActions(UnstagedHeader) is { } unstagedActions)
+        {
+            unstagedActions.Children.Clear();
+            unstagedActions.Children.Add(CreateWorkingTreeActionButton("Stage all", "\uE710", _viewModel.StageAllCommand));
+            unstagedActions.Children.Add(CreateWorkingTreeActionButton("Discard all", "\uE74D", _viewModel.RequestDiscardAllCommand, destructive: true));
+        }
+
+        if (FindWorkingTreeHeaderActions(StagedHeader) is { } stagedActions)
+        {
+            stagedActions.Children.Clear();
+            stagedActions.Children.Add(CreateWorkingTreeActionButton("Unstage all", "\uE738", _viewModel.UnstageAllCommand));
+        }
+    }
+
+    private static StackPanel? FindWorkingTreeHeaderActions(TextBlock header) =>
+        header.Parent is Grid grid
+            ? grid.Children.OfType<StackPanel>().FirstOrDefault(child => Grid.GetColumn(child) == 1)
+            : null;
+
+    private static Button CreateWorkingTreeActionButton(string text, string glyph, System.Windows.Input.ICommand command, bool destructive = false)
+    {
+        var content = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        content.Children.Add(new FontIcon { Glyph = glyph, FontSize = 12 });
+        content.Children.Add(new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center });
+
+        var button = new Button
+        {
+            Content = content,
+            Command = command,
+            Padding = new Thickness(7, 2, 7, 2),
+            MinHeight = 26,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        if (destructive) button.Foreground = CreateDestructiveBrush();
+        return button;
     }
 
     private static Button CreateActionButton(string text, string tooltip, RoutedEventHandler click)
@@ -553,20 +599,14 @@ public sealed partial class MainPage
         if (source is null || sender is not ListView list || source.DataContext is not WorkingTreeChange change || _viewModel.Repository is null || _fileVersionService is null)
             return;
         var kind = ReferenceEquals(list, StagedChangesList) ? WorkingTreeDiffKind.Staged : WorkingTreeDiffKind.Unstaged;
-        SelectWorkingTreeChange(change, kind);
+        SelectWorkingTreeContextRow(list, change, kind);
         try
         {
             var pair = await _fileVersionService.ResolveWorkingTreeAsync(_viewModel.Repository, change, kind);
             _workingTreeFileVersions = pair;
             _workingTreeRevealPath = TryResolveReveal(_viewModel.Repository, pair.RevealPath);
             UpdateWorkingTreeButtons();
-            var flyout = BuildFileMenu(
-                pair,
-                _workingTreeRevealPath is not null,
-                () => OpenSelectedWorkingTreeVersionAsync(DiffFileSide.Changed),
-                () => OpenSelectedWorkingTreeVersionAsync(DiffFileSide.Original),
-                OpenSelectedWorkingTreeExternalDiffAsync,
-                RevealSelectedWorkingTreeFileAsync);
+            var flyout = BuildWorkingTreeFileMenu(pair, kind, _workingTreeRevealPath is not null);
             flyout.ShowAt(source);
             args.Handled = true;
         }
@@ -576,13 +616,72 @@ public sealed partial class MainPage
         }
     }
 
+    private void SelectWorkingTreeContextRow(ListView list, WorkingTreeChange change, WorkingTreeDiffKind kind)
+    {
+        _workingTreeSelectionSync = true;
+        try
+        {
+            list.SelectedItems.Clear();
+            list.SelectedItem = change;
+        }
+        finally
+        {
+            _workingTreeSelectionSync = false;
+        }
+
+        _viewModel.SetWorkingTreeSelection(kind, [change]);
+        SelectWorkingTreeChange(change, kind);
+    }
+
+    private MenuFlyout BuildWorkingTreeFileMenu(DiffFileVersionPair pair, WorkingTreeDiffKind kind, bool canReveal)
+    {
+        var flyout = BuildFileMenu(
+            pair,
+            canReveal,
+            () => OpenSelectedWorkingTreeVersionAsync(DiffFileSide.Changed),
+            () => OpenSelectedWorkingTreeVersionAsync(DiffFileSide.Original),
+            OpenSelectedWorkingTreeExternalDiffAsync,
+            RevealSelectedWorkingTreeFileAsync,
+            separateReveal: false);
+
+        flyout.Items.Insert(0, new MenuFlyoutSeparator());
+        if (kind == WorkingTreeDiffKind.Unstaged)
+        {
+            flyout.Items.Insert(0, CreateWorkingTreeCommandMenuItem("Discard file", "\uE74D", _viewModel.RequestDiscardSelectedCommand, destructive: true));
+            flyout.Items.Insert(0, CreateWorkingTreeCommandMenuItem("Stage file", "\uE710", _viewModel.StageCommand));
+        }
+        else
+        {
+            flyout.Items.Insert(0, CreateWorkingTreeCommandMenuItem("Unstage file", "\uE738", _viewModel.UnstageCommand));
+        }
+
+        return flyout;
+    }
+
+    private static MenuFlyoutItem CreateWorkingTreeCommandMenuItem(
+        string text,
+        string glyph,
+        System.Windows.Input.ICommand command,
+        bool destructive = false)
+    {
+        var item = new MenuFlyoutItem
+        {
+            Text = text,
+            Icon = new FontIcon { Glyph = glyph },
+            Command = command
+        };
+        if (destructive) item.Foreground = CreateDestructiveBrush();
+        return item;
+    }
+
     private MenuFlyout BuildFileMenu(
         DiffFileVersionPair pair,
         bool canReveal,
         Func<Task> openChanged,
         Func<Task> openOriginal,
         Func<Task> openExternalDiff,
-        Func<Task> reveal)
+        Func<Task> reveal,
+        bool separateReveal = true)
     {
         var flyout = new MenuFlyout();
         flyout.Items.Add(CreateMenuItem("Open changed", pair.Changed, openChanged));
@@ -595,7 +694,7 @@ public sealed partial class MainPage
         ToolTipService.SetToolTip(externalItem, externalItem.IsEnabled ? externalItem.Text : ExternalDiffUnavailableReason(pair));
         externalItem.Click += async (_, _) => await openExternalDiff();
         flyout.Items.Add(externalItem);
-        flyout.Items.Add(new MenuFlyoutSeparator());
+        if (separateReveal) flyout.Items.Add(new MenuFlyoutSeparator());
         var revealItem = new MenuFlyoutItem { Text = _desktopShellService?.RevealDescription ?? "Reveal", IsEnabled = canReveal };
         ToolTipService.SetToolTip(revealItem, canReveal ? revealItem.Text : "The file is not present in the current working tree.");
         revealItem.Click += async (_, _) => await reveal();
@@ -610,6 +709,9 @@ public sealed partial class MainPage
         item.Click += async (_, _) => await action();
         return item;
     }
+
+    private static SolidColorBrush CreateDestructiveBrush() =>
+        new(Microsoft.UI.Colors.Red);
 
     private static bool CanExternalDiff(DiffFileVersionPair pair) =>
         CanExternalDiffSide(pair.Original) && CanExternalDiffSide(pair.Changed);
