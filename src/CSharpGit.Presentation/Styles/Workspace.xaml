@@ -88,6 +88,7 @@
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="GlyphOpacity" Value="0" />
   </Style>
 
   <Style x:Key="RepositoryTreeItemStyle"
@@ -96,7 +97,9 @@
     <Setter Property="GlyphOpacity" Value="0" />
   </Style>
 
-  <Style x:Key="ChangedFileRowStyle" TargetType="TreeViewItem" BasedOn="{StaticResource DenseTreeItemStyle}" />
+  <Style x:Key="ChangedFileRowStyle" TargetType="TreeViewItem" BasedOn="{StaticResource DenseTreeItemStyle}">
+    <Setter Property="GlyphOpacity" Value="1" />
+  </Style>
 
   <Style x:Key="DiffRowStyle" TargetType="ListViewItem">
     <Setter Property="MinHeight" Value="{StaticResource Height.DiffRow}" />
