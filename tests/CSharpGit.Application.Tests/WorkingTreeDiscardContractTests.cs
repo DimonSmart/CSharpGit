@@ -24,6 +24,18 @@ public sealed class WorkingTreeDiscardContractTests
     }
 
     [Fact]
+    public void SingleSelectedConfirmationNamesTheExactFile()
+    {
+        var request = WorkingTreeDiscard.CreateSelected(
+        [
+            new WorkingTreeChange("src/Foo.cs", ' ', 'M')
+        ]);
+
+        Assert.NotNull(request);
+        Assert.Equal("Discard unstaged changes in 'src/Foo.cs'?", request.ConfirmationMessage);
+    }
+
+    [Fact]
     public void ConfirmationOmitsPermanentDeletionWarningWithoutUntrackedFiles()
     {
         var request = WorkingTreeDiscard.CreateAll(
@@ -70,10 +82,11 @@ public sealed class WorkingTreeDiscardContractTests
     }
 
     [Fact]
-    public void WorkingTreeUiExposesSelectedAndAllDiscardWithDestructiveConfirmation()
+    public void WorkingTreeUiUsesModalDiscardConfirmation()
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ConfirmationDialogs.cs"));
         var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.Discard.cs"));
 
         Assert.Contains("Command=\"{Binding RequestDiscardSelectedCommand}\"", xaml);
@@ -81,15 +94,23 @@ public sealed class WorkingTreeDiscardContractTests
         Assert.Contains("Command=\"{Binding RequestDiscardAllCommand}\"", xaml);
         Assert.Contains("ToolTipService.ToolTip=\"Discard all…\"", xaml);
         Assert.Contains("Foreground=\"{ThemeResource SystemFillColorCriticalBrush}\"", xaml);
-        Assert.Contains("Message=\"{Binding BatchDiscardConfirmationMessage}\"", xaml);
-        Assert.Contains("Command=\"{Binding CancelBatchDiscardCommand}\"", xaml);
-        Assert.Contains("Command=\"{Binding ConfirmBatchDiscardCommand}\"", xaml);
-        Assert.Contains("Background=\"{ThemeResource SystemFillColorCriticalBrush}\"", xaml);
+        Assert.DoesNotContain("BatchDiscardConfirmationVisibility", xaml);
+        Assert.DoesNotContain("Title=\"Discard unstaged changes?\"", xaml);
+
+        Assert.Contains("new ContentDialog", dialogs);
+        Assert.Contains("Title = \"Discard changes?\"", dialogs);
+        Assert.Contains("PrimaryButtonText = \"Discard\"", dialogs);
+        Assert.Contains("CloseButtonText = \"Cancel\"", dialogs);
+        Assert.Contains("DefaultButton = ContentDialogButton.Close", dialogs);
+        Assert.Contains("_viewModel.ConfirmBatchDiscardCommand", dialogs);
+        Assert.Contains("_viewModel.CancelBatchDiscardCommand", dialogs);
+        Assert.Contains("BatchDiscardConfirmationMessage", dialogs);
 
         Assert.Contains("WorkingTreeDiscard.CreateSelected(_selectedUnstagedChanges)", discardViewModel);
         Assert.Contains("WorkingTreeDiscard.CreateAll(Changes)", discardViewModel);
         Assert.Contains("WorkingTreeDiscard.ExecuteAsync", discardViewModel);
         Assert.Contains("WorkingTreeDiscard.FormatFailures(results)", discardViewModel);
+        Assert.DoesNotContain("BatchDiscardConfirmationVisibility", discardViewModel);
     }
 
     [Fact]
