@@ -23,6 +23,10 @@ public sealed class GitToolsUiContractTests
         Assert.Contains("Global", xaml);
         Assert.Contains("Repository", xaml);
         Assert.Contains("Worktree", xaml);
+        Assert.Contains("System", xaml);
+        Assert.Contains("Editor.SystemDisplay", xaml);
+        Assert.Contains("Diff.SystemDisplay", xaml);
+        Assert.Contains("Merge.SystemDisplay", xaml);
         Assert.Contains("Open Test File", xaml);
         Assert.Contains("Test Diff Tool", xaml);
         Assert.Contains("Test Merge Tool", xaml);
@@ -38,6 +42,7 @@ public sealed class GitToolsUiContractTests
         Assert.Contains("TestAsync", contract);
         Assert.Contains("GitToolWriteScope.Global", viewModel);
         Assert.Contains("GitToolWriteScope.Repository", viewModel);
+        Assert.Contains("SystemDisplay", viewModel);
         Assert.DoesNotContain("SelectedDiffPreset", appSettings);
         Assert.DoesNotContain("SelectedMergePreset", appSettings);
         Assert.DoesNotContain("core.editor", appSettings, StringComparison.OrdinalIgnoreCase);
