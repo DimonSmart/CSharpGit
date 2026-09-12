@@ -20,6 +20,7 @@
     <ProjectReference Include="../CSharpGit.Infrastructure/CSharpGit.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <UnoIcon Include="Assets\Icons\icon.png" Resize="true" />
     <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
