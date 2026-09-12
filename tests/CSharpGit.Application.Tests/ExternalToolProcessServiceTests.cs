@@ -29,7 +29,10 @@ public sealed class ExternalToolProcessServiceTests : IDisposable
         var service = new ExternalToolProcessService();
         var resolved = service.ResolveExecutable($"\"{executable}\" --wait");
 
-        Assert.Equal(Path.GetFullPath(executable), resolved);
+        Assert.True(string.Equals(
+            Path.GetFullPath(executable),
+            resolved,
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal));
     }
 
     [Fact]
@@ -49,7 +52,10 @@ public sealed class ExternalToolProcessServiceTests : IDisposable
         var service = new ExternalToolProcessService();
         var resolved = service.ResolveExecutable(command);
 
-        Assert.Equal(Path.GetFullPath(executable), resolved);
+        Assert.True(string.Equals(
+            Path.GetFullPath(executable),
+            resolved,
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal));
     }
 
     [Fact]
