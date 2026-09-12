@@ -115,16 +115,35 @@ public sealed class GitToolsServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task DiffToolSpecificConfigurationFallsBackToMergeToolConfiguration()
+    public async Task DiffToolSpecificPathFallsBackToMergeToolConfiguration()
     {
         RunGit(_repositoryPath, "config", "diff.guitool", "shared-tool");
         RunGit(_repositoryPath, "config", "mergetool.shared-tool.path", Path.Combine(_root, "Shared Tool"));
-        RunGit(_repositoryPath, "config", "mergetool.shared-tool.trustExitCode", "true");
 
         var snapshot = await _service.ReadAsync(_repository, GitToolKind.Diff);
 
         Assert.Equal(Path.Combine(_root, "Shared Tool"), snapshot.EffectivePath);
+        Assert.Null(snapshot.EffectiveTrustExitCode);
+    }
+
+    [Fact]
+    public async Task DiffTrustExitCodeUsesStandardNonToolSpecificKey()
+    {
+        await _service.SaveAsync(
+            _repository,
+            new GitToolEdit(
+                GitToolKind.Diff,
+                GitToolWriteScope.Repository,
+                "my-diff",
+                TrustExitCode: true,
+                UpdateTrustExitCode: true));
+
+        var snapshot = await _service.ReadAsync(_repository, GitToolKind.Diff);
+
+        Assert.Equal("true", ReadGit(_repositoryPath, "config", "--get", "difftool.trustExitCode"));
+        Assert.Equal(string.Empty, ReadGitAllowFailure(_repositoryPath, "config", "--get", "difftool.my-diff.trustExitCode"));
         Assert.True(snapshot.EffectiveTrustExitCode);
+        Assert.True(snapshot.Repository.TrustExitCode);
     }
 
     [Fact]
@@ -258,6 +277,7 @@ public sealed class GitToolsServiceTests : IDisposable
         var source = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitToolsService.cs"));
 
         Assert.Contains("\"system\" => GitToolConfigurationSource.System", source);
+        Assert.Contains("\"difftool.trustExitCode\"", source);
         Assert.Contains("\"--gui\", \"--no-prompt\"", source);
         Assert.DoesNotContain("difftool.prompt", source);
         Assert.DoesNotContain("mergetool.prompt", source);
