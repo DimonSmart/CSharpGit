@@ -308,5 +308,5 @@ public sealed record CommitFileRow(string Status, ChangedFile File)
 {
     public string Path => File.Path;
     public string AddedDisplay => File.AddedLines is { } value ? $"+{value}" : string.Empty;
-    public string DeletedDisplay => File.DeletedLines is { } value ? $"-{value}" : string.Empty;
+    public string DeletedDisplay => File.RemovedLines is { } value ? $"-{value}" : string.Empty;
 }
