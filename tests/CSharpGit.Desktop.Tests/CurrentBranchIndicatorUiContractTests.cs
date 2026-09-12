@@ -18,11 +18,10 @@ public sealed class CurrentBranchIndicatorUiContractTests
         Assert.DoesNotContain("✓", node, StringComparison.Ordinal);
 
         Assert.Contains("FontWeight=\"{Binding NameFontWeight}\"", workspace, StringComparison.Ordinal);
-        Assert.Equal(2, CountOccurrences(workspace, "Visibility=\"{Binding CurrentBranchAccentVisibility}\""));
+        Assert.Equal(1, CountOccurrences(workspace, "Visibility=\"{Binding CurrentBranchAccentVisibility}\""));
         Assert.Contains("Background=\"{ThemeResource AccentFillColorDefaultBrush}\"", workspace, StringComparison.Ordinal);
         Assert.Contains("Opacity=\"0.12\"", workspace, StringComparison.Ordinal);
-        Assert.Contains("Width=\"2\"", workspace, StringComparison.Ordinal);
-        Assert.Contains("Margin=\"4,0,0,0\"", workspace, StringComparison.Ordinal);
+        Assert.DoesNotContain("Margin=\"4,0,0,0\"", workspace, StringComparison.Ordinal);
         Assert.Contains("Visibility=\"{Binding CurrentLocalBranchIconVisibility}\"", workspace, StringComparison.Ordinal);
         Assert.Contains("IsHitTestVisible=\"False\"", workspace, StringComparison.Ordinal);
 
