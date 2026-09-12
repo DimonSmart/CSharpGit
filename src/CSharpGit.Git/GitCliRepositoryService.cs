@@ -119,7 +119,6 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
         }
 
         await RunGitForMutationAsync(repository, cancellationToken, "config", scope, "merge.tool", name);
-        await RunGitForMutationAsync(repository, cancellationToken, "config", scope, "mergetool.prompt", "false");
 
         if (configuration.Kind == MergeToolConfigurationKind.Preset)
         {
@@ -140,11 +139,11 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
     public async Task RunMergeToolForFileAsync(Repository repository, ConflictFile conflict, CancellationToken cancellationToken = default)
     {
         ValidateConflictAction(conflict, conflict.CanRunMergeTool);
-        await RunMergeToolAsync(repository, cancellationToken, "mergetool", "--no-prompt", "--", conflict.Path);
+        await RunMergeToolAsync(repository, cancellationToken, "mergetool", "--gui", "--no-prompt", "--", conflict.Path);
     }
 
     public Task RunMergeToolWorkflowAsync(Repository repository, CancellationToken cancellationToken = default) =>
-        RunMergeToolAsync(repository, cancellationToken, "mergetool", "--no-prompt");
+        RunMergeToolAsync(repository, cancellationToken, "mergetool", "--gui", "--no-prompt");
 
     public async Task OpenConflictAsync(Repository repository, ConflictFile conflict, CancellationToken cancellationToken = default)
     {
@@ -819,7 +818,7 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
 
     private static void EnsureMergeToolVariables(string command)
     {
-        foreach (var variable in new[] { "$BASE", "$LOCAL", "$REMOTE", "$MERGED" })
+        foreach (var variable in new[] { "$LOCAL", "$REMOTE", "$MERGED" })
             if (!command.Contains(variable, StringComparison.Ordinal))
                 throw new ArgumentException($"The merge tool command must pass {variable}.");
     }
