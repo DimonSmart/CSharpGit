@@ -128,7 +128,8 @@ public sealed class DesktopUiContractTests
         foreach (var command in new[]
         {
             "StageSelectedCommand", "StageAllCommand", "UnstageSelectedCommand", "UnstageAllCommand",
-            "CommitCommand", "AmendCommand", "ConfirmDiscardCommand",
+            "CommitCommand", "AmendCommand", "RequestDiscardSelectedCommand", "RequestDiscardAllCommand",
+            "ConfirmBatchDiscardCommand", "CancelBatchDiscardCommand",
             "FetchCommand", "FetchAllCommand", "PullCommand", "CreateStashCommand", "ApplyStashCommand",
             "PopStashCommand", "MergeCommand", "StartRebaseCommand", "ContinueOperationCommand", "SkipOperationCommand",
             "AbortOperationCommand", "MergeToolCommand", "MergeToolWorkflowCommand"
