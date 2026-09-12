@@ -4,6 +4,13 @@ using CSharpGit.Infrastructure;
 
 namespace CSharpGit.Application.Tests;
 
+[CollectionDefinition(CollectionName, DisableParallelization = true)]
+public sealed class ExternalToolProcessEnvironmentCollection
+{
+    public const string CollectionName = "External tool process environment";
+}
+
+[Collection(ExternalToolProcessEnvironmentCollection.CollectionName)]
 public sealed class ExternalToolProcessServiceTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"csharpgit-external-tool-{Guid.NewGuid():N}");
@@ -62,12 +69,12 @@ public sealed class ExternalToolProcessServiceTests : IDisposable
         if (OperatingSystem.IsWindows())
         {
             Assert.EndsWith("cmd.exe", startInfo.FileName, StringComparison.OrdinalIgnoreCase);
-            Assert.Equal(["/d", "/s", "/c", $"editor --wait \"{filePath}\""], startInfo.ArgumentList.ToArray());
+            Assert.Equal(new[] { "/d", "/s", "/c", $"editor --wait \"{filePath}\"" }, startInfo.ArgumentList.ToArray());
         }
         else
         {
             Assert.Equal("/bin/sh", startInfo.FileName);
-            Assert.Equal(["-c", $"editor --wait '{filePath}'"], startInfo.ArgumentList.ToArray());
+            Assert.Equal(new[] { "-c", $"editor --wait '{filePath}'" }, startInfo.ArgumentList.ToArray());
         }
     }
 
