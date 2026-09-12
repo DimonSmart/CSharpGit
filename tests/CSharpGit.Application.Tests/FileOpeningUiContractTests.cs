@@ -22,6 +22,7 @@ public sealed class FileOpeningUiContractTests
         Assert.Contains("StagedChangesList.DoubleTapped", page);
         Assert.Contains("Open original", page);
         Assert.Contains("Open changed", page);
+        Assert.Contains("Open in Diff Tool", page);
         Assert.Contains("RevealDescription", page);
         Assert.DoesNotContain("Process.Start", page);
         Assert.DoesNotContain("ProcessStartInfo", page);
@@ -58,15 +59,16 @@ public sealed class FileOpeningUiContractTests
     }
 
     [Fact]
-    public void ExistingConflictOpenUsesTheSameShellService()
+    public void ExistingConflictOpenUsesConfiguredGitEditor()
     {
         var root = FindRepositoryRoot();
         var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "DesktopRepositoryWorkflowService.cs"));
 
-        Assert.Contains("IDesktopShellService", workflow);
+        Assert.Contains("IGitToolsService", workflow);
         Assert.Contains("IRepositoryPathService", workflow);
         Assert.Contains("pathService.ResolveExistingWorkingTreeFile", workflow);
-        Assert.Contains("shellService.OpenFileAsync", workflow);
+        Assert.Contains("gitTools.OpenEditorAsync", workflow);
+        Assert.DoesNotContain("shellService.OpenFileAsync", workflow);
         Assert.DoesNotContain("Process.Start", workflow);
     }
 
