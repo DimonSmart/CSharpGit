@@ -157,10 +157,25 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 return;
             }
         };
+        SetWindowIcon(_window, startupLogger);
         _window.Activate();
 
         if (Program.InitialRepositoryPath is not null)
             await mainPage.OpenInitialRepositoryAsync();
+    }
+
+    private static void SetWindowIcon(Window window, ILogger logger)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "CSharpGit.ico");
+        if (!File.Exists(iconPath))
+        {
+            logger.LogWarning("Windows application icon was not found at {IconPath}.", iconPath);
+            return;
+        }
+
+        window.AppWindow.SetIcon(iconPath);
     }
 
     private void AppSettings_Changed(object? sender, EventArgs e)
