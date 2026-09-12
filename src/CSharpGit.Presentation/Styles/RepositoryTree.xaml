@@ -1,0 +1,27 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    Keep the stock TreeViewItem template so its indentation, expander slot,
+    row metrics, hover/selection states, and platform behavior stay intact.
+
+    Uno rewrites GlyphOpacity at runtime for nodes with children, so opacity
+    cannot reliably hide the built-in chevrons. Empty glyphs hide only the
+    arrows while preserving the stock expander slot used by the layout.
+  -->
+  <Style x:Key="DenseTreeItemStyle" TargetType="TreeViewItem">
+    <Setter Property="MinHeight" Value="{StaticResource Height.DataRow}" />
+    <Setter Property="Padding" Value="1,0" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="CollapsedGlyph" Value="" />
+    <Setter Property="ExpandedGlyph" Value="" />
+  </Style>
+
+  <Style x:Key="RepositoryTreeItemStyle"
+         TargetType="TreeViewItem"
+         BasedOn="{StaticResource DenseTreeItemStyle}" />
+
+</ResourceDictionary>
