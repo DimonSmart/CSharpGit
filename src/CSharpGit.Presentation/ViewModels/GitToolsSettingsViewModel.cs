@@ -37,6 +37,7 @@ public sealed class GitToolsSettingsViewModel
     {
         ArgumentNullException.ThrowIfNull(section);
         if (section.SelectedScope is null) throw new InvalidOperationException("Select a Git configuration scope.");
+        if (!section.IsDirty) return;
         var edit = section.CreateEdit();
         await _service.SaveAsync(repository, edit, cancellationToken);
         var refreshed = await _service.ReadAsync(repository, section.Kind, cancellationToken);
@@ -221,7 +222,8 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
         }
     }
 
-    public bool CanRemoveOverride => SelectedEditableConfiguration()?.SelectionKey is not null;
+    public bool CanRemoveOverride =>
+        SelectedEditableConfiguration()?.SelectionKey is { } key && IsOwnSelectionKey(Kind, key);
 
     public void Load(GitToolConfigurationSnapshot snapshot, bool repositoryAvailable, GitToolWriteScope? preferredScope = null)
     {
@@ -311,6 +313,16 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
         if (_snapshot is null || SelectedScope is null) return null;
         return SelectedScope.Scope == GitToolWriteScope.Global ? _snapshot.Global : _snapshot.Repository;
     }
+
+    private static bool IsOwnSelectionKey(GitToolKind kind, string key) => kind switch
+    {
+        GitToolKind.Editor => string.Equals(key, "core.editor", StringComparison.OrdinalIgnoreCase),
+        GitToolKind.Diff => string.Equals(key, "diff.guitool", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(key, "diff.tool", StringComparison.OrdinalIgnoreCase),
+        GitToolKind.Merge => string.Equals(key, "merge.guitool", StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(key, "merge.tool", StringComparison.OrdinalIgnoreCase),
+        _ => false
+    };
 
     private void RefreshPresetSelection()
     {
