@@ -374,7 +374,10 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
     private static string ScopeDisplay(GitToolScopeConfiguration? scope)
     {
         if (scope is null || !scope.IsConfigured) return "Not configured";
-        return scope.SelectionValue ?? $"keepBackup={scope.KeepBackup?.ToString().ToLowerInvariant()}";
+        if (!string.IsNullOrWhiteSpace(scope.SelectionValue)) return scope.SelectionValue;
+        if (scope.TrustExitCode is not null) return $"trustExitCode={scope.TrustExitCode.Value.ToString().ToLowerInvariant()}";
+        if (scope.KeepBackup is not null) return $"keepBackup={scope.KeepBackup.Value.ToString().ToLowerInvariant()}";
+        return "Configured";
     }
 
     private static string SourceLabel(GitToolConfigurationSource source) => source switch
