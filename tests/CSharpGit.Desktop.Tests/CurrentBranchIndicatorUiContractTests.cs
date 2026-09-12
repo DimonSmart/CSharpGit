@@ -1,3 +1,5 @@
+using CSharpGit.Presentation.ViewModels;
+
 namespace CSharpGit.Desktop.Tests;
 
 public sealed class CurrentBranchIndicatorUiContractTests
@@ -28,6 +30,25 @@ public sealed class CurrentBranchIndicatorUiContractTests
         Assert.Contains("SelectionMode=\"Single\"", mainPage, StringComparison.Ordinal);
         Assert.DoesNotContain("IsSelected=\"{Binding IsCurrent", workspace, StringComparison.Ordinal);
         Assert.DoesNotContain("SelectedItem=\"{Binding IsCurrent", mainPage, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CurrentLocalBranchDoesNotDrawTerminalGuideBesideHomeIcon()
+    {
+        RepositoryTreeNode.ResetExpansionState();
+        var currentBranch = new RepositoryTreeNode(
+            RepositoryTreeNodeKind.LocalBranch,
+            "master",
+            referenceName: "refs/heads/master",
+            isCurrent: true);
+        var branches = new RepositoryTreeNode(
+            RepositoryTreeNodeKind.Group,
+            "Branches",
+            children: [currentBranch]);
+
+        var branch = Assert.Single(branches.Children);
+        Assert.NotEmpty(branch.HierarchyGuideSegments);
+        Assert.Equal(RepositoryTreeGuideSegmentKind.Empty, branch.HierarchyGuideSegments[^1]);
     }
 
     private static int CountOccurrences(string text, string value)
