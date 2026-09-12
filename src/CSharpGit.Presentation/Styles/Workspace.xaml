@@ -159,8 +159,7 @@
                     <Setter Target="ContentPresenterGrid.Background" Value="{ThemeResource TreeViewItemBackgroundSelectedDisabled}" />
                     <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource TreeViewItemForegroundSelectedDisabled}" />
                     <Setter Target="SelectionIndicator.Fill" Value="{ThemeResource TreeViewItemSelectionIndicatorForegroundDisabled}" />
-                    <Setter Target="ContentPresenterGrid.BorderBrush" Value="{ThemeResource TreeViewItemBorderBrushSelectedDisabled}" />
-                    <Setter Target="SelectionIndicator.Opacity" Value="1" />
+                    <Setter Target="ContentPresenterGrid.BorderBrush" Value="{ThemeResource TreeViewItemBorderBrushDisabled}" />
                   </VisualState.Setters>
                 </VisualState>
               </VisualStateGroup>
@@ -298,11 +297,6 @@
                   Opacity="0.12"
                   Visibility="{Binding CurrentBranchAccentVisibility}"
                   IsHitTestVisible="False" />
-          <Border Width="2"
-                  Background="{ThemeResource AccentFillColorDefaultBrush}"
-                  HorizontalAlignment="Left"
-                  Visibility="{Binding CurrentBranchAccentVisibility}"
-                  IsHitTestVisible="False" />
           <controls:RepositoryTreeGuides Grid.Column="1"
                                          Segments="{Binding HierarchyGuideSegments}"
                                          TotalIndentation="{Binding TemplateSettings.Indentation.Left, ElementName=RepositoryTreeItem}"
@@ -313,7 +307,6 @@
                                          NodeFillBrush="{ThemeResource ControlFillColorDefaultBrush}"
                                          GlyphBrush="{ThemeResource TextFillColorPrimaryBrush}" />
           <StackPanel Grid.Column="1"
-                      Margin="4,0,0,0"
                       Orientation="Horizontal"
                       Spacing="{StaticResource Spacing.S}"
                       VerticalAlignment="Center">
