@@ -87,6 +87,25 @@ public sealed class RepositoryFileVersionServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task CopyUsesGitResolvedSourceAndDestinationPaths()
+    {
+        var repository = await CreateRepositoryAsync();
+        var contents = string.Join('\n', Enumerable.Range(1, 40).Select(index => $"line {index}")) + "\n";
+        CommitText("source.txt", contents, "copy base");
+        File.Copy(Path.Combine(_temporaryDirectory, "source.txt"), Path.Combine(_temporaryDirectory, "copy.txt"));
+        File.AppendAllText(Path.Combine(_temporaryDirectory, "source.txt"), "source changed\n");
+        RunGit("add", "source.txt", "copy.txt");
+        RunGit("commit", "-m", "copy file");
+        var commit = RunGitOutput("rev-parse", "HEAD");
+
+        var pair = await _versionService.ResolveCommitAsync(repository, commit, "copy.txt");
+
+        Assert.Equal("source.txt", pair.Original.GitPath);
+        Assert.Equal("copy.txt", pair.Changed.GitPath);
+        Assert.Equal("C", pair.Status);
+    }
+
+    [Fact]
     public async Task StagedAndUnstagedVersionsMatchDisplayedDiffSides()
     {
         var repository = await CreateRepositoryAsync();
