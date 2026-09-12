@@ -21,22 +21,50 @@ public sealed partial class MainPage
         switch (node.Kind)
         {
             case RepositoryTreeNodeKind.LocalBranch when node.Value is GitBranch branch:
-                AddMenuItem(flyout, "Switch / Checkout", !branch.IsCurrent && !_viewModel.IsBusy, async () =>
+            {
+                var branchWorktree = FindWorktreeForBranch(branch.Name);
+                if (branchWorktree is { IsCurrent: false })
                 {
-                    _viewModel.SelectedLocalBranch = branch;
-                    await ExecuteCommandAsync(_viewModel.SwitchBranchCommand);
-                });
+                    AddMenuItem(flyout, "Open Worktree", !_viewModel.IsBusy, () => OpenWorktreeAsync(branchWorktree));
+                    AddMenuItem(flyout, "Open Worktree Folder", !_viewModel.IsBusy, () => OpenWorktreeFolderAsync(branchWorktree));
+                }
+                else
+                {
+                    AddMenuItem(flyout, "Switch / Checkout", !branch.IsCurrent && !_viewModel.IsBusy, async () =>
+                    {
+                        _viewModel.SelectedLocalBranch = branch;
+                        await ExecuteCommandAsync(_viewModel.SwitchBranchCommand);
+                    });
+                    if (branchWorktree is null)
+                        AddMenuItem(flyout, "Open in New Worktree…", !_viewModel.IsBusy, () => CreateWorktreeFromBranchAsync(branch));
+                }
+
                 AddMenuItem(flyout, "Create branch from here…", !_viewModel.IsBusy, () => CreateBranchFromAsync(branch.Name));
                 AddMenuItem(flyout, "Merge into current branch", !branch.IsCurrent && !_viewModel.IsBusy, async () =>
                 {
                     _viewModel.SelectedMergeBranch = branch;
                     await ExecuteCommandAsync(_viewModel.MergeCommand);
                 });
-                AddMenuItem(flyout, "Delete", !branch.IsCurrent && !_viewModel.IsBusy, () => ConfirmDeleteLocalBranchAsync(branch));
+                AddMenuItem(
+                    flyout,
+                    "Delete",
+                    !branch.IsCurrent && branchWorktree is null && !_viewModel.IsBusy,
+                    () => ConfirmDeleteLocalBranchAsync(branch));
                 flyout.Items.Add(new MenuFlyoutSeparator());
                 AddMenuItem(flyout, "Show branch history only", !_viewModel.IsBusy,
                     () => ShowReferenceHistoryAsync(branch.Name, $"Branch: {branch.Name}"));
                 AddMenuItem(flyout, "Copy branch name", true, () => CopyTextAsync(branch.Name));
+                break;
+            }
+
+            case RepositoryTreeNodeKind.Worktree when node.Value is WorktreeInfo worktree:
+                PopulateWorktreeMenu(flyout, worktree);
+                break;
+
+            case RepositoryTreeNodeKind.Group when node.Name == "Worktrees":
+                AddMenuItem(flyout, "New Worktree…", !_viewModel.IsBusy, CreateNewWorktreeAsync);
+                flyout.Items.Add(new MenuFlyoutSeparator());
+                AddMenuItem(flyout, "Prune Worktrees", !_viewModel.IsBusy, PruneWorktreesAsync);
                 break;
 
             case RepositoryTreeNodeKind.RemoteBranch when node.Value is GitBranch remoteBranch:

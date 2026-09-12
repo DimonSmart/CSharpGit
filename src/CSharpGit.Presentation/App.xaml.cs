@@ -53,7 +53,8 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 services.AddSingleton<IAppSettingsService>(appSettings);
                 services.AddSingleton<ApplicationThemeManager>();
 
-                var checkRepository = Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_REPOSITORY");
+                var checkRepository = Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_REPOSITORY")
+                                      ?? Program.InitialRepositoryPath;
                 services.AddSingleton<RecentRepositoryFolderPicker>(_ =>
                 {
                     IFolderPicker innerPicker;
@@ -115,6 +116,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         mainPage.InitializeGitConsole(
             GitCommandActivitySession.Current,
             _host.Services.GetRequiredService<IAppSettingsService>());
+        mainPage.InitializeWorktreeSupport(_host.Services.GetRequiredService<IWorktreeService>());
         _mainThemeRegistration = themeManager.Register(mainPage);
         _window.Content = mainPage;
         if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_RESULT")))
@@ -156,6 +158,9 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             }
         };
         _window.Activate();
+
+        if (Program.InitialRepositoryPath is not null)
+            await mainPage.OpenInitialRepositoryAsync();
     }
 
     private void AppSettings_Changed(object? sender, EventArgs e)

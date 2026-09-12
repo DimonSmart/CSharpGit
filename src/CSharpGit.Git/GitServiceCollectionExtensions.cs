@@ -33,6 +33,8 @@ public static class GitServiceCollectionExtensions
                 provider.GetRequiredService<DefaultBranchResolver>()));
         services.AddSingleton<IWorkingTreeService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
         services.AddSingleton<IWorkingTreeDiffService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
+        services.AddSingleton<IWorktreeService>(provider =>
+            new GitWorktreeService(provider.GetRequiredService<GitCommandExecutor>()));
         services.AddSingleton<IReferenceService>(provider =>
             new DefaultBranchReferenceService(
                 provider.GetRequiredService<GitCliRepositoryService>(),
