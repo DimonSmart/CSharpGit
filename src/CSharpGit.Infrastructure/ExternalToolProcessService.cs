@@ -15,8 +15,15 @@ public sealed class ExternalToolProcessService : IExternalToolProcessService
 
         if (Path.IsPathRooted(executable) || executable.Contains(Path.DirectorySeparatorChar) || executable.Contains(Path.AltDirectorySeparatorChar))
         {
-            var fullPath = Path.GetFullPath(executable);
-            return IsExecutablePathUsable(fullPath) ? fullPath : null;
+            try
+            {
+                var fullPath = Path.GetFullPath(executable);
+                return IsExecutablePathUsable(fullPath) ? fullPath : null;
+            }
+            catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException or NotSupportedException)
+            {
+                return null;
+            }
         }
 
         var path = Environment.GetEnvironmentVariable("PATH");
@@ -30,8 +37,14 @@ public sealed class ExternalToolProcessService : IExternalToolProcessService
         {
             foreach (var extension in extensions)
             {
-                var candidate = Path.Combine(directory, executable + extension);
-                if (IsExecutablePathUsable(candidate)) return Path.GetFullPath(candidate);
+                try
+                {
+                    var candidate = Path.Combine(directory, executable + extension);
+                    if (IsExecutablePathUsable(candidate)) return Path.GetFullPath(candidate);
+                }
+                catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException or NotSupportedException)
+                {
+                }
             }
         }
 
@@ -53,7 +66,7 @@ public sealed class ExternalToolProcessService : IExternalToolProcessService
             var mode = File.GetUnixFileMode(fullPath);
             return (mode & (UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute)) != 0;
         }
-        catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException or PlatformNotSupportedException)
+        catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException or PlatformNotSupportedException or NotSupportedException)
         {
             return false;
         }
