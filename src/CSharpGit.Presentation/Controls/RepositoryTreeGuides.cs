@@ -8,6 +8,8 @@ namespace CSharpGit.Presentation.Controls;
 
 public sealed class RepositoryTreeGuides : Canvas
 {
+    private readonly TranslateTransform _translation = new();
+
     public static readonly DependencyProperty SegmentsProperty = DependencyProperty.Register(
         nameof(Segments),
         typeof(object),
@@ -34,9 +36,10 @@ public sealed class RepositoryTreeGuides : Canvas
 
     public RepositoryTreeGuides()
     {
-        Width = 0;
+        HorizontalAlignment = HorizontalAlignment.Left;
         IsHitTestVisible = false;
         Opacity = 0.72;
+        RenderTransform = _translation;
     }
 
     public object? Segments
@@ -77,6 +80,9 @@ public sealed class RepositoryTreeGuides : Canvas
             IEnumerable<RepositoryTreeGuideSegmentKind> enumerable => enumerable.ToArray(),
             _ => Array.Empty<RepositoryTreeGuideSegmentKind>()
         };
+        var guideWidth = RepositoryTreeGuideLayout.ResolveIndentation(segments.Count, TotalIndentation);
+        Width = guideWidth;
+        _translation.X = -guideWidth;
 
         foreach (var guideLine in RepositoryTreeGuideLayout.BuildLines(segments, TotalIndentation, RowHeight))
         {
