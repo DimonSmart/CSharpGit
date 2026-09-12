@@ -161,7 +161,7 @@ public sealed class GitToolsExecutionTests : IDisposable
     {
         RunGit("config", "diff.guitool", name);
         RunGit("config", $"difftool.{name}.cmd", command);
-        RunGit("config", $"difftool.{name}.trustExitCode", "true");
+        RunGit("config", "difftool.trustExitCode", "true");
     }
 
     private void ConfigureMergeTool(string name, string command)
