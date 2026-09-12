@@ -471,11 +471,24 @@
                               AutomationProperties.Name="Stage all">
                         <TextBlock Text="++" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" />
                       </Button>
-                      <Button Command="{Binding RequestDiscardCommand}"
+                      <Border Width="1"
+                              Height="18"
+                              Margin="3,0"
+                              Background="{ThemeResource DividerStrokeColorDefaultBrush}"
+                              VerticalAlignment="Center" />
+                      <Button Command="{Binding RequestDiscardSelectedCommand}"
                               Style="{StaticResource IconButtonStyle}"
-                              ToolTipService.ToolTip="Discard selected changes"
-                              AutomationProperties.Name="Discard selected changes">
+                              Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                              ToolTipService.ToolTip="Discard selected"
+                              AutomationProperties.Name="Discard selected">
                         <FontIcon Glyph="&#xE74D;" FontSize="{StaticResource Icon.Small}" />
+                      </Button>
+                      <Button Command="{Binding RequestDiscardAllCommand}"
+                              Style="{StaticResource IconButtonStyle}"
+                              Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                              ToolTipService.ToolTip="Discard all…"
+                              AutomationProperties.Name="Discard all">
+                        <TextBlock Text="All…" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" />
                       </Button>
                     </StackPanel>
                   </Grid>
@@ -621,19 +634,22 @@
                 </StackPanel>
                 <InfoBar IsOpen="True"
                          Severity="Warning"
-                         Title="Confirm discarding unstaged changes"
-                         Message="{Binding DiscardConfirmationMessage}"
-                         Visibility="{Binding DiscardConfirmationVisibility}"
-                         IsClosable="False">
-                  <InfoBar.ActionButton>
-                    <Button Content="Confirm discard" Command="{Binding ConfirmDiscardCommand}" Style="{StaticResource CompactButtonStyle}" />
-                  </InfoBar.ActionButton>
-                </InfoBar>
-                <Button Content="Cancel discard"
-                        Command="{Binding CancelDiscardCommand}"
-                        Visibility="{Binding DiscardConfirmationVisibility}"
-                        Style="{StaticResource CompactButtonStyle}"
-                        HorizontalAlignment="Left" />
+                         Title="Discard unstaged changes?"
+                         Message="{Binding BatchDiscardConfirmationMessage}"
+                         Visibility="{Binding BatchDiscardConfirmationVisibility}"
+                         IsClosable="False" />
+                <StackPanel Orientation="Horizontal"
+                            Spacing="{StaticResource Spacing.S}"
+                            Visibility="{Binding BatchDiscardConfirmationVisibility}">
+                  <Button Content="Cancel"
+                          Command="{Binding CancelBatchDiscardCommand}"
+                          Style="{StaticResource CompactButtonStyle}" />
+                  <Button Content="Discard"
+                          Command="{Binding ConfirmBatchDiscardCommand}"
+                          Style="{StaticResource CompactButtonStyle}"
+                          Background="{ThemeResource SystemFillColorCriticalBrush}"
+                          Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                </StackPanel>
               </StackPanel>
             </Border>
           </Grid>
