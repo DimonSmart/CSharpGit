@@ -27,9 +27,13 @@ public sealed record WorkingTreeDiscardRequest(
         {
             var count = Changes.Count;
             var files = count == 1 ? "file" : "files";
-            var firstLine = Scope == WorkingTreeDiscardScope.Selected
-                ? $"Discard changes in {count} selected {files}?"
-                : $"Discard changes in {count} {files}?";
+            var firstLine = Scope switch
+            {
+                WorkingTreeDiscardScope.Selected when count == 1 =>
+                    $"Discard unstaged changes in '{Changes[0].Path}'?",
+                WorkingTreeDiscardScope.Selected => $"Discard changes in {count} selected files?",
+                _ => $"Discard changes in {count} {files}?"
+            };
 
             if (UntrackedCount == 0) return firstLine;
 
