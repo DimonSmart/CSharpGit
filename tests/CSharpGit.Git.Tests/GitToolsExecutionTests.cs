@@ -78,7 +78,7 @@ public sealed class GitToolsExecutionTests : IDisposable
     }
 
     [Fact]
-    public async Task SelectedAndRepositoryMergeToolWorkflowsLeaveResolutionToGitState()
+    public async Task SelectedAndRepositoryMergeToolWorkflowsDeriveResolutionFromGitState()
     {
         CreateConflict();
         ConfigureMergeTool("csharpgit-test", "true \"$LOCAL\" \"$REMOTE\" \"$MERGED\"");
@@ -91,11 +91,17 @@ public sealed class GitToolsExecutionTests : IDisposable
 
         await _service.RunMergeToolForFileAsync(_repository, conflict);
         var afterSelected = await stateService.ReadAsync(_repository);
-        Assert.Contains(afterSelected.CurrentOperation.Conflicts, item => item.Path == conflict.Path && !item.IsResolved);
+        AssertConflictMatchesGit(afterSelected, conflict.Path);
+
+        RunGit("merge", "--abort");
+        var recreated = RunGitCore(["merge", "right"]);
+        Assert.NotEqual(0, recreated.ExitCode);
+        var beforeWorkflow = await stateService.ReadAsync(_repository);
+        Assert.False(Assert.Single(beforeWorkflow.CurrentOperation.Conflicts).IsResolved);
 
         await _service.RunMergeToolWorkflowAsync(_repository);
         var afterWorkflow = await stateService.ReadAsync(_repository);
-        Assert.Contains(afterWorkflow.CurrentOperation.Conflicts, item => item.Path == conflict.Path && !item.IsResolved);
+        AssertConflictMatchesGit(afterWorkflow, conflict.Path);
         Assert.Equal(beforeConfig, File.ReadAllBytes(Path.Combine(_repositoryPath, ".git", "config")));
     }
 
@@ -176,6 +182,13 @@ public sealed class GitToolsExecutionTests : IDisposable
         RunGit("checkout", "left");
         var result = RunGitCore(["merge", "right"]);
         Assert.NotEqual(0, result.ExitCode);
+    }
+
+    private void AssertConflictMatchesGit(RepositoryState state, string path)
+    {
+        var unmerged = ReadGit("ls-files", "--unmerged", "--", path);
+        var conflict = Assert.Single(state.CurrentOperation.Conflicts, item => item.Path == path);
+        Assert.Equal(string.IsNullOrWhiteSpace(unmerged), conflict.IsResolved);
     }
 
     private void Commit(string relativePath, string contents, string message)
