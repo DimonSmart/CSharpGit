@@ -150,36 +150,19 @@ public sealed partial class MainPage
             _ = RefreshWorkingTreeFileActionStateAsync();
     }
 
-    private async Task RefreshCommitFileActionStateAsync()
+    private Task RefreshCommitFileActionStateAsync()
     {
-        var generation = Interlocked.Increment(ref _commitFileActionGeneration);
+        Interlocked.Increment(ref _commitFileActionGeneration);
         _commitFileVersions = null;
         _commitRevealPath = null;
-        UpdateCommitButtons();
 
         var repository = _viewModel.Repository;
-        var commit = _viewModel.SelectedHistoryRow?.Commit;
         var file = _viewModel.SelectedFile;
-        if (repository is null || commit is null || file is null || _fileVersionService is null) return;
+        if (repository is not null && file is not null && _repositoryPathService is not null)
+            _commitRevealPath = TryResolveReveal(repository, file.Path);
 
-        try
-        {
-            var pair = await _fileVersionService.ResolveCommitAsync(repository, commit.Hash, file.Path);
-            if (generation != Volatile.Read(ref _commitFileActionGeneration)
-                || !ReferenceEquals(repository, _viewModel.Repository)
-                || !string.Equals(commit.Hash, _viewModel.SelectedHistoryRow?.Commit.Hash, StringComparison.Ordinal)
-                || !string.Equals(file.Path, _viewModel.SelectedFile?.Path, StringComparison.Ordinal))
-                return;
-
-            _commitFileVersions = pair;
-            if (_repositoryPathService is not null)
-                _commitRevealPath = TryResolveReveal(repository, pair.RevealPath);
-            UpdateCommitButtons();
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            if (generation == Volatile.Read(ref _commitFileActionGeneration)) UpdateCommitButtons();
-        }
+        UpdateCommitButtons();
+        return Task.CompletedTask;
     }
 
     private async Task RefreshWorkingTreeFileActionStateAsync()
@@ -228,6 +211,7 @@ public sealed partial class MainPage
         {
             SetVersionButton(_commitOpenOriginalButton, _commitFileVersions.Original, "No original version is available.");
             SetVersionButton(_commitOpenChangedButton, _commitFileVersions.Changed, "No changed version is available.");
+            SetExternalDiffButton(_commitExternalDiffButton, _commitFileVersions);
         }
         else
         {
@@ -242,8 +226,12 @@ public sealed partial class MainPage
                 file is not null && !string.Equals(file.Status, "D", StringComparison.Ordinal),
                 "Open changed version",
                 "No changed version is available.");
+            SetAvailabilityButton(
+                _commitExternalDiffButton,
+                _gitToolsService is not null && file is not null,
+                "Open this exact OLD/NEW pair in the configured external diff tool",
+                "Select a file diff first.");
         }
-        SetExternalDiffButton(_commitExternalDiffButton, _commitFileVersions);
         SetRevealButton(_commitRevealButton, _commitRevealPath);
     }
 
