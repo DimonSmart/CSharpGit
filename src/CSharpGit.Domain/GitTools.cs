@@ -68,6 +68,7 @@ public sealed record GitToolConfigurationSnapshot(
     GitToolScopeConfiguration Global,
     GitToolScopeConfiguration Repository,
     GitToolScopeConfiguration Worktree,
+    GitToolScopeConfiguration System,
     IReadOnlyList<GitToolPreset> Presets,
     IReadOnlyList<string> SupportedTools,
     IReadOnlyList<GitToolValidationMessage> Validation)
