@@ -66,7 +66,7 @@ public sealed class ExternalToolProcessService : IExternalToolProcessService
             var mode = File.GetUnixFileMode(fullPath);
             return (mode & (UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute)) != 0;
         }
-        catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException or PlatformNotSupportedException or NotSupportedException)
+        catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException or NotSupportedException)
         {
             return false;
         }
