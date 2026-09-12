@@ -177,7 +177,9 @@ public sealed class RepositoryTreeGuides : Canvas
         IsHitTestVisible = false
     };
 
-    private Path CreateRoundedBranch(RepositoryTreeGuideSegmentGeometry segment, bool includeUpperStem)
+    private Microsoft.UI.Xaml.Shapes.Path CreateRoundedBranch(
+        RepositoryTreeGuideSegmentGeometry segment,
+        bool includeUpperStem)
     {
         var radius = segment.CornerRadius;
         var startY = includeUpperStem ? 0d : segment.MiddleY - radius;
@@ -208,7 +210,7 @@ public sealed class RepositoryTreeGuides : Canvas
 
         var geometry = new PathGeometry();
         geometry.Figures.Add(figure);
-        return new Path
+        return new Microsoft.UI.Xaml.Shapes.Path
         {
             Data = geometry,
             Stroke = LineBrush,
