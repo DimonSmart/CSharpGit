@@ -72,4 +72,18 @@ public sealed class RepositoryTreeGuideLayoutTests
             },
             lines);
     }
+
+    [Fact]
+    public void Expander_is_centered_in_current_indent_column()
+    {
+        Assert.Equal(40, RepositoryTreeGuideLayout.ResolveExpanderCenterX(segmentCount: 3, totalIndentation: 48));
+        Assert.Equal(48, RepositoryTreeGuideLayout.ResolveExpanderSurfaceWidth(segmentCount: 3, totalIndentation: 48));
+    }
+
+    [Fact]
+    public void Root_expander_uses_one_fallback_indent_column_without_root_connector()
+    {
+        Assert.Equal(8, RepositoryTreeGuideLayout.ResolveExpanderCenterX(segmentCount: 0, totalIndentation: 0));
+        Assert.Equal(16, RepositoryTreeGuideLayout.ResolveExpanderSurfaceWidth(segmentCount: 0, totalIndentation: 0));
+    }
 }
