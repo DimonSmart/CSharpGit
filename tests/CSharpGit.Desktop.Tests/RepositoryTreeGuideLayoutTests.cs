@@ -49,9 +49,9 @@ public sealed class RepositoryTreeGuideLayoutTests
         Assert.Equal(
             new[]
             {
-                new RepositoryTreeGuideLine(-40, 0, -40, 24),
-                new RepositoryTreeGuideLine(-8, 0, -8, 12),
-                new RepositoryTreeGuideLine(-8, 12, 0, 12)
+                new RepositoryTreeGuideLine(8, 0, 8, 24),
+                new RepositoryTreeGuideLine(40, 0, 40, 12),
+                new RepositoryTreeGuideLine(40, 12, 48, 12)
             },
             lines);
     }
@@ -67,8 +67,8 @@ public sealed class RepositoryTreeGuideLayoutTests
         Assert.Equal(
             new[]
             {
-                new RepositoryTreeGuideLine(-8, 0, -8, 12),
-                new RepositoryTreeGuideLine(-8, 12, 0, 12)
+                new RepositoryTreeGuideLine(8, 0, 8, 12),
+                new RepositoryTreeGuideLine(8, 12, 16, 12)
             },
             lines);
     }

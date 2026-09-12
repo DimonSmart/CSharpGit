@@ -32,6 +32,13 @@ public static class RepositoryTreeGuideLayout
         return result;
     }
 
+    public static double ResolveIndentation(int segmentCount, double totalIndentation) =>
+        segmentCount <= 0
+            ? 0
+            : totalIndentation > 0
+                ? totalIndentation
+                : segmentCount * FallbackSegmentWidth;
+
     public static IReadOnlyList<RepositoryTreeGuideLine> BuildLines(
         IReadOnlyList<RepositoryTreeGuideSegmentKind> segments,
         double totalIndentation,
@@ -40,11 +47,9 @@ public static class RepositoryTreeGuideLayout
         if (segments.Count == 0 || rowHeight <= 0)
             return Array.Empty<RepositoryTreeGuideLine>();
 
-        var effectiveIndentation = totalIndentation > 0
-            ? totalIndentation
-            : segments.Count * FallbackSegmentWidth;
+        var effectiveIndentation = ResolveIndentation(segments.Count, totalIndentation);
         var segmentWidth = effectiveIndentation / segments.Count;
-        var left = -effectiveIndentation;
+        const double left = 0;
         var middleY = rowHeight / 2d;
         var lines = new List<RepositoryTreeGuideLine>(segments.Count * 2);
 
