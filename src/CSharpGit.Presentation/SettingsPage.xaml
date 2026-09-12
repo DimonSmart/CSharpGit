@@ -23,6 +23,12 @@
           </ListViewItem>
           <ListViewItem Style="{StaticResource FormNavigationItemStyle}">
             <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.L}">
+              <FontIcon Glyph="&#xE943;" FontSize="{StaticResource Icon.Normal}" />
+              <TextBlock Text="Git Tools" Style="{StaticResource BodyTextStyle}" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListViewItem>
+          <ListViewItem Style="{StaticResource FormNavigationItemStyle}">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.L}">
               <FontIcon Glyph="&#xE9D9;" FontSize="{StaticResource Icon.Normal}" />
               <TextBlock Text="Diagnostics" Style="{StaticResource BodyTextStyle}" VerticalAlignment="Center" />
             </StackPanel>
@@ -99,6 +105,172 @@
           </StackPanel>
         </ScrollViewer>
 
+        <ScrollViewer x:Name="GitToolsSettingsPanel"
+                      Visibility="Collapsed"
+                      VerticalScrollBarVisibility="Auto">
+          <StackPanel Padding="{StaticResource Padding.Page}"
+                      Spacing="{StaticResource Spacing.XL}"
+                      MaxWidth="760"
+                      HorizontalAlignment="Left">
+            <TextBlock Text="Git Tools" Style="{StaticResource TitleTextStyle}" />
+            <TextBlock Text="CSharpGit reads and edits standard Git configuration. Presets are only UI shortcuts; the effective tool always comes from Git configuration and environment precedence."
+                       Style="{StaticResource SecondaryTextStyle}"
+                       TextWrapping="Wrap"
+                       MaxWidth="680" />
+
+            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
+              <StackPanel Spacing="{StaticResource Spacing.M}">
+                <TextBlock Text="EDITOR" Style="{StaticResource SectionHeaderTextStyle}" />
+                <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+                  <TextBlock Text="Effective" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Column="1" Text="{Binding Editor.EffectiveDisplay}" Style="{StaticResource BodyStrongTextStyle}" />
+                  <TextBlock Grid.Row="1" Text="Source" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Editor.SourceDisplay}" />
+                  <TextBlock Grid.Row="2" Text="Origin" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Editor.OriginDisplay}" TextWrapping="Wrap" />
+                  <TextBlock Grid.Row="3" Text="Global" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Editor.GlobalDisplay}" />
+                  <TextBlock Grid.Row="4" Text="Repository" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Editor.RepositoryDisplay}" />
+                  <TextBlock Grid.Row="5" Text="Worktree" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Editor.WorktreeDisplay}" />
+                </Grid>
+                <TextBlock Text="Edit scope" Style="{StaticResource BodyStrongTextStyle}" />
+                <ComboBox ItemsSource="{Binding Editor.Scopes}"
+                          SelectedItem="{Binding Editor.SelectedScope, Mode=TwoWay}"
+                          DisplayMemberPath="Label"
+                          MinWidth="220"
+                          HorizontalAlignment="Left" />
+                <TextBlock Text="{Binding Editor.OverrideNotice}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                <TextBlock Text="Preset" Style="{StaticResource BodyStrongTextStyle}" />
+                <ComboBox ItemsSource="{Binding Editor.Presets}"
+                          SelectedItem="{Binding Editor.SelectedPreset, Mode=TwoWay}"
+                          DisplayMemberPath="DisplayName"
+                          MinWidth="260"
+                          HorizontalAlignment="Left" />
+                <TextBox Header="Command (core.editor)" Text="{Binding Editor.Value, Mode=TwoWay}" />
+                <TextBlock Text="Resolved executable" Style="{StaticResource SecondaryTextStyle}" />
+                <TextBlock Text="{Binding Editor.ResolvedExecutableDisplay}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding Editor.ValidationDisplay}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.M}">
+                  <Button Content="Save" Click="EditorSave_Click" />
+                  <Button Content="Open Test File" Click="EditorTest_Click" />
+                  <Button Content="Remove override" IsEnabled="{Binding Editor.CanRemoveOverride}" Click="EditorRemove_Click" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
+              <StackPanel Spacing="{StaticResource Spacing.M}">
+                <TextBlock Text="DIFF TOOL" Style="{StaticResource SectionHeaderTextStyle}" />
+                <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                  <TextBlock Text="Effective" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Column="1" Text="{Binding Diff.EffectiveDisplay}" Style="{StaticResource BodyStrongTextStyle}" />
+                  <TextBlock Grid.Row="1" Text="Source" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Diff.SourceDisplay}" />
+                  <TextBlock Grid.Row="2" Text="Origin" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Diff.OriginDisplay}" TextWrapping="Wrap" />
+                  <TextBlock Grid.Row="3" Text="Global" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Diff.GlobalDisplay}" />
+                  <TextBlock Grid.Row="4" Text="Repository" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Diff.RepositoryDisplay}" />
+                  <TextBlock Grid.Row="5" Text="Worktree" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Diff.WorktreeDisplay}" />
+                  <TextBlock Grid.Row="6" Text="Path" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Diff.EffectivePathDisplay}" TextWrapping="Wrap" />
+                  <TextBlock Grid.Row="7" Text="Command" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Diff.EffectiveCommandDisplay}" TextWrapping="Wrap" />
+                </Grid>
+                <TextBlock Text="Edit scope" Style="{StaticResource BodyStrongTextStyle}" />
+                <ComboBox ItemsSource="{Binding Diff.Scopes}"
+                          SelectedItem="{Binding Diff.SelectedScope, Mode=TwoWay}"
+                          DisplayMemberPath="Label"
+                          MinWidth="220"
+                          HorizontalAlignment="Left" />
+                <TextBlock Text="{Binding Diff.OverrideNotice}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                <TextBlock Text="Preset / Git tool" Style="{StaticResource BodyStrongTextStyle}" />
+                <ComboBox ItemsSource="{Binding Diff.Presets}"
+                          SelectedItem="{Binding Diff.SelectedPreset, Mode=TwoWay}"
+                          DisplayMemberPath="DisplayName"
+                          MinWidth="260"
+                          HorizontalAlignment="Left" />
+                <TextBox Header="Tool name" Text="{Binding Diff.Value, Mode=TwoWay}" />
+                <TextBox Header="Explicit executable path (optional)" Text="{Binding Diff.Path, Mode=TwoWay}" />
+                <TextBox Header="Custom Git command (optional; $LOCAL and $REMOTE)"
+                         Text="{Binding Diff.Command, Mode=TwoWay}"
+                         AcceptsReturn="False" />
+                <CheckBox Content="Trust exit code (unset when indeterminate)"
+                          IsThreeState="True"
+                          IsChecked="{Binding Diff.TrustExitCode, Mode=TwoWay}" />
+                <TextBlock Text="Resolved executable" Style="{StaticResource SecondaryTextStyle}" />
+                <TextBlock Text="{Binding Diff.ResolvedExecutableDisplay}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding Diff.ValidationDisplay}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.M}">
+                  <Button Content="Save" Click="DiffSave_Click" />
+                  <Button Content="Test Diff Tool" Click="DiffTest_Click" />
+                  <Button Content="Remove override" IsEnabled="{Binding Diff.CanRemoveOverride}" Click="DiffRemove_Click" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
+              <StackPanel Spacing="{StaticResource Spacing.M}">
+                <TextBlock Text="MERGE TOOL" Style="{StaticResource SectionHeaderTextStyle}" />
+                <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                  <TextBlock Text="Effective" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Column="1" Text="{Binding Merge.EffectiveDisplay}" Style="{StaticResource BodyStrongTextStyle}" />
+                  <TextBlock Grid.Row="1" Text="Source" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Merge.SourceDisplay}" />
+                  <TextBlock Grid.Row="2" Text="Origin" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Merge.OriginDisplay}" TextWrapping="Wrap" />
+                  <TextBlock Grid.Row="3" Text="Global" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Merge.GlobalDisplay}" />
+                  <TextBlock Grid.Row="4" Text="Repository" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Merge.RepositoryDisplay}" />
+                  <TextBlock Grid.Row="5" Text="Worktree" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Merge.WorktreeDisplay}" />
+                  <TextBlock Grid.Row="6" Text="Path" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Merge.EffectivePathDisplay}" TextWrapping="Wrap" />
+                  <TextBlock Grid.Row="7" Text="Command" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Merge.EffectiveCommandDisplay}" TextWrapping="Wrap" />
+                </Grid>
+                <TextBlock Text="Edit scope" Style="{StaticResource BodyStrongTextStyle}" />
+                <ComboBox ItemsSource="{Binding Merge.Scopes}"
+                          SelectedItem="{Binding Merge.SelectedScope, Mode=TwoWay}"
+                          DisplayMemberPath="Label"
+                          MinWidth="220"
+                          HorizontalAlignment="Left" />
+                <TextBlock Text="{Binding Merge.OverrideNotice}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                <TextBlock Text="Preset / Git tool" Style="{StaticResource BodyStrongTextStyle}" />
+                <ComboBox ItemsSource="{Binding Merge.Presets}"
+                          SelectedItem="{Binding Merge.SelectedPreset, Mode=TwoWay}"
+                          DisplayMemberPath="DisplayName"
+                          MinWidth="260"
+                          HorizontalAlignment="Left" />
+                <TextBox Header="Tool name" Text="{Binding Merge.Value, Mode=TwoWay}" />
+                <TextBox Header="Explicit executable path (optional)" Text="{Binding Merge.Path, Mode=TwoWay}" />
+                <TextBox Header="Custom Git command (optional; $LOCAL, $REMOTE, $MERGED; $BASE optional)"
+                         Text="{Binding Merge.Command, Mode=TwoWay}"
+                         AcceptsReturn="False" />
+                <CheckBox Content="Trust exit code (unset when indeterminate)"
+                          IsThreeState="True"
+                          IsChecked="{Binding Merge.TrustExitCode, Mode=TwoWay}" />
+                <CheckBox Content="Keep .orig backup (mergetool.keepBackup; unset when indeterminate)"
+                          IsThreeState="True"
+                          IsChecked="{Binding Merge.KeepBackup, Mode=TwoWay}" />
+                <TextBlock Text="Resolved executable" Style="{StaticResource SecondaryTextStyle}" />
+                <TextBlock Text="{Binding Merge.ResolvedExecutableDisplay}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding Merge.ValidationDisplay}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.M}">
+                  <Button Content="Save" Click="MergeSave_Click" />
+                  <Button Content="Test Merge Tool" Click="MergeTest_Click" />
+                  <Button Content="Remove override" IsEnabled="{Binding Merge.CanRemoveOverride}" Click="MergeRemove_Click" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
         <ScrollViewer x:Name="DiagnosticsSettingsPanel"
                       Visibility="Collapsed"
                       VerticalScrollBarVisibility="Auto">
@@ -172,12 +344,11 @@
           </StackPanel>
         </ScrollViewer>
 
-        <InfoBar x:Name="SettingsError"
+        <InfoBar x:Name="SettingsMessage"
                  Grid.Row="1"
                  Margin="16,0,16,16"
                  IsOpen="False"
                  Severity="Error"
-                 Title="Could not save settings"
                  IsClosable="True" />
       </Grid>
     </Grid>

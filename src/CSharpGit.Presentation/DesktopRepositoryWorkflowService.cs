@@ -6,7 +6,7 @@ namespace CSharpGit.Presentation;
 
 public sealed class DesktopRepositoryWorkflowService(
     GitCliRepositoryService inner,
-    IDesktopShellService shellService,
+    IGitToolsService gitTools,
     IRepositoryPathService pathService) : IRepositoryWorkflowService
 {
     public Task CreateStashAsync(Repository repository, string? message = null, CancellationToken cancellationToken = default) =>
@@ -42,14 +42,39 @@ public sealed class DesktopRepositoryWorkflowService(
     public Task StageResolvedConflictAsync(Repository repository, ConflictFile conflict, CancellationToken cancellationToken = default) =>
         inner.StageResolvedConflictAsync(repository, conflict, cancellationToken);
 
-    public Task ConfigureMergeToolAsync(Repository repository, MergeToolConfiguration configuration, CancellationToken cancellationToken = default) =>
-        inner.ConfigureMergeToolAsync(repository, configuration, cancellationToken);
+    public Task ConfigureMergeToolAsync(Repository repository, MergeToolConfiguration configuration, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        var scope = configuration.Scope == GitConfigurationScope.Global
+            ? GitToolWriteScope.Global
+            : GitToolWriteScope.Repository;
+
+        string? command = null;
+        var updateCommand = false;
+        if (configuration.Kind == MergeToolConfigurationKind.CustomCommand)
+        {
+            command = $"{configuration.ExecutablePath} {configuration.CommandArguments}".Trim();
+            updateCommand = true;
+        }
+
+        return gitTools.SaveAsync(
+            repository,
+            new GitToolEdit(
+                GitToolKind.Merge,
+                scope,
+                configuration.Name,
+                Path: configuration.Kind == MergeToolConfigurationKind.CustomExecutable ? configuration.ExecutablePath : null,
+                Command: command,
+                UpdatePath: configuration.Kind == MergeToolConfigurationKind.CustomExecutable,
+                UpdateCommand: updateCommand),
+            cancellationToken);
+    }
 
     public Task RunMergeToolForFileAsync(Repository repository, ConflictFile conflict, CancellationToken cancellationToken = default) =>
-        inner.RunMergeToolForFileAsync(repository, conflict, cancellationToken);
+        gitTools.RunMergeToolForFileAsync(repository, conflict, cancellationToken);
 
     public Task RunMergeToolWorkflowAsync(Repository repository, CancellationToken cancellationToken = default) =>
-        inner.RunMergeToolWorkflowAsync(repository, cancellationToken);
+        gitTools.RunMergeToolWorkflowAsync(repository, cancellationToken);
 
     public Task ContinueOperationAsync(Repository repository, CancellationToken cancellationToken = default) =>
         inner.ContinueOperationAsync(repository, cancellationToken);
@@ -68,6 +93,6 @@ public sealed class DesktopRepositoryWorkflowService(
             throw new InvalidOperationException("This conflict cannot be opened as a working-copy file.");
 
         var path = pathService.ResolveExistingWorkingTreeFile(repository, conflict.Path);
-        await shellService.OpenFileAsync(path, cancellationToken);
+        await gitTools.OpenEditorAsync(repository, path, cancellationToken);
     }
 }

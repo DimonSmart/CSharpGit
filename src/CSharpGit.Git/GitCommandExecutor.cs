@@ -84,6 +84,23 @@ internal sealed class GitCommandExecutor
             environment,
             _processStarted);
 
+    internal Task<GitCommandResult> ExecuteForResultPreservingGitEditorAsync(
+        string workingDirectory,
+        string operation,
+        CancellationToken cancellationToken,
+        IReadOnlyList<string> arguments) =>
+        ExecuteProcessCoreAsync(
+            _gitExecutable,
+            workingDirectory,
+            operation,
+            GitCommandKind.Internal,
+            cancellationToken,
+            arguments,
+            _activitySink,
+            null,
+            _processStarted,
+            installNoOpGitEditor: false);
+
     public async Task ExecuteToFileAsync(
         string workingDirectory,
         string operation,
@@ -150,10 +167,11 @@ internal sealed class GitCommandExecutor
         IReadOnlyList<string> arguments,
         IGitCommandActivitySink? activitySink,
         IReadOnlyDictionary<string, string?>? environment = null,
-        Action<int>? processStarted = null)
+        Action<int>? processStarted = null,
+        bool installNoOpGitEditor = true)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var startInfo = CreateStartInfo(executable, workingDirectory, arguments, environment);
+        var startInfo = CreateStartInfo(executable, workingDirectory, arguments, environment, installNoOpGitEditor);
 
         using var process = new Process { StartInfo = startInfo };
         var stopwatch = Stopwatch.StartNew();
@@ -198,7 +216,8 @@ internal sealed class GitCommandExecutor
         string executable,
         string workingDirectory,
         IReadOnlyList<string> arguments,
-        IReadOnlyDictionary<string, string?>? environment)
+        IReadOnlyDictionary<string, string?>? environment,
+        bool installNoOpGitEditor = true)
     {
         var startInfo = new ProcessStartInfo(executable)
         {
@@ -210,7 +229,8 @@ internal sealed class GitCommandExecutor
             UseShellExecute = false,
             CreateNoWindow = true
         };
-        startInfo.Environment["GIT_EDITOR"] = CreateNoOpEditorCommand();
+        if (installNoOpGitEditor)
+            startInfo.Environment["GIT_EDITOR"] = CreateNoOpEditorCommand();
         foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
         if (environment is not null)
             foreach (var variable in environment) startInfo.Environment[variable.Key] = variable.Value;

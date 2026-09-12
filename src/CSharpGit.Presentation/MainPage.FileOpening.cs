@@ -12,6 +12,7 @@ public sealed partial class MainPage
     private IRepositoryFileVersionService? _fileVersionService;
     private IDesktopShellService? _desktopShellService;
     private IRepositoryPathService? _repositoryPathService;
+    private IGitToolsService? _gitToolsService;
     private DiffFileVersionPair? _commitFileVersions;
     private DiffFileVersionPair? _workingTreeFileVersions;
     private string? _commitRevealPath;
@@ -20,9 +21,11 @@ public sealed partial class MainPage
     private long _workingTreeFileActionGeneration;
     private Button? _commitOpenOriginalButton;
     private Button? _commitOpenChangedButton;
+    private Button? _commitExternalDiffButton;
     private Button? _commitRevealButton;
     private Button? _workingTreeOpenOriginalButton;
     private Button? _workingTreeOpenChangedButton;
+    private Button? _workingTreeExternalDiffButton;
     private Button? _workingTreeRevealButton;
 
     public MainPage(
@@ -39,6 +42,22 @@ public sealed partial class MainPage
         _desktopShellService = desktopShellService;
         _repositoryPathService = repositoryPathService;
         InitializeFileOpening();
+    }
+
+    public MainPage(
+        OpenRepositoryViewModel viewModel,
+        IReferenceHistoryService referenceHistoryService,
+        IReferenceService referenceService,
+        IWorkingTreeDiffService workingTreeDiffService,
+        IRepositoryFileVersionService fileVersionService,
+        IDesktopShellService desktopShellService,
+        IRepositoryPathService repositoryPathService,
+        IGitToolsService gitToolsService)
+        : this(viewModel, referenceHistoryService, referenceService, workingTreeDiffService, fileVersionService, desktopShellService, repositoryPathService)
+    {
+        _gitToolsService = gitToolsService ?? throw new ArgumentNullException(nameof(gitToolsService));
+        UpdateCommitButtons();
+        UpdateWorkingTreeButtons();
     }
 
     private void InitializeFileOpening()
@@ -75,9 +94,11 @@ public sealed partial class MainPage
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
         _commitOpenOriginalButton = CreateActionButton("Original", "Open original version", CommitOpenOriginal_Click);
         _commitOpenChangedButton = CreateActionButton("Changed", "Open changed version", CommitOpenChanged_Click);
+        _commitExternalDiffButton = CreateActionButton("Diff tool", "Open this exact pair in the configured external diff tool", CommitExternalDiff_Click);
         _commitRevealButton = CreateActionButton("Reveal", _desktopShellService!.RevealDescription, CommitReveal_Click);
         actions.Children.Add(_commitOpenOriginalButton);
         actions.Children.Add(_commitOpenChangedButton);
+        actions.Children.Add(_commitExternalDiffButton);
         actions.Children.Add(_commitRevealButton);
         Grid.SetColumn(actions, 1);
         layout.Children.Add(actions);
@@ -92,9 +113,11 @@ public sealed partial class MainPage
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
         _workingTreeOpenOriginalButton = CreateActionButton("Original", "Open original side of this diff", WorkingTreeOpenOriginal_Click);
         _workingTreeOpenChangedButton = CreateActionButton("Changed", "Open changed side of this diff", WorkingTreeOpenChanged_Click);
+        _workingTreeExternalDiffButton = CreateActionButton("Diff tool", "Open this exact pair in the configured external diff tool", WorkingTreeExternalDiff_Click);
         _workingTreeRevealButton = CreateActionButton("Reveal", _desktopShellService!.RevealDescription, WorkingTreeReveal_Click);
         actions.Children.Add(_workingTreeOpenOriginalButton);
         actions.Children.Add(_workingTreeOpenChangedButton);
+        actions.Children.Add(_workingTreeExternalDiffButton);
         actions.Children.Add(_workingTreeRevealButton);
         Grid.SetColumn(actions, 2);
         headerGrid.Children.Add(actions);
@@ -127,19 +150,36 @@ public sealed partial class MainPage
             _ = RefreshWorkingTreeFileActionStateAsync();
     }
 
-    private Task RefreshCommitFileActionStateAsync()
+    private async Task RefreshCommitFileActionStateAsync()
     {
-        Interlocked.Increment(ref _commitFileActionGeneration);
+        var generation = Interlocked.Increment(ref _commitFileActionGeneration);
         _commitFileVersions = null;
         _commitRevealPath = null;
+        UpdateCommitButtons();
 
         var repository = _viewModel.Repository;
+        var commit = _viewModel.SelectedHistoryRow?.Commit;
         var file = _viewModel.SelectedFile;
-        if (repository is not null && file is not null && _repositoryPathService is not null)
-            _commitRevealPath = TryResolveReveal(repository, file.Path);
+        if (repository is null || commit is null || file is null || _fileVersionService is null) return;
 
-        UpdateCommitButtons();
-        return Task.CompletedTask;
+        try
+        {
+            var pair = await _fileVersionService.ResolveCommitAsync(repository, commit.Hash, file.Path);
+            if (generation != Volatile.Read(ref _commitFileActionGeneration)
+                || !ReferenceEquals(repository, _viewModel.Repository)
+                || !string.Equals(commit.Hash, _viewModel.SelectedHistoryRow?.Commit.Hash, StringComparison.Ordinal)
+                || !string.Equals(file.Path, _viewModel.SelectedFile?.Path, StringComparison.Ordinal))
+                return;
+
+            _commitFileVersions = pair;
+            if (_repositoryPathService is not null)
+                _commitRevealPath = TryResolveReveal(repository, pair.RevealPath);
+            UpdateCommitButtons();
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            if (generation == Volatile.Read(ref _commitFileActionGeneration)) UpdateCommitButtons();
+        }
     }
 
     private async Task RefreshWorkingTreeFileActionStateAsync()
@@ -203,6 +243,7 @@ public sealed partial class MainPage
                 "Open changed version",
                 "No changed version is available.");
         }
+        SetExternalDiffButton(_commitExternalDiffButton, _commitFileVersions);
         SetRevealButton(_commitRevealButton, _commitRevealPath);
     }
 
@@ -217,6 +258,7 @@ public sealed partial class MainPage
     {
         SetVersionButton(_workingTreeOpenOriginalButton, _workingTreeFileVersions?.Original, "No original version is available.");
         SetVersionButton(_workingTreeOpenChangedButton, _workingTreeFileVersions?.Changed, "No changed version is available.");
+        SetExternalDiffButton(_workingTreeExternalDiffButton, _workingTreeFileVersions);
         SetRevealButton(_workingTreeRevealButton, _workingTreeRevealPath);
     }
 
@@ -227,6 +269,16 @@ public sealed partial class MainPage
         ToolTipService.SetToolTip(button, version?.CanOpen == true
             ? button.Content?.ToString()
             : version?.UnavailableReason ?? fallbackReason);
+    }
+
+    private void SetExternalDiffButton(Button? button, DiffFileVersionPair? pair)
+    {
+        if (button is null) return;
+        var enabled = _gitToolsService is not null && pair is not null && CanExternalDiff(pair);
+        button.IsEnabled = enabled;
+        ToolTipService.SetToolTip(button, enabled
+            ? "Open this exact OLD/NEW pair in the configured external diff tool"
+            : ExternalDiffUnavailableReason(pair));
     }
 
     private void SetRevealButton(Button? button, string? fullPath)
@@ -244,6 +296,9 @@ public sealed partial class MainPage
     private async void CommitOpenChanged_Click(object sender, RoutedEventArgs args) =>
         await OpenSelectedCommitVersionAsync(DiffFileSide.Changed);
 
+    private async void CommitExternalDiff_Click(object sender, RoutedEventArgs args) =>
+        await OpenSelectedCommitExternalDiffAsync();
+
     private async void CommitReveal_Click(object sender, RoutedEventArgs args) =>
         await RevealSelectedCommitFileAsync();
 
@@ -252,6 +307,9 @@ public sealed partial class MainPage
 
     private async void WorkingTreeOpenChanged_Click(object sender, RoutedEventArgs args) =>
         await OpenSelectedWorkingTreeVersionAsync(DiffFileSide.Changed);
+
+    private async void WorkingTreeExternalDiff_Click(object sender, RoutedEventArgs args) =>
+        await OpenSelectedWorkingTreeExternalDiffAsync();
 
     private async void WorkingTreeReveal_Click(object sender, RoutedEventArgs args) =>
         await RevealSelectedWorkingTreeFileAsync();
@@ -304,6 +362,75 @@ public sealed partial class MainPage
         {
             await ShowErrorAsync(side == DiffFileSide.Original ? "Could not open original version" : "Could not open changed version", UserFacingFileError(exception));
         }
+    }
+
+    private async Task OpenSelectedCommitExternalDiffAsync()
+    {
+        var repository = _viewModel.Repository;
+        var commit = _viewModel.SelectedHistoryRow?.Commit;
+        var file = _viewModel.SelectedFile;
+        if (repository is null || commit is null || file is null || _fileVersionService is null || _gitToolsService is null) return;
+        try
+        {
+            var pair = await _fileVersionService.ResolveCommitAsync(repository, commit.Hash, file.Path);
+            if (!CanExternalDiff(pair)) throw new NotSupportedException(ExternalDiffUnavailableReason(pair));
+            await _gitToolsService.RunExternalDiffAsync(repository, pair);
+            _commitFileVersions = pair;
+            UpdateCommitButtons();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (InvalidOperationException exception) when (exception.Message.Contains("Diff tool is not configured", StringComparison.OrdinalIgnoreCase))
+        {
+            await ShowDiffToolNotConfiguredAsync();
+        }
+        catch (Exception exception)
+        {
+            await ShowErrorAsync("Could not open external diff tool", UserFacingFileError(exception));
+        }
+    }
+
+    private async Task OpenSelectedWorkingTreeExternalDiffAsync()
+    {
+        var repository = _viewModel.Repository;
+        var change = _viewModel.ActiveWorkingTreeChange;
+        var kind = _viewModel.ActiveWorkingTreeDiffKind;
+        if (repository is null || change is null || kind is null || _fileVersionService is null || _gitToolsService is null) return;
+        try
+        {
+            var pair = await _fileVersionService.ResolveWorkingTreeAsync(repository, change, kind.Value);
+            if (!CanExternalDiff(pair)) throw new NotSupportedException(ExternalDiffUnavailableReason(pair));
+            await _gitToolsService.RunExternalDiffAsync(repository, pair);
+            _workingTreeFileVersions = pair;
+            UpdateWorkingTreeButtons();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (InvalidOperationException exception) when (exception.Message.Contains("Diff tool is not configured", StringComparison.OrdinalIgnoreCase))
+        {
+            await ShowDiffToolNotConfiguredAsync();
+        }
+        catch (Exception exception)
+        {
+            await ShowErrorAsync("Could not open external diff tool", UserFacingFileError(exception));
+        }
+    }
+
+    private async Task ShowDiffToolNotConfiguredAsync()
+    {
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = "Diff tool is not configured",
+            Content = "Configure a Git diff tool in Settings → Git Tools.",
+            PrimaryButtonText = "Open Git Tools Settings",
+            CloseButtonText = "Close",
+            DefaultButton = ContentDialogButton.Primary
+        };
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+            OpenSettingsWindow(SettingsSection.GitTools);
     }
 
     private async Task OpenResolvedVersionAsync(Repository repository, DiffFileVersion version, DiffFileSide side)
@@ -421,6 +548,7 @@ public sealed partial class MainPage
                 _commitRevealPath is not null,
                 () => OpenSelectedCommitVersionAsync(DiffFileSide.Changed),
                 () => OpenSelectedCommitVersionAsync(DiffFileSide.Original),
+                OpenSelectedCommitExternalDiffAsync,
                 RevealSelectedCommitFileAsync);
             flyout.ShowAt(source);
             args.Handled = true;
@@ -449,6 +577,7 @@ public sealed partial class MainPage
                 _workingTreeRevealPath is not null,
                 () => OpenSelectedWorkingTreeVersionAsync(DiffFileSide.Changed),
                 () => OpenSelectedWorkingTreeVersionAsync(DiffFileSide.Original),
+                OpenSelectedWorkingTreeExternalDiffAsync,
                 RevealSelectedWorkingTreeFileAsync);
             flyout.ShowAt(source);
             args.Handled = true;
@@ -464,11 +593,20 @@ public sealed partial class MainPage
         bool canReveal,
         Func<Task> openChanged,
         Func<Task> openOriginal,
+        Func<Task> openExternalDiff,
         Func<Task> reveal)
     {
         var flyout = new MenuFlyout();
         flyout.Items.Add(CreateMenuItem("Open changed", pair.Changed, openChanged));
         flyout.Items.Add(CreateMenuItem("Open original", pair.Original, openOriginal));
+        var externalItem = new MenuFlyoutItem
+        {
+            Text = "Open in Diff Tool",
+            IsEnabled = _gitToolsService is not null && CanExternalDiff(pair)
+        };
+        ToolTipService.SetToolTip(externalItem, externalItem.IsEnabled ? externalItem.Text : ExternalDiffUnavailableReason(pair));
+        externalItem.Click += async (_, _) => await openExternalDiff();
+        flyout.Items.Add(externalItem);
         flyout.Items.Add(new MenuFlyoutSeparator());
         var revealItem = new MenuFlyoutItem { Text = _desktopShellService?.RevealDescription ?? "Reveal", IsEnabled = canReveal };
         ToolTipService.SetToolTip(revealItem, canReveal ? revealItem.Text : "The file is not present in the current working tree.");
@@ -483,6 +621,21 @@ public sealed partial class MainPage
         ToolTipService.SetToolTip(item, version.CanOpen ? text : version.UnavailableReason ?? "This version is unavailable.");
         item.Click += async (_, _) => await action();
         return item;
+    }
+
+    private static bool CanExternalDiff(DiffFileVersionPair pair) =>
+        CanExternalDiffSide(pair.Original) && CanExternalDiffSide(pair.Changed);
+
+    private static bool CanExternalDiffSide(DiffFileVersion version) =>
+        version.EntryKind == GitEntryKind.RegularFile && version.Location != DiffFileVersionLocation.Unavailable
+        || version.EntryKind == GitEntryKind.Missing && version.Location == DiffFileVersionLocation.Unavailable;
+
+    private static string ExternalDiffUnavailableReason(DiffFileVersionPair? pair)
+    {
+        if (pair is null) return "Select a file diff first.";
+        if (!CanExternalDiffSide(pair.Original)) return pair.Original.UnavailableReason ?? "The original side cannot be represented for an external diff tool.";
+        if (!CanExternalDiffSide(pair.Changed)) return pair.Changed.UnavailableReason ?? "The changed side cannot be represented for an external diff tool.";
+        return "External diff is unavailable.";
     }
 
     private string? TryResolveReveal(Repository repository, string gitPath)
@@ -502,7 +655,7 @@ public sealed partial class MainPage
         FileNotFoundException => "The file is no longer present in the current working tree.",
         UnauthorizedAccessException => "CSharpGit does not have permission to access this file.",
         NotSupportedException => exception.Message,
-        ArgumentException => "The repository returned an invalid file path.",
+        ArgumentException => exception.Message,
         InvalidOperationException => exception.Message,
         IOException => "The file could not be prepared or opened.",
         _ => "The file operation failed."
