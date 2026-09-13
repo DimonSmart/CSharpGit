@@ -81,4 +81,36 @@
     </TreeViewItem>
   </DataTemplate>
 
+  <DataTemplate x:Key="RepositoryFilesTreeItemTemplate">
+    <TreeViewItem x:Name="RepositoryFilesTreeItem"
+                  ItemsSource="{Binding Children}"
+                  IsExpanded="{Binding IsExpanded, Mode=TwoWay}"
+                  Style="{StaticResource RepositoryTreeItemStyle}">
+      <TreeViewItem.Content>
+        <Grid ColumnDefinitions="2,*" MinHeight="{StaticResource Height.DataRow}">
+          <controls:RepositoryTreeGuides Grid.Column="1"
+                                         Segments="{Binding HierarchyGuideSegments}"
+                                         TotalIndentation="{Binding TemplateSettings.Indentation.Left, ElementName=RepositoryFilesTreeItem}"
+                                         RowHeight="{StaticResource Height.DataRow}"
+                                         ExpandTarget="{Binding ElementName=RepositoryFilesTreeItem}"
+                                         IsExpanded="{Binding IsExpanded, ElementName=RepositoryFilesTreeItem}"
+                                         LineBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                         NodeFillBrush="{ThemeResource ControlFillColorDefaultBrush}"
+                                         GlyphBrush="{ThemeResource TextFillColorPrimaryBrush}" />
+          <StackPanel Grid.Column="1"
+                      Orientation="Horizontal"
+                      Spacing="{StaticResource Spacing.S}"
+                      VerticalAlignment="Center">
+            <FontIcon Glyph="{Binding IconGlyph}"
+                      FontSize="{StaticResource Icon.Normal}" />
+            <TextBlock Text="{Binding DisplayLabel}"
+                       Style="{StaticResource BodyTextStyle}"
+                       TextTrimming="CharacterEllipsis"
+                       VerticalAlignment="Center" />
+          </StackPanel>
+        </Grid>
+      </TreeViewItem.Content>
+    </TreeViewItem>
+  </DataTemplate>
+
 </ResourceDictionary>

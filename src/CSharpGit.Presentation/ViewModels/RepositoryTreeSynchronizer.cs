@@ -120,39 +120,15 @@ internal sealed class RepositoryTreeSynchronizer
             ApplyBranchWorktreeIndicators(child, worktreesByBranch);
     }
 
-    private void ApplyHierarchyGuides()
-    {
-        foreach (var root in _roots)
-        {
-            root.SetHierarchyGuideSegments(Array.Empty<RepositoryTreeGuideSegmentKind>());
-            ApplyHierarchyGuides(root.Children, Array.Empty<bool>());
-        }
-    }
+    private void ApplyHierarchyGuides() =>
+        TreeHierarchyGuideBuilder.Apply(
+            _roots,
+            node => node.Children,
+            (node, segments) => node.SetHierarchyGuideSegments(segments));
 
-    private static void ApplyHierarchyGuides(RepositoryTreeNode root)
-    {
-        root.SetHierarchyGuideSegments(Array.Empty<RepositoryTreeGuideSegmentKind>());
-        ApplyHierarchyGuides(root.Children, Array.Empty<bool>());
-    }
-
-    private static void ApplyHierarchyGuides(
-        IList<RepositoryTreeNode> nodes,
-        IReadOnlyList<bool> ancestorHasFollowingSiblings)
-    {
-        for (var index = 0; index < nodes.Count; index++)
-        {
-            var node = nodes[index];
-            var isLastSibling = index == nodes.Count - 1;
-            node.SetHierarchyGuideSegments(
-                RepositoryTreeGuideLayout.BuildSegments(ancestorHasFollowingSiblings, isLastSibling));
-
-            if (node.Children.Count == 0) continue;
-
-            var childAncestors = new bool[ancestorHasFollowingSiblings.Count + 1];
-            for (var ancestorIndex = 0; ancestorIndex < ancestorHasFollowingSiblings.Count; ancestorIndex++)
-                childAncestors[ancestorIndex] = ancestorHasFollowingSiblings[ancestorIndex];
-            childAncestors[^1] = !isLastSibling;
-            ApplyHierarchyGuides(node.Children, childAncestors);
-        }
-    }
+    private static void ApplyHierarchyGuides(RepositoryTreeNode root) =>
+        TreeHierarchyGuideBuilder.Apply(
+            new[] { root },
+            node => node.Children,
+            (node, segments) => node.SetHierarchyGuideSegments(segments));
 }
