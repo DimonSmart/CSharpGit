@@ -19,6 +19,7 @@
     <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphMetrics.cs" Link="CommitGraph/CommitGraphMetrics.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphGeometryBuilder.cs" Link="CommitGraph/CommitGraphGeometryBuilder.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeGuideLayout.cs" Link="RepositoryTree/RepositoryTreeGuideLayout.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/TreeHierarchyGuideBuilder.cs" Link="RepositoryTree/TreeHierarchyGuideBuilder.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeNodeKind.cs" Link="RepositoryTree/RepositoryTreeNodeKind.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeDescriptor.cs" Link="RepositoryTree/RepositoryTreeDescriptor.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/IncrementalTreeReconciler.cs" Link="RepositoryTree/IncrementalTreeReconciler.cs" />
@@ -27,6 +28,12 @@
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/ChangedFileTreeNode.cs" Link="Changes/ChangedFileTreeNode.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CompactDiffLine.cs" Link="Changes/CompactDiffLine.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositorySnapshotTreeNode.cs" Link="RepositoryFiles/RepositorySnapshotTreeNode.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/Previewing/FilePreviewModels.cs" Link="RepositoryFiles/Previewing/FilePreviewModels.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/Previewing/FileLanguageClassifier.cs" Link="RepositoryFiles/Previewing/FileLanguageClassifier.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/Previewing/FilePreviewService.cs" Link="RepositoryFiles/Previewing/FilePreviewService.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/Previewing/ImageFilePreviewProvider.cs" Link="RepositoryFiles/Previewing/ImageFilePreviewProvider.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/Previewing/TextFilePreviewProvider.cs" Link="RepositoryFiles/Previewing/TextFilePreviewProvider.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/Previewing/PreviewPublicationGate.cs" Link="RepositoryFiles/Previewing/PreviewPublicationGate.cs" />
   </ItemGroup>
   <!-- The test launches the binary, so build it without creating a TFM-incompatible assembly reference. -->
   <Target Name="BuildDesktopApplication" BeforeTargets="Build">

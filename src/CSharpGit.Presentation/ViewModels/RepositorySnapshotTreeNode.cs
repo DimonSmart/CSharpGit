@@ -21,6 +21,17 @@ public sealed class RepositorySnapshotTreeNode
     public RepositorySnapshotEntry? Entry { get; }
     public IReadOnlyList<RepositorySnapshotTreeNode> Children { get; }
     public bool IsDirectory => Entry is null;
+    public bool IsExpanded { get; set; }
+    public IReadOnlyList<RepositoryTreeGuideSegmentKind> HierarchyGuideSegments { get; private set; } =
+        Array.Empty<RepositoryTreeGuideSegmentKind>();
+    public string DisplayLabel => Entry?.Kind switch
+    {
+        RepositorySnapshotEntryKind.Symlink => $"↗ {DisplayName}",
+        RepositorySnapshotEntryKind.Submodule => $"▣ {DisplayName}",
+        RepositorySnapshotEntryKind.Unsupported => $"? {DisplayName}",
+        _ => DisplayName
+    };
+    public string IconGlyph => IsDirectory ? "\uE8B7" : "\uE8A5";
 
     public static IReadOnlyList<RepositorySnapshotTreeNode> Build(
         IEnumerable<RepositorySnapshotEntry> entries,
@@ -28,7 +39,7 @@ public sealed class RepositorySnapshotTreeNode
     {
         ArgumentNullException.ThrowIfNull(entries);
         var query = string.IsNullOrWhiteSpace(nameQuery) ? null : nameQuery.Trim();
-        var roots = new List<BuilderNode>();
+        var builderRoots = new List<BuilderNode>();
 
         foreach (var entry in entries
                      .Where(entry => query is null || entry.Path.Contains(query, StringComparison.OrdinalIgnoreCase))
@@ -38,7 +49,7 @@ public sealed class RepositorySnapshotTreeNode
             var parts = entry.Path.Split('/', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 0) continue;
 
-            var current = roots;
+            var current = builderRoots;
             var pathParts = new List<string>(parts.Length);
             for (var index = 0; index < parts.Length - 1; index++)
             {
@@ -57,7 +68,12 @@ public sealed class RepositorySnapshotTreeNode
             current.Add(new BuilderNode(parts[^1], entry.Path, entry));
         }
 
-        return Sort(roots).Select(ToPresentationNode).ToList();
+        var roots = Sort(builderRoots).Select(ToPresentationNode).ToList();
+        TreeHierarchyGuideBuilder.Apply(
+            roots,
+            node => node.Children,
+            (node, segments) => node.HierarchyGuideSegments = segments);
+        return roots;
     }
 
     private static RepositorySnapshotTreeNode ToPresentationNode(BuilderNode source) =>
