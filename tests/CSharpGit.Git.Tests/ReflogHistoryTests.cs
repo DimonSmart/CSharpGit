@@ -46,6 +46,35 @@ public sealed class ReflogHistoryTests : IDisposable
     }
 
     [Fact]
+    public async Task ReflogModeUnionsNormalReferencesWithReflogRoots()
+    {
+        InitializeRepository();
+        Commit("main commit");
+        var parentHash = RunGit("rev-parse", "HEAD");
+        var treeHash = RunGit("rev-parse", "HEAD^{tree}");
+        var tagOnlyHash = RunGit("commit-tree", treeHash, "-p", parentHash, "-m", "tag-only commit");
+        RunGit("tag", "union-only", tagOnlyHash);
+
+        var reflogHashes = RunGit("rev-list", "--reflog")
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        Assert.DoesNotContain(tagOnlyHash, reflogHashes);
+
+        var repository = await new GitCliRepositoryService().OpenAsync(_temporaryDirectory);
+        var service = new GitReferenceHistoryService();
+
+        var normal = await service.ReadHistoryAsync(
+            repository,
+            new HistoryQuery(HistoryScope.AllReferences, null, 0, 20));
+        Assert.Contains(normal.Rows, row => row.Commit.Hash == tagOnlyHash);
+
+        var expanded = await service.ReadHistoryAsync(
+            repository,
+            new HistoryQuery(HistoryScope.AllReferences, null, 0, 20, IncludeReflog: true));
+        var tagOnly = Assert.Single(expanded.Rows, row => row.Commit.Hash == tagOnlyHash);
+        Assert.False(tagOnly.IsReflogOnly);
+    }
+
+    [Fact]
     public async Task ReflogModeParticipatesInFilteringButNeverExtendsCurrentBranchScope()
     {
         InitializeRepository();
