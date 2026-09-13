@@ -55,7 +55,7 @@ public sealed class HistoryDiffUiContractTests
 
         Assert.Contains("SelectionChanged=\"DetailsTabs_SelectionChanged\"", xaml);
         Assert.Contains("SetChangesViewActive", changes);
-        Assert.Contains("ReferenceEquals(DetailsTabs.SelectedItem, FilesTab)", changes);
+        Assert.Contains("ReferenceEquals(DetailsTabs.SelectedItem, ChangesTabControl)", changes);
         Assert.DoesNotContain("ReadFileStatusesAsync", page);
         Assert.Contains("new CommitFileRow(file.Status, file)", page);
     }
