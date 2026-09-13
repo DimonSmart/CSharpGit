@@ -7,6 +7,7 @@ public sealed class TagUiContractTests
     {
         var root = FindRepositoryRoot();
         var tags = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Tags.cs"));
+        var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var refresh = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryRefresh.cs"));
         var references = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryStateService.cs"));
 
@@ -56,6 +57,8 @@ public sealed class TagUiContractTests
         Assert.Contains("includeHistory: false", tags);
 
         Assert.Contains("IReferenceService : ITagService", references);
+        Assert.DoesNotContain("OrderByDescending(tag => tag.Name", mainPage, StringComparison.Ordinal);
+        Assert.Contains("children: _viewModel.Tags", mainPage);
         Assert.Contains("ApplyTagOrderingToRepositoryTree();", refresh);
     }
 
