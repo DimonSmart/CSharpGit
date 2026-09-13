@@ -348,7 +348,7 @@ public sealed class GitTagService : ITagService
     {
         var value = remote?.Trim() ?? string.Empty;
         if (value.Length == 0) throw new ArgumentException("A remote must be selected explicitly.", nameof(remote));
-        if (value.StartsWith('-', StringComparison.Ordinal) || value.IndexOfAny(['\0', '\r', '\n']) >= 0)
+        if (value.StartsWith("-", StringComparison.Ordinal) || value.IndexOfAny(['\0', '\r', '\n']) >= 0)
             throw new ArgumentException("Invalid remote name.", nameof(remote));
         return value;
     }
