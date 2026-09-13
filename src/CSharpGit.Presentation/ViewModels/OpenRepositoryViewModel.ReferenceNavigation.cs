@@ -48,7 +48,7 @@ public sealed partial class OpenRepositoryViewModel
         {
             var page = await _historyService.ReadHistoryThroughCommitAsync(
                 repository,
-                HistoryScope.AllReferences,
+                new HistoryQuery(HistoryScope.AllReferences, null, 0, IncludeReflog: ShowReflog),
                 hash,
                 trailingCount,
                 cancellation.Token);

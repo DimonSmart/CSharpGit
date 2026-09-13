@@ -170,6 +170,7 @@ public sealed partial class MainPage : Page
     {
         _referenceHistoryCts?.Cancel();
         _activeReference = null;
+        ShowReflogToggle.IsEnabled = true;
         ScopeCombo.Visibility = Visibility.Visible;
         ReferenceScopePanel.Visibility = Visibility.Collapsed;
         HistoryPane.Visibility = Visibility.Visible;
@@ -188,6 +189,8 @@ public sealed partial class MainPage : Page
 
     private async Task ShowReferenceHistoryAsync(string reference, string label)
     {
+        await _viewModel.DisableReflogForScopedHistoryAsync();
+        ShowReflogToggle.IsEnabled = false;
         _viewModel.InvalidateHistoryLoad();
         _activeReference = reference;
         ActiveReferenceText.Text = label;
@@ -269,6 +272,7 @@ public sealed partial class MainPage : Page
         var selectedHash = _viewModel.SelectedHistoryRow?.Commit.Hash;
         _referenceHistoryCts?.Cancel();
         _activeReference = null;
+        ShowReflogToggle.IsEnabled = true;
         ScopeCombo.Visibility = Visibility.Visible;
         ReferenceScopePanel.Visibility = Visibility.Collapsed;
         HistoryPane.Visibility = Visibility.Visible;

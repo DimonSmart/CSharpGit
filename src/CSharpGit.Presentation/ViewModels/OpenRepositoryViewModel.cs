@@ -210,7 +210,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
     public Visibility PickerVisibility => Repository is null ? Visibility.Visible : Visibility.Collapsed;
     public string RepositoryKind => Repository?.IsWorktree == true ? "Git worktree" : "Git repository";
     public string FilterText { get => _filterText; set { _filterText = value; Notify(); } }
-    public UiChoice<HistoryScope> SelectedScope { get => _selectedScope; set { if (_selectedScope == value) return; _selectedScope = value; Notify(); _ = LoadHistoryAsync(true); } }
+    public UiChoice<HistoryScope> SelectedScope { get => _selectedScope; set { if (_selectedScope == value) return; _selectedScope = value; Notify(); if (value.Value != HistoryScope.AllReferences) DisableReflogForScopeChange(); _ = LoadHistoryAsync(true); } }
     public HistoryRow? SelectedHistoryRow { get => _selectedHistoryRow; set { if (ReferenceEquals(_selectedHistoryRow, value)) return; _selectedHistoryRow = value; Notify(); Notify(nameof(DetailsVisibility)); OnSelectedHistoryRowChanged(); } }
     public ChangedFile? SelectedFile { get => _selectedFile; set { if (_selectedFile == value) return; _selectedFile = value; Notify(); OnSelectedFileChanged(); } }
     public FileDiff? SelectedDiff { get => _selectedDiff; private set { _selectedDiff = value; Notify(); Notify(nameof(DiffVisibility)); Notify(nameof(BinaryVisibility)); } }
@@ -664,7 +664,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
         {
             var page = await _historyService.ReadHistoryAsync(
                 repository,
-                new HistoryQuery(scope, filter, skip),
+                new HistoryQuery(scope, filter, skip, IncludeReflog: _showReflog),
                 cancellation.Token);
 
             if (cancellation.IsCancellationRequested

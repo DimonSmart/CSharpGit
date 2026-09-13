@@ -27,6 +27,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     private bool _loggingEnabled;
     private ApplicationLogLevel _logLevel;
     private GitConsoleAutoOpenMode _gitConsoleAutoOpenMode;
+    private bool _showReflog;
     private IReadOnlyList<RecentRepositorySettings> _recentRepositories;
 
     public JsonAppSettingsService()
@@ -43,6 +44,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         _loggingEnabled = state.LoggingEnabled;
         _logLevel = state.LogLevel;
         _gitConsoleAutoOpenMode = state.GitConsoleAutoOpenMode;
+        _showReflog = state.ShowReflog;
         _recentRepositories = state.RecentRepositories;
     }
 
@@ -55,6 +57,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     public ApplicationLogLevel LogLevel => _logLevel;
 
     public GitConsoleAutoOpenMode GitConsoleAutoOpenMode => _gitConsoleAutoOpenMode;
+
+    public bool ShowReflog => _showReflog;
 
     public IReadOnlyList<RecentRepositorySettings> RecentRepositories => _recentRepositories;
 
@@ -110,6 +114,17 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         if (_gitConsoleAutoOpenMode == mode) return;
 
         _gitConsoleAutoOpenMode = mode;
+        Changed?.Invoke(this, EventArgs.Empty);
+        await PersistAsync(cancellationToken);
+    }
+
+    public async Task SetShowReflogAsync(
+        bool value,
+        CancellationToken cancellationToken = default)
+    {
+        if (_showReflog == value) return;
+
+        _showReflog = value;
         Changed?.Invoke(this, EventArgs.Empty);
         await PersistAsync(cancellationToken);
     }
@@ -185,6 +200,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 document.LoggingEnabled,
                 logLevel,
                 gitConsoleAutoOpenMode,
+                document.ShowReflog,
                 recentRepositories);
         }
         catch (JsonException)
@@ -216,6 +232,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 LoggingEnabled = _loggingEnabled,
                 LogLevel = _logLevel,
                 GitConsoleAutoOpenMode = _gitConsoleAutoOpenMode,
+                ShowReflog = _showReflog,
                 RecentRepositories = _recentRepositories.ToList()
             };
             var json = JsonSerializer.Serialize(document, SerializerOptions);
@@ -288,6 +305,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         bool LoggingEnabled,
         ApplicationLogLevel LogLevel,
         GitConsoleAutoOpenMode GitConsoleAutoOpenMode,
+        bool ShowReflog,
         IReadOnlyList<RecentRepositorySettings> RecentRepositories)
     {
         public static SettingsState Default { get; } = new(
@@ -296,6 +314,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             false,
             ApplicationLogLevel.Information,
             GitConsoleAutoOpenMode.OnErrors,
+            false,
             []);
     }
 
@@ -306,6 +325,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         public bool LoggingEnabled { get; init; }
         public ApplicationLogLevel? LogLevel { get; init; }
         public GitConsoleAutoOpenMode? GitConsoleAutoOpenMode { get; init; }
+        public bool ShowReflog { get; init; }
         public List<RecentRepositorySettings>? RecentRepositories { get; init; }
     }
 

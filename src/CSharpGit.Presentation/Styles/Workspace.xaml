@@ -6,6 +6,7 @@
 
   <controls:CommitTopologyToGraphVisualConverter x:Key="CommitTopologyToGraphVisualConverter" />
   <controls:DiffLineKindToBrushConverter x:Key="DiffLineKindToBrushConverter" />
+  <controls:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
   <Thickness x:Key="Margin.ReferenceList">6,0,0,0</Thickness>
   <Thickness x:Key="Margin.ReferenceBadge">0,0,3,0</Thickness>
@@ -244,14 +245,26 @@
     <Grid ColumnDefinitions="120,*,160,150,90"
           MinHeight="{StaticResource Height.DataRow}"
           Padding="{StaticResource Padding.DenseRow}">
+      <Border Grid.ColumnSpan="5"
+              Background="{ThemeResource AccentFillColorDefaultBrush}"
+              Opacity="0.06"
+              Visibility="{Binding IsReflogOnly, Converter={StaticResource BooleanToVisibilityConverter}}"
+              IsHitTestVisible="False" />
       <controls:CommitGraphControl Graph="{Binding Topology, Converter={StaticResource CommitTopologyToGraphVisualConverter}}"
                                    VerticalAlignment="Stretch" />
-      <Grid Grid.Column="1" ColumnDefinitions="Auto,*" MinWidth="120">
+      <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,*" MinWidth="120">
         <TextBlock Text="{Binding Commit.Subject}"
                    Style="{StaticResource BodyStrongTextStyle}"
                    TextTrimming="CharacterEllipsis"
                    VerticalAlignment="Center" />
-        <ItemsControl Grid.Column="1"
+        <Border Grid.Column="1"
+                Style="{StaticResource ReferenceBadgeStyle}"
+                Margin="{StaticResource Margin.ReferenceList}"
+                Visibility="{Binding IsReflogOnly, Converter={StaticResource BooleanToVisibilityConverter}}"
+                ToolTipService.ToolTip="This commit is not reachable from normal repository refs and is currently reachable through Git reflog.">
+          <TextBlock Text="reflog" Style="{StaticResource CaptionTextStyle}" />
+        </Border>
+        <ItemsControl Grid.Column="2"
                       ItemsSource="{Binding Commit.References}"
                       Margin="{StaticResource Margin.ReferenceList}"
                       VerticalAlignment="Center">
