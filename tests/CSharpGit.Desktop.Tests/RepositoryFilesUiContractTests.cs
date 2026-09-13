@@ -23,13 +23,19 @@ public sealed class RepositoryFilesUiContractTests
     {
         var root = FindRepositoryRoot();
         var filesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs"));
+        var previewSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFilePreview.cs"));
 
         Assert.Contains("IRepositorySnapshotService", filesSurface, StringComparison.Ordinal);
         Assert.Contains("ResolveFileVersionAsync", filesSurface, StringComparison.Ordinal);
         Assert.Contains("MaterializeAsync", filesSurface, StringComparison.Ordinal);
         Assert.Contains("OpenEditorAsync", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("ResolveFileVersionAsync", previewSurface, StringComparison.Ordinal);
+        Assert.Contains("MaterializeAsync", previewSurface, StringComparison.Ordinal);
+        Assert.Contains("lease.CancellationToken", previewSurface, StringComparison.Ordinal);
         Assert.DoesNotContain("git ls-tree", filesSurface, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("git grep", filesSurface, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("git show", previewSurface, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("git cat-file", previewSurface, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("ResolveCommitAsync", filesSurface, StringComparison.Ordinal);
     }
 
@@ -61,6 +67,29 @@ public sealed class RepositoryFilesUiContractTests
         Assert.Contains("RepositorySnapshotTreeNode.Build(_repositorySnapshot, query)", filesSurface, StringComparison.Ordinal);
         Assert.Contains("entry.Path.Contains(query, StringComparison.OrdinalIgnoreCase)", model, StringComparison.Ordinal);
         Assert.Contains("entry.Kind == RepositorySnapshotEntryKind.File", filesSurface, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FilesTreeReusesHierarchyVisualsAndPreviewIsASeparatePipeline()
+    {
+        var root = FindRepositoryRoot();
+        var filesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs"));
+        var previewSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFilePreview.cs"));
+        var treeStyles = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "RepositoryTree.xaml"));
+        var previewHost = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "FilePreviewHost.cs"));
+        var previewService = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Previewing", "FilePreviewService.cs"));
+
+        Assert.Contains("RepositoryFilesTreeItemTemplate", treeStyles, StringComparison.Ordinal);
+        Assert.Contains("controls:RepositoryTreeGuides", treeStyles, StringComparison.Ordinal);
+        Assert.Contains("BuildRepositoryFilesSplitBody", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("new GridSplitter", previewSurface, StringComparison.Ordinal);
+        Assert.Contains("FilePreviewHost", previewSurface, StringComparison.Ordinal);
+        Assert.Contains("FilePreviewService", previewService, StringComparison.Ordinal);
+        Assert.Contains("TextPreviewContent", previewHost, StringComparison.Ordinal);
+        Assert.Contains("ImagePreviewContent", previewHost, StringComparison.Ordinal);
+        Assert.Contains("BinaryPreviewContent", previewHost, StringComparison.Ordinal);
+        Assert.Contains("RepositoryFilesTree_SelectionChanged", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("RepositoryContentResults_SelectionChanged", filesSurface, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()
