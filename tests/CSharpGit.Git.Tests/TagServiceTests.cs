@@ -158,6 +158,7 @@ public sealed class TagServiceTests : IDisposable
         var third = Commit(path, "third.txt", "three", "Third");
         RunGit(path, "tag", "release", first);
         RunGit(path, "push", "origin", "refs/tags/release:refs/tags/release");
+        RunGit(path, "push", "origin", "refs/heads/main:refs/heads/main");
         RunGit(path, "tag", "--force", "release", second);
 
         var service = new GitTagService();
@@ -202,6 +203,7 @@ public sealed class TagServiceTests : IDisposable
         var first = Commit(path, "first.txt", "one", "First");
         var second = Commit(path, "second.txt", "two", "Second");
         RunGit(path, "tag", "collision", first);
+        RunGit(path, "push", "origin", "refs/heads/main:refs/heads/main");
         RunGitBare(bare, "update-ref", "refs/tags/collision", second);
         var service = new GitTagService();
         var repository = await new GitCliRepositoryService().OpenAsync(path);
