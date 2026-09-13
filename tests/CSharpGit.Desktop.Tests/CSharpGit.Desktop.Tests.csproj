@@ -19,6 +19,11 @@
     <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphMetrics.cs" Link="CommitGraph/CommitGraphMetrics.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphGeometryBuilder.cs" Link="CommitGraph/CommitGraphGeometryBuilder.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeGuideLayout.cs" Link="RepositoryTree/RepositoryTreeGuideLayout.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeNodeKind.cs" Link="RepositoryTree/RepositoryTreeNodeKind.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeDescriptor.cs" Link="RepositoryTree/RepositoryTreeDescriptor.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/IncrementalTreeReconciler.cs" Link="RepositoryTree/IncrementalTreeReconciler.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeExpansion.cs" Link="RepositoryTree/RepositoryTreeExpansion.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeSelection.cs" Link="RepositoryTree/RepositoryTreeSelection.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/ChangedFileTreeNode.cs" Link="Changes/ChangedFileTreeNode.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CompactDiffLine.cs" Link="Changes/CompactDiffLine.cs" />
   </ItemGroup>
