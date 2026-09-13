@@ -141,7 +141,7 @@ public sealed record GitReferences(
         LocalBranches.Select(branch => (branch.Commit, branch.Name))
             .Concat(RemoteBranches.Select(branch => (branch.Commit, branch.Name)))
             .Concat(Tags.Select(tag => (tag.TargetCommit, $"tag: {tag.Name}")))
-            .GroupBy(item => item.TargetCommit, item => item.Item2, StringComparer.Ordinal)
+            .GroupBy(item => item.Item1, item => item.Item2, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => (IReadOnlyList<string>)group.ToList(), StringComparer.Ordinal);
 }
 
