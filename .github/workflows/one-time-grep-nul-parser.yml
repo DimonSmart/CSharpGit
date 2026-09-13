@@ -22,38 +22,11 @@ jobs:
           from pathlib import Path
           path = Path("src/CSharpGit.Git/GitRepositorySnapshotService.cs")
           text = path.read_text(encoding="utf-8")
-          old = '''    internal static IReadOnlyList<RepositoryContentSearchMatch> ParseContentSearch(
-              string output,
-              string commitHash)
-          {
-              if (string.IsNullOrEmpty(output)) return [];
-
-              var matches = new List<RepositoryContentSearchMatch>();
-              var revisionPrefix = commitHash + ":";
-              foreach (var rawLine in output.Split('\\n', StringSplitOptions.RemoveEmptyEntries))
-              {
-                  var line = rawLine.TrimEnd('\\r');
-                  var nul = line.IndexOf('\\0');
-                  if (nul <= 0 || nul == line.Length - 1)
-                      throw new FormatException("Git grep returned an invalid NUL-delimited result.");
-
-                  var revisionAndPath = line[..nul];
-                  var path = revisionAndPath.StartsWith(revisionPrefix, StringComparison.Ordinal)
-                      ? revisionAndPath[revisionPrefix.Length..]
-                      : revisionAndPath;
-                  var rest = line[(nul + 1)..];
-
-                  var separator = rest.IndexOfAny(['\\0', ':']);
-                  if (separator <= 0 || !int.TryParse(rest[..separator], out var lineNumber))
-                      throw new FormatException("Git grep returned an invalid line number.");
-
-                  var snippet = rest[(separator + 1)..];
-                  matches.Add(new RepositoryContentSearchMatch(path, lineNumber, snippet));
-              }
-
-              return matches;
-          }'''.replace('          ', '    ', 1)
-          new = '''    internal static IReadOnlyList<RepositoryContentSearchMatch> ParseContentSearch(
+          start_marker = "    internal static IReadOnlyList<RepositoryContentSearchMatch> ParseContentSearch("
+          end_marker = "\n    private static RepositorySnapshotEntryKind EntryKind"
+          start = text.index(start_marker)
+          end = text.index(end_marker, start)
+          replacement = '''    internal static IReadOnlyList<RepositoryContentSearchMatch> ParseContentSearch(
               string output,
               string commitHash)
           {
@@ -87,10 +60,9 @@ jobs:
               }
 
               return matches;
-          }'''.replace('          ', '    ', 1)
-          if text.count(old) != 1:
-              raise SystemExit(f"Expected one parser method, found {text.count(old)}")
-          path.write_text(text.replace(old, new), encoding="utf-8", newline="\n")
+          }
+'''
+          path.write_text(text[:start] + replacement + text[end:], encoding="utf-8", newline="\n")
           Path('.github/workflows/one-time-grep-nul-parser.yml').unlink()
       - name: Commit fix
         shell: bash
