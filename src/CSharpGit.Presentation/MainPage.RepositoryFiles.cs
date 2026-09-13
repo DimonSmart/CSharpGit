@@ -24,13 +24,13 @@ public sealed partial class MainPage
     private ProgressRing? _repositoryFilesProgress;
     private TextBlock? _repositoryFilesStatus;
     private readonly RepositorySnapshotCache _repositorySnapshotCache = new();
-    private readonly Dictionary<TreeViewNode, RepositorySnapshotTreeNode> _repositoryFilesNodes = [];
     private readonly Dictionary<string, RepositoryFilesPresentationState> _repositoryFilesStates = new(StringComparer.Ordinal);
     private readonly LinkedList<string> _repositoryFilesStateLru = [];
     private readonly Dictionary<string, LinkedListNode<string>> _repositoryFilesStateLruNodes = new(StringComparer.Ordinal);
     private CancellationTokenSource? _repositorySnapshotCts;
     private CancellationTokenSource? _repositoryContentSearchCts;
     private IReadOnlyList<RepositorySnapshotEntry> _repositorySnapshot = [];
+    private IReadOnlyList<RepositorySnapshotTreeNode> _repositoryFilesTreeRoots = [];
     private IReadOnlyList<RepositoryContentSearchMatch> _repositoryContentMatches = [];
     private Repository? _repositorySnapshotRepository;
     private string? _repositorySnapshotCommit;
@@ -117,21 +117,23 @@ public sealed partial class MainPage
         toolbar.Children.Add(_repositoryFilesSearchMode);
         root.Children.Add(toolbar);
 
-        var body = new Grid();
-        Grid.SetRow(body, 1);
+        var leftPane = new Grid();
 
         _repositoryFilesTree = new TreeView
         {
             SelectionMode = TreeViewSelectionMode.Single,
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Style = (Style)Application.Current.Resources["DenseTreeViewStyle"],
+            ItemContainerStyle = (Style)Application.Current.Resources["DenseTreeItemStyle"],
+            ItemTemplate = (DataTemplate)Application.Current.Resources["RepositoryFilesTreeItemTemplate"]
         };
-        _repositoryFilesTree.ItemInvoked += RepositoryFilesTree_ItemInvoked;
+        _repositoryFilesTree.SelectionChanged += RepositoryFilesTree_SelectionChanged;
         _repositoryFilesTree.DoubleTapped += RepositoryFilesTree_DoubleTapped;
         _repositoryFilesTree.RightTapped += RepositoryFilesTree_RightTapped;
         _repositoryFilesTree.Expanding += RepositoryFilesTree_Expanding;
         _repositoryFilesTree.Collapsed += RepositoryFilesTree_Collapsed;
-        body.Children.Add(_repositoryFilesTree);
+        leftPane.Children.Add(_repositoryFilesTree);
 
         _repositoryContentResults = new ListView
         {
@@ -139,10 +141,11 @@ public sealed partial class MainPage
             Visibility = Visibility.Collapsed,
             HorizontalContentAlignment = HorizontalAlignment.Stretch
         };
+        _repositoryContentResults.SelectionChanged += RepositoryContentResults_SelectionChanged;
         _repositoryContentResults.DoubleTapped += RepositoryContentResults_DoubleTapped;
         _repositoryContentResults.KeyDown += RepositoryContentResults_KeyDown;
         _repositoryContentResults.RightTapped += RepositoryContentResults_RightTapped;
-        body.Children.Add(_repositoryContentResults);
+        leftPane.Children.Add(_repositoryContentResults);
 
         var statusPanel = new StackPanel
         {
@@ -168,8 +171,10 @@ public sealed partial class MainPage
         };
         statusPanel.Children.Add(_repositoryFilesProgress);
         statusPanel.Children.Add(_repositoryFilesStatus);
-        body.Children.Add(statusPanel);
+        leftPane.Children.Add(statusPanel);
 
+        var body = BuildRepositoryFilesSplitBody(leftPane);
+        Grid.SetRow(body, 1);
         root.Children.Add(body);
         return root;
     }
@@ -179,6 +184,7 @@ public sealed partial class MainPage
         if (args.PropertyName == nameof(OpenRepositoryViewModel.Repository))
         {
             CancelRepositoryFilesRequests();
+            ClearRepositoryFileSelection();
             _repositorySnapshotCache.Clear();
             _repositoryFilesStates.Clear();
             _repositoryFilesStateLru.Clear();
@@ -221,14 +227,17 @@ public sealed partial class MainPage
         var commitHash = _viewModel.SelectedHistoryRow?.Commit.Hash;
         if (repository is null || string.IsNullOrWhiteSpace(commitHash))
         {
+            ClearRepositoryFileSelection();
             SetRepositoryFilesStatus("Select a commit.", loading: false);
             ClearRepositoryFilesTree();
             return;
         }
 
-        if (ReferenceEquals(repository, _repositorySnapshotRepository)
-            && string.Equals(commitHash, _repositorySnapshotCommit, StringComparison.Ordinal)
-            && _repositorySnapshotLoadedSuccessfully)
+        var contextChanged = !ReferenceEquals(repository, _repositorySnapshotRepository)
+                             || !string.Equals(commitHash, _repositorySnapshotCommit, StringComparison.Ordinal);
+        if (contextChanged) ClearRepositoryFileSelection();
+
+        if (!contextChanged && _repositorySnapshotLoadedSuccessfully)
         {
             PublishRepositorySnapshot(repository, commitHash, _repositorySnapshot);
             return;
@@ -272,6 +281,7 @@ public sealed partial class MainPage
             _repositorySnapshotCommit = commitHash;
             _repositorySnapshotLoadedSuccessfully = false;
             ClearRepositoryFilesTree();
+            ClearRepositoryFileSelection();
             SetRepositoryFilesStatus($"Could not load repository files: {exception.Message}", loading: false);
         }
     }
@@ -305,17 +315,24 @@ public sealed partial class MainPage
         _repositoryFilesBuildingTree = true;
         try
         {
-            _repositoryFilesTree.RootNodes.Clear();
-            _repositoryFilesNodes.Clear();
+            _repositoryFilesTree.ItemsSource = null;
             var query = _repositoryFilesSearchModeName == "Name" ? _repositoryFilesNameQuery : null;
             var roots = RepositorySnapshotTreeNode.Build(_repositorySnapshot, query);
+            _repositoryFilesTreeRoots = roots;
             var searchActive = !string.IsNullOrWhiteSpace(query);
             var state = CurrentRepositoryFilesState(create: true);
             foreach (var root in roots)
-                _repositoryFilesTree.RootNodes.Add(CreateRepositoryFilesNode(root, searchActive, state));
+                RestoreRepositoryFilesExpansion(root, searchActive, state);
+            _repositoryFilesTree.ItemsSource = roots;
 
-            if (state?.SelectedPath is { } selectedPath)
-                SelectRepositoryFilesPath(_repositoryFilesTree.RootNodes, selectedPath);
+            var selected = state?.SelectedPath is { } selectedPath
+                ? FindRepositoryFilesPath(roots, selectedPath)
+                : null;
+            _repositoryFilesTree.SelectedItem = selected;
+            if (selected is not null)
+                ApplyRepositoryFileSelection(selected.Path, null, selected.Entry);
+            else
+                ClearRepositoryFileSelection();
 
             if (searchActive && roots.Count == 0 && _repositorySnapshot.Count > 0)
                 SetRepositoryFilesStatus("No matches", loading: false);
@@ -328,29 +345,27 @@ public sealed partial class MainPage
         }
     }
 
-    private TreeViewNode CreateRepositoryFilesNode(
-        RepositorySnapshotTreeNode model,
+    private static void RestoreRepositoryFilesExpansion(
+        RepositorySnapshotTreeNode node,
         bool searchActive,
         RepositoryFilesPresentationState? state)
     {
-        var node = new TreeViewNode
-        {
-            Content = RepositoryFilesDisplayName(model),
-            IsExpanded = model.IsDirectory && (searchActive || state?.ExpandedPaths.Contains(model.Path) == true)
-        };
-        _repositoryFilesNodes[node] = model;
-        foreach (var child in model.Children)
-            node.Children.Add(CreateRepositoryFilesNode(child, searchActive, state));
-        return node;
+        node.IsExpanded = node.IsDirectory && (searchActive || state?.ExpandedPaths.Contains(node.Path) == true);
+        foreach (var child in node.Children)
+            RestoreRepositoryFilesExpansion(child, searchActive, state);
     }
 
-    private static string RepositoryFilesDisplayName(RepositorySnapshotTreeNode node) => node.Entry?.Kind switch
+    private static RepositorySnapshotTreeNode? FindRepositoryFilesPath(
+        IEnumerable<RepositorySnapshotTreeNode> nodes,
+        string path)
     {
-        RepositorySnapshotEntryKind.Symlink => $"↗ {node.DisplayName}",
-        RepositorySnapshotEntryKind.Submodule => $"▣ {node.DisplayName}",
-        RepositorySnapshotEntryKind.Unsupported => $"? {node.DisplayName}",
-        _ => node.DisplayName
-    };
+        foreach (var node in nodes)
+        {
+            if (string.Equals(node.Path, path, StringComparison.Ordinal)) return node;
+            if (FindRepositoryFilesPath(node.Children, path) is { } match) return match;
+        }
+        return null;
+    }
 
     private void RepositoryFilesSearch_TextChanged(object sender, TextChangedEventArgs args)
     {
@@ -462,11 +477,18 @@ public sealed partial class MainPage
         && ReferenceEquals(repository, _viewModel.Repository)
         && string.Equals(commitHash, _viewModel.SelectedHistoryRow?.Commit.Hash, StringComparison.Ordinal);
 
-    private void RepositoryFilesTree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
+    private void RepositoryFilesTree_SelectionChanged(TreeView sender, TreeViewSelectionChangedEventArgs args)
     {
-        if (sender.SelectedNode is null || !_repositoryFilesNodes.TryGetValue(sender.SelectedNode, out var model)) return;
+        if (_repositoryFilesBuildingTree) return;
+        if (sender.SelectedItem is not RepositorySnapshotTreeNode model)
+        {
+            ClearRepositoryFileSelection();
+            return;
+        }
+
         if (CurrentRepositoryFilesState(create: true) is { } state) state.SelectedPath = model.Path;
         _repositoryFilesLastSelectedPath = model.Entry is null ? null : model.Path;
+        ApplyRepositoryFileSelection(model.Path, null, model.Entry);
     }
 
     private async void RepositoryFilesTree_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
@@ -485,26 +507,39 @@ public sealed partial class MainPage
 
     private void RepositoryFilesTree_Expanding(TreeView sender, TreeViewExpandingEventArgs args)
     {
-        if (_repositoryFilesBuildingTree || !string.IsNullOrWhiteSpace(_repositoryFilesNameQuery)) return;
-        if (_repositoryFilesNodes.TryGetValue(args.Node, out var model) && model.IsDirectory && CurrentRepositoryFilesState(create: true) is { } state)
-            state.ExpandedPaths.Add(model.Path);
+        if (args.Item is not RepositorySnapshotTreeNode model) return;
+        model.IsExpanded = true;
+        if (_repositoryFilesBuildingTree || !string.IsNullOrWhiteSpace(_repositoryFilesNameQuery) || !model.IsDirectory) return;
+        if (CurrentRepositoryFilesState(create: true) is { } state) state.ExpandedPaths.Add(model.Path);
     }
 
     private void RepositoryFilesTree_Collapsed(TreeView sender, TreeViewCollapsedEventArgs args)
     {
-        if (_repositoryFilesBuildingTree || !string.IsNullOrWhiteSpace(_repositoryFilesNameQuery)) return;
-        if (_repositoryFilesNodes.TryGetValue(args.Node, out var model) && model.IsDirectory && CurrentRepositoryFilesState(create: true) is { } state)
-            state.ExpandedPaths.Remove(model.Path);
+        if (args.Item is not RepositorySnapshotTreeNode model) return;
+        model.IsExpanded = false;
+        if (_repositoryFilesBuildingTree || !string.IsNullOrWhiteSpace(_repositoryFilesNameQuery) || !model.IsDirectory) return;
+        if (CurrentRepositoryFilesState(create: true) is { } state) state.ExpandedPaths.Remove(model.Path);
     }
 
     private RepositorySnapshotEntry? SelectedRepositorySnapshotEntry()
     {
-        if (_repositoryFilesTree?.SelectedNode is not { } selected
-            || !_repositoryFilesNodes.TryGetValue(selected, out var model))
-            return null;
+        if (_repositoryFilesTree?.SelectedItem is not RepositorySnapshotTreeNode model) return null;
         if (CurrentRepositoryFilesState(create: true) is { } state) state.SelectedPath = model.Path;
         _repositoryFilesLastSelectedPath = model.Entry is null ? null : model.Path;
         return model.Entry;
+    }
+
+    private void RepositoryContentResults_SelectionChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (_repositoryContentResults?.SelectedItem is not RepositoryContentSearchRow row) return;
+        if (!string.Equals(_repositoryContentCommit, _viewModel.SelectedHistoryRow?.Commit.Hash, StringComparison.Ordinal)) return;
+        var entry = _repositorySnapshot.FirstOrDefault(candidate =>
+            string.Equals(candidate.Path, row.Match.Path, StringComparison.Ordinal));
+        if (entry is not { Kind: RepositorySnapshotEntryKind.File }) return;
+
+        if (CurrentRepositoryFilesState(create: true) is { } state) state.SelectedPath = entry.Path;
+        _repositoryFilesLastSelectedPath = entry.Path;
+        ApplyRepositoryFileSelection(entry.Path, row.Match.LineNumber, entry);
     }
 
     private async void RepositoryContentResults_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
@@ -635,14 +670,27 @@ public sealed partial class MainPage
 
     private void ClearRepositoryFilesTree()
     {
-        if (_repositoryFilesTree is not null) _repositoryFilesTree.RootNodes.Clear();
-        _repositoryFilesNodes.Clear();
+        if (_repositoryFilesTree is not null)
+        {
+            _repositoryFilesBuildingTree = true;
+            try
+            {
+                _repositoryFilesTree.SelectedItem = null;
+                _repositoryFilesTree.ItemsSource = null;
+            }
+            finally
+            {
+                _repositoryFilesBuildingTree = false;
+            }
+        }
+        _repositoryFilesTreeRoots = [];
     }
 
     private void CancelRepositoryFilesRequests()
     {
         CancelRepositorySnapshotRequest();
         CancelRepositoryContentSearch();
+        CancelRepositoryFilePreview();
     }
 
     private void CancelRepositorySnapshotRequest()
@@ -727,25 +775,6 @@ public sealed partial class MainPage
             _repositoryFilesStateLru.RemoveLast();
             _repositoryFilesStateLruNodes.Remove(oldest.Value);
             _repositoryFilesStates.Remove(oldest.Value);
-        }
-    }
-
-    private void SelectRepositoryFilesPath(IList<TreeViewNode> nodes, string path)
-    {
-        if (_repositoryFilesTree is null) return;
-        foreach (var node in nodes)
-        {
-            if (_repositoryFilesNodes.TryGetValue(node, out var model)
-                && string.Equals(model.Path, path, StringComparison.Ordinal))
-            {
-                _repositoryFilesTree.SelectedNode = node;
-                return;
-            }
-            SelectRepositoryFilesPath(node.Children, path);
-            if (_repositoryFilesTree.SelectedNode is not null
-                && _repositoryFilesNodes.TryGetValue(_repositoryFilesTree.SelectedNode, out var selected)
-                && string.Equals(selected.Path, path, StringComparison.Ordinal))
-                return;
         }
     }
 
