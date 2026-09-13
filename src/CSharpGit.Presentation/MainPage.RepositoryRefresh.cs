@@ -18,6 +18,7 @@ public sealed partial class MainPage
     private bool _isRefreshInProgress;
     private Repository? _monitoredRepository;
     private bool _repositoryPresentationRefreshQueued;
+    private bool _repositoryTreePresentationDirty;
     private bool _workingTreePresentationDirty;
 
     public bool IsRefreshRequired { get; private set; }
@@ -149,7 +150,8 @@ public sealed partial class MainPage
 
     private void QueueRepositoryPresentationRefresh(bool workingTreeChanged = false)
     {
-        _workingTreePresentationDirty |= workingTreeChanged;
+        if (workingTreeChanged) _workingTreePresentationDirty = true;
+        else _repositoryTreePresentationDirty = true;
         if (_repositoryPresentationRefreshQueued) return;
 
         _repositoryPresentationRefreshQueued = true;
@@ -162,18 +164,13 @@ public sealed partial class MainPage
     {
         _repositoryPresentationRefreshQueued = false;
         var refreshWorkingTree = _workingTreePresentationDirty;
+        var refreshRepositoryTree = _repositoryTreePresentationDirty;
         _workingTreePresentationDirty = false;
+        _repositoryTreePresentationDirty = false;
         InitializeTagSupportIfNeeded();
 
-        if (refreshWorkingTree)
-        {
-            RefreshPresentationCollections();
-            ApplyTagOrderingToRepositoryTree();
-            return;
-        }
-
-        RebuildRepositoryTree();
-        ApplyTagOrderingToRepositoryTree();
+        if (refreshWorkingTree) RefreshPresentationCollections();
+        if (refreshRepositoryTree) SynchronizeRepositoryTree();
         UpdateStatusBar();
     }
 }
