@@ -7,6 +7,7 @@ public sealed class TagUiContractTests
     {
         var root = FindRepositoryRoot();
         var tags = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Tags.cs"));
+        var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
         var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var refresh = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryRefresh.cs"));
         var references = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryStateService.cs"));
@@ -53,6 +54,12 @@ public sealed class TagUiContractTests
         Assert.Contains("CurrentOperation == RepositoryOperation.None", tags);
         Assert.Contains("RunMutationAsync", tags);
         Assert.Contains("includeHistory: false", tags);
+
+        Assert.Contains("CreateBranchFromReferenceAsync($\"refs/tags/{tag.Name}\", tag.TargetCommit)", tags);
+        Assert.Contains("CreateBranchFromReferenceAsync(commit.Hash, commit.Hash)", commitActions);
+        Assert.Contains("Switch to the new branch", commitActions);
+        Assert.Contains("switchToBranch.IsChecked == true", commitActions);
+        Assert.Contains("_referenceService.CreateBranchAsync(repository, branchName.Text.Trim(), startPoint, switched)", commitActions);
 
         Assert.Contains("IReferenceService : ITagService", references);
         Assert.DoesNotContain("OrderByDescending(tag => tag.Name", mainPage, StringComparison.Ordinal);
