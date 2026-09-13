@@ -36,19 +36,7 @@ public sealed partial class MainPage
 
     private void ApplyTagOrderingToRepositoryTree()
     {
-        var root = _repositoryTreeRoots.FirstOrDefault(node =>
-            node.Kind == RepositoryTreeNodeKind.Group && node.Name == "Tags");
-        if (root is null) return;
-
-        var existing = root.Children
-            .Where(node => node.Value is GitTag)
-            .ToDictionary(node => ((GitTag)node.Value!).Name, StringComparer.Ordinal);
-        root.Children.Clear();
-        foreach (var tag in _viewModel.Tags)
-        {
-            if (existing.TryGetValue(tag.Name, out var node)) root.Children.Add(node);
-            else root.Children.Add(new RepositoryTreeNode(RepositoryTreeNodeKind.Tag, tag.Name, tag.Name, tag));
-        }
+        SynchronizeRepositoryTree();
     }
 
     private void RepositoryTree_TagAwareRightTapped(object sender, RightTappedRoutedEventArgs args)

@@ -20,11 +20,6 @@ public sealed partial class MainPage
     {
         _worktreeService = worktreeService ?? throw new ArgumentNullException(nameof(worktreeService));
         _viewModel.PropertyChanged += WorktreeViewModel_PropertyChanged;
-        _viewModel.LocalBranches.CollectionChanged += (_, _) => QueueWorktreeRefresh();
-        _viewModel.RemoteBranches.CollectionChanged += (_, _) => QueueWorktreeRefresh();
-        _viewModel.Remotes.CollectionChanged += (_, _) => QueueWorktreeRefresh();
-        _viewModel.Tags.CollectionChanged += (_, _) => QueueWorktreeRefresh();
-        _viewModel.Stashes.CollectionChanged += (_, _) => QueueWorktreeRefresh();
         QueueWorktreeRefresh();
     }
 
@@ -33,8 +28,7 @@ public sealed partial class MainPage
     private void WorktreeViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (args.PropertyName is nameof(OpenRepositoryViewModel.Repository)
-            or nameof(OpenRepositoryViewModel.HeadDisplay)
-            or nameof(OpenRepositoryViewModel.CurrentOperation))
+            or nameof(OpenRepositoryViewModel.HeadDisplay))
             QueueWorktreeRefresh();
     }
 
@@ -56,7 +50,6 @@ public sealed partial class MainPage
         if (repository is null)
         {
             _worktrees = [];
-            RemoveWorktreeRoot();
             return;
         }
 
@@ -65,7 +58,7 @@ public sealed partial class MainPage
             var worktrees = await _worktreeService.ListAsync(repository);
             if (!ReferenceEquals(repository, _viewModel.Repository)) return;
             _worktrees = worktrees;
-            InstallWorktreeRoot();
+            SynchronizeWorktreePresentation();
         }
         catch (OperationCanceledException)
         {
@@ -76,59 +69,13 @@ public sealed partial class MainPage
         }
     }
 
-    private void InstallWorktreeRoot()
-    {
-        RemoveWorktreeRoot();
-        if (_viewModel.Repository is null) return;
 
-        var children = _worktrees
-            .OrderByDescending(worktree => worktree.IsCurrent)
-            .ThenBy(worktree => worktree.Branch ?? worktree.Head, StringComparer.OrdinalIgnoreCase)
-            .Select(worktree => new RepositoryTreeNode(
-                RepositoryTreeNodeKind.Worktree,
-                worktree.Branch ?? ShortHead(worktree.Head),
-                value: worktree,
-                isCurrent: worktree.IsCurrent))
-            .ToList();
 
-        _repositoryTreeRoots.Insert(0, new RepositoryTreeNode(
-            RepositoryTreeNodeKind.Group,
-            "Worktrees",
-            isExpanded: true,
-            children: children));
-        ApplyBranchWorktreeIndicators();
-    }
 
-    private void RemoveWorktreeRoot()
-    {
-        for (var index = _repositoryTreeRoots.Count - 1; index >= 0; index--)
-        {
-            if (_repositoryTreeRoots[index] is { Kind: RepositoryTreeNodeKind.Group, Name: "Worktrees" })
-                _repositoryTreeRoots.RemoveAt(index);
-        }
-    }
 
-    private void ApplyBranchWorktreeIndicators()
-    {
-        var byBranch = _worktrees
-            .Where(worktree => !string.IsNullOrWhiteSpace(worktree.Branch))
-            .GroupBy(worktree => worktree.Branch!, StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.First().Path, StringComparer.Ordinal);
 
-        foreach (var root in _repositoryTreeRoots)
-            ApplyBranchWorktreeIndicators(root, byBranch);
-    }
 
-    private static void ApplyBranchWorktreeIndicators(
-        RepositoryTreeNode node,
-        IReadOnlyDictionary<string, string> worktreesByBranch)
-    {
-        if (node.Kind == RepositoryTreeNodeKind.LocalBranch && node.ReferenceName is { } branch)
-            node.SetAssociatedWorktreePath(worktreesByBranch.GetValueOrDefault(branch));
 
-        foreach (var child in node.Children)
-            ApplyBranchWorktreeIndicators(child, worktreesByBranch);
-    }
 
     private WorktreeInfo? FindWorktreeForBranch(string branch) =>
         _worktrees.FirstOrDefault(worktree =>

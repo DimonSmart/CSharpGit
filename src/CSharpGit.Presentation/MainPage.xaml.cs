@@ -80,7 +80,6 @@ public sealed partial class MainPage : Page
     {
         if (eventArgs.PropertyName is nameof(OpenRepositoryViewModel.Repository) or nameof(OpenRepositoryViewModel.HeadDisplay) or nameof(OpenRepositoryViewModel.CurrentOperation))
         {
-            RebuildRepositoryTree();
             UpdateStatusBar();
         }
         else if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.SelectedChangedFiles))
@@ -131,69 +130,12 @@ public sealed partial class MainPage : Page
 
         UnstagedHeader.Text = $"Unstaged changes ({_unstagedChanges.Count})";
         StagedHeader.Text = $"Staged changes ({_stagedChanges.Count})";
-        RebuildRepositoryTree();
         UpdateStatusBar();
     }
 
     private void RebuildRepositoryTree()
     {
-        _repositoryTreeRoots.Clear();
-        if (_viewModel.Repository is null) return;
-
-        _repositoryTreeRoots.Add(new RepositoryTreeNode(
-            RepositoryTreeNodeKind.Group,
-            "Branches",
-            isExpanded: true,
-            children: _viewModel.LocalBranches
-                .OrderByDescending(branch => branch.IsCurrent)
-                .ThenBy(branch => branch.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(branch => new RepositoryTreeNode(
-                    RepositoryTreeNodeKind.LocalBranch,
-                    branch.Name,
-                    branch.Name,
-                    branch,
-                    branch.IsCurrent))));
-
-        var remoteNodes = new List<RepositoryTreeNode>();
-        foreach (var remote in _viewModel.Remotes.OrderBy(remote => remote.Name, StringComparer.OrdinalIgnoreCase))
-        {
-            var prefix = remote.Name + "/";
-            var branches = _viewModel.RemoteBranches
-                .Where(branch => branch.Name.StartsWith(prefix, StringComparison.Ordinal))
-                .OrderBy(branch => branch.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(branch => new RepositoryTreeNode(
-                    RepositoryTreeNodeKind.RemoteBranch,
-                    branch.Name[prefix.Length..],
-                    branch.Name,
-                    branch))
-                .ToList();
-            remoteNodes.Add(new RepositoryTreeNode(
-                RepositoryTreeNodeKind.Remote,
-                remote.Name,
-                value: remote,
-                isExpanded: true,
-                children: branches));
-        }
-        _repositoryTreeRoots.Add(new RepositoryTreeNode(
-            RepositoryTreeNodeKind.Group,
-            "Remotes",
-            isExpanded: true,
-            children: remoteNodes));
-
-        _repositoryTreeRoots.Add(new RepositoryTreeNode(
-            RepositoryTreeNodeKind.Group,
-            "Tags",
-            children: _viewModel.Tags
-                .Select(tag => new RepositoryTreeNode(RepositoryTreeNodeKind.Tag, tag.Name, tag.Name, tag))));
-
-        _repositoryTreeRoots.Add(new RepositoryTreeNode(
-            RepositoryTreeNodeKind.Group,
-            "Stashes",
-            children: _viewModel.Stashes.Select(stash => new RepositoryTreeNode(
-                RepositoryTreeNodeKind.Stash,
-                $"{stash.Name}: {stash.Message}",
-                stash.Commit,
-                stash))));
+        SynchronizeRepositoryTree();
     }
 
     private void UpdateStatusBar()
