@@ -163,14 +163,17 @@ public sealed partial class MainPage
         _repositoryPresentationRefreshQueued = false;
         var refreshWorkingTree = _workingTreePresentationDirty;
         _workingTreePresentationDirty = false;
+        InitializeTagSupportIfNeeded();
 
         if (refreshWorkingTree)
         {
             RefreshPresentationCollections();
+            ApplyTagOrderingToRepositoryTree();
             return;
         }
 
         RebuildRepositoryTree();
+        ApplyTagOrderingToRepositoryTree();
         UpdateStatusBar();
     }
 }

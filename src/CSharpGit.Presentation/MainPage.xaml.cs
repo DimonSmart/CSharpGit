@@ -184,7 +184,6 @@ public sealed partial class MainPage : Page
             RepositoryTreeNodeKind.Group,
             "Tags",
             children: _viewModel.Tags
-                .OrderByDescending(tag => tag.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(tag => new RepositoryTreeNode(RepositoryTreeNodeKind.Tag, tag.Name, tag.Name, tag))));
 
         _repositoryTreeRoots.Add(new RepositoryTreeNode(
