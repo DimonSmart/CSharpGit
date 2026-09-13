@@ -16,6 +16,7 @@ public sealed partial class MainPage
 
     private IRepositorySnapshotService? _repositorySnapshotService;
     private PivotItem? _repositoryFilesTab;
+    private PivotItem? _changesTab;
     private TextBox? _repositoryFilesSearch;
     private ComboBox? _repositoryFilesSearchMode;
     private TreeView? _repositoryFilesTree;
@@ -34,6 +35,7 @@ public sealed partial class MainPage
     private Repository? _repositorySnapshotRepository;
     private string? _repositorySnapshotCommit;
     private string? _repositoryContentCommit;
+    private string? _repositoryFilesLastSelectedPath;
     private long _repositorySnapshotGeneration;
     private long _repositoryContentSearchGeneration;
     private string _repositoryFilesNameQuery = string.Empty;
@@ -66,9 +68,17 @@ public sealed partial class MainPage
 
     private void InitializeRepositoryFiles()
     {
-        _repositoryFilesTab = new PivotItem { Header = "Files" };
+        _changesTab = FilesTab;
+        _changesTab.Name = "ChangesTab";
+        _repositoryFilesTab = new PivotItem { Header = "Files", Name = "FilesTab" };
         _repositoryFilesTab.Content = BuildRepositoryFilesSurface();
         DetailsTabs.Items.Add(_repositoryFilesTab);
+
+        CommitFilesList.DoubleTapped -= CommitFilesList_DoubleTapped;
+        CommitFilesList.KeyDown -= CommitFilesList_KeyDown;
+        CommitFilesList.DoubleTapped += RepositoryChangedFiles_DoubleTapped;
+        CommitFilesList.KeyDown += RepositoryChangedFiles_KeyDown;
+
         _viewModel.PropertyChanged += RepositoryFilesViewModel_PropertyChanged;
     }
 
@@ -177,6 +187,7 @@ public sealed partial class MainPage
             _repositorySnapshotCommit = null;
             _repositoryContentMatches = [];
             _repositoryContentCommit = null;
+            _repositoryFilesLastSelectedPath = null;
             ClearRepositoryFilesTree();
             if (IsRepositoryFilesActive) _ = LoadRepositorySnapshotAsync();
         }
@@ -214,8 +225,7 @@ public sealed partial class MainPage
         }
 
         if (ReferenceEquals(repository, _repositorySnapshotRepository)
-            && string.Equals(commitHash, _repositorySnapshotCommit, StringComparison.Ordinal)
-            && _repositorySnapshot.Count > 0)
+            && string.Equals(commitHash, _repositorySnapshotCommit, StringComparison.Ordinal))
         {
             PublishRepositorySnapshot(repository, commitHash, _repositorySnapshot);
             return;
@@ -409,8 +419,13 @@ public sealed partial class MainPage
         SetRepositoryFilesStatus("Searching file contents...", loading: true);
         try
         {
-            var matches = await _repositorySnapshotService.SearchContentAsync(repository, commitHash, query, token);
+            var rawMatches = await _repositorySnapshotService.SearchContentAsync(repository, commitHash, query, token);
             if (!CanPublishRepositoryContent(repository, commitHash, generation)) return;
+            var regularPaths = _repositorySnapshot
+                .Where(entry => entry.Kind == RepositorySnapshotEntryKind.File)
+                .Select(entry => entry.Path)
+                .ToHashSet(StringComparer.Ordinal);
+            var matches = rawMatches.Where(match => regularPaths.Contains(match.Path)).ToList();
             _repositoryContentMatches = matches;
             _repositoryContentCommit = commitHash;
             UpdateRepositoryFilesModeSurface();
@@ -446,6 +461,7 @@ public sealed partial class MainPage
     {
         if (sender.SelectedNode is null || !_repositoryFilesNodes.TryGetValue(sender.SelectedNode, out var model)) return;
         if (CurrentRepositoryFilesState(create: true) is { } state) state.SelectedPath = model.Path;
+        _repositoryFilesLastSelectedPath = model.Entry is null ? null : model.Path;
     }
 
     private async void RepositoryFilesTree_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
@@ -482,6 +498,7 @@ public sealed partial class MainPage
             || !_repositoryFilesNodes.TryGetValue(selected, out var model))
             return null;
         if (CurrentRepositoryFilesState(create: true) is { } state) state.SelectedPath = model.Path;
+        _repositoryFilesLastSelectedPath = model.Entry is null ? null : model.Path;
         return model.Entry;
     }
 
@@ -587,6 +604,20 @@ public sealed partial class MainPage
             OpenSettingsWindow(SettingsSection.GitTools);
     }
 
+    private void RepositoryChangedFiles_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
+    {
+        if (CommitFilesList.SelectedItem is null || _changesTab is null) return;
+        DetailsTabs.SelectedItem = _changesTab;
+        args.Handled = true;
+    }
+
+    private void RepositoryChangedFiles_KeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (args.Key != VirtualKey.Enter || CommitFilesList.SelectedItem is null || _changesTab is null) return;
+        DetailsTabs.SelectedItem = _changesTab;
+        args.Handled = true;
+    }
+
     private void SetRepositoryFilesStatus(string text, bool loading)
     {
         if (_repositoryFilesStatus is not null) _repositoryFilesStatus.Text = text;
@@ -632,6 +663,7 @@ public sealed partial class MainPage
         if (state is null) return;
         state.NameQuery = _repositoryFilesNameQuery;
         state.SearchMode = _repositoryFilesSearchModeName;
+        _repositoryFilesLastSelectedPath = state.SelectedPath;
         TouchRepositoryFilesState(StateKey(_repositorySnapshotRepository, _repositorySnapshotCommit));
     }
 
@@ -640,10 +672,15 @@ public sealed partial class MainPage
         var key = StateKey(repository, commitHash);
         if (!_repositoryFilesStates.TryGetValue(key, out var state))
         {
+            var selectedPath = _repositoryFilesLastSelectedPath is { } previousPath
+                && _repositorySnapshot.Any(entry => string.Equals(entry.Path, previousPath, StringComparison.Ordinal))
+                    ? previousPath
+                    : null;
             state = new RepositoryFilesPresentationState
             {
                 NameQuery = _repositoryFilesNameQuery,
-                SearchMode = _repositoryFilesSearchModeName
+                SearchMode = _repositoryFilesSearchModeName,
+                SelectedPath = selectedPath
             };
             _repositoryFilesStates[key] = state;
         }
@@ -664,7 +701,8 @@ public sealed partial class MainPage
             state = new RepositoryFilesPresentationState
             {
                 NameQuery = _repositoryFilesNameQuery,
-                SearchMode = _repositoryFilesSearchModeName
+                SearchMode = _repositoryFilesSearchModeName,
+                SelectedPath = _repositoryFilesLastSelectedPath
             };
             _repositoryFilesStates[key] = state;
         }
