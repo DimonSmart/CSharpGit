@@ -58,6 +58,19 @@ public sealed class RepositorySnapshotServiceTests : IDisposable
     }
 
     [Fact]
+    public void ContentSearchParserPreservesNewlinesAndColonsInGitPaths()
+    {
+        var commit = new string('a', 40);
+        var output = $"{commit}:folder\npart:name.txt\0" + "12\0matched text\n";
+
+        var match = Assert.Single(GitRepositorySnapshotService.ParseContentSearch(output, commit));
+
+        Assert.Equal("folder\npart:name.txt", match.Path);
+        Assert.Equal(12, match.LineNumber);
+        Assert.Equal("matched text", match.Snippet);
+    }
+
+    [Fact]
     public async Task ContentSearchIsLiteralCaseInsensitiveColonSafeAndSkipsBinaryFiles()
     {
         var repository = await CreateRepositoryAsync();
