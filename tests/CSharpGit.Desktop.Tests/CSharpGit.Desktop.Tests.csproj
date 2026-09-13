@@ -26,6 +26,7 @@
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeSelection.cs" Link="RepositoryTree/RepositoryTreeSelection.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/ChangedFileTreeNode.cs" Link="Changes/ChangedFileTreeNode.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CompactDiffLine.cs" Link="Changes/CompactDiffLine.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositorySnapshotTreeNode.cs" Link="RepositoryFiles/RepositorySnapshotTreeNode.cs" />
   </ItemGroup>
   <!-- The test launches the binary, so build it without creating a TFM-incompatible assembly reference. -->
   <Target Name="BuildDesktopApplication" BeforeTargets="Build">
