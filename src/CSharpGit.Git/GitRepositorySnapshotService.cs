@@ -130,25 +130,29 @@ public sealed class GitRepositorySnapshotService : IRepositorySnapshotService
 
         var matches = new List<RepositoryContentSearchMatch>();
         var revisionPrefix = commitHash + ":";
-        foreach (var rawLine in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        var cursor = 0;
+        while (cursor < output.Length)
         {
-            var line = rawLine.TrimEnd('\r');
-            var nul = line.IndexOf('\0');
-            if (nul <= 0 || nul == line.Length - 1)
-                throw new FormatException("Git grep returned an invalid NUL-delimited result.");
+            var fileEnd = output.IndexOf('\0', cursor);
+            if (fileEnd <= cursor)
+                throw new FormatException("Git grep returned an invalid NUL-delimited filename.");
 
-            var revisionAndPath = line[..nul];
+            var revisionAndPath = output[cursor..fileEnd];
             var path = revisionAndPath.StartsWith(revisionPrefix, StringComparison.Ordinal)
                 ? revisionAndPath[revisionPrefix.Length..]
                 : revisionAndPath;
-            var rest = line[(nul + 1)..];
+            cursor = fileEnd + 1;
 
-            var separator = rest.IndexOfAny(['\0', ':']);
-            if (separator <= 0 || !int.TryParse(rest[..separator], out var lineNumber))
+            var lineNumberEnd = output.IndexOf('\0', cursor);
+            if (lineNumberEnd <= cursor || !int.TryParse(output[cursor..lineNumberEnd], out var lineNumber))
                 throw new FormatException("Git grep returned an invalid line number.");
+            cursor = lineNumberEnd + 1;
 
-            var snippet = rest[(separator + 1)..];
+            var snippetEnd = output.IndexOf('\n', cursor);
+            if (snippetEnd < 0) snippetEnd = output.Length;
+            var snippet = output[cursor..snippetEnd].TrimEnd('\r');
             matches.Add(new RepositoryContentSearchMatch(path, lineNumber, snippet));
+            cursor = snippetEnd < output.Length ? snippetEnd + 1 : output.Length;
         }
 
         return matches;
