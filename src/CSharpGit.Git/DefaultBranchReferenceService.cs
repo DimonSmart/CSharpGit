@@ -11,6 +11,13 @@ internal sealed class DefaultBranchReferenceService : IReferenceService
 
     internal DefaultBranchReferenceService(
         GitCliRepositoryService inner,
+        DefaultBranchResolver resolver)
+        : this(inner, resolver, inner)
+    {
+    }
+
+    internal DefaultBranchReferenceService(
+        GitCliRepositoryService inner,
         DefaultBranchResolver resolver,
         ITagService tags)
     {
