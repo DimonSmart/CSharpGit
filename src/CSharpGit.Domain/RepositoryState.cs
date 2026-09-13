@@ -72,7 +72,26 @@ public sealed record GitBranch(
 
 public sealed record GitRemote(string Name, string FetchUrl, string PushUrl);
 
-public sealed record GitTag(string Name, string Commit);
+public enum GitTagKind
+{
+    Lightweight,
+    Annotated
+}
+
+public sealed record GitTag(
+    string Name,
+    string TargetCommit,
+    GitTagKind Kind = GitTagKind.Lightweight,
+    string? TagObjectId = null,
+    string? TaggerName = null,
+    string? TaggerEmail = null,
+    DateTimeOffset? TaggedAt = null,
+    string? Message = null)
+{
+    // Kept as a read-only compatibility alias for existing navigation code.
+    public string Commit => TargetCommit;
+    public string ObjectId => TagObjectId ?? TargetCommit;
+}
 
 public sealed record GitStash(string Name, string Commit, string Message)
 {
@@ -121,8 +140,8 @@ public sealed record GitReferences(
     public IReadOnlyDictionary<string, IReadOnlyList<string>> ByCommit =>
         LocalBranches.Select(branch => (branch.Commit, branch.Name))
             .Concat(RemoteBranches.Select(branch => (branch.Commit, branch.Name)))
-            .Concat(Tags.Select(tag => (tag.Commit, $"tag: {tag.Name}")))
-            .GroupBy(item => item.Commit, item => item.Item2, StringComparer.Ordinal)
+            .Concat(Tags.Select(tag => (tag.TargetCommit, $"tag: {tag.Name}")))
+            .GroupBy(item => item.TargetCommit, item => item.Item2, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => (IReadOnlyList<string>)group.ToList(), StringComparer.Ordinal);
 }
 
