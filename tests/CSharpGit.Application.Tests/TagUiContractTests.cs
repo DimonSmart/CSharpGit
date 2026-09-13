@@ -35,10 +35,8 @@ public sealed class TagUiContractTests
         Assert.Contains("_referenceService.DeleteTagAsync", tags);
         Assert.Contains("_referenceService.ForceUpdateRemoteTagAsync", tags);
         Assert.DoesNotContain("ProcessStartInfo", tags);
-        Assert.DoesNotContain("git tag", tags, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("git push", tags, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("git fetch", tags, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("git ls-remote", tags, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("RunGit", tags, StringComparison.Ordinal);
+        Assert.DoesNotContain("GitCommandExecutor", tags, StringComparison.Ordinal);
 
         Assert.Contains("Title = \"Delete local tag?\"", tags);
         Assert.Contains("This deletes only the local tag", tags);
