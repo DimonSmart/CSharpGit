@@ -14,6 +14,9 @@ public sealed partial class MainPage
     private bool _changesSurfaceInitialized;
     private bool _changedFileTreeRefreshQueued;
 
+    private PivotItem? ChangesTabControl =>
+        DetailsTabs.Items.Count > 1 ? DetailsTabs.Items[1] as PivotItem : null;
+
     private void ChangesSurface_Loaded(object sender, RoutedEventArgs args)
     {
         if (_changesSurfaceInitialized) return;
@@ -36,7 +39,7 @@ public sealed partial class MainPage
     }
 
     private void UpdateChangesViewActivity() =>
-        _viewModel.SetChangesViewActive(ReferenceEquals(DetailsTabs.SelectedItem, FilesTab));
+        _viewModel.SetChangesViewActive(ReferenceEquals(DetailsTabs.SelectedItem, ChangesTabControl));
 
     private void CommitFiles_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs args)
     {
@@ -78,7 +81,8 @@ public sealed partial class MainPage
         _changedFileTreeRoots.Clear();
         foreach (var root in roots) _changedFileTreeRoots.Add(root);
 
-        FilesTab.Header = _commitFiles.Count == 0 ? "Changes" : $"Changes ({_commitFiles.Count})";
+        if (ChangesTabControl is { } changesTab)
+            changesTab.Header = _commitFiles.Count == 0 ? "Changes" : $"Changes ({_commitFiles.Count})";
         EnsureCurrentCommitFileSelection();
         SyncChangedFileTreeSelection();
     }
