@@ -42,11 +42,6 @@
                   Opacity="0.12"
                   Visibility="{Binding CurrentBranchAccentVisibility}"
                   IsHitTestVisible="False" />
-          <Border Width="2"
-                  Background="{ThemeResource AccentFillColorDefaultBrush}"
-                  HorizontalAlignment="Left"
-                  Visibility="{Binding CurrentBranchAccentVisibility}"
-                  IsHitTestVisible="False" />
           <controls:RepositoryTreeGuides Grid.Column="1"
                                          Segments="{Binding HierarchyGuideSegments}"
                                          TotalIndentation="{Binding TemplateSettings.Indentation.Left, ElementName=RepositoryTreeItem}"
