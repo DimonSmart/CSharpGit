@@ -19,7 +19,7 @@ public interface IWorkingTreeService
     Task CommitAsync(Repository repository, string message, bool amend = false, bool intentionalEmpty = false, CancellationToken cancellationToken = default);
 }
 
-public interface IReferenceService
+public interface IReferenceService : ITagService
 {
     Task SwitchBranchAsync(Repository repository, string branch, CancellationToken cancellationToken = default);
     Task CheckoutAsync(Repository repository, string reference, CancellationToken cancellationToken = default);

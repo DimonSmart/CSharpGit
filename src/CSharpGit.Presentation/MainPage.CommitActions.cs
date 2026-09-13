@@ -60,6 +60,7 @@ public sealed partial class MainPage
 
         HistoryList.ContextFlyout = _commitActionsFlyout;
         HistoryList.RightTapped += HistoryList_RightTapped;
+        InitializeTagSupportIfNeeded();
     }
 
     private void HistoryList_RightTapped(object sender, RightTappedRoutedEventArgs e)
@@ -104,7 +105,13 @@ public sealed partial class MainPage
 
     private async void CreateBranchHere_Click(object sender, RoutedEventArgs e)
     {
-        if (!TryGetCommitActionContext(out var repository, out var commit)) return;
+        if (!TryGetCommitActionContext(out _, out var commit)) return;
+        await CreateBranchFromReferenceAsync(commit.Hash, commit.Hash);
+    }
+
+    private async Task CreateBranchFromReferenceAsync(string startPoint, string? restoreSelectionCommit = null)
+    {
+        if (_viewModel.Repository is null || _viewModel.IsBusy || _viewModel.CurrentOperation != RepositoryOperation.None) return;
 
         var branchName = new TextBox { Header = "Name", PlaceholderText = "feature/foo" };
         var switchToBranch = new CheckBox { Content = "Switch to the new branch", IsChecked = true };
@@ -127,12 +134,14 @@ public sealed partial class MainPage
             return;
         }
 
-        var hash = commit.Hash;
+        var repository = _viewModel.Repository;
+        if (repository is null) return;
         var switched = switchToBranch.IsChecked == true;
         if (await _viewModel.RunMutationAsync(
-                () => _referenceService.CreateBranchAsync(repository, branchName.Text.Trim(), hash, switched),
-                "Could not create branch"))
-            await RestoreCommitActionSelectionAsync(hash);
+                () => _referenceService.CreateBranchAsync(repository, branchName.Text.Trim(), startPoint, switched),
+                "Could not create branch") &&
+            !string.IsNullOrWhiteSpace(restoreSelectionCommit))
+            await RestoreCommitActionSelectionAsync(restoreSelectionCommit);
     }
 
     private async void CheckoutCommit_Click(object sender, RoutedEventArgs e)
