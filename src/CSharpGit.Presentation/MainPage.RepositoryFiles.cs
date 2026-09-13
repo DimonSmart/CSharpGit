@@ -34,6 +34,7 @@ public sealed partial class MainPage
     private IReadOnlyList<RepositoryContentSearchMatch> _repositoryContentMatches = [];
     private Repository? _repositorySnapshotRepository;
     private string? _repositorySnapshotCommit;
+    private bool _repositorySnapshotLoadedSuccessfully;
     private string? _repositoryContentCommit;
     private string? _repositoryFilesLastSelectedPath;
     private long _repositorySnapshotGeneration;
@@ -185,6 +186,7 @@ public sealed partial class MainPage
             _repositorySnapshot = [];
             _repositorySnapshotRepository = null;
             _repositorySnapshotCommit = null;
+            _repositorySnapshotLoadedSuccessfully = false;
             _repositoryContentMatches = [];
             _repositoryContentCommit = null;
             _repositoryFilesLastSelectedPath = null;
@@ -225,7 +227,8 @@ public sealed partial class MainPage
         }
 
         if (ReferenceEquals(repository, _repositorySnapshotRepository)
-            && string.Equals(commitHash, _repositorySnapshotCommit, StringComparison.Ordinal))
+            && string.Equals(commitHash, _repositorySnapshotCommit, StringComparison.Ordinal)
+            && _repositorySnapshotLoadedSuccessfully)
         {
             PublishRepositorySnapshot(repository, commitHash, _repositorySnapshot);
             return;
@@ -267,6 +270,7 @@ public sealed partial class MainPage
             _repositorySnapshot = [];
             _repositorySnapshotRepository = repository;
             _repositorySnapshotCommit = commitHash;
+            _repositorySnapshotLoadedSuccessfully = false;
             ClearRepositoryFilesTree();
             SetRepositoryFilesStatus($"Could not load repository files: {exception.Message}", loading: false);
         }
@@ -287,6 +291,7 @@ public sealed partial class MainPage
         _repositorySnapshotRepository = repository;
         _repositorySnapshotCommit = commitHash;
         _repositorySnapshot = snapshot;
+        _repositorySnapshotLoadedSuccessfully = true;
         RestoreRepositoryFilesPresentationState(repository, commitHash);
         RebuildRepositoryFilesTree();
         UpdateRepositoryFilesModeSurface();
