@@ -79,7 +79,7 @@ public sealed partial class MainPage
             AddMenuItem(flyout, "Show history up to tag", !_viewModel.IsBusy,
                 () => ShowReferenceHistoryAsync($"refs/tags/{tag.Name}", $"Tag: {tag.Name}"));
             AddMenuItem(flyout, "Create branch from here…", CanMutateTags(),
-                () => CreateBranchFromAsync($"refs/tags/{tag.Name}"));
+                () => CreateBranchFromReferenceAsync($"refs/tags/{tag.Name}", tag.TargetCommit));
             AddMenuItem(flyout, "Checkout detached", CanMutateTags(), () => CheckoutTagAsync(tag));
             flyout.Items.Add(new MenuFlyoutSeparator());
             AddMenuItem(flyout, "Push tag…", CanMutateTags(), () => PushTagFromUiAsync(tag));
