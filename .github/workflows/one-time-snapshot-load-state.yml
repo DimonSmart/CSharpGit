@@ -1,0 +1,51 @@
+name: One-time snapshot load state fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-time-snapshot-load-state.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Distinguish failed load from empty snapshot
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs")
+          text = path.read_text(encoding="utf-8")
+          edits = [
+              ('private string? _repositorySnapshotCommit;\n    private string? _repositoryContentCommit;',
+               'private string? _repositorySnapshotCommit;\n    private bool _repositorySnapshotLoadedSuccessfully;\n    private string? _repositoryContentCommit;', 1),
+              ('_repositorySnapshotCommit = null;\n            _repositoryContentMatches = [];',
+               '_repositorySnapshotCommit = null;\n            _repositorySnapshotLoadedSuccessfully = false;\n            _repositoryContentMatches = [];', 1),
+              ('&& string.Equals(commitHash, _repositorySnapshotCommit, StringComparison.Ordinal))\n        {',
+               '&& string.Equals(commitHash, _repositorySnapshotCommit, StringComparison.Ordinal)\n            && _repositorySnapshotLoadedSuccessfully)\n        {', 1),
+              ('_repositorySnapshot = [];\n            _repositorySnapshotRepository = repository;\n            _repositorySnapshotCommit = commitHash;\n            ClearRepositoryFilesTree();',
+               '_repositorySnapshot = [];\n            _repositorySnapshotRepository = repository;\n            _repositorySnapshotCommit = commitHash;\n            _repositorySnapshotLoadedSuccessfully = false;\n            ClearRepositoryFilesTree();', 1),
+              ('_repositorySnapshotCommit = commitHash;\n        _repositorySnapshot = snapshot;\n        RestoreRepositoryFilesPresentationState',
+               '_repositorySnapshotCommit = commitHash;\n        _repositorySnapshot = snapshot;\n        _repositorySnapshotLoadedSuccessfully = true;\n        RestoreRepositoryFilesPresentationState', 1),
+          ]
+          for old, new, expected in edits:
+              actual = text.count(old)
+              if actual != expected:
+                  raise SystemExit(f"Expected {expected} occurrences, found {actual}: {old!r}")
+              text = text.replace(old, new)
+          path.write_text(text, encoding="utf-8", newline="\n")
+          Path('.github/workflows/one-time-snapshot-load-state.yml').unlink()
+      - name: Commit fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Keep snapshot load failures distinct from empty trees"
+          git push origin HEAD:main
