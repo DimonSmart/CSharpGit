@@ -68,7 +68,7 @@ public sealed partial class MainPage
 
     private void InitializeRepositoryFiles()
     {
-        _changesTab = FilesTab;
+        _changesTab = ChangesTab;
         _changesTab.Name = "ChangesTab";
         _repositoryFilesTab = new PivotItem { Header = "Files", Name = "FilesTab" };
         _repositoryFilesTab.Content = BuildRepositoryFilesSurface();

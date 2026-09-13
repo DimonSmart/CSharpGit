@@ -336,7 +336,7 @@
                 </ScrollViewer>
               </PivotItem>
 
-              <PivotItem x:Name="FilesTab" Header="Changes">
+              <PivotItem x:Name="ChangesTab" Header="Changes">
                 <Grid MinHeight="120" Loaded="ChangesSurface_Loaded">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="38*" MinWidth="210" />
