@@ -37,6 +37,7 @@ public interface IAppSettingsService
     bool LoggingEnabled { get; }
     ApplicationLogLevel LogLevel { get; }
     GitConsoleAutoOpenMode GitConsoleAutoOpenMode => GitConsoleAutoOpenMode.OnErrors;
+    bool ShowReflog => false;
     IReadOnlyList<RecentRepositorySettings> RecentRepositories { get; }
     event EventHandler? Changed;
 
@@ -55,6 +56,10 @@ public interface IAppSettingsService
 
     Task SetGitConsoleAutoOpenModeAsync(
         GitConsoleAutoOpenMode mode,
+        CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    Task SetShowReflogAsync(
+        bool value,
         CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     Task RecordRecentRepositoryAsync(

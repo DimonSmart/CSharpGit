@@ -27,22 +27,37 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
             query.Filter,
             query.Skip,
             query.Take,
-            query.Scope == HistoryScope.AllReferences ? ["--all"] : ["HEAD"],
+            GetHistoryRevisions(query),
+            ShouldIncludeReflog(query),
             cancellationToken);
     }
 
-    public async Task<HistoryPage> ReadHistoryThroughCommitAsync(
+    public Task<HistoryPage> ReadHistoryThroughCommitAsync(
         Repository repository,
         HistoryScope scope,
+        string targetHash,
+        int trailingCount = 100,
+        CancellationToken cancellationToken = default) =>
+        ReadHistoryThroughCommitAsync(
+            repository,
+            new HistoryQuery(scope, null, 0),
+            targetHash,
+            trailingCount,
+            cancellationToken);
+
+    public async Task<HistoryPage> ReadHistoryThroughCommitAsync(
+        Repository repository,
+        HistoryQuery query,
         string targetHash,
         int trailingCount = 100,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(repository);
+        ArgumentNullException.ThrowIfNull(query);
         ValidateCommitHash(targetHash);
         if (trailingCount is < 0 or > 1000) throw new ArgumentOutOfRangeException(nameof(trailingCount));
 
-        var revisions = scope == HistoryScope.AllReferences ? new[] { "--all" } : new[] { "HEAD" };
+        var revisions = GetHistoryRevisions(query);
         var targetIndex = await FindCommitIndexAsync(repository, revisions, targetHash, cancellationToken);
         if (targetIndex < 0)
             throw new InvalidOperationException($"Commit {targetHash} is not reachable from the selected history scope.");
@@ -50,7 +65,10 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
         var requestedCount = checked(targetIndex + 1 + trailingCount);
         var commits = await ReadHistoryPrefixAsync(repository, checked(requestedCount + 1), revisions, cancellationToken);
         var hasMore = commits.Count > requestedCount;
-        var rows = BuildTopology(commits.Take(requestedCount).ToList());
+        var reflogOnlyHashes = ShouldIncludeReflog(query)
+            ? await ReadReflogOnlyHashesAsync(repository, cancellationToken)
+            : null;
+        var rows = BuildTopology(commits.Take(requestedCount).ToList(), reflogOnlyHashes);
         return new HistoryPage(rows, hasMore);
     }
 
@@ -64,7 +82,7 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
     {
         ValidateReference(reference);
         if (skip < 0 || take is < 1 or > 1000) throw new ArgumentOutOfRangeException(nameof(take));
-        return ReadHistoryCoreAsync(repository, filter, skip, take, [reference], cancellationToken);
+        return ReadHistoryCoreAsync(repository, filter, skip, take, [reference], false, cancellationToken);
     }
 
     public async Task<CommitDetails> ReadCommitAsync(
@@ -134,6 +152,7 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
         int skip,
         int take,
         IReadOnlyList<string> revisions,
+        bool includeReflog,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(repository);
@@ -142,7 +161,10 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
         {
             var commits = await ReadHistoryPrefixAsync(repository, skip + take + 1, revisions, cancellationToken);
             var hasMore = commits.Count > skip + take;
-            var rows = BuildTopology(commits.Take(skip + take).ToList());
+            var pageReflogOnlyHashes = includeReflog
+                ? await ReadReflogOnlyHashesAsync(repository, cancellationToken)
+                : null;
+            var rows = BuildTopology(commits.Take(skip + take).ToList(), pageReflogOnlyHashes);
             return new HistoryPage(rows.Skip(skip).ToList(), hasMore);
         }
 
@@ -171,7 +193,10 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
             revisions,
             requestedHashes[^1],
             cancellationToken);
-        var rowsByHash = BuildTopology(commitsThroughPage)
+        var reflogOnlyHashes = includeReflog
+            ? await ReadReflogOnlyHashesAsync(repository, cancellationToken)
+            : null;
+        var rowsByHash = BuildTopology(commitsThroughPage, reflogOnlyHashes)
             .ToDictionary(row => row.Commit.Hash, StringComparer.Ordinal);
         var requestedRows = requestedHashes
             .Select(hash => rowsByHash.TryGetValue(hash, out var row)
@@ -180,6 +205,28 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
             .ToList();
 
         return new HistoryPage(requestedRows, hasFilteredMore);
+    }
+
+    private static bool ShouldIncludeReflog(HistoryQuery query) =>
+        query.Scope == HistoryScope.AllReferences && query.IncludeReflog;
+
+    private static IReadOnlyList<string> GetHistoryRevisions(HistoryQuery query)
+    {
+        if (query.Scope != HistoryScope.AllReferences) return ["HEAD"];
+        return query.IncludeReflog ? ["--all", "--reflog"] : ["--all"];
+    }
+
+    private async Task<HashSet<string>> ReadReflogOnlyHashesAsync(
+        Repository repository,
+        CancellationToken cancellationToken)
+    {
+        var output = await RunGitAsync(
+            repository.WorkingDirectory,
+            cancellationToken,
+            "rev-list", "--reflog", "--not", "--all");
+        return output
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.Ordinal);
     }
 
     private async Task<int> FindCommitIndexAsync(
@@ -294,7 +341,9 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
         return files;
     }
 
-    internal static IReadOnlyList<HistoryRow> BuildTopology(IReadOnlyList<CommitHistoryItem> commits)
+    internal static IReadOnlyList<HistoryRow> BuildTopology(
+        IReadOnlyList<CommitHistoryItem> commits,
+        IReadOnlySet<string>? reflogOnlyHashes = null)
     {
         var lanes = new List<LaneState>();
         var rows = new List<HistoryRow>(commits.Count);
@@ -353,7 +402,8 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
                     NodeTrackId = nodeTrackId,
                     IncomingEdges = incoming,
                     HasExactGraphTopology = true
-                }));
+                },
+                reflogOnlyHashes?.Contains(commit.Hash) == true));
         }
         return rows;
     }

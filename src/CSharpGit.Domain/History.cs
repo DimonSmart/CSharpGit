@@ -2,7 +2,7 @@ namespace CSharpGit.Domain;
 
 public enum HistoryScope { AllReferences, CurrentBranch }
 
-public sealed record HistoryQuery(HistoryScope Scope, string? Filter, int Skip, int Take = 100);
+public sealed record HistoryQuery(HistoryScope Scope, string? Filter, int Skip, int Take = 100, bool IncludeReflog = false);
 
 public sealed record CommitHistoryItem(
     string Hash,
@@ -30,7 +30,7 @@ public sealed record CommitTopology(int Lane, IReadOnlyList<TopologyEdge> Edges)
         .Select(index => index == Lane ? "● " : "│ "));
 }
 
-public sealed record HistoryRow(CommitHistoryItem Commit, CommitTopology Topology);
+public sealed record HistoryRow(CommitHistoryItem Commit, CommitTopology Topology, bool IsReflogOnly = false);
 
 public sealed record HistoryPage(IReadOnlyList<HistoryRow> Rows, bool HasMore);
 
