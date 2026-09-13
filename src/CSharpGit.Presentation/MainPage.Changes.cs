@@ -29,8 +29,11 @@ public sealed partial class MainPage
         UpdateChangesViewActivity();
     }
 
-    private void DetailsTabs_SelectionChanged(object sender, SelectionChangedEventArgs args) =>
+    private void DetailsTabs_SelectionChanged(object sender, SelectionChangedEventArgs args)
+    {
         UpdateChangesViewActivity();
+        UpdateRepositoryFilesViewActivity();
+    }
 
     private void UpdateChangesViewActivity() =>
         _viewModel.SetChangesViewActive(ReferenceEquals(DetailsTabs.SelectedItem, FilesTab));
