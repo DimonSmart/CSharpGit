@@ -11,6 +11,13 @@ internal sealed class DefaultBranchRepositoryStateService : IRepositoryStateServ
 
     internal DefaultBranchRepositoryStateService(
         GitCliRepositoryService inner,
+        DefaultBranchResolver resolver)
+        : this(inner, resolver, inner)
+    {
+    }
+
+    internal DefaultBranchRepositoryStateService(
+        GitCliRepositoryService inner,
         DefaultBranchResolver resolver,
         ITagService tagService)
     {
