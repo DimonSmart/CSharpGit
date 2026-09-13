@@ -42,6 +42,7 @@ public sealed class RepositoryFilesUiContractTests
 
         Assert.Contains("IsRepositoryFilesActive", filesSurface, StringComparison.Ordinal);
         Assert.Contains("_repositorySnapshotCache.TryGet", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("_repositorySnapshotLoadedSuccessfully", filesSurface, StringComparison.Ordinal);
         Assert.Contains("CancelRepositoryFilesRequests", filesSurface, StringComparison.Ordinal);
         Assert.Contains("CanPublishRepositoryFiles", filesSurface, StringComparison.Ordinal);
         Assert.Contains("CanPublishRepositoryContent", filesSurface, StringComparison.Ordinal);
