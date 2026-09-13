@@ -10,6 +10,8 @@ public sealed class TagUiContractTests
         var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
         var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var refresh = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryRefresh.cs"));
+        var descriptors = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryTreeDescriptor.cs"));
+        var reconciler = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "IncrementalTreeReconciler.cs"));
         var references = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryStateService.cs"));
 
         Assert.Contains("Create tag here…", tags);
@@ -63,8 +65,11 @@ public sealed class TagUiContractTests
 
         Assert.Contains("IReferenceService : ITagService", references);
         Assert.DoesNotContain("OrderByDescending(tag => tag.Name", mainPage, StringComparison.Ordinal);
-        Assert.Contains("children: _viewModel.Tags", mainPage);
-        Assert.Contains("ApplyTagOrderingToRepositoryTree();", refresh);
+        Assert.DoesNotContain("children: _viewModel.Tags", mainPage, StringComparison.Ordinal);
+        Assert.Contains("ChildNodes: tags.Select", descriptors, StringComparison.Ordinal);
+        Assert.Contains("target.Move(currentIndex, desiredIndex);", reconciler, StringComparison.Ordinal);
+        Assert.DoesNotContain("root.Children.Clear();", tags, StringComparison.Ordinal);
+        Assert.DoesNotContain("ApplyTagOrderingToRepositoryTree();", refresh, StringComparison.Ordinal);
     }
 
     [Fact]
