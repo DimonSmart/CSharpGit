@@ -136,7 +136,7 @@ public sealed class HistoryDiffUiContractTests
 
     private static string ExtractCommitChangesSurface(string xaml)
     {
-        const string startMarker = "<PivotItem x:Name=\"FilesTab\" Header=\"Changes\">";
+        const string startMarker = "<PivotItem x:Name=\"ChangesTab\" Header=\"Changes\">";
         const string endMarker = "</PivotItem>";
         var start = xaml.IndexOf(startMarker, StringComparison.Ordinal);
         Assert.True(start >= 0);

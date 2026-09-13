@@ -156,7 +156,7 @@ public sealed partial class MainPage : Page
     {
         var files = _viewModel.SelectedChangedFiles;
         _commitFiles.Clear();
-        FilesTab.Header = files.Count == 0 ? "Changes" : $"Changes ({files.Count})";
+        ChangesTab.Header = files.Count == 0 ? "Changes" : $"Changes ({files.Count})";
 
         foreach (var file in files)
             _commitFiles.Add(new CommitFileRow(file.Status, file));
@@ -569,14 +569,14 @@ public sealed partial class MainPage : Page
     private void CommitFilesList_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
         if (CommitFilesList.SelectedItem is null) return;
-        DetailsTabs.SelectedIndex = 2;
+        DetailsTabs.SelectedItem = ChangesTab;
         e.Handled = true;
     }
 
     private void CommitFilesList_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key != VirtualKey.Enter || CommitFilesList.SelectedItem is null) return;
-        DetailsTabs.SelectedIndex = 2;
+        DetailsTabs.SelectedItem = ChangesTab;
         e.Handled = true;
     }
 
