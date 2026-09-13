@@ -60,6 +60,7 @@ public sealed partial class MainPage
 
         HistoryList.ContextFlyout = _commitActionsFlyout;
         HistoryList.RightTapped += HistoryList_RightTapped;
+        InitializeTagSupportIfNeeded();
     }
 
     private void HistoryList_RightTapped(object sender, RightTappedRoutedEventArgs e)
