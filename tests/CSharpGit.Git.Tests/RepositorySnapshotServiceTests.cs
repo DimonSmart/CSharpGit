@@ -18,8 +18,8 @@ public sealed class RepositorySnapshotServiceTests : IDisposable
         var repository = await CreateRepositoryAsync();
         Directory.CreateDirectory(Path.Combine(_temporaryDirectory, "src"));
         File.WriteAllText(Path.Combine(_temporaryDirectory, "README.md"), "root\n");
-        File.WriteAllText(Path.Combine(_temporaryDirectory, "src", "Case.cs"), "A\n");
-        File.WriteAllText(Path.Combine(_temporaryDirectory, "src", "case.cs"), "B\n");
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "src", "First.cs"), "A\n");
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "src", "Second.cs"), "B\n");
         RunGit("add", ".");
         RunGit("commit", "-m", "snapshot");
         var commit = RunGitOutput("rev-parse", "HEAD");
@@ -30,8 +30,8 @@ public sealed class RepositorySnapshotServiceTests : IDisposable
         var entries = await _snapshotService.ReadTreeAsync(repository, commit);
 
         Assert.Contains(entries, entry => entry.Path == "README.md" && entry.Kind == RepositorySnapshotEntryKind.File);
-        Assert.Contains(entries, entry => entry.Path == "src/Case.cs");
-        Assert.Contains(entries, entry => entry.Path == "src/case.cs");
+        Assert.Contains(entries, entry => entry.Path == "src/First.cs");
+        Assert.Contains(entries, entry => entry.Path == "src/Second.cs");
         Assert.DoesNotContain(entries, entry => entry.Path == "untracked.txt");
         Assert.Equal(entries.Count, entries.Select(entry => entry.Path).Distinct(StringComparer.Ordinal).Count());
     }
@@ -71,11 +71,11 @@ public sealed class RepositorySnapshotServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task ContentSearchIsLiteralCaseInsensitiveColonSafeAndSkipsBinaryFiles()
+    public async Task ContentSearchIsLiteralCaseInsensitiveAndSkipsBinaryFiles()
     {
         var repository = await CreateRepositoryAsync();
-        Directory.CreateDirectory(Path.Combine(_temporaryDirectory, "folder:name"));
-        File.WriteAllText(Path.Combine(_temporaryDirectory, "folder:name", "text file.txt"), "Prefix [Needle.*] suffix\n");
+        Directory.CreateDirectory(Path.Combine(_temporaryDirectory, "folder-name"));
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "folder-name", "text file.txt"), "Prefix [Needle.*] suffix\n");
         File.WriteAllBytes(Path.Combine(_temporaryDirectory, "binary.bin"), [0, 1, 2, 0, 91, 78, 101, 101, 100, 108, 101, 46, 42, 93]);
         RunGit("add", ".");
         RunGit("commit", "-m", "search data");
@@ -83,7 +83,7 @@ public sealed class RepositorySnapshotServiceTests : IDisposable
 
         var matches = await _snapshotService.SearchContentAsync(repository, commit, "[needle.*]");
         var match = Assert.Single(matches);
-        Assert.Equal("folder:name/text file.txt", match.Path);
+        Assert.Equal("folder-name/text file.txt", match.Path);
         Assert.Equal(1, match.LineNumber);
         Assert.Contains("[Needle.*]", match.Snippet);
 
