@@ -26,42 +26,45 @@ jobs:
           end_marker = "\n    private static RepositorySnapshotEntryKind EntryKind"
           start = text.index(start_marker)
           end = text.index(end_marker, start)
-          replacement = '''    internal static IReadOnlyList<RepositoryContentSearchMatch> ParseContentSearch(
-              string output,
-              string commitHash)
-          {
-              if (string.IsNullOrEmpty(output)) return [];
-
-              var matches = new List<RepositoryContentSearchMatch>();
-              var revisionPrefix = commitHash + ":";
-              var cursor = 0;
-              while (cursor < output.Length)
-              {
-                  var fileEnd = output.IndexOf('\\0', cursor);
-                  if (fileEnd <= cursor)
-                      throw new FormatException("Git grep returned an invalid NUL-delimited filename.");
-
-                  var revisionAndPath = output[cursor..fileEnd];
-                  var path = revisionAndPath.StartsWith(revisionPrefix, StringComparison.Ordinal)
-                      ? revisionAndPath[revisionPrefix.Length..]
-                      : revisionAndPath;
-                  cursor = fileEnd + 1;
-
-                  var lineNumberEnd = output.IndexOf('\\0', cursor);
-                  if (lineNumberEnd <= cursor || !int.TryParse(output[cursor..lineNumberEnd], out var lineNumber))
-                      throw new FormatException("Git grep returned an invalid line number.");
-                  cursor = lineNumberEnd + 1;
-
-                  var snippetEnd = output.IndexOf('\\n', cursor);
-                  if (snippetEnd < 0) snippetEnd = output.Length;
-                  var snippet = output[cursor..snippetEnd].TrimEnd('\\r');
-                  matches.Add(new RepositoryContentSearchMatch(path, lineNumber, snippet));
-                  cursor = snippetEnd < output.Length ? snippetEnd + 1 : output.Length;
-              }
-
-              return matches;
-          }
-'''
+          lines = [
+              "    internal static IReadOnlyList<RepositoryContentSearchMatch> ParseContentSearch(",
+              "        string output,",
+              "        string commitHash)",
+              "    {",
+              "        if (string.IsNullOrEmpty(output)) return [];",
+              "",
+              "        var matches = new List<RepositoryContentSearchMatch>();",
+              "        var revisionPrefix = commitHash + \":\";",
+              "        var cursor = 0;",
+              "        while (cursor < output.Length)",
+              "        {",
+              "            var fileEnd = output.IndexOf('\\0', cursor);",
+              "            if (fileEnd <= cursor)",
+              "                throw new FormatException(\"Git grep returned an invalid NUL-delimited filename.\");",
+              "",
+              "            var revisionAndPath = output[cursor..fileEnd];",
+              "            var path = revisionAndPath.StartsWith(revisionPrefix, StringComparison.Ordinal)",
+              "                ? revisionAndPath[revisionPrefix.Length..]",
+              "                : revisionAndPath;",
+              "            cursor = fileEnd + 1;",
+              "",
+              "            var lineNumberEnd = output.IndexOf('\\0', cursor);",
+              "            if (lineNumberEnd <= cursor || !int.TryParse(output[cursor..lineNumberEnd], out var lineNumber))",
+              "                throw new FormatException(\"Git grep returned an invalid line number.\");",
+              "            cursor = lineNumberEnd + 1;",
+              "",
+              "            var snippetEnd = output.IndexOf('\\n', cursor);",
+              "            if (snippetEnd < 0) snippetEnd = output.Length;",
+              "            var snippet = output[cursor..snippetEnd].TrimEnd('\\r');",
+              "            matches.Add(new RepositoryContentSearchMatch(path, lineNumber, snippet));",
+              "            cursor = snippetEnd < output.Length ? snippetEnd + 1 : output.Length;",
+              "        }",
+              "",
+              "        return matches;",
+              "    }",
+              "",
+          ]
+          replacement = "\n".join(lines)
           path.write_text(text[:start] + replacement + text[end:], encoding="utf-8", newline="\n")
           Path('.github/workflows/one-time-grep-nul-parser.yml').unlink()
       - name: Commit fix
