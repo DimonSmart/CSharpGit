@@ -10,7 +10,9 @@ public sealed class CurrentBranchIndicatorUiContractTests
         var repositoryTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "RepositoryTree.xaml"));
         var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
 
-        Assert.Contains("DisplayName => Name", node, StringComparison.Ordinal);
+        Assert.Contains("public string DisplayName => Kind == RepositoryTreeNodeKind.Worktree", node, StringComparison.Ordinal);
+        Assert.Contains("WorktreePresentation.GetPrimaryLabel(worktree)", node, StringComparison.Ordinal);
+        Assert.Contains(": Name;", node, StringComparison.Ordinal);
         Assert.Contains("NameFontWeight => IsCurrent", node, StringComparison.Ordinal);
         Assert.Contains("FontWeights.Bold", node, StringComparison.Ordinal);
         Assert.Contains("CurrentBranchAccentVisibility => IsCurrent", node, StringComparison.Ordinal);
@@ -19,7 +21,7 @@ public sealed class CurrentBranchIndicatorUiContractTests
         Assert.Contains("adjustedSegments[^1] = RepositoryTreeGuideSegmentKind.Empty", node, StringComparison.Ordinal);
         Assert.DoesNotContain("✓", node, StringComparison.Ordinal);
 
-        Assert.Contains("FontWeight=\"{Binding NameFontWeight}\"", repositoryTree, StringComparison.Ordinal);
+        Assert.Contains("TextFontWeight=\"{Binding NameFontWeight}\"", repositoryTree, StringComparison.Ordinal);
         Assert.Equal(1, CountOccurrences(repositoryTree, "Visibility=\"{Binding CurrentBranchAccentVisibility}\""));
         Assert.Contains("Background=\"{ThemeResource AccentFillColorDefaultBrush}\"", repositoryTree, StringComparison.Ordinal);
         Assert.Contains("Opacity=\"0.12\"", repositoryTree, StringComparison.Ordinal);
