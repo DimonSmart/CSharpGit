@@ -29,7 +29,7 @@ public sealed class MiddleEllipsisTextBlock : UserControl
         nameof(TextFontWeight),
         typeof(FontWeight),
         typeof(MiddleEllipsisTextBlock),
-        new PropertyMetadata(FontWeights.Normal, OnDisplayPropertyChanged));
+        new PropertyMetadata(Microsoft.UI.Text.FontWeights.Normal, OnDisplayPropertyChanged));
 
     private readonly TextBlock _textBlock = new()
     {
