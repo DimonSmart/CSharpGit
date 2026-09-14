@@ -222,28 +222,31 @@
             </Grid.RowDefinitions>
 
             <Border x:Name="HistoryFilterToolbar" Grid.Row="0" Style="{StaticResource ToolbarSurfaceStyle}">
-              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{StaticResource Spacing.M}">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.M}">
                 <TextBox x:Name="HistoryFilter"
                          Text="{Binding FilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          PlaceholderText="Filter commits…"
                          Style="{StaticResource CompactTextBoxStyle}"
                          KeyDown="HistoryFilter_KeyDown" />
-                <ToggleSwitch x:Name="ShowReflogToggle"
-                              Grid.Column="1"
-                              IsOn="{Binding ShowReflog, Mode=TwoWay}"
-                              OffContent="Show reflog"
-                              OnContent="Show reflog"
-                              VerticalAlignment="Center"
-                              ToolTipService.ToolTip="Include commits reachable through Git reflog." />
-                <ComboBox x:Name="ScopeCombo"
-                          Grid.Column="2"
-                          ItemsSource="{Binding Scopes}"
-                          DisplayMemberPath="Label"
-                          SelectedItem="{Binding SelectedScope, Mode=TwoWay}"
-                          Style="{StaticResource CompactComboBoxStyle}"
-                          MinWidth="145" />
+                <SelectorBar x:Name="ScopeCombo"
+                             Grid.Column="1"
+                             VerticalAlignment="Center"
+                             SelectionChanged="HistoryDisplayModeSelector_SelectionChanged"
+                             Loaded="HistoryDisplayModeSelector_Loaded"
+                             Unloaded="HistoryDisplayModeSelector_Unloaded"
+                             AutomationProperties.Name="History scope">
+                  <SelectorBarItem x:Name="CurrentScopeItem"
+                                   Text="Current"
+                                   ToolTipService.ToolTip="Show commits reachable from the current branch." />
+                  <SelectorBarItem x:Name="AllScopeItem"
+                                   Text="All"
+                                   ToolTipService.ToolTip="Show commits reachable from all references." />
+                  <SelectorBarItem x:Name="ShowReflogToggle"
+                                   Text="+ Reflog"
+                                   ToolTipService.ToolTip="Include commits reachable through Git reflog." />
+                </SelectorBar>
                 <StackPanel x:Name="ReferenceScopePanel"
-                            Grid.Column="2"
+                            Grid.Column="1"
                             Orientation="Horizontal"
                             Spacing="{StaticResource Spacing.M}"
                             Visibility="Collapsed"

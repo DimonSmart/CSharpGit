@@ -3,21 +3,31 @@ namespace CSharpGit.Application.Tests;
 public sealed class ReflogHistoryUiContractTests
 {
     [Fact]
-    public void ReflogUsesHistoryQueryStateSemanticBadgeAndExistingReferenceNavigation()
+    public void ReflogUsesUnifiedHistorySelectorSemanticBadgeAndExistingReferenceNavigation()
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var workspace = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var reflogState = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.Reflog.cs"));
+        var selector = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.HistoryDisplayMode.cs"));
         var navigation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.ReferenceNavigation.cs"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var git = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitReferenceHistoryService.cs"));
 
+        Assert.Contains("<SelectorBar x:Name=\"ScopeCombo\"", xaml);
+        Assert.Contains("x:Name=\"CurrentScopeItem\"", xaml);
+        Assert.Contains("Text=\"Current\"", xaml);
+        Assert.Contains("x:Name=\"AllScopeItem\"", xaml);
+        Assert.Contains("Text=\"All\"", xaml);
         Assert.Contains("x:Name=\"ShowReflogToggle\"", xaml);
-        Assert.Contains("IsOn=\"{Binding ShowReflog, Mode=TwoWay}\"", xaml);
+        Assert.Contains("Text=\"+ Reflog\"", xaml);
+        Assert.Contains("SelectionChanged=\"HistoryDisplayModeSelector_SelectionChanged\"", xaml);
+        Assert.DoesNotContain("<ToggleSwitch x:Name=\"ShowReflogToggle\"", xaml);
+        Assert.Contains("SetHistoryDisplayMode", reflogState);
+        Assert.Contains("HistoryDisplayMode.AllReferencesWithReflog", reflogState);
+        Assert.Contains("_viewModel.SetHistoryDisplayMode(mode)", selector);
         Assert.Contains("new HistoryQuery(scope, filter, skip, IncludeReflog: _showReflog)", viewModel);
-        Assert.Contains("_selectedScope != Scopes[0]", reflogState);
         Assert.Contains("DisableReflogForScopedHistoryAsync", page);
         Assert.Contains("IncludeReflog: ShowReflog", navigation);
 
