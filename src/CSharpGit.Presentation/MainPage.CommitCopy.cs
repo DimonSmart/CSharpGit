@@ -1,26 +1,18 @@
-using Microsoft.UI.Xaml;
+using CSharpGit.Presentation.Controls;
 using Microsoft.UI.Xaml.Controls;
 
 namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private async void CopyCommitText_Click(object sender, RoutedEventArgs args)
+    private bool _commitDetailsSurfaceInitialized;
+
+    private void InitializeCommitDetailsSurface()
     {
-        if (sender is not Button { Tag: string text } button || string.IsNullOrEmpty(text)) return;
+        if (_commitDetailsSurfaceInitialized) return;
+        if (DetailsTabs.Items.Count == 0 || DetailsTabs.Items[0] is not PivotItem commitTab) return;
 
-        await CopyTextAsync(text);
-
-        if (button.Content is not FontIcon icon) return;
-        var originalGlyph = icon.Glyph;
-        icon.Glyph = "\uE73E";
-        try
-        {
-            await Task.Delay(900);
-        }
-        finally
-        {
-            if (ReferenceEquals(button.Content, icon)) icon.Glyph = originalGlyph;
-        }
+        _commitDetailsSurfaceInitialized = true;
+        commitTab.Content = new CommitDetailsView { DataContext = _viewModel };
     }
 }
