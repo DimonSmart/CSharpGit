@@ -1,0 +1,21 @@
+<UserControl
+    x:Class="CSharpGit.Presentation.Controls.HistoryReferenceBadge"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    VerticalAlignment="Center">
+  <StackPanel Orientation="Horizontal"
+              Spacing="2"
+              VerticalAlignment="Center">
+    <FontIcon x:Name="DefaultBranchIcon"
+              Glyph="&#xE80F;"
+              FontSize="10"
+              Width="10"
+              Height="10"
+              Foreground="{ThemeResource AccentFillColorDefaultBrush}"
+              Visibility="Collapsed"
+              VerticalAlignment="Center" />
+    <TextBlock x:Name="ReferenceText"
+               Style="{StaticResource CaptionTextStyle}"
+               VerticalAlignment="Center" />
+  </StackPanel>
+</UserControl>
