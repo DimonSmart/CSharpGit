@@ -45,3 +45,4 @@ opened.
 | IDD-0023 | Spec | External Git tools | Standard Git Editor/Diff/Merge configuration, Git Tools settings, exact-pair external diff and isolated tool tests | — |
 | IDD-0024 | Spec | Repository Files preview | Shared hierarchy guides, historical file selection and extensible read-only preview | — |
 | IDD-0025 | Spec | Reflog in History | Optional reflog roots, reachability classification and recovery in existing History | — |
+| IDD-0026 | Spec | Commit metadata copy | Exact message/hash/parent clipboard actions with root-commit empty state | — |
