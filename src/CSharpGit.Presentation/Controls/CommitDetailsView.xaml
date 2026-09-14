@@ -4,17 +4,27 @@
              xmlns:controls="using:CSharpGit.Presentation.Controls">
   <UserControl.Resources>
     <controls:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    <Style x:Key="InlineCopyButtonStyle"
+           TargetType="Button"
+           BasedOn="{StaticResource IconButtonStyle}">
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Height" Value="22" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
   </UserControl.Resources>
 
   <StackPanel Padding="{StaticResource Padding.Form}" Spacing="{StaticResource Spacing.M}">
-    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.S}">
+    <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="{StaticResource Spacing.XS}">
       <TextBlock Text="{Binding SelectedHistoryRow.Commit.Message}"
                  Style="{StaticResource SectionHeaderTextStyle}"
                  TextWrapping="Wrap" />
       <Button Grid.Column="1"
               Tag="{Binding SelectedHistoryRow.Commit.Message}"
               Click="CopyText_Click"
-              Style="{StaticResource IconButtonStyle}"
+              Style="{StaticResource InlineCopyButtonStyle}"
               VerticalAlignment="Top"
               ToolTipService.ToolTip="Copy commit message"
               AutomationProperties.Name="Copy commit message">
@@ -36,44 +46,42 @@
     </ItemsControl>
 
     <Grid RowDefinitions="Auto,Auto,Auto,Auto"
-          ColumnDefinitions="74,*,Auto"
+          ColumnDefinitions="74,*"
           RowSpacing="{StaticResource Spacing.M}"
           ColumnSpacing="{StaticResource Spacing.L}">
       <TextBlock Text="Author" Style="{StaticResource SecondaryTextStyle}" />
       <TextBlock Grid.Column="1"
-                 Grid.ColumnSpan="2"
                  Text="{Binding SelectedHistoryRow.Commit.Author}"
                  Style="{StaticResource BodyTextStyle}" />
 
       <TextBlock Grid.Row="1" Text="Date" Style="{StaticResource SecondaryTextStyle}" />
       <controls:CommitTimeText Grid.Row="1"
                                Grid.Column="1"
-                               Grid.ColumnSpan="2"
                                Value="{Binding SelectedHistoryRow.Commit.AuthoredAt}"
                                FontSize="{StaticResource Font.Body}" />
 
       <TextBlock Grid.Row="2" Text="Hash" Style="{StaticResource SecondaryTextStyle}" />
-      <TextBlock Grid.Row="2"
-                 Grid.Column="1"
-                 Text="{Binding SelectedHistoryRow.Commit.Hash}"
-                 Style="{StaticResource DiffTextStyle}"
-                 TextWrapping="Wrap"
-                 VerticalAlignment="Center" />
-      <Button Grid.Row="2"
-              Grid.Column="2"
-              Tag="{Binding SelectedHistoryRow.Commit.Hash}"
-              Click="CopyText_Click"
-              Style="{StaticResource IconButtonStyle}"
-              VerticalAlignment="Center"
-              ToolTipService.ToolTip="Copy commit hash"
-              AutomationProperties.Name="Copy commit hash">
-        <FontIcon Glyph="&#xE8C8;" FontSize="{StaticResource Icon.Small}" />
-      </Button>
+      <StackPanel Grid.Row="2"
+                  Grid.Column="1"
+                  Orientation="Horizontal"
+                  Spacing="{StaticResource Spacing.XS}">
+        <TextBlock Text="{Binding SelectedHistoryRow.Commit.Hash}"
+                   Style="{StaticResource DiffTextStyle}"
+                   TextWrapping="Wrap"
+                   VerticalAlignment="Center" />
+        <Button Tag="{Binding SelectedHistoryRow.Commit.Hash}"
+                Click="CopyText_Click"
+                Style="{StaticResource InlineCopyButtonStyle}"
+                VerticalAlignment="Center"
+                ToolTipService.ToolTip="Copy commit hash"
+                AutomationProperties.Name="Copy commit hash">
+          <FontIcon Glyph="&#xE8C8;" FontSize="{StaticResource Icon.Small}" />
+        </Button>
+      </StackPanel>
 
       <TextBlock Grid.Row="3" Text="Parents" Style="{StaticResource SecondaryTextStyle}" />
       <StackPanel Grid.Row="3"
                   Grid.Column="1"
-                  Grid.ColumnSpan="2"
                   Spacing="{StaticResource Spacing.XS}">
         <TextBlock Text="{Binding SelectedHistoryRow.Commit.ParentsDisplay}"
                    Style="{StaticResource DiffTextStyle}"
@@ -81,14 +89,14 @@
         <ItemsControl ItemsSource="{Binding SelectedHistoryRow.Commit.Parents}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
-              <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+              <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.XS}">
                 <TextBlock Text="{Binding}"
                            Style="{StaticResource DiffTextStyle}"
                            TextWrapping="Wrap"
                            VerticalAlignment="Center" />
                 <Button Tag="{Binding}"
                         Click="CopyText_Click"
-                        Style="{StaticResource IconButtonStyle}"
+                        Style="{StaticResource InlineCopyButtonStyle}"
                         VerticalAlignment="Center"
                         ToolTipService.ToolTip="Copy parent hash"
                         AutomationProperties.Name="Copy parent hash">
