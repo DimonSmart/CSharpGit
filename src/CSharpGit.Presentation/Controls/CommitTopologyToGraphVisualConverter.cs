@@ -14,13 +14,7 @@ public sealed class CommitTopologyToGraphVisualConverter : IValueConverter
         }
 
         var exactTopology = topology.HasExactGraphTopology;
-        var allEdges = topology.IncomingEdges.Concat(topology.Edges).ToList();
-        var laneCount = Math.Max(
-            topology.Lane + 1,
-            allEdges
-                .SelectMany(edge => new[] { edge.FromLane, edge.ToLane })
-                .DefaultIfEmpty(0)
-                .Max() + 1);
+        var laneCount = topology.LaneCount;
 
         var incoming = exactTopology
             ? topology.IncomingEdges.Select(ToSegment).ToList()

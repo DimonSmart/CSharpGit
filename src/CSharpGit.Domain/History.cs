@@ -24,10 +24,11 @@ public sealed record TopologyEdge(int FromLane, int ToLane, int TrackId = 0);
 public sealed record CommitTopology(int Lane, IReadOnlyList<TopologyEdge> Edges)
 {
     public int NodeTrackId { get; init; } = Lane;
+    public int LaneCount { get; init; } = Lane + 1;
     public IReadOnlyList<TopologyEdge> IncomingEdges { get; init; } = [];
     public bool HasExactGraphTopology { get; init; }
 
-    public string Display => string.Concat(Enumerable.Range(0, Math.Max(Lane + 1, Edges.Select(x => x.ToLane + 1).DefaultIfEmpty(1).Max()))
+    public string Display => string.Concat(Enumerable.Range(0, LaneCount)
         .Select(index => index == Lane ? "● " : "│ "));
 }
 
