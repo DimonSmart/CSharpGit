@@ -36,6 +36,18 @@ internal static class WorktreePresentation
         return string.Join(Environment.NewLine, lines);
     }
 
+    public static string? GetBranchNameForCopy(WorktreeInfo worktree)
+    {
+        ArgumentNullException.ThrowIfNull(worktree);
+        return string.IsNullOrWhiteSpace(worktree.Branch) ? null : worktree.Branch;
+    }
+
+    public static string GetPathForCopy(WorktreeInfo worktree)
+    {
+        ArgumentNullException.ThrowIfNull(worktree);
+        return worktree.Path;
+    }
+
     private static string? GetDirectoryName(string path)
     {
         if (string.IsNullOrWhiteSpace(path)) return null;
