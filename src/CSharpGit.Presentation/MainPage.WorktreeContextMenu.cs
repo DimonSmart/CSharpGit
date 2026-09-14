@@ -16,9 +16,9 @@ public sealed partial class MainPage
         PopulateWorktreeMenu(flyout, worktree);
 
         flyout.Items.Add(new MenuFlyoutSeparator());
-        if (!string.IsNullOrWhiteSpace(worktree.Branch))
-            AddMenuItem(flyout, "Copy branch name", true, () => CopyTextAsync(worktree.Branch));
-        AddMenuItem(flyout, "Copy worktree path", true, () => CopyTextAsync(worktree.Path));
+        if (WorktreePresentation.GetBranchNameForCopy(worktree) is { } branch)
+            AddMenuItem(flyout, "Copy branch name", true, () => CopyTextAsync(branch));
+        AddMenuItem(flyout, "Copy worktree path", true, () => CopyTextAsync(WorktreePresentation.GetPathForCopy(worktree)));
 
         flyout.ShowAt(source, args.GetPosition(source));
         args.Handled = true;
