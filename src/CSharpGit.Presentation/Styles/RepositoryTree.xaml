@@ -48,6 +48,7 @@
                                          RowHeight="{StaticResource Height.DataRow}"
                                          ExpandTarget="{Binding ElementName=RepositoryTreeItem}"
                                          IsExpanded="{Binding IsExpanded, ElementName=RepositoryTreeItem}"
+                                         HasChildren="{Binding HasChildren}"
                                          LineBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                                          NodeFillBrush="{ThemeResource ControlFillColorDefaultBrush}"
                                          GlyphBrush="{ThemeResource TextFillColorPrimaryBrush}" />
@@ -94,6 +95,7 @@
                                          RowHeight="{StaticResource Height.DataRow}"
                                          ExpandTarget="{Binding ElementName=RepositoryFilesTreeItem}"
                                          IsExpanded="{Binding IsExpanded, ElementName=RepositoryFilesTreeItem}"
+                                         HasChildren="{Binding HasChildren}"
                                          LineBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                                          NodeFillBrush="{ThemeResource ControlFillColorDefaultBrush}"
                                          GlyphBrush="{ThemeResource TextFillColorPrimaryBrush}" />
