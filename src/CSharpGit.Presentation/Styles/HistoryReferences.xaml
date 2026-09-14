@@ -1,0 +1,63 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CSharpGit.Presentation.Controls">
+
+  <DataTemplate x:Key="HistoryItemTemplate">
+    <Grid ColumnDefinitions="120,*,160,150,90"
+          MinHeight="{StaticResource Height.DataRow}"
+          Padding="{StaticResource Padding.DenseRow}">
+      <Border Grid.ColumnSpan="5"
+              Background="{ThemeResource AccentFillColorDefaultBrush}"
+              Opacity="0.06"
+              Visibility="{Binding IsReflogOnly, Converter={StaticResource BooleanToVisibilityConverter}}"
+              IsHitTestVisible="False" />
+      <controls:CommitGraphControl Graph="{Binding Topology, Converter={StaticResource CommitTopologyToGraphVisualConverter}}"
+                                   VerticalAlignment="Stretch" />
+      <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,*" MinWidth="120">
+        <TextBlock Text="{Binding Commit.Subject}"
+                   Style="{StaticResource BodyStrongTextStyle}"
+                   TextTrimming="CharacterEllipsis"
+                   VerticalAlignment="Center" />
+        <Border Grid.Column="1"
+                Style="{StaticResource ReferenceBadgeStyle}"
+                Margin="{StaticResource Margin.ReferenceList}"
+                Visibility="{Binding IsReflogOnly, Converter={StaticResource BooleanToVisibilityConverter}}"
+                ToolTipService.ToolTip="This commit is not reachable from normal repository refs and is currently reachable through Git reflog.">
+          <TextBlock Text="reflog" Style="{StaticResource CaptionTextStyle}" />
+        </Border>
+        <ItemsControl Grid.Column="2"
+                      ItemsSource="{Binding Commit.References}"
+                      Margin="{StaticResource Margin.ReferenceList}"
+                      VerticalAlignment="Center">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Style="{StaticResource ReferenceBadgeStyle}">
+                <controls:HistoryReferenceBadge ReferenceName="{Binding}" />
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Grid>
+      <TextBlock Grid.Column="2"
+                 Text="{Binding Commit.Author}"
+                 Style="{StaticResource BodyTextStyle}"
+                 Margin="{StaticResource Margin.HistoryColumnGap}"
+                 TextTrimming="CharacterEllipsis"
+                 VerticalAlignment="Center" />
+      <controls:CommitTimeText Grid.Column="3"
+                               Value="{Binding Commit.AuthoredAt}"
+                               Margin="{StaticResource Margin.HistoryColumnGap}"
+                               FontSize="{StaticResource Font.Caption}"
+                               VerticalAlignment="Center" />
+      <TextBlock Grid.Column="4"
+                 Text="{Binding Commit.ShortHash}"
+                 Style="{StaticResource DiffSecondaryTextStyle}"
+                 Margin="{StaticResource Margin.HistoryColumnGap}"
+                 VerticalAlignment="Center" />
+    </Grid>
+  </DataTemplate>
+</ResourceDictionary>

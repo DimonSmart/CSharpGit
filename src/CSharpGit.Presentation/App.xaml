@@ -11,6 +11,7 @@
         <ResourceDictionary Source="ms-appx:///Styles/Controls.xaml" />
         <ResourceDictionary Source="ms-appx:///Styles/Workspace.xaml" />
         <ResourceDictionary Source="ms-appx:///Styles/RepositoryTree.xaml" />
+        <ResourceDictionary Source="ms-appx:///Styles/HistoryReferences.xaml" />
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>
