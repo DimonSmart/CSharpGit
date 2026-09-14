@@ -20,6 +20,7 @@ public sealed class RepositorySnapshotTreeNode
     public string Path { get; }
     public RepositorySnapshotEntry? Entry { get; }
     public IReadOnlyList<RepositorySnapshotTreeNode> Children { get; }
+    public bool HasChildren => Children.Count > 0;
     public bool IsDirectory => Entry is null;
     public bool IsExpanded { get; set; }
     public IReadOnlyList<RepositoryTreeGuideSegmentKind> HierarchyGuideSegments { get; private set; } =

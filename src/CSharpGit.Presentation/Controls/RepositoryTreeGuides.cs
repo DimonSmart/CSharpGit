@@ -1,4 +1,3 @@
-using System.Collections;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -63,6 +62,12 @@ public sealed class RepositoryTreeGuides : Canvas
         typeof(RepositoryTreeGuides),
         new PropertyMetadata(false, OnVisualPropertyChanged));
 
+    public static readonly DependencyProperty HasChildrenProperty = DependencyProperty.Register(
+        nameof(HasChildren),
+        typeof(bool),
+        typeof(RepositoryTreeGuides),
+        new PropertyMetadata(false, OnVisualPropertyChanged));
+
     public RepositoryTreeGuides()
     {
         HorizontalAlignment = HorizontalAlignment.Left;
@@ -117,6 +122,12 @@ public sealed class RepositoryTreeGuides : Canvas
         set => SetValue(IsExpandedProperty, value);
     }
 
+    public bool HasChildren
+    {
+        get => (bool)GetValue(HasChildrenProperty);
+        set => SetValue(HasChildrenProperty, value);
+    }
+
     private static void OnVisualPropertyChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args) =>
         ((RepositoryTreeGuides)dependencyObject).Rebuild();
 
@@ -131,10 +142,9 @@ public sealed class RepositoryTreeGuides : Canvas
             IEnumerable<RepositoryTreeGuideSegmentKind> enumerable => enumerable.ToArray(),
             _ => Array.Empty<RepositoryTreeGuideSegmentKind>()
         };
-        var hasChildren = HasItems(ExpandTarget?.ItemsSource);
         var guideWidth = segments.Count > 0
             ? RepositoryTreeGuideLayout.ResolveIndentation(segments.Count, TotalIndentation)
-            : hasChildren
+            : HasChildren
                 ? RepositoryTreeGuideLayout.ResolveExpanderSurfaceWidth(0, TotalIndentation)
                 : 0d;
         Width = guideWidth;
@@ -143,7 +153,7 @@ public sealed class RepositoryTreeGuides : Canvas
         foreach (var segment in RepositoryTreeGuideLayout.BuildGeometry(segments, TotalIndentation, RowHeight))
             AddGuideSegment(segment);
 
-        if (hasChildren && RowHeight > 0)
+        if (HasChildren && RowHeight > 0)
             AddExpander(segments.Count, guideWidth);
     }
 
@@ -278,22 +288,5 @@ public sealed class RepositoryTreeGuides : Canvas
         if (ExpandTarget is null) return;
         ExpandTarget.IsExpanded = !ExpandTarget.IsExpanded;
         args.Handled = true;
-    }
-
-    private static bool HasItems(object? itemsSource)
-    {
-        if (itemsSource is null) return false;
-        if (itemsSource is ICollection collection) return collection.Count > 0;
-        if (itemsSource is not IEnumerable enumerable) return false;
-
-        var enumerator = enumerable.GetEnumerator();
-        try
-        {
-            return enumerator.MoveNext();
-        }
-        finally
-        {
-            (enumerator as IDisposable)?.Dispose();
-        }
     }
 }

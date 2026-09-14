@@ -33,6 +33,7 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
         _isExpanded = _expansionKey is not null && ExpansionState.TryGetValue(_expansionKey, out var savedExpansion)
             ? savedExpansion
             : descriptor.DefaultExpanded;
+        Children.CollectionChanged += (_, _) => Notify(nameof(HasChildren));
         RefreshName();
     }
 
@@ -58,6 +59,7 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
     }
 
     public ObservableCollection<RepositoryTreeNode> Children { get; } = [];
+    public bool HasChildren => Children.Count > 0;
     public IReadOnlyList<RepositoryTreeGuideSegmentKind> HierarchyGuideSegments { get; private set; } =
         Array.Empty<RepositoryTreeGuideSegmentKind>();
     public string DisplayName => Name;
