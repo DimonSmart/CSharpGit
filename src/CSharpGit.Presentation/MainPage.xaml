@@ -266,8 +266,17 @@
             </Border>
 
             <Grid Grid.Row="1" RowDefinitions="Auto,*">
-              <Border x:Name="HistoryColumnHeader" Style="{StaticResource DenseColumnHeaderSurfaceStyle}">
-                <Grid ColumnDefinitions="120,*,160,150,90">
+              <Border x:Name="HistoryColumnHeader"
+                      Style="{StaticResource DenseColumnHeaderSurfaceStyle}"
+                      Loaded="HistoryColumnHeader_Loaded">
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition x:Name="HistoryGraphHeaderColumn" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="160" />
+                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="90" />
+                  </Grid.ColumnDefinitions>
                   <TextBlock Text="GRAPH" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
                   <TextBlock Grid.Column="1" Text="MESSAGE" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
                   <TextBlock Grid.Column="2" Text="AUTHOR" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
@@ -280,7 +289,8 @@
                         SelectedItem="{Binding SelectedHistoryRow, Mode=TwoWay}"
                         IsItemClickEnabled="False"
                         ItemContainerStyle="{StaticResource HistoryRowStyle}"
-                        ItemTemplate="{StaticResource HistoryItemTemplate}" />
+                        ItemTemplate="{StaticResource HistoryItemTemplate}"
+                        ContainerContentChanging="HistoryList_ContainerContentChanging" />
               <Button x:Name="LoadMoreHistoryButton"
                       Grid.Row="1"
                       Content="↓"

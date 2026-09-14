@@ -54,6 +54,18 @@ public sealed partial class MainPage
                     Check(graph is not null, $"history row {index} has no commit graph control", failures);
                     Check(graph?.HasCurrentRenderForCheck() == true,
                         $"history row {index} did not paint its current graph after viewport recycle", failures);
+                    Check(graph?.HasCurrentClipForCheck() == true,
+                        $"history row {index} graph clip does not match its render area", failures);
+                    if (graph is not null)
+                    {
+                        var layout = ActiveCommitGraphLayout;
+                        Check(Math.Abs(graph.ActualWidth - layout.GraphWidth) <= 0.25,
+                            $"history row {index} graph width {graph.ActualWidth:0.###} does not match session width {layout.GraphWidth:0.###}",
+                            failures);
+                        Check(graph.Metrics == layout.Metrics,
+                            $"history row {index} did not receive current session graph metrics",
+                            failures);
+                    }
                     CheckAdjacentHistoryGraphSurfaces(index, failures);
                 }
             }
@@ -61,9 +73,15 @@ public sealed partial class MainPage
             if (_viewModel.HasMore)
             {
                 var beforeLoadMore = _viewModel.History.Count;
+                var beforeGraphWidth = _historyGraphLayout.GraphWidth;
+                var beforeLaneWidth = _historyGraphLayout.LaneWidth;
                 if (_viewModel.LoadMoreCommand is AsyncCommand loadMore)
                     await loadMore.ExecuteAsync();
                 Check(_viewModel.History.Count > beforeLoadMore, "Load more did not append history during graph viewport check", failures);
+                Check(_historyGraphLayout.GraphWidth + 0.001 >= beforeGraphWidth,
+                    "Load more decreased the session graph width", failures);
+                Check(_historyGraphLayout.LaneWidth <= beforeLaneWidth + 0.001,
+                    "Load more increased the session lane width", failures);
             }
 
             if (_viewModel.History.FirstOrDefault() is { } first)
