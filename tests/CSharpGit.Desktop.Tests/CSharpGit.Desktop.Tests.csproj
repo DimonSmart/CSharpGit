@@ -22,6 +22,8 @@
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeGuideLayout.cs" Link="RepositoryTree/RepositoryTreeGuideLayout.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/TreeHierarchyGuideBuilder.cs" Link="RepositoryTree/TreeHierarchyGuideBuilder.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeNodeKind.cs" Link="RepositoryTree/RepositoryTreeNodeKind.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/MiddleEllipsis.cs" Link="RepositoryTree/MiddleEllipsis.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorktreePresentation.cs" Link="RepositoryTree/WorktreePresentation.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeDescriptor.cs" Link="RepositoryTree/RepositoryTreeDescriptor.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/IncrementalTreeReconciler.cs" Link="RepositoryTree/IncrementalTreeReconciler.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeExpansion.cs" Link="RepositoryTree/RepositoryTreeExpansion.cs" />
