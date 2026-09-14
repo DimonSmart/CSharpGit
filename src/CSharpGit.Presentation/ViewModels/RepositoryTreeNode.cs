@@ -62,7 +62,19 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
     public bool HasChildren => Children.Count > 0;
     public IReadOnlyList<RepositoryTreeGuideSegmentKind> HierarchyGuideSegments { get; private set; } =
         Array.Empty<RepositoryTreeGuideSegmentKind>();
-    public string DisplayName => Name;
+    public string DisplayName => Kind == RepositoryTreeNodeKind.Worktree && Value is WorktreeInfo worktree
+        ? WorktreePresentation.GetPrimaryLabel(worktree)
+        : Name;
+    public bool UseMiddleEllipsis => Kind == RepositoryTreeNodeKind.Worktree;
+    public string WorktreeStateText => Kind == RepositoryTreeNodeKind.Worktree && Value is WorktreeInfo worktree
+        ? WorktreePresentation.GetStateIndicator(worktree)
+        : string.Empty;
+    public Visibility WorktreeStateVisibility => string.IsNullOrEmpty(WorktreeStateText)
+        ? Visibility.Collapsed
+        : Visibility.Visible;
+    public string? ToolTipText => Kind == RepositoryTreeNodeKind.Worktree && Value is WorktreeInfo worktree
+        ? WorktreePresentation.BuildToolTip(worktree)
+        : null;
     public FontWeight NameFontWeight => IsCurrent ? Microsoft.UI.Text.FontWeights.Bold : Microsoft.UI.Text.FontWeights.Normal;
     public Visibility CurrentBranchAccentVisibility => IsCurrent ? Visibility.Visible : Visibility.Collapsed;
     public string? IconGlyph => Kind switch
@@ -88,6 +100,13 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
         Kind == RepositoryTreeNodeKind.RemoteBranch && Value is GitBranch { IsDefault: true }
             ? Visibility.Visible
             : Visibility.Collapsed;
+    public Visibility LeadingIconVisibility =>
+        IconVisibility == Visibility.Visible
+        || CurrentLocalBranchIconVisibility == Visibility.Visible
+        || LocalDefaultBranchIconVisibility == Visibility.Visible
+        || RemoteDefaultBranchIconVisibility == Visibility.Visible
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
     internal void UpdateFrom(RepositoryTreeDescriptor descriptor)
     {
@@ -95,12 +114,17 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
             throw new InvalidOperationException("Repository tree node identity changed during reconciliation.");
 
         var oldName = Name;
+        var oldDisplayName = DisplayName;
         var oldReferenceName = ReferenceName;
         var oldValue = Value;
         var oldIsCurrent = IsCurrent;
         var oldAssociatedWorktreePath = AssociatedWorktreePath;
         var oldLocalDefault = IsLocalDefaultBranchVisible();
         var oldRemoteDefault = IsRemoteDefaultBranchVisible();
+        var oldWorktreeStateText = WorktreeStateText;
+        var oldWorktreeStateVisibility = WorktreeStateVisibility;
+        var oldToolTipText = ToolTipText;
+        var oldLeadingIconVisibility = LeadingIconVisibility;
 
         _baseName = descriptor.Name;
         _referenceName = descriptor.ReferenceName;
@@ -109,11 +133,8 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
         _associatedWorktreePath = descriptor.AssociatedWorktreePath;
         RefreshName();
 
-        if (!string.Equals(oldName, Name, StringComparison.Ordinal))
-        {
-            Notify(nameof(Name));
-            Notify(nameof(DisplayName));
-        }
+        if (!string.Equals(oldName, Name, StringComparison.Ordinal)) Notify(nameof(Name));
+        if (!string.Equals(oldDisplayName, DisplayName, StringComparison.Ordinal)) Notify(nameof(DisplayName));
         if (!string.Equals(oldReferenceName, ReferenceName, StringComparison.Ordinal)) Notify(nameof(ReferenceName));
         if (!Equals(oldValue, Value)) Notify(nameof(Value));
         if (oldIsCurrent != IsCurrent)
@@ -127,6 +148,10 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
             Notify(nameof(AssociatedWorktreePath));
         if (oldLocalDefault != IsLocalDefaultBranchVisible()) Notify(nameof(LocalDefaultBranchIconVisibility));
         if (oldRemoteDefault != IsRemoteDefaultBranchVisible()) Notify(nameof(RemoteDefaultBranchIconVisibility));
+        if (!string.Equals(oldWorktreeStateText, WorktreeStateText, StringComparison.Ordinal)) Notify(nameof(WorktreeStateText));
+        if (oldWorktreeStateVisibility != WorktreeStateVisibility) Notify(nameof(WorktreeStateVisibility));
+        if (!string.Equals(oldToolTipText, ToolTipText, StringComparison.Ordinal)) Notify(nameof(ToolTipText));
+        if (oldLeadingIconVisibility != LeadingIconVisibility) Notify(nameof(LeadingIconVisibility));
     }
 
     internal void SetAssociatedWorktreePath(string? path)
