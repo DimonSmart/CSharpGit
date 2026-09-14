@@ -1,5 +1,12 @@
 namespace CSharpGit.Presentation.ViewModels;
 
+internal enum HistoryDisplayMode
+{
+    CurrentBranch,
+    AllReferences,
+    AllReferencesWithReflog
+}
+
 public sealed partial class OpenRepositoryViewModel
 {
     private bool _showReflog = CSharpGit.Presentation.AppSettingsContext.Current.ShowReflog;
@@ -22,6 +29,40 @@ public sealed partial class OpenRepositoryViewModel
             _ = PersistShowReflogAsync(value);
             _ = LoadHistoryAsync(true);
         }
+    }
+
+    internal HistoryDisplayMode HistoryDisplayMode =>
+        _showReflog
+            ? HistoryDisplayMode.AllReferencesWithReflog
+            : _selectedScope == Scopes[1]
+                ? HistoryDisplayMode.CurrentBranch
+                : HistoryDisplayMode.AllReferences;
+
+    internal void SetHistoryDisplayMode(HistoryDisplayMode mode)
+    {
+        var (scope, showReflog) = mode switch
+        {
+            HistoryDisplayMode.CurrentBranch => (Scopes[1], false),
+            HistoryDisplayMode.AllReferences => (Scopes[0], false),
+            HistoryDisplayMode.AllReferencesWithReflog => (Scopes[0], true),
+            _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
+        };
+
+        var scopeChanged = _selectedScope != scope;
+        var reflogChanged = _showReflog != showReflog;
+        if (!scopeChanged && !reflogChanged) return;
+
+        _selectedScope = scope;
+        _showReflog = showReflog;
+
+        if (scopeChanged) Notify(nameof(SelectedScope));
+        if (reflogChanged)
+        {
+            Notify(nameof(ShowReflog));
+            _ = PersistShowReflogAsync(showReflog);
+        }
+
+        _ = LoadHistoryAsync(true);
     }
 
     internal async Task DisableReflogForScopedHistoryAsync()
