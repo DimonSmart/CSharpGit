@@ -1,0 +1,60 @@
+name: Assistant adaptive commit graph
+
+on:
+  push:
+    branches:
+      - chatgpt/adaptive-commit-graph
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: true
+
+jobs:
+  implement-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Prepare Git test environment
+        shell: pwsh
+        run: |
+          New-Item -ItemType File -Force (Join-Path $HOME ".gitconfig") | Out-Null
+          git config --global core.autocrlf false
+
+      - name: Apply implementation
+        run: python .github/assistant/apply-adaptive-commit-graph.py
+
+      - name: Check patch whitespace
+        run: git diff --check
+
+      - name: Restore
+        run: dotnet restore CSharpGit.slnx --property:Configuration=Release
+
+      - name: Build
+        run: dotnet build CSharpGit.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test CSharpGit.slnx --configuration Release --no-build --verbosity minimal
+
+      - name: Commit verified implementation
+        shell: bash
+        run: |
+          rm -f .github/workflows/assistant-adaptive-commit-graph.yml
+          rm -rf .github/assistant
+          git add -A
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Implement adaptive commit graph width"
+          git push origin HEAD:chatgpt/adaptive-commit-graph
