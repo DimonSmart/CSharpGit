@@ -82,7 +82,8 @@ internal static class RepositoryTreeDescriptorBuilder
             DefaultExpanded: true,
             ChildNodes: worktrees
                 .OrderByDescending(worktree => worktree.IsCurrent)
-                .ThenBy(worktree => worktree.Branch ?? worktree.Head, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(WorktreePresentation.GetPrimaryLabel, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(worktree => worktree.Path, StringComparer.OrdinalIgnoreCase)
                 .Select(worktree => new RepositoryTreeDescriptor(
                     $"worktree:{worktree.Path}",
                     RepositoryTreeNodeKind.Worktree,
