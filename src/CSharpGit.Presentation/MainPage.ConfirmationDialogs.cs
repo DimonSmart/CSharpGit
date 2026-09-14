@@ -14,6 +14,7 @@ public sealed partial class MainPage
 
     private void ConfirmationDialogs_Loaded(object sender, RoutedEventArgs args)
     {
+        InitializeCommitDetailsSurface();
         if (_confirmationDialogsInitialized) return;
         _confirmationDialogsInitialized = true;
         _viewModel.PropertyChanged += ConfirmationDialogs_PropertyChanged;
