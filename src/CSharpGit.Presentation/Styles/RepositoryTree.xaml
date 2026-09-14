@@ -36,7 +36,7 @@
                   IsExpanded="{Binding IsExpanded, Mode=OneWay}"
                   Style="{StaticResource RepositoryTreeItemStyle}"
                   ToolTipService.ToolTip="{Binding ToolTipText}"
-                  RightTapped="RepositoryTreeItem_RightTapped">
+                  controls:WorktreeContextMenuBehavior.IsEnabled="True">
       <TreeViewItem.Content>
         <Grid ColumnDefinitions="2,*" MinHeight="{StaticResource Height.DataRow}">
           <Border Grid.ColumnSpan="2"
