@@ -1,38 +1,23 @@
-using CSharpGit.Presentation.ViewModels;
-
 namespace CSharpGit.Desktop.Tests;
 
 public sealed class RepositoryTreeExpanderTests
 {
     [Fact]
-    public void HasChildrenTracksIncrementalChildCollectionChanges()
+    public void RepositoryTreeNodePublishesDerivedHasChildrenState()
     {
-        var parent = new RepositoryTreeNode(new RepositoryTreeDescriptor(
-            "parent",
-            RepositoryTreeNodeKind.Group,
-            "Parent"));
-        var child = new RepositoryTreeNode(new RepositoryTreeDescriptor(
-            "child",
-            RepositoryTreeNodeKind.LocalBranch,
-            "Child"));
-        var notifications = 0;
-        parent.PropertyChanged += (_, args) =>
-        {
-            if (args.PropertyName == nameof(RepositoryTreeNode.HasChildren))
-                notifications++;
-        };
+        var root = FindRepositoryRoot();
+        var node = File.ReadAllText(Path.Combine(
+            root,
+            "src",
+            "CSharpGit.Presentation",
+            "ViewModels",
+            "RepositoryTreeNode.cs"));
 
-        Assert.False(parent.HasChildren);
-
-        parent.Children.Add(child);
-
-        Assert.True(parent.HasChildren);
-        Assert.Equal(1, notifications);
-
-        parent.Children.Remove(child);
-
-        Assert.False(parent.HasChildren);
-        Assert.Equal(2, notifications);
+        Assert.Contains("public bool HasChildren => Children.Count > 0;", node, StringComparison.Ordinal);
+        Assert.Contains(
+            "Children.CollectionChanged += (_, _) => Notify(nameof(HasChildren));",
+            node,
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -51,11 +36,18 @@ public sealed class RepositoryTreeExpanderTests
             "CSharpGit.Presentation",
             "Styles",
             "RepositoryTree.xaml"));
+        var snapshotNode = File.ReadAllText(Path.Combine(
+            root,
+            "src",
+            "CSharpGit.Presentation",
+            "ViewModels",
+            "RepositorySnapshotTreeNode.cs"));
 
         Assert.Contains("var guideWidth = segments.Count > 0", guides, StringComparison.Ordinal);
         Assert.Contains("if (HasChildren && RowHeight > 0)", guides, StringComparison.Ordinal);
         Assert.DoesNotContain("ExpandTarget?.ItemsSource", guides, StringComparison.Ordinal);
         Assert.Equal(2, CountOccurrences(styles, "HasChildren=\"{Binding HasChildren}\""));
+        Assert.Contains("public bool HasChildren => Children.Count > 0;", snapshotNode, StringComparison.Ordinal);
     }
 
     private static int CountOccurrences(string text, string value)
