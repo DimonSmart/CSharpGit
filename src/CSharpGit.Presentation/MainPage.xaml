@@ -1,5 +1,6 @@
 <Page x:Class="CSharpGit.Presentation.MainPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:CSharpGit.Presentation.Controls" xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives" Loaded="ConfirmationDialogs_Loaded">
   <Page.Resources>
+    <controls:BranchTrackingActionTextConverter x:Key="BranchTrackingActionTextConverter" />
     <ContentDialog x:Key="GitOperationsDialog" Title="Git operations" CloseButtonText="Close" DefaultButton="Close">
       <ScrollViewer MaxHeight="650" VerticalScrollBarVisibility="Auto">
         <StackPanel Width="620" Spacing="12">
@@ -126,13 +127,15 @@
             <Button Click="Pull_Click" Style="{StaticResource ToolbarButtonStyle}">
               <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                 <FontIcon Glyph="&#xE896;" FontSize="{StaticResource Icon.Small}" />
-                <TextBlock Text="Pull" Style="{StaticResource BodyTextStyle}" />
+                <TextBlock Text="{Binding SelectedLocalBranch, Converter={StaticResource BranchTrackingActionTextConverter}, ConverterParameter=Pull}"
+                           Style="{StaticResource BodyTextStyle}" />
               </StackPanel>
             </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}">
               <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                 <FontIcon Glyph="&#xE898;" FontSize="{StaticResource Icon.Small}" />
-                <TextBlock Text="Push ▼" Style="{StaticResource BodyTextStyle}" />
+                <TextBlock Text="{Binding SelectedLocalBranch, Converter={StaticResource BranchTrackingActionTextConverter}, ConverterParameter=Push}"
+                           Style="{StaticResource BodyTextStyle}" />
               </StackPanel>
               <Button.Flyout>
                 <MenuFlyout>
