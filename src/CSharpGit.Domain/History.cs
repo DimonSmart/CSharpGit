@@ -14,7 +14,8 @@ public sealed record CommitHistoryItem(
     IReadOnlyList<string> References)
 {
     public string ShortHash => Hash[..Math.Min(8, Hash.Length)];
-    public string ParentsDisplay => string.Join(", ", Parents);
+    public bool IsRootCommit => Parents.Count == 0;
+    public string ParentsDisplay => IsRootCommit ? "—" : string.Join(", ", Parents);
     public string ReferencesDisplay => string.Join(", ", References);
 }
 
