@@ -36,7 +36,10 @@ public sealed class CommitGraphControl : Canvas
 
     private readonly XamlPath[] _trackPaths = new XamlPath[8];
     private readonly XamlPath _nodePath;
+    private readonly RectangleGeometry _clipGeometry = new();
     private CommitGraphRowVisual? _renderedGraph;
+    private CommitGraphMetrics _metrics = CommitGraphMetrics.Default;
+    private CommitGraphMetrics _renderedMetrics;
     private double _renderedHeight;
     private ElementTheme? _renderedTheme;
     private long _renderCount;
@@ -53,16 +56,34 @@ public sealed class CommitGraphControl : Canvas
         set => SetValue(GraphProperty, value);
     }
 
+    public CommitGraphMetrics Metrics
+    {
+        get => _metrics;
+        set
+        {
+            if (_metrics == value)
+            {
+                return;
+            }
+
+            _metrics = value;
+            foreach (var path in _trackPaths)
+                path.StrokeThickness = value.LineThickness;
+            InvalidateMeasure();
+            UpdateGeometry();
+        }
+    }
+
     public CommitGraphControl()
     {
         IsHitTestVisible = false;
+        Clip = _clipGeometry;
 
-        var metrics = CommitGraphMetrics.Default;
         for (var paletteIndex = 0; paletteIndex < _trackPaths.Length; paletteIndex++)
         {
             var path = new XamlPath
             {
-                StrokeThickness = metrics.LineThickness,
+                StrokeThickness = Metrics.LineThickness,
                 IsHitTestVisible = false,
             };
             _trackPaths[paletteIndex] = path;
@@ -73,9 +94,17 @@ public sealed class CommitGraphControl : Canvas
         Children.Add(_nodePath);
         UpdateBrushes();
 
-        Loaded += (_, _) => UpdateGeometry();
+        Loaded += (_, _) =>
+        {
+            UpdateClip();
+            UpdateGeometry();
+        };
         DataContextChanged += (_, _) => UpdateGeometry();
-        SizeChanged += (_, _) => UpdateGeometry();
+        SizeChanged += (_, _) =>
+        {
+            UpdateClip();
+            UpdateGeometry();
+        };
         ActualThemeChanged += (_, _) =>
         {
             UpdateBrushes();
@@ -86,8 +115,8 @@ public sealed class CommitGraphControl : Canvas
     protected override Size MeasureOverride(Size availableSize)
     {
         var measured = base.MeasureOverride(availableSize);
-        var desiredWidth = CommitGraphGeometryBuilder.CalculateWidth(Graph?.LaneCount ?? 0, CommitGraphMetrics.Default);
-        return new Size(desiredWidth, measured.Height);
+        var width = double.IsFinite(availableSize.Width) ? Math.Max(0, availableSize.Width) : 0;
+        return new Size(width, measured.Height);
     }
 
     private static void OnGraphChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
@@ -101,6 +130,13 @@ public sealed class CommitGraphControl : Canvas
         control.UpdateGeometry();
     }
 
+    private void UpdateClip()
+    {
+        var width = double.IsFinite(ActualWidth) && ActualWidth > 0 ? ActualWidth : 0;
+        var height = double.IsFinite(ActualHeight) && ActualHeight > 0 ? ActualHeight : 0;
+        _clipGeometry.Rect = new Rect(0, 0, width, height);
+    }
+
     private void UpdateGeometry()
     {
         var graph = Graph;
@@ -110,12 +146,13 @@ public sealed class CommitGraphControl : Canvas
             return;
         }
 
-        var metrics = CommitGraphMetrics.Default;
+        var metrics = Metrics;
         var theme = ActualTheme;
 
         if (ReferenceEquals(_renderedGraph, graph)
             && Math.Abs(_renderedHeight - height) <= 0.01
-            && _renderedTheme == theme)
+            && _renderedTheme == theme
+            && _renderedMetrics == metrics)
         {
             return;
         }
@@ -128,6 +165,7 @@ public sealed class CommitGraphControl : Canvas
         _renderedGraph = graph;
         _renderedHeight = height;
         _renderedTheme = theme;
+        _renderedMetrics = metrics;
         Interlocked.Increment(ref _renderCount);
 
         if (graph is null)
@@ -193,6 +231,7 @@ public sealed class CommitGraphControl : Canvas
         if (!double.IsFinite(height) || height <= 0
             || !ReferenceEquals(_renderedGraph, Graph)
             || _renderedTheme != ActualTheme
+            || _renderedMetrics != Metrics
             || Volatile.Read(ref _renderCount) == 0
             || Math.Abs(_renderedHeight - height) > 0.01)
         {
@@ -204,7 +243,7 @@ public sealed class CommitGraphControl : Canvas
             return _trackPaths.All(path => path.Data is null) && _nodePath.Data is null;
         }
 
-        var geometry = CommitGraphGeometryBuilder.Build(Graph, height, CommitGraphMetrics.Default);
+        var geometry = CommitGraphGeometryBuilder.Build(Graph, height, Metrics);
         var expectedPaletteIndexes = geometry.Lines.Select(line => PaletteIndex(line.TrackId))
             .Concat(geometry.Beziers.Select(bezier => PaletteIndex(bezier.TrackId)))
             .ToHashSet();
@@ -216,6 +255,17 @@ public sealed class CommitGraphControl : Canvas
         }
 
         return (_nodePath.Data is not null) == (geometry.Node is not null);
+    }
+
+    internal bool HasCurrentClipForCheck()
+    {
+        var expectedWidth = double.IsFinite(ActualWidth) && ActualWidth > 0 ? ActualWidth : 0;
+        var expectedHeight = double.IsFinite(ActualHeight) && ActualHeight > 0 ? ActualHeight : 0;
+        var clip = _clipGeometry.Rect;
+        return Math.Abs(clip.X) <= 0.01
+            && Math.Abs(clip.Y) <= 0.01
+            && Math.Abs(clip.Width - expectedWidth) <= 0.01
+            && Math.Abs(clip.Height - expectedHeight) <= 0.01;
     }
 
     private void UpdateBrushes()

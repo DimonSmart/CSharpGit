@@ -400,6 +400,7 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
                 new CommitTopology(lane, outgoing)
                 {
                     NodeTrackId = nodeTrackId,
+                    LaneCount = Math.Max(lane + 1, Math.Max(before.Count, lanes.Count)),
                     IncomingEdges = incoming,
                     HasExactGraphTopology = true
                 },

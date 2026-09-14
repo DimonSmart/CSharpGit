@@ -6,11 +6,19 @@ public readonly record struct CommitGraphMetrics(
     double LineThickness,
     double NodeRadius)
 {
+    public const double DefaultGraphWidth = 120;
+    public const double MaxGraphWidth = 200;
+    public const double DefaultLaneWidth = 16;
+    public const double MinLaneWidth = 8;
+    public const double DefaultHorizontalMargin = 8;
+    public const double DefaultLineThickness = 2;
+    public const double DefaultNodeRadius = 4;
+
     public static CommitGraphMetrics Default { get; } = new(
-        LaneWidth: 16,
-        HorizontalMargin: 8,
-        LineThickness: 2,
-        NodeRadius: 4);
+        LaneWidth: DefaultLaneWidth,
+        HorizontalMargin: DefaultHorizontalMargin,
+        LineThickness: DefaultLineThickness,
+        NodeRadius: DefaultNodeRadius);
 
     public double CalculateWidth(int laneCount)
     {

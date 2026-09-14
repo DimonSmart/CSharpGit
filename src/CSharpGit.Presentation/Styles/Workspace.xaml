@@ -242,9 +242,16 @@
   </DataTemplate>
 
   <DataTemplate x:Key="HistoryItemTemplate">
-    <Grid ColumnDefinitions="120,*,160,150,90"
+    <Grid x:Name="HistoryRowRoot"
           MinHeight="{StaticResource Height.DataRow}"
           Padding="{StaticResource Padding.DenseRow}">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="160" />
+        <ColumnDefinition Width="150" />
+        <ColumnDefinition Width="90" />
+      </Grid.ColumnDefinitions>
       <Border Grid.ColumnSpan="5"
               Background="{ThemeResource AccentFillColorDefaultBrush}"
               Opacity="0.06"
