@@ -7,9 +7,11 @@ public sealed class ForcePushUiContractTests
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var trackingConverter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "BranchTrackingActionTextConverter.cs"));
         var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ForcePush.cs"));
 
-        Assert.Contains("Push ▼", xaml, StringComparison.Ordinal);
+        Assert.Contains("ConverterParameter=Push", xaml, StringComparison.Ordinal);
+        Assert.Contains("\"Push ▼\"", trackingConverter, StringComparison.Ordinal);
         Assert.Contains("Force push with lease…", xaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"ForcePushWithLease_Click\"", xaml, StringComparison.Ordinal);
         Assert.Contains("PrepareForcePushWithLeaseAsync", workflow, StringComparison.Ordinal);
