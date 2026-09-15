@@ -7,12 +7,12 @@ public sealed class CommitGraphAdaptiveLayoutContractTests
     {
         var root = FindRepositoryRoot();
         var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
-        var workspace = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
+        var historyReferences = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml"));
 
         Assert.DoesNotContain("120,*,160,150,90", mainPage, StringComparison.Ordinal);
-        Assert.DoesNotContain("120,*,160,150,90", workspace, StringComparison.Ordinal);
+        Assert.DoesNotContain("120,*,160,150,90", historyReferences, StringComparison.Ordinal);
         Assert.Contains("HistoryGraphHeaderColumn", mainPage, StringComparison.Ordinal);
-        Assert.Contains("HistoryRowRoot", workspace, StringComparison.Ordinal);
+        Assert.Contains("HistoryRowRoot", historyReferences, StringComparison.Ordinal);
         Assert.Contains("HistoryList_ContainerContentChanging", mainPage, StringComparison.Ordinal);
     }
 

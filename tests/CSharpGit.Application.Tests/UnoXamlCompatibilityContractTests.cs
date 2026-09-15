@@ -5,7 +5,7 @@ public sealed class UnoXamlCompatibilityContractTests
     [Fact]
     public void DenseListItemStylePreservesUnoSelectionVisualStates()
     {
-        var workspace = ReadWorkspace();
+        var workspace = ReadStyle("Workspace.xaml");
         var denseStyle = Slice(workspace,
             "<Style x:Key=\"DenseListItemStyle\"",
             "</Style>");
@@ -39,16 +39,14 @@ public sealed class UnoXamlCompatibilityContractTests
     [Fact]
     public void HistoryTextColumnsKeepSemanticGap()
     {
-        var workspace = ReadWorkspace();
-        var historyTemplate = Slice(workspace,
-            "<DataTemplate x:Key=\"HistoryItemTemplate\"",
-            "<DataTemplate x:Key=\"RepositoryTreeItemTemplate\">");
+        var workspace = ReadStyle("Workspace.xaml");
+        var historyReferences = ReadStyle("HistoryReferences.xaml");
 
         Assert.Contains("<Thickness x:Key=\"Margin.HistoryColumnGap\">4,0,0,0</Thickness>", workspace);
-        Assert.Equal(3, CountOccurrences(historyTemplate, "Margin=\"{StaticResource Margin.HistoryColumnGap}\""));
+        Assert.Equal(3, CountOccurrences(historyReferences, "Margin=\"{StaticResource Margin.HistoryColumnGap}\""));
     }
 
-    private static string ReadWorkspace()
+    private static string ReadStyle(string fileName)
     {
         var root = FindRepositoryRoot();
         return File.ReadAllText(Path.Combine(
@@ -56,7 +54,7 @@ public sealed class UnoXamlCompatibilityContractTests
             "src",
             "CSharpGit.Presentation",
             "Styles",
-            "Workspace.xaml"));
+            fileName));
     }
 
     private static string Slice(string value, string startMarker, string endMarker)

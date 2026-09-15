@@ -7,7 +7,7 @@ public sealed class ReflogHistoryUiContractTests
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
-        var workspace = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
+        var historyReferences = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var reflogState = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.Reflog.cs"));
         var selector = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.HistoryDisplayMode.cs"));
@@ -31,10 +31,10 @@ public sealed class ReflogHistoryUiContractTests
         Assert.Contains("DisableReflogForScopedHistoryAsync", page);
         Assert.Contains("IncludeReflog: ShowReflog", navigation);
 
-        Assert.Contains("Text=\"reflog\"", workspace);
-        Assert.Contains("Binding IsReflogOnly", workspace);
-        Assert.Contains("This commit is not reachable from normal repository refs", workspace);
-        Assert.Contains("AccentFillColorDefaultBrush", workspace);
+        Assert.Contains("Text=\"reflog\"", historyReferences);
+        Assert.Contains("Binding IsReflogOnly", historyReferences);
+        Assert.Contains("This commit is not reachable from normal repository refs", historyReferences);
+        Assert.Contains("AccentFillColorDefaultBrush", historyReferences);
 
         Assert.Contains("[\"--all\", \"--reflog\"]", git);
         Assert.Contains("\"rev-list\", \"--reflog\", \"--not\", \"--all\"", git);

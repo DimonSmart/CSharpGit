@@ -7,6 +7,7 @@ public sealed class ReferenceBadgeUiContractTests
     {
         var root = FindRepositoryRoot();
         var workspace = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
+        var historyReferences = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml"));
         var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var designTokens = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "DesignTokens.xaml"));
 
@@ -18,9 +19,9 @@ public sealed class ReferenceBadgeUiContractTests
         Assert.Contains("Property=\"Padding\" Value=\"{StaticResource Padding.ReferenceBadge}\"", workspace, StringComparison.Ordinal);
         Assert.Contains("Property=\"Margin\" Value=\"{StaticResource Margin.ReferenceBadge}\"", workspace, StringComparison.Ordinal);
 
-        Assert.Contains("ItemsSource=\"{Binding Commit.References}\"", workspace, StringComparison.Ordinal);
-        Assert.Contains("<Border Style=\"{StaticResource ReferenceBadgeStyle}\">", workspace, StringComparison.Ordinal);
-        Assert.DoesNotContain("Opacity=\"0.82\"", workspace, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding Commit.References}\"", historyReferences, StringComparison.Ordinal);
+        Assert.Contains("<Border Style=\"{StaticResource ReferenceBadgeStyle}\">", historyReferences, StringComparison.Ordinal);
+        Assert.DoesNotContain("Opacity=\"0.82\"", historyReferences, StringComparison.Ordinal);
 
         Assert.Contains("ItemsSource=\"{Binding SelectedHistoryRow.Commit.References}\"", mainPage, StringComparison.Ordinal);
         Assert.Contains("<Border Style=\"{StaticResource ReferenceBadgeStyle}\">", mainPage, StringComparison.Ordinal);
