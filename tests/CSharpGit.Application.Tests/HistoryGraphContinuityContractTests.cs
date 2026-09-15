@@ -7,22 +7,20 @@ public sealed class HistoryGraphContinuityContractTests
     {
         var root = FindRepositoryRoot();
         var workspace = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
+        var historyReferences = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml"));
         var graphControl = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphControl.cs"));
         var graphMetrics = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphMetrics.cs"));
 
         var historyStyle = Slice(workspace,
             "<Style x:Key=\"HistoryRowStyle\"",
             "</Style>");
-        var historyTemplate = Slice(workspace,
-            "<DataTemplate x:Key=\"HistoryItemTemplate\"",
-            "</DataTemplate>");
 
         Assert.Contains("<Setter Property=\"Padding\" Value=\"0\" />", historyStyle);
         Assert.Contains("<Setter Property=\"VerticalContentAlignment\" Value=\"Stretch\" />", historyStyle);
-        Assert.Contains("MinHeight=\"{StaticResource Height.DataRow}\"", historyTemplate);
-        Assert.Contains("VerticalAlignment=\"Stretch\"", historyTemplate);
+        Assert.Contains("MinHeight=\"{StaticResource Height.DataRow}\"", historyReferences);
+        Assert.Contains("VerticalAlignment=\"Stretch\"", historyReferences);
         Assert.DoesNotContain("Height=\"34\"", historyStyle);
-        Assert.DoesNotContain("Height=\"34\"", historyTemplate);
+        Assert.DoesNotContain("Height=\"34\"", historyReferences);
         Assert.DoesNotContain("DefaultRowHeight", graphControl);
         Assert.DoesNotContain("DefaultRowHeight", graphMetrics);
     }

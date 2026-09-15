@@ -7,18 +7,18 @@ public sealed class DefaultBranchMarkerUiContractTests
     {
         var root = FindRepositoryRoot();
         var node = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryTreeNode.cs"));
-        var workspace = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
+        var repositoryTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "RepositoryTree.xaml"));
 
         Assert.Contains("Value is GitBranch { IsDefault: true }", node, StringComparison.Ordinal);
         Assert.Contains("CurrentLocalBranchIconVisibility", node, StringComparison.Ordinal);
         Assert.Contains("LocalDefaultBranchIconVisibility", node, StringComparison.Ordinal);
         Assert.Contains("RemoteDefaultBranchIconVisibility", node, StringComparison.Ordinal);
-        Assert.Equal(3, CountOccurrences(workspace, "Glyph=\"&#xE80F;\""));
-        Assert.Contains("Visibility=\"{Binding CurrentLocalBranchIconVisibility}\"", workspace, StringComparison.Ordinal);
-        Assert.Contains("Visibility=\"{Binding LocalDefaultBranchIconVisibility}\"", workspace, StringComparison.Ordinal);
-        Assert.Contains("Visibility=\"{Binding RemoteDefaultBranchIconVisibility}\"", workspace, StringComparison.Ordinal);
-        Assert.Equal(3, CountOccurrences(workspace, "Foreground=\"{ThemeResource AccentFillColorDefaultBrush}\""));
-        Assert.DoesNotContain("Foreground=\"{ThemeResource TextFillColorSecondaryBrush}\"", workspace, StringComparison.Ordinal);
+        Assert.Equal(3, CountOccurrences(repositoryTree, "Glyph=\"&#xE80F;\""));
+        Assert.Contains("Visibility=\"{Binding CurrentLocalBranchIconVisibility}\"", repositoryTree, StringComparison.Ordinal);
+        Assert.Contains("Visibility=\"{Binding LocalDefaultBranchIconVisibility}\"", repositoryTree, StringComparison.Ordinal);
+        Assert.Contains("Visibility=\"{Binding RemoteDefaultBranchIconVisibility}\"", repositoryTree, StringComparison.Ordinal);
+        Assert.Equal(3, CountOccurrences(repositoryTree, "Foreground=\"{ThemeResource AccentFillColorDefaultBrush}\""));
+        Assert.DoesNotContain("Foreground=\"{ThemeResource TextFillColorSecondaryBrush}\"", repositoryTree, StringComparison.Ordinal);
     }
 
     [Fact]
