@@ -1,6 +1,15 @@
 namespace CSharpGit.Application.Abstractions;
 
-public sealed record RepositoryImageCacheState(string? ImagePath, bool ShouldRefresh);
+public enum RepositoryImageKind
+{
+    Icon,
+    Preview
+}
+
+public sealed record RepositoryImageCacheState(
+    string? ImagePath,
+    bool ShouldRefresh,
+    RepositoryImageKind? Kind = null);
 
 public interface IRepositoryImageService
 {

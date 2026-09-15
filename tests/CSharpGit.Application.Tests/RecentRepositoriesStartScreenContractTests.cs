@@ -30,8 +30,13 @@ public sealed class RecentRepositoriesStartScreenContractTests
 
         Assert.Contains("IRepositoryImageService", imageContract);
         Assert.Contains("RepositoryImageCacheState", imageContract);
+        Assert.Contains("RepositoryImageKind", imageContract);
+        Assert.Contains("Icon", imageContract);
+        Assert.Contains("Preview", imageContract);
         Assert.DoesNotContain("BitmapImage", imageContract);
         Assert.Contains("LocalRepositoryImageProvider", imageService);
+        Assert.Contains("RepositoryImageKind.Icon", imageService);
+        Assert.Contains("RepositoryImageKind.Preview", imageService);
         Assert.Contains("FindLocalCandidate", localImageProvider);
         Assert.Contains("GitHubRepositoryImageProvider", imageService);
         Assert.Contains("og:image", githubImageProvider);
@@ -72,10 +77,10 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("_settings.CommitTimeDisplayMode", recentViewModel);
         Assert.DoesNotContain("Last opened {localOpened:g}", recentViewModel);
         Assert.Contains("GetCachedState(item.Path)", recentViewModel);
-        Assert.Contains("item.SetRepositoryImagePath(cached.ImagePath)", recentViewModel);
+        Assert.Contains("cached.Kind == RepositoryImageKind.Icon", recentViewModel);
+        Assert.Contains("resolved.Kind == RepositoryImageKind.Icon", recentViewModel);
         Assert.Contains("await Task.Yield()", recentViewModel);
         Assert.Contains("ResolveAsync(", recentViewModel);
-        Assert.Contains("item.SetRepositoryImagePath(imagePath)", recentViewModel);
         Assert.Contains("CancellationTokenSource", recentViewModel);
         Assert.Contains("OrderByDescending(settings => Directory.Exists(settings.Path))", recentViewModel);
         Assert.Contains("HasUnavailableRepositories", recentViewModel);

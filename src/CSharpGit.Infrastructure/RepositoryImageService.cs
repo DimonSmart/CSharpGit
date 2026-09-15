@@ -77,16 +77,26 @@ public sealed partial class RepositoryImageService : IRepositoryImageService
 
             var imagePath = GetImagePath(metadata);
             if (imagePath is null) return new(null, true);
+            var imageKind = metadata.Kind == RepositoryImageCacheKind.Local
+                ? RepositoryImageKind.Icon
+                : RepositoryImageKind.Preview;
             Touch(imagePath, now);
-            if (!context.RepositoryExists) return new(imagePath, false);
+            if (!context.RepositoryExists) return new(imagePath, false, imageKind);
 
             var localCandidate = RepositoryImageHelpers.FindLocalCandidate(context.RepositoryPath);
             if (metadata.Kind == RepositoryImageCacheKind.Local)
-                return new(imagePath, !CandidateMatchesMetadata(localCandidate, metadata));
+                return new(
+                    imagePath,
+                    !CandidateMatchesMetadata(localCandidate, metadata),
+                    RepositoryImageKind.Icon);
 
             // A local logo always outranks a previously cached remote preview.
-            if (localCandidate is not null) return new(imagePath, true);
-            return new(imagePath, now - metadata.LastValidatedUtc >= RemoteTtl);
+            if (localCandidate is not null)
+                return new(imagePath, true, RepositoryImageKind.Preview);
+            return new(
+                imagePath,
+                now - metadata.LastValidatedUtc >= RemoteTtl,
+                RepositoryImageKind.Preview);
         }
         catch (Exception exception)
         {
