@@ -40,7 +40,7 @@ opened.
 | IDD-0018 | Spec | Manual refresh and external changes | Explicit refresh ownership, debounced repository monitoring and refresh-required indicator | — |
 | IDD-0019 | Spec | Compact design system | Shared compact density with continuous History commit graph surfaces | — |
 | IDD-0020 | Spec | Release distribution | Tag-driven GitHub Releases, platform artifacts, checksums and Homebrew Cask | — |
-| IDD-0021 | Spec | Branch deletion | Confirmed safe local/remote deletion, corresponding-branch resolution and partial-success behavior | — |
+| IDD-0021 | Spec | Branch deletion | Safe-by-default local deletion with explicit force option, remote deletion, corresponding-branch resolution and partial-success behavior | — |
 | IDD-0022 | Spec | Git Console | Session Git command activity, diagnostics, status-bar entry, filtering and safe output | — |
 | IDD-0023 | Spec | External Git tools | Standard Git Editor/Diff/Merge configuration, Git Tools settings, exact-pair external diff and isolated tool tests | — |
 | IDD-0024 | Spec | Repository Files preview | Shared hierarchy guides, historical file selection and extensible read-only preview | — |

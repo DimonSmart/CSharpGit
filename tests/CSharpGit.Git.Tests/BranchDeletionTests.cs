@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using CSharpGit.Application.Exceptions;
+using CSharpGit.Domain;
 
 namespace CSharpGit.Git.Tests;
 
@@ -18,6 +19,19 @@ public sealed class BranchDeletionTests : IDisposable
         await service.DeleteBranchAsync(repository, "feature/delete");
 
         Assert.False(LocalBranchExists(work, "feature/delete"));
+    }
+
+    [Fact]
+    public async Task DeletesMergedLocalBranchInExplicitSafeMode()
+    {
+        var work = CreateRepository();
+        RunGit(work, "branch", "feature/safe-delete");
+        var service = new GitCliRepositoryService();
+        var repository = await service.OpenAsync(work);
+
+        await service.DeleteBranchAsync(repository, "feature/safe-delete", BranchDeletionMode.Safe);
+
+        Assert.False(LocalBranchExists(work, "feature/safe-delete"));
     }
 
     [Fact]
@@ -64,6 +78,41 @@ public sealed class BranchDeletionTests : IDisposable
         await Assert.ThrowsAsync<RepositoryOpenException>(() => service.DeleteBranchAsync(repository, "feature/unmerged"));
 
         Assert.True(LocalBranchExists(work, "feature/unmerged"));
+    }
+
+    [Fact]
+    public async Task ForceModeDeletesUnmergedLocalBranch()
+    {
+        var work = CreateRepository();
+        RunGit(work, "switch", "-c", "feature/force-delete");
+        File.WriteAllText(Path.Combine(work, "force.txt"), "force\n");
+        RunGit(work, "add", "force.txt");
+        RunGit(work, "commit", "-m", "unmerged feature work");
+        RunGit(work, "switch", "main");
+        var service = new GitCliRepositoryService();
+        var repository = await service.OpenAsync(work);
+
+        await service.DeleteBranchAsync(repository, "feature/force-delete", BranchDeletionMode.Force);
+
+        Assert.False(LocalBranchExists(work, "feature/force-delete"));
+    }
+
+    [Fact]
+    public async Task ExplicitSafeModeRefusesUnmergedLocalBranch()
+    {
+        var work = CreateRepository();
+        RunGit(work, "switch", "-c", "feature/explicit-safe");
+        File.WriteAllText(Path.Combine(work, "safe.txt"), "safe\n");
+        RunGit(work, "add", "safe.txt");
+        RunGit(work, "commit", "-m", "unmerged safe work");
+        RunGit(work, "switch", "main");
+        var service = new GitCliRepositoryService();
+        var repository = await service.OpenAsync(work);
+
+        await Assert.ThrowsAsync<RepositoryOpenException>(() =>
+            service.DeleteBranchAsync(repository, "feature/explicit-safe", BranchDeletionMode.Safe));
+
+        Assert.True(LocalBranchExists(work, "feature/explicit-safe"));
     }
 
     public void Dispose() => TestDirectory.Delete(_temporaryDirectory);
