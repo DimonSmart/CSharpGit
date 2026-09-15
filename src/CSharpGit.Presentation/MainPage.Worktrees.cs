@@ -210,7 +210,7 @@ public sealed partial class MainPage
         else
             AddMenuItem(flyout, "Lock…", !_viewModel.IsBusy, () => LockWorktreeAsync(worktree));
 
-        if (!worktree.IsCurrent && !worktree.IsLocked)
+        if (!worktree.IsPrimary && !worktree.IsCurrent && !worktree.IsLocked)
         {
             flyout.Items.Add(new MenuFlyoutSeparator());
             AddMenuItem(flyout, "Remove Worktree", !_viewModel.IsBusy, () => RemoveWorktreeAsync(worktree));
@@ -282,7 +282,7 @@ public sealed partial class MainPage
 
     private async Task RemoveWorktreeAsync(WorktreeInfo worktree)
     {
-        if (_worktreeService is null || _viewModel.Repository is null || worktree.IsCurrent) return;
+        if (_worktreeService is null || _viewModel.Repository is null || worktree.IsPrimary || worktree.IsCurrent) return;
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
