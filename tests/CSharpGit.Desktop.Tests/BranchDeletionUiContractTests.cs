@@ -95,7 +95,7 @@ public sealed class BranchDeletionUiContractTests
         Assert.DoesNotContain("BranchDeletionResolver", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("Split('/')", workflow, StringComparison.Ordinal);
 
-        var remoteSection = workflow[workflow.IndexOf("ConfirmDeleteRemoteBranchFolderAsync", StringComparison.Ordinal)..];
+        var remoteSection = workflow[workflow.IndexOf("private async Task ConfirmDeleteRemoteBranchFolderAsync", StringComparison.Ordinal)..];
         Assert.DoesNotContain("Force delete branches even if they are not fully merged", remoteSection, StringComparison.Ordinal);
         Assert.DoesNotContain("Also delete local branch", remoteSection, StringComparison.Ordinal);
     }
