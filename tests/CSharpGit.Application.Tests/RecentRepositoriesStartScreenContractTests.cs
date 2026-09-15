@@ -17,6 +17,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var recentView = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "RecentRepositoriesView.xaml"));
         var recentViewCodeBehind = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "RecentRepositoriesView.xaml.cs"));
+        var recentGrid = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "RecentRepositoriesGridView.cs"));
         var recentViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RecentRepositoriesViewModel.cs"));
         var integration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RecentRepositories.cs"));
 
@@ -61,6 +62,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("IsEnabled=\"{Binding HasUnavailableRepositories}\"", recentView);
         Assert.Contains("Remove missing", recentView);
         Assert.Contains("TileOpacity", recentView);
+        Assert.Contains("controls:RecentRepositoriesGridView", recentView);
         Assert.Contains("VariableSizedWrapGrid", recentView);
         Assert.DoesNotContain("ItemsWrapGrid", recentView);
         Assert.Contains("ItemWidth=\"344\" ItemHeight=\"156\"", recentView);
@@ -71,7 +73,8 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("RepositoryCompactLayoutVisibility", recentView);
         Assert.Contains("RepositoryPreviewLayoutVisibility", recentView);
         Assert.Contains("Source=\"{Binding RepositoryPreview}\"", recentView);
-        Assert.Contains("Width=\"112\" Height=\"72\"", recentView);
+        Assert.Contains("ColumnDefinitions=\"*,280\"", recentView);
+        Assert.Contains("Width=\"280\" Height=\"116\"", recentView);
         Assert.Contains("Stretch=\"UniformToFill\"", recentView);
         Assert.Contains("ImageFailed=\"RepositoryImage_ImageFailed\"", recentView);
         Assert.Contains("ImageFailed=\"RepositoryPreview_ImageFailed\"", recentView);
@@ -79,12 +82,19 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("SetRepositoryPreviewPath(null)", recentViewCodeBehind);
         Assert.Contains("StartImageLoading()", recentViewCodeBehind);
 
+        Assert.Contains("VariableSizedWrapGrid.SetColumnSpan", recentGrid);
+        Assert.Contains("PrepareContainerForItemOverride", recentGrid);
+        Assert.Contains("RepositoryColumnSpan", recentGrid);
+        Assert.Contains("PropertyChanged", recentGrid);
+
         Assert.Contains("Folder not found", recentViewModel);
         Assert.Contains("INotifyPropertyChanged", recentViewModel);
         Assert.Contains("CommitTimeFormatter.Format", recentViewModel);
         Assert.Contains("_settings.CommitTimeDisplayMode", recentViewModel);
         Assert.DoesNotContain("Last opened {localOpened:g}", recentViewModel);
         Assert.Contains("RepositoryPreview", recentViewModel);
+        Assert.Contains("RepositoryColumnSpan", recentViewModel);
+        Assert.Contains("_repositoryPreview is null ? 1 : 2", recentViewModel);
         Assert.Contains("RepositoryCompactLayoutVisibility", recentViewModel);
         Assert.Contains("RepositoryPreviewLayoutVisibility", recentViewModel);
         Assert.Contains("SetRepositoryVisual", recentViewModel);
