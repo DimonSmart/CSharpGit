@@ -61,6 +61,7 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
     public double RepositoryGlyphOpacity => _repositoryImage is null ? 1d : 0d;
     public ImageSource? RepositoryPreview => _repositoryPreview;
     public string? RepositoryPreviewPath => _repositoryPreviewPath;
+    public int RepositoryColumnSpan => _repositoryPreview is null ? 1 : 2;
     public Visibility RepositoryCompactLayoutVisibility =>
         _repositoryPreview is null ? Visibility.Visible : Visibility.Collapsed;
     public Visibility RepositoryPreviewLayoutVisibility =>
@@ -114,6 +115,7 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
         _repositoryPreview = image;
         OnPropertyChanged(nameof(RepositoryPreviewPath));
         OnPropertyChanged(nameof(RepositoryPreview));
+        OnPropertyChanged(nameof(RepositoryColumnSpan));
         OnPropertyChanged(nameof(RepositoryCompactLayoutVisibility));
         OnPropertyChanged(nameof(RepositoryPreviewLayoutVisibility));
     }
