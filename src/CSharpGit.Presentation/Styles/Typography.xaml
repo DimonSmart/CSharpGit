@@ -10,6 +10,10 @@
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
 
+  <Style x:Key="BodySubduedTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+    <Setter Property="Opacity" Value="0.72" />
+  </Style>
+
   <Style x:Key="SecondaryTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
     <Setter Property="FontSize" Value="{StaticResource Font.Caption}" />
     <Setter Property="Opacity" Value="0.68" />
@@ -17,6 +21,10 @@
 
   <Style x:Key="CaptionTextStyle" TargetType="TextBlock" BasedOn="{StaticResource SecondaryTextStyle}">
     <Setter Property="Opacity" Value="0.58" />
+  </Style>
+
+  <Style x:Key="CaptionStrongTextStyle" TargetType="TextBlock" BasedOn="{StaticResource CaptionTextStyle}">
+    <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
 
   <Style x:Key="PaneHeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyStrongTextStyle}" />
@@ -33,10 +41,16 @@
     <Setter Property="FontSize" Value="{StaticResource Font.Title}" />
   </Style>
 
-  <Style x:Key="DiffTextStyle" TargetType="TextBlock">
+  <Style x:Key="TechnicalTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
     <Setter Property="FontFamily" Value="Consolas" />
-    <Setter Property="FontSize" Value="{StaticResource Font.Body}" />
   </Style>
+
+  <Style x:Key="TechnicalSecondaryTextStyle" TargetType="TextBlock" BasedOn="{StaticResource TechnicalTextStyle}">
+    <Setter Property="FontSize" Value="{StaticResource Font.Caption}" />
+    <Setter Property="Opacity" Value="0.58" />
+  </Style>
+
+  <Style x:Key="DiffTextStyle" TargetType="TextBlock" BasedOn="{StaticResource TechnicalTextStyle}" />
 
   <Style x:Key="DiffSecondaryTextStyle" TargetType="TextBlock" BasedOn="{StaticResource DiffTextStyle}">
     <Setter Property="FontSize" Value="{StaticResource Font.Caption}" />

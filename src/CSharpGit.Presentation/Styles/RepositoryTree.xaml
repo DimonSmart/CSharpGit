@@ -25,11 +25,7 @@
          TargetType="TreeViewItem"
          BasedOn="{StaticResource DenseTreeItemStyle}" />
 
-  <!--
-    Override the Workspace template as well so its inner TreeViewItem resolves
-    RepositoryTreeItemStyle from this dictionary rather than the older custom
-    container template in Workspace.xaml.
-  -->
+  <!-- Repository tree styles and templates are canonically owned by this dictionary. -->
   <DataTemplate x:Key="RepositoryTreeItemTemplate">
     <TreeViewItem x:Name="RepositoryTreeItem"
                   ItemsSource="{Binding Children}"
@@ -91,7 +87,7 @@
                       Visibility="{Binding PrimaryWorktreeBadgeVisibility}"
                       IsHitTestVisible="False" />
               <Border Grid.Column="2"
-                      Padding="4,0"
+                      Padding="{StaticResource Padding.DenseRow}"
                       CornerRadius="2"
                       Background="{ThemeResource ControlFillColorDefaultBrush}"
                       BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
