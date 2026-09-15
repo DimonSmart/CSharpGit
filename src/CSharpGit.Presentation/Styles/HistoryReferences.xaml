@@ -55,7 +55,7 @@
                                VerticalAlignment="Center" />
       <TextBlock Grid.Column="4"
                  Text="{Binding Commit.ShortHash}"
-                 Style="{StaticResource DiffSecondaryTextStyle}"
+                 Style="{StaticResource TechnicalSecondaryTextStyle}"
                  Margin="{StaticResource Margin.HistoryColumnGap}"
                  VerticalAlignment="Center" />
     </Grid>
