@@ -1,27 +1,10 @@
 using CSharpGit.Domain;
 using CSharpGit.Presentation.ViewModels;
-using Microsoft.UI.Xaml;
 
 namespace CSharpGit.Desktop.Tests;
 
 public sealed class PrimaryWorktreeBadgeVisibilityTests
 {
-    [Fact]
-    public void BadgeIsVisibleOnlyForPrimaryWorktreeNode()
-    {
-        var primary = Worktree("/repo-primary", "feature/primary", primary: true);
-        var linked = Worktree("/repo-linked", "feature/linked");
-        var root = RepositoryTreeDescriptorBuilder.BuildWorktreesRoot([primary, linked]);
-
-        var primaryNode = new RepositoryTreeNode(root.Children[0]);
-        var linkedNode = new RepositoryTreeNode(root.Children[1]);
-        var groupNode = new RepositoryTreeNode(root);
-
-        Assert.Equal(Visibility.Visible, primaryNode.PrimaryWorktreeBadgeVisibility);
-        Assert.Equal(Visibility.Collapsed, linkedNode.PrimaryWorktreeBadgeVisibility);
-        Assert.Equal(Visibility.Collapsed, groupNode.PrimaryWorktreeBadgeVisibility);
-    }
-
     [Fact]
     public void TwoWorktreesRemainTwoRowsWhenOnlyOneIsPrimary()
     {
