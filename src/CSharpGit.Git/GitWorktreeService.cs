@@ -60,6 +60,8 @@ internal sealed class GitWorktreeService(GitCommandExecutor executor) : IWorktre
     {
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(worktree);
+        if (worktree.IsPrimary)
+            throw new InvalidOperationException("The primary worktree cannot be removed as a linked worktree.");
         if (worktree.IsCurrent)
             throw new InvalidOperationException("The current worktree cannot be removed from its own CSharpGit window.");
 
