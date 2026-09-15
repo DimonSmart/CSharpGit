@@ -320,8 +320,8 @@
               </Pivot.Resources>
               <PivotItem Header="Commit">
                 <ScrollViewer x:Name="DetailsScroller"
-                              HorizontalScrollMode="Auto"
-                              HorizontalScrollBarVisibility="Auto"
+                              HorizontalScrollMode="Disabled"
+                              HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollMode="Auto"
                               VerticalScrollBarVisibility="Auto"
                               MinHeight="120">

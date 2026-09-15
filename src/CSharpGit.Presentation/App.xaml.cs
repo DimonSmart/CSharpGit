@@ -24,6 +24,8 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     private bool _closeCheckStarted;
     private int _hostStopped;
 
+    internal double MainWindowClientWidth => _window?.AppWindow.ClientSize.Width ?? 0;
+
     public App()
     {
         InitializeComponent();

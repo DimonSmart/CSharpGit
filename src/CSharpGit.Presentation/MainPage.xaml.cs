@@ -684,7 +684,19 @@ public sealed partial class MainPage : Page
             Check(RepositoryWorkspace.ActualWidth > 0 && RepositoryWorkspace.ActualHeight > 0, "workspace was not laid out", failures);
             Check(HistoryList.ActualWidth > 0 && HistoryList.ActualHeight > 0, "history list was not laid out", failures);
             Check(RepositoryTree.ActualWidth > 0 && _repositoryTreeRoots.Count >= 4, "repository tree was not laid out", failures);
-            Check(DetailsScroller.HorizontalScrollBarVisibility == ScrollBarVisibility.Auto && DetailsScroller.VerticalScrollBarVisibility == ScrollBarVisibility.Auto, "detail scrolling is not automatic", failures);
+            Check(DetailsScroller.HorizontalScrollBarVisibility == ScrollBarVisibility.Disabled && DetailsScroller.VerticalScrollBarVisibility == ScrollBarVisibility.Auto, "detail message wrapping is not configured", failures);
+            await WaitUntilAsync(
+                () => _commitDetailsView is { ActualWidth: > 0 } && DetailsScroller.ViewportWidth > 0,
+                TimeSpan.FromSeconds(5));
+            var commitMessageText = _commitDetailsView is null ? null : FindDescendant<TextBlock>(_commitDetailsView);
+            var historyOrigin = HistoryPane.TransformToVisual(null).TransformPoint(default);
+            var availableDetailsWidth = ((Application.Current as App)?.MainWindowClientWidth ?? 0) /
+                                        (XamlRoot?.RasterizationScale ?? 1) - historyOrigin.X;
+            Check(_commitDetailsView is not null && _commitDetailsView.ActualWidth <= availableDetailsWidth + 1, "commit details exceed the visible window viewport", failures);
+            Check(
+                commitMessageText is not null && commitMessageText.ActualHeight > commitMessageText.FontSize * 2,
+                $"long commit message did not wrap to multiple lines: viewport={DetailsScroller.ViewportWidth}, details={_commitDetailsView?.ActualWidth}, text={commitMessageText?.ActualWidth}x{commitMessageText?.ActualHeight}, font={commitMessageText?.FontSize}, length={commitMessageText?.Text.Length}, window={(Application.Current as App)?.MainWindowClientWidth}, scale={XamlRoot?.RasterizationScale}, historyOrigin={historyOrigin.X}",
+                failures);
             Check(CountDescendants<Controls.GridSplitter>(RootLayout) >= 2, "resizable splitters are missing", failures);
             Check(CountDescendants<ScrollViewer>(RootLayout) > 0, "scroll viewers are missing", failures);
             var xamlRoot = XamlRoot;
