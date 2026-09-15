@@ -34,7 +34,9 @@ public sealed class HistoryMessageWrappingUiContractTests
 
         Assert.Contains("DetailsScroller.HorizontalScrollMode = ScrollMode.Disabled", detailsHost);
         Assert.Contains("DetailsScroller.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled", detailsHost);
-        Assert.Contains("DetailsScroller.HorizontalContentAlignment = HorizontalAlignment.Stretch", detailsHost);
+        Assert.Contains("DetailsScroller.SizeChanged += DetailsScroller_SizeChanged", detailsHost);
+        Assert.Contains("ConstrainCommitDetailsToViewport(args.NewSize.Width)", detailsHost);
+        Assert.Contains("_commitDetailsView.Width = availableWidth", detailsHost);
     }
 
     private static string ExtractElement(string xaml, string marker)
