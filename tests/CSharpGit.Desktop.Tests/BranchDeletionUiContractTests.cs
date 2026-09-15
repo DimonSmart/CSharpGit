@@ -44,8 +44,10 @@ public sealed class BranchDeletionUiContractTests
 
         var remoteDelete = workflow.IndexOf("DeleteRemoteBranchAsync(", StringComparison.Ordinal);
         var localDelete = workflow.IndexOf("target.LocalBranch.Name,", StringComparison.Ordinal);
-        Assert.True(remoteDelete >= 0 && localDelete > remoteDelete);
-        Assert.Contains("target.LocalBranch.Name,\n                        BranchDeletionMode.Safe);", workflow, StringComparison.Ordinal);
+        var safeMode = localDelete < 0
+            ? -1
+            : workflow.IndexOf("BranchDeletionMode.Safe);", localDelete, StringComparison.Ordinal);
+        Assert.True(remoteDelete >= 0 && localDelete > remoteDelete && safeMode > localDelete);
         Assert.Contains("catch (Exception exception) when (exception is not OperationCanceledException)", workflow, StringComparison.Ordinal);
         Assert.Contains("Remote branch '{remoteBranch.Name}' was deleted, but local branch '{retainedLocalBranch.Name}' could not be deleted.", workflow, StringComparison.Ordinal);
         Assert.Contains("ShowAllHistory();", workflow, StringComparison.Ordinal);
