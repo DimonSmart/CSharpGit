@@ -66,6 +66,10 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
         ? WorktreePresentation.GetPrimaryLabel(worktree)
         : Name;
     public bool UseMiddleEllipsis => Kind == RepositoryTreeNodeKind.Worktree;
+    public Visibility PrimaryWorktreeBadgeVisibility =>
+        Kind == RepositoryTreeNodeKind.Worktree && Value is WorktreeInfo { IsPrimary: true }
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     public string WorktreeStateText => Kind == RepositoryTreeNodeKind.Worktree && Value is WorktreeInfo worktree
         ? WorktreePresentation.GetStateIndicator(worktree)
         : string.Empty;
@@ -121,6 +125,7 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
         var oldAssociatedWorktreePath = AssociatedWorktreePath;
         var oldLocalDefault = IsLocalDefaultBranchVisible();
         var oldRemoteDefault = IsRemoteDefaultBranchVisible();
+        var oldPrimaryWorktreeBadgeVisibility = PrimaryWorktreeBadgeVisibility;
         var oldWorktreeStateText = WorktreeStateText;
         var oldWorktreeStateVisibility = WorktreeStateVisibility;
         var oldToolTipText = ToolTipText;
@@ -148,6 +153,8 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
             Notify(nameof(AssociatedWorktreePath));
         if (oldLocalDefault != IsLocalDefaultBranchVisible()) Notify(nameof(LocalDefaultBranchIconVisibility));
         if (oldRemoteDefault != IsRemoteDefaultBranchVisible()) Notify(nameof(RemoteDefaultBranchIconVisibility));
+        if (oldPrimaryWorktreeBadgeVisibility != PrimaryWorktreeBadgeVisibility)
+            Notify(nameof(PrimaryWorktreeBadgeVisibility));
         if (!string.Equals(oldWorktreeStateText, WorktreeStateText, StringComparison.Ordinal)) Notify(nameof(WorktreeStateText));
         if (oldWorktreeStateVisibility != WorktreeStateVisibility) Notify(nameof(WorktreeStateVisibility));
         if (!string.Equals(oldToolTipText, ToolTipText, StringComparison.Ordinal)) Notify(nameof(ToolTipText));
