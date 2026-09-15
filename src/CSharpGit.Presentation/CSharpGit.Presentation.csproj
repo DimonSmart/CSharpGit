@@ -1,6 +1,6 @@
 <Project Sdk="Uno.Sdk">
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-desktop</TargetFramework>
     <UnoSingleProject>true</UnoSingleProject>
     <AssemblyName>CSharpGit</AssemblyName>
