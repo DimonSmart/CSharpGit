@@ -11,8 +11,7 @@
         <StackPanel Spacing="{StaticResource Spacing.M}">
           <TextBlock Text="Recent repositories" Style="{StaticResource TitleTextStyle}" />
           <TextBlock Text="Continue with a repository you opened recently, or choose another local repository."
-                     Style="{StaticResource BodyTextStyle}"
-                     Opacity="0.68"
+                     Style="{StaticResource BodySubduedTextStyle}"
                      TextWrapping="Wrap" />
         </StackPanel>
 
@@ -78,7 +77,7 @@
                       <TextBlock Grid.Row="1"
                                  Grid.Column="1"
                                  Text="{Binding Path}"
-                                 Style="{StaticResource SecondaryTextStyle}"
+                                 Style="{StaticResource TechnicalSecondaryTextStyle}"
                                  Margin="0,5,10,0"
                                  TextTrimming="CharacterEllipsis"
                                  ToolTipService.ToolTip="{Binding Path}" />
@@ -88,7 +87,6 @@
                                  Style="{StaticResource SecondaryTextStyle}"
                                  Margin="0,8,10,0"
                                  VerticalAlignment="Top"
-                                 Opacity="0.72"
                                  TextTrimming="CharacterEllipsis" />
                     </Grid>
                   </Border>

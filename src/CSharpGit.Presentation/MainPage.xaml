@@ -3,59 +3,59 @@
     <controls:BranchTrackingActionTextConverter x:Key="BranchTrackingActionTextConverter" />
     <ContentDialog x:Key="GitOperationsDialog" Title="Git operations" CloseButtonText="Close" DefaultButton="Close">
       <ScrollViewer MaxHeight="650" VerticalScrollBarVisibility="Auto">
-        <StackPanel Width="620" Spacing="12">
-          <TextBlock Text="Branches" FontWeight="SemiBold" />
-          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-            <TextBox Text="{Binding NewBranchName, Mode=TwoWay}" PlaceholderText="New local branch" />
-            <Button Grid.Column="1" Content="Create and switch" Command="{Binding CreateBranchCommand}" />
+        <StackPanel Width="620" Spacing="{StaticResource Spacing.XL}">
+          <TextBlock Text="Branches" Style="{StaticResource BodyStrongTextStyle}" />
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
+            <TextBox Text="{Binding NewBranchName, Mode=TwoWay}" PlaceholderText="New local branch" Style="{StaticResource CompactTextBoxStyle}" />
+            <Button Grid.Column="1" Content="Create and switch" Command="{Binding CreateBranchCommand}" Style="{StaticResource CompactButtonStyle}" />
           </Grid>
-          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-            <ComboBox ItemsSource="{Binding LocalBranches}" SelectedItem="{Binding SelectedMergeBranch, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Branch to merge" />
-            <Button Grid.Column="1" Content="Merge into current" Command="{Binding MergeCommand}" />
-          </Grid>
-
-          <TextBlock Text="Tracking branch" FontWeight="SemiBold" Margin="0,4,0,0" />
-          <Grid ColumnDefinitions="200,*,Auto" ColumnSpacing="8">
-            <ComboBox ItemsSource="{Binding RemoteBranches}" SelectedItem="{Binding SelectedRemoteBranch, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Remote branch" />
-            <TextBox Grid.Column="1" Text="{Binding NewBranchName, Mode=TwoWay}" PlaceholderText="Local branch name" />
-            <Button Grid.Column="2" Content="Checkout tracking" Command="{Binding CheckoutRemoteCommand}" />
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
+            <ComboBox ItemsSource="{Binding LocalBranches}" SelectedItem="{Binding SelectedMergeBranch, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Branch to merge" Style="{StaticResource CompactComboBoxStyle}" />
+            <Button Grid.Column="1" Content="Merge into current" Command="{Binding MergeCommand}" Style="{StaticResource CompactButtonStyle}" />
           </Grid>
 
-          <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,4" />
-          <TextBlock Text="Stash" FontWeight="SemiBold" />
-          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-            <TextBox Text="{Binding StashMessage, Mode=TwoWay}" PlaceholderText="Optional stash message" />
-            <Button Grid.Column="1" Content="Create stash" Command="{Binding CreateStashCommand}" />
+          <TextBlock Text="Tracking branch" Style="{StaticResource BodyStrongTextStyle}" Margin="{StaticResource Margin.Section}" />
+          <Grid ColumnDefinitions="200,*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
+            <ComboBox ItemsSource="{Binding RemoteBranches}" SelectedItem="{Binding SelectedRemoteBranch, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Remote branch" Style="{StaticResource CompactComboBoxStyle}" />
+            <TextBox Grid.Column="1" Text="{Binding NewBranchName, Mode=TwoWay}" PlaceholderText="Local branch name" Style="{StaticResource CompactTextBoxStyle}" />
+            <Button Grid.Column="2" Content="Checkout tracking" Command="{Binding CheckoutRemoteCommand}" Style="{StaticResource CompactButtonStyle}" />
           </Grid>
 
-          <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,4" />
-          <TextBlock Text="Remote / explicit push" FontWeight="SemiBold" />
-          <Grid ColumnDefinitions="180,*,Auto" ColumnSpacing="8">
-            <ComboBox ItemsSource="{Binding Remotes}" SelectedItem="{Binding SelectedRemote, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Remote" />
-            <TextBox Grid.Column="1" Text="{Binding PushBranchName, Mode=TwoWay}" PlaceholderText="Remote branch name" />
-            <CheckBox Grid.Column="2" Content="Set upstream" IsChecked="{Binding SetUpstream, Mode=TwoWay}" VerticalAlignment="Center" />
+          <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="{StaticResource Margin.FormSeparator}" />
+          <TextBlock Text="Stash" Style="{StaticResource BodyStrongTextStyle}" />
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
+            <TextBox Text="{Binding StashMessage, Mode=TwoWay}" PlaceholderText="Optional stash message" Style="{StaticResource CompactTextBoxStyle}" />
+            <Button Grid.Column="1" Content="Create stash" Command="{Binding CreateStashCommand}" Style="{StaticResource CompactButtonStyle}" />
           </Grid>
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Content="Push" Click="Push_Click" />
-            <Button Content="Force push with lease…" Click="ForcePushWithLease_Click" IsEnabled="{Binding CanForcePushWithLease}" />
-            <Button Content="Fetch all" Command="{Binding FetchAllCommand}" />
+
+          <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="{StaticResource Margin.FormSeparator}" />
+          <TextBlock Text="Remote / explicit push" Style="{StaticResource BodyStrongTextStyle}" />
+          <Grid ColumnDefinitions="180,*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
+            <ComboBox ItemsSource="{Binding Remotes}" SelectedItem="{Binding SelectedRemote, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Remote" Style="{StaticResource CompactComboBoxStyle}" />
+            <TextBox Grid.Column="1" Text="{Binding PushBranchName, Mode=TwoWay}" PlaceholderText="Remote branch name" Style="{StaticResource CompactTextBoxStyle}" />
+            <CheckBox Grid.Column="2" Content="Set upstream" IsChecked="{Binding SetUpstream, Mode=TwoWay}" Style="{StaticResource CompactCheckBoxStyle}" VerticalAlignment="Center" />
+          </Grid>
+          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.L}">
+            <Button Content="Push" Click="Push_Click" Style="{StaticResource CompactButtonStyle}" />
+            <Button Content="Force push with lease…" Click="ForcePushWithLease_Click" IsEnabled="{Binding CanForcePushWithLease}" Style="{StaticResource CompactButtonStyle}" />
+            <Button Content="Fetch all" Command="{Binding FetchAllCommand}" Style="{StaticResource CompactButtonStyle}" />
           </StackPanel>
 
-          <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,4" />
-          <TextBlock Text="Interactive rebase" FontWeight="SemiBold" />
-          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-            <TextBox Text="{Binding RebaseOnto, Mode=TwoWay}" PlaceholderText="onto (for example HEAD~3)" />
-            <Button Grid.Column="1" Content="Build plan" Command="{Binding LoadRebasePlanCommand}" />
+          <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="{StaticResource Margin.FormSeparator}" />
+          <TextBlock Text="Interactive rebase" Style="{StaticResource BodyStrongTextStyle}" />
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
+            <TextBox Text="{Binding RebaseOnto, Mode=TwoWay}" PlaceholderText="onto (for example HEAD~3)" Style="{StaticResource CompactTextBoxStyle}" />
+            <Button Grid.Column="1" Content="Build plan" Command="{Binding LoadRebasePlanCommand}" Style="{StaticResource CompactButtonStyle}" />
           </Grid>
-          <ListView ItemsSource="{Binding RebasePlan}" SelectedItem="{Binding SelectedRebaseItem, Mode=TwoWay}" DisplayMemberPath="Display" Height="130" />
-          <Grid ColumnDefinitions="Auto,Auto,140,*,Auto" ColumnSpacing="6">
-            <Button Content="↑" Command="{Binding MoveRebaseUpCommand}" />
-            <Button Grid.Column="1" Content="↓" Command="{Binding MoveRebaseDownCommand}" />
-            <ComboBox Grid.Column="2" ItemsSource="{Binding RebaseActions}" SelectedItem="{Binding RebaseAction, Mode=TwoWay}" />
-            <TextBox Grid.Column="3" Text="{Binding RebaseMessage, Mode=TwoWay}" PlaceholderText="New message for reword" />
-            <Button Grid.Column="4" Content="Apply" Command="{Binding ApplyRebaseItemCommand}" />
+          <ListView ItemsSource="{Binding RebasePlan}" SelectedItem="{Binding SelectedRebaseItem, Mode=TwoWay}" DisplayMemberPath="Display" Height="130" ItemContainerStyle="{StaticResource DenseListItemStyle}" />
+          <Grid ColumnDefinitions="Auto,Auto,140,*,Auto" ColumnSpacing="{StaticResource Spacing.M}">
+            <Button Content="↑" Command="{Binding MoveRebaseUpCommand}" Style="{StaticResource IconButtonStyle}" />
+            <Button Grid.Column="1" Content="↓" Command="{Binding MoveRebaseDownCommand}" Style="{StaticResource IconButtonStyle}" />
+            <ComboBox Grid.Column="2" ItemsSource="{Binding RebaseActions}" SelectedItem="{Binding RebaseAction, Mode=TwoWay}" Style="{StaticResource CompactComboBoxStyle}" />
+            <TextBox Grid.Column="3" Text="{Binding RebaseMessage, Mode=TwoWay}" PlaceholderText="New message for reword" Style="{StaticResource CompactTextBoxStyle}" />
+            <Button Grid.Column="4" Content="Apply" Command="{Binding ApplyRebaseItemCommand}" Style="{StaticResource CompactButtonStyle}" />
           </Grid>
-          <Button Content="Start rebase" Command="{Binding StartRebaseCommand}" HorizontalAlignment="Left" />
+          <Button Content="Start rebase" Command="{Binding StartRebaseCommand}" HorizontalAlignment="Left" Style="{StaticResource CompactButtonStyle}" />
         </StackPanel>
       </ScrollViewer>
     </ContentDialog>
@@ -70,10 +70,9 @@
       <FontIcon Glyph="&#xE8B7;" FontSize="56" HorizontalAlignment="Center" />
       <TextBlock Text="Open a Git repository" Style="{StaticResource TitleTextStyle}" TextAlignment="Center" />
       <TextBlock Text="Select the folder of an existing repository or worktree."
-                 Style="{StaticResource BodyTextStyle}"
+                 Style="{StaticResource BodySubduedTextStyle}"
                  TextWrapping="Wrap"
-                 TextAlignment="Center"
-                 Opacity="0.72" />
+                 TextAlignment="Center" />
       <Button Content="Select folder…"
               Command="{Binding OpenRepositoryCommand}"
               Style="{StaticResource CompactButtonStyle}"
@@ -97,7 +96,7 @@
           <Border Grid.Column="1" Width="1" Height="{StaticResource Height.DiffRow}" Background="{ThemeResource DividerStrokeColorDefaultBrush}" VerticalAlignment="Center" />
           <TextBlock Grid.Column="2"
                      Text="{Binding Repository.WorkingDirectory}"
-                     Style="{StaticResource BodyTextStyle}"
+                     Style="{StaticResource TechnicalTextStyle}"
                      TextTrimming="CharacterEllipsis"
                      MaxWidth="430"
                      VerticalAlignment="Center"
@@ -277,11 +276,11 @@
                     <ColumnDefinition Width="150" />
                     <ColumnDefinition Width="90" />
                   </Grid.ColumnDefinitions>
-                  <TextBlock Text="GRAPH" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="1" Text="MESSAGE" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="2" Text="AUTHOR" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="3" Text="DATE" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="4" Text="HASH" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <TextBlock Text="GRAPH" Style="{StaticResource CaptionStrongTextStyle}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="MESSAGE" Style="{StaticResource CaptionStrongTextStyle}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="2" Text="AUTHOR" Style="{StaticResource CaptionStrongTextStyle}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="3" Text="DATE" Style="{StaticResource CaptionStrongTextStyle}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="4" Text="HASH" Style="{StaticResource CaptionStrongTextStyle}" VerticalAlignment="Center" />
                 </Grid>
               </Border>
               <ListView x:Name="HistoryList"
@@ -328,7 +327,7 @@
                               MinHeight="120">
                   <StackPanel Padding="{StaticResource Padding.Form}" Spacing="{StaticResource Spacing.M}">
                     <TextBlock Text="{Binding SelectedHistoryRow.Commit.Message}"
-                               Style="{StaticResource SectionHeaderTextStyle}"
+                               Style="{StaticResource BodyTextStyle}"
                                TextWrapping="Wrap" />
                     <ItemsControl ItemsSource="{Binding SelectedHistoryRow.Commit.References}">
                       <ItemsControl.ItemsPanel>
@@ -351,9 +350,9 @@
                       <TextBlock Grid.Row="1" Text="Date" Style="{StaticResource SecondaryTextStyle}" />
                       <controls:CommitTimeText Grid.Row="1" Grid.Column="1" Value="{Binding SelectedHistoryRow.Commit.AuthoredAt}" FontSize="{StaticResource Font.Body}" />
                       <TextBlock Grid.Row="2" Text="Hash" Style="{StaticResource SecondaryTextStyle}" />
-                      <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedHistoryRow.Commit.Hash}" Style="{StaticResource DiffTextStyle}" TextWrapping="Wrap" />
+                      <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedHistoryRow.Commit.Hash}" Style="{StaticResource TechnicalTextStyle}" TextWrapping="Wrap" />
                       <TextBlock Grid.Row="3" Text="Parents" Style="{StaticResource SecondaryTextStyle}" />
-                      <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedHistoryRow.Commit.ParentsDisplay}" Style="{StaticResource DiffTextStyle}" TextWrapping="Wrap" />
+                      <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedHistoryRow.Commit.ParentsDisplay}" Style="{StaticResource TechnicalTextStyle}" TextWrapping="Wrap" />
                     </Grid>
                   </StackPanel>
                 </ScrollViewer>
@@ -481,7 +480,7 @@
                               Style="{StaticResource IconButtonStyle}"
                               ToolTipService.ToolTip="Stage all"
                               AutomationProperties.Name="Stage all">
-                        <TextBlock Text="++" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" />
+                        <TextBlock Text="++" Style="{StaticResource CaptionStrongTextStyle}" />
                       </Button>
                       <Border Width="1"
                               Height="18"
@@ -500,7 +499,7 @@
                               Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                               ToolTipService.ToolTip="Discard all…"
                               AutomationProperties.Name="Discard all">
-                        <TextBlock Text="All…" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" />
+                        <TextBlock Text="All…" Style="{StaticResource CaptionStrongTextStyle}" />
                       </Button>
                     </StackPanel>
                   </Grid>
@@ -528,7 +527,7 @@
                               Style="{StaticResource IconButtonStyle}"
                               ToolTipService.ToolTip="Unstage all"
                               AutomationProperties.Name="Unstage all">
-                        <TextBlock Text="−−" Style="{StaticResource CaptionTextStyle}" FontWeight="SemiBold" />
+                        <TextBlock Text="−−" Style="{StaticResource CaptionStrongTextStyle}" />
                       </Button>
                     </StackPanel>
                   </Grid>
@@ -557,8 +556,7 @@
                                VerticalAlignment="Center" />
                     <TextBlock x:Name="WorkingTreeDiffKindText"
                                Grid.Column="1"
-                               Style="{StaticResource SecondaryTextStyle}"
-                               FontWeight="SemiBold"
+                               Style="{StaticResource CaptionStrongTextStyle}"
                                VerticalAlignment="Center" />
                   </Grid>
                 </Border>
@@ -621,7 +619,7 @@
                          Text="{Binding CommitMessage, Mode=TwoWay}"
                          AcceptsReturn="True"
                          TextWrapping="Wrap"
-                         FontSize="{StaticResource Font.Body}"
+                         Style="{StaticResource CompactMultilineTextBoxStyle}"
                          MinHeight="{StaticResource Height.CommitEditor}"
                          AutomationProperties.Name="Commit message" />
                 <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
