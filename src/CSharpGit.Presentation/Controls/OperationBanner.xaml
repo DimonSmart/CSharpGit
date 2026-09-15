@@ -4,27 +4,40 @@
   <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
           BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
           BorderThickness="0,0,0,1"
-          Padding="12,8">
+          Padding="{StaticResource Padding.Workspace}">
     <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
-      <StackPanel Orientation="Horizontal" Spacing="8">
-        <FontIcon Glyph="&#xE7BA;" />
-        <TextBlock Text="{Binding OperationDisplay}" FontWeight="SemiBold" VerticalAlignment="Center" />
+      <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.L}">
+        <FontIcon Glyph="&#xE7BA;" FontSize="{StaticResource Icon.Normal}" />
+        <TextBlock Text="{Binding OperationDisplay}"
+                   Style="{StaticResource BodyStrongTextStyle}"
+                   VerticalAlignment="Center" />
       </StackPanel>
-      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-        <Button Content="Continue" Command="{Binding ContinueOperationCommand}" />
-        <Button Content="Abort" Command="{Binding AbortOperationCommand}" />
-        <Button Content="Skip" Command="{Binding SkipOperationCommand}" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Spacing.M}">
+        <Button Content="Continue" Command="{Binding ContinueOperationCommand}" Style="{StaticResource CompactButtonStyle}" />
+        <Button Content="Abort" Command="{Binding AbortOperationCommand}" Style="{StaticResource CompactButtonStyle}" />
+        <Button Content="Skip" Command="{Binding SkipOperationCommand}" Style="{StaticResource CompactButtonStyle}" />
       </StackPanel>
-      <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
-        <ListView ItemsSource="{Binding Conflicts}" SelectedItem="{Binding SelectedConflict, Mode=TwoWay}" DisplayMemberPath="Display" MaxHeight="90" />
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="12,0,0,0" VerticalAlignment="Center">
-          <Button Content="Open" Command="{Binding OpenConflictCommand}" />
-          <Button Content="{Binding CurrentSideLabel}" Command="{Binding ChooseCurrentCommand}" />
-          <Button Content="{Binding IncomingSideLabel}" Command="{Binding ChooseIncomingCommand}" />
-          <Button Content="Keep deletion" Command="{Binding KeepDeletionCommand}" />
-          <Button Content="Mark resolved" Command="{Binding StageConflictCommand}" />
-          <Button Content="Merge tool" Command="{Binding MergeToolCommand}" />
-          <Button Content="Merge tool: all" Command="{Binding MergeToolWorkflowCommand}" />
+      <Grid Grid.Row="1"
+            Grid.ColumnSpan="2"
+            ColumnDefinitions="*,Auto"
+            ColumnSpacing="{StaticResource Spacing.XL}"
+            Margin="{StaticResource Margin.Section}">
+        <ListView ItemsSource="{Binding Conflicts}"
+                  SelectedItem="{Binding SelectedConflict, Mode=TwoWay}"
+                  DisplayMemberPath="Display"
+                  MaxHeight="90"
+                  ItemContainerStyle="{StaticResource DenseListItemStyle}" />
+        <StackPanel Grid.Column="1"
+                    Orientation="Horizontal"
+                    Spacing="{StaticResource Spacing.M}"
+                    VerticalAlignment="Center">
+          <Button Content="Open" Command="{Binding OpenConflictCommand}" Style="{StaticResource CompactButtonStyle}" />
+          <Button Content="{Binding CurrentSideLabel}" Command="{Binding ChooseCurrentCommand}" Style="{StaticResource CompactButtonStyle}" />
+          <Button Content="{Binding IncomingSideLabel}" Command="{Binding ChooseIncomingCommand}" Style="{StaticResource CompactButtonStyle}" />
+          <Button Content="Keep deletion" Command="{Binding KeepDeletionCommand}" Style="{StaticResource CompactButtonStyle}" />
+          <Button Content="Mark resolved" Command="{Binding StageConflictCommand}" Style="{StaticResource CompactButtonStyle}" />
+          <Button Content="Merge tool" Command="{Binding MergeToolCommand}" Style="{StaticResource CompactButtonStyle}" />
+          <Button Content="Merge tool: all" Command="{Binding MergeToolWorkflowCommand}" Style="{StaticResource CompactButtonStyle}" />
         </StackPanel>
       </Grid>
     </Grid>

@@ -37,27 +37,23 @@
               <DataTemplate>
                 <Grid ColumnDefinitions="72,24,*,92" ColumnSpacing="{StaticResource Spacing.S}">
                   <TextBlock Text="{Binding StartedText}"
-                             Style="{StaticResource SecondaryTextStyle}"
-                             FontFamily="Consolas"
+                             Style="{StaticResource TechnicalSecondaryTextStyle}"
                              VerticalAlignment="Center" />
                   <TextBlock Grid.Column="1"
                              Text="{Binding StatusGlyph}"
-                             Style="{StaticResource BodyTextStyle}"
-                             FontFamily="Consolas"
+                             Style="{StaticResource TechnicalTextStyle}"
                              HorizontalAlignment="Center"
                              VerticalAlignment="Center" />
                   <TextBlock Grid.Column="2"
                              Text="{Binding CommandText}"
-                             Style="{StaticResource BodyTextStyle}"
-                             FontFamily="Consolas"
+                             Style="{StaticResource TechnicalTextStyle}"
                              TextWrapping="NoWrap"
                              TextTrimming="CharacterEllipsis"
                              ToolTipService.ToolTip="{Binding CommandText}"
                              VerticalAlignment="Center" />
                   <TextBlock Grid.Column="3"
                              Text="{Binding DurationText}"
-                             Style="{StaticResource SecondaryTextStyle}"
-                             FontFamily="Consolas"
+                             Style="{StaticResource TechnicalSecondaryTextStyle}"
                              TextAlignment="Right"
                              HorizontalAlignment="Stretch"
                              VerticalAlignment="Center" />
@@ -84,8 +80,8 @@
         <ScrollViewer Grid.Column="2"
                       VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Padding="12,8" Spacing="8">
-            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+          <StackPanel Padding="{StaticResource Padding.Workspace}" Spacing="{StaticResource Spacing.L}">
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{StaticResource Spacing.L}">
               <TextBlock Text="Command details"
                          Style="{StaticResource BodyStrongTextStyle}"
                          VerticalAlignment="Center" />
@@ -93,36 +89,39 @@
               <Button Grid.Column="2" Content="Copy all" Click="CopyAll_Click" Style="{StaticResource CompactButtonStyle}" />
             </Grid>
 
-            <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="5" ColumnSpacing="10">
+            <Grid ColumnDefinitions="120,*"
+                  RowDefinitions="Auto,Auto,Auto,Auto,Auto"
+                  RowSpacing="{StaticResource Spacing.M}"
+                  ColumnSpacing="{StaticResource Spacing.XL}">
               <TextBlock Text="Command" Style="{StaticResource SecondaryTextStyle}" />
-              <TextBlock x:Name="CommandText" Grid.Column="1" FontFamily="Consolas" TextWrapping="Wrap" />
+              <TextBlock x:Name="CommandText" Grid.Column="1" Style="{StaticResource TechnicalTextStyle}" TextWrapping="Wrap" />
               <TextBlock Grid.Row="1" Text="Working directory" Style="{StaticResource SecondaryTextStyle}" />
-              <TextBlock x:Name="WorkingDirectoryText" Grid.Row="1" Grid.Column="1" FontFamily="Consolas" TextWrapping="Wrap" />
+              <TextBlock x:Name="WorkingDirectoryText" Grid.Row="1" Grid.Column="1" Style="{StaticResource TechnicalTextStyle}" TextWrapping="Wrap" />
               <TextBlock Grid.Row="2" Text="Started" Style="{StaticResource SecondaryTextStyle}" />
-              <TextBlock x:Name="StartedText" Grid.Row="2" Grid.Column="1" />
+              <TextBlock x:Name="StartedText" Grid.Row="2" Grid.Column="1" Style="{StaticResource BodyTextStyle}" />
               <TextBlock Grid.Row="3" Text="Duration" Style="{StaticResource SecondaryTextStyle}" />
-              <TextBlock x:Name="DurationText" Grid.Row="3" Grid.Column="1" />
+              <TextBlock x:Name="DurationText" Grid.Row="3" Grid.Column="1" Style="{StaticResource BodyTextStyle}" />
               <TextBlock Grid.Row="4" Text="Exit code" Style="{StaticResource SecondaryTextStyle}" />
-              <TextBlock x:Name="ExitCodeText" Grid.Row="4" Grid.Column="1" FontFamily="Consolas" />
+              <TextBlock x:Name="ExitCodeText" Grid.Row="4" Grid.Column="1" Style="{StaticResource TechnicalTextStyle}" />
             </Grid>
 
-            <TextBlock Text="stdout" Style="{StaticResource BodyStrongTextStyle}" Margin="0,4,0,0" />
+            <TextBlock Text="stdout" Style="{StaticResource BodyStrongTextStyle}" />
             <TextBox x:Name="StandardOutputText"
                      IsReadOnly="True"
                      AcceptsReturn="True"
                      TextWrapping="NoWrap"
-                     FontFamily="Consolas"
+                     Style="{StaticResource TechnicalMultilineTextBoxStyle}"
                      MinHeight="72"
                      MaxHeight="180"
                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
                      ScrollViewer.VerticalScrollBarVisibility="Auto" />
 
-            <TextBlock Text="stderr" Style="{StaticResource BodyStrongTextStyle}" Margin="0,4,0,0" Opacity="0.82" />
+            <TextBlock Text="stderr" Style="{StaticResource BodyStrongTextStyle}" />
             <TextBox x:Name="StandardErrorText"
                      IsReadOnly="True"
                      AcceptsReturn="True"
                      TextWrapping="NoWrap"
-                     FontFamily="Consolas"
+                     Style="{StaticResource TechnicalMultilineTextBoxStyle}"
                      MinHeight="72"
                      MaxHeight="180"
                      Opacity="0.88"

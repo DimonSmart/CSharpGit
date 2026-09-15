@@ -19,7 +19,7 @@
   <StackPanel Padding="{StaticResource Padding.Form}" Spacing="{StaticResource Spacing.M}">
     <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="{StaticResource Spacing.XS}">
       <TextBlock Text="{Binding SelectedHistoryRow.Commit.Message}"
-                 Style="{StaticResource SectionHeaderTextStyle}"
+                 Style="{StaticResource BodyTextStyle}"
                  TextWrapping="Wrap" />
       <Button Grid.Column="1"
               Tag="{Binding SelectedHistoryRow.Commit.Message}"
@@ -66,7 +66,7 @@
                   Orientation="Horizontal"
                   Spacing="{StaticResource Spacing.XS}">
         <TextBlock Text="{Binding SelectedHistoryRow.Commit.Hash}"
-                   Style="{StaticResource DiffTextStyle}"
+                   Style="{StaticResource TechnicalTextStyle}"
                    TextWrapping="Wrap"
                    VerticalAlignment="Center" />
         <Button Tag="{Binding SelectedHistoryRow.Commit.Hash}"
@@ -84,14 +84,14 @@
                   Grid.Column="1"
                   Spacing="{StaticResource Spacing.XS}">
         <TextBlock Text="{Binding SelectedHistoryRow.Commit.ParentsDisplay}"
-                   Style="{StaticResource DiffTextStyle}"
+                   Style="{StaticResource TechnicalTextStyle}"
                    Visibility="{Binding SelectedHistoryRow.Commit.IsRootCommit, Converter={StaticResource BooleanToVisibilityConverter}}" />
         <ItemsControl ItemsSource="{Binding SelectedHistoryRow.Commit.Parents}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
               <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.XS}">
                 <TextBlock Text="{Binding}"
-                           Style="{StaticResource DiffTextStyle}"
+                           Style="{StaticResource TechnicalTextStyle}"
                            TextWrapping="Wrap"
                            VerticalAlignment="Center" />
                 <Button Tag="{Binding}"

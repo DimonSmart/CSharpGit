@@ -7,6 +7,7 @@ public sealed class GitConsoleUiContractTests
     {
         var root = FindRepositoryRoot();
         var consoleXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "GitConsoleView.xaml"));
+        var typographyXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Typography.xaml"));
         var consoleCode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "GitConsoleView.xaml.cs"));
         var integration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.GitConsole.cs"));
         var settingsXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml"));
@@ -18,7 +19,10 @@ public sealed class GitConsoleUiContractTests
         Assert.Contains("ItemContainerStyle=\"{StaticResource DenseListItemStyle}\"", consoleXaml);
         Assert.Contains("StandardOutputText", consoleXaml);
         Assert.Contains("StandardErrorText", consoleXaml);
-        Assert.Contains("FontFamily=\"Consolas\"", consoleXaml);
+        Assert.Contains("TechnicalTextStyle", consoleXaml);
+        Assert.Contains("TechnicalMultilineTextBoxStyle", consoleXaml);
+        Assert.DoesNotContain("FontFamily=\"Consolas\"", consoleXaml);
+        Assert.Contains("<Setter Property=\"FontFamily\" Value=\"Consolas\" />", typographyXaml);
         Assert.Contains("Copy command", consoleXaml);
         Assert.Contains("Copy all", consoleXaml);
         Assert.Contains("No Git commands recorded in this session.", consoleXaml);
