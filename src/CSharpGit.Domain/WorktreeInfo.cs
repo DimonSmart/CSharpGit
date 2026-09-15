@@ -8,4 +8,7 @@ public sealed record WorktreeInfo(
     bool IsDetached,
     bool IsLocked,
     string? LockReason,
-    bool IsPrunable);
+    bool IsPrunable)
+{
+    public bool IsPrimary { get; init; }
+}

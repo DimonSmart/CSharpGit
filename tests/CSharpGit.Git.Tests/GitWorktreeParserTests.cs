@@ -31,18 +31,53 @@ public sealed class GitWorktreeParserTests
         var worktrees = GitWorktreeParser.Parse(output, repository);
 
         Assert.Equal(3, worktrees.Count);
+        Assert.True(worktrees[0].IsPrimary);
         Assert.True(worktrees[0].IsCurrent);
         Assert.Equal("main", worktrees[0].Branch);
         Assert.False(worktrees[0].IsDetached);
 
+        Assert.False(worktrees[1].IsPrimary);
         Assert.Equal("feature/worktrees", worktrees[1].Branch);
         Assert.True(worktrees[1].IsLocked);
         Assert.Equal("removable drive", worktrees[1].LockReason);
         Assert.True(worktrees[1].IsPrunable);
 
+        Assert.False(worktrees[2].IsPrimary);
         Assert.Null(worktrees[2].Branch);
         Assert.True(worktrees[2].IsDetached);
         Assert.False(worktrees[2].IsCurrent);
+        Assert.Single(worktrees, candidate => candidate.IsPrimary);
+    }
+
+    [Fact]
+    public void Parse_FirstValidRecordIsPrimaryIndependentlyOfCurrentWorktreeAndBranchName()
+    {
+        var primary = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "csharpgit-worktree-primary"));
+        var current = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "csharpgit-worktree-linked-current"));
+        var repository = new Repository(current, current, Path.Combine(current, ".git"), false);
+        var output = string.Join('\0',
+            "worktree ",
+            "HEAD 0000000000000000000000000000000000000000",
+            string.Empty,
+            $"worktree {primary}",
+            "HEAD 1111111111111111111111111111111111111111",
+            "branch refs/heads/feature/primary-location",
+            string.Empty,
+            $"worktree {current}",
+            "HEAD 2222222222222222222222222222222222222222",
+            "branch refs/heads/main",
+            string.Empty);
+
+        var worktrees = GitWorktreeParser.Parse(output, repository);
+
+        Assert.Equal(2, worktrees.Count);
+        Assert.True(worktrees[0].IsPrimary);
+        Assert.False(worktrees[0].IsCurrent);
+        Assert.Equal("feature/primary-location", worktrees[0].Branch);
+        Assert.False(worktrees[1].IsPrimary);
+        Assert.True(worktrees[1].IsCurrent);
+        Assert.Equal("main", worktrees[1].Branch);
+        Assert.Single(worktrees, candidate => candidate.IsPrimary);
     }
 
     [Fact]

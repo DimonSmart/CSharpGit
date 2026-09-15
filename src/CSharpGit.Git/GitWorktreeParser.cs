@@ -85,7 +85,10 @@ internal static class GitWorktreeParser
             record.IsDetached || branch is null,
             record.IsLocked,
             string.IsNullOrWhiteSpace(record.LockReason) ? null : record.LockReason,
-            record.IsPrunable));
+            record.IsPrunable)
+        {
+            IsPrimary = result.Count == 0
+        });
     }
 
     private static string NormalizePath(string path, string basePath)
