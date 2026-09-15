@@ -121,7 +121,7 @@ internal static class RepositoryTreeDescriptorBuilder
         string? remoteName,
         IReadOnlyDictionary<string, string>? worktreesByBranch)
     {
-        var root = new BranchFolderBuilder(string.Empty, string.Empty);
+        var root = new BranchFolderBuilder(string.Empty, string.Empty, null);
         var remotePrefix = remoteName is null ? null : remoteName + "/";
 
         foreach (var branch in branches)
@@ -140,7 +140,11 @@ internal static class RepositoryTreeDescriptorBuilder
                     var key = remoteName is null
                         ? $"branch-folder:local:{prefix}"
                         : $"branch-folder:remote:{remoteName}:{prefix}";
-                    childFolder = new BranchFolderBuilder(parts[index], key);
+                    var info = new BranchFolderInfo(
+                        remoteName is null ? BranchFolderScope.Local : BranchFolderScope.Remote,
+                        prefix,
+                        remoteName);
+                    childFolder = new BranchFolderBuilder(parts[index], key, info);
                     folder.Folders.Add(parts[index], childFolder);
                 }
 
@@ -171,6 +175,7 @@ internal static class RepositoryTreeDescriptorBuilder
                 child.Key,
                 RepositoryTreeNodeKind.BranchFolder,
                 child.Name,
+                Value: child.Info,
                 ChildNodes: BuildBranchChildren(child))));
         return result;
     }
@@ -190,10 +195,11 @@ internal static class RepositoryTreeDescriptorBuilder
     private static string ShortHead(string head) =>
         string.IsNullOrWhiteSpace(head) ? "unknown" : head[..Math.Min(8, head.Length)];
 
-    private sealed class BranchFolderBuilder(string name, string key)
+    private sealed class BranchFolderBuilder(string name, string key, BranchFolderInfo? info)
     {
         public string Name { get; } = name;
         public string Key { get; } = key;
+        public BranchFolderInfo? Info { get; } = info;
         public List<RepositoryTreeDescriptor> Leaves { get; } = [];
         public Dictionary<string, BranchFolderBuilder> Folders { get; } = new(StringComparer.Ordinal);
     }

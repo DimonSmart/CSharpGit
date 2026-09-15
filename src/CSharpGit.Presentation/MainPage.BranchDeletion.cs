@@ -57,6 +57,16 @@ public sealed partial class MainPage
                 break;
             }
 
+            case RepositoryTreeNodeKind.BranchFolder when node.Value is BranchFolderInfo folderInfo:
+                AddMenuItem(
+                    flyout,
+                    folderInfo.Scope == BranchFolderScope.Local
+                        ? "Delete all branches in this folder…"
+                        : "Delete all remote branches in this folder…",
+                    !_viewModel.IsBusy,
+                    () => ConfirmDeleteBranchFolderAsync(node, folderInfo));
+                break;
+
             case RepositoryTreeNodeKind.Worktree when node.Value is WorktreeInfo worktree:
                 PopulateWorktreeMenu(flyout, worktree);
                 break;

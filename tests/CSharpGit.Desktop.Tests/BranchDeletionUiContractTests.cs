@@ -53,6 +53,53 @@ public sealed class BranchDeletionUiContractTests
         Assert.Contains("ShowAllHistory();", workflow, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void BranchFolderContextMenuUsesStronglyTypedMetadataAndScopedLabels()
+    {
+        var root = FindRepositoryRoot();
+        var menu = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchDeletion.cs"));
+
+        Assert.Contains("case RepositoryTreeNodeKind.BranchFolder when node.Value is BranchFolderInfo folderInfo:", menu, StringComparison.Ordinal);
+        Assert.Contains("Delete all branches in this folder…", menu, StringComparison.Ordinal);
+        Assert.Contains("Delete all remote branches in this folder…", menu, StringComparison.Ordinal);
+        Assert.Contains("!_viewModel.IsBusy", menu, StringComparison.Ordinal);
+        Assert.Contains("ConfirmDeleteBranchFolderAsync(node, folderInfo)", menu, StringComparison.Ordinal);
+        Assert.DoesNotContain("case RepositoryTreeNodeKind.Group when node.Name == \"Branches\"", menu, StringComparison.Ordinal);
+        Assert.DoesNotContain("case RepositoryTreeNodeKind.Remote when node.Value is GitRemote", menu, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BranchFolderDeletionUsesOneMutationPerOperationAndBoundedConfirmationLists()
+    {
+        var root = FindRepositoryRoot();
+        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchFolderDeletion.cs"));
+        var planner = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "BranchFolderDeletionPlanning.cs"));
+
+        Assert.Equal(2, CountOccurrences(workflow, "RunMutationAsync("));
+        Assert.Contains("BranchDeletionMode.Safe", workflow, StringComparison.Ordinal);
+        Assert.Contains("BranchDeletionMode.Force", workflow, StringComparison.Ordinal);
+        Assert.Contains("Force delete branches even if they are not fully merged", workflow, StringComparison.Ordinal);
+        Assert.Contains("IsChecked = false", workflow, StringComparison.Ordinal);
+        Assert.Contains("PrimaryButtonText = $\"Delete {plan.Attempted} branches\"", workflow, StringComparison.Ordinal);
+        Assert.Contains("current branch", workflow, StringComparison.Ordinal);
+        Assert.Contains("used by worktree", workflow, StringComparison.Ordinal);
+        Assert.Contains("BranchFolderListMaxHeight = 360", workflow, StringComparison.Ordinal);
+        Assert.Contains("VerticalScrollBarVisibility = ScrollBarVisibility.Auto", workflow, StringComparison.Ordinal);
+        Assert.Contains("DeleteBranchAsync(", workflow, StringComparison.Ordinal);
+        Assert.Contains("DeleteRemoteBranchAsync(", workflow, StringComparison.Ordinal);
+        Assert.Contains("target.RelativeBranchName", workflow, StringComparison.Ordinal);
+        Assert.Contains("if (!mutationSucceeded || executionResult is null || executionResult.Failures.Count == 0)", workflow, StringComparison.Ordinal);
+        Assert.Contains("Git: {failure.Message}", workflow, StringComparison.Ordinal);
+        Assert.Contains("successfulBranches.Add(branchName)", planner, StringComparison.Ordinal);
+        Assert.Contains("catch (Exception exception) when (exception is not OperationCanceledException)", planner, StringComparison.Ordinal);
+        Assert.DoesNotContain("BranchDeletionResolver", workflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("Split('/')", workflow, StringComparison.Ordinal);
+
+        var remoteSection = workflow[workflow.IndexOf("ConfirmDeleteRemoteBranchFolderAsync", StringComparison.Ordinal)..];
+        Assert.DoesNotContain("Force delete branches even if they are not fully merged", remoteSection, StringComparison.Ordinal);
+        Assert.DoesNotContain("Also delete local branch", remoteSection, StringComparison.Ordinal);
+    }
+
     private static int CountOccurrences(string text, string value)
     {
         var count = 0;

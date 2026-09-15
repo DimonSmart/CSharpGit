@@ -47,3 +47,4 @@ opened.
 | IDD-0025 | Spec | Reflog in History | Optional reflog roots, reachability classification and recovery in existing History | — |
 | IDD-0026 | Spec | Commit metadata copy | Exact message/hash/parent clipboard actions with root-commit empty state | — |
 | IDD-0027 | Spec | Compact worktree names | Branch/detached primary labels, rendered-width middle ellipsis, full tooltip and clipboard actions | — |
+| IDD-0028 | Spec | Branch folder deletion | Recursive local/remote branch-folder deletion, deterministic snapshot planning and partial-success orchestration | — |
