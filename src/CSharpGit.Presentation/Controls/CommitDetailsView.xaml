@@ -16,8 +16,10 @@
     </Style>
   </UserControl.Resources>
 
-  <StackPanel Padding="{StaticResource Padding.Form}" Spacing="{StaticResource Spacing.M}">
-    <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="{StaticResource Spacing.XS}">
+  <StackPanel Padding="{StaticResource Padding.Form}"
+              Spacing="{StaticResource Spacing.M}"
+              HorizontalAlignment="Stretch">
+    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.XS}">
       <TextBlock Text="{Binding SelectedHistoryRow.Commit.Message}"
                  Style="{StaticResource BodyTextStyle}"
                  TextWrapping="Wrap" />

@@ -3,26 +3,47 @@ namespace CSharpGit.Application.Tests;
 public sealed class HistoryMessageWrappingUiContractTests
 {
     [Fact]
-    public void HistorySubjectUsesAvailableMessageWidthAndWrapsInsteadOfTrimming()
+    public void HistorySubjectRemainsSingleLineAndCommitDetailsWrapsFullMessage()
     {
         var root = FindRepositoryRoot();
-        var xaml = File.ReadAllText(Path.Combine(
+        var historyXaml = File.ReadAllText(Path.Combine(
             root,
             "src",
             "CSharpGit.Presentation",
             "Styles",
             "HistoryReferences.xaml"));
+        var detailsXaml = File.ReadAllText(Path.Combine(
+            root,
+            "src",
+            "CSharpGit.Presentation",
+            "Controls",
+            "CommitDetailsView.xaml"));
+        var detailsHost = File.ReadAllText(Path.Combine(
+            root,
+            "src",
+            "CSharpGit.Presentation",
+            "MainPage.CommitCopy.cs"));
 
-        Assert.Contains("<Grid Grid.Column=\"1\" ColumnDefinitions=\"*,Auto,Auto\" MinWidth=\"120\">", xaml);
+        var subject = ExtractElement(historyXaml, "<TextBlock Text=\"{Binding Commit.Subject}\"");
+        Assert.Contains("TextTrimming=\"CharacterEllipsis\"", subject);
+        Assert.DoesNotContain("TextWrapping=", subject);
 
-        var subjectStart = xaml.IndexOf("<TextBlock Text=\"{Binding Commit.Subject}\"", StringComparison.Ordinal);
-        Assert.True(subjectStart >= 0);
-        var subjectEnd = xaml.IndexOf("/>", subjectStart, StringComparison.Ordinal);
-        Assert.True(subjectEnd > subjectStart);
-        var subject = xaml[subjectStart..(subjectEnd + 2)];
+        Assert.Contains("<Grid ColumnDefinitions=\"*,Auto\"", detailsXaml);
+        var message = ExtractElement(detailsXaml, "<TextBlock Text=\"{Binding SelectedHistoryRow.Commit.Message}\"");
+        Assert.Contains("TextWrapping=\"Wrap\"", message);
 
-        Assert.Contains("TextWrapping=\"Wrap\"", subject);
-        Assert.DoesNotContain("TextTrimming=", subject);
+        Assert.Contains("DetailsScroller.HorizontalScrollMode = ScrollMode.Disabled", detailsHost);
+        Assert.Contains("DetailsScroller.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled", detailsHost);
+        Assert.Contains("DetailsScroller.HorizontalContentAlignment = HorizontalAlignment.Stretch", detailsHost);
+    }
+
+    private static string ExtractElement(string xaml, string marker)
+    {
+        var start = xaml.IndexOf(marker, StringComparison.Ordinal);
+        Assert.True(start >= 0);
+        var end = xaml.IndexOf("/>", start, StringComparison.Ordinal);
+        Assert.True(end > start);
+        return xaml[start..(end + 2)];
     }
 
     private static string FindRepositoryRoot()
