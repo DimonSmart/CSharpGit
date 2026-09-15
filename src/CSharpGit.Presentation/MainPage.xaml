@@ -320,12 +320,15 @@
               </Pivot.Resources>
               <PivotItem Header="Commit">
                 <ScrollViewer x:Name="DetailsScroller"
+                              HorizontalContentAlignment="Stretch"
                               HorizontalScrollMode="Disabled"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollMode="Auto"
                               VerticalScrollBarVisibility="Auto"
                               MinHeight="120">
-                  <StackPanel Padding="{StaticResource Padding.Form}" Spacing="{StaticResource Spacing.M}">
+                  <StackPanel HorizontalAlignment="Stretch"
+                              Padding="{StaticResource Padding.Form}"
+                              Spacing="{StaticResource Spacing.M}">
                     <TextBlock Text="{Binding SelectedHistoryRow.Commit.Message}"
                                Style="{StaticResource BodyTextStyle}"
                                TextWrapping="Wrap" />
