@@ -9,6 +9,7 @@ public sealed class PrimaryWorktreeUiContractTests
         var worktreeInfo = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Domain", "WorktreeInfo.cs"));
         var parser = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitWorktreeParser.cs"));
         var descriptor = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryTreeDescriptor.cs"));
+        var node = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryTreeNode.cs"));
         var repositoryTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "RepositoryTree.xaml"));
         var worktreesPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Worktrees.cs"));
 
@@ -17,8 +18,12 @@ public sealed class PrimaryWorktreeUiContractTests
         Assert.Contains(".OrderByDescending(worktree => worktree.IsPrimary)", descriptor, StringComparison.Ordinal);
         Assert.DoesNotContain("OrderByDescending(worktree => worktree.IsCurrent)", descriptor, StringComparison.Ordinal);
 
+        Assert.Contains("PrimaryWorktreeBadgeVisibility", node, StringComparison.Ordinal);
+        Assert.Contains("Kind == RepositoryTreeNodeKind.Worktree && Value is WorktreeInfo { IsPrimary: true }", node, StringComparison.Ordinal);
         Assert.Contains("Text=\"PRIMARY\"", repositoryTree, StringComparison.Ordinal);
-        Assert.Equal(2, CountOccurrences(repositoryTree, "Value.IsPrimary, Converter={StaticResource BooleanToVisibilityConverter}"));
+        Assert.Equal(2, CountOccurrences(repositoryTree, "Visibility=\"{Binding PrimaryWorktreeBadgeVisibility}\""));
+        Assert.DoesNotContain("Value.IsPrimary", repositoryTree, StringComparison.Ordinal);
+        Assert.DoesNotContain("BooleanToVisibilityConverter", repositoryTree, StringComparison.Ordinal);
         Assert.Contains("Background=\"{ThemeResource ControlFillColorDefaultBrush}\"", repositoryTree, StringComparison.Ordinal);
         Assert.Contains("BorderBrush=\"{ThemeResource ControlStrokeColorDefaultBrush}\"", repositoryTree, StringComparison.Ordinal);
         Assert.DoesNotContain("Text=\"CURRENT\"", repositoryTree, StringComparison.OrdinalIgnoreCase);
