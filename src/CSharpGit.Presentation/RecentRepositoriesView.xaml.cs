@@ -23,4 +23,10 @@ public sealed partial class RecentRepositoriesView : UserControl
         if (sender is FrameworkElement { DataContext: RecentRepositoryItem item })
             item.SetRepositoryImagePath(null);
     }
+
+    private void RepositoryPreview_ImageFailed(object sender, ExceptionRoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: RecentRepositoryItem item })
+            item.SetRepositoryPreviewPath(null);
+    }
 }

@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Presentation.Controls;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 
@@ -13,6 +14,8 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
 {
     private ImageSource? _repositoryImage;
     private string? _repositoryImagePath;
+    private ImageSource? _repositoryPreview;
+    private string? _repositoryPreviewPath;
 
     internal RecentRepositoryItem(
         RecentRepositorySettings settings,
@@ -56,31 +59,38 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
     public string? RepositoryImagePath => _repositoryImagePath;
     public double RepositoryImageOpacity => _repositoryImage is null ? 0d : 1d;
     public double RepositoryGlyphOpacity => _repositoryImage is null ? 1d : 0d;
+    public ImageSource? RepositoryPreview => _repositoryPreview;
+    public string? RepositoryPreviewPath => _repositoryPreviewPath;
+    public Visibility RepositoryCompactLayoutVisibility =>
+        _repositoryPreview is null ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility RepositoryPreviewLayoutVisibility =>
+        _repositoryPreview is null ? Visibility.Collapsed : Visibility.Visible;
 
     internal bool NeedsImageRefresh { get; set; }
 
-    internal void SetRepositoryImagePath(string? imagePath)
+    internal void SetRepositoryVisual(RepositoryImageCacheState state)
     {
-        ImageSource? image = null;
-        string? normalizedPath = null;
-
-        if (!string.IsNullOrWhiteSpace(imagePath) && File.Exists(imagePath))
+        if (state.Kind == RepositoryImageKind.Icon)
         {
-            try
-            {
-                normalizedPath = System.IO.Path.GetFullPath(imagePath);
-                var imageUri = new UriBuilder(Uri.UriSchemeFile, string.Empty)
-                {
-                    Path = normalizedPath
-                }.Uri;
-                image = new BitmapImage(imageUri);
-            }
-            catch
-            {
-                normalizedPath = null;
-            }
+            SetRepositoryPreviewPath(null);
+            SetRepositoryImagePath(state.ImagePath);
+            return;
         }
 
+        if (state.Kind == RepositoryImageKind.Preview)
+        {
+            SetRepositoryImagePath(null);
+            SetRepositoryPreviewPath(state.ImagePath);
+            return;
+        }
+
+        SetRepositoryPreviewPath(null);
+        SetRepositoryImagePath(null);
+    }
+
+    internal void SetRepositoryImagePath(string? imagePath)
+    {
+        var (image, normalizedPath) = LoadImage(imagePath);
         if (string.Equals(_repositoryImagePath, normalizedPath, StringComparison.Ordinal)
             && (_repositoryImage is null) == (image is null))
             return;
@@ -91,6 +101,41 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
         OnPropertyChanged(nameof(RepositoryImage));
         OnPropertyChanged(nameof(RepositoryImageOpacity));
         OnPropertyChanged(nameof(RepositoryGlyphOpacity));
+    }
+
+    internal void SetRepositoryPreviewPath(string? imagePath)
+    {
+        var (image, normalizedPath) = LoadImage(imagePath);
+        if (string.Equals(_repositoryPreviewPath, normalizedPath, StringComparison.Ordinal)
+            && (_repositoryPreview is null) == (image is null))
+            return;
+
+        _repositoryPreviewPath = normalizedPath;
+        _repositoryPreview = image;
+        OnPropertyChanged(nameof(RepositoryPreviewPath));
+        OnPropertyChanged(nameof(RepositoryPreview));
+        OnPropertyChanged(nameof(RepositoryCompactLayoutVisibility));
+        OnPropertyChanged(nameof(RepositoryPreviewLayoutVisibility));
+    }
+
+    private static (ImageSource? Image, string? Path) LoadImage(string? imagePath)
+    {
+        if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
+            return (null, null);
+
+        try
+        {
+            var normalizedPath = System.IO.Path.GetFullPath(imagePath);
+            var imageUri = new UriBuilder(Uri.UriSchemeFile, string.Empty)
+            {
+                Path = normalizedPath
+            }.Uri;
+            return (new BitmapImage(imageUri), normalizedPath);
+        }
+        catch
+        {
+            return (null, null);
+        }
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
@@ -180,8 +225,7 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
                 _openRecentAsync,
                 RemoveAsync);
             var cached = _repositoryImageService.GetCachedState(item.Path);
-            item.SetRepositoryImagePath(
-                cached.Kind == RepositoryImageKind.Icon ? cached.ImagePath : null);
+            item.SetRepositoryVisual(cached);
             item.NeedsImageRefresh = cached.ShouldRefresh;
             RecentRepositories.Add(item);
         }
@@ -205,8 +249,6 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
     {
         try
         {
-            // Do not start filesystem/network resolving while the start screen is
-            // still being constructed. The continuation runs after the Loaded turn.
             await Task.Yield();
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -217,8 +259,7 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
             if (_disposed || cancellationToken.IsCancellationRequested) return;
             var resolved = _repositoryImageService.GetCachedState(item.Path);
             item.NeedsImageRefresh = false;
-            item.SetRepositoryImagePath(
-                resolved.Kind == RepositoryImageKind.Icon ? resolved.ImagePath : null);
+            item.SetRepositoryVisual(resolved);
         }
         catch (OperationCanceledException)
         {

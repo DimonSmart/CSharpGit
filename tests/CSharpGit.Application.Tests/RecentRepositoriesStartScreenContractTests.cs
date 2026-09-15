@@ -48,7 +48,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("\"repository-icon\"", imageInternals);
         Assert.Contains("\"logo\"", imageInternals);
         Assert.Contains("\"icon\"", imageInternals);
-        
+
         Assert.Contains("RepositoryImageServices", composition);
         Assert.Contains("IRepositoryImageService", composition);
 
@@ -63,12 +63,20 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("TileOpacity", recentView);
         Assert.Contains("VariableSizedWrapGrid", recentView);
         Assert.DoesNotContain("ItemsWrapGrid", recentView);
+        Assert.Contains("ItemWidth=\"344\" ItemHeight=\"156\"", recentView);
         Assert.Contains("Width=\"64\" Height=\"64\"", recentView);
         Assert.Contains("Grid.RowSpan=\"3\"", recentView);
         Assert.Contains("Source=\"{Binding RepositoryImage}\"", recentView);
         Assert.Contains("RepositoryGlyphOpacity", recentView);
+        Assert.Contains("RepositoryCompactLayoutVisibility", recentView);
+        Assert.Contains("RepositoryPreviewLayoutVisibility", recentView);
+        Assert.Contains("Source=\"{Binding RepositoryPreview}\"", recentView);
+        Assert.Contains("Width=\"112\" Height=\"72\"", recentView);
+        Assert.Contains("Stretch=\"UniformToFill\"", recentView);
         Assert.Contains("ImageFailed=\"RepositoryImage_ImageFailed\"", recentView);
+        Assert.Contains("ImageFailed=\"RepositoryPreview_ImageFailed\"", recentView);
         Assert.Contains("SetRepositoryImagePath(null)", recentViewCodeBehind);
+        Assert.Contains("SetRepositoryPreviewPath(null)", recentViewCodeBehind);
         Assert.Contains("StartImageLoading()", recentViewCodeBehind);
 
         Assert.Contains("Folder not found", recentViewModel);
@@ -76,9 +84,15 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("CommitTimeFormatter.Format", recentViewModel);
         Assert.Contains("_settings.CommitTimeDisplayMode", recentViewModel);
         Assert.DoesNotContain("Last opened {localOpened:g}", recentViewModel);
+        Assert.Contains("RepositoryPreview", recentViewModel);
+        Assert.Contains("RepositoryCompactLayoutVisibility", recentViewModel);
+        Assert.Contains("RepositoryPreviewLayoutVisibility", recentViewModel);
+        Assert.Contains("SetRepositoryVisual", recentViewModel);
+        Assert.Contains("state.Kind == RepositoryImageKind.Icon", recentViewModel);
+        Assert.Contains("state.Kind == RepositoryImageKind.Preview", recentViewModel);
         Assert.Contains("GetCachedState(item.Path)", recentViewModel);
-        Assert.Contains("cached.Kind == RepositoryImageKind.Icon", recentViewModel);
-        Assert.Contains("resolved.Kind == RepositoryImageKind.Icon", recentViewModel);
+        Assert.Contains("item.SetRepositoryVisual(cached)", recentViewModel);
+        Assert.Contains("item.SetRepositoryVisual(resolved)", recentViewModel);
         Assert.Contains("await Task.Yield()", recentViewModel);
         Assert.Contains("ResolveAsync(", recentViewModel);
         Assert.Contains("CancellationTokenSource", recentViewModel);

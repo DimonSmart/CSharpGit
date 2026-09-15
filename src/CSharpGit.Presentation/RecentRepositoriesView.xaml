@@ -48,46 +48,84 @@
                           Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                           CornerRadius="10"
                           Opacity="{Binding TileOpacity}">
-                    <Grid ColumnDefinitions="64,*"
-                          RowDefinitions="Auto,Auto,*"
-                          ColumnSpacing="{StaticResource Spacing.XL}">
-                      <Border Grid.RowSpan="3"
-                              Width="64" Height="64" CornerRadius="9"
-                              Background="{ThemeResource AccentFillColorSecondaryBrush}"
-                              VerticalAlignment="Top">
-                        <Grid>
-                          <FontIcon Glyph="&#xE8B7;"
-                                    FontSize="25"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    Opacity="{Binding RepositoryGlyphOpacity}" />
-                          <Image Source="{Binding RepositoryImage}"
-                                 Stretch="Uniform"
+                    <Grid>
+                      <Grid Visibility="{Binding RepositoryCompactLayoutVisibility}"
+                            ColumnDefinitions="64,*"
+                            RowDefinitions="Auto,Auto,*"
+                            ColumnSpacing="{StaticResource Spacing.XL}">
+                        <Border Grid.RowSpan="3"
+                                Width="64" Height="64" CornerRadius="9"
+                                Background="{ThemeResource AccentFillColorSecondaryBrush}"
+                                VerticalAlignment="Top">
+                          <Grid>
+                            <FontIcon Glyph="&#xE8B7;"
+                                      FontSize="25"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Opacity="{Binding RepositoryGlyphOpacity}" />
+                            <Image Source="{Binding RepositoryImage}"
+                                   Stretch="Uniform"
+                                   HorizontalAlignment="Stretch"
+                                   VerticalAlignment="Stretch"
+                                   Opacity="{Binding RepositoryImageOpacity}"
+                                   ImageFailed="RepositoryImage_ImageFailed" />
+                          </Grid>
+                        </Border>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding DisplayName}"
+                                   Style="{StaticResource TitleTextStyle}"
+                                   Margin="0,1,34,0"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Row="1"
+                                   Grid.Column="1"
+                                   Text="{Binding Path}"
+                                   Style="{StaticResource TechnicalSecondaryTextStyle}"
+                                   Margin="0,5,10,0"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTipService.ToolTip="{Binding Path}" />
+                        <TextBlock Grid.Row="2"
+                                   Grid.Column="1"
+                                   Text="{Binding Metadata}"
+                                   Style="{StaticResource SecondaryTextStyle}"
+                                   Margin="0,8,10,0"
+                                   VerticalAlignment="Top"
+                                   TextTrimming="CharacterEllipsis" />
+                      </Grid>
+
+                      <Grid Visibility="{Binding RepositoryPreviewLayoutVisibility}"
+                            ColumnDefinitions="*,112"
+                            RowDefinitions="Auto,Auto,*"
+                            ColumnSpacing="{StaticResource Spacing.XL}">
+                        <TextBlock Text="{Binding DisplayName}"
+                                   Style="{StaticResource TitleTextStyle}"
+                                   Margin="0,1,0,0"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Row="1"
+                                   Text="{Binding Path}"
+                                   Style="{StaticResource TechnicalSecondaryTextStyle}"
+                                   Margin="0,5,0,0"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTipService.ToolTip="{Binding Path}" />
+                        <TextBlock Grid.Row="2"
+                                   Text="{Binding Metadata}"
+                                   Style="{StaticResource SecondaryTextStyle}"
+                                   Margin="0,8,0,0"
+                                   VerticalAlignment="Top"
+                                   TextTrimming="CharacterEllipsis" />
+                        <Border Grid.RowSpan="3"
+                                Grid.Column="1"
+                                Width="112" Height="72"
+                                CornerRadius="7"
+                                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                VerticalAlignment="Center">
+                          <Image Source="{Binding RepositoryPreview}"
+                                 Stretch="UniformToFill"
                                  HorizontalAlignment="Stretch"
                                  VerticalAlignment="Stretch"
-                                 Opacity="{Binding RepositoryImageOpacity}"
-                                 ImageFailed="RepositoryImage_ImageFailed" />
-                        </Grid>
-                      </Border>
-                      <TextBlock Grid.Column="1"
-                                 Text="{Binding DisplayName}"
-                                 Style="{StaticResource TitleTextStyle}"
-                                 Margin="0,1,34,0"
-                                 TextTrimming="CharacterEllipsis" />
-                      <TextBlock Grid.Row="1"
-                                 Grid.Column="1"
-                                 Text="{Binding Path}"
-                                 Style="{StaticResource TechnicalSecondaryTextStyle}"
-                                 Margin="0,5,10,0"
-                                 TextTrimming="CharacterEllipsis"
-                                 ToolTipService.ToolTip="{Binding Path}" />
-                      <TextBlock Grid.Row="2"
-                                 Grid.Column="1"
-                                 Text="{Binding Metadata}"
-                                 Style="{StaticResource SecondaryTextStyle}"
-                                 Margin="0,8,10,0"
-                                 VerticalAlignment="Top"
-                                 TextTrimming="CharacterEllipsis" />
+                                 ImageFailed="RepositoryPreview_ImageFailed" />
+                        </Border>
+                      </Grid>
                     </Grid>
                   </Border>
                 </Button>
