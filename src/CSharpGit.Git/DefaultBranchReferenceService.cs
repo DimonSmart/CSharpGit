@@ -38,6 +38,9 @@ internal sealed class DefaultBranchReferenceService : IReferenceService
     public Task DeleteBranchAsync(Repository repository, string branch, CancellationToken cancellationToken = default) =>
         _inner.DeleteBranchAsync(repository, branch, cancellationToken);
 
+    public Task DeleteBranchAsync(Repository repository, string branch, BranchDeletionMode mode, CancellationToken cancellationToken = default) =>
+        _inner.DeleteBranchAsync(repository, branch, mode, cancellationToken);
+
     public Task DeleteRemoteBranchAsync(Repository repository, string remote, string branch, CancellationToken cancellationToken = default) =>
         _inner.DeleteRemoteBranchAsync(repository, remote, branch, cancellationToken);
 
