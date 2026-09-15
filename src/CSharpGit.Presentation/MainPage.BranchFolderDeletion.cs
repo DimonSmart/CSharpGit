@@ -293,19 +293,6 @@ public sealed partial class MainPage
         await dialog.ShowAsync();
     }
 
-    private async Task ShowInformationAsync(string title, string message)
-    {
-        var dialog = new ContentDialog
-        {
-            XamlRoot = XamlRoot,
-            Title = title,
-            Content = message,
-            CloseButtonText = "Close",
-            DefaultButton = ContentDialogButton.Close
-        };
-        await dialog.ShowAsync();
-    }
-
     private static ScrollViewer CreateBoundedBranchList(UIElement content) =>
         new()
         {
