@@ -21,10 +21,10 @@
               IsHitTestVisible="False" />
       <controls:CommitGraphControl Graph="{Binding Topology, Converter={StaticResource CommitTopologyToGraphVisualConverter}}"
                                    VerticalAlignment="Stretch" />
-      <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,*" MinWidth="120">
+      <Grid Grid.Column="1" ColumnDefinitions="*,Auto,Auto" MinWidth="120">
         <TextBlock Text="{Binding Commit.Subject}"
                    Style="{StaticResource BodyStrongTextStyle}"
-                   TextTrimming="CharacterEllipsis"
+                   TextWrapping="Wrap"
                    VerticalAlignment="Center" />
         <Border Grid.Column="1"
                 Style="{StaticResource ReferenceBadgeStyle}"
