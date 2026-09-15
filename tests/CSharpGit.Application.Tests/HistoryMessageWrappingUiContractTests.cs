@@ -23,6 +23,11 @@ public sealed class HistoryMessageWrappingUiContractTests
             "src",
             "CSharpGit.Presentation",
             "MainPage.CommitCopy.cs"));
+        var appHost = File.ReadAllText(Path.Combine(
+            root,
+            "src",
+            "CSharpGit.Presentation",
+            "App.xaml.cs"));
 
         var subject = ExtractElement(historyXaml, "<TextBlock Text=\"{Binding Commit.Subject}\"");
         Assert.Contains("TextTrimming=\"CharacterEllipsis\"", subject);
@@ -35,8 +40,13 @@ public sealed class HistoryMessageWrappingUiContractTests
         Assert.Contains("DetailsScroller.HorizontalScrollMode = ScrollMode.Disabled", detailsHost);
         Assert.Contains("DetailsScroller.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled", detailsHost);
         Assert.Contains("DetailsScroller.SizeChanged += DetailsScroller_SizeChanged", detailsHost);
-        Assert.Contains("ConstrainCommitDetailsToViewport(args.NewSize.Width)", detailsHost);
-        Assert.Contains("_commitDetailsView.Width = availableWidth", detailsHost);
+        Assert.Contains("DetailsScroller.DispatcherQueue.TryEnqueue(ConstrainCommitDetailsToViewport)", detailsHost);
+        Assert.DoesNotContain("ActualWidth", detailsHost);
+        Assert.Contains("HistoryPane.TransformToVisual(null).TransformPoint(default)", detailsHost);
+        Assert.Contains("app.MainWindowClientWidth / rasterizationScale", detailsHost);
+        Assert.Contains("Math.Min(DetailsScroller.ViewportWidth, windowWidth - origin.X)", detailsHost);
+        Assert.Contains("!double.IsFinite(_commitDetailsView.Width)", detailsHost);
+        Assert.Contains("internal double MainWindowClientWidth => _window?.AppWindow.ClientSize.Width ?? 0", appHost);
     }
 
     private static string ExtractElement(string xaml, string marker)

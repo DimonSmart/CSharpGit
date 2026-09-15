@@ -18,22 +18,29 @@ public sealed partial class MainPage
         DetailsScroller.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
         DetailsScroller.HorizontalContentAlignment = HorizontalAlignment.Stretch;
 
-        _commitDetailsView = new CommitDetailsView
-        {
-            DataContext = _viewModel,
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
+        _commitDetailsView = new CommitDetailsView { DataContext = _viewModel };
         DetailsScroller.Content = _commitDetailsView;
         DetailsScroller.SizeChanged += DetailsScroller_SizeChanged;
-        ConstrainCommitDetailsToViewport(DetailsScroller.ActualWidth);
+        DetailsScroller.DispatcherQueue.TryEnqueue(ConstrainCommitDetailsToViewport);
     }
 
     private void DetailsScroller_SizeChanged(object sender, SizeChangedEventArgs args) =>
-        ConstrainCommitDetailsToViewport(args.NewSize.Width);
+        ConstrainCommitDetailsToViewport();
 
-    private void ConstrainCommitDetailsToViewport(double availableWidth)
+    private void ConstrainCommitDetailsToViewport()
     {
-        if (_commitDetailsView is null || availableWidth <= 0) return;
-        _commitDetailsView.Width = availableWidth;
+        if (_commitDetailsView is null || XamlRoot is null || Application.Current is not App app) return;
+
+        var origin = HistoryPane.TransformToVisual(null).TransformPoint(default);
+        var rasterizationScale = XamlRoot.RasterizationScale;
+        if (!double.IsFinite(rasterizationScale) || rasterizationScale <= 0) return;
+
+        var windowWidth = app.MainWindowClientWidth / rasterizationScale;
+        var visibleWidth = Math.Min(DetailsScroller.ViewportWidth, windowWidth - origin.X);
+        if (!double.IsFinite(visibleWidth) || visibleWidth <= 0) return;
+
+        visibleWidth = Math.Floor(visibleWidth);
+        if (!double.IsFinite(_commitDetailsView.Width) || Math.Abs(_commitDetailsView.Width - visibleWidth) > 0.5)
+            _commitDetailsView.Width = visibleWidth;
     }
 }

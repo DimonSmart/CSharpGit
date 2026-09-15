@@ -176,7 +176,7 @@ public sealed class DesktopApplicationTests
             await GitAsync(repository, home, "config", "user.email", "desktop@example.invalid");
             await File.WriteAllTextAsync(Path.Combine(repository, "tracked.txt"), "initial\n");
             await GitAsync(repository, home, "add", "tracked.txt");
-            await GitAsync(repository, home, "commit", "-m", "Initial English commit");
+            await GitAsync(repository, home, "commit", "-m", $"Initial English commit {string.Join(' ', Enumerable.Repeat("long-message-segment", 100))}");
             await GitAsync(repository, home, "worktree", "add", "-b", "ui-worktree", worktree);
             await File.WriteAllTextAsync(Path.Combine(repository, "unstaged.txt"), "empty index choice\n");
             await File.WriteAllTextAsync(Path.Combine(worktree, "unstaged.txt"), "empty index choice\n");
