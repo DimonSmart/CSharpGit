@@ -33,6 +33,8 @@ public sealed class WorktreePresentationTests
             "E:\\Work\\repo-feature",
             "1234567890",
             "feature/very-long-name",
+            current: true,
+            primary: true,
             detached: false,
             locked: true,
             lockReason: "temporary experiment",
@@ -42,8 +44,25 @@ public sealed class WorktreePresentationTests
         var tooltip = WorktreePresentation.BuildToolTip(worktree);
         Assert.Contains("Branch: feature/very-long-name", tooltip, StringComparison.Ordinal);
         Assert.Contains("Path: E:\\Work\\repo-feature", tooltip, StringComparison.Ordinal);
+        Assert.Contains("Primary worktree", tooltip, StringComparison.Ordinal);
+        Assert.Contains("Current worktree", tooltip, StringComparison.Ordinal);
         Assert.Contains("State: Locked, Prunable", tooltip, StringComparison.Ordinal);
         Assert.Contains("Lock reason: temporary experiment", tooltip, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TooltipAddsPrimaryAndCurrentIndependently()
+    {
+        var primary = Worktree("/repo-primary", "11111111", "feature/a", primary: true);
+        var current = Worktree("/repo-current", "22222222", "feature/b", current: true);
+
+        var primaryTooltip = WorktreePresentation.BuildToolTip(primary);
+        Assert.Contains("Primary worktree", primaryTooltip, StringComparison.Ordinal);
+        Assert.DoesNotContain("Current worktree", primaryTooltip, StringComparison.Ordinal);
+
+        var currentTooltip = WorktreePresentation.BuildToolTip(current);
+        Assert.DoesNotContain("Primary worktree", currentTooltip, StringComparison.Ordinal);
+        Assert.Contains("Current worktree", currentTooltip, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -59,16 +78,29 @@ public sealed class WorktreePresentationTests
     }
 
     [Fact]
-    public void WorktreesSortCurrentFirstThenByFullPrimaryLabel()
+    public void WorktreesSortPrimaryFirstThenByFullPrimaryLabelIndependentlyOfCurrent()
     {
-        var current = Worktree("/repo-current", "11111111", "z-current", current: true);
-        var detached = Worktree("/repo/alpha", "22222222", branch: null, detached: true);
-        var branch = Worktree("/repo-beta", "33333333", "beta");
+        var primary = Worktree("/repo-primary", "11111111", "z-primary", primary: true);
+        var current = Worktree("/repo-beta", "22222222", "beta", current: true);
+        var alpha = Worktree("/repo-alpha", "33333333", "alpha");
 
-        var root = RepositoryTreeDescriptorBuilder.BuildWorktreesRoot([branch, current, detached]);
+        var root = RepositoryTreeDescriptorBuilder.BuildWorktreesRoot([current, alpha, primary]);
 
         Assert.Equal(
-            new[] { "worktree:/repo-current", "worktree:/repo/alpha", "worktree:/repo-beta" },
+            new[] { "worktree:/repo-primary", "worktree:/repo-alpha", "worktree:/repo-beta" },
+            root.Children.Select(child => child.Key).ToArray());
+    }
+
+    [Fact]
+    public void WorktreesUsePathAsDeterministicTieBreaker()
+    {
+        var later = Worktree("/repo-z", "11111111", "same");
+        var earlier = Worktree("/repo-a", "22222222", "SAME");
+
+        var root = RepositoryTreeDescriptorBuilder.BuildWorktreesRoot([later, earlier]);
+
+        Assert.Equal(
+            new[] { "worktree:/repo-a", "worktree:/repo-z" },
             root.Children.Select(child => child.Key).ToArray());
     }
 
@@ -101,9 +133,13 @@ public sealed class WorktreePresentationTests
         string head,
         string? branch,
         bool current = false,
+        bool primary = false,
         bool detached = false,
         bool locked = false,
         string? lockReason = null,
         bool prunable = false) =>
-        new(path, head, branch, current, detached, locked, lockReason, prunable);
+        new(path, head, branch, current, detached, locked, lockReason, prunable)
+        {
+            IsPrimary = primary
+        };
 }

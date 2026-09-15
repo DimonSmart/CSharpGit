@@ -27,6 +27,8 @@ internal static class WorktreePresentation
         var lines = new List<string>();
         if (!string.IsNullOrWhiteSpace(worktree.Branch)) lines.Add($"Branch: {worktree.Branch}");
         lines.Add($"Path: {worktree.Path}");
+        if (worktree.IsPrimary) lines.Add("Primary worktree");
+        if (worktree.IsCurrent) lines.Add("Current worktree");
 
         var states = GetStates(worktree, titleCase: true);
         if (states.Count > 0) lines.Add($"State: {string.Join(", ", states)}");
