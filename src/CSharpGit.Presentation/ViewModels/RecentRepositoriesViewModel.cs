@@ -180,7 +180,8 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
                 _openRecentAsync,
                 RemoveAsync);
             var cached = _repositoryImageService.GetCachedState(item.Path);
-            item.SetRepositoryImagePath(cached.ImagePath);
+            item.SetRepositoryImagePath(
+                cached.Kind == RepositoryImageKind.Icon ? cached.ImagePath : null);
             item.NeedsImageRefresh = cached.ShouldRefresh;
             RecentRepositories.Add(item);
         }
@@ -209,13 +210,15 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
             await Task.Yield();
             cancellationToken.ThrowIfCancellationRequested();
 
-            var imagePath = await _repositoryImageService.ResolveAsync(
+            await _repositoryImageService.ResolveAsync(
                 item.Path,
                 cancellationToken);
 
             if (_disposed || cancellationToken.IsCancellationRequested) return;
+            var resolved = _repositoryImageService.GetCachedState(item.Path);
             item.NeedsImageRefresh = false;
-            item.SetRepositoryImagePath(imagePath);
+            item.SetRepositoryImagePath(
+                resolved.Kind == RepositoryImageKind.Icon ? resolved.ImagePath : null);
         }
         catch (OperationCanceledException)
         {
