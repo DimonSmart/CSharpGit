@@ -166,16 +166,12 @@ public sealed class DesignSystemContractTests
             "Text=\"\\{Binding SelectedHistoryRow\\.Commit\\.Message\\}\"\\s+Style=\"\\{StaticResource BodyTextStyle\\}\"",
             RegexOptions.CultureInvariant);
 
-        Assert.Matches(bodyMessage, main);
+        Assert.Contains("<controls:CommitDetailsView x:Name=\"CommitDetailsContent\" />", main);
         Assert.Matches(bodyMessage, details);
-        Assert.DoesNotMatch(
-            new Regex("SelectedHistoryRow\\.Commit\\.Message[\\s\\S]{0,120}SectionHeaderTextStyle", RegexOptions.CultureInvariant),
-            main);
         Assert.DoesNotMatch(
             new Regex("SelectedHistoryRow\\.Commit\\.Message[\\s\\S]{0,120}SectionHeaderTextStyle", RegexOptions.CultureInvariant),
             details);
 
-        Assert.Contains("Style=\"{StaticResource TechnicalTextStyle}\"", main);
         Assert.Contains("Style=\"{StaticResource TechnicalTextStyle}\"", details);
         Assert.DoesNotContain("Style=\"{StaticResource DiffTextStyle}\"", details);
     }

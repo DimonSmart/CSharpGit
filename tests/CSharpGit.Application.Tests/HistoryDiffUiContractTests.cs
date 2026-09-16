@@ -31,15 +31,17 @@ public sealed class HistoryDiffUiContractTests
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var details = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitDetailsView.xaml"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
 
-        Assert.Contains("SelectedHistoryRow.Commit.Message", xaml);
-        Assert.Contains("SelectedHistoryRow.Commit.References", xaml);
-        Assert.Contains("SelectedHistoryRow.Commit.Author", xaml);
-        Assert.Contains("SelectedHistoryRow.Commit.AuthoredAt", xaml);
-        Assert.Contains("SelectedHistoryRow.Commit.Hash", xaml);
-        Assert.Contains("SelectedHistoryRow.Commit.ParentsDisplay", xaml);
-        Assert.DoesNotContain("SelectedCommit.Commit", xaml);
+        Assert.Contains("<controls:CommitDetailsView x:Name=\"CommitDetailsContent\" />", xaml);
+        Assert.Contains("SelectedHistoryRow.Commit.Message", details);
+        Assert.Contains("SelectedHistoryRow.Commit.References", details);
+        Assert.Contains("SelectedHistoryRow.Commit.Author", details);
+        Assert.Contains("SelectedHistoryRow.Commit.AuthoredAt", details);
+        Assert.Contains("SelectedHistoryRow.Commit.Hash", details);
+        Assert.Contains("SelectedHistoryRow.Commit.ParentsDisplay", details);
+        Assert.DoesNotContain("SelectedCommit.Commit", details);
         Assert.DoesNotContain("LoadCommitAsync", viewModel);
         Assert.DoesNotContain("_historyService.ReadCommitAsync", viewModel);
         Assert.DoesNotContain("IsCommitLoading", viewModel);
