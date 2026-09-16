@@ -72,8 +72,6 @@
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
 
-  <Style x:Key="WorkingTreeRowStyle" TargetType="ListViewItem" BasedOn="{StaticResource DenseListItemStyle}" />
-
   <Style x:Key="HistoryRowStyle" TargetType="ListViewItem" BasedOn="{StaticResource DenseListItemStyle}">
     <Setter Property="Padding" Value="0" />
     <Setter Property="VerticalContentAlignment" Value="Stretch" />
@@ -158,34 +156,6 @@
         </Grid>
       </TreeViewItem.Content>
     </TreeViewItem>
-  </DataTemplate>
-
-  <DataTemplate x:Key="UnstagedWorkingTreeItemTemplate">
-    <Grid ColumnDefinitions="24,*">
-      <TextBlock Text="{Binding WorkingTreeStatus}"
-                 Style="{StaticResource DiffSecondaryTextStyle}"
-                 FontWeight="SemiBold"
-                 VerticalAlignment="Center" />
-      <TextBlock Grid.Column="1"
-                 Text="{Binding Path}"
-                 Style="{StaticResource BodyTextStyle}"
-                 TextTrimming="CharacterEllipsis"
-                 VerticalAlignment="Center" />
-    </Grid>
-  </DataTemplate>
-
-  <DataTemplate x:Key="StagedWorkingTreeItemTemplate">
-    <Grid ColumnDefinitions="24,*">
-      <TextBlock Text="{Binding IndexStatus}"
-                 Style="{StaticResource DiffSecondaryTextStyle}"
-                 FontWeight="SemiBold"
-                 VerticalAlignment="Center" />
-      <TextBlock Grid.Column="1"
-                 Text="{Binding Path}"
-                 Style="{StaticResource BodyTextStyle}"
-                 TextTrimming="CharacterEllipsis"
-                 VerticalAlignment="Center" />
-    </Grid>
   </DataTemplate>
 
   <DataTemplate x:Key="DiffItemTemplate">

@@ -475,11 +475,13 @@
                       </Button>
                     </StackPanel>
                   </Grid>
-                  <ListView x:Name="UnstagedChangesList"
+                  <TreeView x:Name="UnstagedChangesTree"
                             Grid.Row="1"
-                            SelectionMode="Extended"
-                            ItemContainerStyle="{StaticResource WorkingTreeRowStyle}"
-                            ItemTemplate="{StaticResource UnstagedWorkingTreeItemTemplate}" />
+                            Style="{StaticResource DenseTreeViewStyle}"
+                            ItemContainerStyle="{StaticResource DenseTreeItemStyle}"
+                            ItemTemplate="{StaticResource WorkingTreeTreeItemTemplate}"
+                            SelectionMode="None"
+                            ItemInvoked="UnstagedChangesTree_ItemInvoked" />
                 </Grid>
 
                 <Grid Grid.Row="2" RowDefinitions="Auto,*">
@@ -503,11 +505,13 @@
                       </Button>
                     </StackPanel>
                   </Grid>
-                  <ListView x:Name="StagedChangesList"
+                  <TreeView x:Name="StagedChangesTree"
                             Grid.Row="1"
-                            SelectionMode="Extended"
-                            ItemContainerStyle="{StaticResource WorkingTreeRowStyle}"
-                            ItemTemplate="{StaticResource StagedWorkingTreeItemTemplate}" />
+                            Style="{StaticResource DenseTreeViewStyle}"
+                            ItemContainerStyle="{StaticResource DenseTreeItemStyle}"
+                            ItemTemplate="{StaticResource WorkingTreeTreeItemTemplate}"
+                            SelectionMode="None"
+                            ItemInvoked="StagedChangesTree_ItemInvoked" />
                 </Grid>
               </Grid>
 

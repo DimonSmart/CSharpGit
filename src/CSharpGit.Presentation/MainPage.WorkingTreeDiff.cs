@@ -3,85 +3,179 @@ using System.Collections.Specialized;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.ViewModels;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.System;
+using Windows.UI.Core;
 
 namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
     private readonly ObservableCollection<CompactDiffLine> _workingTreeCompactDiffLines = [];
+    private readonly ObservableCollection<WorkingTreeTreeNode> _unstagedTreeRoots = [];
+    private readonly ObservableCollection<WorkingTreeTreeNode> _stagedTreeRoots = [];
+    private readonly WorkingTreeTreeSelection _unstagedTreeSelection = new();
+    private readonly WorkingTreeTreeSelection _stagedTreeSelection = new();
+    private readonly Dictionary<string, bool> _unstagedExpansionState = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, bool> _stagedExpansionState = new(StringComparer.Ordinal);
     private IWorkingTreeDiffService? _workingTreeDiffService;
     private CancellationTokenSource? _workingTreeDiffCts;
     private long _workingTreeDiffGeneration;
     private bool _workingTreeSelectionSync;
-    private bool _workingTreeSelectionRestoreQueued;
+    private bool _workingTreeTreeRefreshQueued;
+    private bool _workingTreePreviewRestoreQueued;
+    private string? _workingTreeExpansionRepositoryIdentity;
     private string? _desiredWorkingTreePath;
+
+    private TreeView UnstagedChangesList => UnstagedChangesTree;
+    private TreeView StagedChangesList => StagedChangesTree;
 
     private void InitializeWorkingTreeDiffSurface()
     {
         WorkingTreeCompactDiffList.ItemsSource = _workingTreeCompactDiffLines;
+        UnstagedChangesTree.ItemsSource = _unstagedTreeRoots;
+        StagedChangesTree.ItemsSource = _stagedTreeRoots;
 
-        UnstagedChangesList.SelectionChanged += WorkingTreeUnstagedSelectionChanged;
-        StagedChangesList.SelectionChanged += WorkingTreeStagedSelectionChanged;
+        _unstagedChanges.CollectionChanged += WorkingTreePresentationSourceChanged;
+        _stagedChanges.CollectionChanged += WorkingTreePresentationSourceChanged;
         _viewModel.Changes.CollectionChanged += WorkingTreeChangesCollectionChanged;
+        WorkingTreePane.RegisterPropertyChangedCallback(VisibilityProperty, (_, _) =>
+        {
+            if (WorkingTreePane.Visibility == Visibility.Visible) EnsureWorkingTreeActivePreview();
+        });
 
+        RebuildWorkingTreeTrees();
         ClearWorkingTreeDiffViewer(clearSelectionKind: true);
     }
 
-    private void WorkingTreeUnstagedSelectionChanged(object sender, SelectionChangedEventArgs args) =>
-        SynchronizeWorkingTreeSelection(UnstagedChangesList, WorkingTreeDiffKind.Unstaged, args);
-
-    private void WorkingTreeStagedSelectionChanged(object sender, SelectionChangedEventArgs args) =>
-        SynchronizeWorkingTreeSelection(StagedChangesList, WorkingTreeDiffKind.Staged, args);
-
-    private void SynchronizeWorkingTreeSelection(ListView list, WorkingTreeDiffKind kind, SelectionChangedEventArgs args)
+    private void WorkingTreePresentationSourceChanged(object? sender, NotifyCollectionChangedEventArgs args)
     {
-        if (_workingTreeSelectionSync) return;
-
-        var selected = list.SelectedItems.OfType<WorkingTreeChange>().ToArray();
-        _viewModel.SetWorkingTreeSelection(kind, selected);
-
-        if (args.AddedItems.OfType<WorkingTreeChange>().LastOrDefault() is { } activated)
+        if (_workingTreeTreeRefreshQueued) return;
+        _workingTreeTreeRefreshQueued = true;
+        if (DispatcherQueue.TryEnqueue(() =>
         {
-            SelectWorkingTreeChange(activated, kind);
+            if (!_workingTreeTreeRefreshQueued) return;
+            _workingTreeTreeRefreshQueued = false;
+            RebuildWorkingTreeTrees();
+        })) return;
+
+        _workingTreeTreeRefreshQueued = false;
+        if (!_workingTreeSelectionSync) RebuildWorkingTreeTrees();
+    }
+
+    private void RebuildWorkingTreeTrees()
+    {
+        var repositoryIdentity = _viewModel.Repository?.GitDirectory;
+        if (string.Equals(repositoryIdentity, _workingTreeExpansionRepositoryIdentity, StringComparison.Ordinal))
+        {
+            CaptureExpansionState(_unstagedTreeRoots, _unstagedExpansionState);
+            CaptureExpansionState(_stagedTreeRoots, _stagedExpansionState);
+        }
+        else
+        {
+            _workingTreeExpansionRepositoryIdentity = repositoryIdentity;
+            _unstagedExpansionState.Clear();
+            _stagedExpansionState.Clear();
+        }
+
+        var selectedUnstagedPaths = _viewModel.SelectedUnstagedChanges.Select(change => change.Path).ToArray();
+        var selectedStagedPaths = _viewModel.SelectedStagedChanges.Select(change => change.Path).ToArray();
+
+        ReplaceRoots(_unstagedTreeRoots, WorkingTreeTreeNode.Build(_unstagedChanges, WorkingTreeDiffKind.Unstaged));
+        ReplaceRoots(_stagedTreeRoots, WorkingTreeTreeNode.Build(_stagedChanges, WorkingTreeDiffKind.Staged));
+        RestoreExpansionState(_unstagedTreeRoots, _unstagedExpansionState);
+        RestoreExpansionState(_stagedTreeRoots, _stagedExpansionState);
+
+        _unstagedTreeSelection.SetSelectedPaths(selectedUnstagedPaths, _unstagedTreeRoots);
+        _stagedTreeSelection.SetSelectedPaths(selectedStagedPaths, _stagedTreeRoots);
+        _viewModel.SetWorkingTreeSelection(
+            WorkingTreeDiffKind.Unstaged,
+            _unstagedTreeSelection.GetSelectedLeaves(_unstagedTreeRoots).Select(node => node.Change!));
+        _viewModel.SetWorkingTreeSelection(
+            WorkingTreeDiffKind.Staged,
+            _stagedTreeSelection.GetSelectedLeaves(_stagedTreeRoots).Select(node => node.Change!));
+
+        if (WorkingTreePane.Visibility == Visibility.Visible) QueueWorkingTreePreviewRestore();
+    }
+
+    private static void ReplaceRoots(
+        ObservableCollection<WorkingTreeTreeNode> target,
+        IReadOnlyList<WorkingTreeTreeNode> source)
+    {
+        target.Clear();
+        foreach (var node in source) target.Add(node);
+    }
+
+    private static void CaptureExpansionState(
+        IEnumerable<WorkingTreeTreeNode> nodes,
+        IDictionary<string, bool> state)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.IsFolder) state[node.Path] = node.IsExpanded;
+            CaptureExpansionState(node.Children, state);
+        }
+    }
+
+    private static void RestoreExpansionState(
+        IEnumerable<WorkingTreeTreeNode> nodes,
+        IReadOnlyDictionary<string, bool> state)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.IsFolder && state.TryGetValue(node.Path, out var expanded)) node.IsExpanded = expanded;
+            RestoreExpansionState(node.Children, state);
+        }
+    }
+
+    private void UnstagedChangesTree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args) =>
+        WorkingTreeNodeInvoked(ResolveWorkingTreeNode(args.InvokedItem), WorkingTreeDiffKind.Unstaged);
+
+    private void StagedChangesTree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args) =>
+        WorkingTreeNodeInvoked(ResolveWorkingTreeNode(args.InvokedItem), WorkingTreeDiffKind.Staged);
+
+    private void WorkingTreeNodeInvoked(WorkingTreeTreeNode? node, WorkingTreeDiffKind kind)
+    {
+        if (node?.Change is null) return;
+
+        var roots = kind == WorkingTreeDiffKind.Unstaged ? _unstagedTreeRoots : _stagedTreeRoots;
+        var selection = kind == WorkingTreeDiffKind.Unstaged ? _unstagedTreeSelection : _stagedTreeSelection;
+        var selectedNodes = selection.Apply(node, roots, IsControlDown(), IsShiftDown());
+        _viewModel.SetWorkingTreeSelection(kind, selectedNodes.Select(selected => selected.Change!));
+
+        if (selection.IsSelected(node.Path))
+        {
+            SelectWorkingTreeChange(node.Change, kind);
             return;
         }
 
-        if (_viewModel.ActiveWorkingTreeDiffKind != kind || _viewModel.ActiveWorkingTreeChange is not { } active)
+        if (_viewModel.ActiveWorkingTreeDiffKind != kind ||
+            _viewModel.ActiveWorkingTreeChange is not { } active ||
+            !SameWorkingTreeChange(active, node.Change))
             return;
 
-        if (selected.Any(change => SameWorkingTreeChange(change, active))) return;
-
-        if (selected.LastOrDefault() is { } fallback)
+        if (selectedNodes.LastOrDefault() is { Change: { } fallback })
         {
             SelectWorkingTreeChange(fallback, kind);
             return;
         }
 
-        QueueActiveSelectionValidation(list, kind, active);
+        ClearActiveWorkingTreeChange();
     }
 
-    private void QueueActiveSelectionValidation(ListView list, WorkingTreeDiffKind kind, WorkingTreeChange active)
+    private static WorkingTreeTreeNode? ResolveWorkingTreeNode(object? value) => value switch
     {
-        void Validate()
-        {
-            if (_viewModel.ActiveWorkingTreeDiffKind != kind ||
-                _viewModel.ActiveWorkingTreeChange is not { } current ||
-                !SameWorkingTreeChange(current, active) ||
-                list.SelectedItems.Count != 0)
-                return;
+        WorkingTreeTreeNode node => node,
+        TreeViewNode { Content: WorkingTreeTreeNode node } => node,
+        TreeViewItem { DataContext: WorkingTreeTreeNode node } => node,
+        FrameworkElement { DataContext: WorkingTreeTreeNode node } => node,
+        _ => null
+    };
 
-            ClearActiveWorkingTreeChange();
-        }
-
-        if (DispatcherQueue.TryEnqueue(() =>
-        {
-            if (!DispatcherQueue.TryEnqueue(Validate)) Validate();
-        })) return;
-
-        Validate();
-    }
+    private static bool IsShiftDown() =>
+        (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift) & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down;
 
     private void SelectWorkingTreeChange(WorkingTreeChange change, WorkingTreeDiffKind kind)
     {
@@ -168,78 +262,101 @@ public sealed partial class MainPage
         return SameWorkingTreeChange(selected, change);
     }
 
-    private void WorkingTreeChangesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs args)
-    {
+    private void WorkingTreeChangesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs args) =>
         CancelWorkingTreeDiff(clearViewer: true);
-        QueueWorkingTreeSelectionRestore();
-    }
 
-    private void QueueWorkingTreeSelectionRestore()
+    private void QueueWorkingTreePreviewRestore()
     {
-        if (_workingTreeSelectionRestoreQueued) return;
-        _workingTreeSelectionRestoreQueued = true;
+        if (_workingTreePreviewRestoreQueued) return;
+        _workingTreePreviewRestoreQueued = true;
         if (DispatcherQueue.TryEnqueue(() =>
         {
-            _workingTreeSelectionRestoreQueued = false;
-            RestoreWorkingTreeSelection();
+            _workingTreePreviewRestoreQueued = false;
+            EnsureWorkingTreeActivePreview();
         })) return;
 
-        _workingTreeSelectionRestoreQueued = false;
-        RestoreWorkingTreeSelection();
+        _workingTreePreviewRestoreQueued = false;
+        EnsureWorkingTreeActivePreview();
+    }
+
+    private void EnsureWorkingTreeActivePreview()
+    {
+        if (WorkingTreePane.Visibility != Visibility.Visible) return;
+        if (_workingTreeTreeRefreshQueued)
+        {
+            _workingTreeTreeRefreshQueued = false;
+            RebuildWorkingTreeTrees();
+        }
+
+        if (_viewModel.ActiveWorkingTreeChange is not null && _viewModel.ActiveWorkingTreeDiffKind is not null)
+        {
+            RestoreWorkingTreeSelection();
+            return;
+        }
+
+        if (WorkingTreeTreeSelection.GetLeaves(_unstagedTreeRoots).FirstOrDefault() is { Change: { } unstaged } unstagedNode)
+        {
+            _unstagedTreeSelection.SelectSingle(unstagedNode, _unstagedTreeRoots);
+            _viewModel.SetWorkingTreeSelection(WorkingTreeDiffKind.Unstaged, [unstaged]);
+            SelectWorkingTreeChange(unstaged, WorkingTreeDiffKind.Unstaged);
+            return;
+        }
+
+        if (WorkingTreeTreeSelection.GetLeaves(_stagedTreeRoots).FirstOrDefault() is { Change: { } staged } stagedNode)
+        {
+            _stagedTreeSelection.SelectSingle(stagedNode, _stagedTreeRoots);
+            _viewModel.SetWorkingTreeSelection(WorkingTreeDiffKind.Staged, [staged]);
+            SelectWorkingTreeChange(staged, WorkingTreeDiffKind.Staged);
+            return;
+        }
+
+        ClearActiveWorkingTreeChange();
     }
 
     private void RestoreWorkingTreeSelection()
     {
-        if (WorkingTreePane.Visibility != Visibility.Visible) return;
-        if (_viewModel.ActiveWorkingTreeChange is null || _viewModel.ActiveWorkingTreeDiffKind is null)
-        {
-            ClearWorkingTreeSelection();
+        if (WorkingTreePane.Visibility != Visibility.Visible ||
+            _viewModel.ActiveWorkingTreeChange is not { } active ||
+            _viewModel.ActiveWorkingTreeDiffKind is not { } kind)
             return;
-        }
 
-        _desiredWorkingTreePath ??= _viewModel.ActiveWorkingTreeChange.Path;
-        var kind = _viewModel.ActiveWorkingTreeDiffKind;
-        WorkingTreeChange? target = kind switch
-        {
-            WorkingTreeDiffKind.Unstaged => _unstagedChanges.FirstOrDefault(MatchesDesiredPath),
-            WorkingTreeDiffKind.Staged => _stagedChanges.FirstOrDefault(MatchesDesiredPath),
-            _ => null
-        };
+        _desiredWorkingTreePath ??= active.Path;
+        var target = FindWorkingTreeLeaf(
+            kind == WorkingTreeDiffKind.Unstaged ? _unstagedTreeRoots : _stagedTreeRoots,
+            _desiredWorkingTreePath);
 
         if (target is null && kind == WorkingTreeDiffKind.Unstaged)
         {
-            target = _stagedChanges.FirstOrDefault(MatchesDesiredPath);
+            target = FindWorkingTreeLeaf(_stagedTreeRoots, _desiredWorkingTreePath);
             if (target is not null) kind = WorkingTreeDiffKind.Staged;
         }
         else if (target is null && kind == WorkingTreeDiffKind.Staged)
         {
-            target = _unstagedChanges.FirstOrDefault(MatchesDesiredPath);
+            target = FindWorkingTreeLeaf(_unstagedTreeRoots, _desiredWorkingTreePath);
             if (target is not null) kind = WorkingTreeDiffKind.Unstaged;
         }
 
-        if (target is null || kind is null)
+        if (target?.Change is null)
         {
-            ClearWorkingTreeSelection();
+            ClearActiveWorkingTreeChange();
             return;
         }
 
-        _workingTreeSelectionSync = true;
-        try
-        {
-            if (kind == WorkingTreeDiffKind.Unstaged) UnstagedChangesList.SelectedItem = target;
-            else StagedChangesList.SelectedItem = target;
-        }
-        finally
-        {
-            _workingTreeSelectionSync = false;
-        }
-
-        _viewModel.SetWorkingTreeSelection(kind.Value, [target]);
-        SelectWorkingTreeChange(target, kind.Value);
+        SelectWorkingTreeChange(target.Change, kind);
     }
 
-    private bool MatchesDesiredPath(WorkingTreeChange change) =>
-        string.Equals(change.Path, _desiredWorkingTreePath, StringComparison.Ordinal);
+    private static WorkingTreeTreeNode? FindWorkingTreeLeaf(
+        IEnumerable<WorkingTreeTreeNode> nodes,
+        string path)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.Change is not null && string.Equals(node.Path, path, StringComparison.Ordinal)) return node;
+            if (FindWorkingTreeLeaf(node.Children, path) is { } match) return match;
+        }
+
+        return null;
+    }
 
     private static bool SameWorkingTreeChange(WorkingTreeChange left, WorkingTreeChange right) =>
         string.Equals(left.Path, right.Path, StringComparison.Ordinal) &&
@@ -249,17 +366,8 @@ public sealed partial class MainPage
 
     private void ClearWorkingTreeSelection()
     {
-        _workingTreeSelectionSync = true;
-        try
-        {
-            UnstagedChangesList.SelectedItems.Clear();
-            StagedChangesList.SelectedItems.Clear();
-        }
-        finally
-        {
-            _workingTreeSelectionSync = false;
-        }
-
+        _unstagedTreeSelection.Clear(_unstagedTreeRoots);
+        _stagedTreeSelection.Clear(_stagedTreeRoots);
         _viewModel.SetWorkingTreeSelection(WorkingTreeDiffKind.Unstaged, []);
         _viewModel.SetWorkingTreeSelection(WorkingTreeDiffKind.Staged, []);
         ClearActiveWorkingTreeChange();
@@ -301,5 +409,29 @@ public sealed partial class MainPage
             ? change.Path
             : $"{change.OriginalPath} → {change.Path}";
         return $"{status}  {path}";
+    }
+}
+
+internal static class WorkingTreeTreeViewExtensions
+{
+    public static void ScrollIntoView(this TreeView tree, object item)
+    {
+        object? treeItem = item;
+        if (item is WorkingTreeChange change && tree.ItemsSource is IEnumerable<WorkingTreeTreeNode> roots)
+            treeItem = FindLeaf(roots, change.Path);
+
+        if (treeItem is not null && tree.ContainerFromItem(treeItem) is FrameworkElement container)
+            container.StartBringIntoView();
+    }
+
+    private static WorkingTreeTreeNode? FindLeaf(IEnumerable<WorkingTreeTreeNode> nodes, string path)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.Change is not null && string.Equals(node.Path, path, StringComparison.Ordinal)) return node;
+            if (FindLeaf(node.Children, path) is { } match) return match;
+        }
+
+        return null;
     }
 }
