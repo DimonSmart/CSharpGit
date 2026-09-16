@@ -49,8 +49,16 @@ public sealed class WorkingTreeTreeNode : INotifyPropertyChanged
     public bool IsBatchSelected
     {
         get => _isBatchSelected;
-        set => SetField(ref _isBatchSelected, value);
+        set
+        {
+            if (_isBatchSelected == value) return;
+            _isBatchSelected = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsBatchSelected)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BatchSelectionOpacity)));
+        }
     }
+
+    public double BatchSelectionOpacity => IsBatchSelected ? 0.14 : 0;
 
     public IReadOnlyList<RepositoryTreeGuideSegmentKind> HierarchyGuideSegments { get; private set; } =
         Array.Empty<RepositoryTreeGuideSegmentKind>();
