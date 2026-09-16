@@ -20,8 +20,14 @@ public sealed partial class MainPage
 
         _commitDetailsView = CommitDetailsContent;
         DetailsScroller.SizeChanged += DetailsScroller_SizeChanged;
+        HistoryPane.SizeChanged += DetailsScroller_SizeChanged;
+        if (XamlRoot is not null)
+            XamlRoot.Changed += (_, _) => QueueCommitDetailsLayout();
         DetailsScroller.DispatcherQueue.TryEnqueue(ConstrainCommitDetailsToViewport);
     }
+
+    internal void QueueCommitDetailsLayout() =>
+        DispatcherQueue.TryEnqueue(ConstrainCommitDetailsToViewport);
 
     private void DetailsScroller_SizeChanged(object sender, SizeChangedEventArgs args) =>
         ConstrainCommitDetailsToViewport();
@@ -35,10 +41,12 @@ public sealed partial class MainPage
         if (!double.IsFinite(rasterizationScale) || rasterizationScale <= 0) return;
 
         var windowWidth = app.MainWindowClientWidth / rasterizationScale;
-        var visibleWidth = Math.Min(DetailsScroller.ViewportWidth, windowWidth - origin.X);
+        var visibleWidth = windowWidth - origin.X;
         if (!double.IsFinite(visibleWidth) || visibleWidth <= 0) return;
 
         visibleWidth = Math.Floor(visibleWidth);
+        if (!double.IsFinite(DetailsScroller.Width) || Math.Abs(DetailsScroller.Width - visibleWidth) > 0.5)
+            DetailsScroller.Width = visibleWidth;
         if (!double.IsFinite(_commitDetailsView.Width) || Math.Abs(_commitDetailsView.Width - visibleWidth) > 0.5)
             _commitDetailsView.Width = visibleWidth;
     }

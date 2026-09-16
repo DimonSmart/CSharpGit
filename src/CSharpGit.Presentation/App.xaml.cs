@@ -26,6 +26,9 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
 
     internal double MainWindowClientWidth => _window?.AppWindow.ClientSize.Width ?? 0;
 
+    internal void ResizeMainWindowForCheck(int width, int height) =>
+        _window?.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = width, Height = height });
+
     public App()
     {
         InitializeComponent();
@@ -121,6 +124,10 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         mainPage.InitializeWorktreeSupport(_host.Services.GetRequiredService<IWorktreeService>());
         _mainThemeRegistration = themeManager.Register(mainPage);
         _window.Content = mainPage;
+        _window.AppWindow.Changed += (_, eventArgs) =>
+        {
+            if (eventArgs.DidSizeChange) mainPage.QueueCommitDetailsLayout();
+        };
         if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_RESULT")))
             _window.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 1400, Height = 900 });
 
