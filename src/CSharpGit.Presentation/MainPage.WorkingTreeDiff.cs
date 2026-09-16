@@ -29,7 +29,6 @@ public sealed partial class MainPage
     private string? _workingTreeExpansionRepositoryIdentity;
     private string? _desiredWorkingTreePath;
 
-    // Compatibility aliases keep the remaining MainPage partial independent of the control migration.
     private TreeView UnstagedChangesList => UnstagedChangesTree;
     private TreeView StagedChangesList => StagedChangesTree;
 
@@ -80,17 +79,22 @@ public sealed partial class MainPage
             _stagedExpansionState.Clear();
         }
 
+        var selectedUnstagedPaths = _viewModel.SelectedUnstagedChanges.Select(change => change.Path).ToArray();
+        var selectedStagedPaths = _viewModel.SelectedStagedChanges.Select(change => change.Path).ToArray();
+
         ReplaceRoots(_unstagedTreeRoots, WorkingTreeTreeNode.Build(_unstagedChanges, WorkingTreeDiffKind.Unstaged));
         ReplaceRoots(_stagedTreeRoots, WorkingTreeTreeNode.Build(_stagedChanges, WorkingTreeDiffKind.Staged));
         RestoreExpansionState(_unstagedTreeRoots, _unstagedExpansionState);
         RestoreExpansionState(_stagedTreeRoots, _stagedExpansionState);
 
-        _unstagedTreeSelection.SetSelectedPaths(
-            _viewModel.SelectedUnstagedChanges.Select(change => change.Path),
-            _unstagedTreeRoots);
-        _stagedTreeSelection.SetSelectedPaths(
-            _viewModel.SelectedStagedChanges.Select(change => change.Path),
-            _stagedTreeRoots);
+        _unstagedTreeSelection.SetSelectedPaths(selectedUnstagedPaths, _unstagedTreeRoots);
+        _stagedTreeSelection.SetSelectedPaths(selectedStagedPaths, _stagedTreeRoots);
+        _viewModel.SetWorkingTreeSelection(
+            WorkingTreeDiffKind.Unstaged,
+            _unstagedTreeSelection.GetSelectedLeaves(_unstagedTreeRoots).Select(node => node.Change!));
+        _viewModel.SetWorkingTreeSelection(
+            WorkingTreeDiffKind.Staged,
+            _stagedTreeSelection.GetSelectedLeaves(_stagedTreeRoots).Select(node => node.Change!));
 
         if (WorkingTreePane.Visibility == Visibility.Visible) QueueWorkingTreePreviewRestore();
     }
@@ -398,5 +402,29 @@ public sealed partial class MainPage
             ? change.Path
             : $"{change.OriginalPath} → {change.Path}";
         return $"{status}  {path}";
+    }
+}
+
+internal static class WorkingTreeTreeViewExtensions
+{
+    public static void ScrollIntoView(this TreeView tree, object item)
+    {
+        object? treeItem = item;
+        if (item is WorkingTreeChange change && tree.ItemsSource is IEnumerable<WorkingTreeTreeNode> roots)
+            treeItem = FindLeaf(roots, change.Path);
+
+        if (treeItem is not null && tree.ContainerFromItem(treeItem) is FrameworkElement container)
+            container.StartBringIntoView();
+    }
+
+    private static WorkingTreeTreeNode? FindLeaf(IEnumerable<WorkingTreeTreeNode> nodes, string path)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.Change is not null && string.Equals(node.Path, path, StringComparison.Ordinal)) return node;
+            if (FindLeaf(node.Children, path) is { } match) return match;
+        }
+
+        return null;
     }
 }
