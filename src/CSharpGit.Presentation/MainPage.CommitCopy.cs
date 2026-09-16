@@ -18,8 +18,7 @@ public sealed partial class MainPage
         DetailsScroller.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
         DetailsScroller.HorizontalContentAlignment = HorizontalAlignment.Stretch;
 
-        _commitDetailsView = new CommitDetailsView { DataContext = _viewModel };
-        DetailsScroller.Content = _commitDetailsView;
+        _commitDetailsView = CommitDetailsContent;
         DetailsScroller.SizeChanged += DetailsScroller_SizeChanged;
         DetailsScroller.DispatcherQueue.TryEnqueue(ConstrainCommitDetailsToViewport);
     }

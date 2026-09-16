@@ -8,8 +8,9 @@ public sealed class CommitMetadataCopyUiContractTests
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitDetailsView.xaml"));
         var codeBehind = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitDetailsView.xaml.cs"));
+        var mainPageXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var wiring = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitCopy.cs"));
-        var loaded = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ConfirmationDialogs.cs"));
+        var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
         var history = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Domain", "History.cs"));
 
         Assert.Contains("Tag=\"{Binding SelectedHistoryRow.Commit.Message}\"", xaml);
@@ -21,8 +22,10 @@ public sealed class CommitMetadataCopyUiContractTests
         Assert.Contains("SelectedHistoryRow.Commit.IsRootCommit", xaml);
         Assert.Contains("Clipboard.SetContent(package)", codeBehind);
         Assert.Contains("icon.Glyph = \"\\uE73E\"", codeBehind);
-        Assert.Contains("new CommitDetailsView { DataContext = _viewModel }", wiring);
-        Assert.Contains("InitializeCommitDetailsSurface();", loaded);
+        Assert.Contains("<controls:CommitDetailsView x:Name=\"CommitDetailsContent\" />", mainPageXaml);
+        Assert.DoesNotContain("new CommitDetailsView", wiring);
+        Assert.DoesNotContain("DetailsScroller.Content =", wiring);
+        Assert.Contains("InitializeCommitDetailsSurface();", lifecycle);
         Assert.Contains("public bool IsRootCommit => Parents.Count == 0;", history);
         Assert.Contains("IsRootCommit ? \"—\"", history);
     }

@@ -1,3 +1,5 @@
+using Microsoft.UI.Xaml;
+
 namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
@@ -5,6 +7,12 @@ public sealed partial class MainPage
     private int _shutdownStarted;
 
     public bool RequiresCloseConfirmation => _viewModel.HasUnappliedCommitMessage;
+
+    private void MainPage_Loaded(object sender, RoutedEventArgs args)
+    {
+        InitializeCommitDetailsSurface();
+        InitializeConfirmationDialogs();
+    }
 
     public void BeginShutdown()
     {
