@@ -40,36 +40,11 @@ public sealed class RepositorySnapshotTreeNode
     {
         ArgumentNullException.ThrowIfNull(entries);
         var query = string.IsNullOrWhiteSpace(nameQuery) ? null : nameQuery.Trim();
-        var builderRoots = new List<BuilderNode>();
+        var filtered = entries.Where(entry =>
+            query is null || entry.Path.Contains(query, StringComparison.OrdinalIgnoreCase));
+        var structure = PathTreeBuilder.Build(filtered, entry => entry.Path);
+        var roots = structure.Select(ToPresentationNode).ToList();
 
-        foreach (var entry in entries
-                     .Where(entry => query is null || entry.Path.Contains(query, StringComparison.OrdinalIgnoreCase))
-                     .GroupBy(entry => entry.Path, StringComparer.Ordinal)
-                     .Select(group => group.First()))
-        {
-            var parts = entry.Path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length == 0) continue;
-
-            var current = builderRoots;
-            var pathParts = new List<string>(parts.Length);
-            for (var index = 0; index < parts.Length - 1; index++)
-            {
-                pathParts.Add(parts[index]);
-                var folderPath = string.Join('/', pathParts);
-                var folder = current.FirstOrDefault(node =>
-                    node.Entry is null && string.Equals(node.Name, parts[index], StringComparison.Ordinal));
-                if (folder is null)
-                {
-                    folder = new BuilderNode(parts[index], folderPath, null);
-                    current.Add(folder);
-                }
-                current = folder.Children;
-            }
-
-            current.Add(new BuilderNode(parts[^1], entry.Path, entry));
-        }
-
-        var roots = Sort(builderRoots).Select(ToPresentationNode).ToList();
         TreeHierarchyGuideBuilder.Apply(
             roots,
             node => node.Children,
@@ -77,25 +52,12 @@ public sealed class RepositorySnapshotTreeNode
         return roots;
     }
 
-    private static RepositorySnapshotTreeNode ToPresentationNode(BuilderNode source) =>
+    private static RepositorySnapshotTreeNode ToPresentationNode(PathTreeNode<RepositorySnapshotEntry> source) =>
         new(
-            source.Name,
+            source.DisplayName,
             source.Path,
-            source.Entry,
-            Sort(source.Children).Select(ToPresentationNode).ToList());
-
-    private static IOrderedEnumerable<BuilderNode> Sort(IEnumerable<BuilderNode> nodes) =>
-        nodes.OrderBy(node => node.Entry is null ? 0 : 1)
-            .ThenBy(node => node.Name, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(node => node.Name, StringComparer.Ordinal);
-
-    private sealed class BuilderNode(string name, string path, RepositorySnapshotEntry? entry)
-    {
-        public string Name { get; } = name;
-        public string Path { get; } = path;
-        public RepositorySnapshotEntry? Entry { get; } = entry;
-        public List<BuilderNode> Children { get; } = [];
-    }
+            source.Item,
+            source.Children.Select(ToPresentationNode).ToList());
 }
 
 internal sealed class RepositorySnapshotCache(int capacity = 12)
