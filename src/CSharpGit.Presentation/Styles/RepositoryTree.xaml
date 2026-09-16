@@ -149,4 +149,46 @@
     </TreeViewItem>
   </DataTemplate>
 
+  <DataTemplate x:Key="WorkingTreeTreeItemTemplate">
+    <TreeViewItem x:Name="WorkingTreeTreeItem"
+                  ItemsSource="{Binding Children}"
+                  IsExpanded="{Binding IsExpanded, Mode=TwoWay}"
+                  Style="{StaticResource RepositoryTreeItemStyle}"
+                  ToolTipService.ToolTip="{Binding ToolTipText}">
+      <TreeViewItem.Content>
+        <Grid ColumnDefinitions="2,*" MinHeight="{StaticResource Height.DataRow}">
+          <Border Grid.ColumnSpan="2"
+                  Background="{ThemeResource AccentFillColorDefaultBrush}"
+                  Opacity="0.14"
+                  Visibility="{Binding IsBatchSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
+                  IsHitTestVisible="False" />
+          <controls:RepositoryTreeGuides Grid.Column="1"
+                                         Segments="{Binding HierarchyGuideSegments}"
+                                         TotalIndentation="{Binding TemplateSettings.Indentation.Left, ElementName=WorkingTreeTreeItem}"
+                                         RowHeight="{StaticResource Height.DataRow}"
+                                         ExpandTarget="{Binding ElementName=WorkingTreeTreeItem}"
+                                         IsExpanded="{Binding IsExpanded, ElementName=WorkingTreeTreeItem}"
+                                         HasChildren="{Binding HasChildren}"
+                                         LineBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                         NodeFillBrush="{ThemeResource ControlFillColorDefaultBrush}"
+                                         GlyphBrush="{ThemeResource TextFillColorPrimaryBrush}" />
+          <Grid Grid.Column="1"
+                ColumnDefinitions="24,*"
+                Padding="2,0"
+                VerticalAlignment="Center">
+            <TextBlock Text="{Binding Status}"
+                       Style="{StaticResource DiffSecondaryTextStyle}"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1"
+                       Text="{Binding DisplayName}"
+                       Style="{StaticResource BodyTextStyle}"
+                       TextTrimming="CharacterEllipsis"
+                       VerticalAlignment="Center" />
+          </Grid>
+        </Grid>
+      </TreeViewItem.Content>
+    </TreeViewItem>
+  </DataTemplate>
+
 </ResourceDictionary>
