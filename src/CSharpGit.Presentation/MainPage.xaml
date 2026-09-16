@@ -31,7 +31,7 @@
           <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="{StaticResource Margin.FormSeparator}" />
           <TextBlock Text="Remote / explicit push" Style="{StaticResource BodyStrongTextStyle}" />
           <Grid ColumnDefinitions="180,*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
-            <ComboBox ItemsSource="{Binding Remotes}" SelectedItem="{Binding SelectedRemote, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Remote" Style="{StaticResource CompactComboBoxStyle}" />
+            <ComboBox ItemsSource="{Binding Remotes}" SelectedItem="{Binding SelectedRemote, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Remote branch" Style="{StaticResource CompactComboBoxStyle}" />
             <TextBox Grid.Column="1" Text="{Binding PushBranchName, Mode=TwoWay}" PlaceholderText="Remote branch name" Style="{StaticResource CompactTextBoxStyle}" />
             <CheckBox Grid.Column="2" Content="Set upstream" IsChecked="{Binding SetUpstream, Mode=TwoWay}" Style="{StaticResource CompactCheckBoxStyle}" VerticalAlignment="Center" />
           </Grid>
@@ -475,11 +475,13 @@
                       </Button>
                     </StackPanel>
                   </Grid>
-                  <ListView x:Name="UnstagedChangesList"
+                  <TreeView x:Name="UnstagedChangesTree"
                             Grid.Row="1"
-                            SelectionMode="Extended"
-                            ItemContainerStyle="{StaticResource WorkingTreeRowStyle}"
-                            ItemTemplate="{StaticResource UnstagedWorkingTreeItemTemplate}" />
+                            Style="{StaticResource DenseTreeViewStyle}"
+                            ItemContainerStyle="{StaticResource DenseTreeItemStyle}"
+                            ItemTemplate="{StaticResource WorkingTreeTreeItemTemplate}"
+                            SelectionMode="None"
+                            ItemInvoked="UnstagedChangesTree_ItemInvoked" />
                 </Grid>
 
                 <Grid Grid.Row="2" RowDefinitions="Auto,*">
@@ -503,11 +505,13 @@
                       </Button>
                     </StackPanel>
                   </Grid>
-                  <ListView x:Name="StagedChangesList"
+                  <TreeView x:Name="StagedChangesTree"
                             Grid.Row="1"
-                            SelectionMode="Extended"
-                            ItemContainerStyle="{StaticResource WorkingTreeRowStyle}"
-                            ItemTemplate="{StaticResource StagedWorkingTreeItemTemplate}" />
+                            Style="{StaticResource DenseTreeViewStyle}"
+                            ItemContainerStyle="{StaticResource DenseTreeItemStyle}"
+                            ItemTemplate="{StaticResource WorkingTreeTreeItemTemplate}"
+                            SelectionMode="None"
+                            ItemInvoked="StagedChangesTree_ItemInvoked" />
                 </Grid>
               </Grid>
 
