@@ -30,7 +30,10 @@
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/IncrementalTreeReconciler.cs" Link="RepositoryTree/IncrementalTreeReconciler.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeExpansion.cs" Link="RepositoryTree/RepositoryTreeExpansion.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeSelection.cs" Link="RepositoryTree/RepositoryTreeSelection.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/PathTreeBuilder.cs" Link="Trees/PathTreeBuilder.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/ChangedFileTreeNode.cs" Link="Changes/ChangedFileTreeNode.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorkingTreeTreeNode.cs" Link="WorkingTree/WorkingTreeTreeNode.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorkingTreeTreeSelection.cs" Link="WorkingTree/WorkingTreeTreeSelection.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CompactDiffLine.cs" Link="Changes/CompactDiffLine.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositorySnapshotTreeNode.cs" Link="RepositoryFiles/RepositorySnapshotTreeNode.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Previewing/FilePreviewModels.cs" Link="RepositoryFiles/Previewing/FilePreviewModels.cs" />
