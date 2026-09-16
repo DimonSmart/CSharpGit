@@ -24,17 +24,41 @@ public sealed class WorkingTreeDiffUiContractTests
     }
 
     [Fact]
-    public void WorkingTreeHasExtendedMultiSelectionIndependentListsAndSingleActivePreview()
+    public void WorkingTreeUsesHierarchicalLeafOnlyDesktopSelectionAndSingleActivePreview()
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var confirmations = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ConfirmationDialogs.cs"));
         var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs"));
+        var selection = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeTreeSelection.cs"));
+        var repositoryTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "RepositoryTree.xaml"));
         var workspace = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
 
-        Assert.Contains("x:Name=\"UnstagedChangesList\"", xaml);
-        Assert.Contains("x:Name=\"StagedChangesList\"", xaml);
-        Assert.True(Count(xaml, "SelectionMode=\"Extended\"") >= 2);
+        Assert.Contains("<TreeView x:Name=\"UnstagedChangesTree\"", xaml);
+        Assert.Contains("<TreeView x:Name=\"StagedChangesTree\"", xaml);
+        Assert.True(Count(xaml, "ItemTemplate=\"{StaticResource WorkingTreeTreeItemTemplate}\"") >= 2);
+        Assert.True(Count(xaml, "SelectionMode=\"None\"") >= 2);
+        Assert.DoesNotContain("SelectionMode=\"Multiple\"", xaml);
+        Assert.DoesNotContain("SelectionMode=\"Extended\"", xaml);
+        Assert.DoesNotContain("CheckBox", repositoryTree);
+        Assert.Contains("x:Key=\"WorkingTreeTreeItemTemplate\"", repositoryTree);
+        Assert.Contains("controls:RepositoryTreeGuides", repositoryTree);
+        Assert.Contains("Segments=\"{Binding HierarchyGuideSegments}\"", repositoryTree);
+        Assert.Contains("IsBatchSelected", repositoryTree);
+        Assert.DoesNotContain("x:Key=\"WorkingTreeRowStyle\"", workspace);
+        Assert.DoesNotContain("UnstagedWorkingTreeItemTemplate", workspace);
+        Assert.DoesNotContain("StagedWorkingTreeItemTemplate", workspace);
+
+        Assert.Contains("WorkingTreeNodeInvoked", workingTree);
+        Assert.Contains("SetWorkingTreeSelection", workingTree);
+        Assert.Contains("selected.Change!", workingTree);
+        Assert.Contains("if (node?.Change is null) return", workingTree);
+        Assert.Contains("WorkingTreeTreeSelection", workingTree);
+        Assert.Contains("controlPressed", selection);
+        Assert.Contains("shiftPressed", selection);
+        Assert.Contains("EnumerateVisibleLeaves", selection);
+        Assert.Contains("node.Change is not null", selection);
+
         Assert.Contains("Command=\"{Binding StageSelectedCommand}\"", xaml);
         Assert.Contains("Command=\"{Binding StageAllCommand}\"", xaml);
         Assert.Contains("Command=\"{Binding UnstageSelectedCommand}\"", xaml);
@@ -42,25 +66,38 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("BatchDiscardConfirmationMessage", confirmations);
         Assert.Contains("ShowDiscardConfirmationAsync", confirmations);
         Assert.DoesNotContain("BatchDiscardConfirmationVisibility", xaml);
-        Assert.Contains("SynchronizeWorkingTreeSelection", workingTree);
-        Assert.Contains("list.SelectedItems.OfType<WorkingTreeChange>()", workingTree);
-        Assert.Contains("args.AddedItems.OfType<WorkingTreeChange>().LastOrDefault()", workingTree);
-        Assert.Contains("SetWorkingTreeSelection", workingTree);
-        Assert.DoesNotContain("try { StagedChangesList.SelectedItem = null; }", workingTree);
-        Assert.DoesNotContain("try { UnstagedChangesList.SelectedItem = null; }", workingTree);
 
         Assert.Contains("x:Name=\"WorkingTreeCompactDiffList\"", xaml);
         Assert.Contains("controls:GridSplitter", xaml);
         Assert.Contains("Text=\"OLD\"", xaml);
         Assert.Contains("Text=\"NEW\"", xaml);
         Assert.Contains("WorkingTreeDiffKindText", xaml);
-        Assert.Contains("ItemContainerStyle=\"{StaticResource WorkingTreeRowStyle}\"", xaml);
         Assert.Contains("ItemContainerStyle=\"{StaticResource DiffRowStyle}\"", xaml);
         Assert.Contains("ItemTemplate=\"{StaticResource DiffItemTemplate}\"", xaml);
-        Assert.Contains("x:Key=\"WorkingTreeRowStyle\"", workspace);
         Assert.Contains("x:Key=\"DiffRowStyle\"", workspace);
         Assert.DoesNotContain("CompactResource<", workingTree);
         Assert.Contains("CompactDiffLine.Build", workingTree);
+    }
+
+    [Fact]
+    public void WorkingTreeHierarchyIsPresentationOnlyAndUsesSharedPathBuilder()
+    {
+        var root = FindRepositoryRoot();
+        var workingTreeNode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeTreeNode.cs"));
+        var changedFileNode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "ChangedFileTreeNode.cs"));
+        var snapshotNode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositorySnapshotTreeNode.cs"));
+        var builder = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "PathTreeBuilder.cs"));
+
+        Assert.Contains("PathTreeBuilder.Build", workingTreeNode);
+        Assert.Contains("PathTreeBuilder.Build", changedFileNode);
+        Assert.Contains("PathTreeBuilder.Build", snapshotNode);
+        Assert.Contains("TreeHierarchyGuideBuilder.Apply", workingTreeNode);
+        Assert.Contains("HashSet<string>(StringComparer.Ordinal)", builder);
+        Assert.Contains("StringComparer.OrdinalIgnoreCase", builder);
+        Assert.Contains("StringComparer.Ordinal", builder);
+        Assert.DoesNotContain("System.IO.Path", builder);
+        Assert.DoesNotContain("IWorkingTreeService", builder);
+        Assert.DoesNotContain("RepositoryTreeGuides", builder);
     }
 
     [Fact]
