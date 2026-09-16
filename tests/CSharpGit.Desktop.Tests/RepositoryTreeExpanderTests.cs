@@ -42,12 +42,19 @@ public sealed class RepositoryTreeExpanderTests
             "CSharpGit.Presentation",
             "ViewModels",
             "RepositorySnapshotTreeNode.cs"));
+        var workingTreeNode = File.ReadAllText(Path.Combine(
+            root,
+            "src",
+            "CSharpGit.Presentation",
+            "ViewModels",
+            "WorkingTreeTreeNode.cs"));
 
         Assert.Contains("var guideWidth = segments.Count > 0", guides, StringComparison.Ordinal);
         Assert.Contains("if (HasChildren && RowHeight > 0)", guides, StringComparison.Ordinal);
         Assert.DoesNotContain("ExpandTarget?.ItemsSource", guides, StringComparison.Ordinal);
-        Assert.Equal(2, CountOccurrences(styles, "HasChildren=\"{Binding HasChildren}\""));
+        Assert.Equal(3, CountOccurrences(styles, "HasChildren=\"{Binding HasChildren}\""));
         Assert.Contains("public bool HasChildren => Children.Count > 0;", snapshotNode, StringComparison.Ordinal);
+        Assert.Contains("public bool HasChildren => Children.Count > 0;", workingTreeNode, StringComparison.Ordinal);
     }
 
     private static int CountOccurrences(string text, string value)
