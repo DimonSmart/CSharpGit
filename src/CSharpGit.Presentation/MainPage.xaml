@@ -1,4 +1,4 @@
-<Page x:Class="CSharpGit.Presentation.MainPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:CSharpGit.Presentation.Controls" xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives" Loaded="ConfirmationDialogs_Loaded">
+<Page x:Class="CSharpGit.Presentation.MainPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:CSharpGit.Presentation.Controls" xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives" Loaded="MainPage_Loaded">
   <Page.Resources>
     <controls:BranchTrackingActionTextConverter x:Key="BranchTrackingActionTextConverter" />
     <ContentDialog x:Key="GitOperationsDialog" Title="Git operations" CloseButtonText="Close" DefaultButton="Close">
@@ -325,36 +325,7 @@
                               VerticalScrollMode="Auto"
                               VerticalScrollBarVisibility="Auto"
                               MinHeight="120">
-                  <StackPanel Padding="{StaticResource Padding.Form}" Spacing="{StaticResource Spacing.M}">
-                    <TextBlock Text="{Binding SelectedHistoryRow.Commit.Message}"
-                               Style="{StaticResource BodyTextStyle}"
-                               TextWrapping="Wrap" />
-                    <ItemsControl ItemsSource="{Binding SelectedHistoryRow.Commit.References}">
-                      <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                      </ItemsControl.ItemsPanel>
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                          <Border Style="{StaticResource ReferenceBadgeStyle}">
-                            <TextBlock Text="{Binding}" Style="{StaticResource CaptionTextStyle}" />
-                          </Border>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <Grid RowDefinitions="Auto,Auto,Auto,Auto"
-                          ColumnDefinitions="74,*"
-                          RowSpacing="{StaticResource Spacing.M}"
-                          ColumnSpacing="{StaticResource Spacing.L}">
-                      <TextBlock Text="Author" Style="{StaticResource SecondaryTextStyle}" />
-                      <TextBlock Grid.Column="1" Text="{Binding SelectedHistoryRow.Commit.Author}" Style="{StaticResource BodyTextStyle}" />
-                      <TextBlock Grid.Row="1" Text="Date" Style="{StaticResource SecondaryTextStyle}" />
-                      <controls:CommitTimeText Grid.Row="1" Grid.Column="1" Value="{Binding SelectedHistoryRow.Commit.AuthoredAt}" FontSize="{StaticResource Font.Body}" />
-                      <TextBlock Grid.Row="2" Text="Hash" Style="{StaticResource SecondaryTextStyle}" />
-                      <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedHistoryRow.Commit.Hash}" Style="{StaticResource TechnicalTextStyle}" TextWrapping="Wrap" />
-                      <TextBlock Grid.Row="3" Text="Parents" Style="{StaticResource SecondaryTextStyle}" />
-                      <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedHistoryRow.Commit.ParentsDisplay}" Style="{StaticResource TechnicalTextStyle}" TextWrapping="Wrap" />
-                    </Grid>
-                  </StackPanel>
+                  <controls:CommitDetailsView x:Name="CommitDetailsContent" />
                 </ScrollViewer>
               </PivotItem>
 
