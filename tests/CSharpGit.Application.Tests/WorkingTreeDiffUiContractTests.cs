@@ -44,7 +44,7 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("x:Key=\"WorkingTreeTreeItemTemplate\"", repositoryTree);
         Assert.Contains("controls:RepositoryTreeGuides", repositoryTree);
         Assert.Contains("Segments=\"{Binding HierarchyGuideSegments}\"", repositoryTree);
-        Assert.Contains("IsBatchSelected", repositoryTree);
+        Assert.Contains("Opacity=\"{Binding BatchSelectionOpacity}\"", repositoryTree);
         Assert.DoesNotContain("x:Key=\"WorkingTreeRowStyle\"", workspace);
         Assert.DoesNotContain("UnstagedWorkingTreeItemTemplate", workspace);
         Assert.DoesNotContain("StagedWorkingTreeItemTemplate", workspace);
