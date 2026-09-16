@@ -283,6 +283,9 @@ public sealed partial class MainPage
                 RebuildWorkingTreeTrees();
             }
 
+            if (WorkingTreeTreeSelection.GetLeaves(_unstagedTreeRoots).FirstOrDefault() is { } restoredUnstaged)
+                WorkingTreeNodeInvoked(restoredUnstaged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Unstaged);
+
             ShowAllHistory();
         }
     }
