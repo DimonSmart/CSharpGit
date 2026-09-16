@@ -41,65 +41,17 @@ public sealed class ChangedFileTreeNode
     {
         ArgumentNullException.ThrowIfNull(entries);
 
-        var roots = new List<BuilderNode>();
-        foreach (var entry in entries
-                     .GroupBy(item => item.File.Path, StringComparer.Ordinal)
-                     .Select(group => group.First())
-                     .OrderBy(item => item.File.Path, StringComparer.OrdinalIgnoreCase))
-        {
-            var normalizedPath = entry.File.Path.Replace('\\', '/');
-            var parts = normalizedPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length == 0) continue;
-
-            var current = roots;
-            var pathParts = new List<string>(parts.Length);
-            for (var index = 0; index < parts.Length - 1; index++)
-            {
-                pathParts.Add(parts[index]);
-                var folderPath = string.Join('/', pathParts);
-                var folder = current.FirstOrDefault(node =>
-                    node.Entry is null && string.Equals(node.Name, parts[index], StringComparison.Ordinal));
-                if (folder is null)
-                {
-                    folder = new BuilderNode(parts[index], folderPath, null);
-                    current.Add(folder);
-                }
-                current = folder.Children;
-            }
-
-            current.Add(new BuilderNode(parts[^1], normalizedPath, entry));
-        }
-
-        return Sort(roots).Select(ToPresentationNode).ToList();
+        var structure = PathTreeBuilder.Build(
+            entries,
+            entry => entry.File.Path.Replace('\\', '/'),
+            new PathTreeBuildOptions(CollapseSingleChildFolderChains: true));
+        return structure.Select(ToPresentationNode).ToList();
     }
 
-    private static ChangedFileTreeNode ToPresentationNode(BuilderNode source)
-    {
-        var displayName = source.Name;
-        var path = source.Path;
-        var entry = source.Entry;
-        var children = Sort(source.Children).Select(ToPresentationNode).ToList();
-
-        while (entry is null && children.Count == 1 && children[0].Entry is null)
-        {
-            var onlyChild = children[0];
-            displayName = $"{displayName}/{onlyChild.DisplayName}";
-            path = onlyChild.Path;
-            children = onlyChild.Children.ToList();
-        }
-
-        return new ChangedFileTreeNode(displayName, path, entry, children);
-    }
-
-    private static IOrderedEnumerable<BuilderNode> Sort(IEnumerable<BuilderNode> nodes) =>
-        nodes.OrderBy(node => node.Entry is null ? 0 : 1)
-            .ThenBy(node => node.Name, StringComparer.OrdinalIgnoreCase);
-
-    private sealed class BuilderNode(string name, string path, ChangedFileTreeEntry? entry)
-    {
-        public string Name { get; } = name;
-        public string Path { get; } = path;
-        public ChangedFileTreeEntry? Entry { get; } = entry;
-        public List<BuilderNode> Children { get; } = [];
-    }
+    private static ChangedFileTreeNode ToPresentationNode(PathTreeNode<ChangedFileTreeEntry> source) =>
+        new(
+            source.DisplayName,
+            source.Path,
+            source.Item,
+            source.Children.Select(ToPresentationNode).ToList());
 }

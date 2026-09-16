@@ -10,6 +10,7 @@ public sealed class HistoryDiffUiContractTests
         var workspace = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
         var changes = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs"));
         var tree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "ChangedFileTreeNode.cs"));
+        var pathTreeBuilder = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "PathTreeBuilder.cs"));
         var diff = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "CompactDiffLine.cs"));
         var commitChangesSurface = ExtractCommitChangesSurface(xaml);
 
@@ -21,7 +22,9 @@ public sealed class HistoryDiffUiContractTests
         Assert.DoesNotContain("ItemsSource=\"{Binding SelectedCommit.Files}\"", xaml);
         Assert.Contains("ChangedFileTreeNode.Build", changes);
         Assert.Contains("CompactDiffLine.Build", changes);
-        Assert.Contains("while (entry is null && children.Count == 1", tree);
+        Assert.Contains("PathTreeBuilder.Build", tree);
+        Assert.Contains("CollapseSingleChildFolderChains: true", tree);
+        Assert.Contains("while (source.IsFolder && children.Count == 1 && children[0].IsFolder)", pathTreeBuilder);
         Assert.Contains("TryReadHunkStarts", diff);
         Assert.Contains("x:Key=\"DiffItemTemplate\"", workspace);
     }
