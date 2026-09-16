@@ -3,7 +3,7 @@ namespace CSharpGit.Application.Tests;
 public sealed class HistoryMessageWrappingUiContractTests
 {
     [Fact]
-    public void HistorySubjectRemainsSingleLineAndCommitDetailsWrapsFullMessage()
+    public void HistorySubjectAndCommitDetailsWrapLongMessages()
     {
         var root = FindRepositoryRoot();
         var historyXaml = File.ReadAllText(Path.Combine(
@@ -29,9 +29,10 @@ public sealed class HistoryMessageWrappingUiContractTests
             "CSharpGit.Presentation",
             "App.xaml.cs"));
 
+        Assert.Contains("<Grid Grid.Column=\"1\" ColumnDefinitions=\"*,Auto,Auto\" MinWidth=\"120\">", historyXaml);
         var subject = ExtractElement(historyXaml, "<TextBlock Text=\"{Binding Commit.Subject}\"");
-        Assert.Contains("TextTrimming=\"CharacterEllipsis\"", subject);
-        Assert.DoesNotContain("TextWrapping=", subject);
+        Assert.Contains("TextWrapping=\"Wrap\"", subject);
+        Assert.DoesNotContain("TextTrimming=", subject);
 
         Assert.Contains("<Grid ColumnDefinitions=\"*,Auto\"", detailsXaml);
         var message = ExtractElement(detailsXaml, "<TextBlock Text=\"{Binding SelectedHistoryRow.Commit.Message}\"");
