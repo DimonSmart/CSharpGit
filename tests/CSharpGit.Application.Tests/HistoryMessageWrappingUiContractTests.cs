@@ -59,6 +59,7 @@ public sealed class HistoryMessageWrappingUiContractTests
         Assert.Contains("HorizontalScrollBarVisibility=\"Disabled\"", detailsScroller);
         Assert.Contains("VerticalScrollMode=\"Auto\"", detailsScroller);
         Assert.Contains("VerticalScrollBarVisibility=\"Auto\"", detailsScroller);
+        Assert.Contains("HorizontalAlignment=\"Left\"", detailsScroller);
         Assert.Contains("<controls:CommitDetailsView x:Name=\"CommitDetailsContent\" />", mainPageXaml);
         Assert.Equal(1, CountOccurrences(mainPageXaml, "<controls:CommitDetailsView"));
         Assert.DoesNotContain("Text=\"{Binding SelectedHistoryRow.Commit.Message}\"", mainPageXaml);
@@ -75,7 +76,9 @@ public sealed class HistoryMessageWrappingUiContractTests
         Assert.Contains("HistoryPane.TransformToVisual(null).TransformPoint(default)", detailsHost);
         Assert.Contains("XamlRoot.RasterizationScale", detailsHost);
         Assert.Contains("app.MainWindowClientWidth / rasterizationScale", detailsHost);
-        Assert.Contains("Math.Min(DetailsScroller.ViewportWidth, windowWidth - origin.X)", detailsHost);
+        Assert.Contains("var visibleWidth = windowWidth - origin.X", detailsHost);
+        Assert.Contains("DetailsScroller.Width = visibleWidth", detailsHost);
+        Assert.Contains("if (eventArgs.DidSizeChange) mainPage.QueueCommitDetailsLayout()", appHost);
         Assert.Contains("!double.IsFinite(_commitDetailsView.Width)", detailsHost);
         Assert.Contains("InitializeCommitDetailsSurface();", lifecycle);
         Assert.DoesNotContain("InitializeCommitDetailsSurface", confirmationDialogs);

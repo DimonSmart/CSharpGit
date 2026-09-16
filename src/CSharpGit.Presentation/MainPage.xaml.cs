@@ -697,6 +697,27 @@ public sealed partial class MainPage : Page
                 commitMessageText is not null && commitMessageText.ActualHeight > commitMessageText.FontSize * 2,
                 $"long commit message did not wrap to multiple lines: viewport={DetailsScroller.ViewportWidth}, details={_commitDetailsView?.ActualWidth}, text={commitMessageText?.ActualWidth}x{commitMessageText?.ActualHeight}, font={commitMessageText?.FontSize}, length={commitMessageText?.Text.Length}, window={(Application.Current as App)?.MainWindowClientWidth}, scale={XamlRoot?.RasterizationScale}, historyOrigin={historyOrigin.X}",
                 failures);
+            if (Application.Current is App resizeCheckApp && commitMessageText is not null)
+            {
+                var wideMessageHeight = commitMessageText.ActualHeight;
+                var messageLeft = commitMessageText.TransformToVisual(HistoryPane).TransformPoint(default).X;
+                resizeCheckApp.ResizeMainWindowForCheck(700, 900);
+                await WaitUntilAsync(
+                    () => resizeCheckApp.MainWindowClientWidth < 800 &&
+                          _commitDetailsView!.ActualWidth < availableDetailsWidth - 200 &&
+                          commitMessageText.ActualHeight > wideMessageHeight,
+                    TimeSpan.FromSeconds(5));
+                var narrowMessageHeight = commitMessageText.ActualHeight;
+                Check(Math.Abs(commitMessageText.TransformToVisual(HistoryPane).TransformPoint(default).X - messageLeft) <= 1,
+                    "commit message moved away from its left edge after shrinking the window", failures);
+                resizeCheckApp.ResizeMainWindowForCheck(1400, 900);
+                await WaitUntilAsync(
+                    () => _commitDetailsView!.ActualWidth >= availableDetailsWidth - 1 &&
+                          commitMessageText.ActualHeight < narrowMessageHeight,
+                    TimeSpan.FromSeconds(5));
+                Check(Math.Abs(commitMessageText.TransformToVisual(HistoryPane).TransformPoint(default).X - messageLeft) <= 1,
+                    "commit message moved away from its left edge after expanding the window", failures);
+            }
             Check(CountDescendants<Controls.GridSplitter>(RootLayout) >= 2, "resizable splitters are missing", failures);
             Check(CountDescendants<ScrollViewer>(RootLayout) > 0, "scroll viewers are missing", failures);
             var xamlRoot = XamlRoot;
