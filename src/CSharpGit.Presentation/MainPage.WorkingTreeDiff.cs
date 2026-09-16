@@ -43,7 +43,7 @@ public sealed partial class MainPage
         _viewModel.Changes.CollectionChanged += WorkingTreeChangesCollectionChanged;
         WorkingTreePane.RegisterPropertyChangedCallback(VisibilityProperty, (_, _) =>
         {
-            if (WorkingTreePane.Visibility == Visibility.Visible) QueueWorkingTreePreviewRestore();
+            if (WorkingTreePane.Visibility == Visibility.Visible) EnsureWorkingTreeActivePreview();
         });
 
         RebuildWorkingTreeTrees();
