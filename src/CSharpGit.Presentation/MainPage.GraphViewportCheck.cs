@@ -232,51 +232,55 @@ public sealed partial class MainPage
 
         ShowWorkingTree();
         await WaitUntilAsync(
-            () => WorkingTreePane.ActualHeight > 0 && _unstagedChanges.Count > 0,
+            () => WorkingTreePane.ActualHeight > 0 && WorkingTreeTreeSelection.GetLeaves(_unstagedTreeRoots).Count > 0,
             TimeSpan.FromSeconds(5));
 
         var stagedByCheck = false;
         try
         {
-            if (_unstagedChanges.FirstOrDefault() is { } firstUnstaged)
+            if (WorkingTreeTreeSelection.GetLeaves(_unstagedTreeRoots).FirstOrDefault() is { } firstUnstaged)
             {
-                UnstagedChangesList.SelectedItem = firstUnstaged;
-                UnstagedChangesList.ScrollIntoView(firstUnstaged);
+                WorkingTreeNodeInvoked(firstUnstaged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Unstaged);
+                UnstagedChangesTree.ScrollIntoView(firstUnstaged);
                 await WaitUntilAsync(
-                    () => UnstagedChangesList.ContainerFromItem(firstUnstaged) is ListViewItem,
+                    () => UnstagedChangesTree.ContainerFromItem(firstUnstaged) is TreeViewItem,
                     TimeSpan.FromSeconds(5));
-                CheckActualHeight(UnstagedChangesList.ContainerFromItem(firstUnstaged) as FrameworkElement, 23, 26, "unstaged row", failures);
+                CheckActualHeight(UnstagedChangesTree.ContainerFromItem(firstUnstaged) as FrameworkElement, 23, 26, "unstaged row", failures);
 
-                if (_stagedChanges.Count == 0)
+                if (WorkingTreeTreeSelection.GetLeaves(_stagedTreeRoots).Count == 0)
                 {
                     await Task.Delay(20);
                     await ExecuteCommandAsync(_viewModel.StageSelectedCommand);
                     await WaitUntilAsync(() => !_viewModel.IsBusy, TimeSpan.FromSeconds(20));
                     RefreshPresentationCollections();
-                    await WaitUntilAsync(() => _stagedChanges.Count > 0, TimeSpan.FromSeconds(5));
+                    RebuildWorkingTreeTrees();
+                    await WaitUntilAsync(
+                        () => WorkingTreeTreeSelection.GetLeaves(_stagedTreeRoots).Count > 0,
+                        TimeSpan.FromSeconds(5));
                     stagedByCheck = true;
                 }
             }
 
-            if (_stagedChanges.FirstOrDefault() is { } firstStaged)
+            if (WorkingTreeTreeSelection.GetLeaves(_stagedTreeRoots).FirstOrDefault() is { } firstStaged)
             {
-                StagedChangesList.SelectedItem = firstStaged;
-                StagedChangesList.ScrollIntoView(firstStaged);
+                WorkingTreeNodeInvoked(firstStaged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Staged);
+                StagedChangesTree.ScrollIntoView(firstStaged);
                 await WaitUntilAsync(
-                    () => StagedChangesList.ContainerFromItem(firstStaged) is ListViewItem,
+                    () => StagedChangesTree.ContainerFromItem(firstStaged) is TreeViewItem,
                     TimeSpan.FromSeconds(5));
-                CheckActualHeight(StagedChangesList.ContainerFromItem(firstStaged) as FrameworkElement, 23, 26, "staged row", failures);
+                CheckActualHeight(StagedChangesTree.ContainerFromItem(firstStaged) as FrameworkElement, 23, 26, "staged row", failures);
             }
         }
         finally
         {
-            if (stagedByCheck && _stagedChanges.FirstOrDefault() is { } staged)
+            if (stagedByCheck && WorkingTreeTreeSelection.GetLeaves(_stagedTreeRoots).FirstOrDefault() is { } staged)
             {
-                StagedChangesList.SelectedItem = staged;
+                WorkingTreeNodeInvoked(staged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Staged);
                 await Task.Delay(20);
                 await ExecuteCommandAsync(_viewModel.UnstageSelectedCommand);
                 await WaitUntilAsync(() => !_viewModel.IsBusy, TimeSpan.FromSeconds(20));
                 RefreshPresentationCollections();
+                RebuildWorkingTreeTrees();
             }
 
             ShowAllHistory();
