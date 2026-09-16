@@ -159,8 +159,7 @@
         <Grid ColumnDefinitions="2,*" MinHeight="{StaticResource Height.DataRow}">
           <Border Grid.ColumnSpan="2"
                   Background="{ThemeResource AccentFillColorDefaultBrush}"
-                  Opacity="0.14"
-                  Visibility="{Binding IsBatchSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
+                  Opacity="{Binding BatchSelectionOpacity}"
                   IsHitTestVisible="False" />
           <controls:RepositoryTreeGuides Grid.Column="1"
                                          Segments="{Binding HierarchyGuideSegments}"
