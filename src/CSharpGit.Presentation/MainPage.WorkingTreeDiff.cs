@@ -56,6 +56,7 @@ public sealed partial class MainPage
         _workingTreeTreeRefreshQueued = true;
         if (DispatcherQueue.TryEnqueue(() =>
         {
+            if (!_workingTreeTreeRefreshQueued) return;
             _workingTreeTreeRefreshQueued = false;
             RebuildWorkingTreeTrees();
         })) return;
@@ -281,6 +282,12 @@ public sealed partial class MainPage
     private void EnsureWorkingTreeActivePreview()
     {
         if (WorkingTreePane.Visibility != Visibility.Visible) return;
+        if (_workingTreeTreeRefreshQueued)
+        {
+            _workingTreeTreeRefreshQueued = false;
+            RebuildWorkingTreeTrees();
+        }
+
         if (_viewModel.ActiveWorkingTreeChange is not null && _viewModel.ActiveWorkingTreeDiffKind is not null)
         {
             RestoreWorkingTreeSelection();
