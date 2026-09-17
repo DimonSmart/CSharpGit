@@ -29,6 +29,17 @@ public sealed class RepositoryHistoryRewriteServiceTests : IDisposable
         Assert.Equal(HistoryRewriteFailureKind.InvalidPath, exception.Kind);
     }
 
+
+    [Theory]
+    [InlineData("-leading-dash.txt")]
+    [InlineData("folder/a;b$(...).zip")]
+    [InlineData("colon:name.txt")]
+    [InlineData("folder\\literal-name.txt")]
+    public void OpaqueGitPathPunctuationIsAccepted(string path)
+    {
+        GitRepositoryHistoryRewriteService.ValidatePath(path);
+    }
+
     [Fact]
     public async Task RewriteRemovesPathAndPreservesReferenceAndRemoteTopology()
     {
