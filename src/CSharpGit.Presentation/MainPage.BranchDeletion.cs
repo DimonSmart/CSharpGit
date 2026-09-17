@@ -40,6 +40,7 @@ public sealed partial class MainPage
                 }
 
                 AddMenuItem(flyout, "Create branch from here…", !_viewModel.IsBusy, () => CreateBranchFromAsync(branch.Name));
+                AddMenuItem(flyout, "Rename…", CanRenameBranch(), () => RenameBranchAsync(branch));
                 AddMenuItem(flyout, "Merge into current branch", !branch.IsCurrent && !_viewModel.IsBusy, async () =>
                 {
                     _viewModel.SelectedMergeBranch = branch;
