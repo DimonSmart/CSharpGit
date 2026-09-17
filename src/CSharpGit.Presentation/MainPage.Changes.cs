@@ -76,10 +76,7 @@ public sealed partial class MainPage
         if (!_changesSurfaceInitialized) return;
 
         var entries = _commitFiles.Select(row => new ChangedFileTreeEntry(row.Status, row.File));
-        var roots = ChangedFileTreeNode.Build(entries);
-
-        _changedFileTreeRoots.Clear();
-        foreach (var root in roots) _changedFileTreeRoots.Add(root);
+        ChangedFileTreeSynchronizer.Reconcile(_changedFileTreeRoots, entries);
 
         if (ChangesTabControl is { } changesTab)
             changesTab.Header = _commitFiles.Count == 0 ? "Changes" : $"Changes ({_commitFiles.Count})";
