@@ -278,11 +278,15 @@ public sealed partial class MainPage
         if (failure is RepositoryHistoryRewriteException rewriteFailure)
         {
             var message = rewriteFailure.Message;
+            if (rewriteFailure.DestructivePhaseStarted)
+                message += "\n\nThe repository may have been partially rewritten.";
+
             if (!string.IsNullOrWhiteSpace(rewriteFailure.BackupPath))
             {
-                message +=
-                    "\n\nThe repository may have been partially rewritten.\n\n" +
-                    $"Safety backup:\n{rewriteFailure.BackupPath}";
+                var label = rewriteFailure.DestructivePhaseStarted
+                    ? "Safety backup"
+                    : "Backup location";
+                message += $"\n\n{label}:\n{rewriteFailure.BackupPath}";
             }
 
             await ShowHistoryRewriteMessageAsync("History rewrite failed", message);

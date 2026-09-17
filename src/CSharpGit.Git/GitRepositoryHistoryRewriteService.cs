@@ -148,7 +148,7 @@ public sealed class GitRepositoryHistoryRewriteService : IRepositoryHistoryRewri
         }
 
         await VerifyTopologyAsync(repository, topology, backupPath, destructivePhaseStarted: true);
-        await VerifyPathAbsentAsync(repository, path, topology.RefNames, backupPath, destructivePhaseStarted: true);
+        await VerifyPathAbsentFromAllRefsAsync(repository, path, backupPath, destructivePhaseStarted: true);
 
         try
         {
@@ -178,7 +178,7 @@ public sealed class GitRepositoryHistoryRewriteService : IRepositoryHistoryRewri
         try
         {
             await VerifyTopologyAsync(repository, topology, backupPath, destructivePhaseStarted: true);
-            await VerifyPathAbsentAsync(repository, path, topology.RefNames, backupPath, destructivePhaseStarted: true);
+            await VerifyPathAbsentFromAllRefsAsync(repository, path, backupPath, destructivePhaseStarted: true);
 
             var finalStatus = await _executor.ExecuteAsync(
                 repository.WorkingDirectory,
@@ -221,9 +221,11 @@ public sealed class GitRepositoryHistoryRewriteService : IRepositoryHistoryRewri
     {
         if (string.IsNullOrWhiteSpace(path)
             || path[0] == '/'
-            || path.Contains('\\')
             || path.IndexOf('\0') >= 0
-            || (path.Length >= 2 && char.IsLetter(path[0]) && path[1] == ':'))
+            || (path.Length >= 3
+                && char.IsLetter(path[0])
+                && path[1] == ':'
+                && path[2] is '/' or '\\'))
         {
             throw Failure(
                 HistoryRewriteFailureKind.InvalidPath,
@@ -413,7 +415,7 @@ public sealed class GitRepositoryHistoryRewriteService : IRepositoryHistoryRewri
             throw Failure(
                 HistoryRewriteFailureKind.BackupCreationFailed,
                 "The safety backup could not be created. History rewrite was not started.",
-                backupPath,
+                null,
                 false,
                 exception);
         }
@@ -498,6 +500,21 @@ public sealed class GitRepositoryHistoryRewriteService : IRepositoryHistoryRewri
                 backupPath,
                 destructivePhaseStarted);
         }
+    }
+
+    private async Task VerifyPathAbsentFromAllRefsAsync(
+        Repository repository,
+        string path,
+        string backupPath,
+        bool destructivePhaseStarted)
+    {
+        var refs = await ReadAllRefsAsync(repository.WorkingDirectory, CancellationToken.None);
+        await VerifyPathAbsentAsync(
+            repository,
+            path,
+            refs.Keys.Order(StringComparer.Ordinal).ToArray(),
+            backupPath,
+            destructivePhaseStarted);
     }
 
     private async Task VerifyPathAbsentAsync(
