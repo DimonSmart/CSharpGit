@@ -35,6 +35,9 @@ internal sealed class DefaultBranchReferenceService : IReferenceService
     public Task CreateBranchAsync(Repository repository, string branch, string? startPoint = null, bool switchToBranch = true, CancellationToken cancellationToken = default) =>
         _inner.CreateBranchAsync(repository, branch, startPoint, switchToBranch, cancellationToken);
 
+    public Task RenameBranchAsync(Repository repository, string oldName, string newName, CancellationToken cancellationToken = default) =>
+        _inner.RenameBranchAsync(repository, oldName, newName, cancellationToken);
+
     public Task DeleteBranchAsync(Repository repository, string branch, CancellationToken cancellationToken = default) =>
         _inner.DeleteBranchAsync(repository, branch, cancellationToken);
 
