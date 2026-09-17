@@ -25,8 +25,7 @@ public sealed partial class MainPage
             TextWrapping = TextWrapping.Wrap,
             MinWidth = 520,
             MinHeight = 180,
-            MaxHeight = 420,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+            MaxHeight = 420
         };
 
         var isHead = _viewModel.LocalBranches.Any(branch =>
