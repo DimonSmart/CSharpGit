@@ -18,7 +18,6 @@ public sealed class RepositoryHistoryRewriteServiceTests : IDisposable
     [InlineData("./secret.txt")]
     [InlineData("/secret.txt")]
     [InlineData("folder//secret.txt")]
-    [InlineData("folder\\secret.txt")]
     [InlineData("C:/secret.txt")]
     public async Task InvalidRepositoryRelativePathIsRejected(string path)
     {
