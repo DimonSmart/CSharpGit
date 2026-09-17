@@ -370,7 +370,13 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
 
     private Task RefreshAllAsync() => RefreshStateAsync(includeHistory: true);
 
-    private async Task RefreshStateAsync(bool includeHistory, bool localOnly = false)
+    private Task RefreshStateAsync(bool includeHistory) =>
+        RefreshStateCoreAsync(includeHistory, localOnly: false);
+
+    private Task RefreshStateLocalOnlyAsync(bool includeHistory) =>
+        RefreshStateCoreAsync(includeHistory, localOnly: true);
+
+    private async Task RefreshStateCoreAsync(bool includeHistory, bool localOnly)
     {
         if (Repository is null) return;
         EnterBusy();
@@ -434,7 +440,13 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
             Exception? failure = null;
             try { await mutation(); }
             catch (Exception exception) when (exception is not OperationCanceledException) { failure = exception; }
-            try { await RefreshStateAsync(includeHistory, localOnlyRefresh); }
+            try
+            {
+                if (localOnlyRefresh)
+                    await RefreshStateLocalOnlyAsync(includeHistory);
+                else
+                    await RefreshStateAsync(includeHistory);
+            }
             catch (Exception exception) when (exception is not OperationCanceledException) { failure ??= exception; }
             if (failure is not null)
                 ErrorMessage = errorContext is null ? $"Git: {failure.Message}" : $"{errorContext}\nGit: {failure.Message}";
