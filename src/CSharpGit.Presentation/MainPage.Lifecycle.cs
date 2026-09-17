@@ -13,6 +13,7 @@ public sealed partial class MainPage
         InitializeCommitDetailsSurface();
         InitializeConfirmationDialogs();
         InitializeBranchRename();
+        InitializeBranchDragDrop();
     }
 
     public void BeginShutdown()
