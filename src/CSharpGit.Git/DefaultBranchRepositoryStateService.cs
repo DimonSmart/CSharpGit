@@ -26,13 +26,26 @@ internal sealed class DefaultBranchRepositoryStateService : IRepositoryStateServ
         _tagService = tagService ?? throw new ArgumentNullException(nameof(tagService));
     }
 
-    public async Task<RepositoryState> ReadAsync(
+    public Task<RepositoryState> ReadAsync(
         Repository repository,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        ReadCoreAsync(repository, allowRemoteLookup: true, cancellationToken: cancellationToken);
+
+    public Task<RepositoryState> ReadLocalOnlyAsync(
+        Repository repository,
+        CancellationToken cancellationToken = default) =>
+        ReadCoreAsync(repository, allowRemoteLookup: false, cancellationToken: cancellationToken);
+
+    private async Task<RepositoryState> ReadCoreAsync(
+        Repository repository,
+        bool allowRemoteLookup,
+        CancellationToken cancellationToken)
     {
         var state = await _inner.ReadAsync(repository, cancellationToken);
         var references = state.Refs;
-        var defaultRemoteBranch = await _resolver.ResolveAsync(repository, references, cancellationToken);
+        var defaultRemoteBranch = allowRemoteLookup
+            ? await _resolver.ResolveAsync(repository, references, cancellationToken)
+            : await _resolver.ResolveLocalOnlyAsync(repository, references, cancellationToken);
         var tags = await _tagService.ReadTagsAsync(repository, cancellationToken);
 
         var localBranches = references.LocalBranches

@@ -21,7 +21,8 @@ public sealed class RepositoryHistoryRewriteUiContractTests
         var source = ReadSource("src/CSharpGit.Presentation/MainPage.HistoryRewrite.cs");
         var viewModel = ReadSource("src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.HistoryRewrite.cs");
 
-        Assert.Contains("_viewModel.RunMutationAsync", source, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.RunHistoryRewriteMutationAsync", source, StringComparison.Ordinal);
+        Assert.Contains("localOnlyRefresh: true", viewModel, StringComparison.Ordinal);
         Assert.Contains("CancelRepositoryFilesRequests()", source, StringComparison.Ordinal);
         Assert.Contains("_repositorySnapshotCache.Clear()", source, StringComparison.Ordinal);
         Assert.Contains("_scopedHistory.Clear()", source, StringComparison.Ordinal);

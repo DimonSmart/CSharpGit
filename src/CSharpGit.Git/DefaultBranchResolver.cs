@@ -18,6 +18,24 @@ internal sealed class DefaultBranchResolver
         GitReferences references,
         CancellationToken cancellationToken = default)
     {
+        var localHead = await ResolveLocalOnlyAsync(repository, references, cancellationToken);
+        if (localHead is not null) return localHead;
+
+        var remote = SelectPrimaryRemote(references.Remotes);
+        if (remote is null) return null;
+
+        var advertisedHead = await RunOptionalAsync(
+            repository,
+            cancellationToken,
+            "ls-remote", "--symref", remote, "HEAD");
+        return ParseAdvertisedHead(remote, advertisedHead);
+    }
+
+    internal async Task<string?> ResolveLocalOnlyAsync(
+        Repository repository,
+        GitReferences references,
+        CancellationToken cancellationToken = default)
+    {
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(references);
 
@@ -28,14 +46,9 @@ internal sealed class DefaultBranchResolver
             repository,
             cancellationToken,
             "symbolic-ref", "--quiet", "--short", $"refs/remotes/{remote}/HEAD");
-        if (IsValidLocalRemoteHead(remote, localHead, references.RemoteBranches))
-            return localHead;
-
-        var advertisedHead = await RunOptionalAsync(
-            repository,
-            cancellationToken,
-            "ls-remote", "--symref", remote, "HEAD");
-        return ParseAdvertisedHead(remote, advertisedHead);
+        return IsValidLocalRemoteHead(remote, localHead, references.RemoteBranches)
+            ? localHead
+            : null;
     }
 
     internal async Task RefreshRemoteHeadAsync(

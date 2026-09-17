@@ -150,7 +150,7 @@ public sealed partial class MainPage
             PathRemovalResult? result = null;
             Exception? capturedFailure = null;
 
-            var succeeded = await _viewModel.RunMutationAsync(
+            var succeeded = await _viewModel.RunHistoryRewriteMutationAsync(
                 async () =>
                 {
                     _viewModel.InvalidateForHistoryRewrite();
@@ -172,6 +172,14 @@ public sealed partial class MainPage
                 AcknowledgeRepositoryRefresh();
                 await _viewModel.SelectHistoryCommitAfterRewriteAsync(result.HeadObjectId);
                 await ShowHistoryRewriteSuccessAsync(analysis, result);
+            }
+            else if (result is not null)
+            {
+                await ShowHistoryRewriteMessageAsync(
+                    "History rewrite refresh failed",
+                    "Repository history was rewritten and verified, but CSharpGit could not refresh the UI completely.\n\n" +
+                    $"Safety backup:\n{result.BackupPath}\n\n" +
+                    "Use Refresh to reread the repository state.");
             }
             else
             {
@@ -218,7 +226,13 @@ public sealed partial class MainPage
         SetRepositoryFilesStatus("Rewriting repository history…", loading: true);
 
         _referenceHistoryCts?.Cancel();
+        _activeReference = null;
         _scopedHistory.Clear();
+        _scopedHasMore = false;
+        HistoryList.ItemsSource = _viewModel.History;
+        ShowReflogToggle.IsEnabled = true;
+        ScopeCombo.Visibility = Visibility.Visible;
+        ReferenceScopePanel.Visibility = Visibility.Collapsed;
     }
 
     private async Task<bool> ConfirmPathHistoryRemovalAsync(PathRemovalAnalysis analysis)

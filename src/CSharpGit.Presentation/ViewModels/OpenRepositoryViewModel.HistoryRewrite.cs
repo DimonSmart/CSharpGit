@@ -2,6 +2,15 @@ namespace CSharpGit.Presentation.ViewModels;
 
 public sealed partial class OpenRepositoryViewModel
 {
+    internal Task<bool> RunHistoryRewriteMutationAsync(
+        Func<Task> mutation,
+        string? errorContext = null) =>
+        MutateAsync(
+            mutation,
+            errorContext,
+            includeHistory: true,
+            localOnlyRefresh: true);
+
     internal void InvalidateForHistoryRewrite()
     {
         InvalidateHistoryLoad();
