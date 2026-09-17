@@ -12,6 +12,7 @@ public sealed partial class MainPage
     {
         InitializeCommitDetailsSurface();
         InitializeConfirmationDialogs();
+        InitializeBranchRename();
     }
 
     public void BeginShutdown()
