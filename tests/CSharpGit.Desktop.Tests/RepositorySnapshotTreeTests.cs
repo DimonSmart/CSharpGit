@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Presentation.ViewModels;
 
@@ -45,6 +47,120 @@ public sealed class RepositorySnapshotTreeTests
     }
 
     [Fact]
+    public void IdenticalTreeIsStructuralNoOpAndPreservesExpansion()
+    {
+        var roots = new ObservableCollection<RepositorySnapshotTreeNode>();
+        RepositorySnapshotTreeSynchronizer.Reconcile(roots,
+        [
+            Entry("src/A.cs"),
+            Entry("src/B.cs")
+        ]);
+        var src = Assert.Single(roots);
+        var a = Assert.Single(src.Children, node => node.Path == "src/A.cs");
+        src.IsExpanded = true;
+        var rootChanges = new List<NotifyCollectionChangedAction>();
+        var childChanges = new List<NotifyCollectionChangedAction>();
+        roots.CollectionChanged += (_, args) => rootChanges.Add(args.Action);
+        src.Children.CollectionChanged += (_, args) => childChanges.Add(args.Action);
+
+        RepositorySnapshotTreeSynchronizer.Reconcile(roots,
+        [
+            Entry("src/A.cs"),
+            Entry("src/B.cs")
+        ]);
+
+        Assert.Same(src, Assert.Single(roots));
+        Assert.Same(a, Assert.Single(src.Children, node => node.Path == "src/A.cs"));
+        Assert.True(src.IsExpanded);
+        Assert.Empty(rootChanges);
+        Assert.Empty(childChanges);
+    }
+
+    [Fact]
+    public void NameSearchNarrowingReusesIntersectionWithoutReset()
+    {
+        var snapshot = new[]
+        {
+            Entry("src/Service.cs"),
+            Entry("src/Settings.cs"),
+            Entry("tests/ServiceTests.cs")
+        };
+        var roots = new ObservableCollection<RepositorySnapshotTreeNode>();
+        RepositorySnapshotTreeSynchronizer.Reconcile(roots, snapshot, "se");
+        var src = Assert.Single(roots, node => node.Path == "src");
+        var service = Assert.Single(src.Children, node => node.Path == "src/Service.cs");
+        var actions = new List<NotifyCollectionChangedAction>();
+        roots.CollectionChanged += (_, args) => actions.Add(args.Action);
+        src.Children.CollectionChanged += (_, args) => actions.Add(args.Action);
+
+        RepositorySnapshotTreeSynchronizer.Reconcile(roots, snapshot, "service");
+
+        Assert.Same(src, Assert.Single(roots, node => node.Path == "src"));
+        Assert.Same(service, Assert.Single(src.Children, node => node.Path == "src/Service.cs"));
+        Assert.DoesNotContain(NotifyCollectionChangedAction.Reset, actions);
+    }
+
+    [Fact]
+    public void LeafKindChangeReusesNodeAndUpdatesDisplay()
+    {
+        var roots = new ObservableCollection<RepositorySnapshotTreeNode>();
+        RepositorySnapshotTreeSynchronizer.Reconcile(roots, [Entry("link", RepositorySnapshotEntryKind.File)]);
+        var node = Assert.Single(roots);
+        var changedProperties = new List<string?>();
+        node.PropertyChanged += (_, args) => changedProperties.Add(args.PropertyName);
+        var replacement = Entry("link", RepositorySnapshotEntryKind.Symlink);
+
+        RepositorySnapshotTreeSynchronizer.Reconcile(roots, [replacement]);
+
+        Assert.Same(node, Assert.Single(roots));
+        Assert.Same(replacement, node.Entry);
+        Assert.Equal("↗ link", node.DisplayLabel);
+        Assert.Contains(nameof(RepositorySnapshotTreeNode.Entry), changedProperties);
+        Assert.Contains(nameof(RepositorySnapshotTreeNode.DisplayLabel), changedProperties);
+    }
+
+    [Fact]
+    public void FileAndDirectoryAtSamePathDoNotReusePresentationNode()
+    {
+        var roots = new ObservableCollection<RepositorySnapshotTreeNode>();
+        RepositorySnapshotTreeSynchronizer.Reconcile(roots, [Entry("src")]);
+        var file = Assert.Single(roots);
+
+        RepositorySnapshotTreeSynchronizer.Reconcile(roots, [Entry("src/A.cs")]);
+
+        var directory = Assert.Single(roots);
+        Assert.NotSame(file, directory);
+        Assert.True(directory.IsDirectory);
+    }
+
+    [Fact]
+    public void SmallStructuralChangeKeepsExistingNodesAndAvoidsReset()
+    {
+        var roots = new ObservableCollection<RepositorySnapshotTreeNode>();
+        RepositorySnapshotTreeSynchronizer.Reconcile(roots,
+        [
+            Entry("src/A.cs"),
+            Entry("src/B.cs")
+        ]);
+        var src = Assert.Single(roots);
+        var a = Assert.Single(src.Children, node => node.Path == "src/A.cs");
+        var actions = new List<NotifyCollectionChangedAction>();
+        src.Children.CollectionChanged += (_, args) => actions.Add(args.Action);
+
+        RepositorySnapshotTreeSynchronizer.Reconcile(roots,
+        [
+            Entry("src/A.cs"),
+            Entry("src/C.cs")
+        ]);
+
+        Assert.Same(src, Assert.Single(roots));
+        Assert.Same(a, Assert.Single(src.Children, node => node.Path == "src/A.cs"));
+        Assert.DoesNotContain(NotifyCollectionChangedAction.Reset, actions);
+        Assert.Contains(NotifyCollectionChangedAction.Remove, actions);
+        Assert.Contains(NotifyCollectionChangedAction.Add, actions);
+    }
+
+    [Fact]
     public void SnapshotCacheIsLruBoundedAndTouchesHits()
     {
         var cache = new RepositorySnapshotCache(2);
@@ -60,8 +176,10 @@ public sealed class RepositorySnapshotTreeTests
         Assert.Equal(2, cache.Count);
     }
 
-    private static RepositorySnapshotEntry Entry(string path) =>
-        new(path, RepositorySnapshotEntryKind.File, new string('a', 40), "100644", "blob");
+    private static RepositorySnapshotEntry Entry(
+        string path,
+        RepositorySnapshotEntryKind kind = RepositorySnapshotEntryKind.File) =>
+        new(path, kind, new string('a', 40), kind == RepositorySnapshotEntryKind.Symlink ? "120000" : "100644", "blob");
 
     private static IReadOnlyList<string> LeafPaths(RepositorySnapshotTreeNode root)
     {

@@ -57,6 +57,23 @@ public sealed class RepositoryFilesUiContractTests
     }
 
     [Fact]
+    public void RepositoryFilesTreeUsesStableItemsSourceAndIncrementalPublication()
+    {
+        var root = FindRepositoryRoot();
+        var filesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs"));
+        var changesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs"));
+
+        Assert.Contains("readonly ObservableCollection<RepositorySnapshotTreeNode> _repositoryFilesTreeRoots = []", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource = _repositoryFilesTreeRoots", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("RepositorySnapshotTreeSynchronizer.Reconcile(_repositoryFilesTreeRoots, _repositorySnapshot, query)", filesSurface, StringComparison.Ordinal);
+        Assert.DoesNotContain("_repositoryFilesTree.ItemsSource = null", filesSurface, StringComparison.Ordinal);
+        Assert.DoesNotContain("_repositoryFilesTreeRoots = roots", filesSurface, StringComparison.Ordinal);
+        Assert.DoesNotContain("ClearRepositoryFilesTree();\n        SetRepositoryFilesStatus(\"Loading repository files...\"", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("ChangedFileTreeSynchronizer.Reconcile(_changedFileTreeRoots, entries)", changesSurface, StringComparison.Ordinal);
+        Assert.DoesNotContain("_changedFileTreeRoots.Clear()", changesSurface, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ContentSearchIsExplicitAndNameSearchStaysLocal()
     {
         var root = FindRepositoryRoot();
@@ -64,7 +81,7 @@ public sealed class RepositoryFilesUiContractTests
         var model = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositorySnapshotTreeNode.cs"));
 
         Assert.Contains("args.Key != VirtualKey.Enter || _repositoryFilesSearchModeName != \"Content\"", filesSurface, StringComparison.Ordinal);
-        Assert.Contains("RepositorySnapshotTreeNode.Build(_repositorySnapshot, query)", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("RepositorySnapshotTreeSynchronizer.Reconcile(_repositoryFilesTreeRoots, _repositorySnapshot, query)", filesSurface, StringComparison.Ordinal);
         Assert.Contains("entry.Path.Contains(query, StringComparison.OrdinalIgnoreCase)", model, StringComparison.Ordinal);
         Assert.Contains("entry.Kind == RepositorySnapshotEntryKind.File", filesSurface, StringComparison.Ordinal);
     }
@@ -90,6 +107,7 @@ public sealed class RepositoryFilesUiContractTests
         Assert.Contains("BinaryPreviewContent", previewHost, StringComparison.Ordinal);
         Assert.Contains("RepositoryFilesTree_SelectionChanged", filesSurface, StringComparison.Ordinal);
         Assert.Contains("RepositoryContentResults_SelectionChanged", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("RepositoryFilesSnapshotMatchesSelection", filesSurface, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()
