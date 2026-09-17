@@ -67,7 +67,18 @@ public sealed partial class MainPage
 
         var newName = nameBox.Text.Trim();
         if (newName.Length == 0 || string.Equals(oldName, newName, StringComparison.Ordinal)) return;
+
+        await ExecuteBranchRenameAsync(branch, newName);
+    }
+
+    private async Task ExecuteBranchRenameAsync(GitBranch branch, string newName)
+    {
+        ArgumentNullException.ThrowIfNull(branch);
+        ArgumentException.ThrowIfNullOrEmpty(newName);
         if (!CanRenameBranch()) return;
+
+        var oldName = branch.Name;
+        if (string.Equals(oldName, newName, StringComparison.Ordinal)) return;
 
         var succeeded = await _viewModel.RunMutationAsync(
             async () =>
