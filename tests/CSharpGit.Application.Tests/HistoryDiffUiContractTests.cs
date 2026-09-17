@@ -20,7 +20,7 @@ public sealed class HistoryDiffUiContractTests
         Assert.Contains("ItemTemplate=\"{StaticResource DiffItemTemplate}\"", commitChangesSurface);
         Assert.DoesNotContain("<PivotItem Header=\"Diff\">", xaml);
         Assert.DoesNotContain("ItemsSource=\"{Binding SelectedCommit.Files}\"", xaml);
-        Assert.Contains("ChangedFileTreeNode.Build", changes);
+        Assert.Contains("ChangedFileTreeSynchronizer.Reconcile", changes);
         Assert.Contains("CompactDiffLine.Build", changes);
         Assert.Contains("PathTreeBuilder.Build", tree);
         Assert.Contains("CollapseSingleChildFolderChains: true", tree);
