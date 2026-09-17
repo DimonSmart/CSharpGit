@@ -49,6 +49,8 @@ public static class GitServiceCollectionExtensions
             new GitRepositoryFileVersionService(provider.GetRequiredService<GitCommandExecutor>()));
         services.AddSingleton<IRepositorySnapshotService>(provider =>
             new GitRepositorySnapshotService(provider.GetRequiredService<GitCommandExecutor>()));
+        services.AddSingleton<IRepositoryHistoryRewriteService>(provider =>
+            new GitRepositoryHistoryRewriteService(provider.GetRequiredService<GitCommandExecutor>()));
         services.AddSingleton<IGitToolsService>(provider =>
             new GitToolsService(
                 provider.GetRequiredService<GitCommandExecutor>(),

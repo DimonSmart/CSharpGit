@@ -50,3 +50,4 @@ opened.
 | IDD-0028 | Spec | Branch folder deletion | Recursive local/remote branch-folder deletion, deterministic snapshot planning and partial-success orchestration | — |
 | IDD-0029 | Spec | Branch rename | Local branch rename from Repository Tree with Git-native semantics, scoped-history continuity and worktree refresh | — |
 | IDD-0030 | Spec | Edit commit message | Safe HEAD amend and linear-history reword with deterministic rewritten-commit selection | — |
+| IDD-0031 | Spec | Repository history rewrite | Local exact-path removal with git-filter-repo, verified safety backup, topology preservation and in-place refresh | — |
