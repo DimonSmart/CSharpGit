@@ -41,7 +41,7 @@ public sealed class SelectedCommitActionsContractTests
         var root = FindRepositoryRoot();
         var actions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
 
-        foreach (var label in new[] { "Copy hash", "Create branch here…", "Checkout this commit", "Cherry-pick", "Revert", "Reset current branch to here", "Soft…", "Mixed…", "Hard…" })
+        foreach (var label in new[] { "Copy hash", "Create branch here…", "Checkout this commit", "Cherry-pick", "Revert", "Edit commit message…", "Reset current branch to here", "Soft…", "Mixed…", "Hard…" })
             Assert.Contains(label, actions);
 
         Assert.Contains("HistoryList.RightTapped", actions);

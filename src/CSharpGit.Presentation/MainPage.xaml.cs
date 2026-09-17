@@ -105,7 +105,9 @@ public sealed partial class MainPage : Page
             var becameIdle = _wasBusy && !_viewModel.IsBusy;
             _wasBusy = _viewModel.IsBusy;
             UpdateStatusBar();
-            if (becameIdle && _activeReference is not null && !_isScopedHistoryLoading)
+            if (becameIdle && ShouldRestorePendingEditedCommitSelection)
+                _ = RestorePendingEditedCommitSelectionAsync();
+            else if (becameIdle && _activeReference is not null && !_isScopedHistoryLoading)
                 _ = LoadScopedHistoryAsync(true);
         }
     }
