@@ -83,6 +83,13 @@ internal sealed class DefaultBranchReferenceService : IReferenceService
     public Task ResetAsync(Repository repository, string commit, ResetMode mode, CancellationToken cancellationToken = default) =>
         _inner.ResetAsync(repository, commit, mode, cancellationToken);
 
+    public Task<EditCommitMessageResult> EditCommitMessageAsync(
+        Repository repository,
+        string commit,
+        string newMessage,
+        CancellationToken cancellationToken = default) =>
+        _inner.EditCommitMessageAsync(repository, commit, newMessage, cancellationToken);
+
     public Task<IReadOnlyList<GitTag>> ReadTagsAsync(Repository repository, CancellationToken cancellationToken = default) =>
         _tags.ReadTagsAsync(repository, cancellationToken);
 

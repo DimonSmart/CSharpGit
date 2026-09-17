@@ -231,19 +231,31 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
             throw new InvalidOperationException("The plan must contain every commit in the range exactly once. Use drop to exclude a commit.");
 
         var supportDirectory = Path.Combine(repository.GitDirectory, "csharpgit-rebase");
-        Directory.CreateDirectory(supportDirectory);
-        var todoPath = Path.Combine(supportDirectory, "todo");
-        var sequenceEditor = Path.Combine(supportDirectory, OperatingSystem.IsWindows() ? "sequence-editor.cmd" : "sequence-editor.sh");
-        var messageEditor = Path.Combine(supportDirectory, OperatingSystem.IsWindows() ? "message-editor.cmd" : "message-editor.sh");
-        await File.WriteAllLinesAsync(todoPath, BuildRebaseTodo(plan, supportDirectory), cancellationToken);
-        await WriteSequenceEditorAsync(sequenceEditor, todoPath, cancellationToken);
-        await WriteNoOpEditorAsync(messageEditor, cancellationToken);
-        var environment = new Dictionary<string, string?>
+        try
         {
-            ["GIT_SEQUENCE_EDITOR"] = QuoteCommand(sequenceEditor),
-            ["GIT_EDITOR"] = QuoteCommand(messageEditor)
-        };
-        return await RunRebaseCommandAsync(repository, environment, cancellationToken, "rebase", "--interactive", plan.Onto);
+            Directory.CreateDirectory(supportDirectory);
+            var todoPath = Path.Combine(supportDirectory, "todo");
+            var sequenceEditor = Path.Combine(supportDirectory, OperatingSystem.IsWindows() ? "sequence-editor.cmd" : "sequence-editor.sh");
+            var messageEditor = Path.Combine(supportDirectory, OperatingSystem.IsWindows() ? "message-editor.cmd" : "message-editor.sh");
+            await File.WriteAllLinesAsync(todoPath, BuildRebaseTodo(plan, supportDirectory), cancellationToken);
+            await WriteSequenceEditorAsync(sequenceEditor, todoPath, cancellationToken);
+            await WriteNoOpEditorAsync(messageEditor, cancellationToken);
+            var environment = new Dictionary<string, string?>
+            {
+                ["GIT_SEQUENCE_EDITOR"] = QuoteCommand(sequenceEditor),
+                ["GIT_EDITOR"] = QuoteCommand(messageEditor)
+            };
+            var result = await RunRebaseCommandAsync(repository, environment, cancellationToken, "rebase", "--interactive", plan.Onto);
+            if (DetectOperation(repository) != RepositoryOperation.Rebase)
+                CleanupRebaseSupportDirectory(repository);
+            return result;
+        }
+        catch
+        {
+            if (DetectOperation(repository) != RepositoryOperation.Rebase)
+                CleanupRebaseSupportDirectory(repository);
+            throw;
+        }
     }
 
     public Task<RebaseResult> ContinueRebaseAsync(Repository repository, CancellationToken cancellationToken = default)
@@ -259,11 +271,17 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
         var messageEditor = Path.Combine(supportDirectory, OperatingSystem.IsWindows() ? "message-editor.cmd" : "message-editor.sh");
         await WriteNoOpEditorAsync(messageEditor, cancellationToken);
         var environment = new Dictionary<string, string?> { ["GIT_EDITOR"] = QuoteCommand(messageEditor) };
-        return await RunRebaseCommandAsync(repository, environment, cancellationToken, "rebase", "--continue");
+        var result = await RunRebaseCommandAsync(repository, environment, cancellationToken, "rebase", "--continue");
+        if (DetectOperation(repository) != RepositoryOperation.Rebase)
+            CleanupRebaseSupportDirectory(repository);
+        return result;
     }
 
-    public Task AbortRebaseAsync(Repository repository, CancellationToken cancellationToken = default) =>
-        RunGitForMutationAsync(repository, cancellationToken, "rebase", "--abort");
+    public async Task AbortRebaseAsync(Repository repository, CancellationToken cancellationToken = default)
+    {
+        await RunGitForMutationAsync(repository, cancellationToken, "rebase", "--abort");
+        CleanupRebaseSupportDirectory(repository);
+    }
 
     private async Task<RebaseResult> RunRebaseCommandAsync(Repository repository, IReadOnlyDictionary<string, string?> environment, CancellationToken cancellationToken, params string[] arguments)
     {
@@ -299,10 +317,13 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
         {
             if (item.Action == RebaseAction.Reword)
             {
-                var messagePath = Path.Combine(supportDirectory, $"message-{index++}.txt");
-                File.WriteAllText(messagePath, item.NewMessage!.Trim() + Environment.NewLine);
+                var rewordIndex = index++;
+                var messagePath = Path.Combine(supportDirectory, $"message-{rewordIndex}.txt");
+                var markerPath = Path.Combine(supportDirectory, $"reword-{rewordIndex}.sha");
+                File.WriteAllText(messagePath, item.NewMessage!);
                 yield return $"pick {item.Commit} {item.Subject}";
-                yield return $"exec git commit --amend --no-verify -F {QuoteTodoPath(messagePath)}";
+                yield return $"exec git commit --amend --no-verify --no-gpg-sign -F {QuoteTodoPath(messagePath)}";
+                yield return $"exec git rev-parse HEAD > {QuoteTodoPath(markerPath)}";
             }
             else yield return $"{item.Action.ToString().ToLowerInvariant()} {item.Commit} {item.Subject}";
         }
@@ -782,6 +803,12 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
         {
             var result = await ContinueRebaseCoreAsync(repository, cancellationToken);
             if (result.Kind == RebaseResultKind.Failed) throw new InvalidOperationException(result.Message);
+            return;
+        }
+
+        if (state.Operation == RepositoryOperation.Rebase && action == "abort")
+        {
+            await AbortRebaseAsync(repository, cancellationToken);
             return;
         }
 

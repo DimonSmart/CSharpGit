@@ -49,3 +49,4 @@ opened.
 | IDD-0027 | Spec | Compact worktree names | Branch/detached primary labels, rendered-width middle ellipsis, full tooltip and clipboard actions | — |
 | IDD-0028 | Spec | Branch folder deletion | Recursive local/remote branch-folder deletion, deterministic snapshot planning and partial-success orchestration | — |
 | IDD-0029 | Spec | Branch rename | Local branch rename from Repository Tree with Git-native semantics, scoped-history continuity and worktree refresh | — |
+| IDD-0030 | Spec | Edit commit message | Safe HEAD amend and linear-history reword with deterministic rewritten-commit selection | — |

@@ -16,6 +16,7 @@ public sealed partial class MainPage
     private MenuFlyoutItem? _checkoutCommitItem;
     private MenuFlyoutItem? _cherryPickItem;
     private MenuFlyoutItem? _revertItem;
+    private MenuFlyoutItem? _editCommitMessageItem;
     private MenuFlyoutSubItem? _resetItem;
 
     private void InitializeCommitActions()
@@ -32,6 +33,8 @@ public sealed partial class MainPage
         _cherryPickItem.Click += CherryPickCommit_Click;
         _revertItem = new MenuFlyoutItem { Text = "Revert" };
         _revertItem.Click += RevertCommit_Click;
+        _editCommitMessageItem = new MenuFlyoutItem { Text = "Edit commit message…" };
+        _editCommitMessageItem.Click += EditCommitMessage_Click;
 
         _resetItem = new MenuFlyoutSubItem { Text = "Reset current branch to here" };
         foreach (var (mode, label) in new[]
@@ -54,6 +57,7 @@ public sealed partial class MainPage
         _commitActionsFlyout.Items.Add(new MenuFlyoutSeparator());
         _commitActionsFlyout.Items.Add(_cherryPickItem);
         _commitActionsFlyout.Items.Add(_revertItem);
+        _commitActionsFlyout.Items.Add(_editCommitMessageItem);
         _commitActionsFlyout.Items.Add(new MenuFlyoutSeparator());
         _commitActionsFlyout.Items.Add(_resetItem);
         _commitActionsFlyout.Opening += (_, _) => UpdateCommitActionAvailability();
@@ -92,6 +96,7 @@ public sealed partial class MainPage
         if (_checkoutCommitItem is not null) _checkoutCommitItem.IsEnabled = canMutate;
         if (_cherryPickItem is not null) _cherryPickItem.IsEnabled = canMutate;
         if (_revertItem is not null) _revertItem.IsEnabled = canMutate;
+        if (_editCommitMessageItem is not null) _editCommitMessageItem.IsEnabled = canMutate;
         if (_resetItem is not null) _resetItem.IsEnabled = canMutate && hasLocalBranch;
     }
 
@@ -288,20 +293,21 @@ public sealed partial class MainPage
             : null;
     }
 
-    private async Task RestoreCommitActionSelectionAsync(string? hash)
+    private async Task<bool> RestoreCommitActionSelectionAsync(string? hash)
     {
-        if (string.IsNullOrWhiteSpace(hash)) return;
+        if (string.IsNullOrWhiteSpace(hash)) return false;
 
         if (_activeReference is not null)
             await LoadScopedHistoryAsync(true);
 
         var rows = _activeReference is null ? _viewModel.History : _scopedHistory;
         var row = rows.FirstOrDefault(candidate => string.Equals(candidate.Commit.Hash, hash, StringComparison.Ordinal));
-        if (row is null) return;
+        if (row is null) return false;
 
         _viewModel.SelectedHistoryRow = row;
         HistoryList.SelectedItem = row;
         HistoryList.ScrollIntoView(row);
+        return true;
     }
 
     private sealed record MainlineChoice(int Number, string Label);
