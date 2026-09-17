@@ -370,14 +370,16 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
 
     private Task RefreshAllAsync() => RefreshStateAsync(includeHistory: true);
 
-    private async Task RefreshStateAsync(bool includeHistory)
+    private async Task RefreshStateAsync(bool includeHistory, bool localOnly = false)
     {
         if (Repository is null) return;
         EnterBusy();
         try
         {
             var repository = Repository;
-            var state = await _stateService.ReadAsync(repository);
+            var state = localOnly
+                ? await _stateService.ReadLocalOnlyAsync(repository)
+                : await _stateService.ReadAsync(repository);
             if (!ReferenceEquals(repository, Repository)) return;
 
             var shortHead = state.HeadCommit is { } commit ? commit[..Math.Min(10, commit.Length)] : "no commit";
@@ -413,7 +415,12 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task<bool> MutateAsync(Func<Task> mutation, string? errorContext = null, Action? beforeMutation = null, bool includeHistory = true)
+    private async Task<bool> MutateAsync(
+        Func<Task> mutation,
+        string? errorContext = null,
+        Action? beforeMutation = null,
+        bool includeHistory = true,
+        bool localOnlyRefresh = false)
     {
         var succeeded = false;
         if (!await _mutationGate.WaitAsync(0)) return false;
@@ -427,7 +434,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
             Exception? failure = null;
             try { await mutation(); }
             catch (Exception exception) when (exception is not OperationCanceledException) { failure = exception; }
-            try { await RefreshStateAsync(includeHistory); }
+            try { await RefreshStateAsync(includeHistory, localOnlyRefresh); }
             catch (Exception exception) when (exception is not OperationCanceledException) { failure ??= exception; }
             if (failure is not null)
                 ErrorMessage = errorContext is null ? $"Git: {failure.Message}" : $"{errorContext}\nGit: {failure.Message}";

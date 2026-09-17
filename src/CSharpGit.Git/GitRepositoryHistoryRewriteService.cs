@@ -121,6 +121,15 @@ public sealed class GitRepositoryHistoryRewriteService : IRepositoryHistoryRewri
                 backupPath);
         }
 
+        var topologyAfterBackup = await ReadTopologySnapshotAsync(repository, cancellationToken);
+        if (!TopologyEqual(topology, topologyAfterBackup))
+        {
+            throw Failure(
+                HistoryRewriteFailureKind.RepositoryChangedDuringBackup,
+                "The repository configuration changed while the safety backup was being created. History rewrite was not started.",
+                backupPath);
+        }
+
         cancellationToken.ThrowIfCancellationRequested();
 
         try
@@ -399,8 +408,10 @@ public sealed class GitRepositoryHistoryRewriteService : IRepositoryHistoryRewri
         var backupPath = CreateBackupPath(repository);
         try
         {
+            var backupDirectory = Path.GetDirectoryName(backupPath)!;
+            Directory.CreateDirectory(backupDirectory);
             await _executor.ExecuteAsync(
-                Path.GetDirectoryName(backupPath)!,
+                backupDirectory,
                 "HistoryRewriteCreateBackup",
                 GitCommandKind.User,
                 cancellationToken,
@@ -451,15 +462,36 @@ public sealed class GitRepositoryHistoryRewriteService : IRepositoryHistoryRewri
 
     private static string CreateBackupPath(Repository repository)
     {
-        var applicationData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        if (string.IsNullOrWhiteSpace(applicationData))
-        {
-            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            applicationData = Path.Combine(userProfile, ".local", "share");
-        }
+        var candidates = new List<string>();
 
-        var backupRoot = Path.Combine(applicationData, "CSharpGit", "HistoryBackups");
-        Directory.CreateDirectory(backupRoot);
+        var localApplicationData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (!string.IsNullOrWhiteSpace(localApplicationData))
+            candidates.Add(Path.Combine(localApplicationData, "CSharpGit", "HistoryBackups"));
+
+        var applicationData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        if (!string.IsNullOrWhiteSpace(applicationData))
+            candidates.Add(Path.Combine(applicationData, "CSharpGit", "HistoryBackups"));
+
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrWhiteSpace(userProfile))
+            candidates.Add(Path.Combine(userProfile, ".local", "share", "CSharpGit", "HistoryBackups"));
+
+        var repositoryParent = Directory.GetParent(Path.TrimEndingDirectorySeparator(repository.RepositoryRoot))?.FullName;
+        if (!string.IsNullOrWhiteSpace(repositoryParent))
+            candidates.Add(Path.Combine(repositoryParent, ".CSharpGit-HistoryBackups"));
+
+        var backupRoot = candidates
+            .Distinct(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal)
+            .FirstOrDefault(candidate =>
+                !IsPathWithin(candidate, repository.RepositoryRoot)
+                && !IsPathWithin(candidate, repository.GitDirectory));
+
+        if (backupRoot is null)
+        {
+            throw Failure(
+                HistoryRewriteFailureKind.BackupCreationFailed,
+                "No persistent safety-backup location is available outside the repository. History rewrite was not started.");
+        }
 
         var rawName = new DirectoryInfo(repository.RepositoryRoot).Name;
         var invalid = Path.GetInvalidFileNameChars().ToHashSet();
@@ -469,6 +501,21 @@ public sealed class GitRepositoryHistoryRewriteService : IRepositoryHistoryRewri
         return Path.Combine(
             backupRoot,
             $"{safeName}-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.git");
+    }
+
+    private static bool IsPathWithin(string path, string directory)
+    {
+        var fullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+        var fullDirectory = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+
+        if (string.Equals(fullPath, fullDirectory, comparison)) return true;
+
+        return fullPath.StartsWith(
+            fullDirectory + Path.DirectorySeparatorChar,
+            comparison);
     }
 
     private async Task<TopologySnapshot> ReadTopologySnapshotAsync(
@@ -734,6 +781,10 @@ public sealed class GitRepositoryHistoryRewriteService : IRepositoryHistoryRewri
 
         return true;
     }
+
+    private static bool TopologyEqual(TopologySnapshot left, TopologySnapshot right) =>
+        DictionaryEqual(left.SymbolicRefs, right.SymbolicRefs)
+        && left.Configuration.SequenceEqual(right.Configuration, StringComparer.Ordinal);
 
     private static bool DictionaryEqual(
         IReadOnlyDictionary<string, string?> left,

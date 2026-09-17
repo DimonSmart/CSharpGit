@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 
 namespace CSharpGit.Git.Tests;
@@ -55,6 +56,28 @@ public sealed class DefaultBranchTests : IDisposable
         var tracking = await services.State.ReadAsync(repository);
 
         Assert.True(tracking.Refs.LocalBranches.Single(branch => branch.Name == "release/candidate").IsDefault);
+    }
+
+    [Fact]
+    public async Task LocalOnlyStateReadDoesNotQueryRemoteWhenRemoteHeadIsMissing()
+    {
+        var fixture = CreateFixture("develop");
+        RunGit(fixture.Work, "remote", "set-head", "origin", "--delete");
+
+        var activity = new RecordingActivitySink();
+        var executor = new GitCommandExecutor(new GitCliOptions(), activity);
+        var inner = new GitCliRepositoryService(executor);
+        var stateService = new DefaultBranchRepositoryStateService(
+            inner,
+            new DefaultBranchResolver(executor));
+        var repository = await inner.OpenAsync(fixture.Work);
+
+        var state = await stateService.ReadLocalOnlyAsync(repository);
+
+        Assert.DoesNotContain(
+            activity.Commands,
+            arguments => arguments.Count > 0 && string.Equals(arguments[0], "ls-remote", StringComparison.Ordinal));
+        Assert.DoesNotContain(state.Refs.RemoteBranches, branch => branch.IsDefault);
     }
 
     [Fact]
@@ -134,6 +157,37 @@ public sealed class DefaultBranchTests : IDisposable
         process.WaitForExit();
         if (process.ExitCode != 0)
             throw new InvalidOperationException($"Git failed: {stderr}{stdout}");
+    }
+
+    private sealed class RecordingActivitySink : IGitCommandActivitySink
+    {
+        public List<IReadOnlyList<string>> Commands { get; } = [];
+
+        public Guid Started(
+            string executable,
+            string workingDirectory,
+            IReadOnlyList<string> arguments,
+            GitCommandKind commandKind)
+        {
+            Commands.Add(arguments.ToArray());
+            return Guid.NewGuid();
+        }
+
+        public void Completed(
+            Guid id,
+            int exitCode,
+            string standardOutput,
+            string standardError)
+        {
+        }
+
+        public void Cancelled(
+            Guid id,
+            int? exitCode,
+            string standardOutput,
+            string standardError)
+        {
+        }
     }
 
     private sealed record Fixture(string Remote, string Seed, string Work);
