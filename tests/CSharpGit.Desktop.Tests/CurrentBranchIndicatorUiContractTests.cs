@@ -16,7 +16,7 @@ public sealed class CurrentBranchIndicatorUiContractTests
         Assert.Contains("NameFontWeight => IsCurrent", node, StringComparison.Ordinal);
         Assert.Contains("FontWeights.Bold", node, StringComparison.Ordinal);
         Assert.Contains("CurrentBranchAccentVisibility => IsCurrent", node, StringComparison.Ordinal);
-        Assert.Contains("CurrentLocalBranchIconVisibility", node, StringComparison.Ordinal);
+        Assert.DoesNotContain("CurrentLocalBranchIconVisibility", node, StringComparison.Ordinal);
         Assert.Contains("Kind is RepositoryTreeNodeKind.LocalBranch or RepositoryTreeNodeKind.Worktree", node, StringComparison.Ordinal);
         Assert.Contains("adjustedSegments[^1] = RepositoryTreeGuideSegmentKind.Empty", node, StringComparison.Ordinal);
         Assert.DoesNotContain("✓", node, StringComparison.Ordinal);
@@ -26,7 +26,7 @@ public sealed class CurrentBranchIndicatorUiContractTests
         Assert.Contains("Background=\"{ThemeResource AccentFillColorDefaultBrush}\"", repositoryTree, StringComparison.Ordinal);
         Assert.Contains("Opacity=\"0.12\"", repositoryTree, StringComparison.Ordinal);
         Assert.DoesNotContain("Margin=\"4,0,0,0\"", repositoryTree, StringComparison.Ordinal);
-        Assert.Contains("Visibility=\"{Binding CurrentLocalBranchIconVisibility}\"", repositoryTree, StringComparison.Ordinal);
+        Assert.DoesNotContain("Visibility=\"{Binding CurrentLocalBranchIconVisibility}\"", repositoryTree, StringComparison.Ordinal);
         Assert.Contains("IsHitTestVisible=\"False\"", repositoryTree, StringComparison.Ordinal);
 
         Assert.Contains("SelectionMode=\"Single\"", mainPage, StringComparison.Ordinal);
