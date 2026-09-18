@@ -15,8 +15,8 @@ public sealed class ReferenceBadgeUiContractTests
         var designTokens = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "DesignTokens.xaml"));
 
         Assert.Contains("<Style x:Key=\"ReferenceBadgeStyle\" TargetType=\"Border\">", workspace, StringComparison.Ordinal);
-        Assert.Contains("Property=\"Background\" Value=\"Transparent\"", workspace, StringComparison.Ordinal);
-        Assert.Contains("Property=\"BorderBrush\" Value=\"{ThemeResource ControlStrokeColorDefaultBrush}\"", workspace, StringComparison.Ordinal);
+        Assert.Contains("Property=\"Background\" Value=\"{ThemeResource ControlSolidFillColorDefaultBrush}\"", workspace, StringComparison.Ordinal);
+        Assert.Contains("Property=\"BorderBrush\" Value=\"{ThemeResource ControlStrongStrokeColorDefaultBrush}\"", workspace, StringComparison.Ordinal);
         Assert.Contains("Property=\"BorderThickness\" Value=\"1\"", workspace, StringComparison.Ordinal);
         Assert.Contains("Property=\"CornerRadius\" Value=\"4\"", workspace, StringComparison.Ordinal);
         Assert.Contains("Property=\"Padding\" Value=\"{StaticResource Padding.ReferenceBadge}\"", workspace, StringComparison.Ordinal);
@@ -26,7 +26,9 @@ public sealed class ReferenceBadgeUiContractTests
         Assert.Contains("<Border Style=\"{StaticResource ReferenceBadgeStyle}\">", historyReferences, StringComparison.Ordinal);
         Assert.Contains("Text=\"reflog\" Style=\"{StaticResource ReferenceBadgeTextStyle}\"", historyReferences, StringComparison.Ordinal);
         Assert.Contains("<Style x:Key=\"ReferenceBadgeTextStyle\" TargetType=\"TextBlock\" BasedOn=\"{StaticResource CaptionTextStyle}\">", typography, StringComparison.Ordinal);
-        Assert.Contains("Property=\"Opacity\" Value=\"0.9\"", typography, StringComparison.Ordinal);
+        Assert.Contains("Property=\"Foreground\" Value=\"{ThemeResource TextFillColorPrimaryBrush}\"", typography, StringComparison.Ordinal);
+        Assert.Contains("Property=\"Opacity\" Value=\"1\"", typography, StringComparison.Ordinal);
+        Assert.Contains("Property=\"FontWeight\" Value=\"SemiBold\"", typography, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource ReferenceBadgeTextStyle}\"", historyReferenceBadge, StringComparison.Ordinal);
 
         Assert.Contains("<controls:CommitDetailsView x:Name=\"CommitDetailsContent\" />", mainPage, StringComparison.Ordinal);
