@@ -41,7 +41,7 @@
       <ItemsControl.ItemTemplate>
         <DataTemplate>
           <Border Style="{StaticResource ReferenceBadgeStyle}">
-            <TextBlock Text="{Binding}" Style="{StaticResource CaptionTextStyle}" />
+            <TextBlock Text="{Binding}" Style="{StaticResource ReferenceBadgeTextStyle}" />
           </Border>
         </DataTemplate>
       </ItemsControl.ItemTemplate>
