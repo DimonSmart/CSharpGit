@@ -15,7 +15,7 @@
               Visibility="Collapsed"
               VerticalAlignment="Center" />
     <TextBlock x:Name="ReferenceText"
-               Style="{StaticResource CaptionTextStyle}"
+               Style="{StaticResource ReferenceBadgeTextStyle}"
                VerticalAlignment="Center" />
   </StackPanel>
 </UserControl>

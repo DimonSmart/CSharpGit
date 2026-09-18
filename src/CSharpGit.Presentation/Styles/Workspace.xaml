@@ -19,7 +19,7 @@
   <Thickness x:Key="Padding.CompactPivotHeader">8,0</Thickness>
 
   <Style x:Key="ReferenceBadgeStyle" TargetType="Border">
-    <Setter Property="Background" Value="{ThemeResource ControlFillColorDefaultBrush}" />
+    <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="4" />

@@ -31,7 +31,7 @@
                 Margin="{StaticResource Margin.ReferenceList}"
                 Visibility="{Binding IsReflogOnly, Converter={StaticResource BooleanToVisibilityConverter}}"
                 ToolTipService.ToolTip="This commit is not reachable from normal repository refs and is currently reachable through Git reflog.">
-          <TextBlock Text="reflog" Style="{StaticResource CaptionTextStyle}" />
+          <TextBlock Text="reflog" Style="{StaticResource ReferenceBadgeTextStyle}" />
         </Border>
         <ItemsControl Grid.Column="2"
                       ItemsSource="{Binding Commit.References}"
