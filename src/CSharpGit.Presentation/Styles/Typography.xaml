@@ -24,7 +24,9 @@
   </Style>
 
   <Style x:Key="ReferenceBadgeTextStyle" TargetType="TextBlock" BasedOn="{StaticResource CaptionTextStyle}">
-    <Setter Property="Opacity" Value="0.9" />
+    <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
 
   <Style x:Key="CaptionStrongTextStyle" TargetType="TextBlock" BasedOn="{StaticResource CaptionTextStyle}">
