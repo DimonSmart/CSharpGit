@@ -103,7 +103,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
         {
             ErrorMessage = null;
             return Task.CompletedTask;
-        });
+        }, () => true);
         SwitchBranchCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.SwitchBranchAsync(Repository!, SelectedLocalBranch!.Name)), () => CanMutate() && SelectedLocalBranch is not null);
         CreateBranchCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.CreateBranchAsync(Repository!, NewBranchName)), () => CanMutate() && !string.IsNullOrWhiteSpace(NewBranchName));
         DeleteBranchCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.DeleteBranchAsync(Repository!, SelectedLocalBranch!.Name)), () => CanMutate() && SelectedLocalBranch is { IsCurrent: false });
