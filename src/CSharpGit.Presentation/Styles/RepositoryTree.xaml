@@ -57,10 +57,6 @@
               <FontIcon Glyph="&#xE80F;"
                         FontSize="{StaticResource Icon.Normal}"
                         Foreground="{ThemeResource AccentFillColorDefaultBrush}"
-                        Visibility="{Binding CurrentLocalBranchIconVisibility}" />
-              <FontIcon Glyph="&#xE80F;"
-                        FontSize="{StaticResource Icon.Normal}"
-                        Foreground="{ThemeResource AccentFillColorDefaultBrush}"
                         Visibility="{Binding LocalDefaultBranchIconVisibility}" />
               <FontIcon Glyph="&#xE80F;"
                         FontSize="{StaticResource Icon.Normal}"

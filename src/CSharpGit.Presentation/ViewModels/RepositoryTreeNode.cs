@@ -92,12 +92,8 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
         _ => null
     };
     public Visibility IconVisibility => IconGlyph is null ? Visibility.Collapsed : Visibility.Visible;
-    public Visibility CurrentLocalBranchIconVisibility =>
-        Kind == RepositoryTreeNodeKind.LocalBranch && IsCurrent
-            ? Visibility.Visible
-            : Visibility.Collapsed;
     public Visibility LocalDefaultBranchIconVisibility =>
-        Kind == RepositoryTreeNodeKind.LocalBranch && !IsCurrent && Value is GitBranch { IsDefault: true }
+        Kind == RepositoryTreeNodeKind.LocalBranch && Value is GitBranch { IsDefault: true }
             ? Visibility.Visible
             : Visibility.Collapsed;
     public Visibility RemoteDefaultBranchIconVisibility =>
@@ -106,7 +102,6 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
             : Visibility.Collapsed;
     public Visibility LeadingIconVisibility =>
         IconVisibility == Visibility.Visible
-        || CurrentLocalBranchIconVisibility == Visibility.Visible
         || LocalDefaultBranchIconVisibility == Visibility.Visible
         || RemoteDefaultBranchIconVisibility == Visibility.Visible
             ? Visibility.Visible
@@ -147,7 +142,6 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
             Notify(nameof(IsCurrent));
             Notify(nameof(NameFontWeight));
             Notify(nameof(CurrentBranchAccentVisibility));
-            Notify(nameof(CurrentLocalBranchIconVisibility));
         }
         if (!string.Equals(oldAssociatedWorktreePath, AssociatedWorktreePath, StringComparison.Ordinal))
             Notify(nameof(AssociatedWorktreePath));
@@ -199,7 +193,7 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
             : _baseName;
 
     private bool IsLocalDefaultBranchVisible() =>
-        Kind == RepositoryTreeNodeKind.LocalBranch && !IsCurrent && Value is GitBranch { IsDefault: true };
+        Kind == RepositoryTreeNodeKind.LocalBranch && Value is GitBranch { IsDefault: true };
 
     private bool IsRemoteDefaultBranchVisible() =>
         Kind == RepositoryTreeNodeKind.RemoteBranch && Value is GitBranch { IsDefault: true };
