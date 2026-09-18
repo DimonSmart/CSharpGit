@@ -99,6 +99,11 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
         StageAllAndCommitCommand = new AsyncCommand(StageAllAndCommitAsync, () => CanBulkMutate() && IsEmptyIndexChoiceOpen);
         ConfirmEmptyCommitCommand = new AsyncCommand(ConfirmEmptyCommitAsync, () => CanMutate() && IsEmptyIndexChoiceOpen);
         CancelCommitCommand = new AsyncCommand(CancelCommitAsync, () => IsEmptyIndexChoiceOpen);
+        DismissErrorCommand = new AsyncCommand(() =>
+        {
+            ErrorMessage = null;
+            return Task.CompletedTask;
+        });
         SwitchBranchCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.SwitchBranchAsync(Repository!, SelectedLocalBranch!.Name)), () => CanMutate() && SelectedLocalBranch is not null);
         CreateBranchCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.CreateBranchAsync(Repository!, NewBranchName)), () => CanMutate() && !string.IsNullOrWhiteSpace(NewBranchName));
         DeleteBranchCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.DeleteBranchAsync(Repository!, SelectedLocalBranch!.Name)), () => CanMutate() && SelectedLocalBranch is { IsCurrent: false });
@@ -150,6 +155,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
     public ICommand StageAllAndCommitCommand { get; }
     public ICommand ConfirmEmptyCommitCommand { get; }
     public ICommand CancelCommitCommand { get; }
+    public ICommand DismissErrorCommand { get; }
     public ICommand SwitchBranchCommand { get; }
     public ICommand CreateBranchCommand { get; }
     public ICommand DeleteBranchCommand { get; }

@@ -628,7 +628,8 @@
              Severity="Error"
              Title="Error"
              Message="{Binding ErrorMessage}"
-             IsClosable="False"
+             IsClosable="True"
+             CloseButtonCommand="{Binding DismissErrorCommand}"
              VerticalAlignment="Bottom"
              Margin="16,0,16,26" />
   </Grid>
