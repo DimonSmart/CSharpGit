@@ -11,6 +11,7 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
+    private const double RepositoryMaintenanceContentWidth = 460;
     private IRepositoryMaintenanceService? _repositoryMaintenanceService;
     private bool _repositoryMaintenanceInProgress;
 
@@ -218,7 +219,7 @@ public sealed partial class MainPage
         var content = new StackPanel
         {
             Spacing = 12,
-            MinWidth = 520
+            Width = RepositoryMaintenanceContentWidth
         };
 
         content.Children.Add(new TextBlock
@@ -335,7 +336,7 @@ public sealed partial class MainPage
     {
         var grid = new Grid
         {
-            ColumnSpacing = 24,
+            ColumnSpacing = 16,
             RowSpacing = 4
         };
 
@@ -448,7 +449,7 @@ public sealed partial class MainPage
         var content = new StackPanel
         {
             Spacing = 12,
-            MinWidth = 520
+            Width = RepositoryMaintenanceContentWidth
         };
 
         if (after is not null)

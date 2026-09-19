@@ -71,6 +71,17 @@ public sealed class RepositoryMaintenanceUiContractTests
     }
 
     [Fact]
+    public void StatisticsContentFitsWithinContentDialog()
+    {
+        var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
+
+        Assert.Contains("RepositoryMaintenanceContentWidth = 460", source, StringComparison.Ordinal);
+        Assert.Contains("Width = RepositoryMaintenanceContentWidth", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("MinWidth = 520", source, StringComparison.Ordinal);
+        Assert.Contains("ColumnSpacing = 16", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void FailureUsesExistingGitConsole()
     {
         var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
