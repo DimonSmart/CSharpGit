@@ -51,3 +51,4 @@ opened.
 | IDD-0029 | Spec | Branch rename | Local branch rename from Repository Tree with Git-native semantics, scoped-history continuity and worktree refresh | — |
 | IDD-0030 | Spec | Edit commit message | Safe HEAD amend and linear-history reword with deterministic rewritten-commit selection | — |
 | IDD-0031 | Spec | Repository history rewrite | Local exact-path removal with git-filter-repo, verified safety backup, topology preservation and in-place refresh | — |
+| IDD-0032 | Spec | Repository maintenance | Explicit repository GC with typed options, before/after object-storage statistics and serialized local refresh | — |

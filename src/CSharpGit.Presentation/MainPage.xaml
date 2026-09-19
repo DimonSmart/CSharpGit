@@ -169,6 +169,11 @@
             <Button.Flyout>
               <MenuFlyout>
                 <MenuFlyoutItem Text="More Git operations…" Click="MoreOperations_Click" />
+                <MenuFlyoutItem x:Name="OptimizeRepositoryMenuItem"
+                                Text="Optimize repository…"
+                                Click="OptimizeRepository_Click"
+                                IsEnabled="False" />
+                <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Settings…" Click="Settings_Click" />
               </MenuFlyout>
             </Button.Flyout>

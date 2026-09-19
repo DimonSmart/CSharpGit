@@ -134,7 +134,8 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         _window.AppWindow.Closing += (sender, eventArgs) =>
         {
             var page = _window.Content as MainPage;
-            if (page?.IsHistoryRewriteInProgress == true)
+            if (page?.IsHistoryRewriteInProgress == true
+                || page?.IsRepositoryMaintenanceInProgress == true)
             {
                 eventArgs.Cancel = true;
                 return;
