@@ -43,7 +43,7 @@ public sealed partial class MainPage
         });
     }
 
-    private async Task RefreshWorktreePresentationAsync()
+    private async Task RefreshWorktreePresentationAsync(bool throwOnError = false)
     {
         if (_worktreeService is null) return;
         var repository = _viewModel.Repository;
@@ -60,10 +60,10 @@ public sealed partial class MainPage
             _worktrees = worktrees;
             SynchronizeWorktreePresentation();
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (!throwOnError)
         {
         }
-        catch (Exception exception)
+        catch (Exception exception) when (!throwOnError)
         {
             Debug.WriteLine($"Could not refresh worktrees: {exception}");
         }
