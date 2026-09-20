@@ -8,10 +8,15 @@ internal enum RepositoryInvalidationSource
     GitMetadata
 }
 
-internal sealed record RepositoryInvalidatedEventArgs(
-    long Generation,
-    RepositoryInvalidationSource Source,
-    string? Path) : EventArgs;
+internal sealed class RepositoryInvalidatedEventArgs(
+    long generation,
+    RepositoryInvalidationSource source,
+    string? path) : EventArgs
+{
+    public long Generation { get; } = generation;
+    public RepositoryInvalidationSource Source { get; } = source;
+    public string? Path { get; } = path;
+}
 
 internal sealed class RepositoryChangeMonitor : IDisposable
 {
