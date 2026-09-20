@@ -190,7 +190,6 @@ public sealed partial class MainPage
                     return;
                 }
 
-                AcknowledgeRepositoryRefresh();
                 ShowRepositoryMaintenanceSuccessState(
                     dialog,
                     before,
