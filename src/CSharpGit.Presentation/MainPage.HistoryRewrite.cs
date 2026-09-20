@@ -169,7 +169,6 @@ public sealed partial class MainPage
 
             if (succeeded && result is not null)
             {
-                AcknowledgeRepositoryRefresh();
                 await _viewModel.SelectHistoryCommitAfterRewriteAsync(result.HeadObjectId);
                 await ShowHistoryRewriteSuccessAsync(analysis, result);
             }
