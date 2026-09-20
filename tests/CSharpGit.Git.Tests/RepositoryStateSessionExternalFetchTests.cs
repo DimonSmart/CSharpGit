@@ -10,7 +10,7 @@ public sealed class RepositoryStateSessionExternalFetchTests : IDisposable
         Path.Combine(Path.GetTempPath(), $"csharpgit-external-fetch-{Guid.NewGuid():N}");
 
     [Fact]
-    public async Task ExternalFetchPublishesRemoteRefChangeThroughPolling()
+    public async Task ExternalFetchIsObservedAfterExplicitSessionRefresh()
     {
         var observedDirectory = Path.Combine(_temporaryDirectory, "observed");
         var producerDirectory = Path.Combine(_temporaryDirectory, "producer");
@@ -46,20 +46,13 @@ public sealed class RepositoryStateSessionExternalFetchTests : IDisposable
             commitA,
             Assert.Single(session.Current.Refs.RemoteBranches, branch => branch.Name == "origin/main").Commit);
 
-        var changed = new TaskCompletionSource<RepositoryState>(TaskCreationOptions.RunContinuationsAsynchronously);
-        session.StateChanged += (_, state) =>
-        {
-            if (state.Refs.RemoteBranches.Any(branch =>
-                    branch.Name == "origin/main" &&
-                    StringComparer.Ordinal.Equals(branch.Commit, commitB)))
-            {
-                changed.TrySetResult(state);
-            }
-        };
-
         RunGit(observedDirectory, "fetch", "origin");
+        Assert.Equal(
+            commitA,
+            Assert.Single(session.Current.Refs.RemoteBranches, branch => branch.Name == "origin/main").Commit);
 
-        var observed = await changed.Task.WaitAsync(TimeSpan.FromSeconds(7));
+        await session.RefreshAsync();
+        var observed = session.Current;
 
         Assert.Equal(commitA, observed.HeadCommit);
         Assert.Equal(commitA, session.Current.HeadCommit);
