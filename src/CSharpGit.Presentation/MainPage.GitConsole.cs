@@ -23,7 +23,7 @@ public sealed partial class MainPage
     private RowDefinition? _gitConsoleRow;
     private double _lastGitConsoleHeight = DefaultGitConsoleHeight;
     private bool _gitConsoleInitialized;
-    private bool _gitConsoleOpen;
+    private volatile bool _gitConsoleOpen;
 
     internal void InitializeGitConsole(
         IGitCommandActivitySource activitySource,
@@ -37,9 +37,10 @@ public sealed partial class MainPage
         _gitConsoleSettings = settings;
 
         BuildGitConsoleLayout();
+        _gitConsoleView?.SetActivityResolver(activitySource.Get);
         activitySource.Changed += GitCommandActivitySource_Changed;
         RootLayout.KeyDown += GitConsole_KeyDown;
-        RefreshGitConsole();
+        UpdateGitCommandStatus();
     }
 
     private void BuildGitConsoleLayout()
@@ -72,7 +73,7 @@ public sealed partial class MainPage
 
         _gitConsoleView = new GitConsoleView { Visibility = Visibility.Collapsed };
         _gitConsoleView.CloseRequested += (_, _) => CloseGitConsole();
-        _gitConsoleView.FilterChanged += (_, _) => RefreshGitConsole();
+        _gitConsoleView.FilterChanged += (_, _) => RebuildGitConsole();
         Grid.SetRow(_gitConsoleView, 4);
         RepositoryWorkspace.Children.Add(_gitConsoleView);
 
@@ -104,24 +105,60 @@ public sealed partial class MainPage
 
     private void GitCommandActivitySource_Changed(object? sender, GitCommandActivityChangedEventArgs e)
     {
-        DispatcherQueue.TryEnqueue(() =>
+        if (e.ChangeKind == GitCommandActivityChangeKind.Output)
         {
-            RefreshGitConsole(e.Activity.Id);
+            if (!_gitConsoleOpen || _gitConsoleView is null || e.OutputStream is not { } stream)
+                return;
 
-            if (e.Activity.CommandKind != GitCommandKind.User || _gitConsoleSettings is null) return;
-            var shouldOpen =
-                (_gitConsoleSettings.GitConsoleAutoOpenMode == GitConsoleAutoOpenMode.Always && e.Activity.Status == GitCommandStatus.Running) ||
-                (_gitConsoleSettings.GitConsoleAutoOpenMode == GitConsoleAutoOpenMode.OnErrors && e.Activity.Status == GitCommandStatus.Failed);
-            if (shouldOpen)
-                OpenGitConsole(e.Activity.Id, manualOpen: false);
-        });
+            _gitConsoleView.QueueOutput(
+                e.ActivityId,
+                stream,
+                e.OutputChunk ?? string.Empty,
+                e.OutputRequiresResync);
+            return;
+        }
+
+        DispatcherQueue.TryEnqueue(() => ApplyGitCommandLifecycleChange(e));
     }
 
-    private void RefreshGitConsole(Guid? preferredSelection = null)
+    private void ApplyGitCommandLifecycleChange(GitCommandActivityChangedEventArgs e)
     {
-        if (_gitCommandActivitySource is null || _gitConsoleView is null) return;
-        var filter = _gitConsoleView.Filter;
-        _gitConsoleView.SetActivities(_gitCommandActivitySource.GetSnapshot(filter), preferredSelection);
+        if (e.Activity is not { } activity || _gitCommandActivitySource is null) return;
+
+        if (_gitConsoleOpen && _gitConsoleView is not null)
+        {
+            if (e.ChangeKind == GitCommandActivityChangeKind.Started)
+                _gitConsoleView.ApplyStarted(activity, e.EvictedActivityId);
+            else
+                _gitConsoleView.ApplyLifecycle(activity, e.EvictedActivityId);
+        }
+
+        if (ShouldUpdateGitCommandStatus(e))
+            UpdateGitCommandStatus();
+
+        if (activity.CommandKind != GitCommandKind.User || _gitConsoleSettings is null) return;
+        var shouldOpen =
+            (_gitConsoleSettings.GitConsoleAutoOpenMode == GitConsoleAutoOpenMode.Always &&
+             e.ChangeKind == GitCommandActivityChangeKind.Started) ||
+            (_gitConsoleSettings.GitConsoleAutoOpenMode == GitConsoleAutoOpenMode.OnErrors &&
+             activity.Status == GitCommandStatus.Failed);
+        if (shouldOpen)
+            OpenGitConsole(activity.Id, manualOpen: false);
+    }
+
+    private bool ShouldUpdateGitCommandStatus(GitCommandActivityChangedEventArgs e)
+    {
+        if (_gitCommandActivitySource is null) return false;
+        var filter = _gitConsoleView?.Filter ?? GitCommandFilter.UserCommands;
+        if (filter == GitCommandFilter.AllCommands) return true;
+        if (e.CommandKind == GitCommandKind.User || e.EvictedCommandKind == GitCommandKind.User) return true;
+        return _gitCommandActivitySource.GetLatest(GitCommandFilter.UserCommands) is null;
+    }
+
+    private void RebuildGitConsole(Guid? preferredSelection = null)
+    {
+        if (!_gitConsoleOpen || _gitCommandActivitySource is null || _gitConsoleView is null) return;
+        _gitConsoleView.SetActivities(_gitCommandActivitySource.GetSnapshot(_gitConsoleView.Filter), preferredSelection);
         UpdateGitCommandStatus();
     }
 
@@ -172,6 +209,13 @@ public sealed partial class MainPage
         if (_gitCommandActivitySource is null || _gitConsoleView is null ||
             _gitConsoleSplitter is null || _gitConsoleSplitterRow is null || _gitConsoleRow is null) return;
 
+        if (_gitConsoleOpen)
+        {
+            if (preferredSelection is { } alreadyOpenId)
+                _gitConsoleView.SelectActivity(alreadyOpenId);
+            return;
+        }
+
         if (manualOpen && preferredSelection is null)
         {
             var latestUser = _gitCommandActivitySource.GetLatest(GitCommandFilter.UserCommands);
@@ -181,7 +225,8 @@ public sealed partial class MainPage
                 _gitConsoleView.SetFilter(GitCommandFilter.AllCommands);
         }
         else if (preferredSelection is { } selectedId &&
-                 !_gitCommandActivitySource.GetSnapshot(_gitConsoleView.Filter).Any(activity => activity.Id == selectedId))
+                 _gitCommandActivitySource.Get(selectedId) is { CommandKind: GitCommandKind.Internal } &&
+                 _gitConsoleView.Filter == GitCommandFilter.UserCommands)
         {
             _gitConsoleView.SetFilter(GitCommandFilter.AllCommands);
         }
@@ -192,7 +237,8 @@ public sealed partial class MainPage
         _gitConsoleRow.Height = new GridLength(Math.Clamp(_lastGitConsoleHeight, 140, 600));
         _gitConsoleSplitter.Visibility = Visibility.Visible;
         _gitConsoleView.Visibility = Visibility.Visible;
-        RefreshGitConsole(preferredSelection);
+        _gitConsoleView.SetActive(true);
+        RebuildGitConsole(preferredSelection);
         if (preferredSelection is { } id)
             _gitConsoleView.SelectActivity(id);
     }
@@ -205,6 +251,7 @@ public sealed partial class MainPage
         if (_gitConsoleRow.ActualHeight >= 140)
             _lastGitConsoleHeight = _gitConsoleRow.ActualHeight;
         _gitConsoleOpen = false;
+        _gitConsoleView.SetActive(false);
         _gitConsoleView.Visibility = Visibility.Collapsed;
         _gitConsoleSplitter.Visibility = Visibility.Collapsed;
         _gitConsoleSplitterRow.Height = new GridLength(0);
