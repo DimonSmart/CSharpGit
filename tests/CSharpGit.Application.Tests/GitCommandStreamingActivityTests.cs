@@ -119,20 +119,22 @@ public sealed class GitCommandStreamingActivityTests
     }
 
     [Fact]
-    public void ChangedCallbacksRunOutsideHistoryLock()
+    public async Task ChangedCallbacksRunOutsideHistoryLock()
     {
         var history = new GitCommandActivityHistory();
         var callbackCompleted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         history.Changed += (_, _) =>
         {
-            var task = Task.Run(() => history.GetSnapshot(GitCommandFilter.AllCommands));
-            if (task.Wait(TimeSpan.FromSeconds(2)))
+            _ = Task.Run(() =>
+            {
+                history.GetSnapshot(GitCommandFilter.AllCommands);
                 callbackCompleted.TrySetResult(true);
+            });
         };
 
         history.Started("git", "/repo", ["status"], GitCommandKind.Internal);
 
-        Assert.True(callbackCompleted.Task.Wait(TimeSpan.FromSeconds(2)));
+        Assert.True(await callbackCompleted.Task.WaitAsync(TimeSpan.FromSeconds(2)));
     }
 
     private static int CountOccurrences(string value, string token) =>
