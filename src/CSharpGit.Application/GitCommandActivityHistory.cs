@@ -8,10 +8,11 @@ public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCom
 {
     public const int MaximumHistoryEntries = 100;
     public const int MaximumOutputBytes = 1024 * 1024;
-    private const string TruncationMarker = "\n[output truncated]\n";
+    internal const string TruncationMarker = "\n[output truncated]\n";
 
     private readonly object _sync = new();
-    private readonly List<GitCommandActivity> _entries = [];
+    private readonly List<ActivityState> _entries = [];
+    private readonly Dictionary<Guid, ActivityState> _byId = [];
 
     public event EventHandler<GitCommandActivityChangedEventArgs>? Changed;
 
@@ -25,42 +26,78 @@ public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCom
         ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
         ArgumentNullException.ThrowIfNull(arguments);
 
-        var startedAt = DateTimeOffset.UtcNow;
         var safeArguments = GitCommandFormatter.SanitizeArguments(arguments);
-        var activity = new GitCommandActivity(
+        var state = new ActivityState(
             Guid.NewGuid(),
-            startedAt,
-            null,
-            TimeSpan.Zero,
+            DateTimeOffset.UtcNow,
             workingDirectory,
             GitCommandFormatter.DisplayExecutable(executable),
             safeArguments,
             GitCommandFormatter.Format(executable, safeArguments, argumentsAreSanitized: true),
-            commandKind,
-            null,
-            string.Empty,
-            string.Empty,
-            GitCommandStatus.Running,
-            false,
-            false);
+            commandKind);
 
+        ActivityState? evicted = null;
+        GitCommandActivity snapshot;
         lock (_sync)
         {
-            _entries.Add(activity);
-            while (_entries.Count > MaximumHistoryEntries)
+            _entries.Add(state);
+            _byId.Add(state.Id, state);
+            if (_entries.Count > MaximumHistoryEntries)
+            {
+                evicted = _entries[0];
                 _entries.RemoveAt(0);
+                _byId.Remove(evicted.Id);
+            }
+
+            snapshot = CreateSnapshot(state);
         }
 
-        Changed?.Invoke(this, new GitCommandActivityChangedEventArgs(activity));
-        return activity.Id;
+        Changed?.Invoke(this, new GitCommandActivityChangedEventArgs(
+            snapshot,
+            GitCommandActivityChangeKind.Started,
+            evicted?.Id,
+            evicted?.CommandKind));
+        return state.Id;
     }
 
-    public void Completed(Guid id, int exitCode, string standardOutput, string standardError) =>
-        Finish(id, exitCode, standardOutput, standardError,
-            exitCode == 0 ? GitCommandStatus.Succeeded : GitCommandStatus.Failed);
+    public void OutputReceived(Guid id, GitOutputStream stream, string chunk)
+    {
+        ArgumentNullException.ThrowIfNull(chunk);
+        if (chunk.Length == 0) return;
 
-    public void Cancelled(Guid id, int? exitCode, string standardOutput, string standardError) =>
-        Finish(id, exitCode, standardOutput, standardError, GitCommandStatus.Cancelled);
+        GitCommandActivityChangedEventArgs? eventArgs = null;
+        lock (_sync)
+        {
+            if (!_byId.TryGetValue(id, out var state) || state.Status != GitCommandStatus.Running)
+                return;
+
+            var result = state.GetBuffer(stream).Append(chunk);
+            if (result.Changed)
+            {
+                eventArgs = new GitCommandActivityChangedEventArgs(
+                    id,
+                    state.CommandKind,
+                    stream,
+                    result.PublishedChunk,
+                    result.RequiresResync);
+            }
+        }
+
+        if (eventArgs is not null)
+            Changed?.Invoke(this, eventArgs);
+    }
+
+    public void Completed(Guid id, int exitCode) =>
+        Finish(id, exitCode, exitCode == 0 ? GitCommandStatus.Succeeded : GitCommandStatus.Failed);
+
+    public void Cancelled(Guid id, int? exitCode) =>
+        Finish(id, exitCode, GitCommandStatus.Cancelled);
+
+    public GitCommandActivity? Get(Guid id)
+    {
+        lock (_sync)
+            return _byId.TryGetValue(id, out var state) ? CreateSnapshot(state) : null;
+    }
 
     public IReadOnlyList<GitCommandActivity> GetSnapshot(GitCommandFilter filter = GitCommandFilter.UserCommands)
     {
@@ -68,7 +105,8 @@ public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCom
         {
             return _entries
                 .Where(entry => filter == GitCommandFilter.AllCommands || entry.CommandKind == GitCommandKind.User)
-                .Reverse()
+                .Reverse<ActivityState>()
+                .Select(CreateSnapshot)
                 .ToArray();
         }
     }
@@ -81,55 +119,99 @@ public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCom
             {
                 var entry = _entries[index];
                 if (filter == GitCommandFilter.AllCommands || entry.CommandKind == GitCommandKind.User)
-                    return entry;
+                    return CreateSnapshot(entry);
             }
             return null;
         }
     }
 
-    private void Finish(
-        Guid id,
-        int? exitCode,
-        string standardOutput,
-        string standardError,
-        GitCommandStatus status)
+    private void Finish(Guid id, int? exitCode, GitCommandStatus status)
     {
-        GitCommandActivity? updated = null;
+        GitCommandActivity snapshot;
         lock (_sync)
         {
-            var index = _entries.FindIndex(entry => entry.Id == id);
-            if (index < 0) return;
+            if (!_byId.TryGetValue(id, out var state)) return;
+            if (state.Status != GitCommandStatus.Running) return;
 
-            var current = _entries[index];
             var completedAt = DateTimeOffset.UtcNow;
-            var output = TruncateOutput(standardOutput ?? string.Empty);
-            var error = TruncateOutput(standardError ?? string.Empty);
-            updated = current with
-            {
-                CompletedAt = completedAt,
-                Duration = completedAt - current.StartedAt,
-                ExitCode = exitCode,
-                StandardOutput = output.Text,
-                StandardError = error.Text,
-                Status = status,
-                StandardOutputTruncated = output.Truncated,
-                StandardErrorTruncated = error.Truncated
-            };
-            _entries[index] = updated;
+            state.CompletedAt = completedAt;
+            state.Duration = completedAt - state.StartedAt;
+            state.ExitCode = exitCode;
+            state.Status = status;
+            snapshot = CreateSnapshot(state);
         }
 
-        Changed?.Invoke(this, new GitCommandActivityChangedEventArgs(updated));
+        Changed?.Invoke(this, new GitCommandActivityChangedEventArgs(
+            snapshot,
+            status == GitCommandStatus.Cancelled
+                ? GitCommandActivityChangeKind.Cancelled
+                : GitCommandActivityChangeKind.Completed));
     }
 
-    internal static (string Text, bool Truncated) TruncateOutput(string value)
+    private static GitCommandActivity CreateSnapshot(ActivityState state)
     {
-        var bytes = Encoding.UTF8.GetBytes(value);
-        if (bytes.Length <= MaximumOutputBytes) return (value, false);
+        var duration = state.CompletedAt is null
+            ? DateTimeOffset.UtcNow - state.StartedAt
+            : state.Duration;
 
-        var markerBytes = Encoding.UTF8.GetByteCount(TruncationMarker);
-        var prefixLength = Math.Max(0, MaximumOutputBytes - markerBytes);
-        var prefix = Encoding.UTF8.GetString(bytes, 0, prefixLength);
-        return (prefix + TruncationMarker, true);
+        return new GitCommandActivity(
+            state.Id,
+            state.StartedAt,
+            state.CompletedAt,
+            duration,
+            state.WorkingDirectory,
+            state.Executable,
+            state.Arguments,
+            state.DisplayCommand,
+            state.CommandKind,
+            state.ExitCode,
+            state.StandardOutput.ToString(),
+            state.StandardError.ToString(),
+            state.Status,
+            state.StandardOutput.Truncated,
+            state.StandardError.Truncated);
+    }
+
+    private sealed class ActivityState
+    {
+        public ActivityState(
+            Guid id,
+            DateTimeOffset startedAt,
+            string workingDirectory,
+            string executable,
+            IReadOnlyList<string> arguments,
+            string displayCommand,
+            GitCommandKind commandKind)
+        {
+            Id = id;
+            StartedAt = startedAt;
+            WorkingDirectory = workingDirectory;
+            Executable = executable;
+            Arguments = arguments;
+            DisplayCommand = displayCommand;
+            CommandKind = commandKind;
+        }
+
+        public Guid Id { get; }
+        public DateTimeOffset StartedAt { get; }
+        public DateTimeOffset? CompletedAt { get; set; }
+        public TimeSpan Duration { get; set; }
+        public string WorkingDirectory { get; }
+        public string Executable { get; }
+        public IReadOnlyList<string> Arguments { get; }
+        public string DisplayCommand { get; }
+        public GitCommandKind CommandKind { get; }
+        public int? ExitCode { get; set; }
+        public GitCommandStatus Status { get; set; } = GitCommandStatus.Running;
+        public BoundedUtf8TextBuffer StandardOutput { get; } = new(MaximumOutputBytes, TruncationMarker);
+        public BoundedUtf8TextBuffer StandardError { get; } = new(MaximumOutputBytes, TruncationMarker);
+
+        public BoundedUtf8TextBuffer GetBuffer(GitOutputStream stream) => stream switch
+        {
+            GitOutputStream.StandardOutput => StandardOutput,
+            GitOutputStream.StandardError => StandardError,
+            _ => throw new ArgumentOutOfRangeException(nameof(stream))
+        };
     }
 }
 
