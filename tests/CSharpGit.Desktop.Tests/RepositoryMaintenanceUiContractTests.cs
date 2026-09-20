@@ -66,7 +66,7 @@ public sealed class RepositoryMaintenanceUiContractTests
 
         Assert.Contains("includeHistory: _viewModel.ShowReflog", source, StringComparison.Ordinal);
         Assert.Contains("RefreshWorktreePresentationAsync(throwOnError: true)", source, StringComparison.Ordinal);
-        Assert.Contains("AcknowledgeRepositoryRefresh()", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("AcknowledgeRepositoryRefresh()", source, StringComparison.Ordinal);
         Assert.DoesNotContain("RefreshAllAsync", source, StringComparison.Ordinal);
     }
 
