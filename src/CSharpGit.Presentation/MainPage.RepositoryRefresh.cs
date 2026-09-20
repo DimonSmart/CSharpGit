@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.Diagnostics;
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -13,10 +15,15 @@ public sealed partial class MainPage
     private const string RefreshingRepositoryTooltip = "Refreshing repository…";
 
     private readonly RepositoryChangeMonitor _repositoryChangeMonitor = new();
+    private readonly CancellationTokenSource _repositoryProbeStop = new();
+    private readonly IRepositoryRefreshProbe _repositoryRefreshProbe;
     private bool _repositoryChangeMonitoringInitialized;
-    private bool _repositoryStateRefreshObserved;
     private bool _isRefreshInProgress;
     private Repository? _monitoredRepository;
+    private RepositoryRefreshFingerprint? _displayedRefreshFingerprint;
+    private bool _repositoryProbeRunning;
+    private bool _repositoryProbePending;
+    private long _repositoryProbeGeneration;
     private bool _repositoryPresentationRefreshQueued;
     private bool _repositoryTreePresentationDirty;
     private bool _workingTreePresentationDirty;
@@ -41,31 +48,26 @@ public sealed partial class MainPage
 
         _viewModel.PropertyChanged -= RepositoryRefreshTracking_PropertyChanged;
         _repositoryChangeMonitor.RepositoryChanged -= RepositoryChangeMonitor_RepositoryChanged;
+        _repositoryProbeStop.Cancel();
         _repositoryChangeMonitor.Dispose();
+        _repositoryProbeStop.Dispose();
     }
 
     private void RepositoryRefreshTracking_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
         if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.Repository))
         {
-            _repositoryStateRefreshObserved = false;
             UpdateRepositoryChangeMonitor();
             return;
         }
 
-        if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.HeadDisplay))
-        {
-            _repositoryStateRefreshObserved = true;
-            return;
-        }
+        if (eventArgs.PropertyName != nameof(OpenRepositoryViewModel.DisplayedRefreshFingerprint)) return;
 
-        if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.IsBusy)
-            && !_viewModel.IsBusy
-            && _repositoryStateRefreshObserved)
-        {
-            _repositoryStateRefreshObserved = false;
-            AcknowledgeRepositoryRefresh();
-        }
+        _displayedRefreshFingerprint = _viewModel.DisplayedRefreshFingerprint;
+        if (_displayedRefreshFingerprint is null) return;
+
+        SetRefreshRequired(false);
+        QueueRepositoryProbe(_repositoryChangeMonitor.Generation);
     }
 
     private void UpdateRepositoryChangeMonitor()
@@ -74,6 +76,7 @@ public sealed partial class MainPage
         if (repository is null)
         {
             _monitoredRepository = null;
+            _displayedRefreshFingerprint = null;
             _repositoryChangeMonitor.Stop();
             SetRefreshRequired(false);
             return;
@@ -82,20 +85,79 @@ public sealed partial class MainPage
         if (Equals(repository, _monitoredRepository)) return;
 
         _monitoredRepository = repository;
+        _displayedRefreshFingerprint = null;
         _repositoryChangeMonitor.Start(repository);
         SetRefreshRequired(false);
     }
 
-    private void RepositoryChangeMonitor_RepositoryChanged(object? sender, EventArgs e)
+    private void RepositoryChangeMonitor_RepositoryChanged(
+        object? sender,
+        RepositoryInvalidatedEventArgs eventArgs)
     {
-        DispatcherQueue.TryEnqueue(() => SetRefreshRequired(true));
+        Trace.WriteLine(
+            $"Repository monitor invalidated: source={eventArgs.Source} path={eventArgs.Path ?? "<unknown>"} generation={eventArgs.Generation}");
+        DispatcherQueue.TryEnqueue(() => QueueRepositoryProbe(eventArgs.Generation));
     }
 
-    private void AcknowledgeRepositoryRefresh()
+    private void QueueRepositoryProbe(long generation)
     {
-        if (_viewModel.Repository is null) return;
-        _repositoryChangeMonitor.Acknowledge();
-        SetRefreshRequired(false);
+        if (_viewModel.Repository is null || _displayedRefreshFingerprint is null) return;
+
+        _repositoryProbeGeneration = Math.Max(_repositoryProbeGeneration, generation);
+        _repositoryProbePending = true;
+        if (_repositoryProbeRunning) return;
+
+        _repositoryProbeRunning = true;
+        _ = RunRepositoryProbeLoopAsync();
+    }
+
+    private async Task RunRepositoryProbeLoopAsync()
+    {
+        try
+        {
+            while (_repositoryProbePending)
+            {
+                _repositoryProbePending = false;
+                var generation = _repositoryProbeGeneration;
+                var repository = _viewModel.Repository;
+                var baseline = _displayedRefreshFingerprint;
+                if (repository is null || baseline is null) continue;
+
+                RepositoryRefreshFingerprint current;
+                try
+                {
+                    current = await _repositoryRefreshProbe.ReadAsync(repository, _repositoryProbeStop.Token);
+                }
+                catch (OperationCanceledException) when (_repositoryProbeStop.IsCancellationRequested)
+                {
+                    return;
+                }
+                catch (Exception exception)
+                {
+                    Trace.WriteLine(
+                        $"Repository state probe: generation={generation} result=error error={exception.GetType().Name}: {exception.Message}");
+                    continue;
+                }
+
+                if (!ReferenceEquals(repository, _viewModel.Repository) ||
+                    !Equals(baseline, _displayedRefreshFingerprint))
+                    continue;
+
+                var changed = !StringComparer.Ordinal.Equals(current.Value, baseline.Value);
+                Trace.WriteLine(
+                    $"Repository state probe: generation={generation} result={(changed ? "changed" : "unchanged")}");
+                SetRefreshRequired(changed);
+            }
+        }
+        finally
+        {
+            _repositoryProbeRunning = false;
+            if (_repositoryProbePending)
+            {
+                _repositoryProbeRunning = true;
+                _ = RunRepositoryProbeLoopAsync();
+            }
+        }
     }
 
     private void SetRefreshRequired(bool value)

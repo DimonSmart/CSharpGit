@@ -33,12 +33,13 @@ public sealed partial class MainPage : Page
     private bool _isScopedHistoryLoading;
     private bool _wasBusy;
 
-    public MainPage(OpenRepositoryViewModel viewModel, IReferenceHistoryService referenceHistoryService, IReferenceService referenceService, IWorkingTreeDiffService? workingTreeDiffService = null)
+    public MainPage(OpenRepositoryViewModel viewModel, IReferenceHistoryService referenceHistoryService, IReferenceService referenceService, IRepositoryRefreshProbe repositoryRefreshProbe, IWorkingTreeDiffService? workingTreeDiffService = null)
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
         _referenceHistoryService = referenceHistoryService;
         _referenceService = referenceService;
+        _repositoryRefreshProbe = repositoryRefreshProbe ?? throw new ArgumentNullException(nameof(repositoryRefreshProbe));
         _workingTreeDiffService = workingTreeDiffService;
 
         RepositoryTree.ItemsSource = _repositoryTreeRoots;

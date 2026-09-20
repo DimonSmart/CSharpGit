@@ -19,6 +19,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
     private readonly ILogger<OpenRepositoryViewModel> _logger;
     private readonly IHistoryService _historyService;
     private readonly IRepositoryStateService _stateService;
+    private readonly IRepositoryRefreshProbe? _refreshProbe;
     private readonly IWorkingTreeService _workingTreeService;
     private readonly IReferenceService _referenceService;
     private readonly IRepositoryWorkflowService _workflowService;
@@ -71,14 +72,16 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
     private string _mergeToolExecutable = string.Empty;
     private string _mergeToolArguments = string.Empty;
     private string _configuredMergeToolDisplay = "Merge tool is not configured";
+    private RepositoryRefreshFingerprint? _displayedRefreshFingerprint;
 
-    public OpenRepositoryViewModel(IFolderPicker folderPicker, IRepositoryService repositoryService, IHistoryService historyService, IRepositoryStateService stateService, IWorkingTreeService workingTreeService, IReferenceService referenceService, IRepositoryWorkflowService workflowService, ILogger<OpenRepositoryViewModel> logger)
+    public OpenRepositoryViewModel(IFolderPicker folderPicker, IRepositoryService repositoryService, IHistoryService historyService, IRepositoryStateService stateService, IWorkingTreeService workingTreeService, IReferenceService referenceService, IRepositoryWorkflowService workflowService, ILogger<OpenRepositoryViewModel> logger, IRepositoryRefreshProbe? refreshProbe = null)
     {
         _selectedScope = Scopes[0];
         _folderPicker = folderPicker;
         _repositoryService = repositoryService;
         _historyService = historyService;
         _stateService = stateService;
+        _refreshProbe = refreshProbe;
         _workingTreeService = workingTreeService;
         _referenceService = referenceService;
         _workflowService = workflowService;
@@ -207,7 +210,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
     public IReadOnlyList<string> MergeToolNames { get; } = MergeToolPresets.Known;
     public IReadOnlyList<MergeToolConfigurationKind> MergeToolKinds { get; } = Enum.GetValues<MergeToolConfigurationKind>();
     public IReadOnlyList<GitConfigurationScope> MergeToolScopes { get; } = Enum.GetValues<GitConfigurationScope>();
-    public Repository? Repository { get => _repository; private set { if (ReferenceEquals(_repository, value)) return; ResetCommitChangesSession(); _repository = value; Notify(); Notify(nameof(RepositoryVisibility)); Notify(nameof(PickerVisibility)); Notify(nameof(RepositoryKind)); Notify(nameof(CanForcePushWithLease)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }
+    public Repository? Repository { get => _repository; private set { if (ReferenceEquals(_repository, value)) return; ResetCommitChangesSession(); _repository = value; _displayedRefreshFingerprint = null; Notify(); Notify(nameof(DisplayedRefreshFingerprint)); Notify(nameof(RepositoryVisibility)); Notify(nameof(PickerVisibility)); Notify(nameof(RepositoryKind)); Notify(nameof(CanForcePushWithLease)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }
+    public RepositoryRefreshFingerprint? DisplayedRefreshFingerprint { get => _displayedRefreshFingerprint; private set { if (Equals(_displayedRefreshFingerprint, value)) return; _displayedRefreshFingerprint = value; Notify(); } }
     public string? ErrorMessage { get => _errorMessage; private set { _errorMessage = value; Notify(); Notify(nameof(HasError)); } }
     public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); Notify(nameof(BusyVisibility)); Notify(nameof(CanForcePushWithLease)); _openRepositoryCommand.RaiseCanExecuteChanged(); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
@@ -389,6 +393,19 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
         try
         {
             var repository = Repository;
+            RepositoryRefreshFingerprint? refreshFingerprint = null;
+            if (_refreshProbe is not null)
+            {
+                try
+                {
+                    refreshFingerprint = await _refreshProbe.ReadAsync(repository);
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    _logger.LogDebug(exception, "Could not capture repository refresh baseline");
+                }
+            }
+
             var state = localOnly
                 ? await _stateService.ReadLocalOnlyAsync(repository)
                 : await _stateService.ReadAsync(repository);
@@ -420,6 +437,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
 
             if (includeHistory)
                 await LoadHistoryAsync(true);
+
+            if (refreshFingerprint is not null && ReferenceEquals(repository, Repository))
+                DisplayedRefreshFingerprint = refreshFingerprint;
         }
         finally
         {
