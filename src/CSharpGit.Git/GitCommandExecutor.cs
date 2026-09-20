@@ -8,6 +8,9 @@ namespace CSharpGit.Git;
 
 internal sealed class GitCommandExecutor
 {
+    private const string BinaryOutputOmitted = "[binary output omitted]";
+    private const int TextReadBufferSize = 4096;
+
     private readonly string _gitExecutable;
     private readonly IGitCommandActivitySink _activitySink;
     private readonly Action<int>? _processStarted;
@@ -115,9 +118,13 @@ internal sealed class GitCommandExecutor
         var stopwatch = Stopwatch.StartNew();
         process.Start();
         var activityId = _activitySink.Started(_gitExecutable, workingDirectory, arguments, GitCommandKind.Internal);
+        _activitySink.OutputReceived(activityId, GitOutputStream.StandardOutput, BinaryOutputOmitted);
         _processStarted?.Invoke(process.Id);
-        var errorTask = process.StandardError.ReadToEndAsync();
-        string error;
+        var errorTask = PumpTextAsync(
+            process.StandardError,
+            activityId,
+            GitOutputStream.StandardError,
+            _activitySink);
 
         try
         {
@@ -134,8 +141,7 @@ internal sealed class GitCommandExecutor
                     await WaitForExitAfterKillAsync(process);
                     await DrainAfterKillAsync(copyTask, errorTask);
                     stopwatch.Stop();
-                    error = await SafeReadAsync(errorTask);
-                    _activitySink.Cancelled(activityId, TryGetExitCode(process), "[binary output omitted]", error.TrimEnd('\r', '\n'));
+                    _activitySink.Cancelled(activityId, TryGetExitCode(process));
                     throw;
                 }
 
@@ -143,10 +149,15 @@ internal sealed class GitCommandExecutor
                 await file.FlushAsync(CancellationToken.None);
             }
 
-            error = await errorTask;
+            var error = (await errorTask).TrimEnd('\r', '\n');
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _activitySink.Cancelled(activityId, TryGetExitCode(process));
+                cancellationToken.ThrowIfCancellationRequested();
+            }
             stopwatch.Stop();
-            var result = new GitCommandResult(process.ExitCode, "[binary output omitted]", error.TrimEnd('\r', '\n'));
-            _activitySink.Completed(activityId, result.ExitCode, result.StandardOutput, result.StandardError);
+            var result = new GitCommandResult(process.ExitCode, BinaryOutputOmitted, error);
+            _activitySink.Completed(activityId, result.ExitCode);
             Trace.WriteLine($"Git command operation={operation} duration={stopwatch.ElapsedMilliseconds}ms");
             ThrowIfFailed(result);
         }
@@ -171,16 +182,25 @@ internal sealed class GitCommandExecutor
         bool installNoOpGitEditor = true)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var startInfo = CreateStartInfo(executable, workingDirectory, arguments, environment, installNoOpGitEditor);
+        var effectiveArguments = GitProgressPolicy.Apply(arguments, commandKind);
+        var startInfo = CreateStartInfo(executable, workingDirectory, effectiveArguments, environment, installNoOpGitEditor);
 
         using var process = new Process { StartInfo = startInfo };
         var stopwatch = Stopwatch.StartNew();
         process.Start();
-        var activityId = activitySink?.Started(executable, workingDirectory, arguments, commandKind);
+        var activityId = activitySink?.Started(executable, workingDirectory, effectiveArguments, commandKind);
         processStarted?.Invoke(process.Id);
 
-        var outputTask = process.StandardOutput.ReadToEndAsync();
-        var errorTask = process.StandardError.ReadToEndAsync();
+        var outputTask = PumpTextAsync(
+            process.StandardOutput,
+            activityId,
+            GitOutputStream.StandardOutput,
+            activitySink);
+        var errorTask = PumpTextAsync(
+            process.StandardError,
+            activityId,
+            GitOutputStream.StandardError,
+            activitySink);
 
         try
         {
@@ -192,24 +212,58 @@ internal sealed class GitCommandExecutor
             await WaitForExitAfterKillAsync(process);
             await DrainAfterKillAsync(outputTask, errorTask);
             stopwatch.Stop();
-            var cancelledOutput = (await SafeReadAsync(outputTask)).TrimEnd('\r', '\n');
-            var cancelledError = (await SafeReadAsync(errorTask)).TrimEnd('\r', '\n');
             if (activityId is { } cancelledId)
-                activitySink!.Cancelled(cancelledId, TryGetExitCode(process), cancelledOutput, cancelledError);
+                activitySink!.Cancelled(cancelledId, TryGetExitCode(process));
             throw;
         }
 
         await Task.WhenAll(outputTask, errorTask);
         var output = outputTask.Result.TrimEnd('\r', '\n');
         var error = errorTask.Result.TrimEnd('\r', '\n');
-        cancellationToken.ThrowIfCancellationRequested();
+        if (cancellationToken.IsCancellationRequested)
+        {
+            if (activityId is { } cancelledId)
+                activitySink!.Cancelled(cancelledId, TryGetExitCode(process));
+            cancellationToken.ThrowIfCancellationRequested();
+        }
 
         stopwatch.Stop();
         Trace.WriteLine($"Git command operation={operation} duration={stopwatch.ElapsedMilliseconds}ms");
         var result = new GitCommandResult(process.ExitCode, output, error);
         if (activityId is { } completedId)
-            activitySink!.Completed(completedId, result.ExitCode, result.StandardOutput, result.StandardError);
+            activitySink!.Completed(completedId, result.ExitCode);
         return result;
+    }
+
+    private static async Task<string> PumpTextAsync(
+        StreamReader reader,
+        Guid? activityId,
+        GitOutputStream stream,
+        IGitCommandActivitySink? activitySink)
+    {
+        var result = new StringBuilder();
+        var buffer = new char[TextReadBufferSize];
+
+        while (true)
+        {
+            int read;
+            try
+            {
+                read = await reader.ReadAsync(buffer.AsMemory(0, buffer.Length), CancellationToken.None);
+            }
+            catch (IOException)
+            {
+                break;
+            }
+
+            if (read == 0) break;
+            var chunk = new string(buffer, 0, read);
+            result.Append(chunk);
+            if (activityId is { } id)
+                activitySink!.OutputReceived(id, stream, chunk);
+        }
+
+        return result.ToString();
     }
 
     private static ProcessStartInfo CreateStartInfo(
@@ -281,18 +335,6 @@ internal sealed class GitCommandExecutor
         }
         catch (IOException)
         {
-        }
-    }
-
-    private static async Task<string> SafeReadAsync(Task<string> task)
-    {
-        try
-        {
-            return await task;
-        }
-        catch (IOException)
-        {
-            return string.Empty;
         }
     }
 
