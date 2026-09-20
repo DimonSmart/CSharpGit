@@ -18,5 +18,8 @@
     <Compile Include="../../src/CSharpGit.Infrastructure/LocalRepositoryImageProvider.cs" Link="Infrastructure/LocalRepositoryImageProvider.cs" />
     <Compile Include="../../src/CSharpGit.Infrastructure/GitHubRepositoryImageProvider.cs" Link="Infrastructure/GitHubRepositoryImageProvider.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/SettingsViewModel.cs" Link="Presentation/SettingsViewModel.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/Controls/GitOutputDisplayBuffer.cs" Link="Presentation/GitOutputDisplayBuffer.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/Controls/GitCommandConsoleItem.cs" Link="Presentation/GitCommandConsoleItem.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/Controls/GitCommandConsoleState.cs" Link="Presentation/GitCommandConsoleState.cs" />
   </ItemGroup>
 </Project>
