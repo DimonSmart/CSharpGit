@@ -2,20 +2,39 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Presentation;
 
+internal enum RepositoryInvalidationSource
+{
+    WorkingTree,
+    GitMetadata
+}
+
+internal sealed record RepositoryInvalidatedEventArgs(
+    long Generation,
+    RepositoryInvalidationSource Source,
+    string? Path) : EventArgs;
+
 internal sealed class RepositoryChangeMonitor : IDisposable
 {
-    internal static readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(250);
+    internal static readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(500);
 
     private readonly object _gate = new();
-    private FileSystemWatcher? _workingTreeWatcher;
-    private FileSystemWatcher? _gitWatcher;
+    private readonly List<FileSystemWatcher> _watchers = [];
     private Timer? _debounceTimer;
     private Repository? _repository;
+    private RepositoryInvalidatedEventArgs? _pendingInvalidation;
+    private long _watcherEpoch;
     private long _generation;
-    private long _pendingGeneration;
     private bool _disposed;
 
-    public event EventHandler? RepositoryChanged;
+    public event EventHandler<RepositoryInvalidatedEventArgs>? RepositoryChanged;
+
+    public long Generation
+    {
+        get
+        {
+            lock (_gate) return _generation;
+        }
+    }
 
     public void Start(Repository repository)
     {
@@ -33,8 +52,7 @@ internal sealed class RepositoryChangeMonitor : IDisposable
     {
         lock (_gate)
         {
-            if (_disposed || _repository is null) return;
-            RestartWatchersNoLock();
+            if (_disposed) return;
         }
     }
 
@@ -44,8 +62,8 @@ internal sealed class RepositoryChangeMonitor : IDisposable
         {
             if (_disposed) return;
             _repository = null;
-            _generation++;
-            _pendingGeneration = 0;
+            _watcherEpoch++;
+            _pendingInvalidation = null;
             _debounceTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
             DisposeWatchersNoLock();
         }
@@ -58,8 +76,8 @@ internal sealed class RepositoryChangeMonitor : IDisposable
             if (_disposed) return;
             _disposed = true;
             _repository = null;
-            _generation++;
-            _pendingGeneration = 0;
+            _watcherEpoch++;
+            _pendingInvalidation = null;
             DisposeWatchersNoLock();
             _debounceTimer?.Dispose();
             _debounceTimer = null;
@@ -69,25 +87,31 @@ internal sealed class RepositoryChangeMonitor : IDisposable
     private void RestartWatchersNoLock()
     {
         var repository = _repository;
-        _generation++;
-        var generation = _generation;
-        _pendingGeneration = 0;
+        _watcherEpoch++;
+        var epoch = _watcherEpoch;
+        _pendingInvalidation = null;
         _debounceTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
         DisposeWatchersNoLock();
 
         if (repository is null) return;
 
-        var hasSeparateGitWatcher = !PathsEqual(repository.WorkingDirectory, repository.GitDirectory)
-                                    && Directory.Exists(repository.GitDirectory);
-
         if (Directory.Exists(repository.WorkingDirectory))
-            _workingTreeWatcher = CreateWatcher(repository.WorkingDirectory, generation, hasSeparateGitWatcher);
+            _watchers.Add(CreateWatcher(
+                repository.WorkingDirectory,
+                epoch,
+                RepositoryInvalidationSource.WorkingTree));
 
-        if (hasSeparateGitWatcher)
-            _gitWatcher = CreateWatcher(repository.GitDirectory, generation, ignoreGitDirectory: false);
+        foreach (var metadataRoot in GetMetadataRoots(repository))
+            _watchers.Add(CreateWatcher(
+                metadataRoot,
+                epoch,
+                RepositoryInvalidationSource.GitMetadata));
     }
 
-    private FileSystemWatcher CreateWatcher(string path, long generation, bool ignoreGitDirectory)
+    private FileSystemWatcher CreateWatcher(
+        string path,
+        long epoch,
+        RepositoryInvalidationSource source)
     {
         var watcher = new FileSystemWatcher(path)
         {
@@ -99,23 +123,36 @@ internal sealed class RepositoryChangeMonitor : IDisposable
                            | NotifyFilters.CreationTime
         };
 
-        watcher.Changed += (_, args) => QueueChange(generation, args.FullPath, ignoreGitDirectory);
-        watcher.Created += (_, args) => QueueChange(generation, args.FullPath, ignoreGitDirectory);
-        watcher.Deleted += (_, args) => QueueChange(generation, args.FullPath, ignoreGitDirectory);
-        watcher.Renamed += (_, args) => QueueChange(generation, args.FullPath, ignoreGitDirectory);
-        watcher.Error += (_, _) => QueueChange(generation, fullPath: null, ignoreGitDirectory: false);
+        watcher.Changed += (_, args) => QueueChange(epoch, source, path, args.FullPath);
+        watcher.Created += (_, args) => QueueChange(epoch, source, path, args.FullPath);
+        watcher.Deleted += (_, args) => QueueChange(epoch, source, path, args.FullPath);
+        watcher.Renamed += (_, args) => QueueChange(epoch, source, path, args.FullPath);
+        watcher.Error += (_, _) => QueueChange(epoch, source, path, fullPath: null);
         watcher.EnableRaisingEvents = true;
         return watcher;
     }
 
-    private void QueueChange(long generation, string? fullPath, bool ignoreGitDirectory)
+    private void QueueChange(
+        long epoch,
+        RepositoryInvalidationSource source,
+        string watcherRoot,
+        string? fullPath)
     {
         lock (_gate)
         {
-            if (_disposed || _repository is null || generation != _generation) return;
-            if (ignoreGitDirectory && fullPath is not null && IsPathWithin(fullPath, _repository.GitDirectory)) return;
+            if (_disposed || _repository is null || epoch != _watcherEpoch) return;
+            if (source == RepositoryInvalidationSource.WorkingTree &&
+                fullPath is not null &&
+                IsMetadataPath(fullPath, _repository))
+                return;
+            if (source == RepositoryInvalidationSource.GitMetadata && IsLockNoise(fullPath))
+                return;
 
-            _pendingGeneration = generation;
+            var generation = ++_generation;
+            _pendingInvalidation = new RepositoryInvalidatedEventArgs(
+                generation,
+                source,
+                GetRelativePath(watcherRoot, fullPath));
             _debounceTimer ??= new Timer(PublishRepositoryChanged);
             _debounceTimer.Change(DebounceDelay, Timeout.InfiniteTimeSpan);
         }
@@ -123,37 +160,72 @@ internal sealed class RepositoryChangeMonitor : IDisposable
 
     private void PublishRepositoryChanged(object? state)
     {
-        EventHandler? handler;
+        EventHandler<RepositoryInvalidatedEventArgs>? handler;
+        RepositoryInvalidatedEventArgs? invalidation;
         lock (_gate)
         {
-            if (_disposed || _pendingGeneration == 0 || _pendingGeneration != _generation) return;
-            _pendingGeneration = 0;
+            if (_disposed || _pendingInvalidation is null) return;
+            invalidation = _pendingInvalidation;
+            _pendingInvalidation = null;
             handler = RepositoryChanged;
         }
 
-        handler?.Invoke(this, EventArgs.Empty);
+        handler?.Invoke(this, invalidation);
     }
 
     private void DisposeWatchersNoLock()
     {
-        _workingTreeWatcher?.Dispose();
-        _workingTreeWatcher = null;
-        _gitWatcher?.Dispose();
-        _gitWatcher = null;
+        foreach (var watcher in _watchers) watcher.Dispose();
+        _watchers.Clear();
     }
 
-    private static bool PathsEqual(string left, string right)
+    private static IReadOnlyList<string> GetMetadataRoots(Repository repository)
     {
+        var roots = new List<string>();
+        foreach (var candidate in new[] { repository.GitDirectory, repository.GitCommonDirectory })
+        {
+            if (!Directory.Exists(candidate)) continue;
+
+            var normalized = NormalizePath(candidate);
+            if (roots.Any(root => IsPathWithin(normalized, root))) continue;
+
+            roots.RemoveAll(root => IsPathWithin(root, normalized));
+            roots.Add(normalized);
+        }
+
+        return roots;
+    }
+
+    private static bool IsMetadataPath(string path, Repository repository) =>
+        IsPathWithin(path, repository.GitDirectory) ||
+        IsPathWithin(path, repository.GitCommonDirectory);
+
+    private static bool IsLockNoise(string? path) =>
+        path is not null &&
+        Path.GetFileName(path).EndsWith(".lock", StringComparison.OrdinalIgnoreCase);
+
+    private static string? GetRelativePath(string root, string? path)
+    {
+        if (path is null) return null;
         try
         {
-            return string.Equals(
-                Path.TrimEndingDirectorySeparator(Path.GetFullPath(left)),
-                Path.TrimEndingDirectorySeparator(Path.GetFullPath(right)),
-                PathComparison);
+            return Path.GetRelativePath(root, path);
         }
         catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException)
         {
-            return string.Equals(left, right, PathComparison);
+            return path;
+        }
+    }
+
+    private static string NormalizePath(string path)
+    {
+        try
+        {
+            return Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+        }
+        catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return Path.TrimEndingDirectorySeparator(path);
         }
     }
 
@@ -161,8 +233,8 @@ internal sealed class RepositoryChangeMonitor : IDisposable
     {
         try
         {
-            var normalizedPath = Path.GetFullPath(path);
-            var normalizedDirectory = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));
+            var normalizedPath = NormalizePath(path);
+            var normalizedDirectory = NormalizePath(directory);
             if (string.Equals(normalizedPath, normalizedDirectory, PathComparison)) return true;
 
             var prefix = normalizedDirectory + Path.DirectorySeparatorChar;
