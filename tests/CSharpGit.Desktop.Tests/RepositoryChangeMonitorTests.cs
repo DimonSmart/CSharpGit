@@ -46,42 +46,72 @@ public sealed class RepositoryChangeMonitorTests
 
         using var monitor = new RepositoryChangeMonitor();
         var signal = NewSignal();
-        monitor.RepositoryChanged += (_, _) => signal.TrySetResult(true);
+        RepositoryInvalidatedEventArgs? observed = null;
+        monitor.RepositoryChanged += (_, args) =>
+        {
+            observed = args;
+            signal.TrySetResult(true);
+        };
         monitor.Start(repository.Repository);
 
         await File.WriteAllTextAsync(head, "ref: refs/heads/feature\n");
         await signal.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.NotNull(observed);
+        Assert.Equal(RepositoryInvalidationSource.GitMetadata, observed.Source);
+        Assert.Equal("HEAD", observed.Path);
     }
 
     [Fact]
-    public async Task AcknowledgeDropsQueuedEventsFromPreviousWatcherGeneration()
+    public async Task AcknowledgeDoesNotDropQueuedInvalidation()
     {
         using var repository = TestRepository.Create();
         var path = Path.Combine(repository.Root, "tracked.txt");
         await File.WriteAllTextAsync(path, "one");
 
         using var monitor = new RepositoryChangeMonitor();
-        var notifications = 0;
         var signal = NewSignal();
-        monitor.RepositoryChanged += (_, _) =>
-        {
-            Interlocked.Increment(ref notifications);
-            signal.TrySetResult(true);
-        };
+        monitor.RepositoryChanged += (_, _) => signal.TrySetResult(true);
         monitor.Start(repository.Repository);
 
-        await File.AppendAllTextAsync(path, " internal change");
+        await File.AppendAllTextAsync(path, " external change");
         monitor.Acknowledge();
-        await Task.Delay(RepositoryChangeMonitor.DebounceDelay + TimeSpan.FromMilliseconds(250));
+
+        await signal.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task LockFileNoiseDoesNotPublishInvalidation()
+    {
+        using var repository = TestRepository.Create();
+
+        using var monitor = new RepositoryChangeMonitor();
+        var notifications = 0;
+        monitor.RepositoryChanged += (_, _) => Interlocked.Increment(ref notifications);
+        monitor.Start(repository.Repository);
+
+        var lockPath = Path.Combine(repository.GitDirectory, "index.lock");
+        await File.WriteAllTextAsync(lockPath, "temporary");
+        File.Delete(lockPath);
+        await Task.Delay(RepositoryChangeMonitor.DebounceDelay + TimeSpan.FromMilliseconds(300));
 
         Assert.Equal(0, Volatile.Read(ref notifications));
+    }
 
-        signal = NewSignal();
-        var index = Path.Combine(repository.GitDirectory, "index");
-        await File.WriteAllTextAsync(index, "external metadata change");
+    [Fact]
+    public async Task LinkedWorktreeCommonGitDirectoryIsObserved()
+    {
+        using var repository = TestRepository.CreateLinkedWorktree();
+        var refsDirectory = Path.Combine(repository.GitCommonDirectory, "refs", "heads");
+        Directory.CreateDirectory(refsDirectory);
+
+        using var monitor = new RepositoryChangeMonitor();
+        var signal = NewSignal();
+        monitor.RepositoryChanged += (_, _) => signal.TrySetResult(true);
+        monitor.Start(repository.Repository);
+
+        await File.WriteAllTextAsync(Path.Combine(refsDirectory, "main"), "abc\n");
         await signal.Task.WaitAsync(TimeSpan.FromSeconds(5));
-
-        Assert.Equal(1, Volatile.Read(ref notifications));
     }
 
     private static TaskCompletionSource<bool> NewSignal() =>
@@ -89,37 +119,68 @@ public sealed class RepositoryChangeMonitorTests
 
     private sealed class TestRepository : IDisposable
     {
-        private TestRepository(string root)
+        private TestRepository(string root, string gitDirectory, string gitCommonDirectory, bool isWorktree)
         {
             Root = root;
-            GitDirectory = Path.Combine(root, ".git");
+            GitDirectory = gitDirectory;
+            GitCommonDirectory = gitCommonDirectory;
             Directory.CreateDirectory(GitDirectory);
-            Repository = new Repository(root, root, GitDirectory, IsWorktree: false);
+            Directory.CreateDirectory(GitCommonDirectory);
+            Repository = new Repository(root, root, GitDirectory, isWorktree)
+            {
+                GitCommonDirectory = GitCommonDirectory
+            };
         }
 
         public string Root { get; }
         public string GitDirectory { get; }
+        public string GitCommonDirectory { get; }
         public Repository Repository { get; }
 
         public static TestRepository Create()
         {
-            var root = Path.Combine(Path.GetTempPath(), "CSharpGit.RepositoryChangeMonitorTests", Guid.NewGuid().ToString("N"));
+            var root = CreateRoot();
+            var gitDirectory = Path.Combine(root, ".git");
+            return new TestRepository(root, gitDirectory, gitDirectory, isWorktree: false);
+        }
+
+        public static TestRepository CreateLinkedWorktree()
+        {
+            var root = CreateRoot();
+            var common = Path.Combine(
+                Path.GetTempPath(),
+                "CSharpGit.RepositoryChangeMonitorTests.common",
+                Guid.NewGuid().ToString("N"));
+            var gitDirectory = Path.Combine(common, "worktrees", "linked");
+            return new TestRepository(root, gitDirectory, common, isWorktree: true);
+        }
+
+        private static string CreateRoot()
+        {
+            var root = Path.Combine(
+                Path.GetTempPath(),
+                "CSharpGit.RepositoryChangeMonitorTests",
+                Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(root);
-            return new TestRepository(root);
+            return root;
         }
 
         public void Dispose()
         {
-            try
-            {
-                Directory.Delete(Root, recursive: true);
-            }
-            catch (IOException)
-            {
-            }
-            catch (UnauthorizedAccessException)
-            {
-            }
+            TryDelete(Root);
+            if (!IsWithin(GitCommonDirectory, Root)) TryDelete(GitCommonDirectory);
+        }
+
+        private static bool IsWithin(string path, string root) =>
+            Path.GetFullPath(path).StartsWith(
+                Path.GetFullPath(root) + Path.DirectorySeparatorChar,
+                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+
+        private static void TryDelete(string path)
+        {
+            try { Directory.Delete(path, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
         }
     }
 }

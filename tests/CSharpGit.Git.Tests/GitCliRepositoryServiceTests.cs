@@ -24,6 +24,8 @@ public sealed class GitCliRepositoryServiceTests : IDisposable
         var repository = await service.OpenAsync(_temporaryDirectory);
         var initial = await service.ReadAsync(repository);
 
+        Assert.Equal(Path.GetFullPath(Path.Combine(_temporaryDirectory, ".git")), repository.GitCommonDirectory);
+        Assert.Equal(repository.GitDirectory, repository.GitCommonDirectory);
         Assert.Equal("main", initial.HeadReference);
         Assert.Equal(RepositoryOperation.None, initial.Operation);
         Assert.Empty(initial.Changes);
@@ -98,6 +100,9 @@ public sealed class GitCliRepositoryServiceTests : IDisposable
             Assert.True(repository.IsWorktree);
             Assert.Equal(Path.GetFullPath(worktreeDirectory), repository.WorkingDirectory);
             Assert.NotEqual(Path.GetFullPath(Path.Combine(_temporaryDirectory, ".git")), repository.GitDirectory);
+            Assert.Equal(
+                Path.GetFullPath(Path.Combine(_temporaryDirectory, ".git")),
+                repository.GitCommonDirectory);
         }
         finally
         {

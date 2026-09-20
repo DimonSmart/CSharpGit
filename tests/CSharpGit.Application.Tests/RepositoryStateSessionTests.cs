@@ -7,37 +7,34 @@ namespace CSharpGit.Application.Tests;
 public sealed class RepositoryStateSessionTests
 {
     [Fact]
-    public async Task PollingPublishesExternalGitStateChangesWithinReasonableTime()
+    public async Task DoesNotPollWithoutExplicitRefresh()
     {
         var initial = CreateState(headCommit: "commit-1");
         var service = new FakeStateService(initial);
         await using var session = await new RepositoryStateSessionFactory(service).CreateAsync(initial.Repository);
-        var changed = new TaskCompletionSource<RepositoryState>(TaskCreationOptions.RunContinuationsAsynchronously);
-        session.StateChanged += (_, state) => changed.TrySetResult(state);
 
         service.CurrentState = CreateState(headCommit: "external-commit");
-        var observed = await changed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await Task.Delay(TimeSpan.FromMilliseconds(2300));
 
-        Assert.Equal("external-commit", observed.HeadCommit);
-        Assert.Equal("external-commit", session.Current.HeadCommit);
+        Assert.Equal(1, service.ReadCount);
+        Assert.Equal("commit-1", session.Current.HeadCommit);
     }
 
     [Fact]
-    public async Task PollingContinuesAfterTransientReadFailure()
+    public async Task ExplicitRefreshPublishesExternalGitStateChange()
     {
         var initial = CreateState(headCommit: "commit-1");
         var service = new FakeStateService(initial);
         await using var session = await new RepositoryStateSessionFactory(service).CreateAsync(initial.Repository);
-        var changed = new TaskCompletionSource<RepositoryState>(TaskCreationOptions.RunContinuationsAsynchronously);
-        session.StateChanged += (_, state) => changed.TrySetResult(state);
+        RepositoryState? observed = null;
+        session.StateChanged += (_, state) => observed = state;
 
-        service.FailuresRemaining = 1;
-        service.CurrentState = CreateState(headCommit: "commit-2");
+        service.CurrentState = CreateState(headCommit: "external-commit");
+        await session.RefreshAsync();
 
-        var observed = await changed.Task.WaitAsync(TimeSpan.FromSeconds(7));
-
-        Assert.Equal("commit-2", observed.HeadCommit);
-        Assert.True(service.ReadCount >= 3);
+        Assert.NotNull(observed);
+        Assert.Equal("external-commit", observed.HeadCommit);
+        Assert.Equal("external-commit", session.Current.HeadCommit);
     }
 
     [Fact]
@@ -225,6 +222,17 @@ public sealed class RepositoryStateSessionTests
         var next = CreateState(references: Refs(remoteBranches: [nextBranch]));
 
         await AssertPublishesStateChanged(initial, next);
+    }
+
+    [Fact]
+    public async Task EquivalentWorkingTreeChangesInDifferentOrderDoNotPublishStateChanged()
+    {
+        var first = new WorkingTreeChange("a.txt", 'M', ' ');
+        var second = new WorkingTreeChange("b.txt", ' ', 'M');
+        var initial = CreateState() with { Changes = [first, second] };
+        var next = CreateState() with { Changes = [second, first] };
+
+        await AssertDoesNotPublishStateChanged(initial, next);
     }
 
     [Fact]
