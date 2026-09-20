@@ -35,6 +35,8 @@ public static class GitServiceCollectionExtensions
                 provider.GetRequiredService<GitCliRepositoryService>(),
                 provider.GetRequiredService<DefaultBranchResolver>(),
                 provider.GetRequiredService<ITagService>()));
+        services.AddSingleton<IRepositoryRefreshProbe>(provider =>
+            new GitRepositoryRefreshProbe(provider.GetRequiredService<GitCommandExecutor>()));
         services.AddSingleton<IWorkingTreeService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
         services.AddSingleton<IWorkingTreeDiffService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
         services.AddSingleton<IWorktreeService>(provider =>
