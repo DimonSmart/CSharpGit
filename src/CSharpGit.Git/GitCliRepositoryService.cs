@@ -33,7 +33,10 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
                 Path.GetFullPath(path),
                 Path.GetFullPath(root),
                 Path.GetFullPath(gitDirectory),
-                !PathsEqual(gitDirectory, commonDirectory));
+                !PathsEqual(gitDirectory, commonDirectory))
+            {
+                GitCommonDirectory = Path.GetFullPath(commonDirectory)
+            };
         }
         catch (RepositoryOpenException)
         {

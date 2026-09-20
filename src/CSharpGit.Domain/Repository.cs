@@ -4,4 +4,7 @@ public sealed record Repository(
     string WorkingDirectory,
     string RepositoryRoot,
     string GitDirectory,
-    bool IsWorktree);
+    bool IsWorktree)
+{
+    public string GitCommonDirectory { get; init; } = GitDirectory;
+}

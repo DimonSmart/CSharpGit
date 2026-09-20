@@ -12,6 +12,15 @@ public interface IRepositoryStateService
         ReadAsync(repository, cancellationToken);
 }
 
+public sealed record RepositoryRefreshFingerprint(string Value);
+
+public interface IRepositoryRefreshProbe
+{
+    Task<RepositoryRefreshFingerprint> ReadAsync(
+        Repository repository,
+        CancellationToken cancellationToken = default);
+}
+
 public interface IWorkingTreeService
 {
     Task StageFileAsync(Repository repository, WorkingTreeChange change, CancellationToken cancellationToken = default);
