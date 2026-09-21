@@ -11,7 +11,7 @@ Windows и macOS являются основными платформами. Lin
 ### Windows
 
 1. Скачайте `CSharpGit-vX.Y.Z-win-x64.zip` из GitHub Releases.
-2. Расакуйте архив.
+2. Распакуйте архив.
 3. Запустите `CSharpGit.exe`.
 
 Windows release является self-contained: отдельная установка .NET Runtime или .NET SDK не требуется.
