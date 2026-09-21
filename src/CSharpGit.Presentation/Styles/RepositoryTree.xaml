@@ -186,4 +186,52 @@
     </TreeViewItem>
   </DataTemplate>
 
+  <DataTemplate x:Key="ChangedFileTreeItemTemplate">
+    <TreeViewItem x:Name="ChangedFileTreeItem"
+                  ItemsSource="{Binding Children}"
+                  IsExpanded="{Binding IsExpanded, Mode=TwoWay}"
+                  Style="{StaticResource RepositoryTreeItemStyle}">
+      <TreeViewItem.Content>
+        <Grid ColumnDefinitions="2,*" MinHeight="{StaticResource Height.DataRow}">
+          <controls:RepositoryTreeGuides Grid.Column="1"
+                                         Segments="{Binding HierarchyGuideSegments}"
+                                         TotalIndentation="{Binding TemplateSettings.Indentation.Left, ElementName=ChangedFileTreeItem}"
+                                         RowHeight="{StaticResource Height.DataRow}"
+                                         ExpandTarget="{Binding ElementName=ChangedFileTreeItem}"
+                                         IsExpanded="{Binding IsExpanded, ElementName=ChangedFileTreeItem}"
+                                         HasChildren="{Binding HasChildren}"
+                                         LineBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                         NodeFillBrush="{ThemeResource ControlFillColorDefaultBrush}"
+                                         GlyphBrush="{ThemeResource TextFillColorPrimaryBrush}" />
+          <Grid Grid.Column="1"
+                ColumnDefinitions="*,26,46,46"
+                Padding="2,0"
+                ColumnSpacing="{StaticResource Spacing.XS}">
+            <TextBlock Text="{Binding DisplayName}"
+                       Style="{StaticResource BodyTextStyle}"
+                       TextTrimming="CharacterEllipsis"
+                       VerticalAlignment="Center"
+                       ToolTipService.ToolTip="{Binding Path}" />
+            <TextBlock Grid.Column="1"
+                       Text="{Binding Status}"
+                       Style="{StaticResource DiffSecondaryTextStyle}"
+                       FontWeight="SemiBold"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2"
+                       Text="{Binding AddedDisplay}"
+                       Style="{StaticResource DiffSecondaryTextStyle}"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Center" />
+            <TextBlock Grid.Column="3"
+                       Text="{Binding RemovedDisplay}"
+                       Style="{StaticResource DiffSecondaryTextStyle}"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Center" />
+          </Grid>
+        </Grid>
+      </TreeViewItem.Content>
+    </TreeViewItem>
+  </DataTemplate>
+
 </ResourceDictionary>

@@ -356,7 +356,7 @@
                     <TreeView x:Name="ChangedFilesTree"
                               Grid.Row="1"
                               Style="{StaticResource DenseTreeViewStyle}"
-                              ItemContainerStyle="{StaticResource ChangedFileRowStyle}"
+                              ItemContainerStyle="{StaticResource DenseTreeItemStyle}"
                               ItemTemplate="{StaticResource ChangedFileTreeItemTemplate}"
                               SelectionMode="Single"
                               ItemInvoked="ChangedFilesTree_ItemInvoked" />

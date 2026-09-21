@@ -57,6 +57,80 @@ public sealed class ChangedFileTreeNodeTests
     }
 
     [Fact]
+    public void BuildsHierarchyGuideSegmentsAcrossNestedSiblingGroups()
+    {
+        var roots = ChangedFileTreeNode.Build(
+        [
+            Entry("M", "src/first/A.cs", 1, 0),
+            Entry("M", "src/first/B.cs", 1, 0),
+            Entry("M", "src/last/C.cs", 1, 0),
+            Entry("M", "src/last/D.cs", 1, 0)
+        ]);
+
+        var src = Assert.Single(roots);
+        var first = Assert.Single(src.Children, node => node.DisplayName == "first");
+        var last = Assert.Single(src.Children, node => node.DisplayName == "last");
+        var a = Assert.Single(first.Children, node => node.DisplayName == "A.cs");
+        var b = Assert.Single(first.Children, node => node.DisplayName == "B.cs");
+        var c = Assert.Single(last.Children, node => node.DisplayName == "C.cs");
+        var d = Assert.Single(last.Children, node => node.DisplayName == "D.cs");
+
+        Assert.Empty(src.HierarchyGuideSegments);
+        Assert.Equal([RepositoryTreeGuideSegmentKind.Branch], first.HierarchyGuideSegments);
+        Assert.Equal([RepositoryTreeGuideSegmentKind.Last], last.HierarchyGuideSegments);
+        Assert.Equal(
+            [RepositoryTreeGuideSegmentKind.Continue, RepositoryTreeGuideSegmentKind.Branch],
+            a.HierarchyGuideSegments);
+        Assert.Equal(
+            [RepositoryTreeGuideSegmentKind.Continue, RepositoryTreeGuideSegmentKind.Last],
+            b.HierarchyGuideSegments);
+        Assert.Equal(
+            [RepositoryTreeGuideSegmentKind.Empty, RepositoryTreeGuideSegmentKind.Branch],
+            c.HierarchyGuideSegments);
+        Assert.Equal(
+            [RepositoryTreeGuideSegmentKind.Empty, RepositoryTreeGuideSegmentKind.Last],
+            d.HierarchyGuideSegments);
+    }
+
+    [Fact]
+    public void AddingSiblingUpdatesHierarchyGuidesIncrementally()
+    {
+        var roots = new ObservableCollection<ChangedFileTreeNode>();
+        ChangedFileTreeSynchronizer.Reconcile(roots,
+        [
+            Entry("M", "src/A.cs", 1, 0),
+            Entry("M", "src/B.cs", 1, 0)
+        ]);
+
+        var src = Assert.Single(roots);
+        var a = Assert.Single(src.Children, node => node.Path == "src/A.cs");
+        var b = Assert.Single(src.Children, node => node.Path == "src/B.cs");
+        Assert.Equal([RepositoryTreeGuideSegmentKind.Last], b.HierarchyGuideSegments);
+
+        var childChanges = new List<NotifyCollectionChangedAction>();
+        var bProperties = new List<string?>();
+        src.Children.CollectionChanged += (_, args) => childChanges.Add(args.Action);
+        b.PropertyChanged += (_, args) => bProperties.Add(args.PropertyName);
+
+        ChangedFileTreeSynchronizer.Reconcile(roots,
+        [
+            Entry("M", "src/A.cs", 1, 0),
+            Entry("M", "src/B.cs", 1, 0),
+            Entry("A", "src/C.cs", 1, 0)
+        ]);
+
+        var c = Assert.Single(src.Children, node => node.Path == "src/C.cs");
+        Assert.Same(src, Assert.Single(roots));
+        Assert.Same(a, Assert.Single(src.Children, node => node.Path == "src/A.cs"));
+        Assert.Same(b, Assert.Single(src.Children, node => node.Path == "src/B.cs"));
+        Assert.DoesNotContain(NotifyCollectionChangedAction.Reset, childChanges);
+        Assert.Contains(NotifyCollectionChangedAction.Add, childChanges);
+        Assert.Equal([RepositoryTreeGuideSegmentKind.Branch], b.HierarchyGuideSegments);
+        Assert.Equal([RepositoryTreeGuideSegmentKind.Last], c.HierarchyGuideSegments);
+        Assert.Contains(nameof(ChangedFileTreeNode.HierarchyGuideSegments), bProperties);
+    }
+
+    [Fact]
     public void IdenticalTreePreservesInstancesExpansionAndHasNoCollectionMutations()
     {
         var roots = new ObservableCollection<ChangedFileTreeNode>();
@@ -71,8 +145,10 @@ public sealed class ChangedFileTreeNodeTests
 
         var rootChanges = new List<NotifyCollectionChangedAction>();
         var childChanges = new List<NotifyCollectionChangedAction>();
+        var aProperties = new List<string?>();
         roots.CollectionChanged += (_, args) => rootChanges.Add(args.Action);
         src.Children.CollectionChanged += (_, args) => childChanges.Add(args.Action);
+        a.PropertyChanged += (_, args) => aProperties.Add(args.PropertyName);
 
         ChangedFileTreeSynchronizer.Reconcile(roots,
         [
@@ -85,6 +161,7 @@ public sealed class ChangedFileTreeNodeTests
         Assert.False(src.IsExpanded);
         Assert.Empty(rootChanges);
         Assert.Empty(childChanges);
+        Assert.DoesNotContain(nameof(ChangedFileTreeNode.HierarchyGuideSegments), aProperties);
     }
 
     [Fact]

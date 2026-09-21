@@ -85,6 +85,8 @@ public sealed class ChangedFileTreeNode : INotifyPropertyChanged
             Notify(nameof(IsExpanded));
         }
     }
+    public IReadOnlyList<RepositoryTreeGuideSegmentKind> HierarchyGuideSegments { get; private set; } =
+        Array.Empty<RepositoryTreeGuideSegmentKind>();
     public int AddedLines => _addedLines;
     public int RemovedLines => _removedLines;
     public string Status => Entry?.Status ?? string.Empty;
@@ -131,6 +133,13 @@ public sealed class ChangedFileTreeNode : INotifyPropertyChanged
         if (!string.Equals(oldRemovedDisplay, RemovedDisplay, StringComparison.Ordinal)) Notify(nameof(RemovedDisplay));
     }
 
+    internal void SetHierarchyGuideSegments(IReadOnlyList<RepositoryTreeGuideSegmentKind> segments)
+    {
+        if (HierarchyGuideSegments.SequenceEqual(segments)) return;
+        HierarchyGuideSegments = segments;
+        Notify(nameof(HierarchyGuideSegments));
+    }
+
     private void Notify(string propertyName) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
@@ -152,5 +161,10 @@ internal static class ChangedFileTreeSynchronizer
             node => node.Children,
             descriptor => descriptor.Children,
             StringComparer.Ordinal);
+
+        TreeHierarchyGuideBuilder.Apply(
+            roots,
+            node => node.Children,
+            (node, segments) => node.SetHierarchyGuideSegments(segments));
     }
 }
