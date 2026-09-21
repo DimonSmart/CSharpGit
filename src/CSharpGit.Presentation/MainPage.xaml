@@ -486,7 +486,8 @@
                             ItemContainerStyle="{StaticResource DenseTreeItemStyle}"
                             ItemTemplate="{StaticResource WorkingTreeTreeItemTemplate}"
                             SelectionMode="None"
-                            ItemInvoked="UnstagedChangesTree_ItemInvoked" />
+                            ItemInvoked="UnstagedChangesTree_ItemInvoked"
+                            RightTapped="UnstagedChangesTree_RightTapped" />
                 </Grid>
 
                 <Grid Grid.Row="2" RowDefinitions="Auto,*">
@@ -516,7 +517,8 @@
                             ItemContainerStyle="{StaticResource DenseTreeItemStyle}"
                             ItemTemplate="{StaticResource WorkingTreeTreeItemTemplate}"
                             SelectionMode="None"
-                            ItemInvoked="StagedChangesTree_ItemInvoked" />
+                            ItemInvoked="StagedChangesTree_ItemInvoked"
+                            RightTapped="StagedChangesTree_RightTapped" />
                 </Grid>
               </Grid>
 

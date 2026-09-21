@@ -553,6 +553,35 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
         await RunGitForMutationAsync(repository, cancellationToken, "restore", "--worktree", "--", change.Path);
     }
 
+    public async Task DiscardAllFileChangesAsync(
+        Repository repository,
+        WorkingTreeChange change,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
+        ArgumentNullException.ThrowIfNull(change);
+        ValidateChange(change);
+        if (!change.IsStaged)
+            throw new InvalidOperationException("Only staged changes can be discarded from the index.");
+        if (change.IsConflicted)
+            throw new InvalidOperationException("Conflict paths must be handled by the conflict workflow.");
+
+        cancellationToken.ThrowIfCancellationRequested();
+        if (await RunOptionalGitAsync(repository.WorkingDirectory, cancellationToken, "rev-parse", "--verify", "HEAD") is { Length: > 0 })
+        {
+            await RunGitForMutationAsync(
+                repository,
+                cancellationToken,
+                PathArguments("restore", change, "--source=HEAD", "--staged", "--worktree"));
+            return;
+        }
+
+        await RunGitForMutationAsync(
+            repository,
+            cancellationToken,
+            PathArguments("rm", change, "--force", "--ignore-unmatch"));
+    }
+
     public async Task CommitAsync(Repository repository, string message, bool amend = false, bool intentionalEmpty = false, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(message)) throw new ArgumentException("Enter a non-empty commit message.", nameof(message));
