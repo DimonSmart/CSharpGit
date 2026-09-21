@@ -143,7 +143,7 @@ public sealed class RepositoryTreeGuides : Canvas
             _ => Array.Empty<RepositoryTreeGuideSegmentKind>()
         };
         var guideWidth = segments.Count > 0
-            ? RepositoryTreeGuideLayout.ResolveIndentation(segments.Count, TotalIndentation)
+            ? RepositoryTreeGuideLayout.ResolveExpanderSurfaceWidth(segments.Count, TotalIndentation)
             : HasChildren
                 ? RepositoryTreeGuideLayout.ResolveExpanderSurfaceWidth(0, TotalIndentation)
                 : 0d;
