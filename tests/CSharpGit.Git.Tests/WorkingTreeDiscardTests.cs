@@ -329,6 +329,62 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         Assert.Contains("conflict workflow", result.ErrorMessage);
     }
 
+    [Fact]
+    public async Task DiscardAllFileChangesRestoresIndexAndWorkingTreeToHead()
+    {
+        InitializeRepository(withCommit: true);
+        CommitFile("tracked.txt", "A\n", "add tracked");
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "tracked.txt"), "B\n");
+        RunGit(_temporaryDirectory, "add", "--", "tracked.txt");
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "tracked.txt"), "C\n");
+
+        var (service, repository) = await OpenAsync();
+        var change = Assert.Single((await service.ReadAsync(repository)).Changes, change => change.Path == "tracked.txt");
+        Assert.True(change.IsStaged && change.IsUnstaged);
+
+        await service.DiscardAllFileChangesAsync(repository, change);
+
+        Assert.Equal("A\n", File.ReadAllText(Path.Combine(_temporaryDirectory, "tracked.txt")));
+        Assert.Equal(string.Empty, RunGitOutput(_temporaryDirectory, "diff", "--cached", "--", "tracked.txt"));
+        Assert.Equal(string.Empty, RunGitOutput(_temporaryDirectory, "diff", "--", "tracked.txt"));
+    }
+
+    [Fact]
+    public async Task DiscardAllFileChangesRemovesNewlyAddedFile()
+    {
+        InitializeRepository(withCommit: true);
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "new.txt"), "staged\n");
+        RunGit(_temporaryDirectory, "add", "--", "new.txt");
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "new.txt"), "later\n");
+
+        var (service, repository) = await OpenAsync();
+        var change = Assert.Single((await service.ReadAsync(repository)).Changes, change => change.Path == "new.txt");
+        Assert.True(change.IsStaged && change.IsUnstaged);
+
+        await service.DiscardAllFileChangesAsync(repository, change);
+
+        Assert.False(File.Exists(Path.Combine(_temporaryDirectory, "new.txt")));
+        Assert.Equal(string.Empty, RunGitOutput(_temporaryDirectory, "diff", "--cached", "--", "new.txt"));
+    }
+
+    [Fact]
+    public async Task DiscardAllFileChangesWorksInUnbornRepository()
+    {
+        InitializeRepository(withCommit: false);
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "initial.txt"), "staged\n");
+        RunGit(_temporaryDirectory, "add", "--", "initial.txt");
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "initial.txt"), "later\n");
+
+        var (service, repository) = await OpenAsync();
+        var change = Assert.Single((await service.ReadAsync(repository)).Changes, change => change.Path == "initial.txt");
+        Assert.True(change.IsStaged && change.IsUnstaged);
+
+        await service.DiscardAllFileChangesAsync(repository, change);
+
+        Assert.False(File.Exists(Path.Combine(_temporaryDirectory, "initial.txt")));
+        Assert.Equal(string.Empty, RunGitOutput(_temporaryDirectory, "diff", "--cached", "--", "initial.txt"));
+    }
+
     public void Dispose() => TestDirectory.Delete(_temporaryDirectory);
 
     private async Task<(GitCliRepositoryService Service, Repository Repository)> OpenAsync()
