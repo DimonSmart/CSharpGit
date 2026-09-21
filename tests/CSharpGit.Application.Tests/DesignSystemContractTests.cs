@@ -95,7 +95,9 @@ public sealed class DesignSystemContractTests
                      "DenseTreeItemStyle",
                      "RepositoryTreeItemStyle",
                      "RepositoryTreeItemTemplate",
-                     "WorkingTreeTreeItemTemplate"
+                     "RepositoryFilesTreeItemTemplate",
+                     "WorkingTreeTreeItemTemplate",
+                     "ChangedFileTreeItemTemplate"
                  })
         {
             Assert.Equal(1, Count(repositoryTree, $"x:Key=\"{key}\""));
@@ -122,12 +124,12 @@ public sealed class DesignSystemContractTests
         Assert.Contains("<x:Double x:Key=\"Height.DiffRow\">20</x:Double>", tokens);
         Assert.Contains("<x:Double x:Key=\"Height.CommitEditor\">60</x:Double>", tokens);
 
-        Assert.True(Count(main, "ItemContainerStyle=\"{StaticResource DenseTreeItemStyle}\"") >= 3);
+        Assert.True(Count(main, "ItemContainerStyle=\"{StaticResource DenseTreeItemStyle}\"") >= 4);
         Assert.Equal(2, Count(main, "ItemTemplate=\"{StaticResource WorkingTreeTreeItemTemplate}\""));
         Assert.Contains("ItemTemplate=\"{StaticResource RepositoryTreeItemTemplate}\"", main);
         Assert.Contains("ItemContainerStyle=\"{StaticResource HistoryRowStyle}\"", main);
         Assert.Contains("ItemTemplate=\"{StaticResource HistoryItemTemplate}\"", main);
-        Assert.Contains("ItemContainerStyle=\"{StaticResource ChangedFileRowStyle}\"", main);
+        Assert.DoesNotContain("ChangedFileRowStyle", main);
         Assert.Contains("ItemTemplate=\"{StaticResource ChangedFileTreeItemTemplate}\"", main);
         Assert.True(Count(main, "ItemContainerStyle=\"{StaticResource DiffRowStyle}\"") >= 2);
         Assert.True(Count(main, "ItemTemplate=\"{StaticResource DiffItemTemplate}\"") >= 2);
@@ -142,12 +144,13 @@ public sealed class DesignSystemContractTests
         Assert.Contains("x:Key=\"DenseListItemStyle\"", workspace);
         Assert.DoesNotContain("x:Key=\"WorkingTreeRowStyle\"", workspace);
         Assert.Contains("x:Key=\"HistoryRowStyle\"", workspace);
-        Assert.Contains("x:Key=\"ChangedFileRowStyle\"", workspace);
+        Assert.DoesNotContain("x:Key=\"ChangedFileRowStyle\"", workspace);
         Assert.Contains("x:Key=\"DiffRowStyle\"", workspace);
         Assert.Contains("x:Key=\"DenseColumnHeaderSurfaceStyle\"", workspace);
         Assert.Contains("x:Key=\"CompactPivotHeaderItemStyle\"", workspace);
         Assert.Contains("x:Key=\"DenseTreeItemStyle\"", repositoryTree);
         Assert.Contains("x:Key=\"WorkingTreeTreeItemTemplate\"", repositoryTree);
+        Assert.Contains("x:Key=\"ChangedFileTreeItemTemplate\"", repositoryTree);
         Assert.Contains("MinHeight=\"{StaticResource Height.DataRow}\"", historyReferences);
         Assert.DoesNotContain("Height=\"24\"", workspace);
         Assert.DoesNotContain("Height=\"20\"", workspace);

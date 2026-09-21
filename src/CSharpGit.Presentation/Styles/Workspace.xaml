@@ -81,13 +81,6 @@
     <Setter Property="Padding" Value="2,0,2,2" />
   </Style>
 
-  <Style x:Key="ChangedFileRowStyle" TargetType="TreeViewItem">
-    <Setter Property="MinHeight" Value="{StaticResource Height.DataRow}" />
-    <Setter Property="Padding" Value="1,0" />
-    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="UseSystemFocusVisuals" Value="True" />
-  </Style>
 
   <Style x:Key="DiffRowStyle" TargetType="ListViewItem">
     <Setter Property="MinHeight" Value="{StaticResource Height.DiffRow}" />
@@ -126,37 +119,6 @@
     </Grid>
   </DataTemplate>
 
-  <DataTemplate x:Key="ChangedFileTreeItemTemplate">
-    <TreeViewItem ItemsSource="{Binding Children}"
-                  IsExpanded="{Binding IsExpanded, Mode=TwoWay}"
-                  Style="{StaticResource ChangedFileRowStyle}">
-      <TreeViewItem.Content>
-        <Grid ColumnDefinitions="*,26,46,46" Padding="2,0" ColumnSpacing="{StaticResource Spacing.XS}">
-          <TextBlock Text="{Binding DisplayName}"
-                     Style="{StaticResource BodyTextStyle}"
-                     TextTrimming="CharacterEllipsis"
-                     VerticalAlignment="Center"
-                     ToolTipService.ToolTip="{Binding Path}" />
-          <TextBlock Grid.Column="1"
-                     Text="{Binding Status}"
-                     Style="{StaticResource DiffSecondaryTextStyle}"
-                     FontWeight="SemiBold"
-                     HorizontalAlignment="Center"
-                     VerticalAlignment="Center" />
-          <TextBlock Grid.Column="2"
-                     Text="{Binding AddedDisplay}"
-                     Style="{StaticResource DiffSecondaryTextStyle}"
-                     HorizontalAlignment="Right"
-                     VerticalAlignment="Center" />
-          <TextBlock Grid.Column="3"
-                     Text="{Binding RemovedDisplay}"
-                     Style="{StaticResource DiffSecondaryTextStyle}"
-                     HorizontalAlignment="Right"
-                     VerticalAlignment="Center" />
-        </Grid>
-      </TreeViewItem.Content>
-    </TreeViewItem>
-  </DataTemplate>
 
   <DataTemplate x:Key="DiffItemTemplate">
     <Border Background="{Binding Kind, Converter={StaticResource DiffLineKindToBrushConverter}}">
