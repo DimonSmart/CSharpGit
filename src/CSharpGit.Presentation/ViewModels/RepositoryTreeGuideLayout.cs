@@ -48,17 +48,21 @@ public static class RepositoryTreeGuideLayout
                 ? totalIndentation
                 : segmentCount * FallbackSegmentWidth;
 
-    public static double ResolveExpanderSurfaceWidth(int segmentCount, double totalIndentation) =>
-        segmentCount > 0
-            ? ResolveIndentation(segmentCount, totalIndentation)
-            : FallbackSegmentWidth;
+    public static double ResolveExpanderSurfaceWidth(int segmentCount, double totalIndentation)
+    {
+        if (segmentCount <= 0) return FallbackSegmentWidth;
+
+        var indentation = ResolveIndentation(segmentCount, totalIndentation);
+        return indentation + (indentation / segmentCount);
+    }
 
     public static double ResolveExpanderCenterX(int segmentCount, double totalIndentation)
     {
-        var effectiveSegmentCount = Math.Max(1, segmentCount);
-        var width = ResolveExpanderSurfaceWidth(segmentCount, totalIndentation);
-        var segmentWidth = width / effectiveSegmentCount;
-        return width - (segmentWidth / 2d);
+        if (segmentCount <= 0) return FallbackSegmentWidth / 2d;
+
+        var indentation = ResolveIndentation(segmentCount, totalIndentation);
+        var segmentWidth = indentation / segmentCount;
+        return indentation + (segmentWidth / 2d);
     }
 
     public static IReadOnlyList<RepositoryTreeGuideSegmentGeometry> BuildGeometry(
@@ -84,7 +88,7 @@ public static class RepositoryTreeGuideLayout
             result.Add(new RepositoryTreeGuideSegmentGeometry(
                 segments[index],
                 centerX,
-                segmentLeft + segmentWidth,
+                centerX + segmentWidth,
                 middleY,
                 cornerRadius));
         }

@@ -51,7 +51,7 @@ public sealed class RepositoryTreeGuideLayoutTests
             {
                 new RepositoryTreeGuideLine(8, 0, 8, 24),
                 new RepositoryTreeGuideLine(40, 0, 40, 12),
-                new RepositoryTreeGuideLine(40, 12, 48, 12)
+                new RepositoryTreeGuideLine(40, 12, 56, 12)
             },
             lines);
     }
@@ -72,8 +72,8 @@ public sealed class RepositoryTreeGuideLayoutTests
         Assert.Equal(
             new[]
             {
-                new RepositoryTreeGuideSegmentGeometry(RepositoryTreeGuideSegmentKind.Continue, 8, 16, 12, 3),
-                new RepositoryTreeGuideSegmentGeometry(RepositoryTreeGuideSegmentKind.Last, 40, 48, 12, 3)
+                new RepositoryTreeGuideSegmentGeometry(RepositoryTreeGuideSegmentKind.Continue, 8, 24, 12, 3),
+                new RepositoryTreeGuideSegmentGeometry(RepositoryTreeGuideSegmentKind.Last, 40, 56, 12, 3)
             },
             geometry);
     }
@@ -90,16 +90,35 @@ public sealed class RepositoryTreeGuideLayoutTests
             new[]
             {
                 new RepositoryTreeGuideLine(8, 0, 8, 12),
-                new RepositoryTreeGuideLine(8, 12, 16, 12)
+                new RepositoryTreeGuideLine(8, 12, 24, 12)
             },
             lines);
     }
 
     [Fact]
-    public void Expander_is_centered_in_current_indent_column()
+    public void NonRoot_surface_includes_current_node_column()
     {
-        Assert.Equal(40, RepositoryTreeGuideLayout.ResolveExpanderCenterX(segmentCount: 3, totalIndentation: 48));
-        Assert.Equal(48, RepositoryTreeGuideLayout.ResolveExpanderSurfaceWidth(segmentCount: 3, totalIndentation: 48));
+        Assert.Equal(56, RepositoryTreeGuideLayout.ResolveExpanderCenterX(segmentCount: 3, totalIndentation: 48));
+        Assert.Equal(64, RepositoryTreeGuideLayout.ResolveExpanderSurfaceWidth(segmentCount: 3, totalIndentation: 48));
+    }
+
+    [Fact]
+    public void Terminal_connector_reaches_current_node_expander_column()
+    {
+        var geometry = RepositoryTreeGuideLayout.BuildGeometry(
+            new[]
+            {
+                RepositoryTreeGuideSegmentKind.Continue,
+                RepositoryTreeGuideSegmentKind.Empty,
+                RepositoryTreeGuideSegmentKind.Last
+            },
+            totalIndentation: 48,
+            rowHeight: 24);
+
+        var terminal = Assert.Single(geometry, segment => segment.Kind == RepositoryTreeGuideSegmentKind.Last);
+        Assert.Equal(
+            RepositoryTreeGuideLayout.ResolveExpanderCenterX(segmentCount: 3, totalIndentation: 48),
+            terminal.RightX);
     }
 
     [Fact]
