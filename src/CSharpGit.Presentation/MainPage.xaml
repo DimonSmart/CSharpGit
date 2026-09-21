@@ -490,6 +490,15 @@
                             RightTapped="UnstagedChangesTree_RightTapped" />
                 </Grid>
 
+                <controls:GridSplitter x:Name="WorkingTreeStagingSplitter"
+                                       Grid.Row="1"
+                                       ResizeDirection="Rows"
+                                       ResizeBehavior="PreviousAndNext"
+                                       MinimumFirst="80"
+                                       MinimumSecond="80"
+                                       VerticalAlignment="Stretch"
+                                       Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
                 <Grid Grid.Row="2" RowDefinitions="Auto,*">
                   <Grid MinHeight="{StaticResource Height.Control}" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.XS}">
                     <TextBlock x:Name="StagedHeader"
