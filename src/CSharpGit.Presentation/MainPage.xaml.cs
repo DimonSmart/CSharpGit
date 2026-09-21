@@ -148,14 +148,25 @@ public sealed partial class MainPage : Page
 
     private void InitializeBusyStatusPresentation()
     {
-        var opacityAnimation = new DoubleAnimation
+        var opacityAnimation = new DoubleAnimationUsingKeyFrames
         {
-            From = 1,
-            To = 0.45,
-            Duration = new Duration(TimeSpan.FromMilliseconds(900)),
-            AutoReverse = true,
             RepeatBehavior = RepeatBehavior.Forever
         };
+        opacityAnimation.KeyFrames.Add(new LinearDoubleKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.Zero),
+            Value = 1
+        });
+        opacityAnimation.KeyFrames.Add(new LinearDoubleKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(900)),
+            Value = 0.45
+        });
+        opacityAnimation.KeyFrames.Add(new LinearDoubleKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1800)),
+            Value = 1
+        });
         Storyboard.SetTarget(opacityAnimation, BusyPulseDot);
         Storyboard.SetTargetProperty(opacityAnimation, "Opacity");
         _busyPulseStoryboard.Children.Add(opacityAnimation);
