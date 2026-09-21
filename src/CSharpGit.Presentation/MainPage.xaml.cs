@@ -11,6 +11,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 using Windows.UI.Core;
@@ -32,6 +33,9 @@ public sealed partial class MainPage : Page
     private bool _scopedHasMore;
     private bool _isScopedHistoryLoading;
     private bool _wasBusy;
+    private readonly Storyboard _busyPulseStoryboard = new();
+    private readonly SolidColorBrush _busyStatusBackgroundBrush = new(Windows.UI.Color.FromArgb(28, 34, 197, 94));
+    private bool _busyPulseRunning;
 
     public MainPage(OpenRepositoryViewModel viewModel, IReferenceHistoryService referenceHistoryService, IReferenceService referenceService, IRepositoryRefreshProbe repositoryRefreshProbe, IWorkingTreeDiffService? workingTreeDiffService = null)
     {
@@ -41,6 +45,7 @@ public sealed partial class MainPage : Page
         _referenceService = referenceService;
         _repositoryRefreshProbe = repositoryRefreshProbe ?? throw new ArgumentNullException(nameof(repositoryRefreshProbe));
         _workingTreeDiffService = workingTreeDiffService;
+        InitializeBusyStatusPresentation();
 
         RepositoryTree.ItemsSource = _repositoryTreeRoots;
         HistoryList.ItemsSource = _viewModel.History;
@@ -141,6 +146,43 @@ public sealed partial class MainPage : Page
         SynchronizeRepositoryTree();
     }
 
+    private void InitializeBusyStatusPresentation()
+    {
+        var opacityAnimation = new DoubleAnimation
+        {
+            From = 1,
+            To = 0.45,
+            Duration = new Duration(TimeSpan.FromMilliseconds(900)),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever
+        };
+        Storyboard.SetTarget(opacityAnimation, BusyPulseDot);
+        Storyboard.SetTargetProperty(opacityAnimation, "Opacity");
+        _busyPulseStoryboard.Children.Add(opacityAnimation);
+    }
+
+    private void UpdateBusyStatusPresentation()
+    {
+        var isBusy = _viewModel.IsBusy;
+        StatusOperationIdleIcon.Visibility = isBusy ? Visibility.Collapsed : Visibility.Visible;
+        BusyPulseDot.Visibility = isBusy ? Visibility.Visible : Visibility.Collapsed;
+        StatusOperationContainer.Background = isBusy ? _busyStatusBackgroundBrush : null;
+
+        if (_busyPulseRunning == isBusy) return;
+
+        _busyPulseRunning = isBusy;
+        if (isBusy)
+        {
+            BusyPulseDot.Opacity = 1;
+            _busyPulseStoryboard.Begin();
+        }
+        else
+        {
+            _busyPulseStoryboard.Stop();
+            BusyPulseDot.Opacity = 1;
+        }
+    }
+
     private void UpdateStatusBar()
     {
         var current = _viewModel.LocalBranches.FirstOrDefault(branch => branch.IsCurrent);
@@ -152,6 +194,7 @@ public sealed partial class MainPage : Page
         StatusOperationText.Text = _viewModel.IsBusy
             ? "Working…"
             : _viewModel.CurrentOperation == RepositoryOperation.None ? "Ready" : _viewModel.CurrentOperation.ToString();
+        UpdateBusyStatusPresentation();
         UpdateCommitNavigationText();
     }
 
