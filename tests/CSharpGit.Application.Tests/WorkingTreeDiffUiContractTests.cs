@@ -145,11 +145,18 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.DoesNotContain("foreach (var change in _viewModel.Changes)", workingTree);
 
         var discardStart = git.IndexOf("public async Task DiscardFileAsync", StringComparison.Ordinal);
-        var discardEnd = git.IndexOf("public async Task CommitAsync", discardStart, StringComparison.Ordinal);
+        var discardEnd = git.IndexOf("public async Task DiscardAllFileChangesAsync", discardStart, StringComparison.Ordinal);
         var discard = git[discardStart..discardEnd];
         Assert.Contains("\"restore\", \"--worktree\", \"--\", change.Path", discard);
         Assert.DoesNotContain("\"--source=HEAD\"", discard);
         Assert.DoesNotContain("\"--staged\"", discard);
+
+        var stagedDiscardStart = discardEnd;
+        var stagedDiscardEnd = git.IndexOf("public async Task CommitAsync", stagedDiscardStart, StringComparison.Ordinal);
+        var stagedDiscard = git[stagedDiscardStart..stagedDiscardEnd];
+        Assert.Contains("\"--source=HEAD\"", stagedDiscard);
+        Assert.Contains("\"--staged\"", stagedDiscard);
+        Assert.Contains("\"--worktree\"", stagedDiscard);
         Assert.Contains("WorkingTreeDiscard.CreateSelected(_selectedUnstagedChanges)", discardViewModel);
         Assert.Contains("WorkingTreeDiscard.CreateAll(Changes)", discardViewModel);
         Assert.Contains("WorkingTreeDiscard.ExecuteAsync", discardViewModel);
