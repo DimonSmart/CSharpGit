@@ -23,7 +23,7 @@ public sealed class WorkingTreeTreeNode : INotifyPropertyChanged
         Children = children;
         Status = change is null
             ? string.Empty
-            : (kind == WorkingTreeDiffKind.Unstaged ? change.WorkingTreeStatus : change.IndexStatus).ToString();
+            : FormatStatus(change, kind);
         _isExpanded = change is null;
     }
 
@@ -94,6 +94,19 @@ public sealed class WorkingTreeTreeNode : INotifyPropertyChanged
             source.Item,
             source.Children.Select(child => ToPresentationNode(child, kind)).ToList(),
             kind);
+
+    internal static string FormatStatus(WorkingTreeChange change, WorkingTreeDiffKind kind)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+
+        return kind switch
+        {
+            WorkingTreeDiffKind.Staged when change.IndexStatus == '?' => "A",
+            WorkingTreeDiffKind.Staged => change.IndexStatus.ToString(),
+            _ when change.IndexStatus == '?' && change.WorkingTreeStatus == '?' => "?",
+            _ => change.WorkingTreeStatus.ToString()
+        };
+    }
 
     private void SetField(ref bool field, bool value, [CallerMemberName] string? propertyName = null)
     {

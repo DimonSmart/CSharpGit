@@ -22,6 +22,17 @@ public sealed class WorkingTreeTreeNodeTests
     }
 
     [Fact]
+    public void NewFileStatusUsesQuestionMarkOnlyBeforeStaging()
+    {
+        var untracked = new WorkingTreeChange("new.txt", '?', '?');
+        var stagedAdded = new WorkingTreeChange("new.txt", 'A', ' ');
+
+        Assert.Equal("?", WorkingTreeTreeNode.FormatStatus(untracked, WorkingTreeDiffKind.Unstaged));
+        Assert.Equal("A", WorkingTreeTreeNode.FormatStatus(untracked, WorkingTreeDiffKind.Staged));
+        Assert.Equal("A", WorkingTreeTreeNode.FormatStatus(stagedAdded, WorkingTreeDiffKind.Staged));
+    }
+
+    [Fact]
     public void RenameUsesOnlyCurrentPathAndTooltipShowsOriginalPath()
     {
         var change = new WorkingTreeChange("new/A.cs", 'R', ' ', "old/A.cs");
