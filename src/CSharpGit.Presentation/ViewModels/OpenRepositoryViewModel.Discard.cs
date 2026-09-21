@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows.Input;
 using CSharpGit.Application;
+using CSharpGit.Domain;
 
 namespace CSharpGit.Presentation.ViewModels;
 
@@ -110,6 +111,19 @@ public sealed partial class OpenRepositoryViewModel
         ErrorMessage = string.IsNullOrWhiteSpace(ErrorMessage)
             ? failureMessage
             : $"{failureMessage}{Environment.NewLine}{ErrorMessage}";
+    }
+
+    internal Task DiscardAllFileChangesAsync(WorkingTreeChange change)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        if (Repository is null || !change.IsStaged || change.IsConflicted) return Task.CompletedTask;
+
+        var repository = Repository;
+        return MutateAsync(
+            () => _workingTreeService.DiscardAllFileChangesAsync(repository, change),
+            "Could not discard changes",
+            ClearWorkingTreePresentationSelection,
+            includeHistory: false);
     }
 
     private void SetPendingBatchDiscard(WorkingTreeDiscardRequest? request)
