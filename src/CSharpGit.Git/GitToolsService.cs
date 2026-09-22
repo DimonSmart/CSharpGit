@@ -116,6 +116,23 @@ public sealed class GitToolsService : IGitToolsService
             cancellationToken);
     }
 
+    public async Task OpenConflictInEditorAsync(
+        Repository repository,
+        ConflictFile conflict,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
+        ArgumentNullException.ThrowIfNull(conflict);
+        if (!conflict.CanOpenManually)
+            throw new InvalidOperationException(
+                "This conflict cannot be opened as a working-copy file.");
+
+        var path = _pathService.ResolveExistingWorkingTreeFile(
+            repository,
+            conflict.Path);
+        await OpenEditorAsync(repository, path, cancellationToken);
+    }
+
     public async Task RunExternalDiffAsync(
         Repository repository,
         DiffFileVersionPair pair,
