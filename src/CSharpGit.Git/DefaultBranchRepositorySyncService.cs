@@ -56,15 +56,27 @@ internal sealed class DefaultBranchRepositorySyncService : IRepositorySyncServic
 
     public Task PushAsync(
         Repository repository,
-        string? remote = null,
-        string? branch = null,
-        bool setUpstream = false,
+        PushOptions? options = null,
         CancellationToken cancellationToken = default) =>
         _inner.PushAsync(
             repository,
-            remote,
-            branch,
-            setUpstream,
+            options,
+            cancellationToken);
+
+    public Task<PublishBranchPreparation> PreparePublishBranchAsync(
+        Repository repository,
+        CancellationToken cancellationToken = default) =>
+        _inner.PreparePublishBranchAsync(
+            repository,
+            cancellationToken);
+
+    public Task PublishBranchAsync(
+        Repository repository,
+        PublishBranchRequest request,
+        CancellationToken cancellationToken = default) =>
+        _inner.PublishBranchAsync(
+            repository,
+            request,
             cancellationToken);
 
     public Task<ForcePushWithLeaseSnapshot> PrepareForcePushWithLeaseAsync(
