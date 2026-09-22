@@ -55,8 +55,10 @@ public sealed class RepositoryTreeCurrentBranchPresentationTests
         Assert.DoesNotContain("CurrentBranchAccentVisibility", repositoryTree, StringComparison.Ordinal);
         Assert.Contains("Visibility=\"{Binding CurrentWorktreeAccentVisibility}\"", repositoryTree, StringComparison.Ordinal);
         Assert.Equal(2, CountOccurrences(repositoryTree, "Visibility=\"{Binding CurrentBranchNameAccentVisibility}\""));
-        Assert.Equal(2, CountOccurrences(repositoryTree, "TextForeground=\"{ThemeResource AccentFillColorDefaultBrush}\""));
-        Assert.Contains("<ScaleTransform ScaleX=\"1.04\" ScaleY=\"1.08\" />", repositoryTree, StringComparison.Ordinal);
+        Assert.Equal(1, CountOccurrences(repositoryTree, "TextForeground=\"{ThemeResource AccentFillColorDefaultBrush}\""));
+        Assert.Contains("<Border Height=\"1\"", repositoryTree, StringComparison.Ordinal);
+        Assert.Contains("Background=\"{ThemeResource AccentFillColorDefaultBrush}\"", repositoryTree, StringComparison.Ordinal);
+        Assert.DoesNotContain("<ScaleTransform ScaleX=\"1.04\" ScaleY=\"1.08\" />", repositoryTree, StringComparison.Ordinal);
     }
 
     private static int CountOccurrences(string text, string value)
