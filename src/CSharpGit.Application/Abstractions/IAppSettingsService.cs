@@ -38,6 +38,7 @@ public interface IAppSettingsService
     ApplicationLogLevel LogLevel { get; }
     GitConsoleAutoOpenMode GitConsoleAutoOpenMode { get; }
     bool ShowReflog { get; }
+    bool AutoSetupRemoteOnPush { get; }
     IReadOnlyList<RecentRepositorySettings> RecentRepositories { get; }
     event EventHandler? Changed;
 
@@ -59,6 +60,10 @@ public interface IAppSettingsService
         CancellationToken cancellationToken = default);
 
     Task SetShowReflogAsync(
+        bool value,
+        CancellationToken cancellationToken = default);
+
+    Task SetAutoSetupRemoteOnPushAsync(
         bool value,
         CancellationToken cancellationToken = default);
 

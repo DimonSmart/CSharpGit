@@ -125,7 +125,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         FetchCommand = new AsyncCommand(() => MutateAsync(() => _syncService.FetchAsync(Repository!, SelectedRemote!.Name)), () => CanMutate() && SelectedRemote is not null);
         FetchAllCommand = new AsyncCommand(() => MutateAsync(() => _syncService.FetchAllAsync(Repository!)), CanMutate);
         PullCommand = new AsyncCommand(() => MutateAsync(() => _syncService.PullAsync(Repository!)), CanMutate);
-        PushCommand = new AsyncCommand(() => MutateAsync(() => _syncService.PushAsync(Repository!, string.IsNullOrWhiteSpace(PushBranchName) ? null : SelectedRemote?.Name, string.IsNullOrWhiteSpace(PushBranchName) ? null : PushBranchName, SetUpstream)), CanMutate);
+        PushCommand = new AsyncCommand(() => MutateAsync(() => _syncService.PushAsync(Repository!)), CanMutate);
         CreateStashCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.CreateStashAsync(Repository!, StashMessage)), CanMutate);
         ApplyStashCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.ApplyStashAsync(Repository!, SelectedStash!.Name)), () => CanMutate() && SelectedStash is not null);
         PopStashCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.PopStashAsync(Repository!, SelectedStash!.Name)), () => CanMutate() && SelectedStash is not null);
@@ -307,7 +307,10 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public string CurrentSideLabel => SelectedConflict?.CurrentLocalLabel ?? "Current/local";
     public string IncomingSideLabel => SelectedConflict?.IncomingRemoteLabel ?? "Incoming/remote";
     public Visibility OperationVisibility => OperationState.Kind == RepositoryOperation.None ? Visibility.Collapsed : Visibility.Visible;
-    public bool CanForcePushWithLease => Repository is not null && !IsBusy && CurrentOperation == RepositoryOperation.None && LocalBranches.Any(branch => branch.IsCurrent);
+    public bool CanForcePushWithLease => Repository is not null
+        && !IsBusy
+        && CurrentOperation == RepositoryOperation.None
+        && LocalBranches.Any(branch => branch is { IsCurrent: true } && !string.IsNullOrWhiteSpace(branch.Upstream));
 
     public Task RefreshWhenActivatedAsync() => Repository is null ? Task.CompletedTask : RefreshAllAsync();
 
