@@ -8,9 +8,9 @@ public sealed class RepositoryFileVersionServiceTests : IDisposable
 {
     private readonly string _temporaryDirectory =
         Path.Combine(Path.GetTempPath(), $"csharpgit-file-versions-{Guid.NewGuid():N}");
-    private readonly GitRepositoryService _repositoryService = new();
-    private readonly GitRepositoryStateService _stateService = new();
-    private readonly GitRepositoryFileVersionService _versionService = new();
+    private readonly GitRepositoryService _repositoryService = GitTestServices.CreateRepositoryService();
+    private readonly GitRepositoryStateService _stateService = GitTestServices.CreateRepositoryStateService();
+    private readonly GitRepositoryFileVersionService _versionService = GitTestServices.CreateRepositoryFileVersionService();
 
     [Fact]
     public async Task CommitModifiedMaterializesExactOriginalAndChangedBytes()

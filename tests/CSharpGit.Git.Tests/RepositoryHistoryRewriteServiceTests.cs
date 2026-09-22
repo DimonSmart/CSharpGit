@@ -9,8 +9,8 @@ public sealed class RepositoryHistoryRewriteServiceTests : IDisposable
     private readonly string _temporaryDirectory =
         Path.Combine(Path.GetTempPath(), $"csharpgit-history-rewrite-{Guid.NewGuid():N}");
     private readonly List<string> _backupPaths = [];
-    private readonly GitRepositoryService _repositoryService = new();
-    private readonly GitRepositoryHistoryRewriteService _rewriteService = new();
+    private readonly GitRepositoryService _repositoryService = GitTestServices.CreateRepositoryService();
+    private readonly GitRepositoryHistoryRewriteService _rewriteService = GitTestServices.CreateRepositoryHistoryRewriteService();
 
     [Theory]
     [InlineData("")]
