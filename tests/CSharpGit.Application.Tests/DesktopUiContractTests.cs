@@ -77,7 +77,8 @@ public sealed class DesktopUiContractTests
         Assert.Contains("ShowSettingsError(exception)", settingsPage);
         Assert.Contains("Could not apply settings", settingsPage);
         Assert.Contains("SettingsViewModel viewModel", settingsPage);
-        Assert.Contains("new SettingsViewModel(_settings)", settingsController);
+        Assert.Contains("new SettingsViewModel(_settings, _uiDispatcher)", settingsController);
+        Assert.Contains("IUiDispatcher _uiDispatcher", settingsController);
         Assert.DoesNotContain("AppSettingsContext", settingsPage);
         Assert.DoesNotContain("AppSettingsContext", settingsViewModel);
         Assert.DoesNotContain("AppSettingsContext", repositoryViewModel);

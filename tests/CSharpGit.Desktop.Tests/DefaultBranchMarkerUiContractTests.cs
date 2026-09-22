@@ -18,7 +18,7 @@ public sealed class DefaultBranchMarkerUiContractTests
         Assert.DoesNotContain("Visibility=\"{Binding CurrentLocalBranchIconVisibility}\"", repositoryTree, StringComparison.Ordinal);
         Assert.Contains("Visibility=\"{Binding LocalDefaultBranchIconVisibility}\"", repositoryTree, StringComparison.Ordinal);
         Assert.Contains("Visibility=\"{Binding RemoteDefaultBranchIconVisibility}\"", repositoryTree, StringComparison.Ordinal);
-        Assert.Equal(2, CountOccurrences(repositoryTree, "Foreground=\"{ThemeResource AccentFillColorDefaultBrush}\""));
+        Assert.Equal(2, CountOccurrences(repositoryTree, " Foreground=\"{ThemeResource AccentFillColorDefaultBrush}\""));
         Assert.DoesNotContain("Foreground=\"{ThemeResource TextFillColorSecondaryBrush}\"", repositoryTree, StringComparison.Ordinal);
     }
 
