@@ -15,7 +15,7 @@ public sealed class DefaultBranchTests : IDisposable
         RunGit(fixture.Work, "remote", "set-head", "origin", "--delete");
 
         var services = CreateServices();
-        var repository = await services.Inner.OpenAsync(fixture.Work);
+        var repository = await services.Repository.OpenAsync(fixture.Work);
         var state = await services.State.ReadAsync(repository);
 
         Assert.True(state.Refs.RemoteBranches.Single(branch => branch.Name == "origin/develop").IsDefault);
@@ -28,7 +28,7 @@ public sealed class DefaultBranchTests : IDisposable
     {
         var fixture = CreateFixture("develop");
         var services = CreateServices();
-        var repository = await services.Inner.OpenAsync(fixture.Work);
+        var repository = await services.Repository.OpenAsync(fixture.Work);
 
         var initial = await services.State.ReadAsync(repository);
         Assert.True(initial.Refs.RemoteBranches.Single(branch => branch.Name == "origin/develop").IsDefault);
@@ -44,7 +44,7 @@ public sealed class DefaultBranchTests : IDisposable
         RunGit(fixture.Work, "branch", "release/candidate", "develop");
         RunGit(fixture.Work, "branch", "--set-upstream-to=origin/develop", "release/candidate");
 
-        await services.References.FetchAsync(repository, "origin");
+        await services.Sync.FetchAsync(repository, "origin");
         var refreshed = await services.State.ReadAsync(repository);
 
         Assert.False(refreshed.Refs.RemoteBranches.Single(branch => branch.Name == "origin/develop").IsDefault);
@@ -66,12 +66,13 @@ public sealed class DefaultBranchTests : IDisposable
 
         var activity = new RecordingActivitySink();
         var executor = new GitCommandExecutor(new GitCliOptions(), activity);
-        var inner = new GitCliRepositoryService(executor);
+        var repositoryService = new GitRepositoryService(executor);
+        var inner = new GitRepositoryStateService(executor);
         var stateService = new DefaultBranchRepositoryStateService(
             inner,
             new DefaultBranchResolver(executor),
             new GitTagService(executor));
-        var repository = await inner.OpenAsync(fixture.Work);
+        var repository = await repositoryService.OpenAsync(fixture.Work);
 
         var state = await stateService.ReadLocalOnlyAsync(repository);
 
@@ -93,7 +94,7 @@ public sealed class DefaultBranchTests : IDisposable
         RunGit(working, "commit", "-m", "Initial");
 
         var services = CreateServices();
-        var repository = await services.Inner.OpenAsync(working);
+        var repository = await services.Repository.OpenAsync(working);
         var state = await services.State.ReadAsync(repository);
 
         Assert.DoesNotContain(state.Refs.LocalBranches, branch => branch.IsDefault);
@@ -127,13 +128,15 @@ public sealed class DefaultBranchTests : IDisposable
     private static Services CreateServices()
     {
         var executor = new GitCommandExecutor(new GitCliOptions());
-        var inner = new GitCliRepositoryService(executor);
+        var repository = new GitRepositoryService(executor);
+        var state = new GitRepositoryStateService(executor);
+        var sync = new GitRepositorySyncService(executor);
         var resolver = new DefaultBranchResolver(executor);
         var tags = new GitTagService(executor);
         return new Services(
-            inner,
-            new DefaultBranchRepositoryStateService(inner, resolver, tags),
-            new DefaultBranchReferenceService(inner, resolver));
+            repository,
+            new DefaultBranchRepositoryStateService(state, resolver, tags),
+            new DefaultBranchRepositorySyncService(sync, resolver));
     }
 
     private static void ConfigureIdentity(string workingDirectory)
@@ -190,7 +193,7 @@ public sealed class DefaultBranchTests : IDisposable
 
     private sealed record Fixture(string Remote, string Seed, string Work);
     private sealed record Services(
-        GitCliRepositoryService Inner,
+        GitRepositoryService Repository,
         DefaultBranchRepositoryStateService State,
-        DefaultBranchReferenceService References);
+        DefaultBranchRepositorySyncService Sync);
 }
