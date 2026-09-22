@@ -161,7 +161,7 @@ public sealed partial class SettingsPage : Page
 
     private async void ThemeModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_selectionReady || ThemeModeComboBox.SelectedItem is not ApplicationThemeOption option) return;
+        if (!_selectionReady || _viewModel.IsSynchronizingFromSettings || ThemeModeComboBox.SelectedItem is not ApplicationThemeOption option) return;
 
         SettingsMessage.IsOpen = false;
         try
@@ -176,7 +176,7 @@ public sealed partial class SettingsPage : Page
 
     private async void CommitTimeModeList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_selectionReady || CommitTimeModeList.SelectedItem is not CommitTimeModeOption option) return;
+        if (!_selectionReady || _viewModel.IsSynchronizingFromSettings || CommitTimeModeList.SelectedItem is not CommitTimeModeOption option) return;
 
         SettingsMessage.IsOpen = false;
         try
@@ -191,7 +191,7 @@ public sealed partial class SettingsPage : Page
 
     private async void AutoSetupRemoteOnPushToggle_Toggled(object sender, RoutedEventArgs e)
     {
-        if (!_selectionReady) return;
+        if (!_selectionReady || _viewModel.IsSynchronizingFromSettings) return;
 
         SettingsMessage.IsOpen = false;
         try
@@ -206,7 +206,7 @@ public sealed partial class SettingsPage : Page
 
     private async void GitConsoleAutoOpenComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_selectionReady || GitConsoleAutoOpenComboBox.SelectedItem is not GitConsoleAutoOpenOption option) return;
+        if (!_selectionReady || _viewModel.IsSynchronizingFromSettings || GitConsoleAutoOpenComboBox.SelectedItem is not GitConsoleAutoOpenOption option) return;
 
         SettingsMessage.IsOpen = false;
         try
@@ -221,14 +221,14 @@ public sealed partial class SettingsPage : Page
 
     private async void LoggingToggle_Toggled(object sender, RoutedEventArgs e)
     {
-        if (!_selectionReady) return;
         LogLevelComboBox.IsEnabled = LoggingToggle.IsOn;
+        if (!_selectionReady || _viewModel.IsSynchronizingFromSettings) return;
         await ApplyLoggingSettingsAsync();
     }
 
     private async void LogLevelComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_selectionReady) return;
+        if (!_selectionReady || _viewModel.IsSynchronizingFromSettings) return;
         await ApplyLoggingSettingsAsync();
     }
 

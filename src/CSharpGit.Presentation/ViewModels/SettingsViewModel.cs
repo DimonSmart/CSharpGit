@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using CSharpGit.Application.Abstractions;
+using CSharpGit.Presentation.Threading;
 
 namespace CSharpGit.Presentation.ViewModels;
 
@@ -27,15 +28,22 @@ public sealed record GitConsoleAutoOpenOption(
 public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly IAppSettingsService _settings;
+    private readonly IUiDispatcher _uiDispatcher;
     private ApplicationThemeOption _selectedThemeMode;
+    private CommitTimeModeOption _selectedCommitTimeMode;
+    private bool _loggingEnabled;
+    private ApplicationLogLevelOption _selectedLogLevel;
     private GitConsoleAutoOpenOption _selectedGitConsoleAutoOpenMode;
     private bool _autoSetupRemoteOnPush;
-    private bool _disposed;
+    private int _disposed;
+    private int _synchronizingFromSettings;
 
-    internal SettingsViewModel(IAppSettingsService settings)
+    internal SettingsViewModel(
+        IAppSettingsService settings,
+        IUiDispatcher uiDispatcher)
     {
-        ArgumentNullException.ThrowIfNull(settings);
-        _settings = settings;
+        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
 
         ThemeModes =
         [
@@ -43,7 +51,6 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
             new(ApplicationThemeMode.Light, "Light"),
             new(ApplicationThemeMode.Dark, "Dark")
         ];
-        _selectedThemeMode = FindThemeMode(_settings.ThemeMode);
 
         CommitTimeModes =
         [
@@ -63,7 +70,6 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
                 "Always show local date and time.",
                 "2026-09-09 12:08")
         ];
-        SelectedCommitTimeMode = CommitTimeModes.First(option => option.Mode == _settings.CommitTimeDisplayMode);
 
         LogLevels =
         [
@@ -74,8 +80,6 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
             new(ApplicationLogLevel.Error, "Error", "Errors and critical failures only."),
             new(ApplicationLogLevel.Critical, "Critical", "Only critical failures.")
         ];
-        LoggingEnabled = _settings.LoggingEnabled;
-        SelectedLogLevel = LogLevels.First(option => option.Level == _settings.LogLevel);
 
         GitConsoleAutoOpenModes =
         [
@@ -83,6 +87,11 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
             new(GitConsoleAutoOpenMode.Always, "Always", "Open when a user Git command starts."),
             new(GitConsoleAutoOpenMode.Never, "Never", "Open only when requested manually.")
         ];
+
+        _selectedThemeMode = FindThemeMode(_settings.ThemeMode);
+        _selectedCommitTimeMode = FindCommitTimeMode(_settings.CommitTimeDisplayMode);
+        _loggingEnabled = _settings.LoggingEnabled;
+        _selectedLogLevel = FindLogLevel(_settings.LogLevel);
         _selectedGitConsoleAutoOpenMode = FindGitConsoleMode(_settings.GitConsoleAutoOpenMode);
         _autoSetupRemoteOnPush = _settings.AutoSetupRemoteOnPush;
 
@@ -106,13 +115,40 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
 
     public IReadOnlyList<CommitTimeModeOption> CommitTimeModes { get; }
 
-    public CommitTimeModeOption SelectedCommitTimeMode { get; set; }
+    public CommitTimeModeOption SelectedCommitTimeMode
+    {
+        get => _selectedCommitTimeMode;
+        set
+        {
+            if (Equals(_selectedCommitTimeMode, value)) return;
+            _selectedCommitTimeMode = value;
+            Notify();
+        }
+    }
 
     public IReadOnlyList<ApplicationLogLevelOption> LogLevels { get; }
 
-    public bool LoggingEnabled { get; set; }
+    public bool LoggingEnabled
+    {
+        get => _loggingEnabled;
+        set
+        {
+            if (_loggingEnabled == value) return;
+            _loggingEnabled = value;
+            Notify();
+        }
+    }
 
-    public ApplicationLogLevelOption SelectedLogLevel { get; set; }
+    public ApplicationLogLevelOption SelectedLogLevel
+    {
+        get => _selectedLogLevel;
+        set
+        {
+            if (Equals(_selectedLogLevel, value)) return;
+            _selectedLogLevel = value;
+            Notify();
+        }
+    }
 
     public IReadOnlyList<GitConsoleAutoOpenOption> GitConsoleAutoOpenModes { get; }
 
@@ -138,20 +174,41 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
-    public Task ApplyThemeModeAsync(
+    internal bool IsSynchronizingFromSettings =>
+        Volatile.Read(ref _synchronizingFromSettings) != 0;
+
+    public async Task ApplyThemeModeAsync(
         ApplicationThemeOption option,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(option);
-        return _settings.SetThemeModeAsync(option.Mode, cancellationToken);
+        SelectedThemeMode = option;
+        try
+        {
+            await _settings.SetThemeModeAsync(option.Mode, cancellationToken);
+        }
+        catch
+        {
+            await SyncFromSettingsAfterFailureAsync();
+            throw;
+        }
     }
 
     public async Task ApplyCommitTimeModeAsync(
         CommitTimeModeOption option,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(option);
         SelectedCommitTimeMode = option;
-        await _settings.SetCommitTimeDisplayModeAsync(option.Mode, cancellationToken);
+        try
+        {
+            await _settings.SetCommitTimeDisplayModeAsync(option.Mode, cancellationToken);
+        }
+        catch
+        {
+            await SyncFromSettingsAfterFailureAsync();
+            throw;
+        }
     }
 
     public async Task ApplyLoggingSettingsAsync(
@@ -159,9 +216,18 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         ApplicationLogLevelOption option,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(option);
         LoggingEnabled = enabled;
         SelectedLogLevel = option;
-        await _settings.SetLoggingSettingsAsync(enabled, option.Level, cancellationToken);
+        try
+        {
+            await _settings.SetLoggingSettingsAsync(enabled, option.Level, cancellationToken);
+        }
+        catch
+        {
+            await SyncFromSettingsAfterFailureAsync();
+            throw;
+        }
     }
 
     public async Task ApplyGitConsoleAutoOpenModeAsync(
@@ -170,7 +236,15 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
     {
         ArgumentNullException.ThrowIfNull(option);
         SelectedGitConsoleAutoOpenMode = option;
-        await _settings.SetGitConsoleAutoOpenModeAsync(option.Mode, cancellationToken);
+        try
+        {
+            await _settings.SetGitConsoleAutoOpenModeAsync(option.Mode, cancellationToken);
+        }
+        catch
+        {
+            await SyncFromSettingsAfterFailureAsync();
+            throw;
+        }
     }
 
     public async Task ApplyAutoSetupRemoteOnPushAsync(
@@ -178,34 +252,93 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         CancellationToken cancellationToken = default)
     {
         AutoSetupRemoteOnPush = value;
-        await _settings.SetAutoSetupRemoteOnPushAsync(value, cancellationToken);
+        try
+        {
+            await _settings.SetAutoSetupRemoteOnPushAsync(value, cancellationToken);
+        }
+        catch
+        {
+            await SyncFromSettingsAfterFailureAsync();
+            throw;
+        }
     }
 
     private void Settings_Changed(object? sender, EventArgs e)
     {
-        var selectedThemeMode = FindThemeMode(_settings.ThemeMode);
-        if (!Equals(_selectedThemeMode, selectedThemeMode))
+        if (IsDisposed) return;
+
+        if (_uiDispatcher.HasThreadAccess)
         {
-            _selectedThemeMode = selectedThemeMode;
-            Notify(nameof(SelectedThemeMode));
+            SyncFromSettings();
+            return;
         }
 
-        var selectedGitConsoleMode = FindGitConsoleMode(_settings.GitConsoleAutoOpenMode);
-        if (!Equals(_selectedGitConsoleAutoOpenMode, selectedGitConsoleMode))
+        _uiDispatcher.TryEnqueue(() =>
         {
-            _selectedGitConsoleAutoOpenMode = selectedGitConsoleMode;
-            Notify(nameof(SelectedGitConsoleAutoOpenMode));
-        }
+            if (!IsDisposed)
+                SyncFromSettings();
+        });
+    }
 
-        if (_autoSetupRemoteOnPush != _settings.AutoSetupRemoteOnPush)
+    private void SyncFromSettings()
+    {
+        if (IsDisposed) return;
+
+        Interlocked.Increment(ref _synchronizingFromSettings);
+        try
         {
-            _autoSetupRemoteOnPush = _settings.AutoSetupRemoteOnPush;
-            Notify(nameof(AutoSetupRemoteOnPush));
+            SelectedThemeMode = FindThemeMode(_settings.ThemeMode);
+            SelectedCommitTimeMode = FindCommitTimeMode(_settings.CommitTimeDisplayMode);
+            LoggingEnabled = _settings.LoggingEnabled;
+            SelectedLogLevel = FindLogLevel(_settings.LogLevel);
+            SelectedGitConsoleAutoOpenMode = FindGitConsoleMode(_settings.GitConsoleAutoOpenMode);
+            AutoSetupRemoteOnPush = _settings.AutoSetupRemoteOnPush;
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _synchronizingFromSettings);
         }
     }
 
+    private async Task SyncFromSettingsAfterFailureAsync()
+    {
+        if (IsDisposed) return;
+
+        if (_uiDispatcher.HasThreadAccess)
+        {
+            SyncFromSettings();
+            return;
+        }
+
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!_uiDispatcher.TryEnqueue(() =>
+            {
+                try
+                {
+                    if (!IsDisposed)
+                        SyncFromSettings();
+                    completion.SetResult();
+                }
+                catch (Exception exception)
+                {
+                    completion.SetException(exception);
+                }
+            }))
+            return;
+
+        await completion.Task;
+    }
+
+    private bool IsDisposed => Volatile.Read(ref _disposed) != 0;
+
     private ApplicationThemeOption FindThemeMode(ApplicationThemeMode mode) =>
         ThemeModes.First(option => option.Mode == mode);
+
+    private CommitTimeModeOption FindCommitTimeMode(CommitTimeDisplayMode mode) =>
+        CommitTimeModes.First(option => option.Mode == mode);
+
+    private ApplicationLogLevelOption FindLogLevel(ApplicationLogLevel level) =>
+        LogLevels.First(option => option.Level == level);
 
     private GitConsoleAutoOpenOption FindGitConsoleMode(GitConsoleAutoOpenMode mode) =>
         GitConsoleAutoOpenModes.First(option => option.Mode == mode);
@@ -215,8 +348,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
-        _disposed = true;
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
         _settings.Changed -= Settings_Changed;
     }
 }

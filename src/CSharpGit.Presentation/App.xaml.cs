@@ -3,11 +3,13 @@ using CSharpGit.Application;
 using CSharpGit.Git;
 using CSharpGit.Infrastructure;
 using CSharpGit.Presentation.Diagnostics;
+using CSharpGit.Presentation.Threading;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 
 namespace CSharpGit.Presentation;
@@ -58,6 +60,10 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             .ConfigureServices(services =>
             {
                 services.AddSingleton<IAppSettingsService>(appSettings);
+                services.AddSingleton<IUiDispatcher>(_ =>
+                    new UiDispatcher(
+                        DispatcherQueue.GetForCurrentThread()
+                        ?? throw new InvalidOperationException("The UI dispatcher is not available on the current thread.")));
                 services.AddSingleton<ApplicationThemeManager>();
                 services.AddSingleton<IRepositoryImageService, RepositoryImageService>();
                 services.AddSingleton<SettingsWindowController>();
