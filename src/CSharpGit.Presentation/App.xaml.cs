@@ -57,6 +57,11 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             {
                 services.AddSingleton<IAppSettingsService>(appSettings);
                 services.AddSingleton<ApplicationThemeManager>();
+                services.AddSingleton<GitCommandActivityHistory>();
+                services.AddSingleton<IGitCommandActivitySink>(
+                    provider => provider.GetRequiredService<GitCommandActivityHistory>());
+                services.AddSingleton<IGitCommandActivitySource>(
+                    provider => provider.GetRequiredService<GitCommandActivityHistory>());
 
                 var checkRepository = Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_REPOSITORY")
                                       ?? Program.InitialRepositoryPath;
@@ -118,7 +123,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             AppSettingsContext.Current,
             _host.Services.GetRequiredService<RecentRepositoryFolderPicker>());
         mainPage.InitializeGitConsole(
-            GitCommandActivitySession.Current,
+            _host.Services.GetRequiredService<IGitCommandActivitySource>(),
             _host.Services.GetRequiredService<IAppSettingsService>());
         mainPage.InitializeWorktreeSupport(_host.Services.GetRequiredService<IWorktreeService>());
         _mainThemeRegistration = themeManager.Register(mainPage);
