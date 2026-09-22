@@ -72,6 +72,8 @@ public sealed class SettingsViewModelTests
         public CommitTimeDisplayMode CommitTimeDisplayMode { get; private set; } = CommitTimeDisplayMode.Smart;
         public bool LoggingEnabled { get; private set; }
         public ApplicationLogLevel LogLevel { get; private set; } = ApplicationLogLevel.Information;
+        public GitConsoleAutoOpenMode GitConsoleAutoOpenMode { get; private set; } = GitConsoleAutoOpenMode.OnErrors;
+        public bool ShowReflog { get; private set; }
         public IReadOnlyList<RecentRepositorySettings> RecentRepositories => [];
         public int ChangedSubscriberCount { get; private set; }
 
@@ -121,6 +123,24 @@ public sealed class SettingsViewModelTests
             LoggingEnabled = enabled;
             LogLevel = level;
             _changed?.Invoke(this, EventArgs.Empty);
+            return Task.CompletedTask;
+        }
+
+        public Task SetGitConsoleAutoOpenModeAsync(
+            GitConsoleAutoOpenMode mode,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            GitConsoleAutoOpenMode = mode;
+            return Task.CompletedTask;
+        }
+
+        public Task SetShowReflogAsync(
+            bool value,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ShowReflog = value;
             return Task.CompletedTask;
         }
 

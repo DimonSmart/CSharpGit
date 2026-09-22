@@ -69,7 +69,8 @@ public sealed class DefaultBranchTests : IDisposable
         var inner = new GitCliRepositoryService(executor);
         var stateService = new DefaultBranchRepositoryStateService(
             inner,
-            new DefaultBranchResolver(executor));
+            new DefaultBranchResolver(executor),
+            new GitTagService(executor));
         var repository = await inner.OpenAsync(fixture.Work);
 
         var state = await stateService.ReadLocalOnlyAsync(repository);
@@ -128,9 +129,10 @@ public sealed class DefaultBranchTests : IDisposable
         var executor = new GitCommandExecutor(new GitCliOptions());
         var inner = new GitCliRepositoryService(executor);
         var resolver = new DefaultBranchResolver(executor);
+        var tags = new GitTagService(executor);
         return new Services(
             inner,
-            new DefaultBranchRepositoryStateService(inner, resolver),
+            new DefaultBranchRepositoryStateService(inner, resolver, tags),
             new DefaultBranchReferenceService(inner, resolver));
     }
 
@@ -173,19 +175,15 @@ public sealed class DefaultBranchTests : IDisposable
             return Guid.NewGuid();
         }
 
-        public void Completed(
-            Guid id,
-            int exitCode,
-            string standardOutput,
-            string standardError)
+        public void OutputReceived(Guid id, GitOutputStream stream, string chunk)
         {
         }
 
-        public void Cancelled(
-            Guid id,
-            int? exitCode,
-            string standardOutput,
-            string standardError)
+        public void Completed(Guid id, int exitCode)
+        {
+        }
+
+        public void Cancelled(Guid id, int? exitCode)
         {
         }
     }
