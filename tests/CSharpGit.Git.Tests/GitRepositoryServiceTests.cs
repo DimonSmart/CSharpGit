@@ -68,6 +68,7 @@ public sealed class GitRepositoryServiceTests : IDisposable
         RunGit(_temporaryDirectory, "commit", "-m", "Добавлен мир 世界");
 
         var repositoryService = new GitRepositoryService();
+        var stateService = new GitRepositoryStateService();
         var historyService = new GitReferenceHistoryService();
         var repository = await repositoryService.OpenAsync(_temporaryDirectory);
         var history = await historyService.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.CurrentBranch, null, 0, 20));
@@ -76,7 +77,7 @@ public sealed class GitRepositoryServiceTests : IDisposable
         Assert.Equal("Добавлен мир 世界", commit.Commit.Subject);
 
         File.AppendAllText(Path.Combine(_temporaryDirectory, fileName), "изменение\n");
-        var state = await repositoryService.ReadAsync(repository);
+        var state = await stateService.ReadAsync(repository);
         var change = Assert.Single(state.Changes);
         Assert.Equal(fileName, change.Path);
     }
