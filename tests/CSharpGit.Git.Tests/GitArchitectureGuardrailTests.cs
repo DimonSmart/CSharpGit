@@ -88,6 +88,8 @@ public sealed class GitArchitectureGuardrailTests
     public void ReferenceSyncAndCommitMethodsAreNotMixedAcrossCapabilityServices()
     {
         Assert.DoesNotContain(nameof(IRepositorySyncService.FetchAsync), typeof(GitReferenceService).GetMethods().Select(method => method.Name));
+        Assert.DoesNotContain(nameof(IRepositorySyncService.DeleteRemoteBranchAsync), typeof(GitReferenceService).GetMethods().Select(method => method.Name));
+        Assert.Contains(nameof(IRepositorySyncService.DeleteRemoteBranchAsync), typeof(GitRepositorySyncService).GetMethods().Select(method => method.Name));
         Assert.DoesNotContain(nameof(ICommitActionService.CherryPickAsync), typeof(GitReferenceService).GetMethods().Select(method => method.Name));
         Assert.DoesNotContain(nameof(IReferenceService.SwitchBranchAsync), typeof(GitRepositorySyncService).GetMethods().Select(method => method.Name));
         Assert.DoesNotContain(nameof(ICommitActionService.ResetAsync), typeof(GitRepositorySyncService).GetMethods().Select(method => method.Name));
