@@ -137,7 +137,7 @@ public sealed class DesktopUiContractTests
         }) Assert.Contains(command, surface);
 
         Assert.Contains("Push_Click", surface);
-        Assert.Contains("_referenceService.PushAsync", forcePushPage);
+        Assert.Contains("_repositorySyncService.PushAsync", forcePushPage);
         Assert.Contains("Force push with lease…", surface);
         Assert.Contains("ForcePushWithLeaseAsync(repository, snapshot)", forcePushPage);
         Assert.Equal(2, Count(xaml, "IsEnabled=\"{Binding CanForcePushWithLease}\""));
