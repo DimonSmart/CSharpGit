@@ -155,18 +155,6 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
 
     internal RecentRepositoriesViewModel(
         IAppSettingsService settings,
-        Func<RecentRepositoryItem, Task> openRecentAsync,
-        Func<Task> openRepositoryAsync)
-        : this(
-            settings,
-            CSharpGit.Presentation.RepositoryImageServices.Current,
-            openRecentAsync,
-            openRepositoryAsync)
-    {
-    }
-
-    internal RecentRepositoriesViewModel(
-        IAppSettingsService settings,
         IRepositoryImageService repositoryImageService,
         Func<RecentRepositoryItem, Task> openRecentAsync,
         Func<Task> openRepositoryAsync)

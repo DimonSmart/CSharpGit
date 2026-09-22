@@ -20,7 +20,7 @@ public sealed partial class MainPage
     private readonly WorkingTreeTreeSelection _stagedTreeSelection = new();
     private readonly Dictionary<string, bool> _unstagedExpansionState = new(StringComparer.Ordinal);
     private readonly Dictionary<string, bool> _stagedExpansionState = new(StringComparer.Ordinal);
-    private IWorkingTreeDiffService? _workingTreeDiffService;
+    private readonly IWorkingTreeDiffService _workingTreeDiffService;
     private CancellationTokenSource? _workingTreeDiffCts;
     private long _workingTreeDiffGeneration;
     private bool _workingTreeSelectionSync;
