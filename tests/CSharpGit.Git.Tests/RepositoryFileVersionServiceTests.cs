@@ -8,7 +8,8 @@ public sealed class RepositoryFileVersionServiceTests : IDisposable
 {
     private readonly string _temporaryDirectory =
         Path.Combine(Path.GetTempPath(), $"csharpgit-file-versions-{Guid.NewGuid():N}");
-    private readonly GitCliRepositoryService _repositoryService = new();
+    private readonly GitRepositoryService _repositoryService = new();
+    private readonly GitRepositoryStateService _stateService = new();
     private readonly GitRepositoryFileVersionService _versionService = new();
 
     [Fact]
@@ -114,7 +115,7 @@ public sealed class RepositoryFileVersionServiceTests : IDisposable
         RunGit("add", "value.txt");
         File.WriteAllText(Path.Combine(_temporaryDirectory, "value.txt"), "value = 3\n");
 
-        var state = await _repositoryService.ReadAsync(repository);
+        var state = await _stateService.ReadAsync(repository);
         var change = Assert.Single(state.Changes, item => item.Path == "value.txt");
 
         var staged = await _versionService.ResolveWorkingTreeAsync(repository, change, WorkingTreeDiffKind.Staged);
@@ -138,7 +139,7 @@ public sealed class RepositoryFileVersionServiceTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, "new file.txt"), "new\n");
         File.Delete(Path.Combine(_temporaryDirectory, "deleted.txt"));
 
-        var state = await _repositoryService.ReadAsync(repository);
+        var state = await _stateService.ReadAsync(repository);
         var untracked = Assert.Single(state.Changes, item => item.Path == "new file.txt");
         var deleted = Assert.Single(state.Changes, item => item.Path == "deleted.txt");
 
