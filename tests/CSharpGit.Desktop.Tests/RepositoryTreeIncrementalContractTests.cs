@@ -35,7 +35,8 @@ public sealed class RepositoryTreeIncrementalContractTests
         Assert.Contains("$\"branch-folder:remote:{remoteName}:{prefix}\"", descriptors, StringComparison.Ordinal);
         Assert.Contains("Reconcile(root.Children, desired.Children);", synchronizer, StringComparison.Ordinal);
         Assert.Contains("ApplyBranchWorktreeIndicators(worktrees);", synchronizer, StringComparison.Ordinal);
-        Assert.Contains("if (HierarchyGuideSegments.SequenceEqual(effectiveSegments)) return;", node, StringComparison.Ordinal);
+        Assert.Contains("if (HierarchyGuideSegments.SequenceEqual(segments)) return;", node, StringComparison.Ordinal);
+        Assert.DoesNotContain("adjustedSegments", node, StringComparison.Ordinal);
         Assert.Contains("if (string.Equals(_associatedWorktreePath, path, StringComparison.Ordinal)) return;", node, StringComparison.Ordinal);
     }
 

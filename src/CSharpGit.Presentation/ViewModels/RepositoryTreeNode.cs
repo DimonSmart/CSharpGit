@@ -79,8 +79,17 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
     public string? ToolTipText => Kind == RepositoryTreeNodeKind.Worktree && Value is WorktreeInfo worktree
         ? WorktreePresentation.BuildToolTip(worktree)
         : null;
-    public FontWeight NameFontWeight => IsCurrent ? Microsoft.UI.Text.FontWeights.Bold : Microsoft.UI.Text.FontWeights.Normal;
-    public Visibility CurrentBranchAccentVisibility => IsCurrent ? Visibility.Visible : Visibility.Collapsed;
+    public bool IsCurrentLocalBranch => Kind == RepositoryTreeNodeKind.LocalBranch && IsCurrent;
+    public bool IsCurrentWorktree => Kind == RepositoryTreeNodeKind.Worktree && IsCurrent;
+    public FontWeight NameFontWeight => IsCurrentLocalBranch || IsCurrentWorktree
+        ? Microsoft.UI.Text.FontWeights.Bold
+        : Microsoft.UI.Text.FontWeights.Normal;
+    public Visibility CurrentBranchNameAccentVisibility => IsCurrentLocalBranch
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+    public Visibility CurrentWorktreeAccentVisibility => IsCurrentWorktree
+        ? Visibility.Visible
+        : Visibility.Collapsed;
     public string? IconGlyph => Kind switch
     {
         RepositoryTreeNodeKind.Group when Name == "Worktrees" => "\uE8B7",
@@ -140,8 +149,11 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
         if (oldIsCurrent != IsCurrent)
         {
             Notify(nameof(IsCurrent));
+            Notify(nameof(IsCurrentLocalBranch));
+            Notify(nameof(IsCurrentWorktree));
             Notify(nameof(NameFontWeight));
-            Notify(nameof(CurrentBranchAccentVisibility));
+            Notify(nameof(CurrentBranchNameAccentVisibility));
+            Notify(nameof(CurrentWorktreeAccentVisibility));
         }
         if (!string.Equals(oldAssociatedWorktreePath, AssociatedWorktreePath, StringComparison.Ordinal))
             Notify(nameof(AssociatedWorktreePath));
@@ -171,16 +183,8 @@ public sealed class RepositoryTreeNode : INotifyPropertyChanged
 
     internal void SetHierarchyGuideSegments(IReadOnlyList<RepositoryTreeGuideSegmentKind> segments)
     {
-        IReadOnlyList<RepositoryTreeGuideSegmentKind> effectiveSegments = segments;
-        if (IsCurrent && Kind is RepositoryTreeNodeKind.LocalBranch or RepositoryTreeNodeKind.Worktree && segments.Count > 0)
-        {
-            var adjustedSegments = segments.ToArray();
-            adjustedSegments[^1] = RepositoryTreeGuideSegmentKind.Empty;
-            effectiveSegments = adjustedSegments;
-        }
-
-        if (HierarchyGuideSegments.SequenceEqual(effectiveSegments)) return;
-        HierarchyGuideSegments = effectiveSegments;
+        if (HierarchyGuideSegments.SequenceEqual(segments)) return;
+        HierarchyGuideSegments = segments;
         Notify(nameof(HierarchyGuideSegments));
     }
 
