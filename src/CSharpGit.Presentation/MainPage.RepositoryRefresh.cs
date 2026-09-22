@@ -16,6 +16,7 @@ public sealed partial class MainPage
 
     private readonly RepositoryChangeMonitor _repositoryChangeMonitor = new();
     private readonly CancellationTokenSource _repositoryProbeStop = new();
+    private CancellationToken _repositoryProbeToken;
     private readonly IRepositoryRefreshProbe _repositoryRefreshProbe;
     private bool _repositoryChangeMonitoringInitialized;
     private bool _isRefreshInProgress;
@@ -32,7 +33,8 @@ public sealed partial class MainPage
 
     private void InitializeRepositoryChangeMonitoring()
     {
-        if (_repositoryChangeMonitoringInitialized) return;
+        if (IsShuttingDown || _repositoryChangeMonitoringInitialized) return;
+        _repositoryProbeToken = _repositoryProbeStop.Token;
         _repositoryChangeMonitoringInitialized = true;
 
         _repositoryChangeMonitor.RepositoryChanged += RepositoryChangeMonitor_RepositoryChanged;
@@ -45,6 +47,7 @@ public sealed partial class MainPage
     {
         if (!_repositoryChangeMonitoringInitialized) return;
         _repositoryChangeMonitoringInitialized = false;
+        _repositoryProbePending = false;
 
         _viewModel.PropertyChanged -= RepositoryRefreshTracking_PropertyChanged;
         _repositoryChangeMonitor.RepositoryChanged -= RepositoryChangeMonitor_RepositoryChanged;
@@ -55,6 +58,8 @@ public sealed partial class MainPage
 
     private void RepositoryRefreshTracking_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
+        if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
+
         if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.Repository))
         {
             UpdateRepositoryChangeMonitor();
@@ -72,6 +77,8 @@ public sealed partial class MainPage
 
     private void UpdateRepositoryChangeMonitor()
     {
+        if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
+
         var repository = _viewModel.Repository;
         if (repository is null)
         {
@@ -94,13 +101,23 @@ public sealed partial class MainPage
         object? sender,
         RepositoryInvalidatedEventArgs eventArgs)
     {
+        if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
+
         Trace.WriteLine(
             $"Repository monitor invalidated: source={eventArgs.Source} path={eventArgs.Path ?? "<unknown>"} generation={eventArgs.Generation}");
+
+        if (DispatcherQueue.HasThreadAccess)
+        {
+            QueueRepositoryProbe(eventArgs.Generation);
+            return;
+        }
+
         DispatcherQueue.TryEnqueue(() => QueueRepositoryProbe(eventArgs.Generation));
     }
 
     private void QueueRepositoryProbe(long generation)
     {
+        if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
         if (_viewModel.Repository is null || _displayedRefreshFingerprint is null) return;
 
         _repositoryProbeGeneration = Math.Max(_repositoryProbeGeneration, generation);
@@ -115,7 +132,9 @@ public sealed partial class MainPage
     {
         try
         {
-            while (_repositoryProbePending)
+            while (!IsShuttingDown &&
+                   _repositoryChangeMonitoringInitialized &&
+                   _repositoryProbePending)
             {
                 _repositoryProbePending = false;
                 var generation = _repositoryProbeGeneration;
@@ -126,18 +145,21 @@ public sealed partial class MainPage
                 RepositoryRefreshFingerprint current;
                 try
                 {
-                    current = await _repositoryRefreshProbe.ReadAsync(repository, _repositoryProbeStop.Token);
+                    current = await _repositoryRefreshProbe.ReadAsync(repository, _repositoryProbeToken);
                 }
-                catch (OperationCanceledException) when (_repositoryProbeStop.IsCancellationRequested)
+                catch (OperationCanceledException) when (_repositoryProbeToken.IsCancellationRequested)
                 {
                     return;
                 }
                 catch (Exception exception)
                 {
+                    if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
                     Trace.WriteLine(
                         $"Repository state probe: generation={generation} result=error error={exception.GetType().Name}: {exception.Message}");
                     continue;
                 }
+
+                if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
 
                 if (!ReferenceEquals(repository, _viewModel.Repository) ||
                     !Equals(baseline, _displayedRefreshFingerprint))
@@ -146,13 +168,16 @@ public sealed partial class MainPage
                 var changed = !StringComparer.Ordinal.Equals(current.Value, baseline.Value);
                 Trace.WriteLine(
                     $"Repository state probe: generation={generation} result={(changed ? "changed" : "unchanged")}");
+                if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
                 SetRefreshRequired(changed);
             }
         }
         finally
         {
             _repositoryProbeRunning = false;
-            if (_repositoryProbePending)
+            if (!IsShuttingDown &&
+                _repositoryChangeMonitoringInitialized &&
+                _repositoryProbePending)
             {
                 _repositoryProbeRunning = true;
                 _ = RunRepositoryProbeLoopAsync();
@@ -162,6 +187,7 @@ public sealed partial class MainPage
 
     private void SetRefreshRequired(bool value)
     {
+        if (IsShuttingDown) return;
         if (IsRefreshRequired == value) return;
         IsRefreshRequired = value;
         UpdateRefreshIndicator();
@@ -169,6 +195,7 @@ public sealed partial class MainPage
 
     private void SetRefreshInProgress(bool value)
     {
+        if (IsShuttingDown) return;
         if (_isRefreshInProgress == value) return;
         _isRefreshInProgress = value;
         UpdateRefreshIndicator();
@@ -212,6 +239,8 @@ public sealed partial class MainPage
 
     private void QueueRepositoryPresentationRefresh(bool workingTreeChanged = false)
     {
+        if (IsShuttingDown) return;
+
         if (workingTreeChanged) _workingTreePresentationDirty = true;
         else _repositoryTreePresentationDirty = true;
         if (_repositoryPresentationRefreshQueued) return;
@@ -219,11 +248,23 @@ public sealed partial class MainPage
         _repositoryPresentationRefreshQueued = true;
         if (DispatcherQueue.TryEnqueue(FlushRepositoryPresentationRefresh)) return;
 
-        FlushRepositoryPresentationRefresh();
+        if (!IsShuttingDown && DispatcherQueue.HasThreadAccess)
+        {
+            FlushRepositoryPresentationRefresh();
+            return;
+        }
+
+        ClearRepositoryPresentationRefreshQueue();
     }
 
     private void FlushRepositoryPresentationRefresh()
     {
+        if (IsShuttingDown)
+        {
+            ClearRepositoryPresentationRefreshQueue();
+            return;
+        }
+
         _repositoryPresentationRefreshQueued = false;
         var refreshWorkingTree = _workingTreePresentationDirty;
         var refreshRepositoryTree = _repositoryTreePresentationDirty;
@@ -234,5 +275,12 @@ public sealed partial class MainPage
         if (refreshWorkingTree) RefreshPresentationCollections();
         if (refreshRepositoryTree) SynchronizeRepositoryTree();
         UpdateStatusBar();
+    }
+
+    private void ClearRepositoryPresentationRefreshQueue()
+    {
+        _repositoryPresentationRefreshQueued = false;
+        _workingTreePresentationDirty = false;
+        _repositoryTreePresentationDirty = false;
     }
 }

@@ -51,6 +51,8 @@ public sealed partial class MainPage
 
     private async void RecentRepositoryHost_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
+        if (IsShuttingDown || _recentRepositoriesShutdown) return;
+
         if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.Repository))
             UpdateStartScreenVisibility();
 
@@ -61,11 +63,26 @@ public sealed partial class MainPage
         if (becameIdle) await RecordOpenedRepositoryAsync();
     }
 
-    private void RecentRepositorySettings_Changed(object? sender, EventArgs e) => UpdateStartScreenVisibility();
+    private void RecentRepositorySettings_Changed(object? sender, EventArgs e)
+    {
+        if (IsShuttingDown || _recentRepositoriesShutdown) return;
+
+        if (DispatcherQueue.HasThreadAccess)
+        {
+            UpdateStartScreenVisibility();
+            return;
+        }
+
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (!IsShuttingDown && !_recentRepositoriesShutdown)
+                UpdateStartScreenVisibility();
+        });
+    }
 
     private void UpdateStartScreenVisibility()
     {
-        if (_recentRepositoriesShutdown || _recentRepositoriesView is null || _emptyStartScreen is null) return;
+        if (IsShuttingDown || _recentRepositoriesShutdown || _recentRepositoriesView is null || _emptyStartScreen is null) return;
 
         var repositoryOpen = _viewModel.Repository is not null;
         var hasRecentRepositories = _recentRepositorySettings.RecentRepositories.Count > 0;
