@@ -178,7 +178,7 @@ public sealed partial class MainPage
 
         ApplyCommitResult? result = null;
         var succeeded = await _viewModel.RunMutationAsync(
-            async () => result = await _referenceService.CherryPickAsync(repository, commit.Hash, mainline),
+            async () => result = await _commitActionService.CherryPickAsync(repository, commit.Hash, mainline),
             "Could not cherry-pick commit");
         if (!succeeded || result is null) return;
 
@@ -200,7 +200,7 @@ public sealed partial class MainPage
 
         ApplyCommitResult? result = null;
         var succeeded = await _viewModel.RunMutationAsync(
-            async () => result = await _referenceService.RevertAsync(repository, commit.Hash, mainline),
+            async () => result = await _commitActionService.RevertAsync(repository, commit.Hash, mainline),
             "Could not revert commit");
         if (!succeeded || result is null) return;
 
@@ -249,7 +249,7 @@ public sealed partial class MainPage
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
 
         if (await _viewModel.RunMutationAsync(
-                () => _referenceService.ResetAsync(repository, hash, mode),
+                () => _commitActionService.ResetAsync(repository, hash, mode),
                 $"Could not {mode.ToString().ToLowerInvariant()} reset"))
             await RestoreCommitActionSelectionAsync(hash);
     }
