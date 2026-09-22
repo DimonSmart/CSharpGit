@@ -111,19 +111,26 @@ public sealed partial class RepositoryImageService : IRepositoryImageService
     {
         cancellationToken.ThrowIfCancellationRequested();
         var path = NormalizeRepositoryPath(repositoryPath);
-        var lazy = _inFlight.GetOrAdd(
-            path,
-            _ => new Lazy<Task<string?>>(
-                () => ResolveCoreAsync(path, cancellationToken),
-                LazyThreadSafetyMode.ExecutionAndPublication));
-        return AwaitAndReleaseAsync(path, lazy);
+        var lazy = _inFlight.GetOrAdd(path, CreateSharedResolve);
+        return lazy.Value.WaitAsync(cancellationToken);
     }
 
-    private async Task<string?> AwaitAndReleaseAsync(string path, Lazy<Task<string?>> lazy)
+    private Lazy<Task<string?>> CreateSharedResolve(string path)
+    {
+        Lazy<Task<string?>>? lazy = null;
+        lazy = new Lazy<Task<string?>>(
+            () => ResolveAndReleaseAsync(path, lazy!),
+            LazyThreadSafetyMode.ExecutionAndPublication);
+        return lazy;
+    }
+
+    private async Task<string?> ResolveAndReleaseAsync(
+        string path,
+        Lazy<Task<string?>> lazy)
     {
         try
         {
-            return await lazy.Value.ConfigureAwait(false);
+            return await ResolveCoreAsync(path, CancellationToken.None).ConfigureAwait(false);
         }
         finally
         {
