@@ -83,25 +83,15 @@
                                                   TextStyle="{StaticResource BodyTextStyle}"
                                                   TextFontWeight="{Binding NameFontWeight}"
                                                   TextForeground="{ThemeResource AccentFillColorDefaultBrush}"
-                                                  Opacity="0.18"
-                                                  Visibility="{Binding CurrentBranchNameAccentVisibility}"
-                                                  IsHitTestVisible="False"
-                                                  RenderTransformOrigin="0.5,0.5"
-                                                  HorizontalAlignment="Stretch"
-                                                  VerticalAlignment="Center">
-                  <controls:MiddleEllipsisTextBlock.RenderTransform>
-                    <ScaleTransform ScaleX="1.04" ScaleY="1.08" />
-                  </controls:MiddleEllipsisTextBlock.RenderTransform>
-                </controls:MiddleEllipsisTextBlock>
-                <controls:MiddleEllipsisTextBlock Text="{Binding DisplayName}"
-                                                  UseMiddleEllipsis="{Binding UseMiddleEllipsis}"
-                                                  TextStyle="{StaticResource BodyTextStyle}"
-                                                  TextFontWeight="{Binding NameFontWeight}"
-                                                  TextForeground="{ThemeResource AccentFillColorDefaultBrush}"
                                                   Visibility="{Binding CurrentBranchNameAccentVisibility}"
                                                   IsHitTestVisible="False"
                                                   HorizontalAlignment="Stretch"
                                                   VerticalAlignment="Center" />
+                <Border Height="1"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        Visibility="{Binding CurrentBranchNameAccentVisibility}"
+                        IsHitTestVisible="False"
+                        VerticalAlignment="Bottom" />
               </Grid>
               <Border Grid.Column="1"
                       Width="{StaticResource Spacing.S}"
