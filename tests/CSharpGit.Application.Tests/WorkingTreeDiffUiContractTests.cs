@@ -7,7 +7,7 @@ public sealed class WorkingTreeDiffUiContractTests
     {
         var root = FindRepositoryRoot();
         var contract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IWorkingTreeDiffService.cs"));
-        var mutationContract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryStateService.cs"));
+        var mutationContract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IWorkingTreeService.cs"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
 
         Assert.Contains("enum WorkingTreeDiffKind", contract);
@@ -104,7 +104,7 @@ public sealed class WorkingTreeDiffUiContractTests
     public void BatchStagingUsesOnePathspecOperationAndHandlesUnbornRepositories()
     {
         var root = FindRepositoryRoot();
-        var contract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryStateService.cs"));
+        var contract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IWorkingTreeService.cs"));
         var staging = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCliRepositoryService.Staging.cs"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
 

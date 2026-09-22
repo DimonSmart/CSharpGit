@@ -44,8 +44,7 @@ public static class GitServiceCollectionExtensions
         services.AddSingleton<IReferenceService>(provider =>
             new DefaultBranchReferenceService(
                 provider.GetRequiredService<GitCliRepositoryService>(),
-                provider.GetRequiredService<DefaultBranchResolver>(),
-                provider.GetRequiredService<ITagService>()));
+                provider.GetRequiredService<DefaultBranchResolver>()));
 
         services.AddSingleton<IRepositoryFileVersionService>(provider =>
             new GitRepositoryFileVersionService(provider.GetRequiredService<GitCommandExecutor>()));

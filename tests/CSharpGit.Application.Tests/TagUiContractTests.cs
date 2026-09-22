@@ -12,7 +12,7 @@ public sealed class TagUiContractTests
         var refresh = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryRefresh.cs"));
         var descriptors = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryTreeDescriptor.cs"));
         var reconciler = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "IncrementalTreeReconciler.cs"));
-        var references = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryStateService.cs"));
+        var references = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IReferenceService.cs"));
 
         Assert.Contains("Create tag here…", tags);
         Assert.Contains("Create tag…", tags);
@@ -30,13 +30,13 @@ public sealed class TagUiContractTests
         Assert.Contains("GitTagKind.Annotated", tags);
         Assert.Contains("Annotated tags require a non-empty message", tags);
         Assert.Contains("refs/tags/{tag.Name}", tags);
-        Assert.Contains("_referenceService.CreateTagAsync", tags);
-        Assert.Contains("_referenceService.FetchTagsAsync", tags);
-        Assert.Contains("_referenceService.PushTagAsync", tags);
-        Assert.Contains("_referenceService.PushAllTagsAsync", tags);
-        Assert.Contains("_referenceService.DeleteRemoteTagAsync", tags);
-        Assert.Contains("_referenceService.DeleteTagAsync", tags);
-        Assert.Contains("_referenceService.ForceUpdateRemoteTagAsync", tags);
+        Assert.Contains("_tagService.CreateTagAsync", tags);
+        Assert.Contains("_tagService.FetchTagsAsync", tags);
+        Assert.Contains("_tagService.PushTagAsync", tags);
+        Assert.Contains("_tagService.PushAllTagsAsync", tags);
+        Assert.Contains("_tagService.DeleteRemoteTagAsync", tags);
+        Assert.Contains("_tagService.DeleteTagAsync", tags);
+        Assert.Contains("_tagService.ForceUpdateRemoteTagAsync", tags);
         Assert.DoesNotContain("ProcessStartInfo", tags);
         Assert.DoesNotContain("RunGit", tags, StringComparison.Ordinal);
         Assert.DoesNotContain("GitCommandExecutor", tags, StringComparison.Ordinal);
@@ -63,7 +63,10 @@ public sealed class TagUiContractTests
         Assert.Contains("switchToBranch.IsChecked == true", commitActions);
         Assert.Contains("_referenceService.CreateBranchAsync(repository, branchName.Text.Trim(), startPoint, switched)", commitActions);
 
-        Assert.Contains("IReferenceService : ITagService", references);
+        Assert.Contains("public interface IReferenceService", references);
+        Assert.DoesNotContain(": ITagService", references, StringComparison.Ordinal);
+        Assert.Contains("ITagService _tagService", mainPage);
+        Assert.Contains("ITagService tagService", mainPage);
         Assert.DoesNotContain("OrderByDescending(tag => tag.Name", mainPage, StringComparison.Ordinal);
         Assert.DoesNotContain("children: _viewModel.Tags", mainPage, StringComparison.Ordinal);
         Assert.Contains("ChildNodes: tags.Select", descriptors, StringComparison.Ordinal);
