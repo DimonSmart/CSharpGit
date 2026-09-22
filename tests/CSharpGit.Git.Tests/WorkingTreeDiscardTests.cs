@@ -16,7 +16,7 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, "tracked.txt"), "working tree\n");
 
         var (service, repository) = await OpenAsync();
-        var change = Assert.Single((await service.ReadAsync(repository)).Changes, change => change.Path == "tracked.txt");
+        var change = Assert.Single((await service.State.ReadAsync(repository)).Changes, change => change.Path == "tracked.txt");
         var indexBefore = RunGitOutput(_temporaryDirectory, "diff", "--cached", "--binary");
 
         var results = await ExecuteAsync(service, repository, WorkingTreeDiscard.CreateSelected([change])!);
@@ -38,7 +38,7 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         File.Delete(Path.Combine(_temporaryDirectory, "deleted.txt"));
 
         var (service, repository) = await OpenAsync();
-        var changes = (await service.ReadAsync(repository)).Changes
+        var changes = (await service.State.ReadAsync(repository)).Changes
             .Where(change => change.Path is "one.txt" or "two.txt" or "deleted.txt")
             .ToArray();
 
@@ -58,7 +58,7 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, "untracked.tmp"), "temporary\n");
 
         var (service, repository) = await OpenAsync();
-        var change = Assert.Single((await service.ReadAsync(repository)).Changes, change => change.Path == "untracked.tmp");
+        var change = Assert.Single((await service.State.ReadAsync(repository)).Changes, change => change.Path == "untracked.tmp");
 
         var result = Assert.Single(await ExecuteAsync(
             service,
@@ -80,7 +80,7 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, "leave.tmp"), "leave\n");
 
         var (service, repository) = await OpenAsync();
-        var changes = (await service.ReadAsync(repository)).Changes;
+        var changes = (await service.State.ReadAsync(repository)).Changes;
         var selected = new[]
         {
             changes.Single(change => change.Path == "tracked.txt"),
@@ -108,7 +108,7 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, "confirmed.tmp"), "confirmed\n");
 
         var (service, repository) = await OpenAsync();
-        var request = WorkingTreeDiscard.CreateAll((await service.ReadAsync(repository)).Changes)!;
+        var request = WorkingTreeDiscard.CreateAll((await service.State.ReadAsync(repository)).Changes)!;
         File.WriteAllText(Path.Combine(_temporaryDirectory, "later.tmp"), "later\n");
 
         var results = await ExecuteAsync(service, repository, request);
@@ -131,7 +131,7 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         var cachedDiffBefore = RunGitOutput(_temporaryDirectory, "diff", "--cached", "--binary");
         var indexBefore = RunGitOutput(_temporaryDirectory, "show", ":Foo.cs");
         var (service, repository) = await OpenAsync();
-        var change = Assert.Single((await service.ReadAsync(repository)).Changes, change => change.Path == "Foo.cs");
+        var change = Assert.Single((await service.State.ReadAsync(repository)).Changes, change => change.Path == "Foo.cs");
         Assert.True(change.IsStaged && change.IsUnstaged);
 
         await ExecuteAsync(service, repository, WorkingTreeDiscard.CreateSelected([change])!);
@@ -156,7 +156,7 @@ public sealed class WorkingTreeDiscardTests : IDisposable
 
         var cachedDiffBefore = RunGitOutput(_temporaryDirectory, "diff", "--cached", "--binary");
         var (service, repository) = await OpenAsync();
-        var request = WorkingTreeDiscard.CreateAll((await service.ReadAsync(repository)).Changes)!;
+        var request = WorkingTreeDiscard.CreateAll((await service.State.ReadAsync(repository)).Changes)!;
 
         var results = await ExecuteAsync(service, repository, request);
 
@@ -178,7 +178,7 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         Assert.NotEqual(0, RunGitExitCode(_temporaryDirectory, "rev-parse", "--verify", "HEAD"));
 
         var (service, repository) = await OpenAsync();
-        var change = Assert.Single((await service.ReadAsync(repository)).Changes, change => change.Path == "initial.cs");
+        var change = Assert.Single((await service.State.ReadAsync(repository)).Changes, change => change.Path == "initial.cs");
         Assert.True(change.IsStaged && change.IsUnstaged);
 
         await ExecuteAsync(service, repository, WorkingTreeDiscard.CreateSelected([change])!);
@@ -197,7 +197,7 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, "файл.txt"), "changed unicode\n");
 
         var (service, repository) = await OpenAsync();
-        var changes = (await service.ReadAsync(repository)).Changes
+        var changes = (await service.State.ReadAsync(repository)).Changes
             .Where(change => change.Path is "file with spaces.txt" or "файл.txt")
             .ToArray();
 
@@ -240,7 +240,7 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, "good.txt"), "changed\n");
 
         var (service, repository) = await OpenAsync();
-        var good = Assert.Single((await service.ReadAsync(repository)).Changes, change => change.Path == "good.txt");
+        var good = Assert.Single((await service.State.ReadAsync(repository)).Changes, change => change.Path == "good.txt");
         var missing = new WorkingTreeChange("missing.txt", ' ', 'M');
         var request = WorkingTreeDiscard.CreateSelected([good, missing])!;
 
@@ -339,10 +339,10 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, "tracked.txt"), "C\n");
 
         var (service, repository) = await OpenAsync();
-        var change = Assert.Single((await service.ReadAsync(repository)).Changes, change => change.Path == "tracked.txt");
+        var change = Assert.Single((await service.State.ReadAsync(repository)).Changes, change => change.Path == "tracked.txt");
         Assert.True(change.IsStaged && change.IsUnstaged);
 
-        await service.DiscardAllFileChangesAsync(repository, change);
+        await service.WorkingTree.DiscardAllFileChangesAsync(repository, change);
 
         Assert.Equal("A\n", File.ReadAllText(Path.Combine(_temporaryDirectory, "tracked.txt")));
         Assert.Equal(string.Empty, RunGitOutput(_temporaryDirectory, "diff", "--cached", "--", "tracked.txt"));
@@ -358,10 +358,10 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, "new.txt"), "later\n");
 
         var (service, repository) = await OpenAsync();
-        var change = Assert.Single((await service.ReadAsync(repository)).Changes, change => change.Path == "new.txt");
+        var change = Assert.Single((await service.State.ReadAsync(repository)).Changes, change => change.Path == "new.txt");
         Assert.True(change.IsStaged && change.IsUnstaged);
 
-        await service.DiscardAllFileChangesAsync(repository, change);
+        await service.WorkingTree.DiscardAllFileChangesAsync(repository, change);
 
         Assert.False(File.Exists(Path.Combine(_temporaryDirectory, "new.txt")));
         Assert.Equal(string.Empty, RunGitOutput(_temporaryDirectory, "diff", "--cached", "--", "new.txt"));
@@ -376,10 +376,10 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, "initial.txt"), "later\n");
 
         var (service, repository) = await OpenAsync();
-        var change = Assert.Single((await service.ReadAsync(repository)).Changes, change => change.Path == "initial.txt");
+        var change = Assert.Single((await service.State.ReadAsync(repository)).Changes, change => change.Path == "initial.txt");
         Assert.True(change.IsStaged && change.IsUnstaged);
 
-        await service.DiscardAllFileChangesAsync(repository, change);
+        await service.WorkingTree.DiscardAllFileChangesAsync(repository, change);
 
         Assert.False(File.Exists(Path.Combine(_temporaryDirectory, "initial.txt")));
         Assert.Equal(string.Empty, RunGitOutput(_temporaryDirectory, "diff", "--cached", "--", "initial.txt"));
@@ -387,21 +387,21 @@ public sealed class WorkingTreeDiscardTests : IDisposable
 
     public void Dispose() => TestDirectory.Delete(_temporaryDirectory);
 
-    private async Task<(GitCliRepositoryService Service, Repository Repository)> OpenAsync()
+    private async Task<(GitCapabilityTestServices Service, Repository Repository)> OpenAsync()
     {
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_temporaryDirectory);
+        var service = new GitCapabilityTestServices();
+        var repository = await service.Repositories.OpenAsync(_temporaryDirectory);
         return (service, repository);
     }
 
     private static Task<IReadOnlyList<WorkingTreeDiscardResult>> ExecuteAsync(
-        GitCliRepositoryService service,
+        GitCapabilityTestServices service,
         Repository repository,
         WorkingTreeDiscardRequest request) =>
         WorkingTreeDiscard.ExecuteAsync(
             repository,
             request,
-            (change, cancellationToken) => service.DiscardFileAsync(repository, change, cancellationToken));
+            (change, cancellationToken) => service.WorkingTree.DiscardFileAsync(repository, change, cancellationToken));
 
     private void InitializeRepository(bool withCommit)
     {
