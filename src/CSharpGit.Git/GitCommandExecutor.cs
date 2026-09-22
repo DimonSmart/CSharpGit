@@ -15,21 +15,14 @@ internal sealed class GitCommandExecutor
     private readonly IGitCommandActivitySink _activitySink;
     private readonly Action<int>? _processStarted;
 
-    internal static GitCommandExecutor Default { get; } = new(new GitCliOptions());
-
-    public GitCommandExecutor(GitCliOptions options)
-        : this(options, null, null)
-    {
-    }
-
     internal GitCommandExecutor(
         GitCliOptions options,
-        IGitCommandActivitySink? activitySink,
+        IGitCommandActivitySink activitySink,
         Action<int>? processStarted = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         _gitExecutable = string.IsNullOrWhiteSpace(options.ExecutablePath) ? "git" : options.ExecutablePath;
-        _activitySink = activitySink ?? GitCommandActivitySession.Current;
+        _activitySink = activitySink ?? throw new ArgumentNullException(nameof(activitySink));
         _processStarted = processStarted;
     }
 

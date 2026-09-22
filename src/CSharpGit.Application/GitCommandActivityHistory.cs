@@ -215,11 +215,6 @@ public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCom
     }
 }
 
-public static class GitCommandActivitySession
-{
-    public static GitCommandActivityHistory Current { get; } = new();
-}
-
 public static partial class GitCommandFormatter
 {
     private static readonly Regex UrlCredentialsRegex = UrlCredentialsPattern();
