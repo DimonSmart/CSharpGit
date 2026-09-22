@@ -23,15 +23,4 @@ internal sealed partial class GitReferenceService
         };
     }
 
-    public async Task DeleteRemoteBranchAsync(
-        Repository repository,
-        string remote,
-        string branch,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(repository);
-        GitRefValidator.Validate(remote, nameof(remote));
-        GitRefValidator.Validate(branch, nameof(branch));
-        await _pushExecutor.RunAsync(repository, cancellationToken, "push", "--porcelain", remote, "--delete", branch);
-    }
 }
