@@ -33,13 +33,15 @@ public sealed partial class MainPage
         OpenRepositoryViewModel viewModel,
         IReferenceHistoryService referenceHistoryService,
         IReferenceService referenceService,
+        IRepositorySyncService syncService,
+        ICommitActionService commitActionService,
         ITagService tagService,
         IRepositoryRefreshProbe repositoryRefreshProbe,
         IWorkingTreeDiffService workingTreeDiffService,
         IRepositoryFileVersionService fileVersionService,
         IDesktopShellService desktopShellService,
         IRepositoryPathService repositoryPathService)
-        : this(viewModel, referenceHistoryService, referenceService, tagService, repositoryRefreshProbe, workingTreeDiffService)
+        : this(viewModel, referenceHistoryService, referenceService, syncService, commitActionService, tagService, repositoryRefreshProbe, workingTreeDiffService)
     {
         _fileVersionService = fileVersionService;
         _desktopShellService = desktopShellService;
@@ -58,7 +60,7 @@ public sealed partial class MainPage
         IDesktopShellService desktopShellService,
         IRepositoryPathService repositoryPathService,
         IGitToolsService gitToolsService)
-        : this(viewModel, referenceHistoryService, referenceService, tagService, repositoryRefreshProbe, workingTreeDiffService, fileVersionService, desktopShellService, repositoryPathService)
+        : this(viewModel, referenceHistoryService, referenceService, syncService, commitActionService, tagService, repositoryRefreshProbe, workingTreeDiffService, fileVersionService, desktopShellService, repositoryPathService)
     {
         _gitToolsService = gitToolsService ?? throw new ArgumentNullException(nameof(gitToolsService));
         UpdateCommitButtons();
