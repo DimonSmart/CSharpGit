@@ -20,8 +20,8 @@ public sealed class GitReferenceHistoryServiceTests : IDisposable
         File.AppendAllText(Path.Combine(_temporaryDirectory, "file.txt"), "main\n");
         RunGit("commit", "-am", "main commit");
 
-        var repository = await new GitRepositoryService().OpenAsync(_temporaryDirectory);
-        var page = await new GitReferenceHistoryService().ReadHistoryAsync(repository, "feature/demo", null, 0, 20);
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
+        var page = await GitTestServices.CreateReferenceHistoryService().ReadHistoryAsync(repository, "feature/demo", null, 0, 20);
 
         Assert.Equal("feature commit", page.Rows[0].Commit.Subject);
         Assert.Contains(page.Rows, row => row.Commit.Subject == "initial");
@@ -39,8 +39,8 @@ public sealed class GitReferenceHistoryServiceTests : IDisposable
         File.AppendAllText(Path.Combine(_temporaryDirectory, "file.txt"), "latest\n");
         RunGit("commit", "-am", "latest");
 
-        var repository = await new GitRepositoryService().OpenAsync(_temporaryDirectory);
-        var page = await new GitReferenceHistoryService().ReadHistoryAsync(repository, "main", null, 0, 20);
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
+        var page = await GitTestServices.CreateReferenceHistoryService().ReadHistoryAsync(repository, "main", null, 0, 20);
 
         var tip = page.Rows[0];
         Assert.Equal("latest", tip.Commit.Subject);
@@ -70,8 +70,8 @@ public sealed class GitReferenceHistoryServiceTests : IDisposable
         RunGit("commit", "-m", "main commit");
         RunGit("merge", "--no-ff", "feature/demo", "-m", "merge feature");
 
-        var repository = await new GitRepositoryService().OpenAsync(_temporaryDirectory);
-        var page = await new GitReferenceHistoryService().ReadHistoryAsync(repository, "main", null, 0, 20);
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
+        var page = await GitTestServices.CreateReferenceHistoryService().ReadHistoryAsync(repository, "main", null, 0, 20);
 
         var merge = Assert.Single(page.Rows, row => row.Commit.Subject == "merge feature");
         var parentEdges = merge.Topology.Edges.Where(edge => edge.FromLane == merge.Topology.Lane).ToList();
@@ -96,8 +96,8 @@ public sealed class GitReferenceHistoryServiceTests : IDisposable
         RunGit("commit", "-am", "change");
         var hash = RunGit("rev-parse", "HEAD");
 
-        var repository = await new GitRepositoryService().OpenAsync(_temporaryDirectory);
-        var statuses = await new GitReferenceHistoryService().ReadFileStatusesAsync(repository, hash);
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
+        var statuses = await GitTestServices.CreateReferenceHistoryService().ReadFileStatusesAsync(repository, hash);
 
         Assert.Equal("M", statuses["file.txt"]);
     }

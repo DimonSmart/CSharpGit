@@ -19,8 +19,8 @@ public sealed class ReflogHistoryTests : IDisposable
         var lostHash = RunGit("rev-parse", "HEAD");
         RunGit("reset", "--hard", "HEAD~1");
 
-        var repository = await new GitRepositoryService().OpenAsync(_temporaryDirectory);
-        var service = new GitReferenceHistoryService();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
+        var service = GitTestServices.CreateReferenceHistoryService();
 
         var normal = await service.ReadHistoryAsync(
             repository,
@@ -59,8 +59,8 @@ public sealed class ReflogHistoryTests : IDisposable
             .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         Assert.DoesNotContain(tagOnlyHash, reflogHashes);
 
-        var repository = await new GitRepositoryService().OpenAsync(_temporaryDirectory);
-        var service = new GitReferenceHistoryService();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
+        var service = GitTestServices.CreateReferenceHistoryService();
 
         var normal = await service.ReadHistoryAsync(
             repository,
@@ -83,8 +83,8 @@ public sealed class ReflogHistoryTests : IDisposable
         var lostHash = RunGit("rev-parse", "HEAD");
         RunGit("reset", "--hard", "HEAD~1");
 
-        var repository = await new GitRepositoryService().OpenAsync(_temporaryDirectory);
-        var service = new GitReferenceHistoryService();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
+        var service = GitTestServices.CreateReferenceHistoryService();
 
         var filtered = await service.ReadHistoryAsync(
             repository,

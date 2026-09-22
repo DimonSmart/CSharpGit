@@ -54,8 +54,8 @@ public sealed class ForcePushWithLeaseTests : IDisposable
         Commit(_root, "history.txt", "A\nB2\n", "B2");
         Commit(_root, "history.txt", "A\nB2\nC2\n", "C2");
 
-        var repositoryService = new GitRepositoryService();
-        var service = new GitRepositorySyncService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateRepositorySyncService();
         var repository = await repositoryService.OpenAsync(_root);
         var snapshot = await service.PrepareForcePushWithLeaseAsync(repository);
 
@@ -80,8 +80,8 @@ public sealed class ForcePushWithLeaseTests : IDisposable
         Commit(_root, "history.txt", "A\nB2\n", "B2");
         Commit(_root, "history.txt", "A\nB2\nC2\n", "C2");
 
-        var repositoryService = new GitRepositoryService();
-        var service = new GitRepositorySyncService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateRepositorySyncService();
         var repository = await repositoryService.OpenAsync(_root);
         var snapshot = await service.PrepareForcePushWithLeaseAsync(repository);
         var actor = Path.Combine(_root, "actor");
@@ -105,8 +105,8 @@ public sealed class ForcePushWithLeaseTests : IDisposable
     public async Task MissingUpstreamRequiresExplicitTargetAndDoesNotGuess()
     {
         Git(_root, "push", "origin", "refs/heads/main:refs/heads/server-main");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitRepositorySyncService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateRepositorySyncService();
         var repository = await repositoryService.OpenAsync(_root);
 
         var missing = await Assert.ThrowsAsync<ForcePushWithLeasePreparationException>(
@@ -121,8 +121,8 @@ public sealed class ForcePushWithLeaseTests : IDisposable
     public async Task RefusesDetachedHeadMissingRemoteBranchAndMultiplePushDestinations()
     {
         Git(_root, "push", "origin", "main");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitRepositorySyncService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateRepositorySyncService();
         var repository = await repositoryService.OpenAsync(_root);
 
         var missing = await Assert.ThrowsAsync<ForcePushWithLeasePreparationException>(
@@ -152,8 +152,8 @@ public sealed class ForcePushWithLeaseTests : IDisposable
     {
         Git(_root, "push", "--set-upstream", "origin", "main");
         var originalRemote = RemoteTip("main");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitRepositorySyncService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateRepositorySyncService();
         var repository = await repositoryService.OpenAsync(_root);
         var branchSnapshot = await service.PrepareForcePushWithLeaseAsync(repository);
         Git(_root, "switch", "-c", "other");
@@ -175,8 +175,8 @@ public sealed class ForcePushWithLeaseTests : IDisposable
     {
         Git(_root, "push", "--set-upstream", "origin", "main");
         var originalRemote = RemoteTip("main");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitRepositorySyncService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateRepositorySyncService();
         var repository = await repositoryService.OpenAsync(_root);
         var snapshot = await service.PrepareForcePushWithLeaseAsync(repository);
         var replacement = Path.Combine(_root, ".replacement.git");
@@ -199,8 +199,8 @@ public sealed class ForcePushWithLeaseTests : IDisposable
         Git(actor, "push", "origin", "main");
         Commit(_root, "local.txt", "local\n", "local divergence");
 
-        var repositoryService = new GitRepositoryService();
-        var service = new GitRepositorySyncService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateRepositorySyncService();
         var repository = await repositoryService.OpenAsync(_root);
         var failure = await Assert.ThrowsAsync<PushRejectedException>(() => service.PushAsync(repository));
 

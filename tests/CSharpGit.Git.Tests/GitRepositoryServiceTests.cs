@@ -20,8 +20,8 @@ public sealed class GitRepositoryServiceTests : IDisposable
         RunGit(_temporaryDirectory, "add", "tracked.txt");
         RunGit(_temporaryDirectory, "commit", "-m", "Initial commit");
 
-        var repositoryService = new GitRepositoryService();
-        var stateService = new GitRepositoryStateService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var stateService = GitTestServices.CreateRepositoryStateService();
         var repository = await repositoryService.OpenAsync(_temporaryDirectory);
         var initial = await stateService.ReadAsync(repository);
 
@@ -67,9 +67,9 @@ public sealed class GitRepositoryServiceTests : IDisposable
         RunGit(_temporaryDirectory, "add", fileName);
         RunGit(_temporaryDirectory, "commit", "-m", "Добавлен мир 世界");
 
-        var repositoryService = new GitRepositoryService();
-        var stateService = new GitRepositoryStateService();
-        var historyService = new GitReferenceHistoryService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var stateService = GitTestServices.CreateRepositoryStateService();
+        var historyService = GitTestServices.CreateReferenceHistoryService();
         var repository = await repositoryService.OpenAsync(_temporaryDirectory);
         var history = await historyService.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.CurrentBranch, null, 0, 20));
 
@@ -96,7 +96,7 @@ public sealed class GitRepositoryServiceTests : IDisposable
         RunGit(_temporaryDirectory, "worktree", "add", "-b", "feature", worktreeDirectory);
         try
         {
-            var service = new GitRepositoryService();
+            var service = GitTestServices.CreateRepositoryService();
             var repository = await service.OpenAsync(worktreeDirectory);
 
             Assert.True(repository.IsWorktree);
@@ -131,8 +131,8 @@ public sealed class GitRepositoryServiceTests : IDisposable
         RunGit(_temporaryDirectory, "add", "main.txt");
         RunGit(_temporaryDirectory, "commit", "-m", "Main");
 
-        var repositoryService = new GitRepositoryService();
-        var historyService = new GitReferenceHistoryService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var historyService = GitTestServices.CreateReferenceHistoryService();
         var repository = await repositoryService.OpenAsync(_temporaryDirectory);
         var history = await historyService.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.AllReferences, null, 0, 20));
 
@@ -154,8 +154,8 @@ public sealed class GitRepositoryServiceTests : IDisposable
         RunGit(_temporaryDirectory, "add", "sample.txt");
         RunGit(_temporaryDirectory, "commit", "-m", "Changed");
 
-        var repositoryService = new GitRepositoryService();
-        var historyService = new GitReferenceHistoryService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var historyService = GitTestServices.CreateReferenceHistoryService();
         var repository = await repositoryService.OpenAsync(_temporaryDirectory);
         var history = await historyService.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.CurrentBranch, null, 0, 20));
         var changed = history.Rows.First(row => row.Commit.Subject == "Changed").Commit;
