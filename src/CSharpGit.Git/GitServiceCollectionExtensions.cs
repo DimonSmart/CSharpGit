@@ -28,6 +28,12 @@ public static class GitServiceCollectionExtensions
             provider.GetRequiredService<GitRepositoryService>());
 
         services.AddSingleton(provider =>
+            new GitRepositoryCreationService(
+                provider.GetRequiredService<GitCommandExecutor>()));
+        services.AddSingleton<IRepositoryCreationService>(provider =>
+            provider.GetRequiredService<GitRepositoryCreationService>());
+
+        services.AddSingleton(provider =>
             new GitRepositoryStateService(
                 provider.GetRequiredService<GitRepositoryCommandRunner>()));
         services.AddSingleton<IRepositoryStateService>(provider =>
