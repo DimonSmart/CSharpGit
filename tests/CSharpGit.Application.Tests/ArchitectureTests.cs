@@ -76,6 +76,22 @@ public sealed class ArchitectureTests
             Assert.True(File.Exists(Path.Combine(abstractions, file)), $"Missing application contract file: {file}");
     }
 
+    [Fact]
+    public void PresentationCompositionRootOwnsLongLivedServices()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
+
+        Assert.False(File.Exists(Path.Combine(presentation, "AppSettingsContext.cs")));
+        Assert.False(File.Exists(Path.Combine(presentation, "RepositoryImageServices.cs")));
+        Assert.Contains("AddSingleton<IRepositoryImageService, RepositoryImageService>()", app);
+        Assert.Contains("AddSingleton<GitCommandActivityHistory>()", app);
+        Assert.Contains("AddSingleton<IGitCommandActivitySink>", app);
+        Assert.Contains("AddSingleton<IGitCommandActivitySource>", app);
+        Assert.DoesNotContain("mainPage.Initialize", app, StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
