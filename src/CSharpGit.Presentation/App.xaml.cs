@@ -84,7 +84,6 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 services.AddCSharpGitGit();
                 services.AddSingleton<IRepositoryPathService, RepositoryPathService>();
                 services.AddSingleton<IDesktopShellService, DesktopShellService>();
-                services.AddSingleton<IRepositoryWorkflowService, DesktopRepositoryWorkflowService>();
 
                 services.AddSingleton<IRepositoryStateSessionFactory, RepositoryStateSessionFactory>();
                 services.AddTransient<OpenRepositoryViewModel>();
