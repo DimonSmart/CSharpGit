@@ -88,8 +88,10 @@ public sealed record GitTag(
     DateTimeOffset? TaggedAt = null,
     string? Message = null)
 {
-    // Kept as a read-only compatibility alias for existing navigation code.
-    public string Commit => TargetCommit;
+    /// <summary>
+    /// Git object directly referenced by refs/tags/&lt;name&gt;:
+    /// the tag object for an annotated tag, or the target commit for a lightweight tag.
+    /// </summary>
     public string ObjectId => TagObjectId ?? TargetCommit;
 }
 

@@ -147,7 +147,7 @@ public sealed partial class MainPage
         }
 
         await _viewModel.RunMutationAsync(
-            () => _referenceService.CreateTagAsync(
+            () => _tagService.CreateTagAsync(
                 _viewModel.Repository,
                 new CreateTagRequest(name.Text.Trim(), target.Text.Trim(), kind, kind == GitTagKind.Annotated ? message.Text : null)),
             "Could not create tag");
@@ -213,7 +213,7 @@ public sealed partial class MainPage
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
 
         await _viewModel.RunMutationAsync(
-            () => _referenceService.DeleteTagAsync(_viewModel.Repository, tag.Name),
+            () => _tagService.DeleteTagAsync(_viewModel.Repository, tag.Name),
             "Could not delete local tag");
     }
 
@@ -225,7 +225,7 @@ public sealed partial class MainPage
 
         PushTagResult? result = null;
         var succeeded = await _viewModel.RunMutationAsync(
-            async () => result = await _referenceService.PushTagAsync(_viewModel.Repository, remote.Name, tag.Name),
+            async () => result = await _tagService.PushTagAsync(_viewModel.Repository, remote.Name, tag.Name),
             "Could not push tag",
             includeHistory: false);
         if (!succeeded || result is null) return;
@@ -261,7 +261,7 @@ public sealed partial class MainPage
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
 
         await _viewModel.RunMutationAsync(
-            () => _referenceService.ForceUpdateRemoteTagAsync(_viewModel.Repository, snapshot),
+            () => _tagService.ForceUpdateRemoteTagAsync(_viewModel.Repository, snapshot),
             "Could not force update remote tag",
             includeHistory: false);
     }
@@ -284,7 +284,7 @@ public sealed partial class MainPage
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
 
         await _viewModel.RunMutationAsync(
-            () => _referenceService.DeleteRemoteTagAsync(_viewModel.Repository, remote.Name, tag.Name),
+            () => _tagService.DeleteRemoteTagAsync(_viewModel.Repository, remote.Name, tag.Name),
             "Could not delete remote tag",
             includeHistory: false);
     }
@@ -295,7 +295,7 @@ public sealed partial class MainPage
         var remote = await SelectTagRemoteAsync("Fetch tags", "Fetch tags from remote");
         if (remote is null) return;
         await _viewModel.RunMutationAsync(
-            () => _referenceService.FetchTagsAsync(_viewModel.Repository, remote.Name),
+            () => _tagService.FetchTagsAsync(_viewModel.Repository, remote.Name),
             "Could not fetch tags");
     }
 
@@ -305,7 +305,7 @@ public sealed partial class MainPage
         var remote = await SelectTagRemoteAsync("Push all tags", "Push all local tags to remote");
         if (remote is null) return;
         await _viewModel.RunMutationAsync(
-            () => _referenceService.PushAllTagsAsync(_viewModel.Repository, remote.Name),
+            () => _tagService.PushAllTagsAsync(_viewModel.Repository, remote.Name),
             "Could not push all tags",
             includeHistory: false);
     }
