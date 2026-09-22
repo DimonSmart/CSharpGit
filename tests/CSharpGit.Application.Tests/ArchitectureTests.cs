@@ -1,3 +1,5 @@
+using CSharpGit.Application.Abstractions;
+
 namespace CSharpGit.Application.Tests;
 
 public sealed class ArchitectureTests
@@ -5,7 +7,7 @@ public sealed class ArchitectureTests
     [Fact]
     public void ApplicationAssemblyDoesNotReferencePresentationOrGitIntegration()
     {
-        var references = typeof(CSharpGit.Application.Abstractions.IRepositoryService).Assembly.GetReferencedAssemblies();
+        var references = typeof(IRepositoryService).Assembly.GetReferencedAssemblies();
         Assert.DoesNotContain(references, reference => reference.Name is "CSharpGit.Presentation" or "CSharpGit.Git");
         Assert.DoesNotContain(references, reference => reference.Name is "Microsoft.UI.Xaml" or "Uno.UI");
     }
@@ -24,6 +26,50 @@ public sealed class ArchitectureTests
         Assert.DoesNotContain("Microsoft.UI.Xaml", infrastructure);
         Assert.DoesNotContain("ElementTheme", infrastructure);
         Assert.DoesNotContain("FrameworkElement", infrastructure);
+    }
+
+    [Fact]
+    public void ApplicationInterfacesDoNotContainDefaultInstanceImplementations()
+    {
+        var abstractionNamespace = typeof(IRepositoryService).Namespace;
+        var concreteInstanceMethods = typeof(IRepositoryService).Assembly
+            .GetTypes()
+            .Where(type => type.IsInterface && type.Namespace == abstractionNamespace)
+            .SelectMany(type => type.GetMethods()
+                .Where(method => !method.IsStatic && !method.IsAbstract)
+                .Select(method => $"{type.FullName}.{method.Name}"))
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Empty(concreteInstanceMethods);
+    }
+
+    [Fact]
+    public void RepositoryApplicationContractsRemainSeparatedByCapability()
+    {
+        var abstractions = Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Application", "Abstractions");
+        var stateSource = File.ReadAllText(Path.Combine(abstractions, "IRepositoryStateService.cs"));
+
+        foreach (var declaration in new[]
+                 {
+                     "IRepositoryRefreshProbe",
+                     "IWorkingTreeService",
+                     "IReferenceService",
+                     "IRepositoryWorkflowService",
+                     "IRepositoryStateSession"
+                 })
+            Assert.DoesNotContain($"interface {declaration}", stateSource, StringComparison.Ordinal);
+
+        foreach (var file in new[]
+                 {
+                     "IRepositoryStateService.cs",
+                     "IRepositoryRefreshProbe.cs",
+                     "IWorkingTreeService.cs",
+                     "IReferenceService.cs",
+                     "IRepositoryWorkflowService.cs",
+                     "IRepositoryStateSession.cs"
+                 })
+            Assert.True(File.Exists(Path.Combine(abstractions, file)), $"Missing application contract file: {file}");
     }
 
     private static string FindRepositoryRoot()

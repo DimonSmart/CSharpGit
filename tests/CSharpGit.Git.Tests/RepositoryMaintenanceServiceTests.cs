@@ -251,19 +251,15 @@ public sealed class RepositoryMaintenanceServiceTests : IDisposable
             return Guid.NewGuid();
         }
 
-        public void Completed(
-            Guid id,
-            int exitCode,
-            string standardOutput,
-            string standardError)
+        public void OutputReceived(Guid id, GitOutputStream stream, string chunk)
         {
         }
 
-        public void Cancelled(
-            Guid id,
-            int? exitCode,
-            string standardOutput,
-            string standardError)
+        public void Completed(Guid id, int exitCode)
+        {
+        }
+
+        public void Cancelled(Guid id, int? exitCode)
         {
         }
     }
