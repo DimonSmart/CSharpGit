@@ -159,7 +159,7 @@ public sealed class JsonAppSettingsServiceTests
     }
 
     [Fact]
-    public async Task PersistenceFailureKeepsOptimisticThemeAndPropagatesError()
+    public async Task PersistenceFailureKeepsCommittedStateAndDoesNotPublishChange()
     {
         using var fixture = new SettingsFixture();
         var service = fixture.CreateServiceWithBlockedParent();
@@ -170,8 +170,32 @@ public sealed class JsonAppSettingsServiceTests
             () => service.SetThemeModeAsync(ApplicationThemeMode.Dark));
 
         Assert.NotNull(exception);
+        Assert.Equal(ApplicationThemeMode.System, service.ThemeMode);
+        Assert.Equal(0, changes);
+    }
+
+    [Fact]
+    public async Task ConcurrentUpdatesMergeAgainstLatestCommittedSnapshot()
+    {
+        using var fixture = new SettingsFixture();
+        var service = fixture.CreateService();
+        var changes = 0;
+        service.Changed += (_, _) => Interlocked.Increment(ref changes);
+
+        await Task.WhenAll(
+            service.SetThemeModeAsync(ApplicationThemeMode.Dark),
+            service.SetCommitTimeDisplayModeAsync(CommitTimeDisplayMode.Absolute),
+            service.SetAutoSetupRemoteOnPushAsync(true));
+
         Assert.Equal(ApplicationThemeMode.Dark, service.ThemeMode);
-        Assert.Equal(1, changes);
+        Assert.Equal(CommitTimeDisplayMode.Absolute, service.CommitTimeDisplayMode);
+        Assert.True(service.AutoSetupRemoteOnPush);
+        Assert.Equal(3, changes);
+
+        var restored = fixture.CreateService();
+        Assert.Equal(ApplicationThemeMode.Dark, restored.ThemeMode);
+        Assert.Equal(CommitTimeDisplayMode.Absolute, restored.CommitTimeDisplayMode);
+        Assert.True(restored.AutoSetupRemoteOnPush);
     }
 
     [Fact]

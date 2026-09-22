@@ -184,4 +184,40 @@ public sealed partial class RepositoryImageServiceTests
         Assert.Equal(results[0], results[1]);
     }
 
+    [Fact]
+    public async Task CancellingOneWaiterDoesNotCancelSharedResolution()
+    {
+        using var fixture = new Fixture();
+        var repository = fixture.CreateRepository("https://github.com/owner/repository.git");
+        var pageRequestStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releasePageRequest = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var handler = new StubHandler(async (request, cancellationToken) =>
+        {
+            if (request.RequestUri?.Host == "github.com")
+            {
+                pageRequestStarted.TrySetResult(true);
+                await releasePageRequest.Task.WaitAsync(cancellationToken);
+            }
+
+            return GitHubResponse(request);
+        });
+        var service = fixture.CreateService(handler);
+        using var cancellation = new CancellationTokenSource();
+
+        var cancelledWaiter = service.ResolveAsync(repository, cancellation.Token);
+        await pageRequestStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var survivingWaiter = service.ResolveAsync(repository);
+
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await cancelledWaiter);
+
+        releasePageRequest.TrySetResult(true);
+        var imagePath = await survivingWaiter.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.NotNull(imagePath);
+        Assert.True(File.Exists(imagePath));
+        Assert.Equal(2, handler.RequestCount);
+    }
+
+
 }

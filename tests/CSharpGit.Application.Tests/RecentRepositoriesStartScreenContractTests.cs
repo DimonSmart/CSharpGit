@@ -13,7 +13,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         var localImageProvider = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure", "LocalRepositoryImageProvider.cs"));
         var githubImageProvider = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure", "GitHubRepositoryImageProvider.cs"));
         var imageInternals = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure", "RepositoryImageInternals.cs"));
-        var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "RepositoryImageServices.cs"));
+        var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
         var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var recentView = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "RecentRepositoriesView.xaml"));
         var recentViewCodeBehind = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "RecentRepositoriesView.xaml.cs"));
@@ -50,8 +50,9 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("\"logo\"", imageInternals);
         Assert.Contains("\"icon\"", imageInternals);
 
-        Assert.Contains("RepositoryImageServices", composition);
-        Assert.Contains("IRepositoryImageService", composition);
+        Assert.Contains("AddSingleton<IRepositoryImageService, RepositoryImageService>()", composition);
+        Assert.Contains("IRepositoryImageService repositoryImageService", recentViewModel);
+        Assert.DoesNotContain("RepositoryImageServices", recentViewModel);
 
         Assert.Contains("Open a Git repository", mainPage);
         Assert.Contains("Select the folder of an existing repository or worktree.", mainPage);

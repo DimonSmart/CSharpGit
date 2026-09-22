@@ -97,6 +97,48 @@ public sealed class GitArchitectureGuardrailTests
         Assert.DoesNotContain(nameof(IReferenceService.CreateBranchAsync), typeof(GitCommitActionService).GetMethods().Select(method => method.Name));
     }
 
+    [Fact]
+    public void GitServicesRequireExplicitExecutorConstruction()
+    {
+        var serviceTypes = new[]
+        {
+            typeof(GitRepositoryService),
+            typeof(GitRepositoryStateService),
+            typeof(GitWorkingTreeService),
+            typeof(GitWorkingTreeDiffService),
+            typeof(GitReferenceService),
+            typeof(GitRepositorySyncService),
+            typeof(GitRepositoryWorkflowService),
+            typeof(GitCommitActionService),
+            typeof(GitReferenceHistoryService),
+            typeof(GitFileAwareHistoryService),
+            typeof(GitTagService),
+            typeof(GitRepositoryFileVersionService),
+            typeof(GitRepositorySnapshotService),
+            typeof(GitRepositoryHistoryRewriteService),
+            typeof(GitRepositoryMaintenanceService)
+        };
+
+        foreach (var serviceType in serviceTypes)
+        {
+            var parameterless = serviceType
+                .GetConstructors(System.Reflection.BindingFlags.Instance |
+                                 System.Reflection.BindingFlags.Public |
+                                 System.Reflection.BindingFlags.NonPublic)
+                .Where(constructor => constructor.GetParameters().Length == 0)
+                .ToArray();
+            Assert.Empty(parameterless);
+        }
+
+        var root = FindRepositoryRoot();
+        var gitProject = Path.Combine(root, "src", "CSharpGit.Git");
+        var executor = File.ReadAllText(Path.Combine(gitProject, "GitCommandExecutor.cs"));
+        var activity = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "GitCommandActivityHistory.cs"));
+
+        Assert.DoesNotContain("static GitCommandExecutor Default", executor, StringComparison.Ordinal);
+        Assert.DoesNotContain("GitCommandActivitySession", activity, StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryRoot()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

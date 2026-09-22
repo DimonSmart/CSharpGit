@@ -51,6 +51,7 @@ public sealed class DesktopUiContractTests
         var settingsWindow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Settings.cs"));
         var settingsXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml"));
         var settingsPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml.cs"));
+        var settingsController = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsWindowController.cs"));
         var settingsViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "SettingsViewModel.cs"));
         var repositoryViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var themeManager = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ApplicationThemeManager.cs"));
@@ -75,8 +76,11 @@ public sealed class DesktopUiContractTests
         Assert.Contains("ApplyThemeModeAsync", settingsPage);
         Assert.Contains("ShowSettingsError(exception)", settingsPage);
         Assert.Contains("Could not apply settings", settingsPage);
-        Assert.Contains("new(AppSettingsContext.Current)", settingsPage);
-        Assert.DoesNotContain("AppSettingsContext.Current", settingsViewModel);
+        Assert.Contains("SettingsViewModel viewModel", settingsPage);
+        Assert.Contains("new SettingsViewModel(_settings)", settingsController);
+        Assert.DoesNotContain("AppSettingsContext", settingsPage);
+        Assert.DoesNotContain("AppSettingsContext", settingsViewModel);
+        Assert.DoesNotContain("AppSettingsContext", repositoryViewModel);
 
         Assert.DoesNotContain("SelectedTheme", repositoryViewModel);
         Assert.DoesNotContain("SelectedThemeName", repositoryViewModel);
