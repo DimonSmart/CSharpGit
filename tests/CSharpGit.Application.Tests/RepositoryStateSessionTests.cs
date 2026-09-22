@@ -474,5 +474,10 @@ public sealed class RepositoryStateSessionTests
                 return Task.FromResult(_currentState);
             }
         }
+
+        public Task<RepositoryState> ReadLocalOnlyAsync(
+            Repository repository,
+            CancellationToken cancellationToken = default) =>
+            ReadAsync(repository, cancellationToken);
     }
 }

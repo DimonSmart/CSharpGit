@@ -397,7 +397,7 @@ public sealed partial class MainPage : Page
                 break;
             case RepositoryTreeNodeKind.Tag when node.Value is GitTag tag:
                 _viewModel.SelectedTag = tag;
-                await NavigateToReferenceAsync(tag.Commit);
+                await NavigateToReferenceAsync(tag.TargetCommit);
                 break;
             case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:
                 _viewModel.SelectedStash = stash;
