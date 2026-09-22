@@ -5,6 +5,12 @@ namespace CSharpGit.Git;
 
 internal sealed partial class GitRepositorySyncService : IRepositorySyncService
 {
+    internal GitRepositorySyncService()
+        : this(GitCommandExecutor.Default)
+    {
+    }
+
+
     private readonly GitRepositoryCommandRunner _runner;
     private readonly GitPushExecutor _pushExecutor;
 
