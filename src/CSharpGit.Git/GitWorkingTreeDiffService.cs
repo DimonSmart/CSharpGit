@@ -6,6 +6,12 @@ namespace CSharpGit.Git;
 
 internal sealed class GitWorkingTreeDiffService : IWorkingTreeDiffService
 {
+    internal GitWorkingTreeDiffService()
+        : this(GitCommandExecutor.Default)
+    {
+    }
+
+
     private readonly GitRepositoryCommandRunner _runner;
 
     internal GitWorkingTreeDiffService(GitCommandExecutor executor)
