@@ -19,41 +19,105 @@ public static class GitServiceCollectionExtensions
         {
             services.AddSingleton(options);
             services.AddSingleton(provider =>
-                new GitCommandExecutor(provider.GetRequiredService<GitCliOptions>()));
+                new GitCommandExecutor(
+                    provider.GetRequiredService<GitCliOptions>()));
         }
 
         services.AddSingleton(provider =>
-            new GitCliRepositoryService(provider.GetRequiredService<GitCommandExecutor>()));
+            new GitCommandRunner(
+                provider.GetRequiredService<GitCommandExecutor>()));
+        services.AddSingleton<GitOperationDetector>();
         services.AddSingleton(provider =>
-            new GitTagService(provider.GetRequiredService<GitCommandExecutor>()));
-        services.AddSingleton<ITagService>(provider => provider.GetRequiredService<GitTagService>());
+            new GitPushRunner(
+                provider.GetRequiredService<GitCommandRunner>()));
+
         services.AddSingleton(provider =>
-            new DefaultBranchResolver(provider.GetRequiredService<GitCommandExecutor>()));
-        services.AddSingleton<IRepositoryService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
+            new GitRepositoryService(
+                provider.GetRequiredService<GitCommandRunner>()));
+        services.AddSingleton<IRepositoryService>(provider =>
+            provider.GetRequiredService<GitRepositoryService>());
+
+        services.AddSingleton(provider =>
+            new GitRepositoryStateService(
+                provider.GetRequiredService<GitCommandRunner>(),
+                provider.GetRequiredService<GitOperationDetector>()));
+        services.AddSingleton(provider =>
+            new DefaultBranchResolver(
+                provider.GetRequiredService<GitCommandExecutor>()));
+        services.AddSingleton(provider =>
+            new GitTagService(
+                provider.GetRequiredService<GitCommandExecutor>()));
+        services.AddSingleton<ITagService>(provider =>
+            provider.GetRequiredService<GitTagService>());
         services.AddSingleton<IRepositoryStateService>(provider =>
             new DefaultBranchRepositoryStateService(
-                provider.GetRequiredService<GitCliRepositoryService>(),
+                provider.GetRequiredService<GitRepositoryStateService>(),
                 provider.GetRequiredService<DefaultBranchResolver>(),
                 provider.GetRequiredService<ITagService>()));
-        services.AddSingleton<IRepositoryRefreshProbe>(provider =>
-            new GitRepositoryRefreshProbe(provider.GetRequiredService<GitCommandExecutor>()));
-        services.AddSingleton<IWorkingTreeService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
-        services.AddSingleton<IWorkingTreeDiffService>(provider => provider.GetRequiredService<GitCliRepositoryService>());
-        services.AddSingleton<IWorktreeService>(provider =>
-            new GitWorktreeService(provider.GetRequiredService<GitCommandExecutor>()));
+
+        services.AddSingleton(provider =>
+            new GitWorkingTreeService(
+                provider.GetRequiredService<GitCommandRunner>()));
+        services.AddSingleton<IWorkingTreeService>(provider =>
+            provider.GetRequiredService<GitWorkingTreeService>());
+
+        services.AddSingleton(provider =>
+            new GitWorkingTreeDiffService(
+                provider.GetRequiredService<GitCommandRunner>()));
+        services.AddSingleton<IWorkingTreeDiffService>(provider =>
+            provider.GetRequiredService<GitWorkingTreeDiffService>());
+
+        services.AddSingleton(provider =>
+            new GitReferenceService(
+                provider.GetRequiredService<GitCommandRunner>(),
+                provider.GetRequiredService<GitPushRunner>()));
         services.AddSingleton<IReferenceService>(provider =>
-            new DefaultBranchReferenceService(
-                provider.GetRequiredService<GitCliRepositoryService>(),
+            provider.GetRequiredService<GitReferenceService>());
+
+        services.AddSingleton(provider =>
+            new GitRepositorySyncService(
+                provider.GetRequiredService<GitCommandRunner>(),
+                provider.GetRequiredService<GitOperationDetector>()));
+        services.AddSingleton<IRepositorySyncService>(provider =>
+            new DefaultBranchRepositorySyncService(
+                provider.GetRequiredService<GitRepositorySyncService>(),
                 provider.GetRequiredService<DefaultBranchResolver>()));
 
+        services.AddSingleton(provider =>
+            new GitRepositoryWorkflowService(
+                provider.GetRequiredService<GitCommandRunner>(),
+                provider.GetRequiredService<GitOperationDetector>(),
+                provider.GetRequiredService<GitRepositoryStateService>()));
+        services.AddSingleton<IRepositoryWorkflowService>(provider =>
+            provider.GetRequiredService<GitRepositoryWorkflowService>());
+
+        services.AddSingleton(provider =>
+            new GitCommitActionService(
+                provider.GetRequiredService<GitCommandRunner>(),
+                provider.GetRequiredService<GitOperationDetector>(),
+                provider.GetRequiredService<GitRepositoryStateService>(),
+                provider.GetRequiredService<GitRepositoryWorkflowService>()));
+        services.AddSingleton<ICommitActionService>(provider =>
+            provider.GetRequiredService<GitCommitActionService>());
+
+        services.AddSingleton<IRepositoryRefreshProbe>(provider =>
+            new GitRepositoryRefreshProbe(
+                provider.GetRequiredService<GitCommandExecutor>()));
+        services.AddSingleton<IWorktreeService>(provider =>
+            new GitWorktreeService(
+                provider.GetRequiredService<GitCommandExecutor>()));
         services.AddSingleton<IRepositoryFileVersionService>(provider =>
-            new GitRepositoryFileVersionService(provider.GetRequiredService<GitCommandExecutor>()));
+            new GitRepositoryFileVersionService(
+                provider.GetRequiredService<GitCommandExecutor>()));
         services.AddSingleton<IRepositorySnapshotService>(provider =>
-            new GitRepositorySnapshotService(provider.GetRequiredService<GitCommandExecutor>()));
+            new GitRepositorySnapshotService(
+                provider.GetRequiredService<GitCommandExecutor>()));
         services.AddSingleton<IRepositoryHistoryRewriteService>(provider =>
-            new GitRepositoryHistoryRewriteService(provider.GetRequiredService<GitCommandExecutor>()));
+            new GitRepositoryHistoryRewriteService(
+                provider.GetRequiredService<GitCommandExecutor>()));
         services.AddSingleton<IRepositoryMaintenanceService>(provider =>
-            new GitRepositoryMaintenanceService(provider.GetRequiredService<GitCommandExecutor>()));
+            new GitRepositoryMaintenanceService(
+                provider.GetRequiredService<GitCommandExecutor>()));
         services.AddSingleton<IGitToolsService>(provider =>
             new GitToolsService(
                 provider.GetRequiredService<GitCommandExecutor>(),
@@ -62,13 +126,16 @@ public static class GitServiceCollectionExtensions
                 provider.GetRequiredService<IExternalToolProcessService>()));
 
         services.AddSingleton(provider =>
-            new GitReferenceHistoryService(provider.GetRequiredService<GitCommandExecutor>()));
+            new GitReferenceHistoryService(
+                provider.GetRequiredService<GitCommandExecutor>()));
         services.AddSingleton(provider =>
             new GitFileAwareHistoryService(
                 provider.GetRequiredService<GitReferenceHistoryService>(),
                 provider.GetRequiredService<GitCommandExecutor>()));
-        services.AddSingleton<IHistoryService>(provider => provider.GetRequiredService<GitFileAwareHistoryService>());
-        services.AddSingleton<IReferenceHistoryService>(provider => provider.GetRequiredService<GitFileAwareHistoryService>());
+        services.AddSingleton<IHistoryService>(provider =>
+            provider.GetRequiredService<GitFileAwareHistoryService>());
+        services.AddSingleton<IReferenceHistoryService>(provider =>
+            provider.GetRequiredService<GitFileAwareHistoryService>());
 
         return services;
     }
