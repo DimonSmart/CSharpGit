@@ -516,7 +516,7 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         var change = _viewModel.ActiveWorkingTreeChange;
         var kind = _viewModel.ActiveWorkingTreeDiffKind;
-        if (repository is null || change is null || kind is null || _desktopShellService is null)
+        if (repository is null || change is null || kind is null)
             return;
         try
         {
