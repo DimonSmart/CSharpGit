@@ -43,7 +43,7 @@ public sealed class BranchDeletionTests : IDisposable
         RunGit(work, "switch", "-c", "feature/test/delete");
         RunGit(work, "push", "origin", "feature/test/delete");
         var repositoryService = new GitRepositoryService();
-        var service = new GitReferenceService();
+        var service = new GitRepositorySyncService();
         var repository = await repositoryService.OpenAsync(work);
 
         await service.DeleteRemoteBranchAsync(repository, "origin", "feature/test/delete");
@@ -58,7 +58,7 @@ public sealed class BranchDeletionTests : IDisposable
         RunGit(work, "switch", "-c", "feature/keep-local");
         RunGit(work, "push", "origin", "feature/keep-local");
         var repositoryService = new GitRepositoryService();
-        var service = new GitReferenceService();
+        var service = new GitRepositorySyncService();
         var repository = await repositoryService.OpenAsync(work);
 
         await service.DeleteRemoteBranchAsync(repository, "origin", "feature/keep-local");
