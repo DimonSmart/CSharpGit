@@ -54,8 +54,8 @@ public sealed class RepositoryTreeCurrentBranchPresentationTests
         Assert.Contains("BasedOn=\"{StaticResource DenseTreeItemStyle}\"", repositoryTree, StringComparison.Ordinal);
         Assert.DoesNotContain("CurrentBranchAccentVisibility", repositoryTree, StringComparison.Ordinal);
         Assert.Contains("Visibility=\"{Binding CurrentWorktreeAccentVisibility}\"", repositoryTree, StringComparison.Ordinal);
-        Assert.Equal(2, CountOccurrences(repositoryTree, "Visibility=\"{Binding CurrentBranchNameAccentVisibility}\""));
-        Assert.Equal(1, CountOccurrences(repositoryTree, "TextForeground=\"{ThemeResource AccentFillColorDefaultBrush}\""));
+        Assert.Equal(1, CountOccurrences(repositoryTree, "Visibility=\"{Binding CurrentBranchNameAccentVisibility}\""));
+        Assert.DoesNotContain("TextForeground=\"{ThemeResource AccentFillColorDefaultBrush}\"", repositoryTree, StringComparison.Ordinal);
         Assert.Contains("<Border Height=\"1\"", repositoryTree, StringComparison.Ordinal);
         Assert.Contains("Background=\"{ThemeResource AccentFillColorDefaultBrush}\"", repositoryTree, StringComparison.Ordinal);
         Assert.DoesNotContain("<ScaleTransform ScaleX=\"1.04\" ScaleY=\"1.08\" />", repositoryTree, StringComparison.Ordinal);
