@@ -4,7 +4,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
 
-public sealed partial class GitCliRepositoryService
+internal sealed partial class GitRepositorySyncService
 {
     public async Task<ForcePushWithLeaseSnapshot> PrepareForcePushWithLeaseAsync(
         Repository repository,
@@ -13,23 +13,23 @@ public sealed partial class GitCliRepositoryService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(repository);
-        if (DetectOperation(repository) != RepositoryOperation.None)
+        if (_operationDetector.Detect(repository) != RepositoryOperation.None)
             throw new InvalidOperationException("Complete or abort the current Git operation before force pushing.");
         if ((remote is null) != (remoteBranch is null))
             throw new ArgumentException("Explicit force-push target requires both remote and remote branch.");
 
         var localBranch = await CurrentBranchAsync(repository, cancellationToken);
-        ValidateRefName(localBranch, nameof(localBranch));
+        GitReferenceValidator.ValidateRefName(localBranch, nameof(localBranch));
         var localRef = $"refs/heads/{localBranch}";
-        var localCommit = await RunGitAsync(repository.WorkingDirectory, cancellationToken, true,
+        var localCommit = await _commands.RunAsync(repository.WorkingDirectory, cancellationToken, true,
             "rev-parse", "--verify", localRef);
-        ValidateObjectName(localCommit);
+        GitReferenceValidator.ValidateObjectName(localCommit);
 
         if (remote is null)
         {
-            remote = await RunOptionalGitAsync(repository.WorkingDirectory, cancellationToken,
+            remote = await _commands.RunOptionalAsync(repository.WorkingDirectory, cancellationToken,
                 "config", "--get", $"branch.{localBranch}.remote");
-            var mergeRef = await RunOptionalGitAsync(repository.WorkingDirectory, cancellationToken,
+            var mergeRef = await _commands.RunOptionalAsync(repository.WorkingDirectory, cancellationToken,
                 "config", "--get", $"branch.{localBranch}.merge");
             if (string.IsNullOrWhiteSpace(remote) ||
                 string.IsNullOrWhiteSpace(mergeRef) ||
@@ -45,8 +45,8 @@ public sealed partial class GitCliRepositoryService
 
         remote = remote.Trim();
         remoteBranch = remoteBranch!.Trim();
-        ValidateRefName(remote, nameof(remote));
-        ValidateRefName(remoteBranch, nameof(remoteBranch));
+        GitReferenceValidator.ValidateRefName(remote, nameof(remote));
+        GitReferenceValidator.ValidateRefName(remoteBranch, nameof(remoteBranch));
         await EnsureRemoteExistsAsync(repository, remote, cancellationToken);
         var pushDestination = await ReadSinglePushDestinationAsync(repository, remote, cancellationToken);
         var remoteRef = $"refs/heads/{remoteBranch}";
@@ -69,16 +69,16 @@ public sealed partial class GitCliRepositoryService
         if (matchingLines.Count != 1)
             throw new RepositoryOpenException("Git ls-remote did not return exactly one matching remote branch ref.");
         var expectedRemoteCommit = matchingLines[0][0];
-        ValidateObjectName(expectedRemoteCommit);
+        GitReferenceValidator.ValidateObjectName(expectedRemoteCommit);
 
-        var localSubject = await RunGitAsync(repository.WorkingDirectory, cancellationToken, false,
+        var localSubject = await _commands.RunAsync(repository.WorkingDirectory, cancellationToken, false,
             "show", "-s", "--format=%s", localCommit);
         string? remoteSubject = null;
         var objectCheck = await RunGitCapturedAsync(repository, cancellationToken,
             "cat-file", "-e", $"{expectedRemoteCommit}^{{commit}}");
         if (objectCheck.ExitCode == 0)
         {
-            var subject = await RunOptionalGitAsync(repository.WorkingDirectory, cancellationToken,
+            var subject = await _commands.RunOptionalAsync(repository.WorkingDirectory, cancellationToken,
                 "show", "-s", "--format=%s", expectedRemoteCommit);
             remoteSubject = string.IsNullOrWhiteSpace(subject) ? null : subject;
         }
@@ -106,14 +106,14 @@ public sealed partial class GitCliRepositoryService
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(snapshot);
         ValidateSnapshot(snapshot);
-        if (DetectOperation(repository) != RepositoryOperation.None)
+        if (_operationDetector.Detect(repository) != RepositoryOperation.None)
             throw new ForcePushWithLeaseCancelledException("A Git operation started after confirmation was prepared. Start the force-push workflow again.");
 
         var currentBranch = await CurrentBranchAsync(repository, cancellationToken);
         if (!string.Equals(currentBranch, snapshot.LocalBranch, StringComparison.Ordinal))
             throw new ForcePushWithLeaseCancelledException("The current branch changed after confirmation was prepared. Start the operation again.");
 
-        var currentLocalCommit = await RunGitAsync(repository.WorkingDirectory, cancellationToken, true,
+        var currentLocalCommit = await _commands.RunAsync(repository.WorkingDirectory, cancellationToken, true,
             "rev-parse", "--verify", $"refs/heads/{snapshot.LocalBranch}");
         if (!string.Equals(currentLocalCommit, snapshot.LocalCommit, StringComparison.Ordinal))
             throw new ForcePushWithLeaseCancelledException($"{snapshot.LocalBranch} changed after confirmation was prepared. Review the new state and start the operation again.");
@@ -149,18 +149,18 @@ public sealed partial class GitCliRepositoryService
 
     private static void ValidateSnapshot(ForcePushWithLeaseSnapshot snapshot)
     {
-        ValidateRefName(snapshot.LocalBranch, nameof(snapshot.LocalBranch));
-        ValidateRefName(snapshot.Remote, nameof(snapshot.Remote));
-        ValidateRefName(snapshot.RemoteBranch, nameof(snapshot.RemoteBranch));
-        ValidateObjectName(snapshot.LocalCommit);
-        ValidateObjectName(snapshot.ExpectedRemoteCommit);
+        GitReferenceValidator.ValidateRefName(snapshot.LocalBranch, nameof(snapshot.LocalBranch));
+        GitReferenceValidator.ValidateRefName(snapshot.Remote, nameof(snapshot.Remote));
+        GitReferenceValidator.ValidateRefName(snapshot.RemoteBranch, nameof(snapshot.RemoteBranch));
+        GitReferenceValidator.ValidateObjectName(snapshot.LocalCommit);
+        GitReferenceValidator.ValidateObjectName(snapshot.ExpectedRemoteCommit);
         if (string.IsNullOrWhiteSpace(snapshot.RemotePushDestination))
             throw new ArgumentException("The force-push snapshot has no push destination.", nameof(snapshot));
     }
 
     private async Task EnsureRemoteExistsAsync(Repository repository, string remote, CancellationToken cancellationToken)
     {
-        var remotes = await RunGitAsync(repository.WorkingDirectory, cancellationToken, false, "remote");
+        var remotes = await _commands.RunAsync(repository.WorkingDirectory, cancellationToken, false, "remote");
         if (!remotes.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Contains(remote, StringComparer.Ordinal))
             throw new ArgumentException($"Remote '{remote}' is not configured.", nameof(remote));
@@ -168,7 +168,7 @@ public sealed partial class GitCliRepositoryService
 
     private async Task<string> ReadSinglePushDestinationAsync(Repository repository, string remote, CancellationToken cancellationToken)
     {
-        ValidateRefName(remote, nameof(remote));
+        GitReferenceValidator.ValidateRefName(remote, nameof(remote));
         await EnsureRemoteExistsAsync(repository, remote, cancellationToken);
         var result = await RunGitCapturedAsync(repository, cancellationToken,
             "remote", "get-url", "--push", "--all", remote);
@@ -247,7 +247,7 @@ public sealed partial class GitCliRepositoryService
         CancellationToken cancellationToken,
         GitCommandKind commandKind,
         params string[] arguments) =>
-        RunGitForResultAsync(
+        _commands.RunForResultAsync(
             repository.WorkingDirectory,
             "RepositoryCaptured",
             commandKind,

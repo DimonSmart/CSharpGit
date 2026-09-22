@@ -4,8 +4,15 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
 
-public sealed partial class GitCliRepositoryService : IWorkingTreeDiffService
+internal sealed class GitWorkingTreeDiffService : IWorkingTreeDiffService
 {
+    private readonly GitCommandRunner _commands;
+
+    internal GitWorkingTreeDiffService(GitCommandRunner commands)
+    {
+        _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+    }
+
     public async Task<FileDiff> ReadDiffAsync(
         Repository repository,
         WorkingTreeChange change,
@@ -14,7 +21,7 @@ public sealed partial class GitCliRepositoryService : IWorkingTreeDiffService
     {
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(change);
-        ValidateChange(change);
+        GitPathValidator.ValidateChange(change);
 
         if (change.IsConflicted)
         {
@@ -44,7 +51,7 @@ public sealed partial class GitCliRepositoryService : IWorkingTreeDiffService
         arguments.Add(change.Path);
         if (change.OriginalPath is not null) arguments.Add(change.OriginalPath);
 
-        var output = await RunGitAsync(repository.WorkingDirectory, cancellationToken, false, arguments.ToArray());
+        var output = await _commands.RunAsync(repository.WorkingDirectory, cancellationToken, false, arguments.ToArray());
         return BuildWorkingTreeDiff(change.Path, output);
     }
 
@@ -61,7 +68,7 @@ public sealed partial class GitCliRepositoryService : IWorkingTreeDiffService
         await File.WriteAllBytesAsync(emptyPath, [], cancellationToken);
         try
         {
-            var result = await RunGitForResultAsync(
+            var result = await _commands.RunForResultAsync(
                 repository.WorkingDirectory,
                 "WorkingTreeNoIndexDiff",
                 GitCommandKind.Internal,
@@ -106,7 +113,7 @@ public sealed partial class GitCliRepositoryService : IWorkingTreeDiffService
 
     private static string ResolveSafeWorkingTreePath(Repository repository, string path)
     {
-        ValidatePath(path);
+        GitPathValidator.ValidatePath(path);
         var root = Path.GetFullPath(repository.WorkingDirectory);
         var fullPath = Path.GetFullPath(Path.Combine(root, path));
         var comparison = OperatingSystem.IsWindows()

@@ -8,7 +8,7 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
 {
     private readonly string _temporaryDirectory =
         Path.Combine(Path.GetTempPath(), $"csharpgit-working-tree-diff-{Guid.NewGuid():N}");
-    private readonly GitCliRepositoryService _service = new();
+    private readonly GitCapabilityTestServices _git = new();
 
     [Fact]
     public async Task SeparatesHeadIndexAndWorkingTreeVersions()
@@ -24,8 +24,8 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
         Assert.True(change.IsStaged);
         Assert.True(change.IsUnstaged);
 
-        var staged = await _service.ReadDiffAsync(repository, change, WorkingTreeDiffKind.Staged);
-        var unstaged = await _service.ReadDiffAsync(repository, change, WorkingTreeDiffKind.Unstaged);
+        var staged = await _git.WorkingTreeDiff.ReadDiffAsync(repository, change, WorkingTreeDiffKind.Staged);
+        var unstaged = await _git.WorkingTreeDiff.ReadDiffAsync(repository, change, WorkingTreeDiffKind.Unstaged);
 
         var stagedText = Text(staged);
         Assert.Contains("-value = 1", stagedText);
@@ -46,7 +46,7 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, path), "using System;\nclass NewFile {}\n");
 
         var change = await ReadChangeAsync(repository, path);
-        var diff = await _service.ReadDiffAsync(repository, change, WorkingTreeDiffKind.Unstaged);
+        var diff = await _git.WorkingTreeDiff.ReadDiffAsync(repository, change, WorkingTreeDiffKind.Unstaged);
 
         Assert.False(diff.IsBinary);
         Assert.Contains("+using System;", Text(diff));
@@ -61,7 +61,7 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, path), string.Empty);
 
         var change = await ReadChangeAsync(repository, path);
-        var diff = await _service.ReadDiffAsync(repository, change, WorkingTreeDiffKind.Unstaged);
+        var diff = await _git.WorkingTreeDiff.ReadDiffAsync(repository, change, WorkingTreeDiffKind.Unstaged);
 
         Assert.False(diff.IsBinary);
         Assert.NotEmpty(diff.Lines);
@@ -77,7 +77,7 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
         RunGit("add", path);
 
         var change = await ReadChangeAsync(repository, path);
-        var diff = await _service.ReadDiffAsync(repository, change, WorkingTreeDiffKind.Staged);
+        var diff = await _git.WorkingTreeDiff.ReadDiffAsync(repository, change, WorkingTreeDiffKind.Staged);
 
         Assert.Contains("+added line", Text(diff));
     }
@@ -90,13 +90,13 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
         File.Delete(Path.Combine(_temporaryDirectory, "deleted.txt"));
 
         var unstagedChange = await ReadChangeAsync(repository, "deleted.txt");
-        var unstaged = await _service.ReadDiffAsync(repository, unstagedChange, WorkingTreeDiffKind.Unstaged);
+        var unstaged = await _git.WorkingTreeDiff.ReadDiffAsync(repository, unstagedChange, WorkingTreeDiffKind.Unstaged);
         Assert.Contains("-one", Text(unstaged));
         Assert.Contains("-two", Text(unstaged));
 
         RunGit("add", "-A");
         var stagedChange = await ReadChangeAsync(repository, "deleted.txt");
-        var staged = await _service.ReadDiffAsync(repository, stagedChange, WorkingTreeDiffKind.Staged);
+        var staged = await _git.WorkingTreeDiff.ReadDiffAsync(repository, stagedChange, WorkingTreeDiffKind.Staged);
         Assert.Contains("-one", Text(staged));
         Assert.Contains("-two", Text(staged));
     }
@@ -111,7 +111,7 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
 
         var rename = await ReadChangeAsync(repository, "new name.txt");
         Assert.Equal("old name.txt", rename.OriginalPath);
-        var renameDiff = await _service.ReadDiffAsync(repository, rename, WorkingTreeDiffKind.Staged);
+        var renameDiff = await _git.WorkingTreeDiff.ReadDiffAsync(repository, rename, WorkingTreeDiffKind.Staged);
         var renameText = Text(renameDiff);
         Assert.Contains("rename from old name.txt", renameText);
         Assert.Contains("rename to new name.txt", renameText);
@@ -121,7 +121,7 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
         RunGit("add", "new name.txt");
 
         var renameWithContent = await ReadChangeAsync(repository, "new name.txt");
-        var contentDiff = await _service.ReadDiffAsync(repository, renameWithContent, WorkingTreeDiffKind.Staged);
+        var contentDiff = await _git.WorkingTreeDiff.ReadDiffAsync(repository, renameWithContent, WorkingTreeDiffKind.Staged);
         var contentText = Text(contentDiff);
         Assert.Contains("rename from old name.txt", contentText);
         Assert.Contains("rename to new name.txt", contentText);
@@ -139,15 +139,15 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
 
         File.WriteAllBytes(Path.Combine(_temporaryDirectory, "tracked.bin"), [0, 8, 0, 9, 3]);
         var unstagedChange = await ReadChangeAsync(repository, "tracked.bin");
-        Assert.True((await _service.ReadDiffAsync(repository, unstagedChange, WorkingTreeDiffKind.Unstaged)).IsBinary);
+        Assert.True((await _git.WorkingTreeDiff.ReadDiffAsync(repository, unstagedChange, WorkingTreeDiffKind.Unstaged)).IsBinary);
 
         RunGit("add", "tracked.bin");
         var stagedChange = await ReadChangeAsync(repository, "tracked.bin");
-        Assert.True((await _service.ReadDiffAsync(repository, stagedChange, WorkingTreeDiffKind.Staged)).IsBinary);
+        Assert.True((await _git.WorkingTreeDiff.ReadDiffAsync(repository, stagedChange, WorkingTreeDiffKind.Staged)).IsBinary);
 
         File.WriteAllBytes(Path.Combine(_temporaryDirectory, "untracked.bin"), [0, 4, 0, 5]);
         var untrackedChange = await ReadChangeAsync(repository, "untracked.bin");
-        Assert.True((await _service.ReadDiffAsync(repository, untrackedChange, WorkingTreeDiffKind.Unstaged)).IsBinary);
+        Assert.True((await _git.WorkingTreeDiff.ReadDiffAsync(repository, untrackedChange, WorkingTreeDiffKind.Unstaged)).IsBinary);
     }
 
     [Fact]
@@ -163,8 +163,8 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
         var space = await ReadChangeAsync(repository, "space name.txt");
         var unicode = await ReadChangeAsync(repository, "данные-日本語.txt");
 
-        Assert.Contains("+new space", Text(await _service.ReadDiffAsync(repository, space, WorkingTreeDiffKind.Unstaged)));
-        Assert.Contains("+новое 日本語", Text(await _service.ReadDiffAsync(repository, unicode, WorkingTreeDiffKind.Unstaged)));
+        Assert.Contains("+new space", Text(await _git.WorkingTreeDiff.ReadDiffAsync(repository, space, WorkingTreeDiffKind.Unstaged)));
+        Assert.Contains("+новое 日本語", Text(await _git.WorkingTreeDiff.ReadDiffAsync(repository, unicode, WorkingTreeDiffKind.Unstaged)));
     }
 
     [Fact]
@@ -175,7 +175,7 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
         RunGit("add", "first.txt");
 
         var change = await ReadChangeAsync(repository, "first.txt");
-        var diff = await _service.ReadDiffAsync(repository, change, WorkingTreeDiffKind.Staged);
+        var diff = await _git.WorkingTreeDiff.ReadDiffAsync(repository, change, WorkingTreeDiffKind.Staged);
 
         Assert.Contains("+first commit content", Text(diff));
     }
@@ -186,7 +186,7 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
         var repository = await CreateRepositoryAsync();
         var conflict = new WorkingTreeChange("conflict.txt", 'U', 'U');
 
-        var diff = await _service.ReadDiffAsync(repository, conflict, WorkingTreeDiffKind.Unstaged);
+        var diff = await _git.WorkingTreeDiff.ReadDiffAsync(repository, conflict, WorkingTreeDiffKind.Unstaged);
 
         Assert.False(diff.IsBinary);
         Assert.Single(diff.Lines);
@@ -204,14 +204,14 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, "value.txt"), "value = 3\n");
 
         var change = await ReadChangeAsync(repository, "value.txt");
-        await _service.DiscardFileAsync(repository, change);
+        await _git.WorkingTree.DiscardFileAsync(repository, change);
 
         Assert.Equal("value = 2\n", File.ReadAllText(Path.Combine(_temporaryDirectory, "value.txt")));
         var remaining = await ReadChangeAsync(repository, "value.txt");
         Assert.True(remaining.IsStaged);
         Assert.False(remaining.IsUnstaged);
 
-        var staged = await _service.ReadDiffAsync(repository, remaining, WorkingTreeDiffKind.Staged);
+        var staged = await _git.WorkingTreeDiff.ReadDiffAsync(repository, remaining, WorkingTreeDiffKind.Staged);
         Assert.Contains("-value = 1", Text(staged));
         Assert.Contains("+value = 2", Text(staged));
     }
@@ -224,7 +224,7 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
         RunGit("config", "user.name", "CSharpGit Tests");
         if (createInitialCommit)
             CommitFile("seed.txt", "seed\n", "seed");
-        return await _service.OpenAsync(_temporaryDirectory);
+        return await _git.Repositories.OpenAsync(_temporaryDirectory);
     }
 
     private void CommitFile(string path, string contents, string message)
@@ -236,7 +236,7 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
 
     private async Task<WorkingTreeChange> ReadChangeAsync(Repository repository, string path)
     {
-        var state = await _service.ReadAsync(repository);
+        var state = await _git.State.ReadAsync(repository);
         return Assert.Single(state.Changes, change =>
             string.Equals(change.Path, path, StringComparison.Ordinal));
     }

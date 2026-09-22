@@ -8,7 +8,7 @@ namespace CSharpGit.Git.Tests;
 public sealed class CommitChangesServiceTests : IDisposable
 {
     private readonly string _temporaryDirectory = Path.Combine(Path.GetTempPath(), $"csharpgit-commit-changes-{Guid.NewGuid():N}");
-    private readonly GitCliRepositoryService _repositoryService = new();
+    private readonly GitCapabilityTestServices _git = new();
 
     [Fact]
     public async Task RootAndRenameUseOneProcessPerLazyOperationAndPreservePaths()
@@ -114,7 +114,7 @@ public sealed class CommitChangesServiceTests : IDisposable
         RunGit("init", "-b", "main");
         RunGit("config", "user.email", "tests@example.invalid");
         RunGit("config", "user.name", "CSharpGit Tests");
-        return await _repositoryService.OpenAsync(_temporaryDirectory);
+        return await _git.Repositories.OpenAsync(_temporaryDirectory);
     }
 
     private void CommitText(string path, string contents, string message)

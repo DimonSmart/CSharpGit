@@ -5,12 +5,12 @@ namespace CSharpGit.Git;
 
 internal sealed class DefaultBranchRepositoryStateService : IRepositoryStateService
 {
-    private readonly GitCliRepositoryService _inner;
+    private readonly GitRepositoryStateService _inner;
     private readonly DefaultBranchResolver _resolver;
     private readonly ITagService _tagService;
 
     internal DefaultBranchRepositoryStateService(
-        GitCliRepositoryService inner,
+        GitRepositoryStateService inner,
         DefaultBranchResolver resolver,
         ITagService tagService)
     {

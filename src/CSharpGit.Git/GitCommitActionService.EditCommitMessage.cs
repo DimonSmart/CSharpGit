@@ -3,7 +3,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
 
-public sealed partial class GitCliRepositoryService
+internal sealed partial class GitCommitActionService
 {
     private const string DirtyEditCommitMessage =
         "Commit message cannot be edited while the working tree contains changes.\n\n" +
@@ -16,11 +16,11 @@ public sealed partial class GitCliRepositoryService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(repository);
-        ValidateObjectName(commit);
+        GitReferenceValidator.ValidateObjectName(commit);
         if (string.IsNullOrWhiteSpace(newMessage))
             throw new ArgumentException("Enter a non-empty commit message.", nameof(newMessage));
 
-        var resolvedCommit = (await RunOptionalGitAsync(
+        var resolvedCommit = (await _commands.RunOptionalAsync(
             repository.WorkingDirectory,
             cancellationToken,
             "rev-parse",
@@ -30,7 +30,7 @@ public sealed partial class GitCliRepositoryService
         if (resolvedCommit.Length == 0)
             return Failed("The selected commit no longer exists.", commit);
 
-        var state = await ReadAsync(repository, cancellationToken);
+        var state = await _stateService.ReadAsync(repository, cancellationToken);
         if (ValidateEditCommitMessageState(state, resolvedCommit) is { } stateFailure)
             return stateFailure;
 
@@ -45,7 +45,7 @@ public sealed partial class GitCliRepositoryService
                 newMessage,
                 cancellationToken);
 
-        var parentsOutput = await RunGitAsync(
+        var parentsOutput = await _commands.RunAsync(
             repository.WorkingDirectory,
             cancellationToken,
             false,
@@ -68,7 +68,7 @@ public sealed partial class GitCliRepositoryService
                 "Use Interactive Rebase for advanced history editing.",
                 resolvedCommit);
 
-        var ancestorCheck = await RunGitForResultAsync(
+        var ancestorCheck = await _commands.RunForResultAsync(
             repository.WorkingDirectory,
             "EditCommitMessageAncestorCheck",
             GitCommandKind.Internal,
@@ -82,10 +82,10 @@ public sealed partial class GitCliRepositoryService
                 "Switch to the branch containing this commit before editing it.",
                 resolvedCommit);
         if (ancestorCheck.ExitCode != 0)
-            throw CreateRepositoryCommandFailure(ancestorCheck);
+            throw GitCommandRunner.CreateRepositoryCommandFailure(ancestorCheck);
 
         var parent = parents[0];
-        var mergeCommits = await RunGitAsync(
+        var mergeCommits = await _commands.RunAsync(
             repository.WorkingDirectory,
             cancellationToken,
             false,
@@ -99,7 +99,7 @@ public sealed partial class GitCliRepositoryService
                 "Use Interactive Rebase for advanced history editing.",
                 resolvedCommit);
 
-        var existingPlan = await ReadInteractiveRebasePlanAsync(repository, parent, cancellationToken);
+        var existingPlan = await _workflowService.ReadInteractiveRebasePlanAsync(repository, parent, cancellationToken);
         var targetIndex = -1;
         for (var index = 0; index < existingPlan.Items.Count; index++)
         {
@@ -118,7 +118,7 @@ public sealed partial class GitCliRepositoryService
                 : item with { Action = RebaseAction.Pick, NewMessage = null })
             .ToArray();
 
-        var beforeMutation = await ReadAsync(repository, cancellationToken);
+        var beforeMutation = await _stateService.ReadAsync(repository, cancellationToken);
         if (ValidateEditCommitMessageState(
                 beforeMutation,
                 resolvedCommit,
@@ -126,12 +126,12 @@ public sealed partial class GitCliRepositoryService
                 oldHeadReference) is { } mutationFailure)
             return mutationFailure;
 
-        var rebaseResult = await StartInteractiveRebaseAsync(
+        var rebaseResult = await _workflowService.StartInteractiveRebaseAsync(
             repository,
             new InteractiveRebasePlan(parent, items),
             cancellationToken);
 
-        var newHead = NullIfEmpty(await RunOptionalGitAsync(
+        var newHead = NullIfEmpty(await _commands.RunOptionalAsync(
             repository.WorkingDirectory,
             cancellationToken,
             "rev-parse",
@@ -141,7 +141,7 @@ public sealed partial class GitCliRepositoryService
         if (rebaseResult.Kind == RebaseResultKind.Completed)
         {
             var commitsAfterTarget = items.Length - targetIndex - 1;
-            var rewrittenTarget = NullIfEmpty(await RunOptionalGitAsync(
+            var rewrittenTarget = NullIfEmpty(await _commands.RunOptionalAsync(
                 repository.WorkingDirectory,
                 cancellationToken,
                 "rev-parse",
@@ -161,7 +161,7 @@ public sealed partial class GitCliRepositoryService
                 EditCommitMessageResultKind.Conflicts,
                 rebaseResult.Message,
                 resolvedCommit,
-                ReadRewordMarker(repository, 0),
+                GitRebaseSupport.ReadRewordMarker(repository, 0),
                 newHead);
 
         return new EditCommitMessageResult(
@@ -179,7 +179,7 @@ public sealed partial class GitCliRepositoryService
         string newMessage,
         CancellationToken cancellationToken)
     {
-        var beforeMutation = await ReadAsync(repository, cancellationToken);
+        var beforeMutation = await _stateService.ReadAsync(repository, cancellationToken);
         if (ValidateEditCommitMessageState(
                 beforeMutation,
                 oldCommit,
@@ -195,7 +195,7 @@ public sealed partial class GitCliRepositoryService
             await File.WriteAllTextAsync(messagePath, newMessage, cancellationToken);
             try
             {
-                await RunGitForMutationAsync(
+                await _commands.RunMutationAsync(
                     repository,
                     cancellationToken,
                     "commit",
@@ -213,7 +213,7 @@ public sealed partial class GitCliRepositoryService
                     exception.Message,
                     oldCommit,
                     null,
-                    NullIfEmpty(await RunOptionalGitAsync(
+                    NullIfEmpty(await _commands.RunOptionalAsync(
                         repository.WorkingDirectory,
                         cancellationToken,
                         "rev-parse",
@@ -221,7 +221,7 @@ public sealed partial class GitCliRepositoryService
                         "HEAD")));
             }
 
-            var newHead = (await RunGitAsync(
+            var newHead = (await _commands.RunAsync(
                 repository.WorkingDirectory,
                 cancellationToken,
                 true,
@@ -292,23 +292,6 @@ public sealed partial class GitCliRepositoryService
         return trimmed.Length == 0 ? null : trimmed;
     }
 
-    private static string? ReadRewordMarker(Repository repository, int index)
-    {
-        var path = Path.Combine(
-            repository.GitDirectory,
-            "csharpgit-rebase",
-            $"reword-{index}.sha");
-        if (!File.Exists(path)) return null;
-        var value = File.ReadAllText(path).Trim();
-        return value.Length == 0 ? null : value;
-    }
 
-    private static void CleanupRebaseSupportDirectory(Repository repository)
-    {
-        var path = Path.Combine(repository.GitDirectory, "csharpgit-rebase");
-        if (!Directory.Exists(path)) return;
-        try { Directory.Delete(path, recursive: true); }
-        catch (IOException) { }
-        catch (UnauthorizedAccessException) { }
-    }
+
 }

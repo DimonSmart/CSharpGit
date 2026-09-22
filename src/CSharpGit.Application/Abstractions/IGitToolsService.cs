@@ -30,6 +30,11 @@ public interface IGitToolsService
         DiffFileVersionPair pair,
         CancellationToken cancellationToken = default);
 
+    Task OpenConflictInEditorAsync(
+        Repository repository,
+        ConflictFile conflict,
+        CancellationToken cancellationToken = default);
+
     Task RunMergeToolForFileAsync(
         Repository repository,
         ConflictFile conflict,

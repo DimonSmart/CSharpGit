@@ -2,7 +2,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
 
-public sealed partial class GitCliRepositoryService
+internal sealed partial class GitReferenceService
 {
     public Task DeleteBranchAsync(
         Repository repository,
@@ -11,14 +11,14 @@ public sealed partial class GitCliRepositoryService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(repository);
-        ValidateRefName(branch, nameof(branch));
+        GitReferenceValidator.ValidateRefName(branch, nameof(branch));
 
         return mode switch
         {
             BranchDeletionMode.Safe =>
-                RunGitForMutationAsync(repository, cancellationToken, "branch", "--delete", branch),
+                _commands.RunMutationAsync(repository, cancellationToken, "branch", "--delete", branch),
             BranchDeletionMode.Force =>
-                RunGitForMutationAsync(repository, cancellationToken, "branch", "--delete", "--force", branch),
+                _commands.RunMutationAsync(repository, cancellationToken, "branch", "--delete", "--force", branch),
             _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unsupported branch deletion mode.")
         };
     }
@@ -30,8 +30,8 @@ public sealed partial class GitCliRepositoryService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(repository);
-        ValidateRefName(remote, nameof(remote));
-        ValidateRefName(branch, nameof(branch));
-        await RunPushAsync(repository, cancellationToken, "push", "--porcelain", remote, "--delete", branch);
+        GitReferenceValidator.ValidateRefName(remote, nameof(remote));
+        GitReferenceValidator.ValidateRefName(branch, nameof(branch));
+        await _push.RunAsync(repository, cancellationToken, "push", "--porcelain", remote, "--delete", branch);
     }
 }
