@@ -147,7 +147,11 @@ public sealed class WorkingTreeDiffUiContractTests
         var discardStart = git.IndexOf("public async Task DiscardFileAsync", StringComparison.Ordinal);
         var discardEnd = git.IndexOf("public async Task DiscardAllFileChangesAsync", discardStart, StringComparison.Ordinal);
         var discard = git[discardStart..discardEnd];
-        Assert.Contains("\"restore\", \"--worktree\", \"--\", change.Path", discard);
+        var restoreIndex = discard.IndexOf("\"restore\"", StringComparison.Ordinal);
+        var worktreeIndex = discard.IndexOf("\"--worktree\"", restoreIndex, StringComparison.Ordinal);
+        var separatorIndex = discard.IndexOf("\"--\"", worktreeIndex, StringComparison.Ordinal);
+        var pathIndex = discard.IndexOf("change.Path", separatorIndex, StringComparison.Ordinal);
+        Assert.True(restoreIndex >= 0 && worktreeIndex > restoreIndex && separatorIndex > worktreeIndex && pathIndex > separatorIndex);
         Assert.DoesNotContain("\"--source=HEAD\"", discard);
         Assert.DoesNotContain("\"--staged\"", discard);
 
