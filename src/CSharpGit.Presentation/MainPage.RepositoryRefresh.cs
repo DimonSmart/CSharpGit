@@ -30,7 +30,7 @@ public sealed partial class MainPage
 
     public bool IsRefreshRequired { get; private set; }
 
-    internal void InitializeRepositoryChangeMonitoring()
+    private void InitializeRepositoryChangeMonitoring()
     {
         if (_repositoryChangeMonitoringInitialized) return;
         _repositoryChangeMonitoringInitialized = true;

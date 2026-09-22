@@ -8,22 +8,21 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private IAppSettingsService? _recentRepositorySettings;
-    private RecentRepositoryFolderPicker? _recentRepositoryFolderPicker;
+    private IAppSettingsService _recentRepositorySettings = null!;
+    private RecentRepositoryFolderPicker _recentRepositoryFolderPicker = null!;
+    private IRepositoryImageService _repositoryImageService = null!;
     private RecentRepositoriesView? _recentRepositoriesView;
     private RecentRepositoriesViewModel? _recentRepositoriesViewModel;
     private FrameworkElement? _emptyStartScreen;
     private bool _recentRepositoryWasBusy;
     private string? _lastRecordedRecentRepositoryPath;
+    private bool _recentRepositoriesShutdown;
 
-    internal void InitializeRecentRepositories(
-        IAppSettingsService settings,
-        RecentRepositoryFolderPicker folderPicker)
+    private void InitializeRecentRepositories()
     {
         if (_recentRepositoriesView is not null) return;
 
-        _recentRepositorySettings = settings;
-        _recentRepositoryFolderPicker = folderPicker;
+        _recentRepositoriesShutdown = false;
         _emptyStartScreen = RootLayout.Children.Count > 0
             ? RootLayout.Children[0] as FrameworkElement
             : null;
@@ -31,7 +30,8 @@ public sealed partial class MainPage
             throw new InvalidOperationException("The empty repository start screen was not found.");
 
         _recentRepositoriesViewModel = new RecentRepositoriesViewModel(
-            settings,
+            _recentRepositorySettings,
+            _repositoryImageService,
             OpenRecentRepositoryAsync,
             OpenRepositoryPickerAsync);
         _recentRepositoriesView = new RecentRepositoriesView
@@ -39,13 +39,11 @@ public sealed partial class MainPage
             DataContext = _recentRepositoriesViewModel
         };
 
-        // Keep the existing error InfoBar above the launcher so repository-open
-        // failures stay visible without changing the current empty start screen.
         RootLayout.Children.Insert(1, _recentRepositoriesView);
 
         _recentRepositoryWasBusy = _viewModel.IsBusy;
         _viewModel.PropertyChanged += RecentRepositoryHost_PropertyChanged;
-        settings.Changed += RecentRepositorySettings_Changed;
+        _recentRepositorySettings.Changed += RecentRepositorySettings_Changed;
         Unloaded += RecentRepositories_Unloaded;
         UpdateStartScreenVisibility();
     }
@@ -66,7 +64,7 @@ public sealed partial class MainPage
 
     private void UpdateStartScreenVisibility()
     {
-        if (_recentRepositoriesView is null || _emptyStartScreen is null || _recentRepositorySettings is null) return;
+        if (_recentRepositoriesShutdown || _recentRepositoriesView is null || _emptyStartScreen is null) return;
 
         var repositoryOpen = _viewModel.Repository is not null;
         var hasRecentRepositories = _recentRepositorySettings.RecentRepositories.Count > 0;
@@ -94,7 +92,6 @@ public sealed partial class MainPage
             return;
         }
 
-        if (_recentRepositoryFolderPicker is null) return;
         var command = (AsyncCommand)_viewModel.OpenRepositoryCommand;
         if (!command.CanExecute(null)) return;
 
@@ -110,7 +107,7 @@ public sealed partial class MainPage
 
     private async Task RecordOpenedRepositoryAsync()
     {
-        if (_recentRepositorySettings is null || _viewModel.Repository is not { } repository) return;
+        if (_recentRepositoriesShutdown || _viewModel.Repository is not { } repository) return;
         if (_lastRecordedRecentRepositoryPath is not null
             && PathsEqual(_lastRecordedRecentRepositoryPath, repository.WorkingDirectory))
             return;
@@ -133,11 +130,14 @@ public sealed partial class MainPage
         }
     }
 
-    private void RecentRepositories_Unloaded(object sender, RoutedEventArgs e)
+    private void RecentRepositories_Unloaded(object sender, RoutedEventArgs e) => ShutdownRecentRepositories();
+
+    private void ShutdownRecentRepositories()
     {
+        if (_recentRepositoriesShutdown) return;
+        _recentRepositoriesShutdown = true;
         _viewModel.PropertyChanged -= RecentRepositoryHost_PropertyChanged;
-        if (_recentRepositorySettings is not null)
-            _recentRepositorySettings.Changed -= RecentRepositorySettings_Changed;
+        _recentRepositorySettings.Changed -= RecentRepositorySettings_Changed;
         _recentRepositoriesViewModel?.Dispose();
         Unloaded -= RecentRepositories_Unloaded;
     }

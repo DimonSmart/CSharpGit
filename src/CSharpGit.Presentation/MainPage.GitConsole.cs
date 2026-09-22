@@ -13,8 +13,8 @@ public sealed partial class MainPage
 {
     private const double DefaultGitConsoleHeight = 280;
     private const VirtualKey GitConsoleShortcutKey = (VirtualKey)0xC0; // OEM grave/backtick key.
-    private IGitCommandActivitySource? _gitCommandActivitySource;
-    private IAppSettingsService? _gitConsoleSettings;
+    private IGitCommandActivitySource _gitCommandActivitySource = null!;
+    private IAppSettingsService _gitConsoleSettings = null!;
     private GitConsoleView? _gitConsoleView;
     private Controls.GridSplitter? _gitConsoleSplitter;
     private Button? _gitCommandStatusButton;
@@ -25,20 +25,14 @@ public sealed partial class MainPage
     private bool _gitConsoleInitialized;
     private volatile bool _gitConsoleOpen;
 
-    internal void InitializeGitConsole(
-        IGitCommandActivitySource activitySource,
-        IAppSettingsService settings)
+    private void InitializeGitConsole()
     {
         if (_gitConsoleInitialized) return;
-        ArgumentNullException.ThrowIfNull(activitySource);
-        ArgumentNullException.ThrowIfNull(settings);
         _gitConsoleInitialized = true;
-        _gitCommandActivitySource = activitySource;
-        _gitConsoleSettings = settings;
 
         BuildGitConsoleLayout();
-        _gitConsoleView?.SetActivityResolver(activitySource.Get);
-        activitySource.Changed += GitCommandActivitySource_Changed;
+        _gitConsoleView?.SetActivityResolver(_gitCommandActivitySource.Get);
+        _gitCommandActivitySource.Changed += GitCommandActivitySource_Changed;
         RootLayout.KeyDown += GitConsole_KeyDown;
         UpdateGitCommandStatus();
     }
@@ -105,6 +99,7 @@ public sealed partial class MainPage
 
     private void GitCommandActivitySource_Changed(object? sender, GitCommandActivityChangedEventArgs e)
     {
+        if (!_gitConsoleInitialized) return;
         if (e.ChangeKind == GitCommandActivityChangeKind.Output)
         {
             if (!_gitConsoleOpen || _gitConsoleView is null || e.OutputStream is not { } stream)
@@ -123,7 +118,7 @@ public sealed partial class MainPage
 
     private void ApplyGitCommandLifecycleChange(GitCommandActivityChangedEventArgs e)
     {
-        if (e.Activity is not { } activity || _gitCommandActivitySource is null) return;
+        if (!_gitConsoleInitialized || e.Activity is not { } activity) return;
 
         if (_gitConsoleOpen && _gitConsoleView is not null)
         {
@@ -274,6 +269,16 @@ public sealed partial class MainPage
         var leftCommand = (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.LeftWindows) & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down;
         var rightCommand = (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.RightWindows) & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down;
         return leftCommand || rightCommand;
+    }
+
+    private void ShutdownGitConsole()
+    {
+        if (!_gitConsoleInitialized) return;
+        _gitConsoleInitialized = false;
+        _gitCommandActivitySource.Changed -= GitCommandActivitySource_Changed;
+        RootLayout.KeyDown -= GitConsole_KeyDown;
+        _gitConsoleOpen = false;
+        _gitConsoleView?.SetActive(false);
     }
 
     private static string StatusSummary(GitCommandActivity activity) => activity.Status switch

@@ -12,15 +12,24 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private IWorktreeService? _worktreeService;
+    private IWorktreeService _worktreeService = null!;
+    private bool _worktreeShutdown;
     private IReadOnlyList<WorktreeInfo> _worktrees = [];
     private bool _worktreeRefreshQueued;
 
-    internal void InitializeWorktreeSupport(IWorktreeService worktreeService)
+    private void InitializeWorktreeSupport()
     {
-        _worktreeService = worktreeService ?? throw new ArgumentNullException(nameof(worktreeService));
+        _worktreeShutdown = false;
         _viewModel.PropertyChanged += WorktreeViewModel_PropertyChanged;
         QueueWorktreeRefresh();
+    }
+
+    private void ShutdownWorktreeSupport()
+    {
+        if (_worktreeShutdown) return;
+        _worktreeShutdown = true;
+        _viewModel.PropertyChanged -= WorktreeViewModel_PropertyChanged;
+        _worktreeRefreshQueued = false;
     }
 
     internal Task OpenInitialRepositoryAsync() => _viewModel.OpenRepositoryAsyncForDesktopCheck();
@@ -34,7 +43,7 @@ public sealed partial class MainPage
 
     private void QueueWorktreeRefresh()
     {
-        if (_worktreeService is null || _worktreeRefreshQueued) return;
+        if (_worktreeShutdown || _worktreeRefreshQueued) return;
         _worktreeRefreshQueued = true;
         DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, async () =>
         {
@@ -45,7 +54,7 @@ public sealed partial class MainPage
 
     private async Task RefreshWorktreePresentationAsync(bool throwOnError = false)
     {
-        if (_worktreeService is null) return;
+        if (_worktreeShutdown) return;
         var repository = _viewModel.Repository;
         if (repository is null)
         {
@@ -56,7 +65,7 @@ public sealed partial class MainPage
         try
         {
             var worktrees = await _worktreeService.ListAsync(repository);
-            if (!ReferenceEquals(repository, _viewModel.Repository)) return;
+            if (_worktreeShutdown || !ReferenceEquals(repository, _viewModel.Repository)) return;
             _worktrees = worktrees;
             SynchronizeWorktreePresentation();
         }

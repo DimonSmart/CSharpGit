@@ -22,12 +22,24 @@ public sealed partial class MainPage
 
         Loaded -= RunDesktopCheckWhenRequested;
         DetachRepositoryTreeStateTracking();
+        ShutdownGitConsole();
+        ShutdownRecentRepositories();
         ShutdownRepositoryChangeMonitoring();
+        ShutdownWorktreeSupport();
+        _settingsWindowController.Shutdown();
+
         _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
-        CloseSettingsWindow();
+        _viewModel.PropertyChanged -= ChangesViewModel_PropertyChanged;
+        _viewModel.PropertyChanged -= ConfirmationDialogs_PropertyChanged;
+        _viewModel.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
+        _viewModel.PropertyChanged -= RepositoryFilesViewModel_PropertyChanged;
+        _viewModel.PropertyChanged -= RepositoryMaintenanceViewModel_PropertyChanged;
+        _viewModel.History.CollectionChanged -= MainHistory_CollectionChanged;
+        _viewModel.Changes.CollectionChanged -= WorkingTreeChangesCollectionChanged;
 
         _referenceHistoryCts?.Cancel();
         _referenceHistoryCts?.Dispose();
         _referenceHistoryCts = null;
+        _viewModel.Dispose();
     }
 }
