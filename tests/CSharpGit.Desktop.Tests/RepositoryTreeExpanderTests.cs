@@ -52,7 +52,7 @@ public sealed class RepositoryTreeExpanderTests
         Assert.Contains("var guideWidth = segments.Count > 0", guides, StringComparison.Ordinal);
         Assert.Contains("if (HasChildren && RowHeight > 0)", guides, StringComparison.Ordinal);
         Assert.DoesNotContain("ExpandTarget?.ItemsSource", guides, StringComparison.Ordinal);
-        Assert.Equal(3, CountOccurrences(styles, "HasChildren=\"{Binding HasChildren}\""));
+        Assert.Equal(4, CountOccurrences(styles, "HasChildren=\"{Binding HasChildren}\""));
         Assert.Contains("public bool HasChildren => Children.Count > 0;", snapshotNode, StringComparison.Ordinal);
         Assert.Contains("public bool HasChildren => Children.Count > 0;", workingTreeNode, StringComparison.Ordinal);
     }
