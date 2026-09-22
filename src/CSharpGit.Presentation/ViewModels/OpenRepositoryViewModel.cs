@@ -12,7 +12,7 @@ namespace CSharpGit.Presentation.ViewModels;
 
 public sealed record UiChoice<T>(string Label, T Value);
 
-public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
+public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly IFolderPicker _folderPicker;
     private readonly IRepositoryService _repositoryService;
@@ -35,6 +35,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
     private CancellationTokenSource? _historyLoadCts;
     private long _historyLoadGeneration;
     private long _diffLoadGeneration;
+    private int _disposed;
     private string _filterText = string.Empty;
     private UiChoice<HistoryScope> _selectedScope;
     private HistoryRow? _selectedHistoryRow;
@@ -146,6 +147,17 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
         ContinueOperationCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.ContinueOperationAsync(Repository!)), () => CanMutate() && OperationState.CanContinue);
         AbortOperationCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.AbortOperationAsync(Repository!)), () => CanMutate() && OperationState.CanAbort);
         SkipOperationCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.SkipOperationAsync(Repository!)), () => CanMutate() && OperationState.CanSkip);
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+
+        Interlocked.Increment(ref _historyLoadGeneration);
+        var historyCancellation = Interlocked.Exchange(ref _historyLoadCts, null);
+        historyCancellation?.Cancel();
+        historyCancellation?.Dispose();
+        ResetCommitChangesSession();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
