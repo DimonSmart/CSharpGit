@@ -73,9 +73,9 @@ public sealed partial class MainPage
     {
         if (!_loadingOverlaysInitialized) return;
 
-        _changesLoadingOverlay!.Visibility = _viewModel.ChangedFilesLoadingVisibility;
+        _changesLoadingOverlay!.Visibility = _viewModel.IsChangedFilesLoading ? Visibility.Visible : Visibility.Collapsed;
         _changesLoadingRing!.IsActive = _viewModel.IsChangedFilesLoading;
-        _diffLoadingOverlay!.Visibility = _viewModel.DiffLoadingVisibility;
+        _diffLoadingOverlay!.Visibility = _viewModel.IsDiffLoading ? Visibility.Visible : Visibility.Collapsed;
         _diffLoadingRing!.IsActive = _viewModel.IsDiffLoading;
     }
 
