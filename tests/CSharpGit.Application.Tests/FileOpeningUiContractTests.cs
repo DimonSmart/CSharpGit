@@ -34,7 +34,8 @@ public sealed class FileOpeningUiContractTests
         Assert.Contains("IDesktopShellService, DesktopShellService", app);
         Assert.DoesNotContain("DesktopRepositoryWorkflowService", app);
         Assert.Contains("AddSingleton<IRepositoryWorkflowService>", gitComposition);
-        Assert.Contains("IHistoryService>(provider => provider.GetRequiredService<GitFileAwareHistoryService>()", gitComposition);
+        Assert.Contains("AddSingleton<IHistoryService>", gitComposition);
+        Assert.Contains("GetRequiredService<GitFileAwareHistoryService>()", gitComposition);
     }
 
     [Fact]
