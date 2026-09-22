@@ -9,7 +9,7 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private IRepositoryHistoryRewriteService? _repositoryHistoryRewriteService;
+    private readonly IRepositoryHistoryRewriteService _repositoryHistoryRewriteService = null!;
     private bool _historyRewriteInProgress;
 
     internal bool IsHistoryRewriteInProgress => _historyRewriteInProgress;
@@ -103,13 +103,13 @@ public sealed partial class MainPage
             AddMenuItem(
                 flyout,
                 "Open in editor",
-                _gitToolsService is not null,
+                true,
                 () => OpenRepositorySnapshotFileAsync(entry, openInEditor: true));
             flyout.Items.Add(new MenuFlyoutSeparator());
             AddMenuItem(
                 flyout,
                 "Remove from repository history…",
-                _repositoryHistoryRewriteService is not null && !_viewModel.IsBusy && !_historyRewriteInProgress,
+                !_viewModel.IsBusy && !_historyRewriteInProgress,
                 () => RemovePathFromRepositoryHistoryAsync(entry));
             flyout.Items.Add(new MenuFlyoutSeparator());
         }
@@ -122,8 +122,7 @@ public sealed partial class MainPage
     {
         var service = _repositoryHistoryRewriteService;
         var repository = _viewModel.Repository;
-        if (service is null
-            || repository is null
+        if (repository is null
             || entry.Kind != RepositorySnapshotEntryKind.File
             || _historyRewriteInProgress
             || !RepositoryFilesSnapshotMatchesSelection)

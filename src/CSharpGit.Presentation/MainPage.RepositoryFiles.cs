@@ -15,7 +15,7 @@ public sealed partial class MainPage
     private const int RepositoryContentResultLimit = 500;
     private const int RepositoryFilesStateLimit = 12;
 
-    private IRepositorySnapshotService? _repositorySnapshotService;
+    private readonly IRepositorySnapshotService _repositorySnapshotService = null!;
     private PivotItem? _repositoryFilesTab;
     private PivotItem? _changesTab;
     private TextBox? _repositoryFilesSearch;
@@ -238,7 +238,7 @@ public sealed partial class MainPage
 
     private async Task LoadRepositorySnapshotAsync()
     {
-        if (!IsRepositoryFilesActive || _repositorySnapshotService is null) return;
+        if (!IsRepositoryFilesActive) return;
         var repository = _viewModel.Repository;
         var commitHash = _viewModel.SelectedHistoryRow?.Commit.Hash;
         if (repository is null || string.IsNullOrWhiteSpace(commitHash))
@@ -456,7 +456,7 @@ public sealed partial class MainPage
 
     private async Task SearchRepositoryContentAsync()
     {
-        if (_repositorySnapshotService is null || _repositoryFilesSearch is null || _repositoryFilesSearchModeName != "Content") return;
+        if (_repositoryFilesSearch is null || _repositoryFilesSearchModeName != "Content") return;
         var query = _repositoryFilesSearch.Text;
         if (string.IsNullOrWhiteSpace(query))
         {
@@ -625,7 +625,7 @@ public sealed partial class MainPage
         if (entry.Kind == RepositorySnapshotEntryKind.File)
         {
             AddMenuItem(flyout, "Open", true, () => OpenRepositorySnapshotFileAsync(entry, openInEditor: false));
-            AddMenuItem(flyout, "Open in editor", _gitToolsService is not null, () => OpenRepositorySnapshotFileAsync(entry, openInEditor: true));
+            AddMenuItem(flyout, "Open in editor", true, () => OpenRepositorySnapshotFileAsync(entry, openInEditor: true));
             flyout.Items.Add(new MenuFlyoutSeparator());
         }
         AddMenuItem(flyout, "Copy path", true, () => CopyTextAsync(entry.Path));
@@ -636,8 +636,7 @@ public sealed partial class MainPage
     {
         var repository = _viewModel.Repository;
         var commitHash = _repositorySnapshotCommit;
-        if (repository is null || string.IsNullOrWhiteSpace(commitHash)
-            || _repositorySnapshotService is null || _fileVersionService is null)
+        if (repository is null || string.IsNullOrWhiteSpace(commitHash))
             return;
         if (!ReferenceEquals(repository, _repositorySnapshotRepository)
             || !string.Equals(commitHash, _viewModel.SelectedHistoryRow?.Commit.Hash, StringComparison.Ordinal))
@@ -655,8 +654,6 @@ public sealed partial class MainPage
                 return;
             }
 
-            if (_gitToolsService is null)
-                throw new InvalidOperationException("Git editor is not available.");
             var materialized = await _fileVersionService.MaterializeAsync(repository, version, DiffFileSide.Changed);
             await _gitToolsService.OpenEditorAsync(repository, materialized.Path);
         }
