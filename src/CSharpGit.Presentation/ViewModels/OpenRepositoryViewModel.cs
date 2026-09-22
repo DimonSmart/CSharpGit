@@ -22,7 +22,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
     private readonly IRepositoryRefreshProbe? _refreshProbe;
     private readonly IWorkingTreeService _workingTreeService;
     private readonly IReferenceService _referenceService;
+    private readonly IRepositorySyncService _syncService;
     private readonly IRepositoryWorkflowService _workflowService;
+    private readonly IGitToolsService _gitToolsService;
     private readonly AsyncCommand _openRepositoryCommand;
     private Repository? _repository;
     private string? _errorMessage;
@@ -66,15 +68,20 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
     private RepositoryOperation _currentOperation;
     private ConflictFile? _selectedConflict;
     private RepositoryOperationState _operationState = RepositoryOperationState.None;
-    private string _mergeToolName = "vscode";
-    private MergeToolConfigurationKind _mergeToolKind = MergeToolConfigurationKind.Preset;
-    private GitConfigurationScope _mergeToolScope = GitConfigurationScope.RepositoryLocal;
-    private string _mergeToolExecutable = string.Empty;
-    private string _mergeToolArguments = string.Empty;
-    private string _configuredMergeToolDisplay = "Merge tool is not configured";
     private RepositoryRefreshFingerprint? _displayedRefreshFingerprint;
 
-    public OpenRepositoryViewModel(IFolderPicker folderPicker, IRepositoryService repositoryService, IHistoryService historyService, IRepositoryStateService stateService, IWorkingTreeService workingTreeService, IReferenceService referenceService, IRepositoryWorkflowService workflowService, ILogger<OpenRepositoryViewModel> logger, IRepositoryRefreshProbe? refreshProbe = null)
+    public OpenRepositoryViewModel(
+        IFolderPicker folderPicker,
+        IRepositoryService repositoryService,
+        IHistoryService historyService,
+        IRepositoryStateService stateService,
+        IWorkingTreeService workingTreeService,
+        IReferenceService referenceService,
+        IRepositorySyncService syncService,
+        IRepositoryWorkflowService workflowService,
+        IGitToolsService gitToolsService,
+        ILogger<OpenRepositoryViewModel> logger,
+        IRepositoryRefreshProbe? refreshProbe = null)
     {
         _selectedScope = Scopes[0];
         _folderPicker = folderPicker;
@@ -84,7 +91,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
         _refreshProbe = refreshProbe;
         _workingTreeService = workingTreeService;
         _referenceService = referenceService;
+        _syncService = syncService;
         _workflowService = workflowService;
+        _gitToolsService = gitToolsService;
         _logger = logger;
         _openRepositoryCommand = new AsyncCommand(OpenRepositoryAsync, () => !IsBusy && Repository is null);
         RefreshHistoryCommand = new AsyncCommand(() => LoadHistoryAsync(true), () => Repository is not null);
@@ -112,10 +121,10 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
         DeleteBranchCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.DeleteBranchAsync(Repository!, SelectedLocalBranch!.Name)), () => CanMutate() && SelectedLocalBranch is { IsCurrent: false });
         CheckoutRemoteCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.CheckoutRemoteBranchAsync(Repository!, SelectedRemoteBranch!.Name, NewBranchName)), () => CanMutate() && SelectedRemoteBranch is not null && !string.IsNullOrWhiteSpace(NewBranchName));
         CheckoutTagCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.CheckoutAsync(Repository!, SelectedTag!.Name)), () => CanMutate() && SelectedTag is not null);
-        FetchCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.FetchAsync(Repository!, SelectedRemote!.Name)), () => CanMutate() && SelectedRemote is not null);
-        FetchAllCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.FetchAllAsync(Repository!)), CanMutate);
-        PullCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.PullAsync(Repository!)), CanMutate);
-        PushCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.PushAsync(Repository!, string.IsNullOrWhiteSpace(PushBranchName) ? null : SelectedRemote?.Name, string.IsNullOrWhiteSpace(PushBranchName) ? null : PushBranchName, SetUpstream)), CanMutate);
+        FetchCommand = new AsyncCommand(() => MutateAsync(() => _syncService.FetchAsync(Repository!, SelectedRemote!.Name)), () => CanMutate() && SelectedRemote is not null);
+        FetchAllCommand = new AsyncCommand(() => MutateAsync(() => _syncService.FetchAllAsync(Repository!)), CanMutate);
+        PullCommand = new AsyncCommand(() => MutateAsync(() => _syncService.PullAsync(Repository!)), CanMutate);
+        PushCommand = new AsyncCommand(() => MutateAsync(() => _syncService.PushAsync(Repository!, string.IsNullOrWhiteSpace(PushBranchName) ? null : SelectedRemote?.Name, string.IsNullOrWhiteSpace(PushBranchName) ? null : PushBranchName, SetUpstream)), CanMutate);
         CreateStashCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.CreateStashAsync(Repository!, StashMessage)), CanMutate);
         ApplyStashCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.ApplyStashAsync(Repository!, SelectedStash!.Name)), () => CanMutate() && SelectedStash is not null);
         PopStashCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.PopStashAsync(Repository!, SelectedStash!.Name)), () => CanMutate() && SelectedStash is not null);
@@ -127,14 +136,13 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
         StartRebaseCommand = new AsyncCommand(StartRebaseAsync, () => CanMutate() && RebasePlan.Count > 0 && CurrentOperation == RepositoryOperation.None);
         ContinueRebaseCommand = new AsyncCommand(ContinueRebaseAsync, () => CanMutate() && CurrentOperation == RepositoryOperation.Rebase);
         AbortRebaseCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.AbortRebaseAsync(Repository!)), () => CanMutate() && CurrentOperation == RepositoryOperation.Rebase);
-        OpenConflictCommand = new AsyncCommand(() => RunConflictActionAsync(() => _workflowService.OpenConflictAsync(Repository!, SelectedConflict!)), () => CanMutate() && SelectedConflict?.CanOpenManually == true);
+        OpenConflictCommand = new AsyncCommand(() => RunConflictActionAsync(() => _gitToolsService.OpenConflictInEditorAsync(Repository!, SelectedConflict!)), () => CanMutate() && SelectedConflict?.CanOpenManually == true);
         ChooseCurrentCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.ChooseConflictSideAsync(Repository!, SelectedConflict!, ConflictResolutionSide.CurrentLocal)), () => CanMutate() && SelectedConflict?.CanChooseCurrentLocal == true);
         ChooseIncomingCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.ChooseConflictSideAsync(Repository!, SelectedConflict!, ConflictResolutionSide.IncomingRemote)), () => CanMutate() && SelectedConflict?.CanChooseIncomingRemote == true);
         KeepDeletionCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.KeepConflictDeletionAsync(Repository!, SelectedConflict!)), () => CanMutate() && SelectedConflict?.CanKeepDeletion == true);
         StageConflictCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.StageResolvedConflictAsync(Repository!, SelectedConflict!)), () => CanMutate() && SelectedConflict?.CanStage == true);
-        MergeToolCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.RunMergeToolForFileAsync(Repository!, SelectedConflict!)), () => CanMutate() && SelectedConflict?.CanRunMergeTool == true);
-        MergeToolWorkflowCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.RunMergeToolWorkflowAsync(Repository!)), () => CanMutate() && Conflicts.Any(conflict => !conflict.IsResolved));
-        ConfigureMergeToolCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.ConfigureMergeToolAsync(Repository!, new MergeToolConfiguration(MergeToolName, MergeToolKind, MergeToolScope, MergeToolExecutable, MergeToolArguments))), () => CanMutate() && !string.IsNullOrWhiteSpace(MergeToolName));
+        MergeToolCommand = new AsyncCommand(() => MutateAsync(() => _gitToolsService.RunMergeToolForFileAsync(Repository!, SelectedConflict!)), () => CanMutate() && SelectedConflict?.CanRunMergeTool == true);
+        MergeToolWorkflowCommand = new AsyncCommand(() => MutateAsync(() => _gitToolsService.RunMergeToolWorkflowAsync(Repository!)), () => CanMutate() && Conflicts.Any(conflict => !conflict.IsResolved));
         ContinueOperationCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.ContinueOperationAsync(Repository!)), () => CanMutate() && OperationState.CanContinue);
         AbortOperationCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.AbortOperationAsync(Repository!)), () => CanMutate() && OperationState.CanAbort);
         SkipOperationCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.SkipOperationAsync(Repository!)), () => CanMutate() && OperationState.CanSkip);
@@ -186,7 +194,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
     public ICommand StageConflictCommand { get; }
     public ICommand MergeToolCommand { get; }
     public ICommand MergeToolWorkflowCommand { get; }
-    public ICommand ConfigureMergeToolCommand { get; }
     public ICommand ContinueOperationCommand { get; }
     public ICommand AbortOperationCommand { get; }
     public ICommand SkipOperationCommand { get; }
@@ -207,9 +214,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
         new("All references", HistoryScope.AllReferences),
         new("Current branch", HistoryScope.CurrentBranch)
     ];
-    public IReadOnlyList<string> MergeToolNames { get; } = MergeToolPresets.Known;
-    public IReadOnlyList<MergeToolConfigurationKind> MergeToolKinds { get; } = Enum.GetValues<MergeToolConfigurationKind>();
-    public IReadOnlyList<GitConfigurationScope> MergeToolScopes { get; } = Enum.GetValues<GitConfigurationScope>();
     public Repository? Repository { get => _repository; private set { if (ReferenceEquals(_repository, value)) return; ResetCommitChangesSession(); _repository = value; _displayedRefreshFingerprint = null; Notify(); Notify(nameof(DisplayedRefreshFingerprint)); Notify(nameof(RepositoryVisibility)); Notify(nameof(PickerVisibility)); Notify(nameof(RepositoryKind)); Notify(nameof(CanForcePushWithLease)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }
     public RepositoryRefreshFingerprint? DisplayedRefreshFingerprint { get => _displayedRefreshFingerprint; private set { if (Equals(_displayedRefreshFingerprint, value)) return; _displayedRefreshFingerprint = value; Notify(); } }
     public string? ErrorMessage { get => _errorMessage; private set { _errorMessage = value; Notify(); Notify(nameof(HasError)); } }
@@ -292,12 +296,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
     public string IncomingSideLabel => SelectedConflict?.IncomingRemoteLabel ?? "Incoming/remote";
     public Visibility OperationVisibility => OperationState.Kind == RepositoryOperation.None ? Visibility.Collapsed : Visibility.Visible;
     public bool CanForcePushWithLease => Repository is not null && !IsBusy && CurrentOperation == RepositoryOperation.None && LocalBranches.Any(branch => branch.IsCurrent);
-    public string MergeToolName { get => _mergeToolName; set { _mergeToolName = value; Notify(); RaiseCommands(); } }
-    public MergeToolConfigurationKind MergeToolKind { get => _mergeToolKind; set { _mergeToolKind = value; Notify(); } }
-    public GitConfigurationScope MergeToolScope { get => _mergeToolScope; set { _mergeToolScope = value; Notify(); } }
-    public string MergeToolExecutable { get => _mergeToolExecutable; set { _mergeToolExecutable = value; Notify(); } }
-    public string MergeToolArguments { get => _mergeToolArguments; set { _mergeToolArguments = value; Notify(); } }
-    public string ConfiguredMergeToolDisplay { get => _configuredMergeToolDisplay; private set { _configuredMergeToolDisplay = value; Notify(); } }
 
     public Task RefreshWhenActivatedAsync() => Repository is null ? Task.CompletedTask : RefreshAllAsync();
 
@@ -426,8 +424,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
             OperationDisplay = state.Operation == RepositoryOperation.None ? "No operation in progress" : $"Operation in progress: {state.Operation}";
             CurrentOperation = state.Operation;
             OperationState = state.CurrentOperation;
-            var configuredTool = state.LocalConfiguration.GetValueOrDefault("merge.tool") ?? state.GlobalConfiguration.GetValueOrDefault("merge.tool");
-            ConfiguredMergeToolDisplay = configuredTool is null ? "Merge tool is not configured" : $"Active merge tool: {configuredTool}";
             Replace(Conflicts, state.CurrentOperation.Conflicts);
             SelectedConflict = Conflicts.FirstOrDefault();
             SelectedRemote = SelectedRemote is null
@@ -662,7 +658,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged
 
     private void RaiseCommands()
     {
-        foreach (var command in new[] { RefreshAllCommand, StageCommand, UnstageCommand, StageSelectedCommand, StageAllCommand, UnstageSelectedCommand, UnstageAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, SwitchBranchCommand, CreateBranchCommand, DeleteBranchCommand, CheckoutRemoteCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, CreateStashCommand, ApplyStashCommand, PopStashCommand, MergeCommand, LoadRebasePlanCommand, ApplyRebaseItemCommand, MoveRebaseUpCommand, MoveRebaseDownCommand, StartRebaseCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ConfigureMergeToolCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
+        foreach (var command in new[] { RefreshAllCommand, StageCommand, UnstageCommand, StageSelectedCommand, StageAllCommand, UnstageSelectedCommand, UnstageAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, SwitchBranchCommand, CreateBranchCommand, DeleteBranchCommand, CheckoutRemoteCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, CreateStashCommand, ApplyStashCommand, PopStashCommand, MergeCommand, LoadRebasePlanCommand, ApplyRebaseItemCommand, MoveRebaseUpCommand, MoveRebaseDownCommand, StartRebaseCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
     }
 
     private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values)
