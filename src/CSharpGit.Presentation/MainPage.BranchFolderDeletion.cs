@@ -176,30 +176,32 @@ public sealed partial class MainPage
         var mutationSucceeded = await _viewModel.RunMutationAsync(
             async () =>
             {
-                executionResult = await BranchFolderDeletionExecutor.ExecuteAsync(
+                var result = await BranchFolderDeletionExecutor.ExecuteAsync(
                     targets,
                     target => target.BranchName,
-                    target => _referenceService.DeleteRemoteBranchAsync(
+                    target => _repositorySyncService.DeleteRemoteBranchAsync(
                         _viewModel.Repository!,
                         folderInfo.RemoteName!,
                         target.RelativeBranchName));
+                executionResult = result;
 
                 if (_activeReference is not null
-                    && executionResult.SuccessfulBranches.Contains(_activeReference, StringComparer.Ordinal))
+                    && result.SuccessfulBranches.Contains(_activeReference, StringComparer.Ordinal))
                 {
                     ShowAllHistory();
                 }
             },
             "Could not delete remote branches in folder");
 
-        if (!mutationSucceeded || executionResult is null || executionResult.Failures.Count == 0)
+        var completedResult = executionResult;
+        if (!mutationSucceeded || completedResult is null || completedResult.Failures.Count == 0)
             return;
 
         await ShowBranchFolderDeletionFailuresAsync(
             remote: true,
             targets.Count,
-            executionResult.SuccessfulBranches.Count,
-            executionResult.Failures,
+            completedResult.SuccessfulBranches.Count,
+            completedResult.Failures,
             skipped: 0);
     }
 
