@@ -7,13 +7,7 @@ namespace CSharpGit.Git;
 public sealed class GitRepositoryMaintenanceService : IRepositoryMaintenanceService
 {
     private readonly GitCommandExecutor _executor;
-
-    public GitRepositoryMaintenanceService()
-        : this(GitCommandExecutor.Default)
-    {
-    }
-
-    internal GitRepositoryMaintenanceService(GitCommandExecutor executor)
+internal GitRepositoryMaintenanceService(GitCommandExecutor executor)
     {
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
     }

@@ -6,13 +6,7 @@ namespace CSharpGit.Git;
 
 internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService
 {
-    internal GitRepositoryWorkflowService()
-        : this(GitCommandExecutor.Default)
-    {
-    }
-
-
-    private readonly GitRepositoryCommandRunner _runner;
+private readonly GitRepositoryCommandRunner _runner;
     private readonly GitRepositoryStateService _stateService;
 
     internal GitRepositoryWorkflowService(GitCommandExecutor executor)

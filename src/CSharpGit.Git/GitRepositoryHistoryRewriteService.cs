@@ -10,12 +10,7 @@ public sealed class GitRepositoryHistoryRewriteService : IRepositoryHistoryRewri
     private const string RemotesPrefix = "refs/remotes/";
 
     private readonly GitCommandExecutor _executor;
-
-    public GitRepositoryHistoryRewriteService() : this(GitCommandExecutor.Default)
-    {
-    }
-
-    internal GitRepositoryHistoryRewriteService(GitCommandExecutor executor)
+internal GitRepositoryHistoryRewriteService(GitCommandExecutor executor)
     {
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
     }
