@@ -41,10 +41,10 @@ public sealed class FileHierarchyUiContractTests
         }
 
         Assert.Contains(
-            "ItemContainerStyle = (Style)Application.Current.Resources[\"DenseTreeItemStyle\"]",
+            "ItemContainerStyle = (Style)Microsoft.UI.Xaml.Application.Current.Resources[\"DenseTreeItemStyle\"]",
             files);
         Assert.Contains(
-            "ItemTemplate = (DataTemplate)Application.Current.Resources[\"RepositoryFilesTreeItemTemplate\"]",
+            "ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources[\"RepositoryFilesTreeItemTemplate\"]",
             files);
 
         var denseStyle = Style(repositoryTree, "DenseTreeItemStyle");

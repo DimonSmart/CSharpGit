@@ -149,7 +149,7 @@ public sealed class DesktopUiContractTests
         Assert.Contains("&& !IsBusy", viewModel);
         Assert.Contains("!string.IsNullOrWhiteSpace(branch.Upstream)", viewModel);
         Assert.Contains("CurrentOperation == RepositoryOperation.None", viewModel);
-        Assert.Contains("LocalBranches.Any(branch => branch.IsCurrent)", viewModel);
+        Assert.Contains("LocalBranches.Any(branch => branch is { IsCurrent: true }", viewModel);
 
         Assert.Contains("OperationState.CanContinue", viewModel);
         Assert.Contains("OperationState.CanSkip", viewModel);
