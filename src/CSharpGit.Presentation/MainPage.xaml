@@ -74,10 +74,16 @@
                  Style="{StaticResource BodySubduedTextStyle}"
                  TextWrapping="Wrap"
                  TextAlignment="Center" />
-      <Button Content="Select folder…"
-              Command="{Binding OpenRepositoryCommand}"
-              Style="{StaticResource CompactButtonStyle}"
-              HorizontalAlignment="Center" />
+      <StackPanel Orientation="Horizontal"
+                  HorizontalAlignment="Center"
+                  Spacing="{StaticResource Spacing.M}">
+        <Button Content="Select folder…"
+                Command="{Binding OpenRepositoryCommand}"
+                Style="{StaticResource CompactButtonStyle}" />
+        <Button Content="Create repository…"
+                Click="CreateRepository_Click"
+                Style="{StaticResource CompactButtonStyle}" />
+      </StackPanel>
       <StackPanel Orientation="Horizontal"
                   HorizontalAlignment="Center"
                   Spacing="{StaticResource Spacing.L}"
@@ -170,6 +176,7 @@
             <Button.Flyout>
               <MenuFlyout>
                 <MenuFlyoutItem Text="More Git operations…" Click="MoreOperations_Click" />
+                <MenuFlyoutItem Text="Create repository…" Click="CreateRepository_Click" />
                 <MenuFlyoutItem x:Name="OptimizeRepositoryMenuItem"
                                 Text="Optimize repository…"
                                 Click="OptimizeRepository_Click"

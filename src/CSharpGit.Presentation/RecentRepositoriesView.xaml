@@ -163,6 +163,19 @@
             </Grid>
           </Button>
 
+          <Button Command="{Binding CreateRepositoryCommand}"
+                  Width="240" Height="82"
+                  Padding="{StaticResource Padding.Form}"
+                  HorizontalContentAlignment="Stretch">
+            <Grid ColumnDefinitions="42,*" ColumnSpacing="{StaticResource Spacing.XL}">
+              <FontIcon Glyph="&#xE710;" FontSize="24" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Spacing="{StaticResource Spacing.XS}" VerticalAlignment="Center">
+                <TextBlock Text="Create repository" Style="{StaticResource BodyStrongTextStyle}" />
+                <TextBlock Text="Create a new local repository…" Style="{StaticResource SecondaryTextStyle}" />
+              </StackPanel>
+            </Grid>
+          </Button>
+
           <Button Command="{Binding RemoveUnavailableRepositoriesCommand}"
                   IsEnabled="{Binding HasUnavailableRepositories}"
                   Width="240" Height="82"

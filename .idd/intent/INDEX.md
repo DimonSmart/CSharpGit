@@ -52,3 +52,4 @@ opened.
 | IDD-0030 | Spec | Edit commit message | Safe HEAD amend and linear-history reword with deterministic rewritten-commit selection | — |
 | IDD-0031 | Spec | Repository history rewrite | Local exact-path removal with git-filter-repo, verified safety backup, topology preservation and in-place refresh | — |
 | IDD-0032 | Spec | Repository maintenance | Explicit repository GC with typed options, before/after object-storage statistics and serialized local refresh | — |
+| IDD-0033 | Spec | Repository creation | Git-owned working-tree and bare/shared initialization, safe workspace switching and unborn repository state | — |
