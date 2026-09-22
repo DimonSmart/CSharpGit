@@ -4,7 +4,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
 
-public sealed class GitToolsService : IGitToolsService
+internal sealed class GitToolsService : IGitToolsService
 {
     private readonly GitCommandExecutor _executor;
     private readonly IRepositoryFileVersionService _fileVersionService;
@@ -182,6 +182,27 @@ public sealed class GitToolsService : IGitToolsService
             cancellationToken,
             ["mergetool", "--gui", "--no-prompt"]);
         if (result.ExitCode != 0) throw ToolFailure(configuration.EffectiveValue, "Merge", result);
+    }
+
+    public async Task OpenConflictInEditorAsync(
+        Repository repository,
+        ConflictFile conflict,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
+        ArgumentNullException.ThrowIfNull(conflict);
+
+        if (!conflict.CanOpenManually)
+            throw new InvalidOperationException(
+                "This conflict cannot be opened as a working-copy file.");
+
+        var path = _pathService.ResolveExistingWorkingTreeFile(
+            repository,
+            conflict.Path);
+        await OpenEditorAsync(
+            repository,
+            path,
+            cancellationToken);
     }
 
     public Task TestAsync(
