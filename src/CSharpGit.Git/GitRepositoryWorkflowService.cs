@@ -84,8 +84,9 @@ internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService
         }
         catch (RepositoryOpenException exception)
         {
-            var status = await _commands.RunAsync(repository.WorkingDirectory, cancellationToken, false, "status", "--porcelain=v1", "-z", "--untracked-files=all");
-            var conflicts = File.Exists(Path.Combine(repository.GitDirectory, "MERGE_HEAD")) || ParseStatus(status).Any(change => change.IsConflicted);
+            var state = await _stateService.ReadAsync(repository, cancellationToken);
+            var conflicts = state.Operation == RepositoryOperation.Merge
+                            || state.Changes.Any(change => change.IsConflicted);
             return new MergeResult(conflicts ? MergeResultKind.Conflicts : MergeResultKind.Refused, exception.Message);
         }
 
