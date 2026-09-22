@@ -24,7 +24,6 @@ public sealed partial class MainPage : Page
     private readonly IReferenceHistoryService _referenceHistoryService;
     private readonly IReferenceService _referenceService;
     private readonly IRepositorySyncService _repositorySyncService;
-    private readonly IAppSettingsService _appSettingsService;
     private readonly ICommitActionService _commitActionService;
     private readonly ITagService _tagService;
     private readonly ObservableCollection<RepositoryTreeNode> _repositoryTreeRoots = [];
@@ -46,7 +45,6 @@ public sealed partial class MainPage : Page
         IReferenceHistoryService referenceHistoryService,
         IReferenceService referenceService,
         IRepositorySyncService repositorySyncService,
-        IAppSettingsService appSettingsService,
         ICommitActionService commitActionService,
         ITagService tagService,
         IRepositoryRefreshProbe repositoryRefreshProbe,
@@ -57,7 +55,6 @@ public sealed partial class MainPage : Page
         _referenceHistoryService = referenceHistoryService;
         _referenceService = referenceService;
         _repositorySyncService = repositorySyncService ?? throw new ArgumentNullException(nameof(repositorySyncService));
-        _appSettingsService = appSettingsService ?? throw new ArgumentNullException(nameof(appSettingsService));
         _commitActionService = commitActionService ?? throw new ArgumentNullException(nameof(commitActionService));
         _tagService = tagService ?? throw new ArgumentNullException(nameof(tagService));
         _repositoryRefreshProbe = repositoryRefreshProbe ?? throw new ArgumentNullException(nameof(repositoryRefreshProbe));

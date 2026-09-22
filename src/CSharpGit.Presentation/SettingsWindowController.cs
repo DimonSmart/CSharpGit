@@ -25,6 +25,8 @@ public sealed class SettingsWindowController : IDisposable
         _gitToolsService = gitToolsService ?? throw new ArgumentNullException(nameof(gitToolsService));
     }
 
+    internal bool AutoSetupRemoteOnPush => _settings.AutoSetupRemoteOnPush;
+
     internal void Show(SettingsSection section, Func<Repository?> repositoryAccessor)
     {
         if (Volatile.Read(ref _shutdownStarted) != 0) return;

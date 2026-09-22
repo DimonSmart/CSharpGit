@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using CSharpGit.Application;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Application.Exceptions;
 
@@ -140,7 +141,7 @@ public sealed class PublishBranchTests : IDisposable
 
     private async Task<(CSharpGit.Domain.Repository Repository, GitRepositorySyncService Service)> CreateServicesAsync()
     {
-        var executor = new GitCommandExecutor(new GitCliOptions());
+        var executor = new GitCommandExecutor(new GitCliOptions(), new GitCommandActivityHistory());
         var repository = await new GitRepositoryService(executor).OpenAsync(_root);
         return (repository, new GitRepositorySyncService(executor));
     }
