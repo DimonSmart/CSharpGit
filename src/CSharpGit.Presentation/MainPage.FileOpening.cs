@@ -10,10 +10,10 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private IRepositoryFileVersionService? _fileVersionService;
-    private IDesktopShellService? _desktopShellService;
-    private IRepositoryPathService? _repositoryPathService;
-    private IGitToolsService? _gitToolsService;
+    private readonly IRepositoryFileVersionService _fileVersionService = null!;
+    private readonly IDesktopShellService _desktopShellService = null!;
+    private readonly IRepositoryPathService _repositoryPathService = null!;
+    private readonly IGitToolsService _gitToolsService = null!;
     private DiffFileVersionPair? _commitFileVersions;
     private DiffFileVersionPair? _workingTreeFileVersions;
     private string? _commitRevealPath;
@@ -43,9 +43,9 @@ public sealed partial class MainPage
         IRepositoryPathService repositoryPathService)
         : this(viewModel, referenceHistoryService, referenceService, syncService, commitActionService, tagService, repositoryRefreshProbe, workingTreeDiffService)
     {
-        _fileVersionService = fileVersionService;
-        _desktopShellService = desktopShellService;
-        _repositoryPathService = repositoryPathService;
+        _fileVersionService = fileVersionService ?? throw new ArgumentNullException(nameof(fileVersionService));
+        _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
+        _repositoryPathService = repositoryPathService ?? throw new ArgumentNullException(nameof(repositoryPathService));
         InitializeFileOpening();
     }
 
@@ -105,7 +105,7 @@ public sealed partial class MainPage
         _commitOpenOriginalButton = CreateActionButton("Original", "Open original version", CommitOpenOriginal_Click);
         _commitOpenChangedButton = CreateActionButton("Changed", "Open changed version", CommitOpenChanged_Click);
         _commitExternalDiffButton = CreateActionButton("Diff tool", "Open this exact pair in the configured external diff tool", CommitExternalDiff_Click);
-        _commitRevealButton = CreateActionButton("Reveal", _desktopShellService!.RevealDescription, CommitReveal_Click);
+        _commitRevealButton = CreateActionButton("Reveal", _desktopShellService.RevealDescription, CommitReveal_Click);
         actions.Children.Add(_commitOpenOriginalButton);
         actions.Children.Add(_commitOpenChangedButton);
         actions.Children.Add(_commitExternalDiffButton);
@@ -124,7 +124,7 @@ public sealed partial class MainPage
         _workingTreeOpenOriginalButton = CreateActionButton("Original", "Open original side of this diff", WorkingTreeOpenOriginal_Click);
         _workingTreeOpenChangedButton = CreateActionButton("Changed", "Open changed side of this diff", WorkingTreeOpenChanged_Click);
         _workingTreeExternalDiffButton = CreateActionButton("Diff tool", "Open this exact pair in the configured external diff tool", WorkingTreeExternalDiff_Click);
-        _workingTreeRevealButton = CreateActionButton("Reveal", _desktopShellService!.RevealDescription, WorkingTreeReveal_Click);
+        _workingTreeRevealButton = CreateActionButton("Reveal", _desktopShellService.RevealDescription, WorkingTreeReveal_Click);
         actions.Children.Add(_workingTreeOpenOriginalButton);
         actions.Children.Add(_workingTreeOpenChangedButton);
         actions.Children.Add(_workingTreeExternalDiffButton);
@@ -212,7 +212,7 @@ public sealed partial class MainPage
 
         var repository = _viewModel.Repository;
         var file = _viewModel.SelectedFile;
-        if (repository is not null && file is not null && _repositoryPathService is not null)
+        if (repository is not null && file is not null)
             _commitRevealPath = TryResolveReveal(repository, file.Path);
 
         UpdateCommitButtons();
@@ -229,7 +229,7 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         var change = _viewModel.ActiveWorkingTreeChange;
         var kind = _viewModel.ActiveWorkingTreeDiffKind;
-        if (repository is null || change is null || kind is null || _fileVersionService is null || _repositoryPathService is null)
+        if (repository is null || change is null || kind is null)
             return;
 
         try
@@ -282,7 +282,7 @@ public sealed partial class MainPage
                 "No changed version is available.");
             SetAvailabilityButton(
                 _commitExternalDiffButton,
-                _gitToolsService is not null && file is not null,
+                file is not null,
                 "Open this exact OLD/NEW pair in the configured external diff tool",
                 "Select a file diff first.");
         }
@@ -316,7 +316,7 @@ public sealed partial class MainPage
     private void SetExternalDiffButton(Button? button, DiffFileVersionPair? pair)
     {
         if (button is null) return;
-        var enabled = _gitToolsService is not null && pair is not null && CanExternalDiff(pair);
+        var enabled = pair is not null && CanExternalDiff(pair);
         button.IsEnabled = enabled;
         ToolTipService.SetToolTip(button, enabled
             ? "Open this exact OLD/NEW pair in the configured external diff tool"
@@ -325,7 +325,7 @@ public sealed partial class MainPage
 
     private void SetRevealButton(Button? button, string? fullPath)
     {
-        if (button is null || _desktopShellService is null) return;
+        if (button is null) return;
         button.IsEnabled = fullPath is not null;
         ToolTipService.SetToolTip(button, fullPath is null
             ? "The file is not present in the current working tree."
@@ -361,7 +361,7 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         var commit = _viewModel.SelectedHistoryRow?.Commit;
         var file = _viewModel.SelectedFile;
-        if (repository is null || commit is null || file is null || _fileVersionService is null || _desktopShellService is null)
+        if (repository is null || commit is null || file is null)
             return;
 
         try
@@ -386,7 +386,7 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         var change = _viewModel.ActiveWorkingTreeChange;
         var kind = _viewModel.ActiveWorkingTreeDiffKind;
-        if (repository is null || change is null || kind is null || _fileVersionService is null || _desktopShellService is null)
+        if (repository is null || change is null || kind is null)
             return;
 
         try
@@ -411,7 +411,7 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         var commit = _viewModel.SelectedHistoryRow?.Commit;
         var file = _viewModel.SelectedFile;
-        if (repository is null || commit is null || file is null || _fileVersionService is null || _gitToolsService is null) return;
+        if (repository is null || commit is null || file is null) return;
         try
         {
             var pair = await _fileVersionService.ResolveCommitAsync(repository, commit.Hash, file.Path);
@@ -438,7 +438,7 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         var change = _viewModel.ActiveWorkingTreeChange;
         var kind = _viewModel.ActiveWorkingTreeDiffKind;
-        if (repository is null || change is null || kind is null || _fileVersionService is null || _gitToolsService is null) return;
+        if (repository is null || change is null || kind is null) return;
         try
         {
             var pair = await _fileVersionService.ResolveWorkingTreeAsync(repository, change, kind.Value);
@@ -477,7 +477,6 @@ public sealed partial class MainPage
 
     private async Task OpenResolvedVersionAsync(Repository repository, DiffFileVersion version, DiffFileSide side)
     {
-        if (_fileVersionService is null || _desktopShellService is null || _repositoryPathService is null) return;
         if (!version.CanOpen)
             throw new InvalidOperationException(version.UnavailableReason ?? "This file version is unavailable.");
 
@@ -498,7 +497,7 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         var commit = _viewModel.SelectedHistoryRow?.Commit;
         var file = _viewModel.SelectedFile;
-        if (repository is null || commit is null || file is null || _fileVersionService is null || _repositoryPathService is null || _desktopShellService is null)
+        if (repository is null || commit is null || file is null)
             return;
         try
         {
@@ -517,7 +516,7 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         var change = _viewModel.ActiveWorkingTreeChange;
         var kind = _viewModel.ActiveWorkingTreeDiffKind;
-        if (repository is null || change is null || kind is null || _fileVersionService is null || _repositoryPathService is null || _desktopShellService is null)
+        if (repository is null || change is null || kind is null || _desktopShellService is null)
             return;
         try
         {
@@ -535,7 +534,7 @@ public sealed partial class MainPage
     {
         var source = args.OriginalSource as FrameworkElement;
         var node = ResolveChangedFileNode(source?.DataContext);
-        if (node?.Entry is null || _viewModel.Repository is null || _viewModel.SelectedHistoryRow is null || _fileVersionService is null)
+        if (node?.Entry is null || _viewModel.Repository is null || _viewModel.SelectedHistoryRow is null)
             return;
 
         _viewModel.SelectedFile = node.Entry.File;
@@ -554,7 +553,7 @@ public sealed partial class MainPage
 
     private async void WorkingTreeChanges_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
     {
-        if (sender is not ListView list || list.SelectedItem is not WorkingTreeChange change || _viewModel.Repository is null || _fileVersionService is null)
+        if (sender is not ListView list || list.SelectedItem is not WorkingTreeChange change || _viewModel.Repository is null)
             return;
         var kind = ReferenceEquals(list, StagedChangesList) ? WorkingTreeDiffKind.Staged : WorkingTreeDiffKind.Unstaged;
         SelectWorkingTreeChange(change, kind);
@@ -575,7 +574,7 @@ public sealed partial class MainPage
     {
         var source = args.OriginalSource as FrameworkElement;
         var node = ResolveChangedFileNode(source?.DataContext);
-        if (source is null || node?.Entry is null || _viewModel.Repository is null || _viewModel.SelectedHistoryRow is null || _fileVersionService is null)
+        if (source is null || node?.Entry is null || _viewModel.Repository is null || _viewModel.SelectedHistoryRow is null)
             return;
 
         _viewModel.SelectedFile = node.Entry.File;
@@ -604,7 +603,7 @@ public sealed partial class MainPage
     private async void WorkingTreeChanges_RightTapped(object sender, RightTappedRoutedEventArgs args)
     {
         var source = args.OriginalSource as FrameworkElement;
-        if (source is null || sender is not ListView list || source.DataContext is not WorkingTreeChange change || _viewModel.Repository is null || _fileVersionService is null)
+        if (source is null || sender is not ListView list || source.DataContext is not WorkingTreeChange change || _viewModel.Repository is null)
             return;
         var kind = ReferenceEquals(list, StagedChangesList) ? WorkingTreeDiffKind.Staged : WorkingTreeDiffKind.Unstaged;
         SelectWorkingTreeContextRow(list, change, kind);
@@ -697,13 +696,13 @@ public sealed partial class MainPage
         var externalItem = new MenuFlyoutItem
         {
             Text = "Open in Diff Tool",
-            IsEnabled = _gitToolsService is not null && CanExternalDiff(pair)
+            IsEnabled = CanExternalDiff(pair)
         };
         ToolTipService.SetToolTip(externalItem, externalItem.IsEnabled ? externalItem.Text : ExternalDiffUnavailableReason(pair));
         externalItem.Click += async (_, _) => await openExternalDiff();
         flyout.Items.Add(externalItem);
         if (separateReveal) flyout.Items.Add(new MenuFlyoutSeparator());
-        var revealItem = new MenuFlyoutItem { Text = _desktopShellService?.RevealDescription ?? "Reveal", IsEnabled = canReveal };
+        var revealItem = new MenuFlyoutItem { Text = _desktopShellService.RevealDescription, IsEnabled = canReveal };
         ToolTipService.SetToolTip(revealItem, canReveal ? revealItem.Text : "The file is not present in the current working tree.");
         revealItem.Click += async (_, _) => await reveal();
         flyout.Items.Add(revealItem);
@@ -740,7 +739,7 @@ public sealed partial class MainPage
     {
         try
         {
-            return _repositoryPathService?.ResolveExistingWorkingTreeFile(repository, gitPath, allowFinalLink: true);
+            return _repositoryPathService.ResolveExistingWorkingTreeFile(repository, gitPath, allowFinalLink: true);
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or IOException or UnauthorizedAccessException)
         {

@@ -12,7 +12,7 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage
 {
     private const double RepositoryMaintenanceContentWidth = 460;
-    private IRepositoryMaintenanceService? _repositoryMaintenanceService;
+    private readonly IRepositoryMaintenanceService _repositoryMaintenanceService = null!;
     private bool _repositoryMaintenanceInProgress;
 
     internal bool IsRepositoryMaintenanceInProgress => _repositoryMaintenanceInProgress;
@@ -86,8 +86,7 @@ public sealed partial class MainPage
     }
 
     private bool CanStartRepositoryMaintenance() =>
-        _repositoryMaintenanceService is not null
-        && _viewModel.Repository is not null
+        _viewModel.Repository is not null
         && !_viewModel.IsBusy
         && _viewModel.CurrentOperation == RepositoryOperation.None
         && !_repositoryMaintenanceInProgress;
@@ -100,7 +99,6 @@ public sealed partial class MainPage
     private async void OptimizeRepository_Click(object sender, RoutedEventArgs e)
     {
         if (!CanStartRepositoryMaintenance()
-            || _repositoryMaintenanceService is not { } service
             || _viewModel.Repository is not { } repository)
         {
             return;
@@ -109,7 +107,7 @@ public sealed partial class MainPage
         RepositoryStorageStatistics before;
         try
         {
-            before = await service.GetStorageStatisticsAsync(repository);
+            before = await _repositoryMaintenanceService.GetStorageStatisticsAsync(repository);
         }
         catch (Exception exception)
         {
@@ -128,7 +126,7 @@ public sealed partial class MainPage
             return;
         }
 
-        await ShowRepositoryMaintenanceDialogAsync(repository, before, service);
+        await ShowRepositoryMaintenanceDialogAsync(repository, before, _repositoryMaintenanceService);
     }
 
     private async Task ShowRepositoryMaintenanceDialogAsync(
