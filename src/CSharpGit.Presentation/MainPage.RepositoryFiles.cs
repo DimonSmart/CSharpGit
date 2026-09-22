@@ -135,9 +135,9 @@ public sealed partial class MainPage
             SelectionMode = TreeViewSelectionMode.Single,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
-            Style = (Style)Application.Current.Resources["DenseTreeViewStyle"],
-            ItemContainerStyle = (Style)Application.Current.Resources["DenseTreeItemStyle"],
-            ItemTemplate = (DataTemplate)Application.Current.Resources["RepositoryFilesTreeItemTemplate"],
+            Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["DenseTreeViewStyle"],
+            ItemContainerStyle = (Style)Microsoft.UI.Xaml.Application.Current.Resources["DenseTreeItemStyle"],
+            ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["RepositoryFilesTreeItemTemplate"],
             ItemsSource = _repositoryFilesTreeRoots
         };
         _repositoryFilesTree.SelectionChanged += RepositoryFilesTree_SelectionChanged;

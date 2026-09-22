@@ -34,7 +34,7 @@ public sealed partial class MainPage
 
     private void ConstrainCommitDetailsToViewport()
     {
-        if (_commitDetailsView is null || XamlRoot is null || Application.Current is not App app) return;
+        if (_commitDetailsView is null || XamlRoot is null || Microsoft.UI.Xaml.Application.Current is not App app) return;
 
         var origin = HistoryPane.TransformToVisual(null).TransformPoint(default);
         var rasterizationScale = XamlRoot.RasterizationScale;

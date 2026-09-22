@@ -6,7 +6,6 @@ using CSharpGit.Application.Abstractions;
 using CSharpGit.Application.Exceptions;
 using CSharpGit.Domain;
 using Microsoft.Extensions.Logging;
-using Microsoft.UI.Xaml;
 
 namespace CSharpGit.Presentation.ViewModels;
 
@@ -245,26 +244,23 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         new("All references", HistoryScope.AllReferences),
         new("Current branch", HistoryScope.CurrentBranch)
     ];
-    public Repository? Repository { get => _repository; private set { if (ReferenceEquals(_repository, value)) return; ResetCommitChangesSession(); _repository = value; _displayedRefreshFingerprint = null; Notify(); Notify(nameof(DisplayedRefreshFingerprint)); Notify(nameof(RepositoryVisibility)); Notify(nameof(PickerVisibility)); Notify(nameof(RepositoryKind)); Notify(nameof(CanForcePushWithLease)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }
+    public Repository? Repository { get => _repository; private set { if (ReferenceEquals(_repository, value)) return; ResetCommitChangesSession(); _repository = value; _displayedRefreshFingerprint = null; Notify(); Notify(nameof(DisplayedRefreshFingerprint)); Notify(nameof(HasRepository)); Notify(nameof(RepositoryKind)); Notify(nameof(CanForcePushWithLease)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }
     public RepositoryRefreshFingerprint? DisplayedRefreshFingerprint { get => _displayedRefreshFingerprint; private set { if (Equals(_displayedRefreshFingerprint, value)) return; _displayedRefreshFingerprint = value; Notify(); } }
     public string? ErrorMessage { get => _errorMessage; private set { _errorMessage = value; Notify(); Notify(nameof(HasError)); } }
-    public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); Notify(nameof(BusyVisibility)); Notify(nameof(CanForcePushWithLease)); _openRepositoryCommand.RaiseCanExecuteChanged(); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
+    public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); Notify(nameof(CanForcePushWithLease)); _openRepositoryCommand.RaiseCanExecuteChanged(); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
-    public Visibility BusyVisibility => IsBusy ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility RepositoryVisibility => Repository is null ? Visibility.Collapsed : Visibility.Visible;
-    public Visibility PickerVisibility => Repository is null ? Visibility.Visible : Visibility.Collapsed;
+    public bool HasRepository => Repository is not null;
     public string RepositoryKind => Repository?.IsWorktree == true ? "Git worktree" : "Git repository";
     public string FilterText { get => _filterText; set { _filterText = value; Notify(); } }
     public UiChoice<HistoryScope> SelectedScope { get => _selectedScope; set { if (_selectedScope == value) return; _selectedScope = value; Notify(); if (value.Value != HistoryScope.AllReferences) DisableReflogForScopeChange(); _ = LoadHistoryAsync(true); } }
-    public HistoryRow? SelectedHistoryRow { get => _selectedHistoryRow; set { if (ReferenceEquals(_selectedHistoryRow, value)) return; _selectedHistoryRow = value; Notify(); Notify(nameof(DetailsVisibility)); OnSelectedHistoryRowChanged(); } }
+    public HistoryRow? SelectedHistoryRow { get => _selectedHistoryRow; set { if (ReferenceEquals(_selectedHistoryRow, value)) return; _selectedHistoryRow = value; Notify(); Notify(nameof(HasSelectedCommit)); OnSelectedHistoryRowChanged(); } }
     public ChangedFile? SelectedFile { get => _selectedFile; set { if (_selectedFile == value) return; _selectedFile = value; Notify(); OnSelectedFileChanged(); } }
-    public FileDiff? SelectedDiff { get => _selectedDiff; private set { _selectedDiff = value; Notify(); Notify(nameof(DiffVisibility)); Notify(nameof(BinaryVisibility)); } }
-    public bool IsDiffLoading { get => _isDiffLoading; private set { if (_isDiffLoading == value) return; _isDiffLoading = value; Notify(); Notify(nameof(DiffLoadingVisibility)); } }
+    public FileDiff? SelectedDiff { get => _selectedDiff; private set { _selectedDiff = value; Notify(); Notify(nameof(HasTextDiff)); Notify(nameof(HasBinaryDiff)); } }
+    public bool IsDiffLoading { get => _isDiffLoading; private set { if (_isDiffLoading == value) return; _isDiffLoading = value; Notify(); } }
     public bool HasMore { get => _hasMore; private set { _hasMore = value; Notify(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
-    public Visibility DetailsVisibility => SelectedHistoryRow is null ? Visibility.Collapsed : Visibility.Visible;
-    public Visibility DiffLoadingVisibility => IsDiffLoading ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility DiffVisibility => SelectedDiff is { IsBinary: false } ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility BinaryVisibility => SelectedDiff?.IsBinary == true ? Visibility.Visible : Visibility.Collapsed;
+    public bool HasSelectedCommit => SelectedHistoryRow is not null;
+    public bool HasTextDiff => SelectedDiff is { IsBinary: false };
+    public bool HasBinaryDiff => SelectedDiff?.IsBinary == true;
     public WorkingTreeChange? SelectedChange
     {
         get => _selectedChange;
@@ -322,10 +318,10 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public string RebaseMessage { get => _rebaseMessage; set { _rebaseMessage = value; Notify(); } }
     public RepositoryOperation CurrentOperation { get => _currentOperation; private set { _currentOperation = value; Notify(); Notify(nameof(CanForcePushWithLease)); RaiseCommands(); } }
     public ConflictFile? SelectedConflict { get => _selectedConflict; set { _selectedConflict = value; Notify(); Notify(nameof(CurrentSideLabel)); Notify(nameof(IncomingSideLabel)); RaiseCommands(); } }
-    public RepositoryOperationState OperationState { get => _operationState; private set { _operationState = value; Notify(); Notify(nameof(OperationVisibility)); RaiseCommands(); } }
+    public RepositoryOperationState OperationState { get => _operationState; private set { _operationState = value; Notify(); Notify(nameof(HasActiveOperation)); RaiseCommands(); } }
     public string CurrentSideLabel => SelectedConflict?.CurrentLocalLabel ?? "Current/local";
     public string IncomingSideLabel => SelectedConflict?.IncomingRemoteLabel ?? "Incoming/remote";
-    public Visibility OperationVisibility => OperationState.Kind == RepositoryOperation.None ? Visibility.Collapsed : Visibility.Visible;
+    public bool HasActiveOperation => OperationState.Kind != RepositoryOperation.None;
     public bool CanForcePushWithLease => Repository is not null
         && !IsBusy
         && CurrentOperation == RepositoryOperation.None
