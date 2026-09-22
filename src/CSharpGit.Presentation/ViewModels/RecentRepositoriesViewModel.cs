@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Presentation.Controls;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -149,6 +150,7 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
     private readonly IAppSettingsService _settings;
     private readonly IRepositoryImageService _repositoryImageService;
     private readonly Func<RecentRepositoryItem, Task> _openRecentAsync;
+    private readonly DispatcherQueue _dispatcherQueue;
     private CancellationTokenSource _imageLoadCancellation = new();
     private bool _imageLoadingStarted;
     private bool _disposed;
@@ -157,11 +159,13 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
         IAppSettingsService settings,
         IRepositoryImageService repositoryImageService,
         Func<RecentRepositoryItem, Task> openRecentAsync,
-        Func<Task> openRepositoryAsync)
+        Func<Task> openRepositoryAsync,
+        DispatcherQueue dispatcherQueue)
     {
         _settings = settings;
         _repositoryImageService = repositoryImageService;
         _openRecentAsync = openRecentAsync;
+        _dispatcherQueue = dispatcherQueue ?? throw new ArgumentNullException(nameof(dispatcherQueue));
         OpenRepositoryCommand = new AsyncCommand(openRepositoryAsync, () => true);
         RemoveUnavailableRepositoriesCommand = new AsyncCommand(RemoveUnavailableRepositoriesAsync, () => true);
         _settings.Changed += Settings_Changed;
@@ -196,7 +200,17 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
 
     private void Settings_Changed(object? sender, EventArgs e)
     {
-        if (!_disposed) Reload();
+        if (_disposed) return;
+        if (_dispatcherQueue.HasThreadAccess)
+        {
+            Reload();
+            return;
+        }
+
+        _dispatcherQueue.TryEnqueue(() =>
+        {
+            if (!_disposed) Reload();
+        });
     }
 
     private void Reload()
