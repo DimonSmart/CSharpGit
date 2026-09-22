@@ -117,7 +117,14 @@ public sealed partial class MainPage : Page
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
-        if (eventArgs.PropertyName is nameof(OpenRepositoryViewModel.Repository) or nameof(OpenRepositoryViewModel.HeadDisplay) or nameof(OpenRepositoryViewModel.CurrentOperation))
+        if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.Repository))
+        {
+            ResetReferenceHistoryForRepositorySwitch();
+            UpdateStatusBar();
+        }
+        else if (eventArgs.PropertyName is nameof(OpenRepositoryViewModel.HeadDisplay)
+                 or nameof(OpenRepositoryViewModel.CurrentBranchName)
+                 or nameof(OpenRepositoryViewModel.CurrentOperation))
         {
             UpdateStatusBar();
         }
@@ -230,7 +237,9 @@ public sealed partial class MainPage : Page
     private void UpdateStatusBar()
     {
         var current = _viewModel.LocalBranches.FirstOrDefault(branch => branch.IsCurrent);
-        var branch = current?.Name ?? (_viewModel.Repository is null ? string.Empty : "detached HEAD");
+        var branch = current?.Name
+                     ?? _viewModel.CurrentBranchName
+                     ?? (_viewModel.Repository is null ? string.Empty : "detached HEAD");
         ToolbarBranchText.Text = branch;
         StatusBranchText.Text = branch;
         StatusTrackingText.Text = current is null ? string.Empty : $"↑{current.Ahead} ↓{current.Behind}";
@@ -355,6 +364,25 @@ public sealed partial class MainPage : Page
             if (string.Equals(reference, _activeReference, StringComparison.Ordinal))
                 LoadMoreHistoryButton.IsEnabled = _scopedHasMore;
         }
+    }
+
+    private void ResetReferenceHistoryForRepositorySwitch()
+    {
+        _referenceHistoryCts?.Cancel();
+        _referenceHistoryCts?.Dispose();
+        _referenceHistoryCts = null;
+        _activeReference = null;
+        _scopedHistory.Clear();
+        _scopedHasMore = false;
+        _isScopedHistoryLoading = false;
+        ShowReflogToggle.IsEnabled = true;
+        ScopeCombo.Visibility = Visibility.Visible;
+        ReferenceScopePanel.Visibility = Visibility.Collapsed;
+        HistoryPane.Visibility = Visibility.Visible;
+        WorkingTreePane.Visibility = Visibility.Collapsed;
+        HistoryList.ItemsSource = _viewModel.History;
+        LoadMoreHistoryButton.IsEnabled = false;
+        UpdateCommitNavigationText();
     }
 
     private void ShowAllHistory()

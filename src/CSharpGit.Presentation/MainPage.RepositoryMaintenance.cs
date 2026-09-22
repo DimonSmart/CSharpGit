@@ -19,6 +19,7 @@ public sealed partial class MainPage
 
     public MainPage(
         OpenRepositoryViewModel viewModel,
+        CreateRepositoryViewModel createRepositoryViewModel,
         IReferenceHistoryService referenceHistoryService,
         IReferenceService referenceService,
         IRepositorySyncService repositorySyncService,
@@ -55,6 +56,8 @@ public sealed partial class MainPage
             repositorySnapshotService,
             repositoryHistoryRewriteService)
     {
+        _createRepositoryViewModel = createRepositoryViewModel
+            ?? throw new ArgumentNullException(nameof(createRepositoryViewModel));
         _repositoryMaintenanceService = repositoryMaintenanceService
             ?? throw new ArgumentNullException(nameof(repositoryMaintenanceService));
         _recentRepositorySettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));

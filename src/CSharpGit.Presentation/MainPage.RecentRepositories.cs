@@ -34,6 +34,7 @@ public sealed partial class MainPage
             _repositoryImageService,
             OpenRecentRepositoryAsync,
             OpenRepositoryPickerAsync,
+            ShowCreateRepositoryAsync,
             DispatcherQueue);
         _recentRepositoriesView = new RecentRepositoriesView
         {

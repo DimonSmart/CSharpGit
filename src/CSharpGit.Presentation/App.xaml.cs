@@ -102,6 +102,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
 
                 services.AddSingleton<IRepositoryStateSessionFactory, RepositoryStateSessionFactory>();
                 services.AddTransient<OpenRepositoryViewModel>();
+                services.AddTransient<CreateRepositoryViewModel>();
                 services.AddTransient<MainPage>();
             })
             .Build();

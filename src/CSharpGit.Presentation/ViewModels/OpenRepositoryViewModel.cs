@@ -60,6 +60,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private string _pushBranchName = string.Empty;
     private bool _setUpstream;
     private string _headDisplay = string.Empty;
+    private string? _currentBranchName;
     private GitStash? _selectedStash;
     private GitBranch? _selectedMergeBranch;
     private string _stashMessage = string.Empty;
@@ -331,6 +332,17 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public string PushBranchName { get => _pushBranchName; set { _pushBranchName = value; Notify(); } }
     public bool SetUpstream { get => _setUpstream; set { _setUpstream = value; Notify(); } }
     public string HeadDisplay { get => _headDisplay; private set { _headDisplay = value; Notify(); } }
+    public string? CurrentBranchName
+    {
+        get => _currentBranchName;
+        private set
+        {
+            if (string.Equals(_currentBranchName, value, StringComparison.Ordinal))
+                return;
+            _currentBranchName = value;
+            Notify();
+        }
+    }
     public GitStash? SelectedStash { get => _selectedStash; set { _selectedStash = value; Notify(); RaiseCommands(); } }
     public GitBranch? SelectedMergeBranch { get => _selectedMergeBranch; set { _selectedMergeBranch = value; Notify(); RaiseCommands(); } }
     public string StashMessage { get => _stashMessage; set { _stashMessage = value; Notify(); } }
@@ -387,30 +399,119 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                 return;
             }
 
-            if (path is null)
-            {
-                return;
-            }
-
-            Repository = await _repositoryService.OpenAsync(path);
-            await RefreshAllAsync();
-            _logger.LogInformation("Opened repository at {RepositoryRoot}", Repository.RepositoryRoot);
-        }
-        catch (RepositoryOpenException exception)
-        {
-            ErrorMessage = exception.Message;
-            _logger.LogWarning(exception, "Repository selection failed");
-        }
-        catch (Exception exception)
-        {
-            ErrorMessage = $"The repository could not be opened: {exception.Message}";
-            _logger.LogError(exception, "Repository opening failed");
+            if (path is not null)
+                _ = await OpenRepositoryPathAsync(path);
         }
         finally
         {
             ExitBusy();
             _openRepositoryCommand.RaiseCanExecuteChanged();
         }
+    }
+
+    internal async Task<bool> OpenRepositoryPathAsync(
+        string path,
+        CancellationToken cancellationToken = default)
+    {
+        var previousRepository = Repository;
+        ErrorMessage = null;
+        EnterBusy();
+        try
+        {
+            var openedRepository = await _repositoryService.OpenAsync(
+                path,
+                cancellationToken);
+
+            InvalidateHistoryLoad();
+            Repository = openedRepository;
+            try
+            {
+                await RefreshAllAsync();
+            }
+            catch
+            {
+                InvalidateHistoryLoad();
+                Repository = previousRepository;
+                if (previousRepository is null)
+                    ClearRepositoryPresentation();
+                else
+                {
+                    try
+                    {
+                        await RefreshAllAsync();
+                    }
+                    catch (Exception restoreException) when (
+                        restoreException is not OperationCanceledException)
+                    {
+                        _logger.LogError(
+                            restoreException,
+                            "Could not refresh the previous repository after a failed workspace switch");
+                    }
+                }
+
+                throw;
+            }
+
+            _logger.LogInformation(
+                "Opened repository at {RepositoryRoot}",
+                Repository.RepositoryRoot);
+            return true;
+        }
+        catch (RepositoryOpenException exception)
+        {
+            ErrorMessage = exception.Message;
+            _logger.LogWarning(exception, "Repository selection failed");
+            return false;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            ErrorMessage = $"The repository could not be opened: {exception.Message}";
+            _logger.LogError(exception, "Repository opening failed");
+            return false;
+        }
+        finally
+        {
+            ExitBusy();
+            _openRepositoryCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    private void ClearRepositoryPresentation()
+    {
+        History.Clear();
+        Changes.Clear();
+        LocalBranches.Clear();
+        RemoteBranches.Clear();
+        Remotes.Clear();
+        Tags.Clear();
+        Stashes.Clear();
+        RebasePlan.Clear();
+        Conflicts.Clear();
+        SelectedHistoryRow = null;
+        SelectedFile = null;
+        SelectedDiff = null;
+        SelectedChange = null;
+        SelectedWorkingTreeDiffKind = null;
+        SelectedWorkingTreeDiff = null;
+        SelectedLocalBranch = null;
+        SelectedRemoteBranch = null;
+        SelectedRemote = null;
+        SelectedTag = null;
+        SelectedStash = null;
+        SelectedMergeBranch = null;
+        SelectedConflict = null;
+        HeadDisplay = string.Empty;
+        CurrentBranchName = null;
+        HasMore = false;
+        CurrentOperation = RepositoryOperation.None;
+        OperationState = RepositoryOperationState.None;
+        OperationDisplay = string.Empty;
+        DisplayedRefreshFingerprint = null;
+        RaiseCommands();
     }
 
     private bool CanMutate() => Repository is not null && !_isMutating;
@@ -460,6 +561,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             if (!ReferenceEquals(repository, Repository)) return;
 
             var shortHead = state.HeadCommit is { } commit ? commit[..Math.Min(10, commit.Length)] : "no commit";
+            CurrentBranchName = state.IsDetached ? null : state.HeadReference;
             HeadDisplay = state.IsDetached ? $"Detached HEAD: {shortHead}" : $"Current branch: {state.HeadReference}";
             Replace(Changes, state.Changes);
             Replace(LocalBranches, state.Refs.LocalBranches);
