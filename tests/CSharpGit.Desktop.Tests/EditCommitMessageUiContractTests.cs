@@ -41,7 +41,7 @@ public sealed class EditCommitMessageUiContractTests
         var actions = Read("src", "CSharpGit.Presentation", "MainPage.CommitActions.cs");
         var page = Read("src", "CSharpGit.Presentation", "MainPage.xaml.cs");
 
-        Assert.Contains("_referenceService.EditCommitMessageAsync(", workflow, StringComparison.Ordinal);
+        Assert.Contains("_commitActionService.EditCommitMessageAsync(", workflow, StringComparison.Ordinal);
         Assert.Contains("result.NewCommit", workflow, StringComparison.Ordinal);
         Assert.Contains("result.OldCommit", workflow, StringComparison.Ordinal);
         Assert.Contains("_pendingEditedCommitHash = result.NewCommit;", workflow, StringComparison.Ordinal);
