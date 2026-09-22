@@ -14,6 +14,7 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class App : Microsoft.UI.Xaml.Application
 {
+    private readonly IAppSettingsService _appSettings;
     private readonly SessionFileLoggerProvider _sessionFileLoggerProvider;
     private readonly IHost _host;
     private Window? _window;
@@ -33,7 +34,8 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     {
         InitializeComponent();
 
-        var appSettings = AppSettingsContext.Current;
+        var appSettings = new JsonAppSettingsService();
+        _appSettings = appSettings;
         _sessionFileLoggerProvider = new SessionFileLoggerProvider(
             appSettings.LoggingEnabled,
             ToMicrosoftLogLevel(appSettings.LogLevel));
@@ -57,6 +59,8 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             {
                 services.AddSingleton<IAppSettingsService>(appSettings);
                 services.AddSingleton<ApplicationThemeManager>();
+                services.AddSingleton<IRepositoryImageService, RepositoryImageService>();
+                services.AddSingleton<SettingsWindowController>();
                 services.AddSingleton<GitCommandActivityHistory>();
                 services.AddSingleton<IGitCommandActivitySink>(
                     provider => provider.GetRequiredService<GitCommandActivityHistory>());
@@ -117,15 +121,6 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         _window = new Window { Title = "CSharpGit" };
         var themeManager = _host.Services.GetRequiredService<ApplicationThemeManager>();
         var mainPage = _host.Services.GetRequiredService<MainPage>();
-        mainPage.InitializeApplicationTheme(themeManager);
-        mainPage.InitializeRepositoryChangeMonitoring();
-        mainPage.InitializeRecentRepositories(
-            AppSettingsContext.Current,
-            _host.Services.GetRequiredService<RecentRepositoryFolderPicker>());
-        mainPage.InitializeGitConsole(
-            _host.Services.GetRequiredService<IGitCommandActivitySource>(),
-            _host.Services.GetRequiredService<IAppSettingsService>());
-        mainPage.InitializeWorktreeSupport(_host.Services.GetRequiredService<IWorktreeService>());
         _mainThemeRegistration = themeManager.Register(mainPage);
         _window.Content = mainPage;
         _window.AppWindow.Changed += (_, eventArgs) =>
@@ -200,7 +195,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
 
     private void AppSettings_Changed(object? sender, EventArgs e)
     {
-        var settings = AppSettingsContext.Current;
+        var settings = _appSettings;
         _sessionFileLoggerProvider.Configure(
             settings.LoggingEnabled,
             ToMicrosoftLogLevel(settings.LogLevel));
@@ -242,7 +237,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     internal void StopHost()
     {
         if (Interlocked.Exchange(ref _hostStopped, 1) != 0) return;
-        AppSettingsContext.Current.Changed -= AppSettings_Changed;
+        _appSettings.Changed -= AppSettings_Changed;
         _mainThemeRegistration?.Dispose();
         _mainThemeRegistration = null;
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
