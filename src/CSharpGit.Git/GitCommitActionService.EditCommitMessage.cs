@@ -195,7 +195,7 @@ internal sealed partial class GitCommitActionService
             await File.WriteAllTextAsync(messagePath, newMessage, cancellationToken);
             try
             {
-                await RunGitForMutationAsync(
+                await _commands.RunMutationAsync(
                     repository,
                     cancellationToken,
                     "commit",
