@@ -26,9 +26,9 @@ public sealed class CurrentBranchIndicatorUiContractTests
         Assert.DoesNotContain("✓", node, StringComparison.Ordinal);
 
         Assert.Contains("TextFontWeight=\"{Binding NameFontWeight}\"", repositoryTree, StringComparison.Ordinal);
-        Assert.Equal(2, CountOccurrences(repositoryTree, "Visibility=\"{Binding CurrentBranchNameAccentVisibility}\""));
+        Assert.Equal(1, CountOccurrences(repositoryTree, "Visibility=\"{Binding CurrentBranchNameAccentVisibility}\""));
         Assert.Contains("Visibility=\"{Binding CurrentWorktreeAccentVisibility}\"", repositoryTree, StringComparison.Ordinal);
-        Assert.Equal(1, CountOccurrences(repositoryTree, "TextForeground=\"{ThemeResource AccentFillColorDefaultBrush}\""));
+        Assert.DoesNotContain("TextForeground=\"{ThemeResource AccentFillColorDefaultBrush}\"", repositoryTree, StringComparison.Ordinal);
         Assert.Contains("<Border Height=\"1\"", repositoryTree, StringComparison.Ordinal);
         Assert.Contains("Background=\"{ThemeResource AccentFillColorDefaultBrush}\"", repositoryTree, StringComparison.Ordinal);
         Assert.DoesNotContain("<ScaleTransform ScaleX=\"1.04\" ScaleY=\"1.08\" />", repositoryTree, StringComparison.Ordinal);

@@ -78,15 +78,6 @@
                                                   TextFontWeight="{Binding NameFontWeight}"
                                                   HorizontalAlignment="Stretch"
                                                   VerticalAlignment="Center" />
-                <controls:MiddleEllipsisTextBlock Text="{Binding DisplayName}"
-                                                  UseMiddleEllipsis="{Binding UseMiddleEllipsis}"
-                                                  TextStyle="{StaticResource BodyTextStyle}"
-                                                  TextFontWeight="{Binding NameFontWeight}"
-                                                  TextForeground="{ThemeResource AccentFillColorDefaultBrush}"
-                                                  Visibility="{Binding CurrentBranchNameAccentVisibility}"
-                                                  IsHitTestVisible="False"
-                                                  HorizontalAlignment="Stretch"
-                                                  VerticalAlignment="Center" />
                 <Border Height="1"
                         Background="{ThemeResource AccentFillColorDefaultBrush}"
                         Visibility="{Binding CurrentBranchNameAccentVisibility}"
