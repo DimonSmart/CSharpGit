@@ -2,7 +2,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
 
-public sealed partial class GitCliRepositoryService
+internal sealed partial class GitReferenceService
 {
     public Task RenameBranchAsync(
         Repository repository,
@@ -11,14 +11,14 @@ public sealed partial class GitCliRepositoryService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(repository);
-        ValidateRefName(oldName, nameof(oldName));
-        ValidateRefName(newName, nameof(newName));
+        GitRefValidator.Validate(oldName, nameof(oldName));
+        GitRefValidator.Validate(newName, nameof(newName));
         if (string.Equals(oldName, newName, StringComparison.Ordinal))
             throw new ArgumentException(
                 "The new branch name must differ from the current name.",
                 nameof(newName));
 
-        return RunGitForMutationAsync(
+        return _runner.RunMutationAsync(
             repository,
             cancellationToken,
             "branch",

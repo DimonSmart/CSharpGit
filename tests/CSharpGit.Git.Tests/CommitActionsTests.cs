@@ -14,21 +14,25 @@ public sealed class CommitActionsTests : IDisposable
         var historical = Commit("tracked.txt", "base\n", "base");
         Commit("tracked.txt", "tip\n", "tip");
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_root);
+        var repositoryService = new GitRepositoryService();
+        var stateService = new GitRepositoryStateService();
+        var referenceService = new GitReferenceService();
+        var workflowService = new GitRepositoryWorkflowService();
+        var commitActionService = new GitCommitActionService();
+        var repository = await repositoryService.OpenAsync(_root);
 
-        await service.CreateBranchAsync(repository, "historical", historical, switchToBranch: false);
+        await referenceService.CreateBranchAsync(repository, "historical", historical, switchToBranch: false);
         Assert.Equal(historical, Git("rev-parse", "historical"));
-        Assert.Equal("main", (await service.ReadAsync(repository)).HeadReference);
+        Assert.Equal("main", (await stateService.ReadAsync(repository)).HeadReference);
 
-        await service.CreateBranchAsync(repository, "historical-switch", historical, switchToBranch: true);
-        var switched = await service.ReadAsync(repository);
+        await referenceService.CreateBranchAsync(repository, "historical-switch", historical, switchToBranch: true);
+        var switched = await stateService.ReadAsync(repository);
         Assert.Equal("historical-switch", switched.HeadReference);
         Assert.Equal(historical, switched.HeadCommit);
 
-        await service.SwitchBranchAsync(repository, "main");
-        await service.CheckoutAsync(repository, historical);
-        var detached = await service.ReadAsync(repository);
+        await referenceService.SwitchBranchAsync(repository, "main");
+        await referenceService.CheckoutAsync(repository, historical);
+        var detached = await stateService.ReadAsync(repository);
         Assert.True(detached.IsDetached);
         Assert.Equal(historical, detached.HeadCommit);
     }
@@ -43,13 +47,17 @@ public sealed class CommitActionsTests : IDisposable
         Run("switch", "main");
         Commit("main.txt", "main\n", "main");
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_root);
-        var success = await service.CherryPickAsync(repository, picked);
+        var repositoryService = new GitRepositoryService();
+        var stateService = new GitRepositoryStateService();
+        var referenceService = new GitReferenceService();
+        var workflowService = new GitRepositoryWorkflowService();
+        var commitActionService = new GitCommitActionService();
+        var repository = await repositoryService.OpenAsync(_root);
+        var success = await commitActionService.CherryPickAsync(repository, picked);
 
         Assert.Equal(ApplyCommitResultKind.Completed, success.Kind);
         Assert.True(File.Exists(Path.Combine(_root, "picked.txt")));
-        Assert.Equal(success.HeadCommit, (await service.ReadAsync(repository)).HeadCommit);
+        Assert.Equal(success.HeadCommit, (await stateService.ReadAsync(repository)).HeadCommit);
 
         Run("switch", "-c", "conflict-feature");
         Commit("tracked.txt", "feature\n", "feature conflict");
@@ -60,24 +68,24 @@ public sealed class CommitActionsTests : IDisposable
         Run("commit", "-m", "main conflict");
 
         var before = Git("rev-parse", "HEAD");
-        var conflict = await service.CherryPickAsync(repository, conflictCommit);
+        var conflict = await commitActionService.CherryPickAsync(repository, conflictCommit);
         Assert.Equal(ApplyCommitResultKind.Conflicts, conflict.Kind);
-        var state = await service.ReadAsync(repository);
+        var state = await stateService.ReadAsync(repository);
         Assert.Equal(RepositoryOperation.CherryPick, state.Operation);
         Assert.True(state.CurrentOperation.CanContinue);
         Assert.True(state.CurrentOperation.CanAbort);
         Assert.True(state.CurrentOperation.CanSkip);
 
-        await service.AbortOperationAsync(repository);
+        await workflowService.AbortOperationAsync(repository);
         Assert.Equal(before, Git("rev-parse", "HEAD"));
-        Assert.Equal(RepositoryOperation.None, (await service.ReadAsync(repository)).Operation);
+        Assert.Equal(RepositoryOperation.None, (await stateService.ReadAsync(repository)).Operation);
 
-        conflict = await service.CherryPickAsync(repository, conflictCommit);
+        conflict = await commitActionService.CherryPickAsync(repository, conflictCommit);
         Assert.Equal(ApplyCommitResultKind.Conflicts, conflict.Kind);
         File.WriteAllText(Path.Combine(_root, "tracked.txt"), "resolved\n");
         Run("add", "tracked.txt");
-        await service.ContinueOperationAsync(repository);
-        Assert.Equal(RepositoryOperation.None, (await service.ReadAsync(repository)).Operation);
+        await workflowService.ContinueOperationAsync(repository);
+        Assert.Equal(RepositoryOperation.None, (await stateService.ReadAsync(repository)).Operation);
     }
 
     [Fact]
@@ -93,13 +101,17 @@ public sealed class CommitActionsTests : IDisposable
         var merge = Git("rev-parse", "HEAD");
         Run("switch", "-c", "replay", baseCommit);
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_root);
+        var repositoryService = new GitRepositoryService();
+        var stateService = new GitRepositoryStateService();
+        var referenceService = new GitReferenceService();
+        var workflowService = new GitRepositoryWorkflowService();
+        var commitActionService = new GitCommitActionService();
+        var repository = await repositoryService.OpenAsync(_root);
 
-        var withoutMainline = await service.CherryPickAsync(repository, merge);
+        var withoutMainline = await commitActionService.CherryPickAsync(repository, merge);
         Assert.Equal(ApplyCommitResultKind.Failed, withoutMainline.Kind);
 
-        var result = await service.CherryPickAsync(repository, merge, 1);
+        var result = await commitActionService.CherryPickAsync(repository, merge, 1);
         Assert.Equal(ApplyCommitResultKind.Completed, result.Kind);
         Assert.True(File.Exists(Path.Combine(_root, "feature.txt")));
         Assert.False(File.Exists(Path.Combine(_root, "main.txt")));
@@ -112,9 +124,13 @@ public sealed class CommitActionsTests : IDisposable
         Commit("tracked.txt", "base\n", "base");
         var target = Commit("tracked.txt", "change\n", "change");
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_root);
-        var success = await service.RevertAsync(repository, target);
+        var repositoryService = new GitRepositoryService();
+        var stateService = new GitRepositoryStateService();
+        var referenceService = new GitReferenceService();
+        var workflowService = new GitRepositoryWorkflowService();
+        var commitActionService = new GitCommitActionService();
+        var repository = await repositoryService.OpenAsync(_root);
+        var success = await commitActionService.RevertAsync(repository, target);
         Assert.Equal(ApplyCommitResultKind.Completed, success.Kind);
         Assert.Equal("base\n", File.ReadAllText(Path.Combine(_root, "tracked.txt")));
 
@@ -122,18 +138,18 @@ public sealed class CommitActionsTests : IDisposable
         Commit("tracked.txt", "later\n", "later");
         var before = Git("rev-parse", "HEAD");
 
-        var conflict = await service.RevertAsync(repository, target);
+        var conflict = await commitActionService.RevertAsync(repository, target);
         Assert.Equal(ApplyCommitResultKind.Conflicts, conflict.Kind);
-        Assert.Equal(RepositoryOperation.Revert, (await service.ReadAsync(repository)).Operation);
-        await service.AbortOperationAsync(repository);
+        Assert.Equal(RepositoryOperation.Revert, (await stateService.ReadAsync(repository)).Operation);
+        await workflowService.AbortOperationAsync(repository);
         Assert.Equal(before, Git("rev-parse", "HEAD"));
 
-        conflict = await service.RevertAsync(repository, target);
+        conflict = await commitActionService.RevertAsync(repository, target);
         Assert.Equal(ApplyCommitResultKind.Conflicts, conflict.Kind);
         File.WriteAllText(Path.Combine(_root, "tracked.txt"), "resolved revert\n");
         Run("add", "tracked.txt");
-        await service.ContinueOperationAsync(repository);
-        Assert.Equal(RepositoryOperation.None, (await service.ReadAsync(repository)).Operation);
+        await workflowService.ContinueOperationAsync(repository);
+        Assert.Equal(RepositoryOperation.None, (await stateService.ReadAsync(repository)).Operation);
     }
 
     [Fact]
@@ -148,9 +164,13 @@ public sealed class CommitActionsTests : IDisposable
         Run("merge", "--no-ff", "feature", "-m", "merge");
         var merge = Git("rev-parse", "HEAD");
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_root);
-        var result = await service.RevertAsync(repository, merge, 1);
+        var repositoryService = new GitRepositoryService();
+        var stateService = new GitRepositoryStateService();
+        var referenceService = new GitReferenceService();
+        var workflowService = new GitRepositoryWorkflowService();
+        var commitActionService = new GitCommitActionService();
+        var repository = await repositoryService.OpenAsync(_root);
+        var result = await commitActionService.RevertAsync(repository, merge, 1);
 
         Assert.Equal(ApplyCommitResultKind.Completed, result.Kind);
         Assert.False(File.Exists(Path.Combine(_root, "feature.txt")));
@@ -164,12 +184,16 @@ public sealed class CommitActionsTests : IDisposable
         var target = Commit("tracked.txt", "base\n", "base");
         var tip = Commit("tracked.txt", "tip\n", "tip");
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_root);
+        var repositoryService = new GitRepositoryService();
+        var stateService = new GitRepositoryStateService();
+        var referenceService = new GitReferenceService();
+        var workflowService = new GitRepositoryWorkflowService();
+        var commitActionService = new GitCommitActionService();
+        var repository = await repositoryService.OpenAsync(_root);
 
         File.WriteAllText(Path.Combine(_root, "tracked.txt"), "dirty staged\n");
         Run("add", "tracked.txt");
-        await service.ResetAsync(repository, target, ResetMode.Soft);
+        await commitActionService.ResetAsync(repository, target, ResetMode.Soft);
         Assert.Equal(target, Git("rev-parse", "HEAD"));
         Assert.Equal("dirty staged\n", File.ReadAllText(Path.Combine(_root, "tracked.txt")));
         Assert.NotEmpty(Git("diff", "--cached", "--name-only"));
@@ -177,7 +201,7 @@ public sealed class CommitActionsTests : IDisposable
         Run("reset", "--hard", tip);
         File.WriteAllText(Path.Combine(_root, "tracked.txt"), "dirty mixed\n");
         Run("add", "tracked.txt");
-        await service.ResetAsync(repository, target, ResetMode.Mixed);
+        await commitActionService.ResetAsync(repository, target, ResetMode.Mixed);
         Assert.Equal(target, Git("rev-parse", "HEAD"));
         Assert.Equal("dirty mixed\n", File.ReadAllText(Path.Combine(_root, "tracked.txt")));
         Assert.Empty(Git("diff", "--cached", "--name-only"));
@@ -186,7 +210,7 @@ public sealed class CommitActionsTests : IDisposable
         Run("reset", "--hard", tip);
         File.WriteAllText(Path.Combine(_root, "tracked.txt"), "dirty hard\n");
         File.WriteAllText(Path.Combine(_root, "untracked.txt"), "keep\n");
-        await service.ResetAsync(repository, target, ResetMode.Hard);
+        await commitActionService.ResetAsync(repository, target, ResetMode.Hard);
         Assert.Equal(target, Git("rev-parse", "HEAD"));
         Assert.Equal("base\n", File.ReadAllText(Path.Combine(_root, "tracked.txt")));
         Assert.True(File.Exists(Path.Combine(_root, "untracked.txt")));
@@ -199,12 +223,16 @@ public sealed class CommitActionsTests : IDisposable
         var target = Commit("tracked.txt", "base\n", "base");
         Commit("tracked.txt", "tip\n", "tip");
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_root);
-        await service.CheckoutAsync(repository, target);
+        var repositoryService = new GitRepositoryService();
+        var stateService = new GitRepositoryStateService();
+        var referenceService = new GitReferenceService();
+        var workflowService = new GitRepositoryWorkflowService();
+        var commitActionService = new GitCommitActionService();
+        var repository = await repositoryService.OpenAsync(_root);
+        await referenceService.CheckoutAsync(repository, target);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.ResetAsync(repository, target, ResetMode.Mixed));
+            () => commitActionService.ResetAsync(repository, target, ResetMode.Mixed));
     }
 
     private void Init()

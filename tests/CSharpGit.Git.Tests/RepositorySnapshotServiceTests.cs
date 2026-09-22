@@ -8,7 +8,7 @@ public sealed class RepositorySnapshotServiceTests : IDisposable
 {
     private readonly string _temporaryDirectory =
         Path.Combine(Path.GetTempPath(), $"csharpgit-snapshot-{Guid.NewGuid():N}");
-    private readonly GitCliRepositoryService _repositoryService = new();
+    private readonly GitRepositoryService _repositoryService = new();
     private readonly GitRepositorySnapshotService _snapshotService = new();
     private readonly GitRepositoryFileVersionService _fileVersionService = new();
 

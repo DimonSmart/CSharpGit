@@ -81,7 +81,7 @@ public sealed partial class MainPage
 
         EditCommitMessageResult? result = null;
         var succeeded = await _viewModel.RunMutationAsync(
-            async () => result = await _referenceService.EditCommitMessageAsync(
+            async () => result = await _commitActionService.EditCommitMessageAsync(
                 repository,
                 commit.Hash,
                 newMessage),

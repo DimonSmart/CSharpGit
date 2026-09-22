@@ -70,7 +70,7 @@ public sealed class GitReferenceHistoryTopologyRegressionTests : IDisposable
     public async Task FilteredRowsUseTopologyFromCompleteHistory()
     {
         InitializeMergeRepository();
-        var repository = await new GitCliRepositoryService().OpenAsync(_temporaryDirectory);
+        var repository = await new GitRepositoryService().OpenAsync(_temporaryDirectory);
         var service = new GitReferenceHistoryService();
         var full = await service.ReadHistoryAsync(repository, "main", null, 0, 100);
         var filtered = await service.ReadHistoryAsync(repository, "main", "visible", 0, 100);
@@ -88,7 +88,7 @@ public sealed class GitReferenceHistoryTopologyRegressionTests : IDisposable
     public async Task PaginationContinuesTheSameTopologyAcrossPageBoundary()
     {
         InitializeMergeRepository();
-        var repository = await new GitCliRepositoryService().OpenAsync(_temporaryDirectory);
+        var repository = await new GitRepositoryService().OpenAsync(_temporaryDirectory);
         var service = new GitReferenceHistoryService();
         var full = await service.ReadHistoryAsync(repository, "main", null, 0, 100);
         var page1 = await service.ReadHistoryAsync(repository, "main", null, 0, 2);
@@ -104,7 +104,7 @@ public sealed class GitReferenceHistoryTopologyRegressionTests : IDisposable
     public async Task FilterPaginationStillUsesCompleteTopology()
     {
         InitializeMergeRepository();
-        var repository = await new GitCliRepositoryService().OpenAsync(_temporaryDirectory);
+        var repository = await new GitRepositoryService().OpenAsync(_temporaryDirectory);
         var service = new GitReferenceHistoryService();
         var full = await service.ReadHistoryAsync(repository, "main", null, 0, 100);
         var page1 = await service.ReadHistoryAsync(repository, "main", "visible", 0, 1);

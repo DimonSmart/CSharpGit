@@ -261,7 +261,7 @@ public sealed partial class MainPage
         await _viewModel.RunMutationAsync(
             async () =>
             {
-                await _referenceService.DeleteRemoteBranchAsync(
+                await _repositorySyncService.DeleteRemoteBranchAsync(
                     _viewModel.Repository!,
                     target.Remote.Name,
                     target.BranchName);
