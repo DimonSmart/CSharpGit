@@ -38,6 +38,17 @@ internal sealed class DefaultBranchRepositorySyncService : IRepositorySyncServic
             cancellationToken);
     }
 
+    public Task DeleteRemoteBranchAsync(
+        Repository repository,
+        string remote,
+        string branch,
+        CancellationToken cancellationToken = default) =>
+        _inner.DeleteRemoteBranchAsync(
+            repository,
+            remote,
+            branch,
+            cancellationToken);
+
     public Task PullAsync(
         Repository repository,
         CancellationToken cancellationToken = default) =>
