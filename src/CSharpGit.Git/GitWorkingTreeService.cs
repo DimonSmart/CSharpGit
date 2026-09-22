@@ -5,6 +5,12 @@ namespace CSharpGit.Git;
 
 internal sealed partial class GitWorkingTreeService : IWorkingTreeService
 {
+    internal GitWorkingTreeService()
+        : this(GitCommandExecutor.Default)
+    {
+    }
+
+
     private readonly GitRepositoryCommandRunner _runner;
 
     internal GitWorkingTreeService(GitCommandExecutor executor)
