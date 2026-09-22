@@ -42,7 +42,7 @@ public sealed class GitToolsExecutionTests : IDisposable
             Path.GetFullPath(_repositoryPath),
             Path.GetFullPath(Path.Combine(_repositoryPath, ".git")),
             false);
-        _executor = new GitCommandExecutor(new GitCliOptions());
+        _executor = GitTestServices.CreateExecutor();
         _service = new GitToolsService(
             _executor,
             new GitRepositoryFileVersionService(_executor),

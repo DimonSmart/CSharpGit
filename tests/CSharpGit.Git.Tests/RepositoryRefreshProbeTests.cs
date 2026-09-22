@@ -105,7 +105,7 @@ public sealed class RepositoryRefreshProbeTests : IDisposable
         RunGit(_root, "add", ".gitignore", "tracked.txt");
         RunGit(_root, "commit", "-m", "Initial");
 
-        var executor = new GitCommandExecutor(new GitCliOptions());
+        var executor = GitTestServices.CreateExecutor();
         var service = new GitRepositoryService(executor);
         var repository = await service.OpenAsync(_root);
         IRepositoryRefreshProbe probe = new GitRepositoryRefreshProbe(executor);

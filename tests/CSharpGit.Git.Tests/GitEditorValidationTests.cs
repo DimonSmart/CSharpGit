@@ -28,7 +28,7 @@ public sealed class GitEditorValidationTests : IDisposable
         File.WriteAllText(Path.Combine(_home, ".gitconfig"), string.Empty);
 
         _service = new GitToolsService(
-            new GitCommandExecutor(new GitCliOptions()),
+            GitTestServices.CreateExecutor(),
             new ThrowingFileVersionService(),
             new ThrowingRepositoryPathService(),
             new UnresolvedExternalProcessService());

@@ -45,7 +45,7 @@ public sealed class GitRepositoryServiceTests : IDisposable
     public async Task ReportsMissingGitExecutableClearly()
     {
         Directory.CreateDirectory(_temporaryDirectory);
-        var executor = new GitCommandExecutor(new GitCliOptions { ExecutablePath = Path.Combine(_temporaryDirectory, "missing-git") });
+        var executor = GitTestServices.CreateExecutor(new GitCliOptions { ExecutablePath = Path.Combine(_temporaryDirectory, "missing-git") });
         var service = new GitRepositoryService(executor);
 
         var exception = await Assert.ThrowsAsync<RepositoryOpenException>(

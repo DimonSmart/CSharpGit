@@ -208,7 +208,7 @@ public sealed class GitCommandExecutorTests
     }
 
     private static GitCommandExecutor CreateExecutor(IGitCommandActivitySink? sink = null) =>
-        new(new GitCliOptions(), sink);
+        GitTestServices.CreateExecutor(activitySink: sink);
 
     private static string CreateTemporaryDirectory()
     {

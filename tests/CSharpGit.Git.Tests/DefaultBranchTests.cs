@@ -127,7 +127,7 @@ public sealed class DefaultBranchTests : IDisposable
 
     private static Services CreateServices()
     {
-        var executor = new GitCommandExecutor(new GitCliOptions());
+        var executor = GitTestServices.CreateExecutor();
         var repository = new GitRepositoryService(executor);
         var state = new GitRepositoryStateService(executor);
         var sync = new GitRepositorySyncService(executor);
