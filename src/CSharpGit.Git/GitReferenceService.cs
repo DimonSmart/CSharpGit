@@ -5,6 +5,12 @@ namespace CSharpGit.Git;
 
 internal sealed partial class GitReferenceService : IReferenceService
 {
+    internal GitReferenceService()
+        : this(GitCommandExecutor.Default)
+    {
+    }
+
+
     private readonly GitRepositoryCommandRunner _runner;
     private readonly GitPushExecutor _pushExecutor;
 
