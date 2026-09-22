@@ -23,6 +23,8 @@ public sealed partial class MainPage : Page
     private readonly OpenRepositoryViewModel _viewModel;
     private readonly IReferenceHistoryService _referenceHistoryService;
     private readonly IReferenceService _referenceService;
+    private readonly IRepositorySyncService _repositorySyncService;
+    private readonly ICommitActionService _commitActionService;
     private readonly ITagService _tagService;
     private readonly ObservableCollection<RepositoryTreeNode> _repositoryTreeRoots = [];
     private readonly ObservableCollection<HistoryRow> _scopedHistory = [];
@@ -42,6 +44,8 @@ public sealed partial class MainPage : Page
         OpenRepositoryViewModel viewModel,
         IReferenceHistoryService referenceHistoryService,
         IReferenceService referenceService,
+        IRepositorySyncService repositorySyncService,
+        ICommitActionService commitActionService,
         ITagService tagService,
         IRepositoryRefreshProbe repositoryRefreshProbe,
         IWorkingTreeDiffService? workingTreeDiffService = null)
@@ -50,6 +54,8 @@ public sealed partial class MainPage : Page
         DataContext = _viewModel = viewModel;
         _referenceHistoryService = referenceHistoryService;
         _referenceService = referenceService;
+        _repositorySyncService = repositorySyncService ?? throw new ArgumentNullException(nameof(repositorySyncService));
+        _commitActionService = commitActionService ?? throw new ArgumentNullException(nameof(commitActionService));
         _tagService = tagService ?? throw new ArgumentNullException(nameof(tagService));
         _repositoryRefreshProbe = repositoryRefreshProbe ?? throw new ArgumentNullException(nameof(repositoryRefreshProbe));
         _workingTreeDiffService = workingTreeDiffService;
