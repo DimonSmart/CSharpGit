@@ -32,7 +32,8 @@ public sealed class FileOpeningUiContractTests
         Assert.Contains("AddSingleton<IRepositoryFileVersionService>", gitComposition);
         Assert.Contains("new GitRepositoryFileVersionService", gitComposition);
         Assert.Contains("IDesktopShellService, DesktopShellService", app);
-        Assert.Contains("IRepositoryWorkflowService, DesktopRepositoryWorkflowService", app);
+        Assert.DoesNotContain("DesktopRepositoryWorkflowService", app);
+        Assert.Contains("AddSingleton<IRepositoryWorkflowService>", gitComposition);
         Assert.Contains("IHistoryService>(provider => provider.GetRequiredService<GitFileAwareHistoryService>()", gitComposition);
     }
 
@@ -62,14 +63,15 @@ public sealed class FileOpeningUiContractTests
     public void ExistingConflictOpenUsesConfiguredGitEditor()
     {
         var root = FindRepositoryRoot();
-        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "DesktopRepositoryWorkflowService.cs"));
+        var gitTools = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitToolsService.cs"));
+        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
 
-        Assert.Contains("IGitToolsService", workflow);
-        Assert.Contains("IRepositoryPathService", workflow);
-        Assert.Contains("pathService.ResolveExistingWorkingTreeFile", workflow);
-        Assert.Contains("gitTools.OpenEditorAsync", workflow);
-        Assert.DoesNotContain("shellService.OpenFileAsync", workflow);
-        Assert.DoesNotContain("Process.Start", workflow);
+        Assert.Contains("IRepositoryPathService", gitTools);
+        Assert.Contains("ResolveExistingWorkingTreeFile", gitTools);
+        Assert.Contains("OpenConflictInEditorAsync", gitTools);
+        Assert.Contains("OpenEditorAsync", gitTools);
+        Assert.Contains("_gitToolsService.OpenConflictInEditorAsync", viewModel);
+        Assert.DoesNotContain("Process.Start", gitTools);
     }
 
     private static string FindRepositoryRoot()
