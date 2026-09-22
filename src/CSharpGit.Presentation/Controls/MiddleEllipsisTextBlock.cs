@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 using Windows.UI.Text;
 
@@ -30,6 +31,12 @@ public sealed class MiddleEllipsisTextBlock : UserControl
         typeof(FontWeight),
         typeof(MiddleEllipsisTextBlock),
         new PropertyMetadata(Microsoft.UI.Text.FontWeights.Normal, OnDisplayPropertyChanged));
+
+    public static readonly DependencyProperty TextForegroundProperty = DependencyProperty.Register(
+        nameof(TextForeground),
+        typeof(Brush),
+        typeof(MiddleEllipsisTextBlock),
+        new PropertyMetadata(null, OnDisplayPropertyChanged));
 
     private readonly TextBlock _textBlock = new()
     {
@@ -76,6 +83,12 @@ public sealed class MiddleEllipsisTextBlock : UserControl
         set => SetValue(TextFontWeightProperty, value);
     }
 
+    public Brush? TextForeground
+    {
+        get => (Brush?)GetValue(TextForegroundProperty);
+        set => SetValue(TextForegroundProperty, value);
+    }
+
     private static void OnDisplayPropertyChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args) =>
         ((MiddleEllipsisTextBlock)dependencyObject).UpdateDisplay();
 
@@ -102,6 +115,10 @@ public sealed class MiddleEllipsisTextBlock : UserControl
     {
         textBlock.Style = TextStyle;
         textBlock.FontWeight = TextFontWeight;
+        if (TextForeground is null)
+            textBlock.ClearValue(TextBlock.ForegroundProperty);
+        else
+            textBlock.Foreground = TextForeground;
     }
 
     private double MeasureText(string text)
