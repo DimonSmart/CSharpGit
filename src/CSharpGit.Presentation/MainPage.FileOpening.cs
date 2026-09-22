@@ -53,6 +53,8 @@ public sealed partial class MainPage
         OpenRepositoryViewModel viewModel,
         IReferenceHistoryService referenceHistoryService,
         IReferenceService referenceService,
+        IRepositorySyncService syncService,
+        ICommitActionService commitActionService,
         ITagService tagService,
         IRepositoryRefreshProbe repositoryRefreshProbe,
         IWorkingTreeDiffService workingTreeDiffService,
