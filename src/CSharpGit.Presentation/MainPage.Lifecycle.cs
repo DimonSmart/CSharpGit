@@ -6,6 +6,9 @@ public sealed partial class MainPage
 {
     private int _shutdownStarted;
 
+    private bool IsShuttingDown =>
+        Volatile.Read(ref _shutdownStarted) != 0;
+
     public bool RequiresCloseConfirmation => _viewModel.HasUnappliedCommitMessage;
 
     private void MainPage_Loaded(object sender, RoutedEventArgs args)
@@ -21,6 +24,12 @@ public sealed partial class MainPage
         if (Interlocked.Exchange(ref _shutdownStarted, 1) != 0) return;
 
         Loaded -= RunDesktopCheckWhenRequested;
+        _viewModel.Changes.CollectionChanged -= RepositoryPresentationChanges_CollectionChanged;
+        _viewModel.LocalBranches.CollectionChanged -= RepositoryPresentationLocalBranches_CollectionChanged;
+        _viewModel.RemoteBranches.CollectionChanged -= RepositoryPresentationRemoteBranches_CollectionChanged;
+        _viewModel.Remotes.CollectionChanged -= RepositoryPresentationRemotes_CollectionChanged;
+        _viewModel.Tags.CollectionChanged -= RepositoryPresentationTags_CollectionChanged;
+        _viewModel.Stashes.CollectionChanged -= RepositoryPresentationStashes_CollectionChanged;
         DetachRepositoryTreeStateTracking();
         ShutdownGitConsole();
         ShutdownRecentRepositories();

@@ -99,7 +99,7 @@ public sealed partial class MainPage
 
     private void GitCommandActivitySource_Changed(object? sender, GitCommandActivityChangedEventArgs e)
     {
-        if (!_gitConsoleInitialized) return;
+        if (IsShuttingDown || !_gitConsoleInitialized) return;
         if (e.ChangeKind == GitCommandActivityChangeKind.Output)
         {
             if (!_gitConsoleOpen || _gitConsoleView is null || e.OutputStream is not { } stream)
@@ -113,12 +113,18 @@ public sealed partial class MainPage
             return;
         }
 
+        if (DispatcherQueue.HasThreadAccess)
+        {
+            ApplyGitCommandLifecycleChange(e);
+            return;
+        }
+
         DispatcherQueue.TryEnqueue(() => ApplyGitCommandLifecycleChange(e));
     }
 
     private void ApplyGitCommandLifecycleChange(GitCommandActivityChangedEventArgs e)
     {
-        if (!_gitConsoleInitialized || e.Activity is not { } activity) return;
+        if (IsShuttingDown || !_gitConsoleInitialized || e.Activity is not { } activity) return;
 
         if (_gitConsoleOpen && _gitConsoleView is not null)
         {

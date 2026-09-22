@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Text.Json;
 using System.Windows.Input;
@@ -68,17 +69,35 @@ public sealed partial class MainPage : Page
         CommitFilesList.ItemsSource = _commitFiles;
 
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
-        _viewModel.Changes.CollectionChanged += (_, _) => QueueRepositoryPresentationRefresh(workingTreeChanged: true);
-        _viewModel.LocalBranches.CollectionChanged += (_, _) => QueueRepositoryPresentationRefresh();
-        _viewModel.RemoteBranches.CollectionChanged += (_, _) => QueueRepositoryPresentationRefresh();
-        _viewModel.Remotes.CollectionChanged += (_, _) => QueueRepositoryPresentationRefresh();
-        _viewModel.Tags.CollectionChanged += (_, _) => QueueRepositoryPresentationRefresh();
-        _viewModel.Stashes.CollectionChanged += (_, _) => QueueRepositoryPresentationRefresh();
+        _viewModel.Changes.CollectionChanged += RepositoryPresentationChanges_CollectionChanged;
+        _viewModel.LocalBranches.CollectionChanged += RepositoryPresentationLocalBranches_CollectionChanged;
+        _viewModel.RemoteBranches.CollectionChanged += RepositoryPresentationRemoteBranches_CollectionChanged;
+        _viewModel.Remotes.CollectionChanged += RepositoryPresentationRemotes_CollectionChanged;
+        _viewModel.Tags.CollectionChanged += RepositoryPresentationTags_CollectionChanged;
+        _viewModel.Stashes.CollectionChanged += RepositoryPresentationStashes_CollectionChanged;
         Loaded += RunDesktopCheckWhenRequested;
         RefreshPresentationCollections();
         InitializeWorkingTreeDiffSurface();
         InitializeCommitActions();
     }
+
+    private void RepositoryPresentationChanges_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+        QueueRepositoryPresentationRefresh(workingTreeChanged: true);
+
+    private void RepositoryPresentationLocalBranches_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+        QueueRepositoryPresentationRefresh();
+
+    private void RepositoryPresentationRemoteBranches_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+        QueueRepositoryPresentationRefresh();
+
+    private void RepositoryPresentationRemotes_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+        QueueRepositoryPresentationRefresh();
+
+    private void RepositoryPresentationTags_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+        QueueRepositoryPresentationRefresh();
+
+    private void RepositoryPresentationStashes_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+        QueueRepositoryPresentationRefresh();
 
     public async Task<bool> ConfirmCloseAsync()
     {

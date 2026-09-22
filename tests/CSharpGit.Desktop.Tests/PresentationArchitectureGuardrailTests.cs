@@ -69,6 +69,32 @@ public sealed class PresentationArchitectureGuardrailTests
         Assert.Contains("SettingsWindowController", combined, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void MainPageRepositoryCollectionSubscriptionsAreNamedAndSymmetricallyDetached()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var mainPage = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+        var lifecycle = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
+
+        var subscriptions = new[]
+        {
+            ("Changes", "RepositoryPresentationChanges_CollectionChanged"),
+            ("LocalBranches", "RepositoryPresentationLocalBranches_CollectionChanged"),
+            ("RemoteBranches", "RepositoryPresentationRemoteBranches_CollectionChanged"),
+            ("Remotes", "RepositoryPresentationRemotes_CollectionChanged"),
+            ("Tags", "RepositoryPresentationTags_CollectionChanged"),
+            ("Stashes", "RepositoryPresentationStashes_CollectionChanged")
+        };
+
+        foreach (var (collection, handler) in subscriptions)
+        {
+            Assert.Contains($"_viewModel.{collection}.CollectionChanged += {handler};", mainPage, StringComparison.Ordinal);
+            Assert.Contains($"_viewModel.{collection}.CollectionChanged -= {handler};", lifecycle, StringComparison.Ordinal);
+            Assert.DoesNotContain($"_viewModel.{collection}.CollectionChanged += (_, _) =>", mainPage, StringComparison.Ordinal);
+        }
+    }
+
     private static IEnumerable<string> ProductionCsFiles(string root) =>
         Directory
             .GetFiles(root, "*.cs", SearchOption.AllDirectories)
