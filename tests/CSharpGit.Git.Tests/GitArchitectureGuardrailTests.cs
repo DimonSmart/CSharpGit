@@ -61,6 +61,7 @@ public sealed class GitArchitectureGuardrailTests
     public void RepositoryCapabilitiesHaveDistinctGitImplementations()
     {
         Assert.True(typeof(IRepositoryService).IsAssignableFrom(typeof(GitRepositoryService)));
+        Assert.True(typeof(IRepositoryCreationService).IsAssignableFrom(typeof(GitRepositoryCreationService)));
         Assert.True(typeof(IRepositoryStateService).IsAssignableFrom(typeof(GitRepositoryStateService)));
         Assert.True(typeof(IWorkingTreeService).IsAssignableFrom(typeof(GitWorkingTreeService)));
         Assert.True(typeof(IWorkingTreeDiffService).IsAssignableFrom(typeof(GitWorkingTreeDiffService)));
@@ -72,6 +73,7 @@ public sealed class GitArchitectureGuardrailTests
         var implementations = new[]
         {
             typeof(GitRepositoryService),
+            typeof(GitRepositoryCreationService),
             typeof(GitRepositoryStateService),
             typeof(GitWorkingTreeService),
             typeof(GitWorkingTreeDiffService),
@@ -103,6 +105,7 @@ public sealed class GitArchitectureGuardrailTests
         var serviceTypes = new[]
         {
             typeof(GitRepositoryService),
+            typeof(GitRepositoryCreationService),
             typeof(GitRepositoryStateService),
             typeof(GitWorkingTreeService),
             typeof(GitWorkingTreeDiffService),

@@ -154,6 +154,10 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
     {
         ArgumentNullException.ThrowIfNull(repository);
 
+        if (IsHeadOnly(revisions)
+            && await IsUnbornHeadAsync(repository, cancellationToken))
+            return new HistoryPage([], false);
+
         if (string.IsNullOrWhiteSpace(filter))
         {
             var commits = await ReadHistoryPrefixAsync(repository, skip + take + 1, revisions, cancellationToken);
@@ -202,6 +206,35 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
             .ToList();
 
         return new HistoryPage(requestedRows, hasFilteredMore);
+    }
+
+    private static bool IsHeadOnly(IReadOnlyList<string> revisions) =>
+        revisions.Count == 1
+        && string.Equals(revisions[0], "HEAD", StringComparison.Ordinal);
+
+    private async Task<bool> IsUnbornHeadAsync(
+        Repository repository,
+        CancellationToken cancellationToken)
+    {
+        var head = await _executor.ExecuteForResultAsync(
+            repository.WorkingDirectory,
+            "ReferenceHistoryHeadProbe",
+            GitCommandKind.Internal,
+            cancellationToken,
+            environment: null,
+            new[] { "rev-parse", "--verify", "HEAD" });
+        if (head.ExitCode == 0)
+            return false;
+
+        var symbolicHead = await _executor.ExecuteForResultAsync(
+            repository.WorkingDirectory,
+            "ReferenceHistoryHeadProbe",
+            GitCommandKind.Internal,
+            cancellationToken,
+            environment: null,
+            new[] { "symbolic-ref", "--quiet", "HEAD" });
+        return symbolicHead.ExitCode == 0
+               && !string.IsNullOrWhiteSpace(symbolicHead.StandardOutput);
     }
 
     private static bool ShouldIncludeReflog(HistoryQuery query) =>

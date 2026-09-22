@@ -17,7 +17,13 @@ internal static class GitTestServices
     internal static GitRepositoryService CreateRepositoryService() =>
         new(CreateExecutor());
 
+    internal static GitRepositoryCreationService CreateRepositoryCreationService() =>
+        new(CreateExecutor());
+
     internal static GitRepositoryStateService CreateRepositoryStateService() =>
+        new(CreateExecutor());
+
+    internal static GitRepositoryRefreshProbe CreateRepositoryRefreshProbe() =>
         new(CreateExecutor());
 
     internal static GitWorkingTreeService CreateWorkingTreeService() =>

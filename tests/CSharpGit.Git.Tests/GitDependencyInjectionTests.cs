@@ -24,6 +24,7 @@ public sealed class GitDependencyInjectionTests
             new object[]
             {
                 provider.GetRequiredService<IRepositoryService>(),
+                provider.GetRequiredService<IRepositoryCreationService>(),
                 provider.GetRequiredService<IRepositoryStateService>(),
                 provider.GetRequiredService<IWorkingTreeService>(),
                 provider.GetRequiredService<IWorkingTreeDiffService>(),
