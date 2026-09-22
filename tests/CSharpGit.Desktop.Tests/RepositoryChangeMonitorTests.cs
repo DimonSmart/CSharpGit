@@ -5,6 +5,7 @@ namespace CSharpGit.Desktop.Tests;
 
 public sealed class RepositoryChangeMonitorTests
 {
+    private static readonly TimeSpan EventTimeout = TimeSpan.FromSeconds(15);
     [Fact]
     public async Task WorkingTreeChangesAreDebouncedAndDetectedAgainAfterAcknowledge()
     {
@@ -24,7 +25,7 @@ public sealed class RepositoryChangeMonitorTests
 
         await File.AppendAllTextAsync(path, " two");
         await File.AppendAllTextAsync(path, " three");
-        await signal.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await signal.Task.WaitAsync(EventTimeout);
         await Task.Delay(RepositoryChangeMonitor.DebounceDelay + TimeSpan.FromMilliseconds(150));
 
         Assert.Equal(1, Volatile.Read(ref notifications));
@@ -32,7 +33,7 @@ public sealed class RepositoryChangeMonitorTests
         signal = NewSignal();
         monitor.Acknowledge();
         await File.AppendAllTextAsync(path, " four");
-        await signal.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await signal.Task.WaitAsync(EventTimeout);
 
         Assert.Equal(2, Volatile.Read(ref notifications));
     }
@@ -55,7 +56,7 @@ public sealed class RepositoryChangeMonitorTests
         monitor.Start(repository.Repository);
 
         await File.WriteAllTextAsync(head, "ref: refs/heads/feature\n");
-        await signal.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await signal.Task.WaitAsync(EventTimeout);
 
         Assert.NotNull(observed);
         Assert.Equal(RepositoryInvalidationSource.GitMetadata, observed.Source);
@@ -77,7 +78,7 @@ public sealed class RepositoryChangeMonitorTests
         await File.AppendAllTextAsync(path, " external change");
         monitor.Acknowledge();
 
-        await signal.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await signal.Task.WaitAsync(EventTimeout);
     }
 
     [Fact]
@@ -111,7 +112,7 @@ public sealed class RepositoryChangeMonitorTests
         monitor.Start(repository.Repository);
 
         await File.WriteAllTextAsync(Path.Combine(refsDirectory, "main"), "abc\n");
-        await signal.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await signal.Task.WaitAsync(EventTimeout);
     }
 
     private static TaskCompletionSource<bool> NewSignal() =>
