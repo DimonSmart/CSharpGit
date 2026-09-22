@@ -14,7 +14,7 @@ public sealed partial class MainPage
 
     internal bool IsHistoryRewriteInProgress => _historyRewriteInProgress;
 
-    public MainPage(
+    private MainPage(
         OpenRepositoryViewModel viewModel,
         IReferenceHistoryService referenceHistoryService,
         IReferenceService referenceService,

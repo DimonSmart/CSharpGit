@@ -29,7 +29,7 @@ public sealed partial class MainPage
     private Button? _workingTreeExternalDiffButton;
     private Button? _workingTreeRevealButton;
 
-    public MainPage(
+    private MainPage(
         OpenRepositoryViewModel viewModel,
         IReferenceHistoryService referenceHistoryService,
         IReferenceService referenceService,
@@ -49,7 +49,7 @@ public sealed partial class MainPage
         InitializeFileOpening();
     }
 
-    public MainPage(
+    private MainPage(
         OpenRepositoryViewModel viewModel,
         IReferenceHistoryService referenceHistoryService,
         IReferenceService referenceService,
