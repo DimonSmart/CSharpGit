@@ -199,6 +199,45 @@ public sealed class JsonAppSettingsServiceTests
     }
 
     [Fact]
+    public async Task FailedPreparationKeepsPreviousSettingsFileAndCommittedState()
+    {
+        using var fixture = new SettingsFixture();
+        var service = fixture.CreateService();
+        await service.SetThemeModeAsync(ApplicationThemeMode.Light);
+        var previousFile = await File.ReadAllTextAsync(fixture.SettingsPath);
+        Directory.CreateDirectory(fixture.SettingsPath + ".tmp");
+        var changes = 0;
+        service.Changed += (_, _) => changes++;
+
+        var exception = await Record.ExceptionAsync(
+            () => service.SetThemeModeAsync(ApplicationThemeMode.Dark));
+
+        Assert.NotNull(exception);
+        Assert.Equal(ApplicationThemeMode.Light, service.ThemeMode);
+        Assert.Equal(previousFile, await File.ReadAllTextAsync(fixture.SettingsPath));
+        Assert.Equal(0, changes);
+    }
+
+    [Fact]
+    public async Task FailedMoveCleansTemporaryFileAndDoesNotPublishCandidateState()
+    {
+        using var fixture = new SettingsFixture();
+        Directory.CreateDirectory(fixture.SettingsPath);
+        var service = fixture.CreateService();
+        var temporaryPath = fixture.SettingsPath + ".tmp";
+        var changes = 0;
+        service.Changed += (_, _) => changes++;
+
+        var exception = await Record.ExceptionAsync(
+            () => service.SetThemeModeAsync(ApplicationThemeMode.Dark));
+
+        Assert.NotNull(exception);
+        Assert.Equal(ApplicationThemeMode.System, service.ThemeMode);
+        Assert.False(File.Exists(temporaryPath));
+        Assert.Equal(0, changes);
+    }
+
+    [Fact]
     public void AutoSetupRemoteOnPushDefaultsToFalse()
     {
         using var fixture = new SettingsFixture();

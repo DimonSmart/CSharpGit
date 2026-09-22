@@ -220,4 +220,120 @@ public sealed partial class RepositoryImageServiceTests
     }
 
 
+    [Fact]
+    public async Task CancellingSecondWaiterDoesNotCancelFirstWaiter()
+    {
+        using var fixture = new Fixture();
+        var repository = fixture.CreateRepository("https://github.com/owner/repository.git");
+        var requestStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var handler = new StubHandler(async (request, cancellationToken) =>
+        {
+            if (request.RequestUri?.Host == "github.com")
+            {
+                requestStarted.TrySetResult(true);
+                await release.Task.WaitAsync(cancellationToken);
+            }
+
+            return GitHubResponse(request);
+        });
+        var service = fixture.CreateService(handler);
+        using var cancellation = new CancellationTokenSource();
+
+        var survivingWaiter = service.ResolveAsync(repository);
+        await requestStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var cancelledWaiter = service.ResolveAsync(repository, cancellation.Token);
+
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await cancelledWaiter);
+
+        release.TrySetResult(true);
+        var imagePath = await survivingWaiter.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.NotNull(imagePath);
+        Assert.Equal(2, handler.RequestCount);
+    }
+
+    [Fact]
+    public async Task CancelledWaiterDoesNotRemoveActiveInFlightResolution()
+    {
+        using var fixture = new Fixture();
+        var repository = fixture.CreateRepository("https://github.com/owner/repository.git");
+        var requestStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var handler = new StubHandler(async (request, cancellationToken) =>
+        {
+            if (request.RequestUri?.Host == "github.com")
+            {
+                requestStarted.TrySetResult(true);
+                await release.Task.WaitAsync(cancellationToken);
+            }
+
+            return GitHubResponse(request);
+        });
+        var service = fixture.CreateService(handler);
+        using var cancellation = new CancellationTokenSource();
+
+        var first = service.ResolveAsync(repository, cancellation.Token);
+        await requestStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var second = service.ResolveAsync(repository);
+
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await first);
+        var third = service.ResolveAsync(repository);
+
+        release.TrySetResult(true);
+        var results = await Task.WhenAll(second, third).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(results[0], results[1]);
+        Assert.NotNull(results[0]);
+        Assert.Equal(2, handler.RequestCount);
+    }
+
+    [Fact]
+    public async Task CompletedSharedResolutionIsRemovedAndCanRefreshAgain()
+    {
+        using var fixture = new Fixture();
+        var repository = fixture.CreateRepository("https://github.com/owner/repository.git");
+        var clock = new ManualTimeProvider(new DateTimeOffset(2026, 9, 1, 10, 0, 0, TimeSpan.Zero));
+        var handler = CreateSuccessfulGitHubHandler();
+        var service = fixture.CreateService(handler, clock);
+
+        var first = await service.ResolveAsync(repository);
+        Assert.NotNull(first);
+        Assert.Equal(2, handler.RequestCount);
+
+        clock.Advance(TimeSpan.FromDays(8));
+        var second = await service.ResolveAsync(repository);
+
+        Assert.NotNull(second);
+        Assert.Equal(4, handler.RequestCount);
+    }
+
+    [Fact]
+    public async Task TransientSharedFailureIsRemovedAndNextCallCanRetry()
+    {
+        using var fixture = new Fixture();
+        var repository = fixture.CreateRepository("https://github.com/owner/repository.git");
+        var fail = true;
+        var handler = new StubHandler(request =>
+        {
+            if (request.RequestUri?.Host == "github.com" && fail)
+                return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+
+            return GitHubResponse(request);
+        });
+        var service = fixture.CreateService(handler);
+
+        Assert.Null(await service.ResolveAsync(repository));
+        Assert.Equal(1, handler.RequestCount);
+
+        fail = false;
+        var imagePath = await service.ResolveAsync(repository);
+
+        Assert.NotNull(imagePath);
+        Assert.Equal(3, handler.RequestCount);
+    }
+
+
 }
