@@ -2,7 +2,7 @@ using CSharpGit.Application.Abstractions;
 
 namespace CSharpGit.Presentation;
 
-internal sealed class RecentRepositoryFolderPicker(IFolderPicker inner) : IFolderPicker
+public sealed class RecentRepositoryFolderPicker(IFolderPicker inner) : IFolderPicker
 {
     private readonly object _gate = new();
     private string? _queuedPath;

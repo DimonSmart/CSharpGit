@@ -3,7 +3,7 @@ using Microsoft.UI.Xaml;
 
 namespace CSharpGit.Presentation;
 
-internal sealed class ApplicationThemeManager : IDisposable
+public sealed class ApplicationThemeManager : IDisposable
 {
     private readonly IAppSettingsService _settings;
     private readonly object _gate = new();

@@ -15,31 +15,26 @@ internal enum SettingsSection
 
 public sealed partial class SettingsPage : Page
 {
-    private readonly SettingsViewModel _viewModel = new(AppSettingsContext.Current);
-    private readonly GitToolsSettingsViewModel? _gitToolsViewModel;
+    private readonly SettingsViewModel _viewModel;
+    private readonly GitToolsSettingsViewModel _gitToolsViewModel;
     private readonly Func<Repository?> _repositoryAccessor;
     private bool _selectionReady;
     private bool _settingsDetached;
     private bool _gitToolsLoaded;
 
-    public SettingsPage()
-        : this(null, null, SettingsSection.General)
-    {
-    }
-
     internal SettingsPage(
-        IGitToolsService? gitToolsService,
-        Func<Repository?>? repositoryAccessor,
-        SettingsSection initialSection = SettingsSection.General)
+        SettingsViewModel viewModel,
+        GitToolsSettingsViewModel gitToolsViewModel,
+        Func<Repository?> repositoryAccessor,
+        SettingsSection initialSection)
     {
+        _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+        _gitToolsViewModel = gitToolsViewModel ?? throw new ArgumentNullException(nameof(gitToolsViewModel));
+        _repositoryAccessor = repositoryAccessor ?? throw new ArgumentNullException(nameof(repositoryAccessor));
+
         InitializeComponent();
         DataContext = _viewModel;
-        _repositoryAccessor = repositoryAccessor ?? (() => null);
-        if (gitToolsService is not null)
-        {
-            _gitToolsViewModel = new GitToolsSettingsViewModel(gitToolsService);
-            GitToolsSettingsPanel.DataContext = _gitToolsViewModel;
-        }
+        GitToolsSettingsPanel.DataContext = _gitToolsViewModel;
 
         SettingsNavigation.SelectedIndex = (int)initialSection;
         Loaded += async (_, _) =>
