@@ -92,7 +92,7 @@ public sealed class RepositoryRefreshProbeTests : IDisposable
         _ = await probe.ReadAsync(repository, timeout.Token);
     }
 
-    private async Task<(GitCliRepositoryService Service, CSharpGit.Domain.Repository Repository, IRepositoryRefreshProbe Probe)> CreateRepositoryAsync()
+    private async Task<(GitRepositoryService Service, CSharpGit.Domain.Repository Repository, IRepositoryRefreshProbe Probe)> CreateRepositoryAsync()
     {
         Directory.CreateDirectory(_root);
         RunGit(_root, "init", "-b", "main");
@@ -106,7 +106,7 @@ public sealed class RepositoryRefreshProbeTests : IDisposable
         RunGit(_root, "commit", "-m", "Initial");
 
         var executor = new GitCommandExecutor(new GitCliOptions());
-        var service = new GitCliRepositoryService(executor);
+        var service = new GitRepositoryService(executor);
         var repository = await service.OpenAsync(_root);
         IRepositoryRefreshProbe probe = new GitRepositoryRefreshProbe(executor);
         return (service, repository, probe);
