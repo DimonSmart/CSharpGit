@@ -82,7 +82,7 @@ public sealed class GitToolsExecutionTests : IDisposable
     {
         CreateConflict();
         ConfigureMergeTool("csharpgit-test", "true \"$LOCAL\" \"$REMOTE\" \"$MERGED\"");
-        var stateService = new GitCliRepositoryService(_executor);
+        var stateService = new GitRepositoryStateService(_executor);
         var beforeConfig = File.ReadAllBytes(Path.Combine(_repositoryPath, ".git", "config"));
 
         var before = await stateService.ReadAsync(_repository);
@@ -146,7 +146,7 @@ public sealed class GitToolsExecutionTests : IDisposable
         ConfigureMergeTool(
             "csharpgit-failing",
             "csharpgit-command-that-does-not-exist \"$LOCAL\" \"$REMOTE\" \"$MERGED\"");
-        var state = await new GitCliRepositoryService(_executor).ReadAsync(_repository);
+        var state = await new GitRepositoryStateService(_executor).ReadAsync(_repository);
         var conflict = Assert.Single(state.CurrentOperation.Conflicts);
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
