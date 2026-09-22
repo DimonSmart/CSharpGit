@@ -63,7 +63,7 @@ public sealed class PresentationArchitectureGuardrailTests
             .ToArray();
         var combined = string.Join(Environment.NewLine, mainPageSources);
 
-        Assert.Equal(1, Regex.Matches(combined, @"\bpublic\s+MainPage\s*\(").Count);
+        Assert.Single(Regex.Matches(combined, @"\bpublic\s+MainPage\s*\(").Cast<Match>());
         Assert.DoesNotContain("mainPage.Initialize", app, StringComparison.Ordinal);
         Assert.DoesNotContain("MainPageServices", combined, StringComparison.Ordinal);
         Assert.Contains("SettingsWindowController", combined, StringComparison.Ordinal);
