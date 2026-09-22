@@ -101,7 +101,7 @@ public sealed class DesktopUiContractTests
         Assert.Contains("root.DispatcherQueue", themeManager);
         Assert.Contains("root.RequestedTheme != requestedTheme", themeManager);
         Assert.Contains("Unregister(root)", themeManager);
-        Assert.Contains("themeManager.Register(page)", settingsWindow);
+        Assert.Contains("_themeManager.Register(page)", settingsController);
 
         Assert.Contains("INotifyPropertyChanged", settingsViewModel);
         Assert.Contains("_settings.Changed += Settings_Changed", settingsViewModel);
@@ -145,7 +145,9 @@ public sealed class DesktopUiContractTests
         Assert.Contains("Force push with lease…", surface);
         Assert.Contains("ForcePushWithLeaseAsync(repository, snapshot)", forcePushPage);
         Assert.Equal(2, Count(xaml, "IsEnabled=\"{Binding CanForcePushWithLease}\""));
-        Assert.Contains("CanForcePushWithLease => Repository is not null && !IsBusy", viewModel);
+        Assert.Contains("CanForcePushWithLease => Repository is not null", viewModel);
+        Assert.Contains("&& !IsBusy", viewModel);
+        Assert.Contains("!string.IsNullOrWhiteSpace(branch.Upstream)", viewModel);
         Assert.Contains("CurrentOperation == RepositoryOperation.None", viewModel);
         Assert.Contains("LocalBranches.Any(branch => branch.IsCurrent)", viewModel);
 
