@@ -389,8 +389,8 @@ public sealed class WorkingTreeDiscardTests : IDisposable
 
     private async Task<(GitRepositoryStateService State, GitWorkingTreeService WorkingTree, Repository Repository)> OpenAsync()
     {
-        var repository = await new GitRepositoryService().OpenAsync(_temporaryDirectory);
-        return (new GitRepositoryStateService(), new GitWorkingTreeService(), repository);
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
+        return (GitTestServices.CreateRepositoryStateService(), GitTestServices.CreateWorkingTreeService(), repository);
     }
 
     private static Task<IReadOnlyList<WorkingTreeDiscardResult>> ExecuteAsync(

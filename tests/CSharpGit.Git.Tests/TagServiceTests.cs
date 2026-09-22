@@ -16,8 +16,8 @@ public sealed class TagServiceTests : IDisposable
         RunGit(repositoryPath, "tag", "light/β", first);
         RunGit(repositoryPath, "tag", "-a", "v1.0.0", first, "-m", "Release one\n\nDetails");
 
-        var service = new GitTagService();
-        var repository = await new GitRepositoryService().OpenAsync(repositoryPath);
+        var service = GitTestServices.CreateTagService();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(repositoryPath);
         var tags = await service.ReadTagsAsync(repository);
 
         var lightweight = Assert.Single(tags, tag => tag.Name == "light/β");
@@ -62,8 +62,8 @@ public sealed class TagServiceTests : IDisposable
         foreach (var tag in new[] { "v1.0", "v1.0-rc1", "v1.0-rc2", "v1.0.1" }) RunGit(path, "tag", tag);
         RunGit(path, "config", "versionsort.suffix", "-rc");
 
-        var service = new GitTagService();
-        var repository = await new GitRepositoryService().OpenAsync(path);
+        var service = GitTestServices.CreateTagService();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(path);
         var suffixSorted = await service.ReadTagsAsync(repository);
         Assert.Equal(new[] { "v1.0.1", "v1.0", "v1.0-rc2", "v1.0-rc1" }, suffixSorted.Select(tag => tag.Name));
 
@@ -78,8 +78,8 @@ public sealed class TagServiceTests : IDisposable
         var path = CreateRepository();
         var first = Commit(path, "first.txt", "one", "First");
         var second = Commit(path, "second.txt", "two", "Second");
-        var service = new GitTagService();
-        var repository = await new GitRepositoryService().OpenAsync(path);
+        var service = GitTestServices.CreateTagService();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(path);
 
         await service.CreateTagAsync(repository, new CreateTagRequest("light/history", first, GitTagKind.Lightweight));
         await service.CreateTagAsync(repository, new CreateTagRequest("v2.0.0", "HEAD", GitTagKind.Annotated, "Release two"));
@@ -112,8 +112,8 @@ public sealed class TagServiceTests : IDisposable
         RunGit(path, "tag", "-a", "annotated", "-m", "Annotated");
         var before = Git(path, "status", "--porcelain=v1");
 
-        var service = new GitTagService();
-        var repository = await new GitRepositoryService().OpenAsync(path);
+        var service = GitTestServices.CreateTagService();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(path);
         await service.DeleteTagAsync(repository, "light");
         await service.DeleteTagAsync(repository, "annotated");
 
@@ -128,8 +128,8 @@ public sealed class TagServiceTests : IDisposable
     {
         var (path, bare) = CreateRepositoryWithRemote();
         var first = Commit(path, "first.txt", "one", "First");
-        var service = new GitTagService();
-        var repository = await new GitRepositoryService().OpenAsync(path);
+        var service = GitTestServices.CreateTagService();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(path);
         await service.CreateTagAsync(repository, new CreateTagRequest("release", first, GitTagKind.Lightweight));
 
         var pushed = await service.PushTagAsync(repository, "origin", "release");
@@ -161,8 +161,8 @@ public sealed class TagServiceTests : IDisposable
         RunGit(path, "push", "origin", "refs/heads/main:refs/heads/main");
         RunGit(path, "tag", "--force", "release", second);
 
-        var service = new GitTagService();
-        var repository = await new GitRepositoryService().OpenAsync(path);
+        var service = GitTestServices.CreateTagService();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(path);
         var conflict = await service.PushTagAsync(repository, "origin", "release");
         var snapshot = Assert.IsType<RemoteTagConflictSnapshot>(conflict.Conflict);
 
@@ -180,8 +180,8 @@ public sealed class TagServiceTests : IDisposable
         var first = Commit(path, "first.txt", "one", "First");
         RunGit(path, "tag", "one", first);
         RunGit(path, "tag", "two", first);
-        var service = new GitTagService();
-        var repository = await new GitRepositoryService().OpenAsync(path);
+        var service = GitTestServices.CreateTagService();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(path);
 
         await service.PushAllTagsAsync(repository, "origin");
         Assert.Equal(first, GitBare(bare, "rev-parse", "refs/tags/one^{commit}"));
@@ -205,8 +205,8 @@ public sealed class TagServiceTests : IDisposable
         RunGit(path, "tag", "collision", first);
         RunGit(path, "push", "origin", "refs/heads/main:refs/heads/main");
         RunGitBare(bare, "update-ref", "refs/tags/collision", second);
-        var service = new GitTagService();
-        var repository = await new GitRepositoryService().OpenAsync(path);
+        var service = GitTestServices.CreateTagService();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(path);
 
         var exception = await Assert.ThrowsAnyAsync<Exception>(() => service.FetchTagsAsync(repository, "origin"));
 
@@ -226,8 +226,8 @@ public sealed class TagServiceTests : IDisposable
 
     private async Task<IReadOnlyList<GitTag>> ReadTagsAsync(string path)
     {
-        var repository = await new GitRepositoryService().OpenAsync(path);
-        return await new GitTagService().ReadTagsAsync(repository);
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(path);
+        return await GitTestServices.CreateTagService().ReadTagsAsync(repository);
     }
 
     private string CreateRepository()

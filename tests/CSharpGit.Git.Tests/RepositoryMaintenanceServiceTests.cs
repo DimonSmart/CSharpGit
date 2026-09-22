@@ -152,7 +152,7 @@ public sealed class RepositoryMaintenanceServiceTests : IDisposable
         RunGit(path, "add", ".");
         RunGit(path, "commit", "-m", "update data");
 
-        var service = new GitRepositoryMaintenanceService();
+        var service = GitTestServices.CreateRepositoryMaintenanceService();
         var before = await service.GetStorageStatisticsAsync(repository);
         var head = RunGitOutput(path, "rev-parse", "HEAD");
         var trackedContent = File.ReadAllText(Path.Combine(path, "data.txt"));
@@ -178,10 +178,10 @@ public sealed class RepositoryMaintenanceServiceTests : IDisposable
         RunGit(primaryPath, "commit", "-m", "base");
         RunGit(primaryPath, "worktree", "add", "-b", "linked", linkedPath);
 
-        var repository = await new GitRepositoryService().OpenAsync(linkedPath);
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(linkedPath);
         Assert.True(repository.IsWorktree);
 
-        var service = new GitRepositoryMaintenanceService();
+        var service = GitTestServices.CreateRepositoryMaintenanceService();
         _ = await service.GetStorageStatisticsAsync(repository);
         await service.GarbageCollectAsync(repository, new RepositoryGcOptions());
         _ = await service.GetStorageStatisticsAsync(repository);
@@ -196,7 +196,7 @@ public sealed class RepositoryMaintenanceServiceTests : IDisposable
         RunGit(path, "init", "-b", "main");
         RunGit(path, "config", "user.email", "tests@example.invalid");
         RunGit(path, "config", "user.name", "CSharpGit Tests");
-        return await new GitRepositoryService().OpenAsync(path);
+        return await GitTestServices.CreateRepositoryService().OpenAsync(path);
     }
 
     private static void WriteFile(string root, string relativePath, string content)
