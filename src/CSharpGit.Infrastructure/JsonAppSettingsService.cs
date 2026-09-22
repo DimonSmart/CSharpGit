@@ -21,14 +21,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         : StringComparer.Ordinal;
 
     private readonly string _filePath;
-    private readonly SemaphoreSlim _writeGate = new(1, 1);
-    private ApplicationThemeMode _themeMode;
-    private CommitTimeDisplayMode _commitTimeDisplayMode;
-    private bool _loggingEnabled;
-    private ApplicationLogLevel _logLevel;
-    private GitConsoleAutoOpenMode _gitConsoleAutoOpenMode;
-    private bool _showReflog;
-    private IReadOnlyList<RecentRepositorySettings> _recentRepositories;
+    private readonly SemaphoreSlim _updateGate = new(1, 1);
+    private SettingsState _state;
 
     public JsonAppSettingsService()
         : this(GetDefaultFilePath())
@@ -38,98 +32,90 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     internal JsonAppSettingsService(string filePath)
     {
         _filePath = filePath;
-        var state = LoadSettings();
-        _themeMode = state.ThemeMode;
-        _commitTimeDisplayMode = state.CommitTimeDisplayMode;
-        _loggingEnabled = state.LoggingEnabled;
-        _logLevel = state.LogLevel;
-        _gitConsoleAutoOpenMode = state.GitConsoleAutoOpenMode;
-        _showReflog = state.ShowReflog;
-        _recentRepositories = state.RecentRepositories;
+        _state = LoadSettings();
     }
 
-    public ApplicationThemeMode ThemeMode => _themeMode;
+    public ApplicationThemeMode ThemeMode => Volatile.Read(ref _state).ThemeMode;
 
-    public CommitTimeDisplayMode CommitTimeDisplayMode => _commitTimeDisplayMode;
+    public CommitTimeDisplayMode CommitTimeDisplayMode => Volatile.Read(ref _state).CommitTimeDisplayMode;
 
-    public bool LoggingEnabled => _loggingEnabled;
+    public bool LoggingEnabled => Volatile.Read(ref _state).LoggingEnabled;
 
-    public ApplicationLogLevel LogLevel => _logLevel;
+    public ApplicationLogLevel LogLevel => Volatile.Read(ref _state).LogLevel;
 
-    public GitConsoleAutoOpenMode GitConsoleAutoOpenMode => _gitConsoleAutoOpenMode;
+    public GitConsoleAutoOpenMode GitConsoleAutoOpenMode => Volatile.Read(ref _state).GitConsoleAutoOpenMode;
 
-    public bool ShowReflog => _showReflog;
+    public bool ShowReflog => Volatile.Read(ref _state).ShowReflog;
 
-    public IReadOnlyList<RecentRepositorySettings> RecentRepositories => _recentRepositories;
+    public IReadOnlyList<RecentRepositorySettings> RecentRepositories => Volatile.Read(ref _state).RecentRepositories;
 
     public event EventHandler? Changed;
 
-    public async Task SetThemeModeAsync(
+    public Task SetThemeModeAsync(
         ApplicationThemeMode mode,
         CancellationToken cancellationToken = default)
     {
         if (!Enum.IsDefined(typeof(ApplicationThemeMode), mode))
             throw new ArgumentOutOfRangeException(nameof(mode));
-        if (_themeMode == mode) return;
 
-        _themeMode = mode;
-        Changed?.Invoke(this, EventArgs.Empty);
-        await PersistAsync(cancellationToken);
+        return UpdateAsync(
+            current => current.ThemeMode == mode ? current : current with { ThemeMode = mode },
+            cancellationToken);
     }
 
-    public async Task SetCommitTimeDisplayModeAsync(
+    public Task SetCommitTimeDisplayModeAsync(
         CommitTimeDisplayMode mode,
         CancellationToken cancellationToken = default)
     {
         if (!Enum.IsDefined(typeof(CommitTimeDisplayMode), mode))
             throw new ArgumentOutOfRangeException(nameof(mode));
-        if (_commitTimeDisplayMode == mode) return;
 
-        _commitTimeDisplayMode = mode;
-        Changed?.Invoke(this, EventArgs.Empty);
-        await PersistAsync(cancellationToken);
+        return UpdateAsync(
+            current => current.CommitTimeDisplayMode == mode
+                ? current
+                : current with { CommitTimeDisplayMode = mode },
+            cancellationToken);
     }
 
-    public async Task SetLoggingSettingsAsync(
+    public Task SetLoggingSettingsAsync(
         bool enabled,
         ApplicationLogLevel level,
         CancellationToken cancellationToken = default)
     {
         if (!Enum.IsDefined(typeof(ApplicationLogLevel), level))
             throw new ArgumentOutOfRangeException(nameof(level));
-        if (_loggingEnabled == enabled && _logLevel == level) return;
 
-        _loggingEnabled = enabled;
-        _logLevel = level;
-        Changed?.Invoke(this, EventArgs.Empty);
-        await PersistAsync(cancellationToken);
+        return UpdateAsync(
+            current => current.LoggingEnabled == enabled && current.LogLevel == level
+                ? current
+                : current with { LoggingEnabled = enabled, LogLevel = level },
+            cancellationToken);
     }
 
-    public async Task SetGitConsoleAutoOpenModeAsync(
+    public Task SetGitConsoleAutoOpenModeAsync(
         GitConsoleAutoOpenMode mode,
         CancellationToken cancellationToken = default)
     {
         if (!Enum.IsDefined(typeof(GitConsoleAutoOpenMode), mode))
             throw new ArgumentOutOfRangeException(nameof(mode));
-        if (_gitConsoleAutoOpenMode == mode) return;
 
-        _gitConsoleAutoOpenMode = mode;
-        Changed?.Invoke(this, EventArgs.Empty);
-        await PersistAsync(cancellationToken);
+        return UpdateAsync(
+            current => current.GitConsoleAutoOpenMode == mode
+                ? current
+                : current with { GitConsoleAutoOpenMode = mode },
+            cancellationToken);
     }
 
-    public async Task SetShowReflogAsync(
+    public Task SetShowReflogAsync(
         bool value,
-        CancellationToken cancellationToken = default)
-    {
-        if (_showReflog == value) return;
+        CancellationToken cancellationToken = default) =>
+        UpdateAsync(
+            current => current.ShowReflog == value
+                ? current
+                : current with { ShowReflog = value },
+            cancellationToken);
 
-        _showReflog = value;
-        Changed?.Invoke(this, EventArgs.Empty);
-        await PersistAsync(cancellationToken);
-    }
-
-    public async Task RecordRecentRepositoryAsync(
+    public Task RecordRecentRepositoryAsync(
         string path,
         string displayName,
         string? lastBranchName,
@@ -139,35 +125,70 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
 
         var normalizedPath = NormalizePath(path);
-        var entry = new RecentRepositorySettings(
-            normalizedPath,
-            displayName.Trim(),
-            DateTimeOffset.UtcNow,
-            string.IsNullOrWhiteSpace(lastBranchName) ? null : lastBranchName.Trim());
+        var normalizedDisplayName = displayName.Trim();
+        var normalizedBranchName = string.IsNullOrWhiteSpace(lastBranchName) ? null : lastBranchName.Trim();
 
-        _recentRepositories = new[] { entry }
-            .Concat(_recentRepositories.Where(candidate => !PathComparer.Equals(candidate.Path, normalizedPath)))
-            .Take(MaxRecentRepositories)
-            .ToArray();
-
-        Changed?.Invoke(this, EventArgs.Empty);
-        await PersistAsync(cancellationToken);
+        return UpdateAsync(
+            current =>
+            {
+                var entry = new RecentRepositorySettings(
+                    normalizedPath,
+                    normalizedDisplayName,
+                    DateTimeOffset.UtcNow,
+                    normalizedBranchName);
+                var recentRepositories = new[] { entry }
+                    .Concat(current.RecentRepositories.Where(
+                        candidate => !PathComparer.Equals(candidate.Path, normalizedPath)))
+                    .Take(MaxRecentRepositories)
+                    .ToArray();
+                return current with { RecentRepositories = Array.AsReadOnly(recentRepositories) };
+            },
+            cancellationToken);
     }
 
-    public async Task RemoveRecentRepositoryAsync(
+    public Task RemoveRecentRepositoryAsync(
         string path,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         var normalizedPath = NormalizePath(path);
-        var updated = _recentRepositories
-            .Where(candidate => !PathComparer.Equals(candidate.Path, normalizedPath))
-            .ToArray();
-        if (updated.Length == _recentRepositories.Count) return;
 
-        _recentRepositories = updated;
-        Changed?.Invoke(this, EventArgs.Empty);
-        await PersistAsync(cancellationToken);
+        return UpdateAsync(
+            current =>
+            {
+                var updated = current.RecentRepositories
+                    .Where(candidate => !PathComparer.Equals(candidate.Path, normalizedPath))
+                    .ToArray();
+                return updated.Length == current.RecentRepositories.Count
+                    ? current
+                    : current with { RecentRepositories = Array.AsReadOnly(updated) };
+            },
+            cancellationToken);
+    }
+
+    private async Task UpdateAsync(
+        Func<SettingsState, SettingsState> createNext,
+        CancellationToken cancellationToken)
+    {
+        var changed = false;
+        await _updateGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var current = Volatile.Read(ref _state);
+            var next = createNext(current);
+            if (ReferenceEquals(current, next)) return;
+
+            await PersistAsync(next, cancellationToken).ConfigureAwait(false);
+            Volatile.Write(ref _state, next);
+            changed = true;
+        }
+        finally
+        {
+            _updateGate.Release();
+        }
+
+        if (changed)
+            Changed?.Invoke(this, EventArgs.Empty);
     }
 
     private SettingsState LoadSettings()
@@ -217,32 +238,42 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         }
     }
 
-    private async Task PersistAsync(CancellationToken cancellationToken)
+    private async Task PersistAsync(
+        SettingsState state,
+        CancellationToken cancellationToken)
     {
-        await _writeGate.WaitAsync(cancellationToken);
+        var directory = Path.GetDirectoryName(_filePath);
+        if (!string.IsNullOrWhiteSpace(directory)) Directory.CreateDirectory(directory);
+
+        var document = new SettingsDocument
+        {
+            ThemeMode = state.ThemeMode,
+            CommitTimeDisplayMode = state.CommitTimeDisplayMode,
+            LoggingEnabled = state.LoggingEnabled,
+            LogLevel = state.LogLevel,
+            GitConsoleAutoOpenMode = state.GitConsoleAutoOpenMode,
+            ShowReflog = state.ShowReflog,
+            RecentRepositories = state.RecentRepositories.ToList()
+        };
+        var json = JsonSerializer.Serialize(document, SerializerOptions);
+        var temporaryPath = _filePath + ".tmp";
         try
         {
-            var directory = Path.GetDirectoryName(_filePath);
-            if (!string.IsNullOrWhiteSpace(directory)) Directory.CreateDirectory(directory);
-
-            var document = new SettingsDocument
-            {
-                ThemeMode = _themeMode,
-                CommitTimeDisplayMode = _commitTimeDisplayMode,
-                LoggingEnabled = _loggingEnabled,
-                LogLevel = _logLevel,
-                GitConsoleAutoOpenMode = _gitConsoleAutoOpenMode,
-                ShowReflog = _showReflog,
-                RecentRepositories = _recentRepositories.ToList()
-            };
-            var json = JsonSerializer.Serialize(document, SerializerOptions);
-            var temporaryPath = _filePath + ".tmp";
-            await File.WriteAllTextAsync(temporaryPath, json, cancellationToken);
+            await File.WriteAllTextAsync(temporaryPath, json, cancellationToken).ConfigureAwait(false);
             File.Move(temporaryPath, _filePath, true);
         }
         finally
         {
-            _writeGate.Release();
+            try
+            {
+                if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
         }
     }
 
@@ -281,7 +312,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             if (result.Count == MaxRecentRepositories) break;
         }
 
-        return result;
+        return result.AsReadOnly();
     }
 
     private static string NormalizePath(string path) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
@@ -299,7 +330,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         return Path.Combine(root, "CSharpGit.Presentation", "settings.json");
     }
 
-    private readonly record struct SettingsState(
+    private sealed record SettingsState(
         ApplicationThemeMode ThemeMode,
         CommitTimeDisplayMode CommitTimeDisplayMode,
         bool LoggingEnabled,
@@ -315,7 +346,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             ApplicationLogLevel.Information,
             GitConsoleAutoOpenMode.OnErrors,
             false,
-            []);
+            Array.AsReadOnly(Array.Empty<RecentRepositorySettings>()));
     }
 
     private sealed class SettingsDocument
