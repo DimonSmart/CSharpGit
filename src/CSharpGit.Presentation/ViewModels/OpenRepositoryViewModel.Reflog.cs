@@ -9,7 +9,7 @@ internal enum HistoryDisplayMode
 
 public sealed partial class OpenRepositoryViewModel
 {
-    private bool _showReflog = CSharpGit.Presentation.AppSettingsContext.Current.ShowReflog;
+    private bool _showReflog;
 
     public bool ShowReflog
     {
@@ -87,7 +87,7 @@ public sealed partial class OpenRepositoryViewModel
     {
         try
         {
-            await CSharpGit.Presentation.AppSettingsContext.Current.SetShowReflogAsync(value);
+            await _settings.SetShowReflogAsync(value);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

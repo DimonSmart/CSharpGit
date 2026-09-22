@@ -60,6 +60,7 @@
       <controls:CommitTimeText Grid.Row="1"
                                Grid.Column="1"
                                Value="{Binding SelectedHistoryRow.Commit.AuthoredAt}"
+                               Mode="{Binding CommitTimeDisplayMode}"
                                FontSize="{StaticResource Font.Body}" />
 
       <TextBlock Grid.Row="2" Text="Hash" Style="{StaticResource SecondaryTextStyle}" />

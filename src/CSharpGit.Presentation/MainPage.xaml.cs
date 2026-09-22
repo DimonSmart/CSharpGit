@@ -719,7 +719,7 @@ public sealed partial class MainPage : Page
             Check(_viewModel.Repository?.IsWorktree == (Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_WORKTREE") == "1"), "repository kind is incorrect", failures);
             Check(_viewModel.Scopes.All(scope => scope.Label is "All references" or "Current branch"), "English history scopes are missing", failures);
 
-            var settings = AppSettingsContext.Current;
+            var settings = _recentRepositorySettings;
             await settings.SetThemeModeAsync(ApplicationThemeMode.System);
             await WaitUntilAsync(() => RequestedTheme == ElementTheme.Default, TimeSpan.FromSeconds(5));
             Check(RequestedTheme == ElementTheme.Default, "System theme did not clear the root override", failures);
@@ -729,25 +729,25 @@ public sealed partial class MainPage : Page
             Check(RequestedTheme == ElementTheme.Light, "Light theme was not applied to the main root", failures);
 
             OpenSettingsWindow();
-            await WaitUntilAsync(() => _settingsPage is { RequestedTheme: ElementTheme.Light }, TimeSpan.FromSeconds(5));
-            Check(_settingsPage is { RequestedTheme: ElementTheme.Light }, "new settings root did not receive the current theme", failures);
+            await WaitUntilAsync(() => _settingsWindowController.CurrentPage is { RequestedTheme: ElementTheme.Light }, TimeSpan.FromSeconds(5));
+            Check(_settingsWindowController.CurrentPage is { RequestedTheme: ElementTheme.Light }, "new settings root did not receive the current theme", failures);
 
             var originalCommitTimeMode = settings.CommitTimeDisplayMode;
             var alternateCommitTimeMode = originalCommitTimeMode == CommitTimeDisplayMode.Smart
                 ? CommitTimeDisplayMode.Relative
                 : CommitTimeDisplayMode.Smart;
             await settings.SetCommitTimeDisplayModeAsync(alternateCommitTimeMode);
-            Check(RequestedTheme == ElementTheme.Light && _settingsPage is { RequestedTheme: ElementTheme.Light }, "unrelated settings change desynchronized the theme", failures);
+            Check(RequestedTheme == ElementTheme.Light && _settingsWindowController.CurrentPage is { RequestedTheme: ElementTheme.Light }, "unrelated settings change desynchronized the theme", failures);
             await settings.SetCommitTimeDisplayModeAsync(originalCommitTimeMode);
 
             await settings.SetThemeModeAsync(ApplicationThemeMode.Dark);
             await WaitUntilAsync(
-                () => RequestedTheme == ElementTheme.Dark && _settingsPage is { RequestedTheme: ElementTheme.Dark },
+                () => RequestedTheme == ElementTheme.Dark && _settingsWindowController.CurrentPage is { RequestedTheme: ElementTheme.Dark },
                 TimeSpan.FromSeconds(5));
             Check(RequestedTheme == ElementTheme.Dark, "Dark theme was not applied to the main root", failures);
-            Check(_settingsPage is { RequestedTheme: ElementTheme.Dark }, "Dark theme was not propagated to the settings root", failures);
+            Check(_settingsWindowController.CurrentPage is { RequestedTheme: ElementTheme.Dark }, "Dark theme was not propagated to the settings root", failures);
 
-            CloseSettingsWindow();
+            _settingsWindowController.CloseCurrent();
             await settings.SetThemeModeAsync(ApplicationThemeMode.System);
             await WaitUntilAsync(() => RequestedTheme == ElementTheme.Default, TimeSpan.FromSeconds(5));
             Check(RequestedTheme == ElementTheme.Default, "Dark to System did not clear the main root override", failures);
