@@ -1,6 +1,7 @@
 <Page x:Class="CSharpGit.Presentation.MainPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:CSharpGit.Presentation.Controls" xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives" Loaded="MainPage_Loaded">
   <Page.Resources>
     <controls:BranchTrackingActionTextConverter x:Key="BranchTrackingActionTextConverter" />
+    <controls:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
     <ContentDialog x:Key="GitOperationsDialog" Title="Git operations" CloseButtonText="Close" DefaultButton="Close">
       <ScrollViewer MaxHeight="650" VerticalScrollBarVisibility="Auto">
         <StackPanel Width="620" Spacing="{StaticResource Spacing.XL}">
@@ -66,7 +67,7 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Spacing="{StaticResource Spacing.XXL}"
-                Visibility="{Binding PickerVisibility}">
+                Visibility="{Binding HasRepository, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}">
       <FontIcon Glyph="&#xE8B7;" FontSize="56" HorizontalAlignment="Center" />
       <TextBlock Text="Open a Git repository" Style="{StaticResource TitleTextStyle}" TextAlignment="Center" />
       <TextBlock Text="Select the folder of an existing repository or worktree."
@@ -80,13 +81,13 @@
       <StackPanel Orientation="Horizontal"
                   HorizontalAlignment="Center"
                   Spacing="{StaticResource Spacing.L}"
-                  Visibility="{Binding BusyVisibility}">
+                  Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}">
         <ProgressRing IsActive="{Binding IsBusy}" Width="20" Height="20" />
         <TextBlock Text="Opening repository…" Style="{StaticResource BodyTextStyle}" VerticalAlignment="Center" />
       </StackPanel>
     </StackPanel>
 
-    <Grid x:Name="RepositoryWorkspace" Visibility="{Binding RepositoryVisibility}" RowDefinitions="Auto,Auto,*,Auto">
+    <Grid x:Name="RepositoryWorkspace" Visibility="{Binding HasRepository, Converter={StaticResource BooleanToVisibilityConverter}}" RowDefinitions="Auto,Auto,*,Auto">
       <Border x:Name="MainToolbar" Grid.Row="0" Style="{StaticResource ToolbarSurfaceStyle}">
         <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto" ColumnSpacing="{StaticResource Spacing.M}">
           <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.M}" VerticalAlignment="Center">
@@ -181,7 +182,7 @@
         </Grid>
       </Border>
 
-      <controls:OperationBanner Grid.Row="1" Visibility="{Binding OperationVisibility}" />
+      <controls:OperationBanner Grid.Row="1" Visibility="{Binding HasActiveOperation, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
       <Grid Grid.Row="2" MinHeight="300">
         <Grid.ColumnDefinitions>
@@ -319,7 +320,7 @@
                    Grid.Row="3"
                    HeaderTemplate="{StaticResource PivotHeaderTemplate}"
                    SelectionChanged="DetailsTabs_SelectionChanged"
-                   Visibility="{Binding DetailsVisibility}">
+                   Visibility="{Binding HasSelectedCommit, Converter={StaticResource BooleanToVisibilityConverter}}">
               <Pivot.Resources>
                 <Style TargetType="primitives:PivotHeaderItem" BasedOn="{StaticResource CompactPivotHeaderItemStyle}" />
               </Pivot.Resources>
@@ -378,7 +379,7 @@
                                          Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                   <Grid Grid.Column="2" RowDefinitions="Auto,*">
-                    <Border Visibility="{Binding DiffVisibility}" Style="{StaticResource DiffHeaderSurfaceStyle}">
+                    <Border Visibility="{Binding HasTextDiff, Converter={StaticResource BooleanToVisibilityConverter}}" Style="{StaticResource DiffHeaderSurfaceStyle}">
                       <Grid ColumnDefinitions="38,38,*">
                         <TextBlock Text="OLD"
                                    Style="{StaticResource CaptionTextStyle}"
@@ -399,11 +400,11 @@
                                Severity="Informational"
                                Title="Binary file"
                                Message="Binary file — text diff is not available."
-                               Visibility="{Binding BinaryVisibility}"
+                               Visibility="{Binding HasBinaryDiff, Converter={StaticResource BooleanToVisibilityConverter}}"
                                IsClosable="False"
                                VerticalAlignment="Top" />
                       <ListView x:Name="CompactDiffList"
-                                Visibility="{Binding DiffVisibility}"
+                                Visibility="{Binding HasTextDiff, Converter={StaticResource BooleanToVisibilityConverter}}"
                                 SelectionMode="None"
                                 MinHeight="96"
                                 ItemContainerStyle="{StaticResource DiffRowStyle}"

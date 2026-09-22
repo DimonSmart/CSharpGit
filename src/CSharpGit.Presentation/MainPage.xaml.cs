@@ -761,14 +761,14 @@ public sealed partial class MainPage : Page
                 TimeSpan.FromSeconds(5));
             var commitMessageText = _commitDetailsView is null ? null : FindDescendant<TextBlock>(_commitDetailsView);
             var historyOrigin = HistoryPane.TransformToVisual(null).TransformPoint(default);
-            var availableDetailsWidth = ((Application.Current as App)?.MainWindowClientWidth ?? 0) /
+            var availableDetailsWidth = ((Microsoft.UI.Xaml.Application.Current as App)?.MainWindowClientWidth ?? 0) /
                                         (XamlRoot?.RasterizationScale ?? 1) - historyOrigin.X;
             Check(_commitDetailsView is not null && _commitDetailsView.ActualWidth <= availableDetailsWidth + 1, "commit details exceed the visible window viewport", failures);
             Check(
                 commitMessageText is not null && commitMessageText.ActualHeight > commitMessageText.FontSize * 2,
-                $"long commit message did not wrap to multiple lines: viewport={DetailsScroller.ViewportWidth}, details={_commitDetailsView?.ActualWidth}, text={commitMessageText?.ActualWidth}x{commitMessageText?.ActualHeight}, font={commitMessageText?.FontSize}, length={commitMessageText?.Text.Length}, window={(Application.Current as App)?.MainWindowClientWidth}, scale={XamlRoot?.RasterizationScale}, historyOrigin={historyOrigin.X}",
+                $"long commit message did not wrap to multiple lines: viewport={DetailsScroller.ViewportWidth}, details={_commitDetailsView?.ActualWidth}, text={commitMessageText?.ActualWidth}x{commitMessageText?.ActualHeight}, font={commitMessageText?.FontSize}, length={commitMessageText?.Text.Length}, window={(Microsoft.UI.Xaml.Application.Current as App)?.MainWindowClientWidth}, scale={XamlRoot?.RasterizationScale}, historyOrigin={historyOrigin.X}",
                 failures);
-            if (Application.Current is App resizeCheckApp && commitMessageText is not null)
+            if (Microsoft.UI.Xaml.Application.Current is App resizeCheckApp && commitMessageText is not null)
             {
                 var wideMessageHeight = commitMessageText.ActualHeight;
                 var messageLeft = commitMessageText.TransformToVisual(HistoryPane).TransformPoint(default).X;

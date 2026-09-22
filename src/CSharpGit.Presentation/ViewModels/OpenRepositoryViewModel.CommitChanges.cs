@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using CSharpGit.Domain;
 using Microsoft.Extensions.Logging;
-using Microsoft.UI.Xaml;
 
 namespace CSharpGit.Presentation.ViewModels;
 
@@ -42,11 +41,9 @@ public sealed partial class OpenRepositoryViewModel
             if (_isChangedFilesLoading == value) return;
             _isChangedFilesLoading = value;
             Notify();
-            Notify(nameof(ChangedFilesLoadingVisibility));
         }
     }
 
-    public Visibility ChangedFilesLoadingVisibility => IsChangedFilesLoading ? Visibility.Visible : Visibility.Collapsed;
     public bool IsChangesViewActive => _isChangesViewActive;
 
     public void SetChangesViewActive(bool active)
