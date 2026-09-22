@@ -28,7 +28,7 @@ public sealed class ForcePushWithLeaseTests : IDisposable
             "feature/local-name", expected, "origin", "/tmp/remote.git",
             "feature/server-name", expected);
 
-        var arguments = GitCliRepositoryService.BuildForcePushArguments(snapshot);
+        var arguments = GitRepositorySyncService.BuildForcePushArguments(snapshot);
 
         Assert.Equal("push", arguments[0]);
         Assert.Contains("--porcelain", arguments);
@@ -54,8 +54,9 @@ public sealed class ForcePushWithLeaseTests : IDisposable
         Commit(_root, "history.txt", "A\nB2\n", "B2");
         Commit(_root, "history.txt", "A\nB2\nC2\n", "C2");
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_root);
+        var repositoryService = new GitRepositoryService();
+        var service = new GitRepositorySyncService();
+        var repository = await repositoryService.OpenAsync(_root);
         var snapshot = await service.PrepareForcePushWithLeaseAsync(repository);
 
         Assert.Equal("main", snapshot.LocalBranch);
@@ -79,8 +80,9 @@ public sealed class ForcePushWithLeaseTests : IDisposable
         Commit(_root, "history.txt", "A\nB2\n", "B2");
         Commit(_root, "history.txt", "A\nB2\nC2\n", "C2");
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_root);
+        var repositoryService = new GitRepositoryService();
+        var service = new GitRepositorySyncService();
+        var repository = await repositoryService.OpenAsync(_root);
         var snapshot = await service.PrepareForcePushWithLeaseAsync(repository);
         var actor = Path.Combine(_root, "actor");
         Git(_root, "clone", "--branch", "main", _remote, actor);
@@ -103,8 +105,9 @@ public sealed class ForcePushWithLeaseTests : IDisposable
     public async Task MissingUpstreamRequiresExplicitTargetAndDoesNotGuess()
     {
         Git(_root, "push", "origin", "refs/heads/main:refs/heads/server-main");
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_root);
+        var repositoryService = new GitRepositoryService();
+        var service = new GitRepositorySyncService();
+        var repository = await repositoryService.OpenAsync(_root);
 
         var missing = await Assert.ThrowsAsync<ForcePushWithLeasePreparationException>(
             () => service.PrepareForcePushWithLeaseAsync(repository));
@@ -118,8 +121,9 @@ public sealed class ForcePushWithLeaseTests : IDisposable
     public async Task RefusesDetachedHeadMissingRemoteBranchAndMultiplePushDestinations()
     {
         Git(_root, "push", "origin", "main");
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_root);
+        var repositoryService = new GitRepositoryService();
+        var service = new GitRepositorySyncService();
+        var repository = await repositoryService.OpenAsync(_root);
 
         var missing = await Assert.ThrowsAsync<ForcePushWithLeasePreparationException>(
             () => service.PrepareForcePushWithLeaseAsync(repository, "origin", "missing"));
@@ -148,8 +152,9 @@ public sealed class ForcePushWithLeaseTests : IDisposable
     {
         Git(_root, "push", "--set-upstream", "origin", "main");
         var originalRemote = RemoteTip("main");
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_root);
+        var repositoryService = new GitRepositoryService();
+        var service = new GitRepositorySyncService();
+        var repository = await repositoryService.OpenAsync(_root);
         var branchSnapshot = await service.PrepareForcePushWithLeaseAsync(repository);
         Git(_root, "switch", "-c", "other");
 
@@ -170,8 +175,9 @@ public sealed class ForcePushWithLeaseTests : IDisposable
     {
         Git(_root, "push", "--set-upstream", "origin", "main");
         var originalRemote = RemoteTip("main");
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_root);
+        var repositoryService = new GitRepositoryService();
+        var service = new GitRepositorySyncService();
+        var repository = await repositoryService.OpenAsync(_root);
         var snapshot = await service.PrepareForcePushWithLeaseAsync(repository);
         var replacement = Path.Combine(_root, ".replacement.git");
         Git(_root, "init", "--bare", replacement);
@@ -193,8 +199,9 @@ public sealed class ForcePushWithLeaseTests : IDisposable
         Git(actor, "push", "origin", "main");
         Commit(_root, "local.txt", "local\n", "local divergence");
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_root);
+        var repositoryService = new GitRepositoryService();
+        var service = new GitRepositorySyncService();
+        var repository = await repositoryService.OpenAsync(_root);
         var failure = await Assert.ThrowsAsync<PushRejectedException>(() => service.PushAsync(repository));
 
         Assert.Equal(PushResultKind.NonFastForwardRejected, failure.ResultKind);
@@ -208,7 +215,7 @@ public sealed class ForcePushWithLeaseTests : IDisposable
     [InlineData("! [remote rejected] main -> main (pre-receive hook declined)", PushResultKind.RemoteRejected)]
     public void ClassifiesPushFailuresWithoutConfusingRemotePrefix(string message, PushResultKind expected)
     {
-        Assert.Equal(expected, GitCliRepositoryService.ClassifyPushFailure(message));
+        Assert.Equal(expected, GitRepositorySyncService.ClassifyPushFailure(message));
     }
 
     private string RemoteTip(string branch) => GitOut(_root, "--git-dir", _remote, "rev-parse", $"refs/heads/{branch}");
