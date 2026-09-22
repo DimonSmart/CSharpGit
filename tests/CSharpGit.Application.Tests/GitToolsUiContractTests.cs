@@ -9,6 +9,7 @@ public sealed class GitToolsUiContractTests
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml"));
         var mainXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml.cs"));
+        var controller = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsWindowController.cs"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "GitToolsSettingsViewModel.cs"));
         var contract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IGitToolsService.cs"));
         var appSettings = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IAppSettingsService.cs"));
@@ -33,7 +34,8 @@ public sealed class GitToolsUiContractTests
         Assert.Contains("Remove override", xaml);
         Assert.DoesNotContain("Merge tool settings", mainXaml, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("ConfigureMergeToolCommand", mainXaml);
-        Assert.Contains("IGitToolsService", page);
+        Assert.Contains("GitToolsSettingsViewModel gitToolsViewModel", page);
+        Assert.Contains("IGitToolsService _gitToolsService", controller);
         Assert.Contains("ReadAsync", contract);
         Assert.Contains("RemoveOverrideAsync", contract);
         Assert.Contains("RunExternalDiffAsync", contract);

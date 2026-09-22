@@ -20,7 +20,7 @@ public sealed class SettingsLoggingContractTests
         Assert.Contains("LoggingEnabled", settingsContract);
         Assert.Contains("SetLoggingSettingsAsync", settingsContract);
         Assert.Contains("ApplicationLogLevel.Information", settingsPersistence);
-        Assert.Contains("LoggingEnabled = _loggingEnabled", settingsPersistence);
+        Assert.Contains("LoggingEnabled = state.LoggingEnabled", settingsPersistence);
         Assert.Contains("public void Configure(bool enabled, LogLevel minimumLevel)", logger);
         Assert.Contains("Directory.CreateDirectory(_directory)", logger);
         Assert.DoesNotContain("CommitGraphDiagnostics", graphControl);

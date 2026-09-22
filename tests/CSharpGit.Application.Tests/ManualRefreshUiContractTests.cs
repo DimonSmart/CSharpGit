@@ -9,6 +9,7 @@ public sealed class ManualRefreshUiContractTests
         var app = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var refresh = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryRefresh.cs"));
+        var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
         var refreshAction = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RefreshIndicator.cs"));
         var monitor = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "RepositoryChangeMonitor.cs"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
@@ -18,7 +19,8 @@ public sealed class ManualRefreshUiContractTests
 
         Assert.Contains("_window.Activated +=", app);
         Assert.DoesNotContain("RefreshWhenActivatedAsync", app);
-        Assert.Contains("InitializeRepositoryChangeMonitoring()", app);
+        Assert.DoesNotContain("InitializeRepositoryChangeMonitoring()", app);
+        Assert.Contains("InitializeRepositoryChangeMonitoring();", composition);
 
         Assert.Contains("x:Name=\"RefreshButton\"", xaml);
         Assert.Contains("Click=\"RefreshIndicator_Click\"", xaml);
