@@ -27,7 +27,7 @@ public sealed partial class MainPage
             return;
         }
 
-        if (!_appSettingsService.AutoSetupRemoteOnPush)
+        if (!_settingsWindowController.AutoSetupRemoteOnPush)
         {
             await ShowPublishBranchDialogAsync();
             return;
