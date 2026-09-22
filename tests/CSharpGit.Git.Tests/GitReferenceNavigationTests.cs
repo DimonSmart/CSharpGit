@@ -22,7 +22,7 @@ public sealed class GitReferenceNavigationTests : IDisposable
             }
         }
 
-        var repository = await new GitCliRepositoryService().OpenAsync(_temporaryDirectory);
+        var repository = await new GitCapabilityTestServices().Repositories.OpenAsync(_temporaryDirectory);
         var service = new GitReferenceHistoryService();
         var firstPage = await service.ReadHistoryAsync(
             repository,
