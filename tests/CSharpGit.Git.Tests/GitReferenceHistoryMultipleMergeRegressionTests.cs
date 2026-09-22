@@ -11,7 +11,7 @@ public sealed class GitReferenceHistoryMultipleMergeRegressionTests : IDisposabl
     {
         InitializeRepository();
 
-        var repository = await new GitCliRepositoryService().OpenAsync(_temporaryDirectory);
+        var repository = await new GitRepositoryService().OpenAsync(_temporaryDirectory);
         var page = await new GitReferenceHistoryService().ReadHistoryAsync(repository, "main", null, 0, 100);
 
         var merges = page.Rows.Where(row => row.Commit.Parents.Count > 1).ToArray();
