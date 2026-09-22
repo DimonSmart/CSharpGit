@@ -52,7 +52,7 @@ public sealed class ForcePushWithLeaseRetryTests : IDisposable
             $"#!/bin/sh\nif [ \"$1\" = \"push\" ]; then printf 'push\\n' >> '{_pushLog}'; fi\nexec git \"$@\"\n");
         File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
 
-        var executor = new GitCommandExecutor(new GitCliOptions { ExecutablePath = wrapper });
+        var executor = GitTestServices.CreateExecutor(new GitCliOptions { ExecutablePath = wrapper });
         var instrumentedRepositoryService = new GitRepositoryService(executor);
         var instrumentedService = new GitRepositorySyncService(executor);
         var instrumentedRepository = await instrumentedRepositoryService.OpenAsync(_root);

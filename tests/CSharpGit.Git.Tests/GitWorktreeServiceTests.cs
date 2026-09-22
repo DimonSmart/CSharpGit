@@ -23,7 +23,7 @@ public sealed class GitWorktreeServiceTests
         {
             IsPrimary = true
         };
-        var service = new GitWorktreeService(new GitCommandExecutor(new GitCliOptions()));
+        var service = new GitWorktreeService(GitTestServices.CreateExecutor());
 
         var exception = Assert.Throws<InvalidOperationException>(() =>
         {
