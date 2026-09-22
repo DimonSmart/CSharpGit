@@ -12,7 +12,6 @@ internal sealed partial class GitReferenceService : IReferenceService
 
 
     private readonly GitRepositoryCommandRunner _runner;
-    private readonly GitPushExecutor _pushExecutor;
 
     internal GitReferenceService(GitCommandExecutor executor)
         : this(new GitRepositoryCommandRunner(executor))
@@ -22,7 +21,6 @@ internal sealed partial class GitReferenceService : IReferenceService
     internal GitReferenceService(GitRepositoryCommandRunner runner)
     {
         _runner = runner ?? throw new ArgumentNullException(nameof(runner));
-        _pushExecutor = new GitPushExecutor(_runner);
     }
 
     public Task SwitchBranchAsync(
