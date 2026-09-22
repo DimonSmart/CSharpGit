@@ -178,7 +178,7 @@ public sealed class RepositoryMaintenanceServiceTests : IDisposable
         RunGit(primaryPath, "commit", "-m", "base");
         RunGit(primaryPath, "worktree", "add", "-b", "linked", linkedPath);
 
-        var repository = await new GitCliRepositoryService().OpenAsync(linkedPath);
+        var repository = await new GitRepositoryService().OpenAsync(linkedPath);
         Assert.True(repository.IsWorktree);
 
         var service = new GitRepositoryMaintenanceService();
@@ -196,7 +196,7 @@ public sealed class RepositoryMaintenanceServiceTests : IDisposable
         RunGit(path, "init", "-b", "main");
         RunGit(path, "config", "user.email", "tests@example.invalid");
         RunGit(path, "config", "user.name", "CSharpGit Tests");
-        return await new GitCliRepositoryService().OpenAsync(path);
+        return await new GitRepositoryService().OpenAsync(path);
     }
 
     private static void WriteFile(string root, string relativePath, string content)
