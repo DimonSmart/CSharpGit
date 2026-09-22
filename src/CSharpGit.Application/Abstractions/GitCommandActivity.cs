@@ -106,31 +106,18 @@ public interface IGitCommandActivitySink
         IReadOnlyList<string> arguments,
         GitCommandKind commandKind);
 
-    void OutputReceived(Guid id, GitOutputStream stream, string chunk)
-    {
-    }
-
-    void Completed(Guid id, int exitCode) =>
-        Completed(id, exitCode, string.Empty, string.Empty);
-
-    void Cancelled(Guid id, int? exitCode) =>
-        Cancelled(id, exitCode, string.Empty, string.Empty);
+    void OutputReceived(
+        Guid id,
+        GitOutputStream stream,
+        string chunk);
 
     void Completed(
         Guid id,
-        int exitCode,
-        string standardOutput,
-        string standardError)
-    {
-    }
+        int exitCode);
 
     void Cancelled(
         Guid id,
-        int? exitCode,
-        string standardOutput,
-        string standardError)
-    {
-    }
+        int? exitCode);
 }
 
 public interface IGitCommandActivitySource

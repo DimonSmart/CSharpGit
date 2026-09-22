@@ -17,6 +17,11 @@ public sealed partial class GitCliRepositoryService : IRepositoryService, IRepos
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
     }
 
+    public Task<RepositoryState> ReadLocalOnlyAsync(
+        Repository repository,
+        CancellationToken cancellationToken = default) =>
+        ReadAsync(repository, cancellationToken);
+
     public async Task<Repository> OpenAsync(string path, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))

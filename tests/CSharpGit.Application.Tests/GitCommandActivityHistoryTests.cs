@@ -27,7 +27,8 @@ public sealed class GitCommandActivityHistoryTests
         var history = new GitCommandActivityHistory();
         var id = history.Started("git", "/repo", ["fetch", "origin"], GitCommandKind.User);
 
-        history.Completed(id, 0, "fetched", string.Empty);
+        history.OutputReceived(id, GitOutputStream.StandardOutput, "fetched");
+        history.Completed(id, 0);
 
         var entry = Assert.Single(history.GetSnapshot(GitCommandFilter.AllCommands));
         Assert.Equal(GitCommandStatus.Succeeded, entry.Status);
@@ -43,7 +44,8 @@ public sealed class GitCommandActivityHistoryTests
         var history = new GitCommandActivityHistory();
         var id = history.Started("git", "/repo", ["push", "origin", "main"], GitCommandKind.User);
 
-        history.Completed(id, 1, string.Empty, "rejected");
+        history.OutputReceived(id, GitOutputStream.StandardError, "rejected");
+        history.Completed(id, 1);
 
         var entry = Assert.Single(history.GetSnapshot(GitCommandFilter.AllCommands));
         Assert.Equal(GitCommandStatus.Failed, entry.Status);
@@ -57,7 +59,9 @@ public sealed class GitCommandActivityHistoryTests
         var history = new GitCommandActivityHistory();
         var id = history.Started("git", "/repo", ["fetch", "origin"], GitCommandKind.User);
 
-        history.Cancelled(id, 137, "partial output", "cancelled");
+        history.OutputReceived(id, GitOutputStream.StandardOutput, "partial output");
+        history.OutputReceived(id, GitOutputStream.StandardError, "cancelled");
+        history.Cancelled(id, 137);
 
         var entry = Assert.Single(history.GetSnapshot(GitCommandFilter.AllCommands));
         Assert.Equal(GitCommandStatus.Cancelled, entry.Status);
@@ -96,7 +100,9 @@ public sealed class GitCommandActivityHistoryTests
         var id = history.Started("git", "/repo", ["log"], GitCommandKind.Internal);
         var output = new string('x', GitCommandActivityHistory.MaximumOutputBytes + 256);
 
-        history.Completed(id, 0, output, output);
+        history.OutputReceived(id, GitOutputStream.StandardOutput, output);
+        history.OutputReceived(id, GitOutputStream.StandardError, output);
+        history.Completed(id, 0);
 
         var entry = Assert.Single(history.GetSnapshot(GitCommandFilter.AllCommands));
         Assert.True(entry.StandardOutputTruncated);

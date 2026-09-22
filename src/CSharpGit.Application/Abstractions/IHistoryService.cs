@@ -17,8 +17,7 @@ public interface IHistoryService
         HistoryQuery query,
         string targetHash,
         int trailingCount = 100,
-        CancellationToken cancellationToken = default) =>
-        ReadHistoryThroughCommitAsync(repository, query.Scope, targetHash, trailingCount, cancellationToken);
+        CancellationToken cancellationToken = default);
     Task<CommitDetails> ReadCommitAsync(Repository repository, string hash, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ChangedFile>> ReadChangedFilesAsync(
         Repository repository,

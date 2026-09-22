@@ -23,6 +23,7 @@ public sealed partial class MainPage : Page
     private readonly OpenRepositoryViewModel _viewModel;
     private readonly IReferenceHistoryService _referenceHistoryService;
     private readonly IReferenceService _referenceService;
+    private readonly ITagService _tagService;
     private readonly ObservableCollection<RepositoryTreeNode> _repositoryTreeRoots = [];
     private readonly ObservableCollection<HistoryRow> _scopedHistory = [];
     private readonly ObservableCollection<WorkingTreeChange> _unstagedChanges = [];
@@ -37,12 +38,19 @@ public sealed partial class MainPage : Page
     private readonly SolidColorBrush _busyStatusBackgroundBrush = new(Windows.UI.Color.FromArgb(28, 34, 197, 94));
     private bool _busyPulseRunning;
 
-    public MainPage(OpenRepositoryViewModel viewModel, IReferenceHistoryService referenceHistoryService, IReferenceService referenceService, IRepositoryRefreshProbe repositoryRefreshProbe, IWorkingTreeDiffService? workingTreeDiffService = null)
+    public MainPage(
+        OpenRepositoryViewModel viewModel,
+        IReferenceHistoryService referenceHistoryService,
+        IReferenceService referenceService,
+        ITagService tagService,
+        IRepositoryRefreshProbe repositoryRefreshProbe,
+        IWorkingTreeDiffService? workingTreeDiffService = null)
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
         _referenceHistoryService = referenceHistoryService;
         _referenceService = referenceService;
+        _tagService = tagService ?? throw new ArgumentNullException(nameof(tagService));
         _repositoryRefreshProbe = repositoryRefreshProbe ?? throw new ArgumentNullException(nameof(repositoryRefreshProbe));
         _workingTreeDiffService = workingTreeDiffService;
         InitializeBusyStatusPresentation();
@@ -389,7 +397,7 @@ public sealed partial class MainPage : Page
                 break;
             case RepositoryTreeNodeKind.Tag when node.Value is GitTag tag:
                 _viewModel.SelectedTag = tag;
-                await NavigateToReferenceAsync(tag.Commit);
+                await NavigateToReferenceAsync(tag.TargetCommit);
                 break;
             case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:
                 _viewModel.SelectedStash = stash;
