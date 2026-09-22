@@ -26,6 +26,7 @@ public sealed class SettingsWindowController : IDisposable
     }
 
     internal bool AutoSetupRemoteOnPush => _settings.AutoSetupRemoteOnPush;
+    internal FrameworkElement? CurrentPage => _page;
 
     internal void Show(SettingsSection section, Func<Repository?> repositoryAccessor)
     {
@@ -59,17 +60,23 @@ public sealed class SettingsWindowController : IDisposable
         window.Activate();
     }
 
+    internal void CloseCurrent()
+    {
+        _window?.Close();
+    }
+
     internal void Shutdown()
     {
         if (Interlocked.Exchange(ref _shutdownStarted, 1) != 0) return;
 
-        var window = _window;
-        var page = _page;
-        var registration = _themeRegistration;
-        if (window is not null)
+        if (_window is { } window)
+        {
             window.Close();
-        if (page is not null && registration is not null)
-            Cleanup(window, page, registration);
+            return;
+        }
+
+        if (_page is { } page && _themeRegistration is { } registration)
+            Cleanup(null, page, registration);
     }
 
     public void Dispose() => Shutdown();

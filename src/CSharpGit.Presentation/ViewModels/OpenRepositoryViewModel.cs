@@ -25,6 +25,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private readonly IRepositorySyncService _syncService;
     private readonly IRepositoryWorkflowService _workflowService;
     private readonly IGitToolsService _gitToolsService;
+    private readonly IAppSettingsService _settings;
     private readonly AsyncCommand _openRepositoryCommand;
     private Repository? _repository;
     private string? _errorMessage;
@@ -81,6 +82,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         IRepositorySyncService syncService,
         IRepositoryWorkflowService workflowService,
         IGitToolsService gitToolsService,
+        IAppSettingsService settings,
         ILogger<OpenRepositoryViewModel> logger,
         IRepositoryRefreshProbe? refreshProbe = null)
     {
@@ -95,6 +97,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         _syncService = syncService;
         _workflowService = workflowService;
         _gitToolsService = gitToolsService;
+        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        _showReflog = _settings.ShowReflog;
+        _settings.Changed += AppSettings_Changed;
         _logger = logger;
         _openRepositoryCommand = new AsyncCommand(OpenRepositoryAsync, () => !IsBusy && Repository is null);
         RefreshHistoryCommand = new AsyncCommand(() => LoadHistoryAsync(true), () => Repository is not null);
@@ -158,9 +163,23 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         historyCancellation?.Cancel();
         historyCancellation?.Dispose();
         ResetCommitChangesSession();
+        _settings.Changed -= AppSettings_Changed;
+    }
+
+    private void AppSettings_Changed(object? sender, EventArgs e)
+    {
+        Notify(nameof(CommitTimeDisplayMode));
+
+        var showReflog = _settings.ShowReflog;
+        if (_showReflog == showReflog) return;
+        _showReflog = showReflog;
+        Notify(nameof(ShowReflog));
+        _ = LoadHistoryAsync(true);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    public CommitTimeDisplayMode CommitTimeDisplayMode => _settings.CommitTimeDisplayMode;
 
     public ICommand OpenRepositoryCommand => _openRepositoryCommand;
     public ICommand RefreshHistoryCommand { get; }
