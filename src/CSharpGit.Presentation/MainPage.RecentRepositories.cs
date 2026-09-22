@@ -33,7 +33,8 @@ public sealed partial class MainPage
             _recentRepositorySettings,
             _repositoryImageService,
             OpenRecentRepositoryAsync,
-            OpenRepositoryPickerAsync);
+            OpenRepositoryPickerAsync,
+            DispatcherQueue);
         _recentRepositoriesView = new RecentRepositoriesView
         {
             DataContext = _recentRepositoriesViewModel
