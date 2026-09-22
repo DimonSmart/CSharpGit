@@ -61,7 +61,7 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         var change = Assert.Single((await stateService.ReadAsync(repository)).Changes, change => change.Path == "untracked.tmp");
 
         var result = Assert.Single(await ExecuteAsync(
-            service,
+            workingTreeService,
             repository,
             WorkingTreeDiscard.CreateSelected([change])!));
 
@@ -222,7 +222,7 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         var rename = new WorkingTreeChange("new name.txt", ' ', 'R', "old name.txt");
 
         var result = Assert.Single(await ExecuteAsync(
-            service,
+            workingTreeService,
             repository,
             WorkingTreeDiscard.CreateSelected([rename])!));
 
@@ -292,7 +292,7 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         var (stateService, workingTreeService, repository) = await OpenAsync();
         var directory = new WorkingTreeChange("folder", '?', '?');
         var result = Assert.Single(await ExecuteAsync(
-            service,
+            workingTreeService,
             repository,
             WorkingTreeDiscard.CreateSelected([directory])!));
 
