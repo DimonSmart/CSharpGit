@@ -39,6 +39,11 @@ public interface IGitToolsService
         Repository repository,
         CancellationToken cancellationToken = default);
 
+    Task OpenConflictInEditorAsync(
+        Repository repository,
+        ConflictFile conflict,
+        CancellationToken cancellationToken = default);
+
     Task TestAsync(
         Repository? repository,
         GitToolKind kind,
