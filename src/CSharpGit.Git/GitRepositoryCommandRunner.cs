@@ -1,4 +1,5 @@
 using CSharpGit.Application;
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Application.Exceptions;
 using CSharpGit.Domain;
 
