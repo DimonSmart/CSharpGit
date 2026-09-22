@@ -8,10 +8,10 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
 {
     private readonly string _temporaryDirectory =
         Path.Combine(Path.GetTempPath(), $"csharpgit-working-tree-diff-{Guid.NewGuid():N}");
-    private readonly GitRepositoryService _repositoryService = new();
-    private readonly GitRepositoryStateService _stateService = new();
-    private readonly GitWorkingTreeDiffService _service = new();
-    private readonly GitWorkingTreeService _workingTreeService = new();
+    private readonly GitRepositoryService _repositoryService = GitTestServices.CreateRepositoryService();
+    private readonly GitRepositoryStateService _stateService = GitTestServices.CreateRepositoryStateService();
+    private readonly GitWorkingTreeDiffService _service = GitTestServices.CreateWorkingTreeDiffService();
+    private readonly GitWorkingTreeService _workingTreeService = GitTestServices.CreateWorkingTreeService();
 
     [Fact]
     public async Task SeparatesHeadIndexAndWorkingTreeVersions()
