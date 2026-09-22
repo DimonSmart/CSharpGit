@@ -8,7 +8,10 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
 {
     private readonly string _temporaryDirectory =
         Path.Combine(Path.GetTempPath(), $"csharpgit-working-tree-diff-{Guid.NewGuid():N}");
-    private readonly GitCliRepositoryService _service = new();
+    private readonly GitRepositoryService _repositoryService = new();
+    private readonly GitRepositoryStateService _stateService = new();
+    private readonly GitWorkingTreeDiffService _service = new();
+    private readonly GitWorkingTreeService _workingTreeService = new();
 
     [Fact]
     public async Task SeparatesHeadIndexAndWorkingTreeVersions()
@@ -204,7 +207,7 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, "value.txt"), "value = 3\n");
 
         var change = await ReadChangeAsync(repository, "value.txt");
-        await _service.DiscardFileAsync(repository, change);
+        await _workingTreeService.DiscardFileAsync(repository, change);
 
         Assert.Equal("value = 2\n", File.ReadAllText(Path.Combine(_temporaryDirectory, "value.txt")));
         var remaining = await ReadChangeAsync(repository, "value.txt");
@@ -224,7 +227,7 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
         RunGit("config", "user.name", "CSharpGit Tests");
         if (createInitialCommit)
             CommitFile("seed.txt", "seed\n", "seed");
-        return await _service.OpenAsync(_temporaryDirectory);
+        return await _repositoryService.OpenAsync(_temporaryDirectory);
     }
 
     private void CommitFile(string path, string contents, string message)
@@ -236,7 +239,7 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
 
     private async Task<WorkingTreeChange> ReadChangeAsync(Repository repository, string path)
     {
-        var state = await _service.ReadAsync(repository);
+        var state = await _stateService.ReadAsync(repository);
         return Assert.Single(state.Changes, change =>
             string.Equals(change.Path, path, StringComparison.Ordinal));
     }
