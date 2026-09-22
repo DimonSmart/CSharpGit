@@ -40,7 +40,7 @@ public sealed partial class MainPage : Page
     private readonly SolidColorBrush _busyStatusBackgroundBrush = new(Windows.UI.Color.FromArgb(28, 34, 197, 94));
     private bool _busyPulseRunning;
 
-    public MainPage(
+    private MainPage(
         OpenRepositoryViewModel viewModel,
         IReferenceHistoryService referenceHistoryService,
         IReferenceService referenceService,
@@ -48,7 +48,7 @@ public sealed partial class MainPage : Page
         ICommitActionService commitActionService,
         ITagService tagService,
         IRepositoryRefreshProbe repositoryRefreshProbe,
-        IWorkingTreeDiffService? workingTreeDiffService = null)
+        IWorkingTreeDiffService workingTreeDiffService)
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
@@ -58,7 +58,7 @@ public sealed partial class MainPage : Page
         _commitActionService = commitActionService ?? throw new ArgumentNullException(nameof(commitActionService));
         _tagService = tagService ?? throw new ArgumentNullException(nameof(tagService));
         _repositoryRefreshProbe = repositoryRefreshProbe ?? throw new ArgumentNullException(nameof(repositoryRefreshProbe));
-        _workingTreeDiffService = workingTreeDiffService;
+        _workingTreeDiffService = workingTreeDiffService ?? throw new ArgumentNullException(nameof(workingTreeDiffService));
         InitializeBusyStatusPresentation();
 
         RepositoryTree.ItemsSource = _repositoryTreeRoots;

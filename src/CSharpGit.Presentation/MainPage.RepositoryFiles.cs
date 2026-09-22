@@ -46,7 +46,7 @@ public sealed partial class MainPage
     private bool _repositoryFilesTreeSearchActive;
     private bool _repositoryFilesRestoringPresentationState;
 
-    public MainPage(
+    private MainPage(
         OpenRepositoryViewModel viewModel,
         IReferenceHistoryService referenceHistoryService,
         IReferenceService referenceService,

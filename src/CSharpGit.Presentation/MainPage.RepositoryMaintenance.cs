@@ -32,7 +32,13 @@ public sealed partial class MainPage
         IGitToolsService gitToolsService,
         IRepositorySnapshotService repositorySnapshotService,
         IRepositoryHistoryRewriteService repositoryHistoryRewriteService,
-        IRepositoryMaintenanceService repositoryMaintenanceService)
+        IRepositoryMaintenanceService repositoryMaintenanceService,
+        IAppSettingsService appSettings,
+        IGitCommandActivitySource gitCommandActivitySource,
+        IWorktreeService worktreeService,
+        IRepositoryImageService repositoryImageService,
+        RecentRepositoryFolderPicker recentRepositoryFolderPicker,
+        SettingsWindowController settingsWindowController)
         : this(
             viewModel,
             referenceHistoryService,
@@ -51,8 +57,20 @@ public sealed partial class MainPage
     {
         _repositoryMaintenanceService = repositoryMaintenanceService
             ?? throw new ArgumentNullException(nameof(repositoryMaintenanceService));
+        _recentRepositorySettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
+        _gitConsoleSettings = appSettings;
+        _gitCommandActivitySource = gitCommandActivitySource ?? throw new ArgumentNullException(nameof(gitCommandActivitySource));
+        _worktreeService = worktreeService ?? throw new ArgumentNullException(nameof(worktreeService));
+        _repositoryImageService = repositoryImageService ?? throw new ArgumentNullException(nameof(repositoryImageService));
+        _recentRepositoryFolderPicker = recentRepositoryFolderPicker ?? throw new ArgumentNullException(nameof(recentRepositoryFolderPicker));
+        _settingsWindowController = settingsWindowController ?? throw new ArgumentNullException(nameof(settingsWindowController));
+
         _viewModel.PropertyChanged += RepositoryMaintenanceViewModel_PropertyChanged;
         UpdateOptimizeRepositoryAvailability();
+        InitializeRepositoryChangeMonitoring();
+        InitializeRecentRepositories();
+        InitializeGitConsole();
+        InitializeWorktreeSupport();
     }
 
     private void RepositoryMaintenanceViewModel_PropertyChanged(
