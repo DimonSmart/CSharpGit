@@ -70,8 +70,8 @@ public sealed class GitReferenceHistoryTopologyRegressionTests : IDisposable
     public async Task FilteredRowsUseTopologyFromCompleteHistory()
     {
         InitializeMergeRepository();
-        var repository = await new GitRepositoryService().OpenAsync(_temporaryDirectory);
-        var service = new GitReferenceHistoryService();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
+        var service = GitTestServices.CreateReferenceHistoryService();
         var full = await service.ReadHistoryAsync(repository, "main", null, 0, 100);
         var filtered = await service.ReadHistoryAsync(repository, "main", "visible", 0, 100);
 
@@ -88,8 +88,8 @@ public sealed class GitReferenceHistoryTopologyRegressionTests : IDisposable
     public async Task PaginationContinuesTheSameTopologyAcrossPageBoundary()
     {
         InitializeMergeRepository();
-        var repository = await new GitRepositoryService().OpenAsync(_temporaryDirectory);
-        var service = new GitReferenceHistoryService();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
+        var service = GitTestServices.CreateReferenceHistoryService();
         var full = await service.ReadHistoryAsync(repository, "main", null, 0, 100);
         var page1 = await service.ReadHistoryAsync(repository, "main", null, 0, 2);
         var page2 = await service.ReadHistoryAsync(repository, "main", null, 2, 2);
@@ -104,8 +104,8 @@ public sealed class GitReferenceHistoryTopologyRegressionTests : IDisposable
     public async Task FilterPaginationStillUsesCompleteTopology()
     {
         InitializeMergeRepository();
-        var repository = await new GitRepositoryService().OpenAsync(_temporaryDirectory);
-        var service = new GitReferenceHistoryService();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
+        var service = GitTestServices.CreateReferenceHistoryService();
         var full = await service.ReadHistoryAsync(repository, "main", null, 0, 100);
         var page1 = await service.ReadHistoryAsync(repository, "main", "visible", 0, 1);
         var page2 = await service.ReadHistoryAsync(repository, "main", "visible", 1, 1);

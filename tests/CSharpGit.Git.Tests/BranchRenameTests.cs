@@ -13,8 +13,8 @@ public sealed class BranchRenameTests : IDisposable
         var work = CreateRepository();
         RunGit(work, "branch", "feature/old");
         var before = RunGitOutput(work, "rev-parse", "feature/old").Trim();
-        var repositoryService = new GitRepositoryService();
-        var service = new GitReferenceService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateReferenceService();
         var repository = await repositoryService.OpenAsync(work);
 
         await service.RenameBranchAsync(repository, "feature/old", "feature/new");
@@ -29,8 +29,8 @@ public sealed class BranchRenameTests : IDisposable
     {
         var work = CreateRepository();
         RunGit(work, "switch", "-c", "feature/current");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitReferenceService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateReferenceService();
         var repository = await repositoryService.OpenAsync(work);
 
         await service.RenameBranchAsync(repository, "feature/current", "feature/renamed");
@@ -44,8 +44,8 @@ public sealed class BranchRenameTests : IDisposable
     {
         var work = CreateRepository();
         RunGit(work, "branch", "feature/login");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitReferenceService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateReferenceService();
         var repository = await repositoryService.OpenAsync(work);
 
         await service.RenameBranchAsync(repository, "feature/login", "bugfix/login");
@@ -60,8 +60,8 @@ public sealed class BranchRenameTests : IDisposable
         var work = CreateRepository();
         RunGit(work, "branch", "feature/one");
         RunGit(work, "branch", "feature/two");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitReferenceService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateReferenceService();
         var repository = await repositoryService.OpenAsync(work);
 
         await Assert.ThrowsAsync<RepositoryOpenException>(() =>
@@ -77,8 +77,8 @@ public sealed class BranchRenameTests : IDisposable
         var work = CreateRepository();
         RunGit(work, "branch", "feature");
         RunGit(work, "branch", "source");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitReferenceService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateReferenceService();
         var repository = await repositoryService.OpenAsync(work);
 
         await Assert.ThrowsAsync<RepositoryOpenException>(() =>
@@ -96,8 +96,8 @@ public sealed class BranchRenameTests : IDisposable
         RunGit(work, "branch", "feature/worktree");
         var linkedWorktree = Path.Combine(_temporaryDirectory, $"linked-{Guid.NewGuid():N}");
         RunGit(work, "worktree", "add", linkedWorktree, "feature/worktree");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitReferenceService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateReferenceService();
         var repository = await repositoryService.OpenAsync(work);
 
         await service.RenameBranchAsync(repository, "feature/worktree", "feature/renamed-worktree");
@@ -115,8 +115,8 @@ public sealed class BranchRenameTests : IDisposable
         var (work, remote) = CreateRepositoryWithRemote();
         RunGit(work, "switch", "-c", "feature/foo");
         RunGit(work, "push", "-u", "origin", "feature/foo");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitReferenceService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateReferenceService();
         var repository = await repositoryService.OpenAsync(work);
 
         await service.RenameBranchAsync(repository, "feature/foo", "feature/bar");
@@ -134,8 +134,8 @@ public sealed class BranchRenameTests : IDisposable
     {
         var work = CreateRepository();
         RunGit(work, "branch", "source");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitReferenceService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateReferenceService();
         var repository = await repositoryService.OpenAsync(work);
 
         await service.RenameBranchAsync(repository, "source", "feature/test_branch-v2");
@@ -149,8 +149,8 @@ public sealed class BranchRenameTests : IDisposable
     {
         var work = CreateRepository();
         RunGit(work, "branch", "feature/same");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitReferenceService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateReferenceService();
         var repository = await repositoryService.OpenAsync(work);
 
         var exception = await Assert.ThrowsAsync<ArgumentException>(() =>

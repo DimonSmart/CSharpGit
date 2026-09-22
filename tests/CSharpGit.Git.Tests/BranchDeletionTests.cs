@@ -13,8 +13,8 @@ public sealed class BranchDeletionTests : IDisposable
     {
         var work = CreateRepository();
         RunGit(work, "branch", "feature/delete");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitReferenceService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateReferenceService();
         var repository = await repositoryService.OpenAsync(work);
 
         await service.DeleteBranchAsync(repository, "feature/delete");
@@ -27,8 +27,8 @@ public sealed class BranchDeletionTests : IDisposable
     {
         var work = CreateRepository();
         RunGit(work, "branch", "feature/safe-delete");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitReferenceService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateReferenceService();
         var repository = await repositoryService.OpenAsync(work);
 
         await service.DeleteBranchAsync(repository, "feature/safe-delete", BranchDeletionMode.Safe);
@@ -42,8 +42,8 @@ public sealed class BranchDeletionTests : IDisposable
         var (work, remote) = CreateRepositoryWithRemote();
         RunGit(work, "switch", "-c", "feature/test/delete");
         RunGit(work, "push", "origin", "feature/test/delete");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitRepositorySyncService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateRepositorySyncService();
         var repository = await repositoryService.OpenAsync(work);
 
         await service.DeleteRemoteBranchAsync(repository, "origin", "feature/test/delete");
@@ -57,8 +57,8 @@ public sealed class BranchDeletionTests : IDisposable
         var (work, remote) = CreateRepositoryWithRemote();
         RunGit(work, "switch", "-c", "feature/keep-local");
         RunGit(work, "push", "origin", "feature/keep-local");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitRepositorySyncService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateRepositorySyncService();
         var repository = await repositoryService.OpenAsync(work);
 
         await service.DeleteRemoteBranchAsync(repository, "origin", "feature/keep-local");
@@ -76,8 +76,8 @@ public sealed class BranchDeletionTests : IDisposable
         RunGit(work, "add", "feature.txt");
         RunGit(work, "commit", "-m", "feature work");
         RunGit(work, "switch", "main");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitReferenceService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateReferenceService();
         var repository = await repositoryService.OpenAsync(work);
 
         await Assert.ThrowsAsync<RepositoryOpenException>(() => service.DeleteBranchAsync(repository, "feature/unmerged"));
@@ -94,8 +94,8 @@ public sealed class BranchDeletionTests : IDisposable
         RunGit(work, "add", "force.txt");
         RunGit(work, "commit", "-m", "unmerged feature work");
         RunGit(work, "switch", "main");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitReferenceService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateReferenceService();
         var repository = await repositoryService.OpenAsync(work);
 
         await service.DeleteBranchAsync(repository, "feature/force-delete", BranchDeletionMode.Force);
@@ -112,8 +112,8 @@ public sealed class BranchDeletionTests : IDisposable
         RunGit(work, "add", "safe.txt");
         RunGit(work, "commit", "-m", "unmerged safe work");
         RunGit(work, "switch", "main");
-        var repositoryService = new GitRepositoryService();
-        var service = new GitReferenceService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateReferenceService();
         var repository = await repositoryService.OpenAsync(work);
 
         await Assert.ThrowsAsync<RepositoryOpenException>(() =>

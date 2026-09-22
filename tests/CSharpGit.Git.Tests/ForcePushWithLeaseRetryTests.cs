@@ -33,8 +33,8 @@ public sealed class ForcePushWithLeaseRetryTests : IDisposable
         Commit(_root, "history.txt", "A\nB2\n", "B2");
         Commit(_root, "history.txt", "A\nB2\nC2\n", "C2");
 
-        var repositoryService = new GitRepositoryService();
-        var normalService = new GitRepositorySyncService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var normalService = GitTestServices.CreateRepositorySyncService();
         var repository = await repositoryService.OpenAsync(_root);
         var snapshot = await normalService.PrepareForcePushWithLeaseAsync(repository);
 

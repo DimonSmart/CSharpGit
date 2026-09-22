@@ -37,8 +37,8 @@ public sealed class RepositoryStateSessionExternalFetchTests : IDisposable
         var commitB = RunGitOutput(producerDirectory, "rev-parse", "HEAD").Trim();
         RunGit(producerDirectory, "push", "origin", "main");
 
-        var repositoryService = new GitRepositoryService();
-        var stateService = new GitRepositoryStateService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var stateService = GitTestServices.CreateRepositoryStateService();
         var repository = await repositoryService.OpenAsync(observedDirectory);
         await using var session = await new RepositoryStateSessionFactory(stateService).CreateAsync(repository);
         Assert.Equal(commitA, session.Current.HeadCommit);

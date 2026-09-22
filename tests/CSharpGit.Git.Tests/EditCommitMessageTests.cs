@@ -19,9 +19,9 @@ public sealed class EditCommitMessageTests : IDisposable
         var oldParent = Git("show", "-s", "--format=%P", oldHead);
         var oldAuthor = Git("show", "-s", "--format=%an%x00%ae%x00%aI", oldHead);
 
-        var repositoryService = new GitRepositoryService();
-        var referenceService = new GitReferenceService();
-        var service = new GitCommitActionService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var referenceService = GitTestServices.CreateReferenceService();
+        var service = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
         const string newMessage = "new subject\n\nmultiline body";
 
@@ -56,9 +56,9 @@ public sealed class EditCommitMessageTests : IDisposable
             if (dirtyKind == "staged") Run("add", "tracked.txt");
         }
 
-        var repositoryService = new GitRepositoryService();
-        var referenceService = new GitReferenceService();
-        var service = new GitCommitActionService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var referenceService = GitTestServices.CreateReferenceService();
+        var service = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
 
         var result = await service.EditCommitMessageAsync(repository, oldHead, "new");
@@ -80,9 +80,9 @@ public sealed class EditCommitMessageTests : IDisposable
         Commit("later.txt", "later\n", "duplicate");
         var oldHead = Commit("tip.txt", "tip\n", "tip");
 
-        var repositoryService = new GitRepositoryService();
-        var referenceService = new GitReferenceService();
-        var service = new GitCommitActionService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var referenceService = GitTestServices.CreateReferenceService();
+        var service = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
         const string newMessage = "updated target\n\nbody";
 
@@ -112,9 +112,9 @@ public sealed class EditCommitMessageTests : IDisposable
         Run("switch", "main");
         Commit("main.txt", "main\n", "main");
 
-        var repositoryService = new GitRepositoryService();
-        var referenceService = new GitReferenceService();
-        var service = new GitCommitActionService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var referenceService = GitTestServices.CreateReferenceService();
+        var service = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
 
         var outsideResult = await service.EditCommitMessageAsync(repository, outside, "changed");
@@ -137,9 +137,9 @@ public sealed class EditCommitMessageTests : IDisposable
         var root = Commit("tracked.txt", "base\n", "base");
         var target = Commit("tracked.txt", "target\n", "target");
 
-        var repositoryService = new GitRepositoryService();
-        var referenceService = new GitReferenceService();
-        var service = new GitCommitActionService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var referenceService = GitTestServices.CreateReferenceService();
+        var service = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
 
         var rootResult = await service.EditCommitMessageAsync(repository, root, "root changed");
@@ -173,9 +173,9 @@ public sealed class EditCommitMessageTests : IDisposable
         Run("switch", "main");
         var mainHead = Commit("tracked.txt", "main\n", "main");
 
-        var repositoryService = new GitRepositoryService();
-        var referenceService = new GitReferenceService();
-        var service = new GitCommitActionService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var referenceService = GitTestServices.CreateReferenceService();
+        var service = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
         var conflict = await service.CherryPickAsync(repository, conflictCommit);
         Assert.Equal(ApplyCommitResultKind.Conflicts, conflict.Kind);
@@ -184,7 +184,7 @@ public sealed class EditCommitMessageTests : IDisposable
 
         Assert.Equal(EditCommitMessageResultKind.Failed, result.Kind);
         Assert.Contains("current Git operation", result.Message, StringComparison.Ordinal);
-        await new GitRepositoryWorkflowService().AbortOperationAsync(repository);
+        await GitTestServices.CreateRepositoryWorkflowService().AbortOperationAsync(repository);
     }
 
     [Fact]
@@ -196,9 +196,9 @@ public sealed class EditCommitMessageTests : IDisposable
         Commit("tip.txt", "tip\n", "tip");
         File.WriteAllText(Path.Combine(_root, "untracked.txt"), "dirty\n");
 
-        var repositoryService = new GitRepositoryService();
-        var referenceService = new GitReferenceService();
-        var service = new GitCommitActionService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var referenceService = GitTestServices.CreateReferenceService();
+        var service = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
 
         var result = await service.EditCommitMessageAsync(repository, target, "changed");

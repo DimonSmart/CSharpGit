@@ -22,9 +22,9 @@ public sealed class BatchStagingTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, "тест.cs"), "unicode\n");
         File.WriteAllText(Path.Combine(_temporaryDirectory, "leave.txt"), "leave unstaged\n");
 
-        var repositoryService = new GitRepositoryService();
-        var stateService = new GitRepositoryStateService();
-        var workingTreeService = new GitWorkingTreeService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var stateService = GitTestServices.CreateRepositoryStateService();
+        var workingTreeService = GitTestServices.CreateWorkingTreeService();
         var repository = await repositoryService.OpenAsync(_temporaryDirectory);
         var changes = (await stateService.ReadAsync(repository)).Changes;
         var selected = new WorkingTreeChange[]
@@ -60,9 +60,9 @@ public sealed class BatchStagingTests : IDisposable
         var oneBytes = File.ReadAllBytes(Path.Combine(_temporaryDirectory, "one.cs"));
         var twoBytes = File.ReadAllBytes(Path.Combine(_temporaryDirectory, "two.cs"));
 
-        var repositoryService = new GitRepositoryService();
-        var stateService = new GitRepositoryStateService();
-        var workingTreeService = new GitWorkingTreeService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var stateService = GitTestServices.CreateRepositoryStateService();
+        var workingTreeService = GitTestServices.CreateWorkingTreeService();
         var repository = await repositoryService.OpenAsync(_temporaryDirectory);
         var before = await stateService.ReadAsync(repository);
         var one = before.Changes.Single(change => change.Path == "one.cs");
@@ -86,9 +86,9 @@ public sealed class BatchStagingTests : IDisposable
         RunGit(_temporaryDirectory, "add", "--", "Foo.cs");
         File.WriteAllText(Path.Combine(_temporaryDirectory, "Foo.cs"), "C\n");
 
-        var repositoryService = new GitRepositoryService();
-        var stateService = new GitRepositoryStateService();
-        var workingTreeService = new GitWorkingTreeService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var stateService = GitTestServices.CreateRepositoryStateService();
+        var workingTreeService = GitTestServices.CreateWorkingTreeService();
         var repository = await repositoryService.OpenAsync(_temporaryDirectory);
         var both = Assert.Single((await stateService.ReadAsync(repository)).Changes);
         Assert.True(both.IsStaged && both.IsUnstaged);
@@ -117,9 +117,9 @@ public sealed class BatchStagingTests : IDisposable
         RunGit(_temporaryDirectory, "add", "--", "Foo.cs");
         File.WriteAllText(Path.Combine(_temporaryDirectory, "Foo.cs"), "B\n");
 
-        var repositoryService = new GitRepositoryService();
-        var stateService = new GitRepositoryStateService();
-        var workingTreeService = new GitWorkingTreeService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var stateService = GitTestServices.CreateRepositoryStateService();
+        var workingTreeService = GitTestServices.CreateWorkingTreeService();
         var repository = await repositoryService.OpenAsync(_temporaryDirectory);
         var change = Assert.Single((await stateService.ReadAsync(repository)).Changes);
 
@@ -138,9 +138,9 @@ public sealed class BatchStagingTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, "B.cs"), "B\n");
         RunGit(_temporaryDirectory, "add", "--", "A.cs", "B.cs");
 
-        var repositoryService = new GitRepositoryService();
-        var stateService = new GitRepositoryStateService();
-        var workingTreeService = new GitWorkingTreeService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var stateService = GitTestServices.CreateRepositoryStateService();
+        var workingTreeService = GitTestServices.CreateWorkingTreeService();
         var repository = await repositoryService.OpenAsync(_temporaryDirectory);
         await workingTreeService.UnstageAllAsync(repository);
 
@@ -165,9 +165,9 @@ public sealed class BatchStagingTests : IDisposable
         var oneBytes = File.ReadAllBytes(Path.Combine(_temporaryDirectory, "one.cs"));
         var twoBytes = File.ReadAllBytes(Path.Combine(_temporaryDirectory, "two.cs"));
 
-        var repositoryService = new GitRepositoryService();
-        var stateService = new GitRepositoryStateService();
-        var workingTreeService = new GitWorkingTreeService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var stateService = GitTestServices.CreateRepositoryStateService();
+        var workingTreeService = GitTestServices.CreateWorkingTreeService();
         var repository = await repositoryService.OpenAsync(_temporaryDirectory);
         await workingTreeService.UnstageAllAsync(repository);
 
@@ -180,9 +180,9 @@ public sealed class BatchStagingTests : IDisposable
     public async Task BatchApiRejectsNullEmptyAndInvalidPaths()
     {
         InitializeRepository(withCommit: false);
-        var repositoryService = new GitRepositoryService();
-        var stateService = new GitRepositoryStateService();
-        var workingTreeService = new GitWorkingTreeService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var stateService = GitTestServices.CreateRepositoryStateService();
+        var workingTreeService = GitTestServices.CreateWorkingTreeService();
         var repository = await repositoryService.OpenAsync(_temporaryDirectory);
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => workingTreeService.StageFilesAsync(repository, null!));

@@ -14,11 +14,11 @@ public sealed class CommitActionsTests : IDisposable
         var historical = Commit("tracked.txt", "base\n", "base");
         Commit("tracked.txt", "tip\n", "tip");
 
-        var repositoryService = new GitRepositoryService();
-        var stateService = new GitRepositoryStateService();
-        var referenceService = new GitReferenceService();
-        var workflowService = new GitRepositoryWorkflowService();
-        var commitActionService = new GitCommitActionService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var stateService = GitTestServices.CreateRepositoryStateService();
+        var referenceService = GitTestServices.CreateReferenceService();
+        var workflowService = GitTestServices.CreateRepositoryWorkflowService();
+        var commitActionService = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
 
         await referenceService.CreateBranchAsync(repository, "historical", historical, switchToBranch: false);
@@ -47,11 +47,11 @@ public sealed class CommitActionsTests : IDisposable
         Run("switch", "main");
         Commit("main.txt", "main\n", "main");
 
-        var repositoryService = new GitRepositoryService();
-        var stateService = new GitRepositoryStateService();
-        var referenceService = new GitReferenceService();
-        var workflowService = new GitRepositoryWorkflowService();
-        var commitActionService = new GitCommitActionService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var stateService = GitTestServices.CreateRepositoryStateService();
+        var referenceService = GitTestServices.CreateReferenceService();
+        var workflowService = GitTestServices.CreateRepositoryWorkflowService();
+        var commitActionService = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
         var success = await commitActionService.CherryPickAsync(repository, picked);
 
@@ -101,11 +101,11 @@ public sealed class CommitActionsTests : IDisposable
         var merge = Git("rev-parse", "HEAD");
         Run("switch", "-c", "replay", baseCommit);
 
-        var repositoryService = new GitRepositoryService();
-        var stateService = new GitRepositoryStateService();
-        var referenceService = new GitReferenceService();
-        var workflowService = new GitRepositoryWorkflowService();
-        var commitActionService = new GitCommitActionService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var stateService = GitTestServices.CreateRepositoryStateService();
+        var referenceService = GitTestServices.CreateReferenceService();
+        var workflowService = GitTestServices.CreateRepositoryWorkflowService();
+        var commitActionService = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
 
         var withoutMainline = await commitActionService.CherryPickAsync(repository, merge);
@@ -124,11 +124,11 @@ public sealed class CommitActionsTests : IDisposable
         Commit("tracked.txt", "base\n", "base");
         var target = Commit("tracked.txt", "change\n", "change");
 
-        var repositoryService = new GitRepositoryService();
-        var stateService = new GitRepositoryStateService();
-        var referenceService = new GitReferenceService();
-        var workflowService = new GitRepositoryWorkflowService();
-        var commitActionService = new GitCommitActionService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var stateService = GitTestServices.CreateRepositoryStateService();
+        var referenceService = GitTestServices.CreateReferenceService();
+        var workflowService = GitTestServices.CreateRepositoryWorkflowService();
+        var commitActionService = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
         var success = await commitActionService.RevertAsync(repository, target);
         Assert.Equal(ApplyCommitResultKind.Completed, success.Kind);
@@ -164,11 +164,11 @@ public sealed class CommitActionsTests : IDisposable
         Run("merge", "--no-ff", "feature", "-m", "merge");
         var merge = Git("rev-parse", "HEAD");
 
-        var repositoryService = new GitRepositoryService();
-        var stateService = new GitRepositoryStateService();
-        var referenceService = new GitReferenceService();
-        var workflowService = new GitRepositoryWorkflowService();
-        var commitActionService = new GitCommitActionService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var stateService = GitTestServices.CreateRepositoryStateService();
+        var referenceService = GitTestServices.CreateReferenceService();
+        var workflowService = GitTestServices.CreateRepositoryWorkflowService();
+        var commitActionService = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
         var result = await commitActionService.RevertAsync(repository, merge, 1);
 
@@ -184,11 +184,11 @@ public sealed class CommitActionsTests : IDisposable
         var target = Commit("tracked.txt", "base\n", "base");
         var tip = Commit("tracked.txt", "tip\n", "tip");
 
-        var repositoryService = new GitRepositoryService();
-        var stateService = new GitRepositoryStateService();
-        var referenceService = new GitReferenceService();
-        var workflowService = new GitRepositoryWorkflowService();
-        var commitActionService = new GitCommitActionService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var stateService = GitTestServices.CreateRepositoryStateService();
+        var referenceService = GitTestServices.CreateReferenceService();
+        var workflowService = GitTestServices.CreateRepositoryWorkflowService();
+        var commitActionService = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
 
         File.WriteAllText(Path.Combine(_root, "tracked.txt"), "dirty staged\n");
@@ -223,11 +223,11 @@ public sealed class CommitActionsTests : IDisposable
         var target = Commit("tracked.txt", "base\n", "base");
         Commit("tracked.txt", "tip\n", "tip");
 
-        var repositoryService = new GitRepositoryService();
-        var stateService = new GitRepositoryStateService();
-        var referenceService = new GitReferenceService();
-        var workflowService = new GitRepositoryWorkflowService();
-        var commitActionService = new GitCommitActionService();
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var stateService = GitTestServices.CreateRepositoryStateService();
+        var referenceService = GitTestServices.CreateReferenceService();
+        var workflowService = GitTestServices.CreateRepositoryWorkflowService();
+        var commitActionService = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
         await referenceService.CheckoutAsync(repository, target);
 
