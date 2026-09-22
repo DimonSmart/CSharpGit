@@ -37,7 +37,7 @@ public sealed class GitArchitectureGuardrailTests
     public void TagAndReferenceCapabilitiesRemainIndependent()
     {
         Assert.False(typeof(ITagService).IsAssignableFrom(typeof(IReferenceService)));
-        Assert.False(typeof(ITagService).IsAssignableFrom(typeof(GitCliRepositoryService)));
+        Assert.False(typeof(ITagService).IsAssignableFrom(typeof(GitReferenceService)));
     }
 
     [Fact]
@@ -46,18 +46,53 @@ public sealed class GitArchitectureGuardrailTests
         var gitProject = Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Git");
         Assert.False(File.Exists(Path.Combine(gitProject, "GitCliRepositoryService.Tags.cs")));
 
-        var repositoryServiceSources = Directory
-            .GetFiles(gitProject, "GitCliRepositoryService*.cs", SearchOption.TopDirectoryOnly)
-            .Select(File.ReadAllText);
-        Assert.DoesNotContain(repositoryServiceSources, source => source.Contains("new GitTagService", StringComparison.Ordinal));
+        Assert.Empty(Directory.GetFiles(gitProject, "GitCliRepositoryService*.cs", SearchOption.TopDirectoryOnly));
 
-        var referenceDecorator = File.ReadAllText(Path.Combine(gitProject, "DefaultBranchReferenceService.cs"));
-        Assert.DoesNotContain("ITagService", referenceDecorator, StringComparison.Ordinal);
-        Assert.DoesNotContain("ReadTagsAsync", referenceDecorator, StringComparison.Ordinal);
+        var referenceService = File.ReadAllText(Path.Combine(gitProject, "GitReferenceService.cs"));
+        Assert.DoesNotContain("ITagService", referenceService, StringComparison.Ordinal);
+        Assert.DoesNotContain("ReadTagsAsync", referenceService, StringComparison.Ordinal);
 
         var registrations = File.ReadAllText(Path.Combine(gitProject, "GitServiceCollectionExtensions.cs"));
         Assert.Contains("AddSingleton<ITagService>", registrations, StringComparison.Ordinal);
         Assert.Contains("GetRequiredService<GitTagService>()", registrations, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RepositoryCapabilitiesHaveDistinctGitImplementations()
+    {
+        Assert.True(typeof(IRepositoryService).IsAssignableFrom(typeof(GitRepositoryService)));
+        Assert.True(typeof(IRepositoryStateService).IsAssignableFrom(typeof(GitRepositoryStateService)));
+        Assert.True(typeof(IWorkingTreeService).IsAssignableFrom(typeof(GitWorkingTreeService)));
+        Assert.True(typeof(IWorkingTreeDiffService).IsAssignableFrom(typeof(GitWorkingTreeDiffService)));
+        Assert.True(typeof(IReferenceService).IsAssignableFrom(typeof(GitReferenceService)));
+        Assert.True(typeof(IRepositorySyncService).IsAssignableFrom(typeof(GitRepositorySyncService)));
+        Assert.True(typeof(IRepositoryWorkflowService).IsAssignableFrom(typeof(GitRepositoryWorkflowService)));
+        Assert.True(typeof(ICommitActionService).IsAssignableFrom(typeof(GitCommitActionService)));
+
+        var implementations = new[]
+        {
+            typeof(GitRepositoryService),
+            typeof(GitRepositoryStateService),
+            typeof(GitWorkingTreeService),
+            typeof(GitWorkingTreeDiffService),
+            typeof(GitReferenceService),
+            typeof(GitRepositorySyncService),
+            typeof(GitRepositoryWorkflowService),
+            typeof(GitCommitActionService)
+        };
+
+        Assert.Equal(implementations.Length, implementations.Distinct().Count());
+    }
+
+    [Fact]
+    public void ReferenceSyncAndCommitMethodsAreNotMixedAcrossCapabilityServices()
+    {
+        Assert.DoesNotContain(nameof(IRepositorySyncService.FetchAsync), typeof(GitReferenceService).GetMethods().Select(method => method.Name));
+        Assert.DoesNotContain(nameof(ICommitActionService.CherryPickAsync), typeof(GitReferenceService).GetMethods().Select(method => method.Name));
+        Assert.DoesNotContain(nameof(IReferenceService.SwitchBranchAsync), typeof(GitRepositorySyncService).GetMethods().Select(method => method.Name));
+        Assert.DoesNotContain(nameof(ICommitActionService.ResetAsync), typeof(GitRepositorySyncService).GetMethods().Select(method => method.Name));
+        Assert.DoesNotContain(nameof(IRepositorySyncService.PushAsync), typeof(GitCommitActionService).GetMethods().Select(method => method.Name));
+        Assert.DoesNotContain(nameof(IReferenceService.CreateBranchAsync), typeof(GitCommitActionService).GetMethods().Select(method => method.Name));
     }
 
     private static string FindRepositoryRoot()
