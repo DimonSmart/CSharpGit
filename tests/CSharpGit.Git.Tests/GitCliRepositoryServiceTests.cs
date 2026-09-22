@@ -20,9 +20,10 @@ public sealed class GitCliRepositoryServiceTests : IDisposable
         RunGit(_temporaryDirectory, "add", "tracked.txt");
         RunGit(_temporaryDirectory, "commit", "-m", "Initial commit");
 
-        var service = new GitCliRepositoryService();
+        var services = new GitCapabilityTestServices();
+        var service = services.Repositories;
         var repository = await service.OpenAsync(_temporaryDirectory);
-        var initial = await service.ReadAsync(repository);
+        var initial = await services.State.ReadAsync(repository);
 
         Assert.Equal(Path.GetFullPath(Path.Combine(_temporaryDirectory, ".git")), repository.GitCommonDirectory);
         Assert.Equal(repository.GitDirectory, repository.GitCommonDirectory);
@@ -33,7 +34,7 @@ public sealed class GitCliRepositoryServiceTests : IDisposable
         Assert.NotNull(initial.HeadCommit);
 
         File.AppendAllText(Path.Combine(_temporaryDirectory, "tracked.txt"), "changed");
-        var refreshed = await service.ReadAsync(repository);
+        var refreshed = await services.State.ReadAsync(repository);
 
         var change = Assert.Single(refreshed.Changes);
         Assert.Equal("tracked.txt", change.Path);
@@ -45,7 +46,7 @@ public sealed class GitCliRepositoryServiceTests : IDisposable
     {
         Directory.CreateDirectory(_temporaryDirectory);
         var executor = new GitCommandExecutor(new GitCliOptions { ExecutablePath = Path.Combine(_temporaryDirectory, "missing-git") });
-        var service = new GitCliRepositoryService(executor);
+        var service = new GitCapabilityTestServices(executor).Repositories;
 
         var exception = await Assert.ThrowsAsync<RepositoryOpenException>(
             () => service.OpenAsync(_temporaryDirectory));
@@ -66,7 +67,8 @@ public sealed class GitCliRepositoryServiceTests : IDisposable
         RunGit(_temporaryDirectory, "add", fileName);
         RunGit(_temporaryDirectory, "commit", "-m", "Добавлен мир 世界");
 
-        var repositoryService = new GitCliRepositoryService();
+        var services = new GitCapabilityTestServices();
+        var repositoryService = services.Repositories;
         var historyService = new GitReferenceHistoryService();
         var repository = await repositoryService.OpenAsync(_temporaryDirectory);
         var history = await historyService.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.CurrentBranch, null, 0, 20));
@@ -75,7 +77,7 @@ public sealed class GitCliRepositoryServiceTests : IDisposable
         Assert.Equal("Добавлен мир 世界", commit.Commit.Subject);
 
         File.AppendAllText(Path.Combine(_temporaryDirectory, fileName), "изменение\n");
-        var state = await repositoryService.ReadAsync(repository);
+        var state = await services.State.ReadAsync(repository);
         var change = Assert.Single(state.Changes);
         Assert.Equal(fileName, change.Path);
     }
@@ -94,7 +96,8 @@ public sealed class GitCliRepositoryServiceTests : IDisposable
         RunGit(_temporaryDirectory, "worktree", "add", "-b", "feature", worktreeDirectory);
         try
         {
-            var service = new GitCliRepositoryService();
+            var services = new GitCapabilityTestServices();
+        var service = services.Repositories;
             var repository = await service.OpenAsync(worktreeDirectory);
 
             Assert.True(repository.IsWorktree);
@@ -129,7 +132,8 @@ public sealed class GitCliRepositoryServiceTests : IDisposable
         RunGit(_temporaryDirectory, "add", "main.txt");
         RunGit(_temporaryDirectory, "commit", "-m", "Main");
 
-        var repositoryService = new GitCliRepositoryService();
+        var services = new GitCapabilityTestServices();
+        var repositoryService = services.Repositories;
         var historyService = new GitReferenceHistoryService();
         var repository = await repositoryService.OpenAsync(_temporaryDirectory);
         var history = await historyService.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.AllReferences, null, 0, 20));
@@ -152,7 +156,8 @@ public sealed class GitCliRepositoryServiceTests : IDisposable
         RunGit(_temporaryDirectory, "add", "sample.txt");
         RunGit(_temporaryDirectory, "commit", "-m", "Changed");
 
-        var repositoryService = new GitCliRepositoryService();
+        var services = new GitCapabilityTestServices();
+        var repositoryService = services.Repositories;
         var historyService = new GitReferenceHistoryService();
         var repository = await repositoryService.OpenAsync(_temporaryDirectory);
         var history = await historyService.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.CurrentBranch, null, 0, 20));
