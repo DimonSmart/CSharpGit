@@ -71,6 +71,13 @@ internal sealed class GitPushExecutor
                 "deny updating"))
             return PushResultKind.RemoteRejected;
 
+        if (ContainsAny(
+                text,
+                "no configured push destination",
+                "has no upstream branch",
+                "upstream branch of your current branch does not match"))
+            return PushResultKind.PushDestinationUnavailable;
+
         return PushResultKind.OtherFailure;
     }
 

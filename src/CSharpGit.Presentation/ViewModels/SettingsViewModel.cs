@@ -29,6 +29,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
     private readonly IAppSettingsService _settings;
     private ApplicationThemeOption _selectedThemeMode;
     private GitConsoleAutoOpenOption _selectedGitConsoleAutoOpenMode;
+    private bool _autoSetupRemoteOnPush;
     private bool _disposed;
 
     internal SettingsViewModel(IAppSettingsService settings)
@@ -83,6 +84,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
             new(GitConsoleAutoOpenMode.Never, "Never", "Open only when requested manually.")
         ];
         _selectedGitConsoleAutoOpenMode = FindGitConsoleMode(_settings.GitConsoleAutoOpenMode);
+        _autoSetupRemoteOnPush = _settings.AutoSetupRemoteOnPush;
 
         _settings.Changed += Settings_Changed;
     }
@@ -125,6 +127,17 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    public bool AutoSetupRemoteOnPush
+    {
+        get => _autoSetupRemoteOnPush;
+        set
+        {
+            if (_autoSetupRemoteOnPush == value) return;
+            _autoSetupRemoteOnPush = value;
+            Notify();
+        }
+    }
+
     public Task ApplyThemeModeAsync(
         ApplicationThemeOption option,
         CancellationToken cancellationToken = default)
@@ -160,6 +173,14 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         await _settings.SetGitConsoleAutoOpenModeAsync(option.Mode, cancellationToken);
     }
 
+    public async Task ApplyAutoSetupRemoteOnPushAsync(
+        bool value,
+        CancellationToken cancellationToken = default)
+    {
+        AutoSetupRemoteOnPush = value;
+        await _settings.SetAutoSetupRemoteOnPushAsync(value, cancellationToken);
+    }
+
     private void Settings_Changed(object? sender, EventArgs e)
     {
         var selectedThemeMode = FindThemeMode(_settings.ThemeMode);
@@ -174,6 +195,12 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         {
             _selectedGitConsoleAutoOpenMode = selectedGitConsoleMode;
             Notify(nameof(SelectedGitConsoleAutoOpenMode));
+        }
+
+        if (_autoSetupRemoteOnPush != _settings.AutoSetupRemoteOnPush)
+        {
+            _autoSetupRemoteOnPush = _settings.AutoSetupRemoteOnPush;
+            Notify(nameof(AutoSetupRemoteOnPush));
         }
     }
 

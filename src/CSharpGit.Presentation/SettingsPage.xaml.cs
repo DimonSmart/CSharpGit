@@ -189,6 +189,21 @@ public sealed partial class SettingsPage : Page
         }
     }
 
+    private async void AutoSetupRemoteOnPushToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_selectionReady) return;
+
+        SettingsMessage.IsOpen = false;
+        try
+        {
+            await _viewModel.ApplyAutoSetupRemoteOnPushAsync(AutoSetupRemoteOnPushToggle.IsOn);
+        }
+        catch (Exception exception)
+        {
+            ShowSettingsError(exception);
+        }
+    }
+
     private async void GitConsoleAutoOpenComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!_selectionReady || GitConsoleAutoOpenComboBox.SelectedItem is not GitConsoleAutoOpenOption option) return;

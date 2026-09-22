@@ -174,6 +174,31 @@ public sealed class JsonAppSettingsServiceTests
         Assert.Equal(1, changes);
     }
 
+    [Fact]
+    public void AutoSetupRemoteOnPushDefaultsToFalse()
+    {
+        using var fixture = new SettingsFixture();
+
+        var service = fixture.CreateService();
+
+        Assert.False(service.AutoSetupRemoteOnPush);
+    }
+
+    [Fact]
+    public async Task AutoSetupRemoteOnPushIsPersisted()
+    {
+        using var fixture = new SettingsFixture();
+        var service = fixture.CreateService();
+
+        await service.SetAutoSetupRemoteOnPushAsync(true);
+        var restored = fixture.CreateService();
+
+        Assert.True(service.AutoSetupRemoteOnPush);
+        Assert.True(restored.AutoSetupRemoteOnPush);
+        using var document = JsonDocument.Parse(await File.ReadAllTextAsync(fixture.SettingsPath));
+        Assert.True(document.RootElement.GetProperty("AutoSetupRemoteOnPush").GetBoolean());
+    }
+
     private sealed class SettingsFixture : IDisposable
     {
         public SettingsFixture()

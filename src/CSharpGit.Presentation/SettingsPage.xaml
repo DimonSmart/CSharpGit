@@ -65,6 +65,24 @@
               </StackPanel>
             </Border>
 
+            <TextBlock Text="Git push"
+                       Style="{StaticResource SectionHeaderTextStyle}"
+                       Margin="{StaticResource Margin.Section}" />
+            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
+              <StackPanel Spacing="{StaticResource Spacing.M}">
+                <ToggleSwitch x:Name="AutoSetupRemoteOnPushToggle"
+                              Header="Automatically set upstream on first push"
+                              IsOn="{Binding AutoSetupRemoteOnPush, Mode=TwoWay}"
+                              OnContent="On"
+                              OffContent="Off"
+                              Toggled="AutoSetupRemoteOnPushToggle_Toggled" />
+                <TextBlock Text="Use Git push.autoSetupRemote for branches without an upstream. CSharpGit applies it only to the push command and does not modify Git configuration."
+                           Style="{StaticResource SecondaryTextStyle}"
+                           TextWrapping="Wrap"
+                           MaxWidth="620" />
+              </StackPanel>
+            </Border>
+
             <TextBlock Text="Commit time display"
                        Style="{StaticResource SectionHeaderTextStyle}"
                        Margin="{StaticResource Margin.Section}" />

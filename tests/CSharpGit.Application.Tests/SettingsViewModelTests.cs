@@ -34,6 +34,18 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
+    public async Task AutoSetupRemoteOnPushUsesApplicationSettingsService()
+    {
+        var settings = new FakeAppSettingsService(ApplicationThemeMode.System);
+        using var viewModel = new SettingsViewModel(settings);
+
+        await viewModel.ApplyAutoSetupRemoteOnPushAsync(true);
+
+        Assert.True(settings.AutoSetupRemoteOnPush);
+        Assert.True(viewModel.AutoSetupRemoteOnPush);
+    }
+
+    [Fact]
     public void ExternalSettingsChangeSynchronizesSelectedThemeAndRaisesPropertyChanged()
     {
         var settings = new FakeAppSettingsService(ApplicationThemeMode.System);
@@ -74,6 +86,7 @@ public sealed class SettingsViewModelTests
         public ApplicationLogLevel LogLevel { get; private set; } = ApplicationLogLevel.Information;
         public GitConsoleAutoOpenMode GitConsoleAutoOpenMode { get; private set; } = GitConsoleAutoOpenMode.OnErrors;
         public bool ShowReflog { get; private set; }
+        public bool AutoSetupRemoteOnPush { get; private set; }
         public IReadOnlyList<RecentRepositorySettings> RecentRepositories => [];
         public int ChangedSubscriberCount { get; private set; }
 
@@ -141,6 +154,17 @@ public sealed class SettingsViewModelTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             ShowReflog = value;
+            return Task.CompletedTask;
+        }
+
+        public Task SetAutoSetupRemoteOnPushAsync(
+            bool value,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (AutoSetupRemoteOnPush == value) return Task.CompletedTask;
+            AutoSetupRemoteOnPush = value;
+            _changed?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
         }
 

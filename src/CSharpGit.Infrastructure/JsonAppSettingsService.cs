@@ -47,6 +47,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
 
     public bool ShowReflog => Volatile.Read(ref _state).ShowReflog;
 
+    public bool AutoSetupRemoteOnPush => Volatile.Read(ref _state).AutoSetupRemoteOnPush;
+
     public IReadOnlyList<RecentRepositorySettings> RecentRepositories => Volatile.Read(ref _state).RecentRepositories;
 
     public event EventHandler? Changed;
@@ -113,6 +115,15 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             current => current.ShowReflog == value
                 ? current
                 : current with { ShowReflog = value },
+            cancellationToken);
+
+    public Task SetAutoSetupRemoteOnPushAsync(
+        bool value,
+        CancellationToken cancellationToken = default) =>
+        UpdateAsync(
+            current => current.AutoSetupRemoteOnPush == value
+                ? current
+                : current with { AutoSetupRemoteOnPush = value },
             cancellationToken);
 
     public Task RecordRecentRepositoryAsync(
@@ -222,6 +233,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 logLevel,
                 gitConsoleAutoOpenMode,
                 document.ShowReflog,
+                document.AutoSetupRemoteOnPush,
                 recentRepositories);
         }
         catch (JsonException)
@@ -253,6 +265,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             LogLevel = state.LogLevel,
             GitConsoleAutoOpenMode = state.GitConsoleAutoOpenMode,
             ShowReflog = state.ShowReflog,
+            AutoSetupRemoteOnPush = state.AutoSetupRemoteOnPush,
             RecentRepositories = state.RecentRepositories.ToList()
         };
         var json = JsonSerializer.Serialize(document, SerializerOptions);
@@ -337,6 +350,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         ApplicationLogLevel LogLevel,
         GitConsoleAutoOpenMode GitConsoleAutoOpenMode,
         bool ShowReflog,
+        bool AutoSetupRemoteOnPush,
         IReadOnlyList<RecentRepositorySettings> RecentRepositories)
     {
         public static SettingsState Default { get; } = new(
@@ -345,6 +359,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             false,
             ApplicationLogLevel.Information,
             GitConsoleAutoOpenMode.OnErrors,
+            false,
             false,
             Array.AsReadOnly(Array.Empty<RecentRepositorySettings>()));
     }
@@ -357,6 +372,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         public ApplicationLogLevel? LogLevel { get; init; }
         public GitConsoleAutoOpenMode? GitConsoleAutoOpenMode { get; init; }
         public bool ShowReflog { get; init; }
+        public bool AutoSetupRemoteOnPush { get; init; }
         public List<RecentRepositorySettings>? RecentRepositories { get; init; }
     }
 

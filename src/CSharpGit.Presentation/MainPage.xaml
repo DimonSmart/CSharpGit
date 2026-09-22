@@ -36,7 +36,7 @@
             <CheckBox Grid.Column="2" Content="Set upstream" IsChecked="{Binding SetUpstream, Mode=TwoWay}" Style="{StaticResource CompactCheckBoxStyle}" VerticalAlignment="Center" />
           </Grid>
           <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.L}">
-            <Button Content="Push" Click="Push_Click" Style="{StaticResource CompactButtonStyle}" />
+            <Button Content="Push" Click="ExplicitPush_Click" Style="{StaticResource CompactButtonStyle}" />
             <Button Content="Force push with lease…" Click="ForcePushWithLease_Click" IsEnabled="{Binding CanForcePushWithLease}" Style="{StaticResource CompactButtonStyle}" />
             <Button Content="Fetch all" Command="{Binding FetchAllCommand}" Style="{StaticResource CompactButtonStyle}" />
           </StackPanel>
@@ -138,7 +138,7 @@
               </StackPanel>
               <Button.Flyout>
                 <MenuFlyout>
-                  <MenuFlyoutItem Text="Push" Click="Push_Click" />
+                  <MenuFlyoutItem Text="{Binding SelectedLocalBranch, Converter={StaticResource BranchTrackingActionTextConverter}, ConverterParameter=PushMenu}" Click="Push_Click" />
                   <MenuFlyoutSeparator />
                   <MenuFlyoutItem Text="Force push with lease…" Click="ForcePushWithLease_Click" IsEnabled="{Binding CanForcePushWithLease}" />
                 </MenuFlyout>

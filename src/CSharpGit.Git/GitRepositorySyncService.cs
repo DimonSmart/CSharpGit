@@ -5,7 +5,7 @@ namespace CSharpGit.Git;
 
 internal sealed partial class GitRepositorySyncService : IRepositorySyncService
 {
-private readonly GitRepositoryCommandRunner _runner;
+    private readonly GitRepositoryCommandRunner _runner;
     private readonly GitPushExecutor _pushExecutor;
 
     internal GitRepositorySyncService(GitCommandExecutor executor)
@@ -77,7 +77,7 @@ private readonly GitRepositoryCommandRunner _runner;
 
         if (string.IsNullOrWhiteSpace(upstream))
             throw new InvalidOperationException(
-                $"Branch '{branch}' has no configured upstream. Explicitly select a remote and branch for push, then optionally set the upstream.");
+                $"Branch '{branch}' has no configured upstream. Publish the branch or configure an upstream before pulling.");
 
         await _runner.RunMutationAsync(
             repository,
@@ -85,49 +85,75 @@ private readonly GitRepositoryCommandRunner _runner;
             "pull");
     }
 
-    public async Task PushAsync(
+    public Task PushAsync(
         Repository repository,
-        string? remote = null,
-        string? branch = null,
-        bool setUpstream = false,
+        PushOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        var current = await CurrentBranchAsync(
+        ArgumentNullException.ThrowIfNull(repository);
+
+        return _pushExecutor.RunAsync(
             repository,
-            cancellationToken);
-        var upstream = await _runner.RunOptionalAsync(
-            repository.WorkingDirectory,
             cancellationToken,
-            "rev-parse",
-            "--abbrev-ref",
-            "--symbolic-full-name",
-            "@{upstream}");
+            options?.AutoSetupRemote == true
+                ? [
+                    "-c",
+                    "push.autoSetupRemote=true",
+                    "push",
+                    "--porcelain"
+                ]
+                : [
+                    "push",
+                    "--porcelain"
+                ]);
+    }
 
-        if (!string.IsNullOrWhiteSpace(upstream)
-            && remote is null
-            && branch is null)
+    public async Task<PublishBranchPreparation> PreparePublishBranchAsync(
+        Repository repository,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
+        var localBranch = await CurrentBranchAsync(repository, cancellationToken);
+        var remotes = await ReadRemoteNamesAsync(repository, cancellationToken);
+
+        var candidates = new[]
         {
-            await _pushExecutor.RunAsync(
-                repository,
-                cancellationToken,
-                "push",
-                "--porcelain");
-            return;
-        }
+            await ReadConfigAsync(repository, $"branch.{localBranch}.pushRemote", cancellationToken),
+            await ReadConfigAsync(repository, "remote.pushDefault", cancellationToken),
+            await ReadConfigAsync(repository, $"branch.{localBranch}.remote", cancellationToken)
+        };
 
-        if (string.IsNullOrWhiteSpace(remote)
-            || string.IsNullOrWhiteSpace(branch))
-            throw new InvalidOperationException(
-                "No upstream is configured. Explicitly select a remote and remote branch name; Git GUI does not select them automatically.");
+        var suggested = candidates.FirstOrDefault(candidate =>
+            candidate is not null && remotes.Contains(candidate, StringComparer.Ordinal));
 
-        GitRefValidator.Validate(remote, nameof(remote));
-        GitRefValidator.Validate(branch, nameof(branch));
-        var refspec = $"{current}:refs/heads/{branch}";
+        if (suggested is null && remotes.Contains("origin", StringComparer.Ordinal))
+            suggested = "origin";
+        if (suggested is null && remotes.Count == 1)
+            suggested = remotes[0];
 
+        return new PublishBranchPreparation(localBranch, suggested);
+    }
+
+    public async Task PublishBranchAsync(
+        Repository repository,
+        PublishBranchRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
+        ArgumentNullException.ThrowIfNull(request);
+
+        var localBranch = await CurrentBranchAsync(repository, cancellationToken);
+        var remote = request.Remote.Trim();
+        var remoteBranch = request.RemoteBranch.Trim();
+        GitRefValidator.Validate(remote, nameof(request.Remote));
+        GitRefValidator.Validate(remoteBranch, nameof(request.RemoteBranch));
+        await EnsureRemoteExistsAsync(repository, remote, cancellationToken);
+
+        var refspec = $"refs/heads/{localBranch}:refs/heads/{remoteBranch}";
         await _pushExecutor.RunAsync(
             repository,
             cancellationToken,
-            setUpstream
+            request.SetUpstream
                 ? [
                     "push",
                     "--porcelain",
@@ -141,6 +167,35 @@ private readonly GitRepositoryCommandRunner _runner;
                     remote,
                     refspec
                 ]);
+    }
+
+    private async Task<IReadOnlyList<string>> ReadRemoteNamesAsync(
+        Repository repository,
+        CancellationToken cancellationToken)
+    {
+        var output = await _runner.RunAsync(
+            repository.WorkingDirectory,
+            cancellationToken,
+            false,
+            "remote");
+
+        return output.Split(
+            ['\r', '\n'],
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    private async Task<string?> ReadConfigAsync(
+        Repository repository,
+        string key,
+        CancellationToken cancellationToken)
+    {
+        var value = await _runner.RunOptionalAsync(
+            repository.WorkingDirectory,
+            cancellationToken,
+            "config",
+            "--get",
+            key);
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     private async Task<string> CurrentBranchAsync(
@@ -159,6 +214,6 @@ private readonly GitRepositoryCommandRunner _runner;
             throw new InvalidOperationException(
                 "HEAD is detached. This operation requires a current local branch.");
 
-        return branch;
+        return branch.Trim();
     }
 }
