@@ -15,24 +15,6 @@ public enum FileChangeKind { None, Modified, Added, Untracked, Deleted, Renamed,
 public enum ConflictKind { Textual, AddAdd, ModifyDelete, DeleteModify, Binary }
 public enum ConflictResolutionSide { CurrentLocal, IncomingRemote }
 
-public enum GitConfigurationScope { Global, RepositoryLocal }
-public enum MergeToolConfigurationKind { Preset, CustomExecutable, CustomCommand }
-
-public sealed record MergeToolConfiguration(
-    string Name,
-    MergeToolConfigurationKind Kind,
-    GitConfigurationScope Scope,
-    string? ExecutablePath = null,
-    string? CommandArguments = null);
-
-public static class MergeToolPresets
-{
-    public static IReadOnlyList<string> Known { get; } =
-        ["araxis", "bc", "bc3", "bc4", "codecompare", "deltawalker", "diffmerge", "diffuse", "ecmerge",
-         "emerge", "examdiff", "guiffy", "gvimdiff", "kdiff3", "meld", "nvimdiff", "opendiff", "p4merge",
-         "smerge", "tkdiff", "tortoisemerge", "vimdiff", "vscode", "winmerge", "xxdiff"];
-}
-
 public sealed record ConflictFile(
     string Path,
     ConflictKind Kind,

@@ -297,7 +297,7 @@ public sealed class GitRepositoryHistoryRewriteService : IRepositoryHistoryRewri
                 "History rewrite is not supported for shallow or partial/promisor clones.");
         }
 
-        var operation = DetectOperation(repository);
+        var operation = GitOperationDetector.Detect(repository);
         if (operation != RepositoryOperation.None)
         {
             throw Failure(
@@ -716,22 +716,6 @@ public sealed class GitRepositoryHistoryRewriteService : IRepositoryHistoryRewri
             return "History cannot be rewritten while the index contains staged changes. Commit or unstage the changes first.";
 
         return "History cannot be rewritten while the repository has uncommitted changes. Commit or discard the changes first.";
-    }
-
-    private static RepositoryOperation DetectOperation(Repository repository)
-    {
-        if (Directory.Exists(Path.Combine(repository.GitDirectory, "rebase-merge"))
-            || Directory.Exists(Path.Combine(repository.GitDirectory, "rebase-apply")))
-            return RepositoryOperation.Rebase;
-        if (File.Exists(Path.Combine(repository.GitDirectory, "MERGE_HEAD")))
-            return RepositoryOperation.Merge;
-        if (File.Exists(Path.Combine(repository.GitDirectory, "CHERRY_PICK_HEAD")))
-            return RepositoryOperation.CherryPick;
-        if (File.Exists(Path.Combine(repository.GitDirectory, "REVERT_HEAD")))
-            return RepositoryOperation.Revert;
-        if (File.Exists(Path.Combine(repository.GitDirectory, "BISECT_LOG")))
-            return RepositoryOperation.Bisect;
-        return RepositoryOperation.None;
     }
 
     private static int ReadRewrittenCommitCount(Repository repository)

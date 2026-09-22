@@ -4,8 +4,25 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
 
-public sealed partial class GitCliRepositoryService : IWorkingTreeDiffService
+internal sealed class GitWorkingTreeDiffService : IWorkingTreeDiffService
 {
+    internal GitWorkingTreeDiffService()
+        : this(GitCommandExecutor.Default)
+    {
+    }
+
+
+    private readonly GitRepositoryCommandRunner _runner;
+
+    internal GitWorkingTreeDiffService(GitCommandExecutor executor)
+        : this(new GitRepositoryCommandRunner(executor))
+    {
+    }
+
+    internal GitWorkingTreeDiffService(GitRepositoryCommandRunner runner)
+    {
+        _runner = runner ?? throw new ArgumentNullException(nameof(runner));
+    }
     public async Task<FileDiff> ReadDiffAsync(
         Repository repository,
         WorkingTreeChange change,
@@ -14,7 +31,7 @@ public sealed partial class GitCliRepositoryService : IWorkingTreeDiffService
     {
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(change);
-        ValidateChange(change);
+        GitPathValidator.ValidateChange(change);
 
         if (change.IsConflicted)
         {
@@ -44,7 +61,7 @@ public sealed partial class GitCliRepositoryService : IWorkingTreeDiffService
         arguments.Add(change.Path);
         if (change.OriginalPath is not null) arguments.Add(change.OriginalPath);
 
-        var output = await RunGitAsync(repository.WorkingDirectory, cancellationToken, false, arguments.ToArray());
+        var output = await _runner.RunAsync(repository.WorkingDirectory, cancellationToken, false, arguments.ToArray());
         return BuildWorkingTreeDiff(change.Path, output);
     }
 
@@ -61,7 +78,7 @@ public sealed partial class GitCliRepositoryService : IWorkingTreeDiffService
         await File.WriteAllBytesAsync(emptyPath, [], cancellationToken);
         try
         {
-            var result = await RunGitForResultAsync(
+            var result = await _runner.RunForResultAsync(
                 repository.WorkingDirectory,
                 "WorkingTreeNoIndexDiff",
                 GitCommandKind.Internal,
@@ -106,7 +123,7 @@ public sealed partial class GitCliRepositoryService : IWorkingTreeDiffService
 
     private static string ResolveSafeWorkingTreePath(Repository repository, string path)
     {
-        ValidatePath(path);
+        GitPathValidator.ValidateRepositoryRelative(path);
         var root = Path.GetFullPath(repository.WorkingDirectory);
         var fullPath = Path.GetFullPath(Path.Combine(root, path));
         var comparison = OperatingSystem.IsWindows()

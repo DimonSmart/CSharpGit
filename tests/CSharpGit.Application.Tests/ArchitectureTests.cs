@@ -55,6 +55,8 @@ public sealed class ArchitectureTests
                      "IRepositoryRefreshProbe",
                      "IWorkingTreeService",
                      "IReferenceService",
+                     "IRepositorySyncService",
+                     "ICommitActionService",
                      "IRepositoryWorkflowService",
                      "IRepositoryStateSession"
                  })
@@ -66,6 +68,8 @@ public sealed class ArchitectureTests
                      "IRepositoryRefreshProbe.cs",
                      "IWorkingTreeService.cs",
                      "IReferenceService.cs",
+                     "IRepositorySyncService.cs",
+                     "ICommitActionService.cs",
                      "IRepositoryWorkflowService.cs",
                      "IRepositoryStateSession.cs"
                  })

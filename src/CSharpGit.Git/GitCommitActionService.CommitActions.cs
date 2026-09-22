@@ -4,7 +4,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
 
-public sealed partial class GitCliRepositoryService
+internal sealed partial class GitCommitActionService
 {
     public Task<ApplyCommitResult> CherryPickAsync(
         Repository repository,
@@ -27,9 +27,9 @@ public sealed partial class GitCliRepositoryService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(repository);
-        ValidateObjectName(commit);
+        GitRefValidator.ValidateObjectId(commit);
 
-        var state = await ReadAsync(repository, cancellationToken);
+        var state = await _stateService.ReadAsync(repository, cancellationToken);
         if (state.Operation != RepositoryOperation.None)
             throw new InvalidOperationException("Complete or abort the current Git operation before resetting.");
         if (state.IsDetached || string.IsNullOrWhiteSpace(state.HeadReference) ||
@@ -44,7 +44,7 @@ public sealed partial class GitCliRepositoryService
             _ => throw new ArgumentOutOfRangeException(nameof(mode))
         };
 
-        await RunGitForMutationAsync(repository, cancellationToken, "reset", flag, commit);
+        await _runner.RunMutationAsync(repository, cancellationToken, "reset", flag, commit);
     }
 
     private async Task<ApplyCommitResult> ApplyCommitAsync(
@@ -56,10 +56,10 @@ public sealed partial class GitCliRepositoryService
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(repository);
-        ValidateObjectName(commit);
+        GitRefValidator.ValidateObjectId(commit);
         if (mainlineParent is <= 0)
             throw new ArgumentOutOfRangeException(nameof(mainlineParent), "Mainline parent numbers start at 1.");
-        if (DetectOperation(repository) != RepositoryOperation.None)
+        if (GitOperationDetector.Detect(repository) != RepositoryOperation.None)
             throw new InvalidOperationException("Complete or abort the current Git operation first.");
 
         var arguments = new List<string> { command };
@@ -73,13 +73,13 @@ public sealed partial class GitCliRepositoryService
 
         try
         {
-            await RunGitForMutationAsync(repository, cancellationToken, arguments.ToArray());
-            var head = await RunOptionalGitAsync(repository.WorkingDirectory, cancellationToken, "rev-parse", "--verify", "HEAD");
+            await _runner.RunMutationAsync(repository, cancellationToken, arguments.ToArray());
+            var head = await _runner.RunOptionalAsync(repository.WorkingDirectory, cancellationToken, "rev-parse", "--verify", "HEAD");
             return new ApplyCommitResult(ApplyCommitResultKind.Completed, $"{command} completed successfully.", head);
         }
         catch (RepositoryOpenException exception)
         {
-            var state = await ReadAsync(repository, cancellationToken);
+            var state = await _stateService.ReadAsync(repository, cancellationToken);
             var expectedOperation = command == "cherry-pick"
                 ? RepositoryOperation.CherryPick
                 : RepositoryOperation.Revert;

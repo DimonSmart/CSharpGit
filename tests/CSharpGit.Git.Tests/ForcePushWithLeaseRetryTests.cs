@@ -33,8 +33,9 @@ public sealed class ForcePushWithLeaseRetryTests : IDisposable
         Commit(_root, "history.txt", "A\nB2\n", "B2");
         Commit(_root, "history.txt", "A\nB2\nC2\n", "C2");
 
-        var normalService = new GitCliRepositoryService();
-        var repository = await normalService.OpenAsync(_root);
+        var repositoryService = new GitRepositoryService();
+        var normalService = new GitRepositorySyncService();
+        var repository = await repositoryService.OpenAsync(_root);
         var snapshot = await normalService.PrepareForcePushWithLeaseAsync(repository);
 
         var actor = Path.Combine(_root, "actor");
@@ -52,8 +53,9 @@ public sealed class ForcePushWithLeaseRetryTests : IDisposable
         File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
 
         var executor = new GitCommandExecutor(new GitCliOptions { ExecutablePath = wrapper });
-        var instrumentedService = new GitCliRepositoryService(executor);
-        var instrumentedRepository = await instrumentedService.OpenAsync(_root);
+        var instrumentedRepositoryService = new GitRepositoryService(executor);
+        var instrumentedService = new GitRepositorySyncService(executor);
+        var instrumentedRepository = await instrumentedRepositoryService.OpenAsync(_root);
         var failure = await Assert.ThrowsAsync<PushRejectedException>(
             () => instrumentedService.ForcePushWithLeaseAsync(instrumentedRepository, snapshot));
 

@@ -105,7 +105,7 @@ public sealed class WorkingTreeDiffUiContractTests
     {
         var root = FindRepositoryRoot();
         var contract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IWorkingTreeService.cs"));
-        var staging = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCliRepositoryService.Staging.cs"));
+        var staging = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitWorkingTreeService.Staging.cs"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
 
         foreach (var member in new[] { "StageFilesAsync", "UnstageFilesAsync", "UnstageAllAsync" })
@@ -133,8 +133,8 @@ public sealed class WorkingTreeDiffUiContractTests
     {
         var root = FindRepositoryRoot();
         var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs"));
-        var git = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCliRepositoryService.cs"));
-        var gitDiff = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCliRepositoryService.WorkingTreeDiff.cs"));
+        var git = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitWorkingTreeService.cs"));
+        var gitDiff = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitWorkingTreeDiffService.cs"));
         var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.Discard.cs"));
 
         Assert.Contains("CancellationTokenSource", workingTree);
@@ -167,7 +167,7 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("change.OriginalPath", gitDiff);
         Assert.Contains("\"--no-index\"", gitDiff);
         Assert.Contains("result.ExitCode is not 0 and not 1", gitDiff);
-        Assert.Contains("RunGitForResultAsync", gitDiff);
+        Assert.Contains("_runner.RunForResultAsync", gitDiff);
         Assert.Contains("GitDiffParser.ParseLines", gitDiff);
     }
 
