@@ -24,7 +24,6 @@ public sealed class CommitTimeText : UserControl
         TextTrimming = TextTrimming.CharacterEllipsis
     };
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMinutes(1) };
-    private bool _isLoaded;
 
     public CommitTimeText()
     {
