@@ -18,7 +18,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private readonly ILogger<OpenRepositoryViewModel> _logger;
     private readonly IHistoryService _historyService;
     private readonly IRepositoryStateService _stateService;
-    private readonly IRepositoryRefreshProbe? _refreshProbe;
+    private readonly IRepositoryRefreshProbe _refreshProbe;
     private readonly IWorkingTreeService _workingTreeService;
     private readonly IReferenceService _referenceService;
     private readonly IRepositorySyncService _syncService;
@@ -83,14 +83,14 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         IGitToolsService gitToolsService,
         IAppSettingsService settings,
         ILogger<OpenRepositoryViewModel> logger,
-        IRepositoryRefreshProbe? refreshProbe = null)
+        IRepositoryRefreshProbe refreshProbe)
     {
         _selectedScope = Scopes[0];
         _folderPicker = folderPicker;
         _repositoryService = repositoryService;
         _historyService = historyService;
         _stateService = stateService;
-        _refreshProbe = refreshProbe;
+        _refreshProbe = refreshProbe ?? throw new ArgumentNullException(nameof(refreshProbe));
         _workingTreeService = workingTreeService;
         _referenceService = referenceService;
         _syncService = syncService;
@@ -422,16 +422,13 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         {
             var repository = Repository;
             RepositoryRefreshFingerprint? refreshFingerprint = null;
-            if (_refreshProbe is not null)
+            try
             {
-                try
-                {
-                    refreshFingerprint = await _refreshProbe.ReadAsync(repository);
-                }
-                catch (Exception exception) when (exception is not OperationCanceledException)
-                {
-                    _logger.LogDebug(exception, "Could not capture repository refresh baseline");
-                }
+                refreshFingerprint = await _refreshProbe.ReadAsync(repository);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                _logger.LogDebug(exception, "Could not capture repository refresh baseline");
             }
 
             var state = localOnly
