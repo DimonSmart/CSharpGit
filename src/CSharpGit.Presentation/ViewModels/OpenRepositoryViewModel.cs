@@ -5,6 +5,7 @@ using System.Windows.Input;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Application.Exceptions;
 using CSharpGit.Domain;
+using CSharpGit.Presentation.Threading;
 using Microsoft.Extensions.Logging;
 
 namespace CSharpGit.Presentation.ViewModels;
@@ -25,6 +26,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private readonly IRepositoryWorkflowService _workflowService;
     private readonly IGitToolsService _gitToolsService;
     private readonly IAppSettingsService _settings;
+    private readonly IUiDispatcher _uiDispatcher;
     private readonly AsyncCommand _openRepositoryCommand;
     private Repository? _repository;
     private string? _errorMessage;
@@ -82,6 +84,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         IRepositoryWorkflowService workflowService,
         IGitToolsService gitToolsService,
         IAppSettingsService settings,
+        IUiDispatcher uiDispatcher,
         ILogger<OpenRepositoryViewModel> logger,
         IRepositoryRefreshProbe refreshProbe)
     {
@@ -97,6 +100,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         _workflowService = workflowService;
         _gitToolsService = gitToolsService;
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
         _showReflog = _settings.ShowReflog;
         _settings.Changed += AppSettings_Changed;
         _logger = logger;
@@ -167,6 +171,25 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     private void AppSettings_Changed(object? sender, EventArgs e)
     {
+        if (Volatile.Read(ref _disposed) != 0) return;
+
+        if (_uiDispatcher.HasThreadAccess)
+        {
+            ApplySettingsChangeOnUiThread();
+            return;
+        }
+
+        _uiDispatcher.TryEnqueue(() =>
+        {
+            if (Volatile.Read(ref _disposed) == 0)
+                ApplySettingsChangeOnUiThread();
+        });
+    }
+
+    private void ApplySettingsChangeOnUiThread()
+    {
+        if (Volatile.Read(ref _disposed) != 0) return;
+
         Notify(nameof(CommitTimeDisplayMode));
 
         var showReflog = _settings.ShowReflog;

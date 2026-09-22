@@ -40,6 +40,13 @@ public interface IAppSettingsService
     bool ShowReflog { get; }
     bool AutoSetupRemoteOnPush { get; }
     IReadOnlyList<RecentRepositorySettings> RecentRepositories { get; }
+
+    /// <summary>
+    /// Raised after a new settings state has been persisted successfully and published as committed state.
+    /// The event is thread-agnostic and may be raised on any thread. It is not raised when persistence
+    /// fails and need not be raised for a no-op update. Subscribers must re-read current values from
+    /// this service instead of relying on event payload state.
+    /// </summary>
     event EventHandler? Changed;
 
     Task SetThemeModeAsync(

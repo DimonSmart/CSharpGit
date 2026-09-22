@@ -1,4 +1,5 @@
 using CSharpGit.Application.Abstractions;
+using CSharpGit.Presentation.Threading;
 using CSharpGit.Presentation.ViewModels;
 
 namespace CSharpGit.Application.Tests;
@@ -6,132 +7,230 @@ namespace CSharpGit.Application.Tests;
 public sealed class SettingsViewModelTests
 {
     [Fact]
-    public void ThemeModesExposeExactlySystemLightAndDarkAndReflectCurrentSetting()
+    public async Task BackgroundChangedIsDispatchedAndSynchronizesEveryPresentedSetting()
     {
-        var settings = new FakeAppSettingsService(ApplicationThemeMode.Dark);
-        using var viewModel = new SettingsViewModel(settings);
-
-        Assert.Equal(
-            new[] { ApplicationThemeMode.System, ApplicationThemeMode.Light, ApplicationThemeMode.Dark },
-            viewModel.ThemeModes.Select(option => option.Mode).ToArray());
-        Assert.Equal(
-            new[] { "System", "Light", "Dark" },
-            viewModel.ThemeModes.Select(option => option.Label).ToArray());
-        Assert.Equal(ApplicationThemeMode.Dark, viewModel.SelectedThemeMode.Mode);
-    }
-
-    [Fact]
-    public async Task ApplyThemeModeUsesGlobalSettingsService()
-    {
-        var settings = new FakeAppSettingsService(ApplicationThemeMode.System);
-        using var viewModel = new SettingsViewModel(settings);
-        var dark = viewModel.ThemeModes.Single(option => option.Mode == ApplicationThemeMode.Dark);
-
-        await viewModel.ApplyThemeModeAsync(dark);
-
-        Assert.Equal(ApplicationThemeMode.Dark, settings.ThemeMode);
-        Assert.Equal(ApplicationThemeMode.Dark, viewModel.SelectedThemeMode.Mode);
-    }
-
-    [Fact]
-    public async Task AutoSetupRemoteOnPushUsesApplicationSettingsService()
-    {
-        var settings = new FakeAppSettingsService(ApplicationThemeMode.System);
-        using var viewModel = new SettingsViewModel(settings);
-
-        await viewModel.ApplyAutoSetupRemoteOnPushAsync(true);
-
-        Assert.True(settings.AutoSetupRemoteOnPush);
-        Assert.True(viewModel.AutoSetupRemoteOnPush);
-    }
-
-    [Fact]
-    public void ExternalSettingsChangeSynchronizesSelectedThemeAndRaisesPropertyChanged()
-    {
-        var settings = new FakeAppSettingsService(ApplicationThemeMode.System);
-        using var viewModel = new SettingsViewModel(settings);
+        var settings = new FakeAppSettingsService();
+        var dispatcher = new TestUiDispatcher(hasThreadAccess: false);
+        using var viewModel = new SettingsViewModel(settings, dispatcher);
         var changedProperties = new List<string?>();
         viewModel.PropertyChanged += (_, args) => changedProperties.Add(args.PropertyName);
 
-        settings.ChangeThemeExternally(ApplicationThemeMode.Light);
+        await settings.ChangeExternallyOnBackgroundAsync(
+            ApplicationThemeMode.Dark,
+            CommitTimeDisplayMode.Absolute,
+            true,
+            ApplicationLogLevel.Trace,
+            GitConsoleAutoOpenMode.Always,
+            true);
 
-        Assert.Equal(ApplicationThemeMode.Light, viewModel.SelectedThemeMode.Mode);
-        Assert.Contains(nameof(SettingsViewModel.SelectedThemeMode), changedProperties);
+        Assert.Empty(changedProperties);
+        Assert.Equal(ApplicationThemeMode.System, viewModel.SelectedThemeMode.Mode);
+        Assert.Single(dispatcher.QueuedActions);
+
+        dispatcher.RunAll();
+
+        Assert.Equal(ApplicationThemeMode.Dark, viewModel.SelectedThemeMode.Mode);
+        Assert.Equal(CommitTimeDisplayMode.Absolute, viewModel.SelectedCommitTimeMode.Mode);
+        Assert.True(viewModel.LoggingEnabled);
+        Assert.Equal(ApplicationLogLevel.Trace, viewModel.SelectedLogLevel.Level);
+        Assert.Equal(GitConsoleAutoOpenMode.Always, viewModel.SelectedGitConsoleAutoOpenMode.Mode);
+        Assert.True(viewModel.AutoSetupRemoteOnPush);
+        Assert.Contains(nameof(SettingsViewModel.SelectedCommitTimeMode), changedProperties);
+        Assert.Contains(nameof(SettingsViewModel.LoggingEnabled), changedProperties);
+        Assert.Contains(nameof(SettingsViewModel.SelectedLogLevel), changedProperties);
     }
 
     [Fact]
-    public void DisposeUnsubscribesFromGlobalSettingsChanges()
+    public async Task QueuedSettingsCallbackAfterDisposeIsNoOp()
     {
-        var settings = new FakeAppSettingsService(ApplicationThemeMode.System);
-        var viewModel = new SettingsViewModel(settings);
+        var settings = new FakeAppSettingsService();
+        var dispatcher = new TestUiDispatcher(hasThreadAccess: false);
+        var viewModel = new SettingsViewModel(settings, dispatcher);
+        var changes = 0;
+        viewModel.PropertyChanged += (_, _) => changes++;
+
+        await settings.ChangeExternallyOnBackgroundAsync(
+            ApplicationThemeMode.Dark,
+            CommitTimeDisplayMode.Absolute,
+            true,
+            ApplicationLogLevel.Trace,
+            GitConsoleAutoOpenMode.Always,
+            true);
+        Assert.Single(dispatcher.QueuedActions);
+
+        viewModel.Dispose();
+        dispatcher.RunAll();
+
+        Assert.Equal(0, changes);
+        Assert.Equal(ApplicationThemeMode.System, viewModel.SelectedThemeMode.Mode);
+        Assert.Equal(0, settings.ChangedSubscriberCount);
+    }
+
+    [Fact]
+    public async Task ThemePersistenceFailureRestoresCommittedState()
+    {
+        var settings = new FakeAppSettingsService { ThemeMode = ApplicationThemeMode.Light };
+        using var viewModel = CreateViewModel(settings);
+        var dark = viewModel.ThemeModes.Single(option => option.Mode == ApplicationThemeMode.Dark);
+        settings.FailNextWrite = true;
+
+        await Assert.ThrowsAsync<IOException>(() => viewModel.ApplyThemeModeAsync(dark));
+
+        Assert.Equal(ApplicationThemeMode.Light, settings.ThemeMode);
+        Assert.Equal(ApplicationThemeMode.Light, viewModel.SelectedThemeMode.Mode);
+        Assert.Equal(1, settings.ThemeWriteAttempts);
+    }
+
+    [Fact]
+    public async Task CommitTimePersistenceFailureRestoresCommittedState()
+    {
+        var settings = new FakeAppSettingsService { CommitTimeDisplayMode = CommitTimeDisplayMode.Smart };
+        using var viewModel = CreateViewModel(settings);
+        var absolute = viewModel.CommitTimeModes.Single(option => option.Mode == CommitTimeDisplayMode.Absolute);
+        settings.FailNextWrite = true;
+
+        await Assert.ThrowsAsync<IOException>(() => viewModel.ApplyCommitTimeModeAsync(absolute));
+
+        Assert.Equal(CommitTimeDisplayMode.Smart, settings.CommitTimeDisplayMode);
+        Assert.Equal(CommitTimeDisplayMode.Smart, viewModel.SelectedCommitTimeMode.Mode);
+    }
+
+    [Fact]
+    public async Task LoggingPersistenceFailureRestoresCommittedPair()
+    {
+        var settings = new FakeAppSettingsService();
+        using var viewModel = CreateViewModel(settings);
+        var trace = viewModel.LogLevels.Single(option => option.Level == ApplicationLogLevel.Trace);
+        settings.FailNextWrite = true;
+
+        await Assert.ThrowsAsync<IOException>(() => viewModel.ApplyLoggingSettingsAsync(true, trace));
+
+        Assert.False(settings.LoggingEnabled);
+        Assert.Equal(ApplicationLogLevel.Information, settings.LogLevel);
+        Assert.False(viewModel.LoggingEnabled);
+        Assert.Equal(ApplicationLogLevel.Information, viewModel.SelectedLogLevel.Level);
+    }
+
+    [Fact]
+    public async Task GitConsoleAndAutoSetupFailuresRestoreCommittedState()
+    {
+        var settings = new FakeAppSettingsService();
+        using var viewModel = CreateViewModel(settings);
+        var always = viewModel.GitConsoleAutoOpenModes.Single(option => option.Mode == GitConsoleAutoOpenMode.Always);
+
+        settings.FailNextWrite = true;
+        await Assert.ThrowsAsync<IOException>(() => viewModel.ApplyGitConsoleAutoOpenModeAsync(always));
+        Assert.Equal(GitConsoleAutoOpenMode.OnErrors, viewModel.SelectedGitConsoleAutoOpenMode.Mode);
+
+        settings.FailNextWrite = true;
+        await Assert.ThrowsAsync<IOException>(() => viewModel.ApplyAutoSetupRemoteOnPushAsync(true));
+        Assert.False(viewModel.AutoSetupRemoteOnPush);
+    }
+
+    [Fact]
+    public async Task RollbackPublishesUnderSynchronizationSuppressionAndDoesNotCauseSecondWrite()
+    {
+        var settings = new FakeAppSettingsService { ThemeMode = ApplicationThemeMode.Light };
+        using var viewModel = CreateViewModel(settings);
+        var dark = viewModel.ThemeModes.Single(option => option.Mode == ApplicationThemeMode.Dark);
+        var rollbackWasSuppressed = false;
+
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(SettingsViewModel.SelectedThemeMode) &&
+                viewModel.SelectedThemeMode.Mode == ApplicationThemeMode.Light)
+                rollbackWasSuppressed = viewModel.IsSynchronizingFromSettings;
+        };
+
+        settings.FailNextWrite = true;
+        await Assert.ThrowsAsync<IOException>(() => viewModel.ApplyThemeModeAsync(dark));
+
+        Assert.True(rollbackWasSuppressed);
+        Assert.Equal(1, settings.ThemeWriteAttempts);
+    }
+
+    [Fact]
+    public void DisposeIsIdempotent()
+    {
+        var settings = new FakeAppSettingsService();
+        var viewModel = CreateViewModel(settings);
         Assert.Equal(1, settings.ChangedSubscriberCount);
 
         viewModel.Dispose();
-        settings.ChangeThemeExternally(ApplicationThemeMode.Dark);
+        viewModel.Dispose();
 
         Assert.Equal(0, settings.ChangedSubscriberCount);
-        Assert.Equal(ApplicationThemeMode.System, viewModel.SelectedThemeMode.Mode);
+    }
+
+    private static SettingsViewModel CreateViewModel(FakeAppSettingsService settings) =>
+        new(settings, new TestUiDispatcher(hasThreadAccess: true));
+
+    private sealed class TestUiDispatcher(bool hasThreadAccess) : IUiDispatcher
+    {
+        private readonly Queue<Action> _queuedActions = new();
+
+        public bool HasThreadAccess { get; set; } = hasThreadAccess;
+        public bool RejectEnqueue { get; set; }
+        public IReadOnlyCollection<Action> QueuedActions => _queuedActions;
+
+        public bool TryEnqueue(Action action)
+        {
+            if (RejectEnqueue) return false;
+            _queuedActions.Enqueue(action);
+            return true;
+        }
+
+        public void RunAll()
+        {
+            while (_queuedActions.TryDequeue(out var action))
+                action();
+        }
     }
 
     private sealed class FakeAppSettingsService : IAppSettingsService
     {
         private EventHandler? _changed;
-        private ApplicationThemeMode _themeMode;
 
-        public FakeAppSettingsService(ApplicationThemeMode themeMode) => _themeMode = themeMode;
-
-        public ApplicationThemeMode ThemeMode => _themeMode;
-        public CommitTimeDisplayMode CommitTimeDisplayMode { get; private set; } = CommitTimeDisplayMode.Smart;
-        public bool LoggingEnabled { get; private set; }
-        public ApplicationLogLevel LogLevel { get; private set; } = ApplicationLogLevel.Information;
-        public GitConsoleAutoOpenMode GitConsoleAutoOpenMode { get; private set; } = GitConsoleAutoOpenMode.OnErrors;
-        public bool ShowReflog { get; private set; }
-        public bool AutoSetupRemoteOnPush { get; private set; }
+        public ApplicationThemeMode ThemeMode { get; set; } = ApplicationThemeMode.System;
+        public CommitTimeDisplayMode CommitTimeDisplayMode { get; set; } = CommitTimeDisplayMode.Smart;
+        public bool LoggingEnabled { get; set; }
+        public ApplicationLogLevel LogLevel { get; set; } = ApplicationLogLevel.Information;
+        public GitConsoleAutoOpenMode GitConsoleAutoOpenMode { get; set; } = GitConsoleAutoOpenMode.OnErrors;
+        public bool ShowReflog { get; set; }
+        public bool AutoSetupRemoteOnPush { get; set; }
         public IReadOnlyList<RecentRepositorySettings> RecentRepositories => [];
+        public bool FailNextWrite { get; set; }
         public int ChangedSubscriberCount { get; private set; }
+        public int ThemeWriteAttempts { get; private set; }
 
         public event EventHandler? Changed
         {
-            add
-            {
-                _changed += value;
-                ChangedSubscriberCount++;
-            }
-            remove
-            {
-                _changed -= value;
-                ChangedSubscriberCount--;
-            }
+            add { _changed += value; ChangedSubscriberCount++; }
+            remove { _changed -= value; ChangedSubscriberCount--; }
         }
 
-        public Task SetThemeModeAsync(
-            ApplicationThemeMode mode,
-            CancellationToken cancellationToken = default)
+        public Task SetThemeModeAsync(ApplicationThemeMode mode, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (_themeMode == mode) return Task.CompletedTask;
-            _themeMode = mode;
+            ThemeWriteAttempts++;
+            ThrowIfWriteFails(cancellationToken);
+            if (ThemeMode == mode) return Task.CompletedTask;
+            ThemeMode = mode;
             _changed?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
         }
 
-        public Task SetCommitTimeDisplayModeAsync(
-            CommitTimeDisplayMode mode,
-            CancellationToken cancellationToken = default)
+        public Task SetCommitTimeDisplayModeAsync(CommitTimeDisplayMode mode, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            ThrowIfWriteFails(cancellationToken);
             if (CommitTimeDisplayMode == mode) return Task.CompletedTask;
             CommitTimeDisplayMode = mode;
             _changed?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
         }
 
-        public Task SetLoggingSettingsAsync(
-            bool enabled,
-            ApplicationLogLevel level,
-            CancellationToken cancellationToken = default)
+        public Task SetLoggingSettingsAsync(bool enabled, ApplicationLogLevel level, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            ThrowIfWriteFails(cancellationToken);
             if (LoggingEnabled == enabled && LogLevel == level) return Task.CompletedTask;
             LoggingEnabled = enabled;
             LogLevel = level;
@@ -139,49 +238,61 @@ public sealed class SettingsViewModelTests
             return Task.CompletedTask;
         }
 
-        public Task SetGitConsoleAutoOpenModeAsync(
-            GitConsoleAutoOpenMode mode,
-            CancellationToken cancellationToken = default)
+        public Task SetGitConsoleAutoOpenModeAsync(GitConsoleAutoOpenMode mode, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            ThrowIfWriteFails(cancellationToken);
+            if (GitConsoleAutoOpenMode == mode) return Task.CompletedTask;
             GitConsoleAutoOpenMode = mode;
+            _changed?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
         }
 
-        public Task SetShowReflogAsync(
-            bool value,
-            CancellationToken cancellationToken = default)
+        public Task SetShowReflogAsync(bool value, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             ShowReflog = value;
             return Task.CompletedTask;
         }
 
-        public Task SetAutoSetupRemoteOnPushAsync(
-            bool value,
-            CancellationToken cancellationToken = default)
+        public Task SetAutoSetupRemoteOnPushAsync(bool value, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            ThrowIfWriteFails(cancellationToken);
             if (AutoSetupRemoteOnPush == value) return Task.CompletedTask;
             AutoSetupRemoteOnPush = value;
             _changed?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
         }
 
-        public Task RecordRecentRepositoryAsync(
-            string path,
-            string displayName,
-            string? lastBranchName,
-            CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task RecordRecentRepositoryAsync(string path, string displayName, string? lastBranchName, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
 
-        public Task RemoveRecentRepositoryAsync(
-            string path,
-            CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task RemoveRecentRepositoryAsync(string path, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
 
-        public void ChangeThemeExternally(ApplicationThemeMode mode)
+        public Task ChangeExternallyOnBackgroundAsync(
+            ApplicationThemeMode theme,
+            CommitTimeDisplayMode commitTime,
+            bool loggingEnabled,
+            ApplicationLogLevel logLevel,
+            GitConsoleAutoOpenMode gitConsoleMode,
+            bool autoSetupRemoteOnPush) =>
+            Task.Run(() =>
+            {
+                ThemeMode = theme;
+                CommitTimeDisplayMode = commitTime;
+                LoggingEnabled = loggingEnabled;
+                LogLevel = logLevel;
+                GitConsoleAutoOpenMode = gitConsoleMode;
+                AutoSetupRemoteOnPush = autoSetupRemoteOnPush;
+                _changed?.Invoke(this, EventArgs.Empty);
+            });
+
+        private void ThrowIfWriteFails(CancellationToken cancellationToken)
         {
-            _themeMode = mode;
-            _changed?.Invoke(this, EventArgs.Empty);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!FailNextWrite) return;
+            FailNextWrite = false;
+            throw new IOException("Simulated persistence failure.");
         }
     }
 }
