@@ -7,13 +7,7 @@ public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHist
 {
     private readonly GitReferenceHistoryService _history;
     private readonly GitCommandExecutor _executor;
-
-    public GitFileAwareHistoryService(GitReferenceHistoryService history)
-        : this(history, GitCommandExecutor.Default)
-    {
-    }
-
-    internal GitFileAwareHistoryService(
+internal GitFileAwareHistoryService(
         GitReferenceHistoryService history,
         GitCommandExecutor executor)
     {

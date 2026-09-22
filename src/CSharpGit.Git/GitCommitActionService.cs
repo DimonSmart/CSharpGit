@@ -4,13 +4,7 @@ namespace CSharpGit.Git;
 
 internal sealed partial class GitCommitActionService : ICommitActionService
 {
-    internal GitCommitActionService()
-        : this(GitCommandExecutor.Default)
-    {
-    }
-
-
-    private readonly GitRepositoryCommandRunner _runner;
+private readonly GitRepositoryCommandRunner _runner;
     private readonly GitRepositoryStateService _stateService;
     private readonly GitRepositoryWorkflowService _workflowService;
 

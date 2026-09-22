@@ -6,10 +6,7 @@ namespace CSharpGit.Git;
 public sealed class GitRepositorySnapshotService : IRepositorySnapshotService
 {
     private readonly GitCommandExecutor _executor;
-
-    public GitRepositorySnapshotService() : this(GitCommandExecutor.Default) { }
-
-    internal GitRepositorySnapshotService(GitCommandExecutor executor)
+internal GitRepositorySnapshotService(GitCommandExecutor executor)
     {
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
     }

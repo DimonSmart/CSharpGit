@@ -6,10 +6,7 @@ namespace CSharpGit.Git;
 public sealed class GitReferenceHistoryService : IReferenceHistoryService
 {
     private readonly GitCommandExecutor _executor;
-
-    public GitReferenceHistoryService() : this(GitCommandExecutor.Default) { }
-
-    internal GitReferenceHistoryService(GitCommandExecutor executor)
+internal GitReferenceHistoryService(GitCommandExecutor executor)
     {
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
     }

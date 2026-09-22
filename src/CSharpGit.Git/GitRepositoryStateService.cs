@@ -5,13 +5,7 @@ namespace CSharpGit.Git;
 
 internal sealed class GitRepositoryStateService : IRepositoryStateService
 {
-    internal GitRepositoryStateService()
-        : this(GitCommandExecutor.Default)
-    {
-    }
-
-
-    private readonly GitRepositoryCommandRunner _runner;
+private readonly GitRepositoryCommandRunner _runner;
 
     internal GitRepositoryStateService(GitCommandExecutor executor)
         : this(new GitRepositoryCommandRunner(executor))

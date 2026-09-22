@@ -9,10 +9,7 @@ public sealed class GitRepositoryFileVersionService : IRepositoryFileVersionServ
 {
     private readonly GitCommandExecutor _executor;
     private readonly string _cacheRoot;
-
-    public GitRepositoryFileVersionService() : this(GitCommandExecutor.Default) { }
-
-    internal GitRepositoryFileVersionService(GitCommandExecutor executor)
+internal GitRepositoryFileVersionService(GitCommandExecutor executor)
     {
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
         _cacheRoot = Path.Combine(Path.GetTempPath(), "CSharpGit", "file-versions");

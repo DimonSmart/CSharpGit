@@ -9,10 +9,7 @@ public sealed class GitTagService : ITagService
 {
     private const string DefaultTagSort = "-version:refname";
     private readonly GitCommandExecutor _executor;
-
-    public GitTagService() : this(GitCommandExecutor.Default) { }
-
-    internal GitTagService(GitCommandExecutor executor)
+internal GitTagService(GitCommandExecutor executor)
     {
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
     }
