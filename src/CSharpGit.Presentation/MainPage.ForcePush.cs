@@ -22,7 +22,7 @@ public sealed partial class MainPage
 
         try
         {
-            await _referenceService.PushAsync(repository, remote, branch, hasExplicitBranch && _viewModel.SetUpstream);
+            await _syncService.PushAsync(repository, remote, branch, hasExplicitBranch && _viewModel.SetUpstream);
             await RefreshAfterRemoteOperationAsync();
         }
         catch (PushRejectedException exception) when (exception.ResultKind == PushResultKind.NonFastForwardRejected)
@@ -41,7 +41,7 @@ public sealed partial class MainPage
             var result = await dialog.ShowAsync();
             if (result == ContentDialogResult.Secondary)
             {
-                await _referenceService.FetchAllAsync(repository);
+                await _syncService.FetchAllAsync(repository);
                 await RefreshAfterRemoteOperationAsync();
             }
             else if (result == ContentDialogResult.Primary)
@@ -69,7 +69,7 @@ public sealed partial class MainPage
         ForcePushWithLeaseSnapshot snapshot;
         try
         {
-            snapshot = await _referenceService.PrepareForcePushWithLeaseAsync(repository);
+            snapshot = await _syncService.PrepareForcePushWithLeaseAsync(repository);
         }
         catch (ForcePushWithLeasePreparationException exception)
             when (exception.Failure == ForcePushPreparationFailure.MissingUpstream)
@@ -86,7 +86,7 @@ public sealed partial class MainPage
             }
             try
             {
-                snapshot = await _referenceService.PrepareForcePushWithLeaseAsync(repository, explicitRemote, explicitBranch);
+                snapshot = await _syncService.PrepareForcePushWithLeaseAsync(repository, explicitRemote, explicitBranch);
             }
             catch (Exception explicitException) when (explicitException is not OperationCanceledException)
             {
@@ -126,7 +126,7 @@ public sealed partial class MainPage
         try
         {
             // Snapshot is intentionally the exact immutable object shown above.
-            await _referenceService.ForcePushWithLeaseAsync(repository, snapshot);
+            await _syncService.ForcePushWithLeaseAsync(repository, snapshot);
             await RefreshAfterRemoteOperationAsync();
         }
         catch (ForcePushWithLeaseCancelledException exception)
@@ -148,7 +148,7 @@ public sealed partial class MainPage
             };
             if (await rejection.ShowAsync() == ContentDialogResult.Primary)
             {
-                await _referenceService.FetchAsync(repository, snapshot.Remote);
+                await _syncService.FetchAsync(repository, snapshot.Remote);
                 await RefreshAfterRemoteOperationAsync();
             }
         }
