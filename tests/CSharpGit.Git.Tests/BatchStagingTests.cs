@@ -22,9 +22,10 @@ public sealed class BatchStagingTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, "тест.cs"), "unicode\n");
         File.WriteAllText(Path.Combine(_temporaryDirectory, "leave.txt"), "leave unstaged\n");
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_temporaryDirectory);
-        var changes = (await service.ReadAsync(repository)).Changes;
+        var services = new GitCapabilityTestServices();
+        var service = services.WorkingTree;
+        var repository = await services.Repositories.OpenAsync(_temporaryDirectory);
+        var changes = (await services.State.ReadAsync(repository)).Changes;
         var selected = new WorkingTreeChange[]
         {
             changes.Single(change => change.Path == "file with spaces.cs"),
@@ -35,7 +36,7 @@ public sealed class BatchStagingTests : IDisposable
 
         await service.StageFilesAsync(repository, selected);
 
-        var refreshed = (await service.ReadAsync(repository)).Changes;
+        var refreshed = (await services.State.ReadAsync(repository)).Changes;
         Assert.Contains(refreshed, change => change.Path == "file with spaces.cs" && change.IsStaged && !change.IsUnstaged);
         Assert.Contains(refreshed, change => change.Path == "deleted.cs" && change.IsStaged && !change.IsUnstaged);
         Assert.Contains(refreshed, change => change.Path == "тест.cs" && change.IsStaged && !change.IsUnstaged);
@@ -58,9 +59,10 @@ public sealed class BatchStagingTests : IDisposable
         var oneBytes = File.ReadAllBytes(Path.Combine(_temporaryDirectory, "one.cs"));
         var twoBytes = File.ReadAllBytes(Path.Combine(_temporaryDirectory, "two.cs"));
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_temporaryDirectory);
-        var before = await service.ReadAsync(repository);
+        var services = new GitCapabilityTestServices();
+        var service = services.WorkingTree;
+        var repository = await services.Repositories.OpenAsync(_temporaryDirectory);
+        var before = await services.State.ReadAsync(repository);
         var one = before.Changes.Single(change => change.Path == "one.cs");
         Assert.True(one.IsStaged && one.IsUnstaged);
 
@@ -68,7 +70,7 @@ public sealed class BatchStagingTests : IDisposable
 
         Assert.Equal(oneBytes, File.ReadAllBytes(Path.Combine(_temporaryDirectory, "one.cs")));
         Assert.Equal(twoBytes, File.ReadAllBytes(Path.Combine(_temporaryDirectory, "two.cs")));
-        var after = (await service.ReadAsync(repository)).Changes;
+        var after = (await services.State.ReadAsync(repository)).Changes;
         Assert.Contains(after, change => change.Path == "one.cs" && !change.IsStaged && change.IsUnstaged);
         Assert.Contains(after, change => change.Path == "two.cs" && change.IsStaged && change.IsUnstaged);
     }
@@ -82,14 +84,15 @@ public sealed class BatchStagingTests : IDisposable
         RunGit(_temporaryDirectory, "add", "--", "Foo.cs");
         File.WriteAllText(Path.Combine(_temporaryDirectory, "Foo.cs"), "C\n");
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_temporaryDirectory);
-        var both = Assert.Single((await service.ReadAsync(repository)).Changes);
+        var services = new GitCapabilityTestServices();
+        var service = services.WorkingTree;
+        var repository = await services.Repositories.OpenAsync(_temporaryDirectory);
+        var both = Assert.Single((await services.State.ReadAsync(repository)).Changes);
         Assert.True(both.IsStaged && both.IsUnstaged);
 
         await service.UnstageFilesAsync(repository, [both]);
 
-        var unstaged = Assert.Single((await service.ReadAsync(repository)).Changes);
+        var unstaged = Assert.Single((await services.State.ReadAsync(repository)).Changes);
         Assert.False(unstaged.IsStaged);
         Assert.True(unstaged.IsUnstaged);
         Assert.Equal("C\n", File.ReadAllText(Path.Combine(_temporaryDirectory, "Foo.cs")));
@@ -97,7 +100,7 @@ public sealed class BatchStagingTests : IDisposable
 
         await service.StageFilesAsync(repository, [unstaged]);
 
-        var staged = Assert.Single((await service.ReadAsync(repository)).Changes);
+        var staged = Assert.Single((await services.State.ReadAsync(repository)).Changes);
         Assert.True(staged.IsStaged);
         Assert.False(staged.IsUnstaged);
         Assert.Equal("C", RunGitOutput(_temporaryDirectory, "show", ":Foo.cs").Trim());
@@ -111,9 +114,10 @@ public sealed class BatchStagingTests : IDisposable
         RunGit(_temporaryDirectory, "add", "--", "Foo.cs");
         File.WriteAllText(Path.Combine(_temporaryDirectory, "Foo.cs"), "B\n");
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_temporaryDirectory);
-        var change = Assert.Single((await service.ReadAsync(repository)).Changes);
+        var services = new GitCapabilityTestServices();
+        var service = services.WorkingTree;
+        var repository = await services.Repositories.OpenAsync(_temporaryDirectory);
+        var change = Assert.Single((await services.State.ReadAsync(repository)).Changes);
 
         await service.UnstageFilesAsync(repository, [change]);
 
@@ -130,8 +134,9 @@ public sealed class BatchStagingTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, "B.cs"), "B\n");
         RunGit(_temporaryDirectory, "add", "--", "A.cs", "B.cs");
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_temporaryDirectory);
+        var services = new GitCapabilityTestServices();
+        var service = services.WorkingTree;
+        var repository = await services.Repositories.OpenAsync(_temporaryDirectory);
         await service.UnstageAllAsync(repository);
 
         Assert.Equal(string.Empty, RunGitOutput(_temporaryDirectory, "ls-files"));
@@ -155,21 +160,23 @@ public sealed class BatchStagingTests : IDisposable
         var oneBytes = File.ReadAllBytes(Path.Combine(_temporaryDirectory, "one.cs"));
         var twoBytes = File.ReadAllBytes(Path.Combine(_temporaryDirectory, "two.cs"));
 
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_temporaryDirectory);
+        var services = new GitCapabilityTestServices();
+        var service = services.WorkingTree;
+        var repository = await services.Repositories.OpenAsync(_temporaryDirectory);
         await service.UnstageAllAsync(repository);
 
         Assert.Equal(oneBytes, File.ReadAllBytes(Path.Combine(_temporaryDirectory, "one.cs")));
         Assert.Equal(twoBytes, File.ReadAllBytes(Path.Combine(_temporaryDirectory, "two.cs")));
-        Assert.DoesNotContain((await service.ReadAsync(repository)).Changes, change => change.IsStaged);
+        Assert.DoesNotContain((await services.State.ReadAsync(repository)).Changes, change => change.IsStaged);
     }
 
     [Fact]
     public async Task BatchApiRejectsNullEmptyAndInvalidPaths()
     {
         InitializeRepository(withCommit: false);
-        var service = new GitCliRepositoryService();
-        var repository = await service.OpenAsync(_temporaryDirectory);
+        var services = new GitCapabilityTestServices();
+        var service = services.WorkingTree;
+        var repository = await services.Repositories.OpenAsync(_temporaryDirectory);
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => service.StageFilesAsync(repository, null!));
         await Assert.ThrowsAsync<ArgumentException>(() => service.StageFilesAsync(repository, []));
