@@ -15,10 +15,6 @@ public interface IRepositoryWorkflowService
     Task ChooseConflictSideAsync(Repository repository, ConflictFile conflict, ConflictResolutionSide side, CancellationToken cancellationToken = default);
     Task KeepConflictDeletionAsync(Repository repository, ConflictFile conflict, CancellationToken cancellationToken = default);
     Task StageResolvedConflictAsync(Repository repository, ConflictFile conflict, CancellationToken cancellationToken = default);
-    Task OpenConflictAsync(Repository repository, ConflictFile conflict, CancellationToken cancellationToken = default);
-    Task ConfigureMergeToolAsync(Repository repository, MergeToolConfiguration configuration, CancellationToken cancellationToken = default);
-    Task RunMergeToolForFileAsync(Repository repository, ConflictFile conflict, CancellationToken cancellationToken = default);
-    Task RunMergeToolWorkflowAsync(Repository repository, CancellationToken cancellationToken = default);
     Task ContinueOperationAsync(Repository repository, CancellationToken cancellationToken = default);
     Task AbortOperationAsync(Repository repository, CancellationToken cancellationToken = default);
     Task SkipOperationAsync(Repository repository, CancellationToken cancellationToken = default);
