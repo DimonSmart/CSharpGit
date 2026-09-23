@@ -121,6 +121,7 @@ jobs:
             if (-not (Test-Path $exe -PathType Leaf) -or (Get-Item $exe).Length -le 0) {
               throw "Expected non-empty CSharpGit.exe."
             }
+            Get-ChildItem $publishDir -Filter *.pdb -File -Recurse | Remove-Item -Force
             if (Get-ChildItem $publishDir -Filter *.pdb -File -Recurse) {
               throw "Windows publish output contains .pdb files."
             }
