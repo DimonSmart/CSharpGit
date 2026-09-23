@@ -29,15 +29,9 @@ internal static class GitProgressPolicy
         if (arguments.Any(ProgressOverrides.Contains))
             return arguments;
 
-        var subcommandIndex = -1;
-        for (var index = 0; index < arguments.Count; index++)
-        {
-            if (!SupportedSubcommands.Contains(arguments[index])) continue;
-            subcommandIndex = index;
-            break;
-        }
-
-        if (subcommandIndex < 0) return arguments;
+        var subcommandIndex = FindSubcommandIndex(arguments);
+        if (subcommandIndex < 0 || !SupportedSubcommands.Contains(arguments[subcommandIndex]))
+            return arguments;
 
         var result = new List<string>(arguments.Count + 1);
         for (var index = 0; index < arguments.Count; index++)
@@ -47,5 +41,30 @@ internal static class GitProgressPolicy
                 result.Add("--progress");
         }
         return result;
+    }
+
+    private static int FindSubcommandIndex(IReadOnlyList<string> arguments)
+    {
+        for (var index = 0; index < arguments.Count; index++)
+        {
+            var argument = arguments[index];
+
+            if (argument is "-c" or "-C" or "--git-dir" or "--work-tree" or "--namespace" or "--config-env")
+            {
+                index++;
+                continue;
+            }
+
+            if (argument.StartsWith("--git-dir=", StringComparison.Ordinal)
+                || argument.StartsWith("--work-tree=", StringComparison.Ordinal)
+                || argument.StartsWith("--namespace=", StringComparison.Ordinal)
+                || argument.StartsWith("--config-env=", StringComparison.Ordinal)
+                || argument.StartsWith("-", StringComparison.Ordinal))
+                continue;
+
+            return index;
+        }
+
+        return -1;
     }
 }

@@ -35,6 +35,17 @@ public sealed class GitProgressPolicyTests
     }
 
     [Fact]
+    public void NestedActionNamedLikeSupportedCommandDoesNotReceiveForcedProgress()
+    {
+        var arguments = new[] { "stash", "push" };
+
+        var result = GitProgressPolicy.Apply(arguments, GitCommandKind.User);
+
+        Assert.Equal(arguments, result);
+        Assert.DoesNotContain("--progress", result);
+    }
+
+    [Fact]
     public void InternalCommandDoesNotReceiveForcedProgress()
     {
         var arguments = new[] { "fetch", "origin" };
