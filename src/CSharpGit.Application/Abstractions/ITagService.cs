@@ -36,14 +36,18 @@ public interface ITagService
 
     Task DeleteRemoteTagAsync(
         Repository repository,
-        string remote,
-        string tagName,
+        RemoteTagInfo expectedTag,
         CancellationToken cancellationToken = default);
 
     Task<RemoteTagInfo?> ReadRemoteTagAsync(
         Repository repository,
         string remote,
         string tagName,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<RemoteTagInfo>> ReadRemoteTagsAsync(
+        Repository repository,
+        string remote,
         CancellationToken cancellationToken = default);
 
     Task ForceUpdateRemoteTagAsync(

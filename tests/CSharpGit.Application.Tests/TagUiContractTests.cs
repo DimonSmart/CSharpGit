@@ -25,7 +25,8 @@ public sealed class TagUiContractTests
         Assert.Contains("Checkout detached", tags);
         Assert.Contains("Push tag…", tags);
         Assert.Contains("Delete from remote…", tags);
-        Assert.Contains("Delete local tag…", tags);
+        Assert.Contains("Delete tag…", tags);
+        Assert.Contains("Remote tags…", tags);
         Assert.Contains("Copy tag name", tags);
         Assert.Contains("private bool TryShowTagContextMenu(FrameworkElement source, RightTappedRoutedEventArgs args)", tags);
         Assert.Contains("if (TryShowTagContextMenu(source, args)) return;", branchDeletion);
@@ -38,7 +39,7 @@ public sealed class TagUiContractTests
         Assert.Contains("_viewModel.SelectedHistoryRow?.Commit.Hash", tags);
         Assert.Contains("foreach (var tag in _viewModel.Tags)", tags);
         Assert.Contains("string.Equals(tag.TargetCommit, selectedCommitHash, StringComparison.Ordinal)", tags);
-        Assert.Contains("item.Click += async (_, _) => await DeleteLocalTagFromUiAsync(tag)", tags);
+        Assert.Contains("item.Click += async (_, _) => await DeleteTagFromUiAsync(tag)", tags);
         Assert.Contains("_deleteTagSubItem.IsEnabled = canMutate && _deleteTagSubItem.Items.Count > 0", tags);
 
         Assert.Contains("GitTagKind.Annotated", tags);
@@ -63,9 +64,9 @@ public sealed class TagUiContractTests
         Assert.DoesNotContain("_tagService", deleteTagSubmenu, StringComparison.Ordinal);
         Assert.DoesNotContain("OrderBy", deleteTagSubmenu, StringComparison.Ordinal);
 
-        Assert.Contains("Title = \"Delete local tag?\"", tags);
-        Assert.Contains("This deletes only the local tag", tags);
-        Assert.Contains("Remote tags are not deleted", tags);
+        Assert.Contains("Title = \"Delete tag?\"", tags);
+        Assert.Contains("Also delete this tag from remote", tags);
+        Assert.Contains("IsChecked = hasRemotes", tags);
         Assert.Contains("Title = \"Delete remote tag?\"", tags);
         Assert.Contains("The local tag will remain", tags);
         Assert.Contains("Title = \"Force update remote tag?\"", tags);
@@ -74,6 +75,8 @@ public sealed class TagUiContractTests
             "Destructive tag actions must default to safe cancellation.");
 
         Assert.Contains("_viewModel.Remotes.Count == 1", tags);
+        Assert.Contains("_tagService.ReadRemoteTagsAsync", tags);
+        Assert.Contains("remoteTag.ObjectId, tag.ObjectId", tags);
         Assert.Contains("Select the remote explicitly", tags);
         Assert.Contains("CurrentOperation == RepositoryOperation.None", tags);
         Assert.Contains("RunMutationAsync", tags);
