@@ -1,12 +1,10 @@
 cask "csharpgit" do
   arch arm: "arm64", intel: "x64"
 
-  # Bootstrap metadata. The Homebrew workflow replaces version and hashes
-  # from SHA256SUMS.txt after the first real release.
-  version "0.1.0"
+  version "0.1.9"
 
-  sha256 arm: "0000000000000000000000000000000000000000000000000000000000000000",
-         intel: "0000000000000000000000000000000000000000000000000000000000000000"
+  sha256 arm: "46c3766051ac48c995b99368931a7a6c8f0a920b5f89d1376cc2b9792c6d6700",
+         intel: "56f13ec3eab7f1c05fc39fac9f981c090eac929f26d1c06e494906cee67c5556"
 
   url "https://github.com/DimonSmart/CSharpGit/releases/download/v#{version}/CSharpGit-v#{version}-osx-#{arch}-app.zip"
 
@@ -21,3 +19,4 @@ cask "csharpgit" do
     On first launch macOS may require using Open from the Finder context menu.
   EOS
 end
+
