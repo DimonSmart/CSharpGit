@@ -104,6 +104,32 @@ public sealed partial class MainPage
         args.Handled = true;
     }
 
+    private async Task ConfirmCheckoutTagDetachedAsync(GitTag tag)
+    {
+        if (_viewModel.Repository is null || _viewModel.IsBusy)
+        {
+            return;
+        }
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = "Checkout detached HEAD?",
+            Content = $"Checkout tag '{tag.Name}' in detached HEAD state? New commits will not belong to a branch until you create or switch to one.",
+            PrimaryButtonText = "Checkout detached",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        _viewModel.SelectedTag = tag;
+        await ExecuteCommandAsync(_viewModel.CheckoutTagCommand);
+    }
+
     private async Task ConfirmDeleteLocalBranchAsync(GitBranch branch)
     {
         if (_viewModel.Repository is null || branch.IsCurrent || _viewModel.IsBusy)
