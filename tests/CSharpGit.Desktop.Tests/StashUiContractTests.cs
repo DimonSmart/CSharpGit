@@ -34,9 +34,7 @@ public sealed class StashUiContractTests
         Assert.Contains("_viewModel.CanCreateStash", page, StringComparison.Ordinal);
         Assert.Contains("ShowCreateStashDialogAsync", page, StringComparison.Ordinal);
 
-        var stashEntryCase = SliceCase(
-            page,
-            "case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:\n                AddMenuItem");
+        var stashEntryCase = SliceStashContextMenuCase(page);
         Assert.Contains("\"Apply\"", stashEntryCase, StringComparison.Ordinal);
         Assert.Contains("\"Pop\"", stashEntryCase, StringComparison.Ordinal);
         Assert.DoesNotContain("Create stash", stashEntryCase, StringComparison.Ordinal);
@@ -63,11 +61,13 @@ public sealed class StashUiContractTests
         Assert.DoesNotContain("StashMessage", viewModel, StringComparison.Ordinal);
     }
 
-    private static string SliceCase(string source, string caseMarker)
+    private static string SliceStashContextMenuCase(string source)
     {
-        var start = source.IndexOf(caseMarker, StringComparison.Ordinal);
+        var applyAction = source.IndexOf("AddMenuItem(flyout, \"Apply\"", StringComparison.Ordinal);
+        Assert.True(applyAction >= 0);
+        var start = source.LastIndexOf("case RepositoryTreeNodeKind.Stash", applyAction, StringComparison.Ordinal);
         Assert.True(start >= 0);
-        var end = source.IndexOf("                break;", start, StringComparison.Ordinal);
+        var end = source.IndexOf("break;", applyAction, StringComparison.Ordinal);
         Assert.True(end > start);
         return source[start..end];
     }
