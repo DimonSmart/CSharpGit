@@ -26,6 +26,15 @@ public sealed class TagUiContractTests
         Assert.Contains("Delete from remote…", tags);
         Assert.Contains("Delete local tag…", tags);
         Assert.Contains("Copy tag name", tags);
+        Assert.Contains("new MenuFlyoutSubItem { Text = \"Delete tag\" }", tags);
+        Assert.Contains("_commitActionsFlyout.Items.IndexOf(_checkoutCommitItem)", tags);
+        Assert.Contains("_commitActionsFlyout.Items.Insert(checkoutIndex + 1, _deleteTagSubItem)", tags);
+        Assert.Contains("UpdateDeleteTagSubmenu();", tags);
+        Assert.Contains("_viewModel.SelectedHistoryRow?.Commit.Hash", tags);
+        Assert.Contains("foreach (var tag in _viewModel.Tags)", tags);
+        Assert.Contains("string.Equals(tag.TargetCommit, selectedCommitHash, StringComparison.Ordinal)", tags);
+        Assert.Contains("item.Click += async (_, _) => await DeleteLocalTagFromUiAsync(tag)", tags);
+        Assert.Contains("_deleteTagSubItem.IsEnabled = canMutate && _deleteTagSubItem.Items.Count > 0", tags);
 
         Assert.Contains("GitTagKind.Annotated", tags);
         Assert.Contains("Annotated tags require a non-empty message", tags);
@@ -40,6 +49,14 @@ public sealed class TagUiContractTests
         Assert.DoesNotContain("ProcessStartInfo", tags);
         Assert.DoesNotContain("RunGit", tags, StringComparison.Ordinal);
         Assert.DoesNotContain("GitCommandExecutor", tags, StringComparison.Ordinal);
+
+        var deleteTagSubmenuStart = tags.IndexOf("private void UpdateDeleteTagSubmenu()", StringComparison.Ordinal);
+        var deleteTagSubmenuEnd = tags.IndexOf("private void ApplyTagOrderingToRepositoryTree()", deleteTagSubmenuStart, StringComparison.Ordinal);
+        Assert.True(deleteTagSubmenuStart >= 0 && deleteTagSubmenuEnd > deleteTagSubmenuStart);
+        var deleteTagSubmenu = tags[deleteTagSubmenuStart..deleteTagSubmenuEnd];
+        Assert.DoesNotContain("DeleteRemoteTagFromUiAsync", deleteTagSubmenu, StringComparison.Ordinal);
+        Assert.DoesNotContain("_tagService", deleteTagSubmenu, StringComparison.Ordinal);
+        Assert.DoesNotContain("OrderBy", deleteTagSubmenu, StringComparison.Ordinal);
 
         Assert.Contains("Title = \"Delete local tag?\"", tags);
         Assert.Contains("This deletes only the local tag", tags);
@@ -59,6 +76,8 @@ public sealed class TagUiContractTests
 
         Assert.Contains("CreateBranchFromReferenceAsync($\"refs/tags/{tag.Name}\", tag.TargetCommit)", tags);
         Assert.Contains("CreateBranchFromReferenceAsync(commit.Hash, commit.Hash)", commitActions);
+        Assert.Contains("_commitActionsFlyout.Items.Add(_checkoutCommitItem);", commitActions);
+        Assert.Contains("_commitActionsFlyout.Items.Add(new MenuFlyoutSeparator());", commitActions);
         Assert.Contains("Switch to the new branch", commitActions);
         Assert.Contains("switchToBranch.IsChecked == true", commitActions);
         Assert.Contains("_referenceService.CreateBranchAsync(repository, branchName.Text.Trim(), startPoint, switched)", commitActions);
