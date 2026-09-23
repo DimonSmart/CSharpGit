@@ -98,7 +98,7 @@ public sealed partial class MainPage
                 () => ShowReferenceHistoryAsync($"refs/tags/{tag.Name}", $"Tag: {tag.Name}"));
             AddMenuItem(flyout, "Create branch from here…", CanMutateTags(),
                 () => CreateBranchFromReferenceAsync($"refs/tags/{tag.Name}", tag.TargetCommit));
-            AddMenuItem(flyout, "Checkout detached", CanMutateTags(), () => CheckoutTagAsync(tag));
+            AddMenuItem(flyout, "Checkout detached", CanMutateTags(), () => ConfirmCheckoutTagDetachedAsync(tag));
             flyout.Items.Add(new MenuFlyoutSeparator());
             AddMenuItem(flyout, "Push tag…", CanMutateTags(), () => PushTagFromUiAsync(tag));
             AddMenuItem(flyout, "Delete from remote…", CanMutateTags(), () => DeleteRemoteTagFromUiAsync(tag));
@@ -218,14 +218,6 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Close
         };
         await dialog.ShowAsync();
-    }
-
-    private async Task CheckoutTagAsync(GitTag tag)
-    {
-        if (_viewModel.Repository is null) return;
-        await _viewModel.RunMutationAsync(
-            () => _referenceService.CheckoutAsync(_viewModel.Repository, $"refs/tags/{tag.Name}"),
-            "Could not checkout tag");
     }
 
     private async Task DeleteTagFromUiAsync(GitTag tag)
