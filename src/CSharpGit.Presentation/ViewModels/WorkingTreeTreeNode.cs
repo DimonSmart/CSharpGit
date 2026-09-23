@@ -60,6 +60,15 @@ public sealed class WorkingTreeTreeNode : INotifyPropertyChanged
 
     public double BatchSelectionOpacity => IsBatchSelected ? 0.14 : 0;
 
+    public IReadOnlyList<WorkingTreeChange> GetDescendantChanges()
+    {
+        if (Change is not null) return [Change];
+
+        var changes = new List<WorkingTreeChange>();
+        CollectDescendantChanges(this, changes);
+        return changes;
+    }
+
     public IReadOnlyList<RepositoryTreeGuideSegmentKind> HierarchyGuideSegments { get; private set; } =
         Array.Empty<RepositoryTreeGuideSegmentKind>();
 
@@ -106,6 +115,19 @@ public sealed class WorkingTreeTreeNode : INotifyPropertyChanged
             _ when change.IndexStatus == '?' && change.WorkingTreeStatus == '?' => "?",
             _ => change.WorkingTreeStatus.ToString()
         };
+    }
+
+    private static void CollectDescendantChanges(
+        WorkingTreeTreeNode node,
+        ICollection<WorkingTreeChange> changes)
+    {
+        foreach (var child in node.Children)
+        {
+            if (child.Change is { } change)
+                changes.Add(change);
+            else
+                CollectDescendantChanges(child, changes);
+        }
     }
 
     private void SetField(ref bool field, bool value, [CallerMemberName] string? propertyName = null)

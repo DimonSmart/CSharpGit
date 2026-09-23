@@ -9,22 +9,44 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage
 {
     private void UnstagedChangesTree_RightTapped(object sender, RightTappedRoutedEventArgs args) =>
-        ShowWorkingTreeFileContextMenu(args, WorkingTreeDiffKind.Unstaged);
+        ShowWorkingTreeContextMenu(args, WorkingTreeDiffKind.Unstaged);
 
     private void StagedChangesTree_RightTapped(object sender, RightTappedRoutedEventArgs args) =>
-        ShowWorkingTreeFileContextMenu(args, WorkingTreeDiffKind.Staged);
+        ShowWorkingTreeContextMenu(args, WorkingTreeDiffKind.Staged);
 
-    private void ShowWorkingTreeFileContextMenu(
+    private void ShowWorkingTreeContextMenu(
         RightTappedRoutedEventArgs args,
         WorkingTreeDiffKind kind)
     {
         var source = args.OriginalSource as FrameworkElement;
         var node = ResolveWorkingTreeNode(source?.DataContext);
-        if (source is null || node?.Change is not { } change) return;
-
-        SelectWorkingTreeContextTarget(node, kind);
+        if (source is null || node is null) return;
 
         var flyout = new MenuFlyout();
+        if (node.Change is { } change)
+        {
+            SelectWorkingTreeContextTarget(node, kind);
+            AddWorkingTreeFileContextMenuItems(flyout, kind, change);
+        }
+        else if (node.IsFolder)
+        {
+            var changes = node.GetDescendantChanges();
+            AddWorkingTreeFolderContextMenuItems(flyout, kind, changes);
+        }
+        else
+        {
+            return;
+        }
+
+        flyout.ShowAt(source, args.GetPosition(source));
+        args.Handled = true;
+    }
+
+    private void AddWorkingTreeFileContextMenuItems(
+        MenuFlyout flyout,
+        WorkingTreeDiffKind kind,
+        WorkingTreeChange change)
+    {
         if (kind == WorkingTreeDiffKind.Unstaged)
         {
             AddMenuItem(
@@ -53,9 +75,29 @@ public sealed partial class MainPage
                 CanDiscardStagedFile(change),
                 () => ConfirmDiscardStagedFileAsync(change));
         }
+    }
 
-        flyout.ShowAt(source, args.GetPosition(source));
-        args.Handled = true;
+    private void AddWorkingTreeFolderContextMenuItems(
+        MenuFlyout flyout,
+        WorkingTreeDiffKind kind,
+        IReadOnlyList<WorkingTreeChange> changes)
+    {
+        if (kind == WorkingTreeDiffKind.Unstaged)
+        {
+            AddMenuItem(
+                flyout,
+                "Stage",
+                _viewModel.CanStageChanges(changes),
+                () => _viewModel.StageChangesAsync(changes, "Could not stage folder"));
+        }
+        else
+        {
+            AddMenuItem(
+                flyout,
+                "Unstage",
+                _viewModel.CanUnstageChanges(changes),
+                () => _viewModel.UnstageChangesAsync(changes, "Could not unstage folder"));
+        }
     }
 
     private void SelectWorkingTreeContextTarget(
