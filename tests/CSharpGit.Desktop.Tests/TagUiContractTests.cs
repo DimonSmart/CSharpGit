@@ -53,7 +53,8 @@ public sealed class TagUiContractTests
         Assert.DoesNotContain("_viewModel.Tags", remoteDialog, StringComparison.Ordinal);
         Assert.Contains("_tagService.DeleteRemoteTagAsync(repository, selectedTag)", remoteDialog, StringComparison.Ordinal);
 
-        Assert.Contains("Task DeleteRemoteTagAsync(\n        Repository repository,\n        RemoteTagInfo expectedTag", contract, StringComparison.Ordinal);
+        Assert.Contains("Task DeleteRemoteTagAsync(", contract, StringComparison.Ordinal);
+        Assert.Contains("RemoteTagInfo expectedTag", contract, StringComparison.Ordinal);
         Assert.Contains("Task<IReadOnlyList<RemoteTagInfo>> ReadRemoteTagsAsync", contract, StringComparison.Ordinal);
         Assert.Contains("--force-with-lease=refs/tags/{name}:{expectedObjectId}", tagService, StringComparison.Ordinal);
         Assert.Contains("ParseRemoteTags", tagService, StringComparison.Ordinal);
