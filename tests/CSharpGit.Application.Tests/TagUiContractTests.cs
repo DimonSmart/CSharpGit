@@ -8,6 +8,7 @@ public sealed class TagUiContractTests
         var root = FindRepositoryRoot();
         var tags = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Tags.cs"));
         var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
+        var branchDeletion = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchDeletion.cs"));
         var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var refresh = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryRefresh.cs"));
         var descriptors = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryTreeDescriptor.cs"));
@@ -26,6 +27,10 @@ public sealed class TagUiContractTests
         Assert.Contains("Delete from remote…", tags);
         Assert.Contains("Delete local tag…", tags);
         Assert.Contains("Copy tag name", tags);
+        Assert.Contains("private bool TryShowTagContextMenu(FrameworkElement source, RightTappedRoutedEventArgs args)", tags);
+        Assert.Contains("if (TryShowTagContextMenu(source, args)) return;", branchDeletion);
+        Assert.DoesNotContain("case RepositoryTreeNodeKind.Tag", branchDeletion, StringComparison.Ordinal);
+        Assert.DoesNotContain("RepositoryTree.RightTapped += RepositoryTree_TagAwareRightTapped", tags, StringComparison.Ordinal);
         Assert.Contains("new MenuFlyoutSubItem { Text = \"Delete tag\" }", tags);
         Assert.Contains("_commitActionsFlyout.Items.IndexOf(_checkoutCommitItem)", tags);
         Assert.Contains("_commitActionsFlyout.Items.Insert(checkoutIndex + 1, _deleteTagSubItem)", tags);
