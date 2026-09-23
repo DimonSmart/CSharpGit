@@ -10,6 +10,7 @@ public sealed partial class MainPage
 {
     private bool _tagSupportInitialized;
     private MenuFlyoutItem? _createTagHereItem;
+    private MenuFlyoutSubItem? _deleteTagSubItem;
 
     private void InitializeTagSupportIfNeeded()
     {
@@ -27,11 +28,47 @@ public sealed partial class MainPage
                 await ShowCreateTagDialogAsync(hash, selectedCommit: true);
         };
         _commitActionsFlyout.Items.Insert(3, _createTagHereItem);
+
+        _deleteTagSubItem = new MenuFlyoutSubItem { Text = "Delete tag" };
+        var checkoutIndex = _commitActionsFlyout.Items.IndexOf(_checkoutCommitItem);
+        _commitActionsFlyout.Items.Insert(checkoutIndex + 1, _deleteTagSubItem);
+
         _commitActionsFlyout.Opening += (_, _) =>
         {
             if (_createTagHereItem is not null)
                 _createTagHereItem.IsEnabled = CanMutateTags() && _viewModel.SelectedHistoryRow is not null;
+            UpdateDeleteTagSubmenu();
         };
+    }
+
+    private void UpdateDeleteTagSubmenu()
+    {
+        if (_deleteTagSubItem is null) return;
+
+        _deleteTagSubItem.Items.Clear();
+
+        var selectedCommitHash = _viewModel.SelectedHistoryRow?.Commit.Hash;
+        if (string.IsNullOrWhiteSpace(selectedCommitHash))
+        {
+            _deleteTagSubItem.IsEnabled = false;
+            return;
+        }
+
+        var canMutate = CanMutateTags();
+        foreach (var tag in _viewModel.Tags)
+        {
+            if (!string.Equals(tag.TargetCommit, selectedCommitHash, StringComparison.Ordinal)) continue;
+
+            var item = new MenuFlyoutItem
+            {
+                Text = tag.Name,
+                IsEnabled = canMutate
+            };
+            item.Click += async (_, _) => await DeleteLocalTagFromUiAsync(tag);
+            _deleteTagSubItem.Items.Add(item);
+        }
+
+        _deleteTagSubItem.IsEnabled = canMutate && _deleteTagSubItem.Items.Count > 0;
     }
 
     private void ApplyTagOrderingToRepositoryTree()
