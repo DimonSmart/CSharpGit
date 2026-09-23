@@ -61,7 +61,7 @@ public sealed partial class MainPage
                 Text = tag.Name,
                 IsEnabled = canMutate
             };
-            item.Click += async (_, _) => await DeleteLocalTagFromUiAsync(tag);
+            item.Click += async (_, _) => await DeleteTagFromUiAsync(tag);
             _deleteTagSubItem.Items.Add(item);
         }
 
@@ -83,6 +83,7 @@ public sealed partial class MainPage
             var flyout = new MenuFlyout();
             AddMenuItem(flyout, "Create tag…", CanMutateTags(), () => ShowCreateTagDialogAsync("HEAD", selectedCommit: false));
             AddMenuItem(flyout, "Fetch tags…", CanMutateTags(), FetchTagsFromUiAsync);
+            AddMenuItem(flyout, "Remote tags…", CanMutateTags(), ShowRemoteTagsAsync);
             AddMenuItem(flyout, "Push all tags…", CanMutateTags(), PushAllTagsFromUiAsync);
             flyout.ShowAt(source, args.GetPosition(source));
             args.Handled = true;
@@ -101,7 +102,7 @@ public sealed partial class MainPage
             flyout.Items.Add(new MenuFlyoutSeparator());
             AddMenuItem(flyout, "Push tag…", CanMutateTags(), () => PushTagFromUiAsync(tag));
             AddMenuItem(flyout, "Delete from remote…", CanMutateTags(), () => DeleteRemoteTagFromUiAsync(tag));
-            AddMenuItem(flyout, "Delete local tag…", CanMutateTags(), () => DeleteLocalTagFromUiAsync(tag));
+            AddMenuItem(flyout, "Delete tag…", CanMutateTags(), () => DeleteTagFromUiAsync(tag));
             flyout.Items.Add(new MenuFlyoutSeparator());
             AddMenuItem(flyout, "Copy tag name", true, () => CopyTextAsync(tag.Name));
             flyout.ShowAt(source, args.GetPosition(source));
@@ -227,23 +228,102 @@ public sealed partial class MainPage
             "Could not checkout tag");
     }
 
-    private async Task DeleteLocalTagFromUiAsync(GitTag tag)
+    private async Task DeleteTagFromUiAsync(GitTag tag)
     {
-        if (_viewModel.Repository is null) return;
+        if (_viewModel.Repository is null || !CanMutateTags()) return;
+
+        var repository = _viewModel.Repository;
+        var hasRemotes = _viewModel.Remotes.Count > 0;
+        var deleteRemote = new CheckBox
+        {
+            Content = "Also delete this tag from remote",
+            IsChecked = hasRemotes,
+            IsEnabled = hasRemotes
+        };
+        var remoteSelector = new ComboBox
+        {
+            Header = "Remote",
+            ItemsSource = _viewModel.Remotes,
+            DisplayMemberPath = nameof(GitRemote.Name),
+            SelectedItem = GetPreferredTagRemote(),
+            IsEnabled = hasRemotes,
+            MinWidth = 320
+        };
+        var content = new StackPanel { Width = 440, Spacing = 10 };
+        content.Children.Add(new TextBlock
+        {
+            Text = $"Tag: {tag.Name}\nTarget commit: {tag.TargetCommit}",
+            TextWrapping = TextWrapping.Wrap
+        });
+        content.Children.Add(deleteRemote);
+        content.Children.Add(remoteSelector);
+        content.Children.Add(new TextBlock
+        {
+            Text = "This will delete the local tag and, if selected, the corresponding tag from the selected remote.",
+            TextWrapping = TextWrapping.Wrap
+        });
+
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
-            Title = "Delete local tag?",
-            Content = $"Tag: {tag.Name}\nTarget commit: {tag.TargetCommit}\n\nThis deletes only the local tag.\nRemote tags are not deleted.",
-            PrimaryButtonText = "Delete local tag",
+            Title = "Delete tag?",
+            Content = content,
+            PrimaryButtonText = "Delete tag",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close
         };
+
+        void UpdateDeleteAvailability()
+        {
+            var deleteRemoteRequested = deleteRemote.IsChecked == true;
+            remoteSelector.IsEnabled = hasRemotes && deleteRemoteRequested;
+            dialog.IsPrimaryButtonEnabled = !deleteRemoteRequested || remoteSelector.SelectedItem is GitRemote;
+        }
+
+        deleteRemote.Checked += (_, _) => UpdateDeleteAvailability();
+        deleteRemote.Unchecked += (_, _) => UpdateDeleteAvailability();
+        remoteSelector.SelectionChanged += (_, _) => UpdateDeleteAvailability();
+        UpdateDeleteAvailability();
+
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
 
-        await _viewModel.RunMutationAsync(
-            () => _tagService.DeleteTagAsync(_viewModel.Repository, tag.Name),
-            "Could not delete local tag");
+        if (deleteRemote.IsChecked != true)
+        {
+            await _viewModel.RunMutationAsync(
+                () => _tagService.DeleteTagAsync(repository, tag.Name),
+                "Could not delete tag");
+            return;
+        }
+
+        if (remoteSelector.SelectedItem is not GitRemote remote) return;
+
+        var remoteMissing = false;
+        var succeeded = await _viewModel.RunMutationAsync(
+            async () =>
+            {
+                var remoteTag = await _tagService.ReadRemoteTagAsync(repository, remote.Name, tag.Name);
+                if (remoteTag is null)
+                {
+                    remoteMissing = true;
+                    await _tagService.DeleteTagAsync(repository, tag.Name);
+                    return;
+                }
+
+                if (!string.Equals(remoteTag.ObjectId, tag.ObjectId, StringComparison.Ordinal))
+                    throw new InvalidOperationException(
+                        $"The remote tag '{tag.Name}' no longer matches the local tag.\n\n" +
+                        $"Local object: {tag.ObjectId}\nRemote object: {remoteTag.ObjectId}\n\n" +
+                        "Nothing was deleted. Refresh and review the tags before retrying.");
+
+                await _tagService.DeleteRemoteTagAsync(repository, remoteTag);
+                await _tagService.DeleteTagAsync(repository, tag.Name);
+            },
+            "Could not delete tag");
+
+        if (succeeded && remoteMissing)
+            await ShowInformationAsync(
+                "Tag deleted",
+                $"The local tag was deleted.\nThe tag did not exist on '{remote.Name}'.");
     }
 
     private async Task PushTagFromUiAsync(GitTag tag)
@@ -297,15 +377,38 @@ public sealed partial class MainPage
 
     private async Task DeleteRemoteTagFromUiAsync(GitTag tag)
     {
-        if (_viewModel.Repository is null) return;
+        if (_viewModel.Repository is null || !CanMutateTags()) return;
+        var repository = _viewModel.Repository;
         var remote = await SelectTagRemoteAsync("Delete remote tag", $"Delete '{tag.Name}' from remote");
         if (remote is null) return;
+
+        RemoteTagInfo? remoteTag;
+        try
+        {
+            remoteTag = await _tagService.ReadRemoteTagAsync(repository, remote.Name, tag.Name);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            await ShowErrorAsync("Could not read remote tag", exception.Message);
+            return;
+        }
+
+        if (remoteTag is null)
+        {
+            await ShowInformationAsync("Remote tag not found", $"Tag '{tag.Name}' does not exist on '{remote.Name}'.");
+            return;
+        }
 
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
             Title = "Delete remote tag?",
-            Content = $"Remote: {remote.Name}\nTag: {tag.Name}\n\nThe local tag will remain.",
+            Content =
+                $"Remote: {remoteTag.Remote}\n" +
+                $"Tag: {remoteTag.Name}\n" +
+                $"Target: {remoteTag.TargetCommit}\n" +
+                $"Object: {remoteTag.ObjectId}\n\n" +
+                "The local tag will remain.",
             PrimaryButtonText = "Delete remote tag",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close
@@ -313,9 +416,135 @@ public sealed partial class MainPage
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
 
         await _viewModel.RunMutationAsync(
-            () => _tagService.DeleteRemoteTagAsync(_viewModel.Repository, remote.Name, tag.Name),
+            () => _tagService.DeleteRemoteTagAsync(repository, remoteTag),
             "Could not delete remote tag",
             includeHistory: false);
+    }
+
+    private async Task ShowRemoteTagsAsync()
+    {
+        if (_viewModel.Repository is null) return;
+        if (_viewModel.Remotes.Count == 0)
+        {
+            await ShowInformationAsync("Remote tags", "This repository has no configured remotes.");
+            return;
+        }
+
+        var repository = _viewModel.Repository;
+        var selectedRemote = GetPreferredTagRemote();
+
+        while (true)
+        {
+            IReadOnlyList<RemoteTagInfo> remoteTags = [];
+            var remoteSelector = new ComboBox
+            {
+                Header = "Remote",
+                ItemsSource = _viewModel.Remotes,
+                DisplayMemberPath = nameof(GitRemote.Name),
+                SelectedItem = selectedRemote,
+                MinWidth = 320
+            };
+            var list = new ListView
+            {
+                MinHeight = 280,
+                MaxHeight = 420,
+                SelectionMode = ListViewSelectionMode.Single
+            };
+            var status = new TextBlock { TextWrapping = TextWrapping.Wrap };
+            var content = new StackPanel { Width = 520, Spacing = 10 };
+            content.Children.Add(remoteSelector);
+            content.Children.Add(status);
+            content.Children.Add(list);
+
+            var dialog = new ContentDialog
+            {
+                XamlRoot = XamlRoot,
+                Title = "Remote tags",
+                Content = content,
+                PrimaryButtonText = "Delete…",
+                CloseButtonText = "Close",
+                DefaultButton = ContentDialogButton.Close,
+                IsPrimaryButtonEnabled = false
+            };
+
+            void UpdateDeleteAvailability() =>
+                dialog.IsPrimaryButtonEnabled =
+                    CanMutateTags() &&
+                    list.SelectedIndex >= 0 &&
+                    list.SelectedIndex < remoteTags.Count;
+
+            async Task LoadRemoteTagsAsync()
+            {
+                if (remoteSelector.SelectedItem is not GitRemote remote)
+                {
+                    remoteTags = [];
+                    list.ItemsSource = null;
+                    status.Text = "Select a remote.";
+                    UpdateDeleteAvailability();
+                    return;
+                }
+
+                selectedRemote = remote;
+                remoteSelector.IsEnabled = false;
+                list.IsEnabled = false;
+                dialog.IsPrimaryButtonEnabled = false;
+                status.Text = "Loading remote tags…";
+                try
+                {
+                    remoteTags = await _tagService.ReadRemoteTagsAsync(repository, remote.Name);
+                    list.ItemsSource = remoteTags
+                        .Select(remoteTag =>
+                            $"{remoteTag.Name}    {(remoteTag.IsAnnotated ? "annotated" : "lightweight")}    " +
+                            $"{remoteTag.TargetCommit[..Math.Min(10, remoteTag.TargetCommit.Length)]}")
+                        .ToArray();
+                    list.SelectedIndex = remoteTags.Count > 0 ? 0 : -1;
+                    status.Text = remoteTags.Count == 0 ? "No tags on this remote." : $"{remoteTags.Count} tag(s).";
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    remoteTags = [];
+                    list.ItemsSource = null;
+                    status.Text = $"Could not read remote tags: {exception.Message}";
+                }
+                finally
+                {
+                    remoteSelector.IsEnabled = true;
+                    list.IsEnabled = true;
+                    UpdateDeleteAvailability();
+                }
+            }
+
+            remoteSelector.SelectionChanged += async (_, _) => await LoadRemoteTagsAsync();
+            list.SelectionChanged += (_, _) => UpdateDeleteAvailability();
+            if (selectedRemote is not null) await LoadRemoteTagsAsync();
+            else status.Text = "Select a remote.";
+
+            var result = await dialog.ShowAsync();
+            selectedRemote = remoteSelector.SelectedItem as GitRemote;
+            if (result != ContentDialogResult.Primary) return;
+            if (list.SelectedIndex < 0 || list.SelectedIndex >= remoteTags.Count) continue;
+
+            var selectedTag = remoteTags[list.SelectedIndex];
+            var confirmation = new ContentDialog
+            {
+                XamlRoot = XamlRoot,
+                Title = "Delete remote tag?",
+                Content =
+                    $"Remote: {selectedTag.Remote}\n" +
+                    $"Tag: {selectedTag.Name}\n" +
+                    $"Target: {selectedTag.TargetCommit}\n" +
+                    $"Object: {selectedTag.ObjectId}",
+                PrimaryButtonText = "Delete remote tag",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close
+            };
+            if (await confirmation.ShowAsync() != ContentDialogResult.Primary) continue;
+
+            await _viewModel.RunMutationAsync(
+                () => _tagService.DeleteRemoteTagAsync(repository, selectedTag),
+                "Could not delete remote tag",
+                includeHistory: false);
+        }
     }
 
     private async Task FetchTagsFromUiAsync()
@@ -339,6 +568,24 @@ public sealed partial class MainPage
             includeHistory: false);
     }
 
+    private GitRemote? GetPreferredTagRemote()
+    {
+        GitRemote? preferred = null;
+        var upstream = _viewModel.LocalBranches.FirstOrDefault(branch => branch.IsCurrent)?.Upstream;
+        if (!string.IsNullOrWhiteSpace(upstream))
+        {
+            var slash = upstream.IndexOf('/');
+            var remoteName = slash > 0 ? upstream[..slash] : upstream;
+            preferred = _viewModel.Remotes.FirstOrDefault(
+                remote => string.Equals(remote.Name, remoteName, StringComparison.Ordinal));
+        }
+
+        if (preferred is null && _viewModel.Remotes.Count == 1)
+            preferred = _viewModel.Remotes[0];
+
+        return preferred;
+    }
+
     private async Task<GitRemote?> SelectTagRemoteAsync(string title, string prompt)
     {
         if (_viewModel.Remotes.Count == 0)
@@ -347,15 +594,7 @@ public sealed partial class MainPage
             return null;
         }
 
-        GitRemote? preferred = null;
-        var upstream = _viewModel.LocalBranches.FirstOrDefault(branch => branch.IsCurrent)?.Upstream;
-        if (!string.IsNullOrWhiteSpace(upstream))
-        {
-            var slash = upstream.IndexOf('/');
-            var remoteName = slash > 0 ? upstream[..slash] : upstream;
-            preferred = _viewModel.Remotes.FirstOrDefault(remote => string.Equals(remote.Name, remoteName, StringComparison.Ordinal));
-        }
-        if (preferred is null && _viewModel.Remotes.Count == 1) preferred = _viewModel.Remotes[0];
+        var preferred = GetPreferredTagRemote();
 
         var selector = new ComboBox
         {

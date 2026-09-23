@@ -187,13 +187,104 @@ public sealed class TagServiceTests : IDisposable
         Assert.Equal(first, GitBare(bare, "rev-parse", "refs/tags/one^{commit}"));
         Assert.Equal(first, GitBare(bare, "rev-parse", "refs/tags/two^{commit}"));
 
-        await service.DeleteRemoteTagAsync(repository, "origin", "one");
+        var oneSnapshot = await service.ReadRemoteTagAsync(repository, "origin", "one");
+        await service.DeleteRemoteTagAsync(repository, Assert.IsType<RemoteTagInfo>(oneSnapshot));
         Assert.Equal(first, Git(path, "rev-parse", "refs/tags/one^{commit}"));
         Assert.False(TryGitBare(bare, out _, "show-ref", "--verify", "refs/tags/one"));
 
         RunGitBare(bare, "update-ref", "refs/tags/remote-only", first);
         await service.FetchTagsAsync(repository, "origin");
         Assert.Equal(first, Git(path, "rev-parse", "refs/tags/remote-only^{commit}"));
+    }
+
+    [Fact]
+    public async Task DeletingLocalTagDoesNotDeleteRemoteCopy()
+    {
+        var (path, bare) = CreateRepositoryWithRemote();
+        var first = Commit(path, "first.txt", "one", "First");
+        RunGit(path, "tag", "release", first);
+        RunGit(path, "push", "origin", "refs/tags/release:refs/tags/release");
+
+        var service = GitTestServices.CreateTagService();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(path);
+        await service.DeleteTagAsync(repository, "release");
+
+        Assert.False(TryGit(path, out _, "show-ref", "--verify", "refs/tags/release"));
+        Assert.Equal(first, GitBare(bare, "rev-parse", "refs/tags/release^{commit}"));
+    }
+
+    [Fact]
+    public async Task SafeRemoteDeletionUsesExpectedObjectIdAndPreservesLocalTag()
+    {
+        var (path, bare) = CreateRepositoryWithRemote();
+        var first = Commit(path, "first.txt", "one", "First");
+        RunGit(path, "tag", "release", first);
+        RunGit(path, "push", "origin", "refs/tags/release:refs/tags/release");
+
+        var service = GitTestServices.CreateTagService();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(path);
+        var snapshot = Assert.IsType<RemoteTagInfo>(
+            await service.ReadRemoteTagAsync(repository, "origin", "release"));
+
+        await service.DeleteRemoteTagAsync(repository, snapshot);
+
+        Assert.Equal(first, Git(path, "rev-parse", "refs/tags/release^{commit}"));
+        Assert.False(TryGitBare(bare, out _, "show-ref", "--verify", "refs/tags/release"));
+    }
+
+    [Fact]
+    public async Task SafeRemoteDeletionRefusesChangedRemoteTag()
+    {
+        var (path, bare) = CreateRepositoryWithRemote();
+        var first = Commit(path, "first.txt", "one", "First");
+        var second = Commit(path, "second.txt", "two", "Second");
+        RunGit(path, "push", "origin", "refs/heads/main:refs/heads/main");
+        RunGit(path, "tag", "release", first);
+        RunGit(path, "push", "origin", "refs/tags/release:refs/tags/release");
+
+        var service = GitTestServices.CreateTagService();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(path);
+        var snapshot = Assert.IsType<RemoteTagInfo>(
+            await service.ReadRemoteTagAsync(repository, "origin", "release"));
+
+        RunGitBare(bare, "update-ref", "refs/tags/release", second);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.DeleteRemoteTagAsync(repository, snapshot));
+
+        Assert.Contains("changed after confirmation", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(second, GitBare(bare, "rev-parse", "refs/tags/release^{commit}"));
+        Assert.Equal(first, Git(path, "rev-parse", "refs/tags/release^{commit}"));
+    }
+
+    [Fact]
+    public async Task ReadsRemoteTagsIncludingAnnotatedUnicodeSlashAndRemoteOnlyTags()
+    {
+        var (path, bare) = CreateRepositoryWithRemote();
+        var first = Commit(path, "first.txt", "one", "First");
+        RunGit(path, "tag", "light/β", first);
+        RunGit(path, "tag", "-a", "release/v1", first, "-m", "Release one");
+        RunGit(path, "push", "origin", "--tags");
+        RunGitBare(bare, "update-ref", "refs/tags/remote-only", first);
+
+        var service = GitTestServices.CreateTagService();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(path);
+        var tags = await service.ReadRemoteTagsAsync(repository, "origin");
+
+        var lightweight = Assert.Single(tags, tag => tag.Name == "light/β");
+        Assert.False(lightweight.IsAnnotated);
+        Assert.Equal(first, lightweight.ObjectId);
+        Assert.Equal(first, lightweight.TargetCommit);
+
+        var annotated = Assert.Single(tags, tag => tag.Name == "release/v1");
+        Assert.True(annotated.IsAnnotated);
+        Assert.NotEqual(first, annotated.ObjectId);
+        Assert.Equal(first, annotated.TargetCommit);
+
+        var remoteOnly = Assert.Single(tags, tag => tag.Name == "remote-only");
+        Assert.Equal(first, remoteOnly.ObjectId);
+        Assert.False(remoteOnly.IsAnnotated);
+
+        Assert.Null(await service.ReadRemoteTagAsync(repository, "origin", "missing"));
     }
 
     [Fact]

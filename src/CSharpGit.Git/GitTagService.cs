@@ -200,20 +200,44 @@ internal GitTagService(GitCommandExecutor executor)
 
     public async Task DeleteRemoteTagAsync(
         Repository repository,
-        string remote,
-        string tagName,
+        RemoteTagInfo expectedTag,
         CancellationToken cancellationToken = default)
     {
-        var remoteName = NormalizeRemote(remote);
-        var name = await ValidateTagNameAsync(repository, tagName, cancellationToken);
-        await ExecuteAsync(
+        ArgumentNullException.ThrowIfNull(repository);
+        ArgumentNullException.ThrowIfNull(expectedTag);
+
+        var remoteName = NormalizeRemote(expectedTag.Remote);
+        var name = await ValidateTagNameAsync(repository, expectedTag.Name, cancellationToken);
+        var expectedObjectId = NormalizeObjectId(expectedTag.ObjectId);
+        var result = await ExecuteForResultAsync(
             repository,
             GitCommandKind.User,
             cancellationToken,
             "push",
             "--porcelain",
+            $"--force-with-lease=refs/tags/{name}:{expectedObjectId}",
             remoteName,
             $":refs/tags/{name}");
+
+        if (result.ExitCode == 0) return;
+
+        RemoteTagInfo? current = null;
+        var currentReadSucceeded = false;
+        try
+        {
+            current = await ReadRemoteTagAsync(repository, remoteName, name, cancellationToken);
+            currentReadSucceeded = true;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+        }
+
+        if (currentReadSucceeded &&
+            (current is null || !string.Equals(current.ObjectId, expectedObjectId, StringComparison.Ordinal)))
+            throw new InvalidOperationException(
+                "The remote tag changed after confirmation. CSharpGit refused to delete the newer remote tag.");
+
+        ThrowGitFailure(result);
     }
 
     public async Task<RemoteTagInfo?> ReadRemoteTagAsync(
@@ -226,30 +250,23 @@ internal GitTagService(GitCommandExecutor executor)
         var remoteName = NormalizeRemote(remote);
         var name = await ValidateTagNameAsync(repository, tagName, cancellationToken);
         var reference = $"refs/tags/{name}";
-        var output = await ExecuteAsync(
+        var tags = await ReadRemoteTagsCoreAsync(
             repository,
-            GitCommandKind.Internal,
-            cancellationToken,
-            "ls-remote",
-            "--tags",
             remoteName,
+            cancellationToken,
             reference,
             $"{reference}^{{}}");
+        return tags.SingleOrDefault(tag => string.Equals(tag.Name, name, StringComparison.Ordinal));
+    }
 
-        string? objectId = null;
-        string? peeled = null;
-        foreach (var line in output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            var separator = line.IndexOf('\t');
-            if (separator <= 0) continue;
-            var hash = line[..separator];
-            var refName = line[(separator + 1)..];
-            if (string.Equals(refName, reference, StringComparison.Ordinal)) objectId = hash;
-            else if (string.Equals(refName, $"{reference}^{{}}", StringComparison.Ordinal)) peeled = hash;
-        }
-
-        if (objectId is null) return null;
-        return new RemoteTagInfo(remoteName, name, objectId, peeled ?? objectId, peeled is not null);
+    public async Task<IReadOnlyList<RemoteTagInfo>> ReadRemoteTagsAsync(
+        Repository repository,
+        string remote,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
+        var remoteName = NormalizeRemote(remote);
+        return await ReadRemoteTagsCoreAsync(repository, remoteName, cancellationToken);
     }
 
     public async Task ForceUpdateRemoteTagAsync(
@@ -281,6 +298,55 @@ internal GitTagService(GitCommandExecutor executor)
             $"--force-with-lease=refs/tags/{name}:{snapshot.CurrentRemoteObjectId}",
             remote,
             $"refs/tags/{name}:refs/tags/{name}");
+    }
+
+    private async Task<IReadOnlyList<RemoteTagInfo>> ReadRemoteTagsCoreAsync(
+        Repository repository,
+        string remote,
+        CancellationToken cancellationToken,
+        params string[] references)
+    {
+        var arguments = new List<string> { "ls-remote", "--tags", remote };
+        arguments.AddRange(references);
+        var output = await ExecuteAsync(
+            repository,
+            GitCommandKind.Internal,
+            cancellationToken,
+            [.. arguments]);
+        return ParseRemoteTags(remote, output);
+    }
+
+    private static IReadOnlyList<RemoteTagInfo> ParseRemoteTags(string remote, string output)
+    {
+        var entries = new Dictionary<string, (string? ObjectId, string? Peeled)>(StringComparer.Ordinal);
+        foreach (var line in output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var separator = line.IndexOf('\t');
+            if (separator <= 0) continue;
+
+            var objectId = line[..separator];
+            var reference = line[(separator + 1)..];
+            var peeled = reference.EndsWith("^{}", StringComparison.Ordinal);
+            var baseReference = peeled ? reference[..^3] : reference;
+            if (!baseReference.StartsWith("refs/tags/", StringComparison.Ordinal)) continue;
+
+            var name = baseReference["refs/tags/".Length..];
+            if (name.Length == 0) continue;
+            entries.TryGetValue(name, out var entry);
+            entry = peeled ? (entry.ObjectId, objectId) : (objectId, entry.Peeled);
+            entries[name] = entry;
+        }
+
+        return entries
+            .Where(entry => entry.Value.ObjectId is not null)
+            .Select(entry => new RemoteTagInfo(
+                remote,
+                entry.Key,
+                entry.Value.ObjectId!,
+                entry.Value.Peeled ?? entry.Value.ObjectId!,
+                entry.Value.Peeled is not null))
+            .OrderBy(tag => tag.Name, StringComparer.Ordinal)
+            .ToArray();
     }
 
     private async Task<GitTag?> ReadLocalTagAsync(
@@ -339,6 +405,14 @@ internal GitTagService(GitCommandExecutor executor)
         if (result.ExitCode != 0)
             throw new ArgumentException($"'{tagName}' is not a valid Git tag name. {GitDetail(result)}", nameof(tagName));
         return name;
+    }
+
+    private static string NormalizeObjectId(string objectId)
+    {
+        var value = objectId?.Trim() ?? string.Empty;
+        if ((value.Length != 40 && value.Length != 64) || value.Any(character => !Uri.IsHexDigit(character)))
+            throw new ArgumentException("Expected remote tag object id must be a full Git object id.", nameof(objectId));
+        return value;
     }
 
     private static string NormalizeRemote(string remote)
