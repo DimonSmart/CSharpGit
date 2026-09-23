@@ -25,6 +25,21 @@ public sealed class PublishBranchTests : IDisposable
     }
 
     [Fact]
+    public async Task ExistingUpstreamUsesOrdinaryPush()
+    {
+        Git(_root, "push", "--set-upstream", "origin", "main");
+        Commit("next.txt", "next\n", "Next");
+        var (repository, service) = await CreateServicesAsync();
+
+        await service.PushAsync(repository);
+
+        Assert.Equal(
+            GitOut(_root, "rev-parse", "refs/heads/main"),
+            GitOut(_root, "--git-dir", _origin, "rev-parse", "refs/heads/main"));
+        Assert.Equal("origin/main", GitOut(_root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"));
+    }
+
+    [Fact]
     public async Task PublishSameNameCreatesRemoteBranchAndUpstream()
     {
         Git(_root, "switch", "-c", "feature/foo");
@@ -111,6 +126,23 @@ public sealed class PublishBranchTests : IDisposable
     }
 
     [Fact]
+    public async Task SuggestedRemoteFallsBackToOriginSingleRemoteAndNone()
+    {
+        var second = Path.Combine(_root, ".second.git");
+        Git(_root, "init", "--bare", second);
+        Git(_root, "remote", "add", "second", second);
+        var (repository, service) = await CreateServicesAsync();
+
+        Assert.Equal("origin", (await service.PreparePublishBranchAsync(repository)).SuggestedRemote);
+
+        Git(_root, "remote", "remove", "origin");
+        Assert.Equal("second", (await service.PreparePublishBranchAsync(repository)).SuggestedRemote);
+
+        Git(_root, "remote", "remove", "second");
+        Assert.Null((await service.PreparePublishBranchAsync(repository)).SuggestedRemote);
+    }
+
+    [Fact]
     public async Task AutomaticPushDoesNotGuessWithAmbiguousRemotes()
     {
         Git(_root, "remote", "rename", "origin", "one");
@@ -125,6 +157,65 @@ public sealed class PublishBranchTests : IDisposable
 
         Assert.Equal(PushResultKind.PushDestinationUnavailable, failure.ResultKind);
         Assert.False(GitTryOut(_root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}").Success);
+    }
+
+    [Fact]
+    public async Task NonFastForwardPublishDoesNotOverwriteRemote()
+    {
+        Git(_root, "switch", "-c", "feature/conflict");
+        Commit("feature.txt", "base\n", "Feature base");
+        Git(_root, "push", "origin", "refs/heads/feature/conflict:refs/heads/feature/conflict");
+
+        var actor = Path.Combine(_root, "actor");
+        Git(_root, "clone", "--branch", "feature/conflict", _origin, actor);
+        Git(actor, "config", "user.email", "actor@example.invalid");
+        Git(actor, "config", "user.name", "Actor");
+        File.AppendAllText(Path.Combine(actor, "feature.txt"), "remote\n");
+        Git(actor, "add", "feature.txt");
+        Git(actor, "commit", "-m", "Remote advance");
+        Git(actor, "push", "origin", "feature/conflict");
+        var remoteTip = GitOut(actor, "rev-parse", "HEAD");
+
+        Commit("local.txt", "local\n", "Local divergence");
+        var (repository, service) = await CreateServicesAsync();
+
+        var failure = await Assert.ThrowsAsync<PushRejectedException>(
+            () => service.PublishBranchAsync(
+                repository,
+                new PublishBranchRequest("origin", "feature/conflict", true)));
+
+        Assert.Equal(PushResultKind.NonFastForwardRejected, failure.ResultKind);
+        Assert.Equal(remoteTip, GitOut(_root, "--git-dir", _origin, "rev-parse", "refs/heads/feature/conflict"));
+        Assert.False(GitTryOut(_root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}").Success);
+    }
+
+    [Fact]
+    public async Task UnbornBranchLeavesGitToRejectPublishWithoutCreatingRemoteBranch()
+    {
+        var emptyRoot = Path.Combine(Path.GetTempPath(), $"csharpgit-unborn-{Guid.NewGuid():N}");
+        var emptyRemote = Path.Combine(emptyRoot, ".remote.git");
+        Directory.CreateDirectory(emptyRoot);
+        try
+        {
+            Git(emptyRoot, "init", "-b", "main");
+            Git(emptyRoot, "init", "--bare", emptyRemote);
+            Git(emptyRoot, "remote", "add", "origin", emptyRemote);
+            var executor = new GitCommandExecutor(new GitCliOptions(), new GitCommandActivityHistory());
+            var repository = await new GitRepositoryService(executor).OpenAsync(emptyRoot);
+            var service = new GitRepositorySyncService(executor);
+
+            var failure = await Assert.ThrowsAsync<PushRejectedException>(
+                () => service.PublishBranchAsync(
+                    repository,
+                    new PublishBranchRequest("origin", "main", true)));
+
+            Assert.Equal(PushResultKind.OtherFailure, failure.ResultKind);
+            Assert.False(GitTryOut(emptyRoot, "--git-dir", emptyRemote, "show-ref", "--verify", "--quiet", "refs/heads/main").Success);
+        }
+        finally
+        {
+            TestDirectory.Delete(emptyRoot);
+        }
     }
 
     [Fact]
