@@ -56,9 +56,9 @@ public sealed class ForcePushWithLeaseRetryTests : IDisposable
             () => instrumentedService.ForcePushWithLeaseAsync(instrumentedRepository, snapshot));
 
         Assert.Equal(PushResultKind.LeaseRejected, failure.ResultKind);
-        Assert.Single(activityHistory
-            .GetSnapshot(GitCommandFilter.AllCommands)
-            .Where(activity => activity.Arguments.FirstOrDefault() == "push"));
+        Assert.Single(
+            activityHistory.GetSnapshot(GitCommandFilter.AllCommands),
+            activity => activity.Arguments.FirstOrDefault() == "push");
         Assert.Equal(advancedRemote, RemoteTip("main"));
     }
 
