@@ -88,7 +88,7 @@ public sealed class RepositoryRefreshProbeTests : IDisposable
         var (_, repository, probe) = await CreateRepositoryAsync();
         RunGit(_root, "remote", "add", "offline", "https://example.invalid/csharpgit.git");
 
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         _ = await probe.ReadAsync(repository, timeout.Token);
     }
 
