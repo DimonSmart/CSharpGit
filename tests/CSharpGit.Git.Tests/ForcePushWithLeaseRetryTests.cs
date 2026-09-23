@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using CSharpGit.Application;
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Application.Exceptions;
 
 namespace CSharpGit.Git.Tests;
@@ -7,7 +9,6 @@ public sealed class ForcePushWithLeaseRetryTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"csharpgit-force-count-{Guid.NewGuid():N}");
     private readonly string _remote;
-    private readonly string _pushLog;
 
     public ForcePushWithLeaseRetryTests()
     {
@@ -16,7 +17,6 @@ public sealed class ForcePushWithLeaseRetryTests : IDisposable
         ConfigureIdentity(_root);
         Commit(_root, "history.txt", "A\n", "A");
         _remote = Path.Combine(_root, ".remote.git");
-        _pushLog = Path.Combine(_root, "push-invocations.log");
         Git(_root, "init", "--bare", _remote);
         Git(_root, "remote", "add", "origin", _remote);
     }
@@ -47,12 +47,8 @@ public sealed class ForcePushWithLeaseRetryTests : IDisposable
         Git(actor, "push", "origin", "main");
         var advancedRemote = RemoteTip("main");
 
-        var wrapper = Path.Combine(_root, "counting-git.sh");
-        File.WriteAllText(wrapper,
-            $"#!/bin/sh\nif [ \"$1\" = \"push\" ]; then printf 'push\\n' >> '{_pushLog}'; fi\nexec git \"$@\"\n");
-        File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-
-        var executor = GitTestServices.CreateExecutor(new GitCliOptions { ExecutablePath = wrapper });
+        var activityHistory = new GitCommandActivityHistory();
+        var executor = GitTestServices.CreateExecutor(activitySink: activityHistory);
         var instrumentedRepositoryService = new GitRepositoryService(executor);
         var instrumentedService = new GitRepositorySyncService(executor);
         var instrumentedRepository = await instrumentedRepositoryService.OpenAsync(_root);
@@ -60,8 +56,9 @@ public sealed class ForcePushWithLeaseRetryTests : IDisposable
             () => instrumentedService.ForcePushWithLeaseAsync(instrumentedRepository, snapshot));
 
         Assert.Equal(PushResultKind.LeaseRejected, failure.ResultKind);
-        Assert.True(File.Exists(_pushLog));
-        Assert.Single(File.ReadAllLines(_pushLog));
+        Assert.Single(activityHistory
+            .GetSnapshot(GitCommandFilter.AllCommands)
+            .Where(activity => activity.Arguments.FirstOrDefault() == "push"));
         Assert.Equal(advancedRemote, RemoteTip("main"));
     }
 
