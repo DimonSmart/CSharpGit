@@ -63,7 +63,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private string? _currentBranchName;
     private GitStash? _selectedStash;
     private GitBranch? _selectedMergeBranch;
-    private string _stashMessage = string.Empty;
     private string _operationDisplay = string.Empty;
     private string _rebaseOnto = "HEAD~3";
     private RebasePlanItem? _selectedRebaseItem;
@@ -135,7 +134,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         FetchAllCommand = new AsyncCommand(() => MutateAsync(() => _syncService.FetchAllAsync(Repository!)), CanMutate);
         PullCommand = new AsyncCommand(() => MutateAsync(() => _syncService.PullAsync(Repository!)), CanMutate);
         PushCommand = new AsyncCommand(() => MutateAsync(() => _syncService.PushAsync(Repository!)), CanMutate);
-        CreateStashCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.CreateStashAsync(Repository!, StashMessage)), CanMutate);
         ApplyStashCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.ApplyStashAsync(Repository!, SelectedStash!.Name)), () => CanMutate() && SelectedStash is not null);
         PopStashCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.PopStashAsync(Repository!, SelectedStash!.Name)), () => CanMutate() && SelectedStash is not null);
         MergeCommand = new AsyncCommand(MergeAsync, () => CanMutate() && SelectedMergeBranch is { IsCurrent: false });
@@ -230,7 +228,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public ICommand FetchAllCommand { get; }
     public ICommand PullCommand { get; }
     public ICommand PushCommand { get; }
-    public ICommand CreateStashCommand { get; }
     public ICommand ApplyStashCommand { get; }
     public ICommand PopStashCommand { get; }
     public ICommand MergeCommand { get; }
@@ -268,7 +265,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         new("All references", HistoryScope.AllReferences),
         new("Current branch", HistoryScope.CurrentBranch)
     ];
-    public Repository? Repository { get => _repository; private set { if (ReferenceEquals(_repository, value)) return; ResetCommitChangesSession(); _repository = value; _displayedRefreshFingerprint = null; Notify(); Notify(nameof(DisplayedRefreshFingerprint)); Notify(nameof(HasRepository)); Notify(nameof(RepositoryKind)); Notify(nameof(CanForcePushWithLease)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }
+    public Repository? Repository { get => _repository; private set { if (ReferenceEquals(_repository, value)) return; ResetCommitChangesSession(); _repository = value; _displayedRefreshFingerprint = null; Notify(); Notify(nameof(DisplayedRefreshFingerprint)); Notify(nameof(HasRepository)); Notify(nameof(RepositoryKind)); Notify(nameof(CanCreateStash)); Notify(nameof(CanForcePushWithLease)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }
     public RepositoryRefreshFingerprint? DisplayedRefreshFingerprint { get => _displayedRefreshFingerprint; private set { if (Equals(_displayedRefreshFingerprint, value)) return; _displayedRefreshFingerprint = value; Notify(); } }
     public string? ErrorMessage { get => _errorMessage; private set { _errorMessage = value; Notify(); Notify(nameof(HasError)); } }
     public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); Notify(nameof(CanForcePushWithLease)); _openRepositoryCommand.RaiseCanExecuteChanged(); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
@@ -345,18 +342,21 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     }
     public GitStash? SelectedStash { get => _selectedStash; set { _selectedStash = value; Notify(); RaiseCommands(); } }
     public GitBranch? SelectedMergeBranch { get => _selectedMergeBranch; set { _selectedMergeBranch = value; Notify(); RaiseCommands(); } }
-    public string StashMessage { get => _stashMessage; set { _stashMessage = value; Notify(); } }
     public string OperationDisplay { get => _operationDisplay; private set { _operationDisplay = value; Notify(); } }
     public string RebaseOnto { get => _rebaseOnto; set { _rebaseOnto = value; Notify(); RaiseCommands(); } }
     public RebasePlanItem? SelectedRebaseItem { get => _selectedRebaseItem; set { _selectedRebaseItem = value; if (value is not null) { RebaseAction = value.Action.ToString().ToLowerInvariant(); RebaseMessage = value.NewMessage ?? value.Subject; } Notify(); RaiseCommands(); } }
     public string RebaseAction { get => _rebaseAction; set { _rebaseAction = value; Notify(); } }
     public string RebaseMessage { get => _rebaseMessage; set { _rebaseMessage = value; Notify(); } }
-    public RepositoryOperation CurrentOperation { get => _currentOperation; private set { _currentOperation = value; Notify(); Notify(nameof(CanForcePushWithLease)); RaiseCommands(); } }
+    public RepositoryOperation CurrentOperation { get => _currentOperation; private set { _currentOperation = value; Notify(); Notify(nameof(CanCreateStash)); Notify(nameof(CanForcePushWithLease)); RaiseCommands(); } }
     public ConflictFile? SelectedConflict { get => _selectedConflict; set { _selectedConflict = value; Notify(); Notify(nameof(CurrentSideLabel)); Notify(nameof(IncomingSideLabel)); RaiseCommands(); } }
     public RepositoryOperationState OperationState { get => _operationState; private set { _operationState = value; Notify(); Notify(nameof(HasActiveOperation)); RaiseCommands(); } }
     public string CurrentSideLabel => SelectedConflict?.CurrentLocalLabel ?? "Current/local";
     public string IncomingSideLabel => SelectedConflict?.IncomingRemoteLabel ?? "Incoming/remote";
     public bool HasActiveOperation => OperationState.Kind != RepositoryOperation.None;
+    public bool CanCreateStash => CanMutate()
+        && CurrentOperation == RepositoryOperation.None
+        && !Conflicts.Any(conflict => !conflict.IsResolved);
+
     public bool CanForcePushWithLease => Repository is not null
         && !IsBusy
         && CurrentOperation == RepositoryOperation.None
@@ -370,6 +370,12 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     internal Task<bool> RunMutationAsync(Func<Task> mutation, string? errorContext = null, bool includeHistory = true) =>
         MutateAsync(mutation, errorContext, includeHistory: includeHistory);
+
+    public async Task CreateStashAsync(string? message)
+    {
+        if (!CanCreateStash) return;
+        await MutateAsync(() => _workflowService.CreateStashAsync(Repository!, message));
+    }
 
     internal void SetWorkingTreeSelection(WorkingTreeDiffKind kind, IEnumerable<WorkingTreeChange> changes)
     {
@@ -577,6 +583,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             CurrentOperation = state.Operation;
             OperationState = state.CurrentOperation;
             Replace(Conflicts, state.CurrentOperation.Conflicts);
+            Notify(nameof(CanCreateStash));
             SelectedConflict = Conflicts.FirstOrDefault();
             SelectedRemote = SelectedRemote is null
                 ? Remotes.FirstOrDefault()
@@ -605,6 +612,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         var succeeded = false;
         if (!await _mutationGate.WaitAsync(0)) return false;
         _isMutating = true;
+        Notify(nameof(CanCreateStash));
         EnterBusy();
         RaiseCommands();
         ErrorMessage = null;
@@ -629,6 +637,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         finally
         {
             _isMutating = false;
+            Notify(nameof(CanCreateStash));
             ExitBusy();
             _mutationGate.Release();
             RaiseCommands();
@@ -810,7 +819,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     private void RaiseCommands()
     {
-        foreach (var command in new[] { RefreshAllCommand, StageCommand, UnstageCommand, StageSelectedCommand, StageAllCommand, UnstageSelectedCommand, UnstageAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, SwitchBranchCommand, CreateBranchCommand, DeleteBranchCommand, CheckoutRemoteCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, CreateStashCommand, ApplyStashCommand, PopStashCommand, MergeCommand, LoadRebasePlanCommand, ApplyRebaseItemCommand, MoveRebaseUpCommand, MoveRebaseDownCommand, StartRebaseCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
+        foreach (var command in new[] { RefreshAllCommand, StageCommand, UnstageCommand, StageSelectedCommand, StageAllCommand, UnstageSelectedCommand, UnstageAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, SwitchBranchCommand, CreateBranchCommand, DeleteBranchCommand, CheckoutRemoteCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, ApplyStashCommand, PopStashCommand, MergeCommand, LoadRebasePlanCommand, ApplyRebaseItemCommand, MoveRebaseUpCommand, MoveRebaseDownCommand, StartRebaseCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
     }
 
     private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values)

@@ -537,6 +537,11 @@ public sealed partial class MainPage : Page
                 AddMenuItem(flyout, "Copy tag name", true, () => CopyTextAsync(tag.Name));
                 break;
 
+            case RepositoryTreeNodeKind.Group
+                when string.Equals(node.Key, RepositoryTreeDescriptorBuilder.StashesRootKey, StringComparison.Ordinal):
+                AddMenuItem(flyout, "Create stash…", _viewModel.CanCreateStash, ShowCreateStashDialogAsync);
+                break;
+
             case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:
                 AddMenuItem(flyout, "Apply", !_viewModel.IsBusy, async () =>
                 {
