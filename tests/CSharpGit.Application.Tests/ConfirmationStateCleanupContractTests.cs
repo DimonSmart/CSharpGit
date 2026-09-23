@@ -27,12 +27,13 @@ public sealed class ConfirmationStateCleanupContractTests
     {
         var root = FindRepositoryRoot();
         var branchActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchDeletion.cs"));
+        var tagActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Tags.cs"));
 
         Assert.Contains("Title = \"Checkout detached HEAD?\"", branchActions);
         Assert.Contains("PrimaryButtonText = \"Checkout detached\"", branchActions);
         Assert.Contains("CloseButtonText = \"Cancel\"", branchActions);
         Assert.Contains("DefaultButton = ContentDialogButton.Close", branchActions);
-        Assert.Contains("ConfirmCheckoutTagDetachedAsync(tag)", branchActions);
+        Assert.Contains("ConfirmCheckoutTagDetachedAsync(tag)", tagActions);
     }
 
     private static string FindRepositoryRoot()
