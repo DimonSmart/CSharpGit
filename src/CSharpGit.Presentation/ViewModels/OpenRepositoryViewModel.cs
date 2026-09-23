@@ -387,6 +387,46 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         RaiseCommands();
     }
 
+    internal bool CanStageChanges(IReadOnlyCollection<WorkingTreeChange> changes)
+    {
+        ArgumentNullException.ThrowIfNull(changes);
+        return CanBulkMutate() && changes.Count > 0;
+    }
+
+    internal bool CanUnstageChanges(IReadOnlyCollection<WorkingTreeChange> changes)
+    {
+        ArgumentNullException.ThrowIfNull(changes);
+        return CanBulkMutate() && changes.Count > 0;
+    }
+
+    internal async Task StageChangesAsync(
+        IReadOnlyCollection<WorkingTreeChange> changes,
+        string errorContext)
+    {
+        ArgumentNullException.ThrowIfNull(changes);
+        if (!CanStageChanges(changes)) return;
+
+        var snapshot = changes.ToArray();
+        await MutateAsync(
+            () => _workingTreeService.StageFilesAsync(Repository!, snapshot),
+            errorContext,
+            includeHistory: false);
+    }
+
+    internal async Task UnstageChangesAsync(
+        IReadOnlyCollection<WorkingTreeChange> changes,
+        string errorContext)
+    {
+        ArgumentNullException.ThrowIfNull(changes);
+        if (!CanUnstageChanges(changes)) return;
+
+        var snapshot = changes.ToArray();
+        await MutateAsync(
+            () => _workingTreeService.UnstageFilesAsync(Repository!, snapshot),
+            errorContext,
+            includeHistory: false);
+    }
+
     private async Task OpenRepositoryAsync()
     {
         ErrorMessage = null;
@@ -742,11 +782,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private async Task StageSelectedAsync()
     {
         var changes = _selectedUnstagedChanges.ToArray();
-        if (changes.Length == 0) return;
-        await MutateAsync(
-            () => _workingTreeService.StageFilesAsync(Repository!, changes),
-            "Could not stage selected files",
-            includeHistory: false);
+        await StageChangesAsync(changes, "Could not stage selected files");
     }
 
     private async Task StageAllWorkingTreeAsync()
@@ -760,11 +796,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private async Task UnstageSelectedAsync()
     {
         var changes = _selectedStagedChanges.ToArray();
-        if (changes.Length == 0) return;
-        await MutateAsync(
-            () => _workingTreeService.UnstageFilesAsync(Repository!, changes),
-            "Could not unstage selected files",
-            includeHistory: false);
+        await UnstageChangesAsync(changes, "Could not unstage selected files");
     }
 
     private async Task UnstageAllWorkingTreeAsync()
