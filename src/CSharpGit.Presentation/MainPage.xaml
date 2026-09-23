@@ -23,13 +23,6 @@
           </Grid>
 
           <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="{StaticResource Margin.FormSeparator}" />
-          <TextBlock Text="Stash" Style="{StaticResource BodyStrongTextStyle}" />
-          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
-            <TextBox Text="{Binding StashMessage, Mode=TwoWay}" PlaceholderText="Optional stash message" Style="{StaticResource CompactTextBoxStyle}" />
-            <Button Grid.Column="1" Content="Create stash" Command="{Binding CreateStashCommand}" Style="{StaticResource CompactButtonStyle}" />
-          </Grid>
-
-          <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="{StaticResource Margin.FormSeparator}" />
           <TextBlock Text="Remote / explicit push" Style="{StaticResource BodyStrongTextStyle}" />
           <Grid ColumnDefinitions="180,*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
             <ComboBox ItemsSource="{Binding Remotes}" SelectedItem="{Binding SelectedRemote, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Remote" Style="{StaticResource CompactComboBoxStyle}" />
