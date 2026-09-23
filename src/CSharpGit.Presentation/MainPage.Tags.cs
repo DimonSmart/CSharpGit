@@ -17,9 +17,6 @@ public sealed partial class MainPage
         if (_tagSupportInitialized) return;
         _tagSupportInitialized = true;
 
-        RepositoryTree.RightTapped -= RepositoryTree_RightTapped;
-        RepositoryTree.RightTapped += RepositoryTree_TagAwareRightTapped;
-
         if (_commitActionsFlyout is null) return;
         _createTagHereItem = new MenuFlyoutItem { Text = "Create tag here…" };
         _createTagHereItem.Click += async (_, _) =>
@@ -76,15 +73,10 @@ public sealed partial class MainPage
         SynchronizeRepositoryTree();
     }
 
-    private void RepositoryTree_TagAwareRightTapped(object sender, RightTappedRoutedEventArgs args)
+    private bool TryShowTagContextMenu(FrameworkElement source, RightTappedRoutedEventArgs args)
     {
-        var source = args.OriginalSource as FrameworkElement;
-        var node = ResolveNode(source?.DataContext);
-        if (source is null || node is null)
-        {
-            RepositoryTree_RightTapped(sender, args);
-            return;
-        }
+        var node = ResolveNode(source.DataContext);
+        if (node is null) return false;
 
         if (node.Kind == RepositoryTreeNodeKind.Group && node.Name == "Tags")
         {
@@ -94,7 +86,7 @@ public sealed partial class MainPage
             AddMenuItem(flyout, "Push all tags…", CanMutateTags(), PushAllTagsFromUiAsync);
             flyout.ShowAt(source, args.GetPosition(source));
             args.Handled = true;
-            return;
+            return true;
         }
 
         if (node.Kind == RepositoryTreeNodeKind.Tag && node.Value is GitTag tag)
@@ -114,10 +106,10 @@ public sealed partial class MainPage
             AddMenuItem(flyout, "Copy tag name", true, () => CopyTextAsync(tag.Name));
             flyout.ShowAt(source, args.GetPosition(source));
             args.Handled = true;
-            return;
+            return true;
         }
 
-        RepositoryTree_RightTapped(sender, args);
+        return false;
     }
 
     private bool CanMutateTags() =>

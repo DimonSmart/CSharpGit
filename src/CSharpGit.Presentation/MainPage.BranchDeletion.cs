@@ -17,6 +17,8 @@ public sealed partial class MainPage
             return;
         }
 
+        if (TryShowTagContextMenu(source, args)) return;
+
         var flyout = new MenuFlyout();
         switch (node.Kind)
         {
@@ -93,11 +95,6 @@ public sealed partial class MainPage
                 AddMenuItem(flyout, "Copy branch name", true, () => CopyTextAsync(remoteBranch.Name));
                 break;
 
-            case RepositoryTreeNodeKind.Tag when node.Value is GitTag tag:
-                AddMenuItem(flyout, "Checkout detached", !_viewModel.IsBusy, () => ConfirmCheckoutTagDetachedAsync(tag));
-                AddMenuItem(flyout, "Copy tag name", true, () => CopyTextAsync(tag.Name));
-                break;
-
             default:
                 RepositoryTree_RightTapped(sender, args);
                 return;
@@ -105,32 +102,6 @@ public sealed partial class MainPage
 
         flyout.ShowAt(source, args.GetPosition(source));
         args.Handled = true;
-    }
-
-    private async Task ConfirmCheckoutTagDetachedAsync(GitTag tag)
-    {
-        if (_viewModel.Repository is null || _viewModel.IsBusy)
-        {
-            return;
-        }
-
-        var dialog = new ContentDialog
-        {
-            XamlRoot = XamlRoot,
-            Title = "Checkout detached HEAD?",
-            Content = $"Checkout tag '{tag.Name}' in detached HEAD state? New commits will not belong to a branch until you create or switch to one.",
-            PrimaryButtonText = "Checkout detached",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Close
-        };
-
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
-        {
-            return;
-        }
-
-        _viewModel.SelectedTag = tag;
-        await ExecuteCommandAsync(_viewModel.CheckoutTagCommand);
     }
 
     private async Task ConfirmDeleteLocalBranchAsync(GitBranch branch)
