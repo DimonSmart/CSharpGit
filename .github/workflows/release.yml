@@ -168,7 +168,7 @@ jobs:
             if (-not (Test-Path $executable -PathType Leaf)) {
               throw "macOS bundle executable does not exist."
             }
-            & /usr/bin/test -x $executable
+            & /bin/test -x $executable
             if ($LASTEXITCODE -ne 0) { throw "macOS bundle executable is not executable." }
             if (Get-ChildItem $appDir -Filter *.pdb -File -Recurse) {
               throw "macOS app contains .pdb files."
