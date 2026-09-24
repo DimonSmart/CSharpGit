@@ -208,15 +208,7 @@ public sealed partial class GitConsoleView : UserControl
     private void CopyAll_Click(object sender, RoutedEventArgs e)
     {
         if (SelectedActivityId is not { } id || _activityResolver?.Invoke(id) is not { } activity) return;
-        var exitCode = activity.ExitCode?.ToString() ?? string.Empty;
-        var text =
-            $"Command: {activity.DisplayCommand}{Environment.NewLine}" +
-            $"Working directory: {activity.WorkingDirectory}{Environment.NewLine}" +
-            $"Exit code: {exitCode}{Environment.NewLine}" +
-            $"Duration: {FormatDuration(activity.Duration)}{Environment.NewLine}" +
-            $"stdout:{Environment.NewLine}{activity.StandardOutput}{Environment.NewLine}" +
-            $"stderr:{Environment.NewLine}{activity.StandardError}";
-        CopyText(text);
+        CopyText(GitConsoleClipboardText.Build(activity));
     }
 
     private void ApplySelection(GitCommandConsoleItem? item)

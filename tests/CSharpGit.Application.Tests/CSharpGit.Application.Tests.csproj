@@ -21,6 +21,7 @@
     <Compile Include="../../src/CSharpGit.Presentation/Threading/IUiDispatcher.cs" Link="Presentation/Threading/IUiDispatcher.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/SettingsViewModel.cs" Link="Presentation/SettingsViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Controls/GitOutputDisplayBuffer.cs" Link="Presentation/GitOutputDisplayBuffer.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/Controls/GitConsoleClipboardText.cs" Link="Presentation/GitConsoleClipboardText.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Controls/GitCommandConsoleItem.cs" Link="Presentation/GitCommandConsoleItem.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Controls/GitCommandConsoleState.cs" Link="Presentation/GitCommandConsoleState.cs" />
   </ItemGroup>
