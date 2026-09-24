@@ -296,19 +296,32 @@ public sealed partial class MainPage
         catch (ForcePushWithLeasePreparationException exception)
             when (exception.Failure == ForcePushPreparationFailure.MissingUpstream)
         {
-            var explicitRemote = _viewModel.SelectedRemote?.Name;
-            var explicitBranch = _viewModel.PushBranchName.Trim();
-            if (string.IsNullOrWhiteSpace(explicitRemote) || string.IsNullOrWhiteSpace(explicitBranch))
+            var currentBranch = _viewModel.LocalBranches.FirstOrDefault(branch => branch.IsCurrent);
+            if (currentBranch is null)
             {
                 await ShowErrorAsync(
-                    "Explicit push target required",
-                    "This branch has no configured upstream. Select Remote and Remote branch name in Git operations, then choose Force push with lease again.");
-                await GitOperationsDialog.ShowAsync();
+                    "Force push with lease unavailable",
+                    "No current local branch is available.");
                 return;
             }
+
+            if (_viewModel.Remotes.Count == 0)
+            {
+                await ShowErrorAsync(
+                    "Force push with lease unavailable",
+                    "No Git remotes are configured for this repository.");
+                return;
+            }
+
+            var target = await ShowForcePushTargetDialogAsync(currentBranch.Name);
+            if (target is null) return;
+
             try
             {
-                snapshot = await _repositorySyncService.PrepareForcePushWithLeaseAsync(repository, explicitRemote, explicitBranch);
+                snapshot = await _repositorySyncService.PrepareForcePushWithLeaseAsync(
+                    repository,
+                    target.Value.Remote,
+                    target.Value.RemoteBranch);
             }
             catch (Exception explicitException) when (explicitException is not OperationCanceledException)
             {
@@ -381,6 +394,64 @@ public sealed partial class MainPage
         }
     }
 
+
+    private async Task<(string Remote, string RemoteBranch)?> ShowForcePushTargetDialogAsync(string localBranch)
+    {
+        var localBranchBox = new TextBox
+        {
+            Text = localBranch,
+            IsReadOnly = true
+        };
+        var remoteCombo = new ComboBox
+        {
+            ItemsSource = _viewModel.Remotes,
+            DisplayMemberPath = nameof(GitRemote.Name),
+            PlaceholderText = "Select remote",
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        var remoteBranchBox = new TextBox
+        {
+            Text = localBranch,
+            PlaceholderText = "Remote branch name"
+        };
+
+        var content = new StackPanel
+        {
+            Width = 520,
+            Spacing = 8
+        };
+        content.Children.Add(new TextBlock { Text = "Local branch" });
+        content.Children.Add(localBranchBox);
+        content.Children.Add(new TextBlock { Text = "Remote", Margin = new Thickness(0, 8, 0, 0) });
+        content.Children.Add(remoteCombo);
+        content.Children.Add(new TextBlock { Text = "Remote branch", Margin = new Thickness(0, 8, 0, 0) });
+        content.Children.Add(remoteBranchBox);
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = "Force push target",
+            Content = content,
+            PrimaryButtonText = "Continue",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary
+        };
+
+        void UpdatePrimaryState() =>
+            dialog.IsPrimaryButtonEnabled =
+                remoteCombo.SelectedItem is GitRemote
+                && !string.IsNullOrWhiteSpace(remoteBranchBox.Text);
+
+        remoteCombo.SelectionChanged += (_, _) => UpdatePrimaryState();
+        remoteBranchBox.TextChanged += (_, _) => UpdatePrimaryState();
+        UpdatePrimaryState();
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return null;
+        if (remoteCombo.SelectedItem is not GitRemote selectedRemote) return null;
+
+        return (selectedRemote.Name, remoteBranchBox.Text.Trim());
+    }
+
     private async Task ShowForcePreparationFailureAsync(Exception exception)
     {
         if (exception is ForcePushWithLeasePreparationException preparation)
@@ -408,11 +479,6 @@ public sealed partial class MainPage
 
     private async void ForcePushWithLease_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button)
-        {
-            GitOperationsDialog.Hide();
-            await Task.Delay(20);
-        }
         await RunForcePushWithLeaseAsync();
     }
 }

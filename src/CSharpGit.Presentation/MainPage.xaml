@@ -5,35 +5,13 @@
     <ContentDialog x:Key="GitOperationsDialog" Title="Git operations" CloseButtonText="Close" DefaultButton="Close">
       <ScrollViewer MaxHeight="650" VerticalScrollBarVisibility="Auto">
         <StackPanel Width="620" Spacing="{StaticResource Spacing.XL}">
-          <TextBlock Text="Branches" Style="{StaticResource BodyStrongTextStyle}" />
-          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
-            <TextBox Text="{Binding NewBranchName, Mode=TwoWay}" PlaceholderText="New local branch" Style="{StaticResource CompactTextBoxStyle}" />
-            <Button Grid.Column="1" Content="Create and switch" Command="{Binding CreateBranchCommand}" Style="{StaticResource CompactButtonStyle}" />
-          </Grid>
-          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
-            <ComboBox ItemsSource="{Binding LocalBranches}" SelectedItem="{Binding SelectedMergeBranch, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Branch to merge" Style="{StaticResource CompactComboBoxStyle}" />
-            <Button Grid.Column="1" Content="Merge into current" Command="{Binding MergeCommand}" Style="{StaticResource CompactButtonStyle}" />
-          </Grid>
-
-          <TextBlock Text="Tracking branch" Style="{StaticResource BodyStrongTextStyle}" Margin="{StaticResource Margin.Section}" />
-          <Grid ColumnDefinitions="200,*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
-            <ComboBox ItemsSource="{Binding RemoteBranches}" SelectedItem="{Binding SelectedRemoteBranch, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Remote branch" Style="{StaticResource CompactComboBoxStyle}" />
-            <TextBox Grid.Column="1" Text="{Binding NewBranchName, Mode=TwoWay}" PlaceholderText="Local branch name" Style="{StaticResource CompactTextBoxStyle}" />
-            <Button Grid.Column="2" Content="Checkout tracking" Command="{Binding CheckoutRemoteCommand}" Style="{StaticResource CompactButtonStyle}" />
-          </Grid>
-
-          <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="{StaticResource Margin.FormSeparator}" />
           <TextBlock Text="Remote / explicit push" Style="{StaticResource BodyStrongTextStyle}" />
           <Grid ColumnDefinitions="180,*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
             <ComboBox ItemsSource="{Binding Remotes}" SelectedItem="{Binding SelectedRemote, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Remote" Style="{StaticResource CompactComboBoxStyle}" />
             <TextBox Grid.Column="1" Text="{Binding PushBranchName, Mode=TwoWay}" PlaceholderText="Remote branch name" Style="{StaticResource CompactTextBoxStyle}" />
             <CheckBox Grid.Column="2" Content="Set upstream" IsChecked="{Binding SetUpstream, Mode=TwoWay}" Style="{StaticResource CompactCheckBoxStyle}" VerticalAlignment="Center" />
           </Grid>
-          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.L}">
-            <Button Content="Push" Click="ExplicitPush_Click" Style="{StaticResource CompactButtonStyle}" />
-            <Button Content="Force push with lease…" Click="ForcePushWithLease_Click" IsEnabled="{Binding CanForcePushWithLease}" Style="{StaticResource CompactButtonStyle}" />
-            <Button Content="Fetch all" Command="{Binding FetchAllCommand}" Style="{StaticResource CompactButtonStyle}" />
-          </StackPanel>
+          <Button Content="Push" Click="ExplicitPush_Click" HorizontalAlignment="Left" Style="{StaticResource CompactButtonStyle}" />
 
           <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="{StaticResource Margin.FormSeparator}" />
           <TextBlock Text="Interactive rebase" Style="{StaticResource BodyStrongTextStyle}" />
