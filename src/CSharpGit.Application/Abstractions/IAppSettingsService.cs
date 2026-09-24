@@ -39,6 +39,8 @@ public interface IAppSettingsService
     GitConsoleAutoOpenMode GitConsoleAutoOpenMode { get; }
     bool ShowReflog { get; }
     bool AutoSetupRemoteOnPush { get; }
+    bool ShowAuthorAvatars { get; }
+    bool OnlineAvatarLookupEnabled { get; }
     IReadOnlyList<RecentRepositorySettings> RecentRepositories { get; }
 
     /// <summary>
@@ -71,6 +73,14 @@ public interface IAppSettingsService
         CancellationToken cancellationToken = default);
 
     Task SetAutoSetupRemoteOnPushAsync(
+        bool value,
+        CancellationToken cancellationToken = default);
+
+    Task SetShowAuthorAvatarsAsync(
+        bool value,
+        CancellationToken cancellationToken = default);
+
+    Task SetOnlineAvatarLookupEnabledAsync(
         bool value,
         CancellationToken cancellationToken = default);
 
