@@ -49,12 +49,19 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
       </Grid>
-      <TextBlock Grid.Column="2"
-                 Text="{Binding Commit.Author}"
-                 Style="{StaticResource BodyTextStyle}"
-                 Margin="{StaticResource Margin.HistoryColumnGap}"
-                 TextTrimming="CharacterEllipsis"
-                 VerticalAlignment="Center" />
+      <StackPanel Grid.Column="2"
+                  Orientation="Horizontal"
+                  Spacing="{StaticResource Spacing.S}"
+                  Margin="{StaticResource Margin.HistoryColumnGap}"
+                  VerticalAlignment="Center">
+        <controls:AuthorAvatar AuthorName="{Binding Commit.Author}"
+                               AuthorEmail="{Binding Commit.AuthorEmail}"
+                               AvatarSize="18" />
+        <TextBlock Text="{Binding Commit.Author}"
+                   Style="{StaticResource BodyTextStyle}"
+                   TextTrimming="CharacterEllipsis"
+                   VerticalAlignment="Center" />
+      </StackPanel>
       <controls:CommitTimeText Grid.Column="3"
                                Value="{Binding Commit.AuthoredAt}"
                                Margin="{StaticResource Margin.HistoryColumnGap}"
