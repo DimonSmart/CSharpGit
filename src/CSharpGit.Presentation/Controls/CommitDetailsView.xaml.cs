@@ -1,3 +1,4 @@
+using CSharpGit.Application.Abstractions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel.DataTransfer;
@@ -7,6 +8,11 @@ namespace CSharpGit.Presentation.Controls;
 public sealed partial class CommitDetailsView : UserControl
 {
     public CommitDetailsView() => InitializeComponent();
+
+    internal void ConfigureAuthorAvatar(
+        IAuthorAvatarService avatarService,
+        IAppSettingsService settings) =>
+        CommitAuthorAvatar.Configure(avatarService, settings);
 
     private async void CopyText_Click(object sender, RoutedEventArgs args)
     {
