@@ -11,7 +11,6 @@ public sealed class PublishBranchUiContractTests
         var converter = File.ReadAllText(Path.Combine(presentation, "Controls", "BranchTrackingActionTextConverter.cs"));
         var workflow = File.ReadAllText(Path.Combine(presentation, "MainPage.ForcePush.cs"));
         var settings = File.ReadAllText(Path.Combine(presentation, "SettingsPage.xaml"));
-        var viewModel = File.ReadAllText(Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.cs"));
 
         Assert.Contains("Publish branch…", converter, StringComparison.Ordinal);
         Assert.Contains("ConverterParameter=PushMenu", xaml, StringComparison.Ordinal);
@@ -28,7 +27,7 @@ public sealed class PublishBranchUiContractTests
         Assert.Contains("dialog.IsPrimaryButtonEnabled", workflow, StringComparison.Ordinal);
         Assert.Contains("!_settingsWindowController.AutoSetupRemoteOnPush", workflow, StringComparison.Ordinal);
         Assert.Contains("RefreshAfterRemoteOperationAsync", workflow, StringComparison.Ordinal);
-        Assert.Contains("!string.IsNullOrWhiteSpace(branch.Upstream)", viewModel, StringComparison.Ordinal);
+        Assert.Contains("if (!string.IsNullOrWhiteSpace(currentBranch.Upstream))", workflow, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()

@@ -145,12 +145,12 @@ public sealed class DesktopUiContractTests
         Assert.Contains("_repositorySyncService.PushAsync", forcePushPage);
         Assert.Contains("Force push with lease…", surface);
         Assert.Contains("ForcePushWithLeaseAsync(repository, snapshot)", forcePushPage);
-        Assert.Equal(2, Count(xaml, "IsEnabled=\"{Binding CanForcePushWithLease}\""));
+        Assert.Equal(1, Count(xaml, "IsEnabled=\"{Binding CanForcePushWithLease}\""));
         Assert.Contains("CanForcePushWithLease => Repository is not null", viewModel);
         Assert.Contains("&& !IsBusy", viewModel);
-        Assert.Contains("!string.IsNullOrWhiteSpace(branch.Upstream)", viewModel);
+        Assert.DoesNotContain("!string.IsNullOrWhiteSpace(branch.Upstream)", viewModel);
         Assert.Contains("CurrentOperation == RepositoryOperation.None", viewModel);
-        Assert.Contains("LocalBranches.Any(branch => branch is { IsCurrent: true }", viewModel);
+        Assert.Contains("LocalBranches.Any(branch => branch.IsCurrent)", viewModel);
 
         Assert.Contains("OperationState.CanContinue", viewModel);
         Assert.Contains("OperationState.CanSkip", viewModel);
