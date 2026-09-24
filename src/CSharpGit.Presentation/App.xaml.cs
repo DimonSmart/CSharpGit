@@ -66,6 +66,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                         ?? throw new InvalidOperationException("The UI dispatcher is not available on the current thread.")));
                 services.AddSingleton<ApplicationThemeManager>();
                 services.AddSingleton<IRepositoryImageService, RepositoryImageService>();
+                services.AddSingleton<IAuthorAvatarService, AuthorAvatarService>();
                 services.AddSingleton<SettingsWindowController>();
                 services.AddSingleton<GitCommandActivityHistory>();
                 services.AddSingleton<IGitCommandActivitySink>(
