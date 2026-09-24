@@ -204,6 +204,13 @@ public sealed partial class AuthorAvatar : UserControl
         catch
         {
             ShowInitials();
+            try
+            {
+                await service.InvalidateAsync(AuthorName, AuthorEmail);
+            }
+            catch
+            {
+            }
         }
     }
 
