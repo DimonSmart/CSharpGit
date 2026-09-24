@@ -190,7 +190,12 @@ public sealed partial class AuthorAvatar : UserControl
 
         try
         {
-            var bitmap = new BitmapImage(new Uri(result.ImagePath, UriKind.Absolute));
+            var normalizedPath = Path.GetFullPath(result.ImagePath);
+            var imageUri = new UriBuilder(Uri.UriSchemeFile, string.Empty)
+            {
+                Path = normalizedPath
+            }.Uri;
+            var bitmap = new BitmapImage(imageUri);
             AvatarImage.Source = bitmap;
             AvatarImage.Visibility = Visibility.Visible;
             InitialsText.Visibility = Visibility.Collapsed;
