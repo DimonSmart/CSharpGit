@@ -18,6 +18,7 @@ public sealed partial class MainPage
     private readonly CancellationTokenSource _repositoryProbeStop = new();
     private CancellationToken _repositoryProbeToken;
     private readonly IRepositoryRefreshProbe _repositoryRefreshProbe;
+    private readonly RepositoryRefreshLifecycleState _repositoryRefreshLifecycle = new();
     private bool _repositoryChangeMonitoringInitialized;
     private bool _isRefreshInProgress;
     private Repository? _monitoredRepository;
@@ -29,7 +30,7 @@ public sealed partial class MainPage
     private bool _repositoryTreePresentationDirty;
     private bool _workingTreePresentationDirty;
 
-    public bool IsRefreshRequired { get; private set; }
+    public bool IsRefreshRequired => _repositoryRefreshLifecycle.IsRefreshRequired;
 
     private void InitializeRepositoryChangeMonitoring()
     {
@@ -66,12 +67,18 @@ public sealed partial class MainPage
             return;
         }
 
-        if (eventArgs.PropertyName != nameof(OpenRepositoryViewModel.DisplayedRefreshFingerprint)) return;
+        if (eventArgs.PropertyName != nameof(OpenRepositoryViewModel.DisplayedRefreshBaselineRevision)) return;
 
-        _displayedRefreshFingerprint = _viewModel.DisplayedRefreshFingerprint;
-        if (_displayedRefreshFingerprint is null) return;
+        var baseline = _viewModel.DisplayedRefreshFingerprint;
+        if (baseline is null) return;
 
-        SetRefreshRequired(false);
+        var baselineRevision = _viewModel.DisplayedRefreshBaselineRevision;
+        if (!_repositoryRefreshLifecycle.PublishBaseline(baselineRevision)) return;
+
+        _displayedRefreshFingerprint = baseline;
+        _repositoryProbePending = false;
+        _repositoryChangeMonitor.Resume();
+        UpdateRefreshIndicator();
         QueueRepositoryProbe(_repositoryChangeMonitor.Generation);
     }
 
@@ -84,17 +91,24 @@ public sealed partial class MainPage
         {
             _monitoredRepository = null;
             _displayedRefreshFingerprint = null;
+            _repositoryProbePending = false;
+            _repositoryRefreshLifecycle.Reset(_viewModel.DisplayedRefreshBaselineRevision);
             _repositoryChangeMonitor.Stop();
-            SetRefreshRequired(false);
+            UpdateRefreshIndicator();
             return;
         }
 
         if (Equals(repository, _monitoredRepository)) return;
 
         _monitoredRepository = repository;
-        _displayedRefreshFingerprint = null;
+        _displayedRefreshFingerprint = _viewModel.DisplayedRefreshFingerprint;
+        _repositoryProbePending = false;
+        _repositoryRefreshLifecycle.Reset(_viewModel.DisplayedRefreshBaselineRevision);
         _repositoryChangeMonitor.Start(repository);
-        SetRefreshRequired(false);
+        UpdateRefreshIndicator();
+
+        if (_displayedRefreshFingerprint is not null)
+            QueueRepositoryProbe(_repositoryChangeMonitor.Generation);
     }
 
     private void RepositoryChangeMonitor_RepositoryChanged(
@@ -118,6 +132,7 @@ public sealed partial class MainPage
     private void QueueRepositoryProbe(long generation)
     {
         if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
+        if (!_repositoryRefreshLifecycle.CanQueueProbe) return;
         if (_viewModel.Repository is null || _displayedRefreshFingerprint is null) return;
 
         _repositoryProbeGeneration = Math.Max(_repositoryProbeGeneration, generation);
@@ -140,6 +155,7 @@ public sealed partial class MainPage
                 var generation = _repositoryProbeGeneration;
                 var repository = _viewModel.Repository;
                 var baseline = _displayedRefreshFingerprint;
+                var baselineRevision = _repositoryRefreshLifecycle.BaselineRevision;
                 if (repository is null || baseline is null) continue;
 
                 RepositoryRefreshFingerprint current;
@@ -161,15 +177,32 @@ public sealed partial class MainPage
 
                 if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
 
-                if (!ReferenceEquals(repository, _viewModel.Repository) ||
-                    !Equals(baseline, _displayedRefreshFingerprint))
+                if (!ReferenceEquals(repository, _viewModel.Repository))
                     continue;
 
                 var changed = !StringComparer.Ordinal.Equals(current.Value, baseline.Value);
+                var disposition = _repositoryRefreshLifecycle.ApplyProbeResult(baselineRevision, changed);
+                if (disposition == RepositoryProbeResultDisposition.StaleRevision)
+                {
+                    Trace.WriteLine(
+                        $"Repository state probe: generation={generation} result=stale baselineRevision={baselineRevision} currentRevision={_repositoryRefreshLifecycle.BaselineRevision}");
+                    continue;
+                }
+
+                if (disposition == RepositoryProbeResultDisposition.IgnoredWhileLatched)
+                    continue;
+
                 Trace.WriteLine(
-                    $"Repository state probe: generation={generation} result={(changed ? "changed" : "unchanged")}");
+                    $"Repository state probe: generation={generation} result={(changed ? "changed" : "unchanged")} baselineRevision={baselineRevision}");
                 if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
-                SetRefreshRequired(changed);
+
+                if (disposition == RepositoryProbeResultDisposition.RefreshRequired)
+                {
+                    _repositoryProbePending = false;
+                    _repositoryChangeMonitor.Suspend();
+                    UpdateRefreshIndicator();
+                    return;
+                }
             }
         }
         finally
@@ -183,14 +216,6 @@ public sealed partial class MainPage
                 _ = RunRepositoryProbeLoopAsync();
             }
         }
-    }
-
-    private void SetRefreshRequired(bool value)
-    {
-        if (IsShuttingDown) return;
-        if (IsRefreshRequired == value) return;
-        IsRefreshRequired = value;
-        UpdateRefreshIndicator();
     }
 
     private void SetRefreshInProgress(bool value)

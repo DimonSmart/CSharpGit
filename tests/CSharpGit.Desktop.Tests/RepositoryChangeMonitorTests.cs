@@ -6,8 +6,34 @@ namespace CSharpGit.Desktop.Tests;
 public sealed class RepositoryChangeMonitorTests
 {
     private static readonly TimeSpan EventTimeout = TimeSpan.FromSeconds(15);
+
     [Fact]
-    public async Task WorkingTreeChangesAreDebouncedAndDetectedAgainAfterAcknowledge()
+    public async Task WorkingTreeChangePublishesInvalidation()
+    {
+        using var repository = TestRepository.Create();
+        var path = Path.Combine(repository.Root, "tracked.txt");
+        await File.WriteAllTextAsync(path, "one");
+
+        using var monitor = new RepositoryChangeMonitor();
+        var signal = NewSignal();
+        RepositoryInvalidatedEventArgs? observed = null;
+        monitor.RepositoryChanged += (_, args) =>
+        {
+            observed = args;
+            signal.TrySetResult(true);
+        };
+        monitor.Start(repository.Repository);
+
+        await File.AppendAllTextAsync(path, " two");
+        await signal.Task.WaitAsync(EventTimeout);
+
+        Assert.NotNull(observed);
+        Assert.Equal(RepositoryInvalidationSource.WorkingTree, observed.Source);
+        Assert.Equal("tracked.txt", observed.Path);
+    }
+
+    [Fact]
+    public async Task MultipleChangesAreDebounced()
     {
         using var repository = TestRepository.Create();
         var path = Path.Combine(repository.Root, "tracked.txt");
@@ -26,16 +52,9 @@ public sealed class RepositoryChangeMonitorTests
         await File.AppendAllTextAsync(path, " two");
         await File.AppendAllTextAsync(path, " three");
         await signal.Task.WaitAsync(EventTimeout);
-        await Task.Delay(RepositoryChangeMonitor.DebounceDelay + TimeSpan.FromMilliseconds(150));
+        await Task.Delay(RepositoryChangeMonitor.DebounceDelay + TimeSpan.FromMilliseconds(300));
 
         Assert.Equal(1, Volatile.Read(ref notifications));
-
-        signal = NewSignal();
-        monitor.Acknowledge();
-        await File.AppendAllTextAsync(path, " four");
-        await signal.Task.WaitAsync(EventTimeout);
-
-        Assert.Equal(2, Volatile.Read(ref notifications));
     }
 
     [Fact]
@@ -64,7 +83,71 @@ public sealed class RepositoryChangeMonitorTests
     }
 
     [Fact]
-    public async Task AcknowledgeDoesNotDropQueuedInvalidation()
+    public async Task SuspendStopsWorkingTreeNotifications()
+    {
+        using var repository = TestRepository.Create();
+        var path = Path.Combine(repository.Root, "tracked.txt");
+        await File.WriteAllTextAsync(path, "one");
+
+        using var monitor = new RepositoryChangeMonitor();
+        var notifications = 0;
+        monitor.RepositoryChanged += (_, _) => Interlocked.Increment(ref notifications);
+        monitor.Start(repository.Repository);
+        var generation = monitor.Generation;
+
+        monitor.Suspend();
+        await File.AppendAllTextAsync(path, " two");
+        await Task.Delay(RepositoryChangeMonitor.DebounceDelay + TimeSpan.FromMilliseconds(300));
+
+        Assert.Equal(generation, monitor.Generation);
+        Assert.Equal(0, Volatile.Read(ref notifications));
+    }
+
+    [Fact]
+    public async Task SuspendStopsMetadataNotifications()
+    {
+        using var repository = TestRepository.Create();
+        var head = Path.Combine(repository.GitDirectory, "HEAD");
+        await File.WriteAllTextAsync(head, "ref: refs/heads/main\n");
+
+        using var monitor = new RepositoryChangeMonitor();
+        var notifications = 0;
+        monitor.RepositoryChanged += (_, _) => Interlocked.Increment(ref notifications);
+        monitor.Start(repository.Repository);
+        var generation = monitor.Generation;
+
+        monitor.Suspend();
+        await File.WriteAllTextAsync(head, "ref: refs/heads/feature\n");
+        await Task.Delay(RepositoryChangeMonitor.DebounceDelay + TimeSpan.FromMilliseconds(300));
+
+        Assert.Equal(generation, monitor.Generation);
+        Assert.Equal(0, Volatile.Read(ref notifications));
+    }
+
+    [Fact]
+    public async Task SuspendCancelsPendingDebouncedInvalidation()
+    {
+        using var repository = TestRepository.Create();
+        var path = Path.Combine(repository.Root, "tracked.txt");
+        await File.WriteAllTextAsync(path, "one");
+
+        using var monitor = new RepositoryChangeMonitor();
+        var notifications = 0;
+        monitor.RepositoryChanged += (_, _) => Interlocked.Increment(ref notifications);
+        monitor.Start(repository.Repository);
+        var generation = monitor.Generation;
+
+        await File.AppendAllTextAsync(path, " external");
+        await WaitUntilAsync(() => monitor.Generation > generation);
+
+        monitor.Suspend();
+        await Task.Delay(RepositoryChangeMonitor.DebounceDelay + TimeSpan.FromMilliseconds(300));
+
+        Assert.Equal(0, Volatile.Read(ref notifications));
+    }
+
+    [Fact]
+    public async Task ResumeDetectsNewChangesAgain()
     {
         using var repository = TestRepository.Create();
         var path = Path.Combine(repository.Root, "tracked.txt");
@@ -75,10 +158,93 @@ public sealed class RepositoryChangeMonitorTests
         monitor.RepositoryChanged += (_, _) => signal.TrySetResult(true);
         monitor.Start(repository.Repository);
 
-        await File.AppendAllTextAsync(path, " external change");
-        monitor.Acknowledge();
+        monitor.Suspend();
+        await File.AppendAllTextAsync(path, " during suspension");
+        await Task.Delay(RepositoryChangeMonitor.DebounceDelay + TimeSpan.FromMilliseconds(300));
 
+        monitor.Resume();
+        await File.AppendAllTextAsync(path, " after resume");
         await signal.Task.WaitAsync(EventTimeout);
+    }
+
+    [Fact]
+    public async Task StartRearmsSuspendedMonitor()
+    {
+        using var repository = TestRepository.Create();
+        var path = Path.Combine(repository.Root, "tracked.txt");
+        await File.WriteAllTextAsync(path, "one");
+
+        using var monitor = new RepositoryChangeMonitor();
+        var signal = NewSignal();
+        monitor.RepositoryChanged += (_, _) => signal.TrySetResult(true);
+        monitor.Start(repository.Repository);
+        monitor.Suspend();
+
+        monitor.Start(repository.Repository);
+        await File.AppendAllTextAsync(path, " after restart");
+        await signal.Task.WaitAsync(EventTimeout);
+    }
+
+    [Fact]
+    public void RepeatedSuspendIsSafe()
+    {
+        using var repository = TestRepository.Create();
+        using var monitor = new RepositoryChangeMonitor();
+        monitor.Start(repository.Repository);
+
+        monitor.Suspend();
+        monitor.Suspend();
+    }
+
+    [Fact]
+    public async Task RepeatedResumeIsSafe()
+    {
+        using var repository = TestRepository.Create();
+        var path = Path.Combine(repository.Root, "tracked.txt");
+        await File.WriteAllTextAsync(path, "one");
+
+        using var monitor = new RepositoryChangeMonitor();
+        var signal = NewSignal();
+        monitor.RepositoryChanged += (_, _) => signal.TrySetResult(true);
+        monitor.Start(repository.Repository);
+
+        monitor.Resume();
+        monitor.Resume();
+        await File.AppendAllTextAsync(path, " two");
+        await signal.Task.WaitAsync(EventTimeout);
+    }
+
+    [Fact]
+    public async Task StopWhileSuspendedIsSafe()
+    {
+        using var repository = TestRepository.Create();
+        var path = Path.Combine(repository.Root, "tracked.txt");
+        await File.WriteAllTextAsync(path, "one");
+
+        using var monitor = new RepositoryChangeMonitor();
+        var notifications = 0;
+        monitor.RepositoryChanged += (_, _) => Interlocked.Increment(ref notifications);
+        monitor.Start(repository.Repository);
+        monitor.Suspend();
+
+        monitor.Stop();
+        monitor.Stop();
+        await File.AppendAllTextAsync(path, " two");
+        await Task.Delay(RepositoryChangeMonitor.DebounceDelay + TimeSpan.FromMilliseconds(300));
+
+        Assert.Equal(0, Volatile.Read(ref notifications));
+    }
+
+    [Fact]
+    public void DisposeWhileSuspendedIsSafe()
+    {
+        using var repository = TestRepository.Create();
+        var monitor = new RepositoryChangeMonitor();
+        monitor.Start(repository.Repository);
+        monitor.Suspend();
+
+        monitor.Dispose();
+        monitor.Dispose();
     }
 
     [Fact]
@@ -117,6 +283,13 @@ public sealed class RepositoryChangeMonitorTests
 
     private static TaskCompletionSource<bool> NewSignal() =>
         new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    private static async Task WaitUntilAsync(Func<bool> predicate)
+    {
+        using var timeout = new CancellationTokenSource(EventTimeout);
+        while (!predicate())
+            await Task.Delay(25, timeout.Token);
+    }
 
     private sealed class TestRepository : IDisposable
     {
