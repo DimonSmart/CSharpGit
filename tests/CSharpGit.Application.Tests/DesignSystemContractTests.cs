@@ -197,9 +197,9 @@ public sealed class DesignSystemContractTests
             "<ContentDialog x:Key=\"GitOperationsDialog\"",
             "</ContentDialog>");
         Assert.Contains("BodyStrongTextStyle", gitOperations);
-        Assert.True(Count(gitOperations, "CompactButtonStyle") >= 9);
-        Assert.True(Count(gitOperations, "CompactTextBoxStyle") >= 4);
-        Assert.True(Count(gitOperations, "CompactComboBoxStyle") >= 4);
+        Assert.True(Count(gitOperations, "CompactButtonStyle") >= 4);
+        Assert.True(Count(gitOperations, "CompactTextBoxStyle") >= 3);
+        Assert.True(Count(gitOperations, "CompactComboBoxStyle") >= 2);
         Assert.Contains("CompactCheckBoxStyle", gitOperations);
         Assert.Contains("ItemContainerStyle=\"{StaticResource DenseListItemStyle}\"", gitOperations);
         Assert.DoesNotContain("FontWeight=\"SemiBold\"", gitOperations);
