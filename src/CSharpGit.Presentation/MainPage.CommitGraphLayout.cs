@@ -104,7 +104,11 @@ public sealed partial class MainPage
             return;
 
         var container = args.ItemContainer;
-        DispatcherQueue.TryEnqueue(() => ApplyCommitGraphLayout(container, ActiveCommitGraphLayout));
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            ApplyCommitGraphLayout(container, ActiveCommitGraphLayout);
+            ConfigureAuthorAvatars(container);
+        });
     }
 
     private static void ApplyCommitGraphLayout(DependencyObject root, CommitGraphLayoutState layout)
