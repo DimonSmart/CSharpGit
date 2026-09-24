@@ -49,6 +49,10 @@ public sealed class JsonAppSettingsService : IAppSettingsService
 
     public bool AutoSetupRemoteOnPush => Volatile.Read(ref _state).AutoSetupRemoteOnPush;
 
+    public bool ShowAuthorAvatars => Volatile.Read(ref _state).ShowAuthorAvatars;
+
+    public bool OnlineAvatarLookupEnabled => Volatile.Read(ref _state).OnlineAvatarLookupEnabled;
+
     public IReadOnlyList<RecentRepositorySettings> RecentRepositories => Volatile.Read(ref _state).RecentRepositories;
 
     public event EventHandler? Changed;
@@ -124,6 +128,24 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             current => current.AutoSetupRemoteOnPush == value
                 ? current
                 : current with { AutoSetupRemoteOnPush = value },
+            cancellationToken);
+
+    public Task SetShowAuthorAvatarsAsync(
+        bool value,
+        CancellationToken cancellationToken = default) =>
+        UpdateAsync(
+            current => current.ShowAuthorAvatars == value
+                ? current
+                : current with { ShowAuthorAvatars = value },
+            cancellationToken);
+
+    public Task SetOnlineAvatarLookupEnabledAsync(
+        bool value,
+        CancellationToken cancellationToken = default) =>
+        UpdateAsync(
+            current => current.OnlineAvatarLookupEnabled == value
+                ? current
+                : current with { OnlineAvatarLookupEnabled = value },
             cancellationToken);
 
     public Task RecordRecentRepositoryAsync(
@@ -234,6 +256,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 gitConsoleAutoOpenMode,
                 document.ShowReflog,
                 document.AutoSetupRemoteOnPush,
+                document.ShowAuthorAvatars ?? true,
+                document.OnlineAvatarLookupEnabled ?? true,
                 recentRepositories);
         }
         catch (JsonException)
@@ -266,6 +290,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             GitConsoleAutoOpenMode = state.GitConsoleAutoOpenMode,
             ShowReflog = state.ShowReflog,
             AutoSetupRemoteOnPush = state.AutoSetupRemoteOnPush,
+            ShowAuthorAvatars = state.ShowAuthorAvatars,
+            OnlineAvatarLookupEnabled = state.OnlineAvatarLookupEnabled,
             RecentRepositories = state.RecentRepositories.ToList()
         };
         var json = JsonSerializer.Serialize(document, SerializerOptions);
@@ -351,6 +377,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         GitConsoleAutoOpenMode GitConsoleAutoOpenMode,
         bool ShowReflog,
         bool AutoSetupRemoteOnPush,
+        bool ShowAuthorAvatars,
+        bool OnlineAvatarLookupEnabled,
         IReadOnlyList<RecentRepositorySettings> RecentRepositories)
     {
         public static SettingsState Default { get; } = new(
@@ -361,6 +389,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             GitConsoleAutoOpenMode.OnErrors,
             false,
             false,
+            true,
+            true,
             Array.AsReadOnly(Array.Empty<RecentRepositorySettings>()));
     }
 
@@ -373,6 +403,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         public GitConsoleAutoOpenMode? GitConsoleAutoOpenMode { get; init; }
         public bool ShowReflog { get; init; }
         public bool AutoSetupRemoteOnPush { get; init; }
+        public bool? ShowAuthorAvatars { get; init; }
+        public bool? OnlineAvatarLookupEnabled { get; init; }
         public List<RecentRepositorySettings>? RecentRepositories { get; init; }
     }
 
