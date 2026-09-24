@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using CSharpGit.Application.Abstractions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -25,8 +23,7 @@ public sealed partial class AuthorAvatar : UserControl
 
     private IAuthorAvatarService? _avatarService;
     private IAppSettingsService? _settings;
-    private CancellationTokenSource? _resolveCts;
-    private long _generation;
+    private readonly AuthorAvatarRequestGate _requestGate = new();
     private bool _settingsSubscribed;
     private string? _displayedRemoteIdentity;
 
@@ -93,37 +90,6 @@ public sealed partial class AuthorAvatar : UserControl
         Refresh();
     }
 
-    internal static string GetInitials(string? authorName, string? authorEmail)
-    {
-        var words = (authorName ?? string.Empty)
-            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-        if (words.Length == 1)
-            return FirstTextElement(words[0]);
-        if (words.Length > 1)
-            return FirstTextElement(words[0]) + FirstTextElement(words[^1]);
-
-        var email = authorEmail?.Trim();
-        if (!string.IsNullOrEmpty(email))
-        {
-            var at = email.IndexOf('@');
-            var local = at > 0 ? email[..at] : email;
-            if (local.Length > 0)
-                return FirstTextElement(local);
-        }
-
-        return "?";
-    }
-
-    internal static int GetStableColorIndex(string? authorName, string? authorEmail)
-    {
-        var identity = !string.IsNullOrWhiteSpace(authorEmail)
-            ? authorEmail.Trim().ToLowerInvariant()
-            : (authorName ?? string.Empty).Trim().ToLowerInvariant();
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(identity));
-        return bytes[0] % BackgroundPalette.Length;
-    }
-
     private static void IdentityPropertyChanged(
         DependencyObject dependencyObject,
         DependencyPropertyChangedEventArgs args) =>
@@ -146,7 +112,7 @@ public sealed partial class AuthorAvatar : UserControl
 
     private void AuthorAvatar_Unloaded(object sender, RoutedEventArgs args)
     {
-        CancelConsumerRequest();
+        _requestGate.Cancel();
         DetachSettings();
     }
 
@@ -174,8 +140,7 @@ public sealed partial class AuthorAvatar : UserControl
 
     private void Refresh()
     {
-        var generation = Interlocked.Increment(ref _generation);
-        CancelConsumerRequest();
+        _requestGate.Cancel();
         ShowInitials();
 
         var settings = _settings;
@@ -195,17 +160,11 @@ public sealed partial class AuthorAvatar : UserControl
         if (!settings.OnlineAvatarLookupEnabled || _avatarService is null || !IsLoaded)
             return;
 
-        _resolveCts = new CancellationTokenSource();
-        _ = ResolveRemoteAsync(
-            generation,
-            CurrentIdentity(),
-            _resolveCts.Token);
+        var request = _requestGate.Start(CurrentIdentity());
+        _ = ResolveRemoteAsync(request);
     }
 
-    private async Task ResolveRemoteAsync(
-        long generation,
-        string identity,
-        CancellationToken cancellationToken)
+    private async Task ResolveRemoteAsync(AuthorAvatarRequest request)
     {
         var service = _avatarService;
         if (service is null) return;
@@ -213,7 +172,7 @@ public sealed partial class AuthorAvatar : UserControl
         AuthorAvatarResult result;
         try
         {
-            result = await service.ResolveAsync(AuthorName, AuthorEmail, cancellationToken);
+            result = await service.ResolveAsync(AuthorName, AuthorEmail, request.CancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -224,9 +183,7 @@ public sealed partial class AuthorAvatar : UserControl
             return;
         }
 
-        if (cancellationToken.IsCancellationRequested
-            || generation != Volatile.Read(ref _generation)
-            || !string.Equals(identity, CurrentIdentity(), StringComparison.Ordinal)
+        if (!_requestGate.IsCurrent(request, CurrentIdentity())
             || _settings is not { ShowAuthorAvatars: true, OnlineAvatarLookupEnabled: true }
             || string.IsNullOrWhiteSpace(result.ImagePath))
             return;
@@ -237,7 +194,7 @@ public sealed partial class AuthorAvatar : UserControl
             AvatarImage.Source = bitmap;
             AvatarImage.Visibility = Visibility.Visible;
             InitialsText.Visibility = Visibility.Collapsed;
-            _displayedRemoteIdentity = identity;
+            _displayedRemoteIdentity = request.Identity;
         }
         catch
         {
@@ -263,9 +220,12 @@ public sealed partial class AuthorAvatar : UserControl
         AvatarImage.Source = null;
         AvatarImage.Visibility = Visibility.Collapsed;
         InitialsText.Visibility = Visibility.Visible;
-        InitialsText.Text = GetInitials(AuthorName, AuthorEmail);
+        InitialsText.Text = AuthorAvatarFallback.GetInitials(AuthorName, AuthorEmail);
         AvatarBorder.Background = new SolidColorBrush(
-            BackgroundPalette[GetStableColorIndex(AuthorName, AuthorEmail)]);
+            BackgroundPalette[AuthorAvatarFallback.GetStableColorIndex(
+                AuthorName,
+                AuthorEmail,
+                BackgroundPalette.Length)]);
         ToolTipService.SetToolTip(this, BuildToolTip());
     }
 
@@ -291,23 +251,10 @@ public sealed partial class AuthorAvatar : UserControl
         InitialsText.FontSize = Math.Max(8, size * 0.42);
     }
 
-    private void CancelConsumerRequest()
-    {
-        var cts = Interlocked.Exchange(ref _resolveCts, null);
-        if (cts is null) return;
-        cts.Cancel();
-        cts.Dispose();
-    }
-
     private string CurrentIdentity() =>
         (AuthorEmail ?? string.Empty).Trim().ToLowerInvariant()
         + "\n"
         + (AuthorName ?? string.Empty).Trim();
 
-    private static string FirstTextElement(string value)
-    {
-        if (string.IsNullOrEmpty(value)) return string.Empty;
-        var codePoint = char.ConvertToUtf32(value, 0);
-        return char.ConvertFromUtf32(codePoint).ToUpperInvariant();
-    }
+
 }
