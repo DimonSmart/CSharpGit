@@ -26,6 +26,7 @@ public sealed partial class GitConsoleView : UserControl
     private bool _pendingStandardErrorResync;
     private bool _outputFlushScheduled;
     private bool _updatingFilter;
+    private int _scrollRequestVersion;
     private volatile bool _active;
 
     public GitConsoleView()
@@ -99,25 +100,25 @@ public sealed partial class GitConsoleView : UserControl
     {
         var selectedId = preferredSelection ?? SelectedActivityId;
         CancelPendingOutput();
+        InvalidateScheduledScroll();
         _state.Reset(Filter, activities);
 
-        var selectedItem = selectedId is { } id
-            ? _state.Find(id)
-            : _state.Items.FirstOrDefault();
-        selectedItem ??= _state.Items.FirstOrDefault();
+        var selectedItem = _state.ResolveSelection(selectedId);
         CommandList.SelectedItem = selectedItem;
         if (selectedItem is null)
             ApplySelection(null);
 
         UpdateEmptyState();
         UpdateDurationTimer();
+        if (selectedItem is not null)
+            ScheduleScrollToSelectedActivity(selectedItem.Id);
     }
 
     public void ApplyStarted(GitCommandActivity activity, Guid? evictedActivityId)
     {
         var selectedId = SelectedActivityId;
         _state.ApplyStarted(activity, evictedActivityId);
-        RestoreSelectionAfterIncrementalChange(selectedId, evictedActivityId);
+        RestoreSelectionAfterIncrementalChange(selectedId);
         UpdateEmptyState();
         UpdateDurationTimer();
     }
@@ -129,7 +130,7 @@ public sealed partial class GitConsoleView : UserControl
 
         var selectedId = SelectedActivityId;
         _state.ApplyLifecycle(activity, evictedActivityId);
-        RestoreSelectionAfterIncrementalChange(selectedId, evictedActivityId);
+        RestoreSelectionAfterIncrementalChange(selectedId);
 
         if (SelectedActivityId == activity.Id)
             UpdateSelectedMetadata(activity);
@@ -177,8 +178,9 @@ public sealed partial class GitConsoleView : UserControl
     {
         var item = _state.Find(id);
         if (item is null) return false;
-        CommandList.SelectedItem = item;
-        CommandList.ScrollIntoView(item);
+        if (CommandList.SelectedItem is not GitCommandConsoleItem selected || selected.Id != id)
+            CommandList.SelectedItem = item;
+        ScheduleScrollToSelectedActivity(id);
         return true;
     }
 
@@ -188,8 +190,11 @@ public sealed partial class GitConsoleView : UserControl
         FilterChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    private void CommandList_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
+    private void CommandList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        InvalidateScheduledScroll();
         ApplySelection(CommandList.SelectedItem as GitCommandConsoleItem);
+    }
 
     private void Close_Click(object sender, RoutedEventArgs e) =>
         CloseRequested?.Invoke(this, EventArgs.Empty);
@@ -228,20 +233,37 @@ public sealed partial class GitConsoleView : UserControl
         ShowDetails(activity);
     }
 
-    private void RestoreSelectionAfterIncrementalChange(Guid? selectedId, Guid? evictedActivityId)
+    private void RestoreSelectionAfterIncrementalChange(Guid? selectedId)
     {
-        if (selectedId is { } id && _state.Find(id) is not null)
-        {
-            if (CommandList.SelectedItem is not GitCommandConsoleItem current || current.Id != id)
-                CommandList.SelectedItem = _state.Find(id);
+        var selectedItem = _state.ResolveSelection(selectedId);
+        if (CommandList.SelectedItem is GitCommandConsoleItem current &&
+            selectedItem is not null &&
+            current.Id == selectedItem.Id)
             return;
-        }
 
-        if (selectedId is null || evictedActivityId != selectedId) return;
-        CommandList.SelectedItem = _state.Items.FirstOrDefault();
-        if (CommandList.SelectedItem is null)
+        CommandList.SelectedItem = selectedItem;
+        if (selectedItem is null)
             ApplySelection(null);
     }
+
+    private void ScheduleScrollToSelectedActivity(Guid expectedActivityId)
+    {
+        var requestVersion = ++_scrollRequestVersion;
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (requestVersion != _scrollRequestVersion ||
+                SelectedActivityId != expectedActivityId ||
+                CommandList.SelectedItem is not GitCommandConsoleItem selected ||
+                selected.Id != expectedActivityId)
+                return;
+
+            var item = _state.Find(expectedActivityId);
+            if (item is not null)
+                CommandList.ScrollIntoView(item);
+        });
+    }
+
+    private void InvalidateScheduledScroll() => _scrollRequestVersion++;
 
     private void OutputTimerElapsed(object? state)
     {

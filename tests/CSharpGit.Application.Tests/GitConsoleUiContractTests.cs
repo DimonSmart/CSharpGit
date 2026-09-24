@@ -48,6 +48,30 @@ public sealed class GitConsoleUiContractTests
         Assert.Contains("Skip", operationBanner);
     }
 
+    [Fact]
+    public void GitConsoleSelectionUsesSingleDeferredScrollPath()
+    {
+        var root = FindRepositoryRoot();
+        var consoleXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "GitConsoleView.xaml"));
+        var consoleCode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "GitConsoleView.xaml.cs"))
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
+        var integration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.GitConsole.cs"))
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
+
+        Assert.Contains("SelectionMode=\"Single\"", consoleXaml);
+        Assert.Contains("ScheduleScrollToSelectedActivity", consoleCode);
+        Assert.Contains("DispatcherQueue.TryEnqueue", consoleCode);
+        Assert.Contains("requestVersion != _scrollRequestVersion", consoleCode);
+        Assert.Contains("SelectedActivityId != expectedActivityId", consoleCode);
+        Assert.DoesNotContain(
+            "CommandList.SelectedItem = item;\n        CommandList.ScrollIntoView(item);",
+            consoleCode);
+        Assert.DoesNotContain(
+            "RebuildGitConsole(preferredSelection);\n        if (preferredSelection is { } id)\n            _gitConsoleView.SelectActivity(id);",
+            integration);
+        Assert.Contains("_gitConsoleView.SelectActivity(alreadyOpenId);", integration);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

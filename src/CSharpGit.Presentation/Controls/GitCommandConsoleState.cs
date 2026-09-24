@@ -43,6 +43,11 @@ internal sealed class GitCommandConsoleState
     public GitCommandConsoleItem? Find(Guid id) =>
         Items.FirstOrDefault(item => item.Id == id);
 
+    public GitCommandConsoleItem? ResolveSelection(Guid? desiredActivityId) =>
+        desiredActivityId is { } id && Find(id) is { } selected
+            ? selected
+            : Items.FirstOrDefault();
+
     public bool IsVisible(GitCommandActivity activity) =>
         Filter == GitCommandFilter.AllCommands || activity.CommandKind == GitCommandKind.User;
 }
