@@ -240,8 +240,6 @@ public sealed partial class MainPage
         _gitConsoleView.Visibility = Visibility.Visible;
         _gitConsoleView.SetActive(true);
         RebuildGitConsole(preferredSelection);
-        if (preferredSelection is { } id)
-            _gitConsoleView.SelectActivity(id);
     }
 
     private void CloseGitConsole()

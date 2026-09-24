@@ -71,6 +71,80 @@ public sealed class GitCommandConsoleStateTests
     }
 
     [Fact]
+    public void ResolveSelectionKeepsExistingActivity()
+    {
+        var state = new GitCommandConsoleState();
+        var first = Activity(Guid.NewGuid(), GitCommandKind.User, GitCommandStatus.Succeeded);
+        var selected = Activity(Guid.NewGuid(), GitCommandKind.User, GitCommandStatus.Running);
+        state.Reset(GitCommandFilter.UserCommands, [first, selected]);
+
+        var resolved = state.ResolveSelection(selected.Id);
+
+        Assert.NotNull(resolved);
+        Assert.Equal(selected.Id, resolved.Id);
+    }
+
+    [Fact]
+    public void ResolveSelectionFallsBackToFirstWhenDesiredActivityIsMissing()
+    {
+        var state = new GitCommandConsoleState();
+        var first = Activity(Guid.NewGuid(), GitCommandKind.User, GitCommandStatus.Succeeded);
+        var second = Activity(Guid.NewGuid(), GitCommandKind.User, GitCommandStatus.Running);
+        state.Reset(GitCommandFilter.UserCommands, [first, second]);
+
+        var resolved = state.ResolveSelection(Guid.NewGuid());
+
+        Assert.NotNull(resolved);
+        Assert.Equal(first.Id, resolved.Id);
+    }
+
+    [Fact]
+    public void ResolveSelectionReturnsNullForEmptyCollection()
+    {
+        var state = new GitCommandConsoleState();
+        state.Reset(GitCommandFilter.UserCommands, []);
+
+        Assert.Null(state.ResolveSelection(Guid.NewGuid()));
+        Assert.Null(state.ResolveSelection(null));
+    }
+
+    [Fact]
+    public void ResolveSelectionKeepsManualSelectionAcrossIncrementalChanges()
+    {
+        var state = new GitCommandConsoleState();
+        var selected = Activity(Guid.NewGuid(), GitCommandKind.User, GitCommandStatus.Succeeded);
+        var other = Activity(Guid.NewGuid(), GitCommandKind.User, GitCommandStatus.Running);
+        state.Reset(GitCommandFilter.UserCommands, [selected]);
+        var originalItem = state.ResolveSelection(selected.Id);
+
+        state.ApplyStarted(other, null);
+        state.ApplyLifecycle(other with
+        {
+            Status = GitCommandStatus.Succeeded,
+            ExitCode = 0,
+            Duration = TimeSpan.FromSeconds(1)
+        });
+
+        Assert.Same(originalItem, state.ResolveSelection(selected.Id));
+    }
+
+    [Fact]
+    public void ResolveSelectionFallsBackAfterSelectedActivityIsEvicted()
+    {
+        var state = new GitCommandConsoleState();
+        var newer = Activity(Guid.NewGuid(), GitCommandKind.User, GitCommandStatus.Succeeded);
+        var selectedOldest = Activity(Guid.NewGuid(), GitCommandKind.User, GitCommandStatus.Succeeded);
+        var incoming = Activity(Guid.NewGuid(), GitCommandKind.User, GitCommandStatus.Running);
+        state.Reset(GitCommandFilter.UserCommands, [newer, selectedOldest]);
+
+        state.ApplyStarted(incoming, selectedOldest.Id);
+
+        var resolved = state.ResolveSelection(selectedOldest.Id);
+        Assert.NotNull(resolved);
+        Assert.Equal(incoming.Id, resolved.Id);
+    }
+
+    [Fact]
     public void RunningDurationUpdatesOnlyRunningItems()
     {
         var now = DateTimeOffset.UtcNow;
