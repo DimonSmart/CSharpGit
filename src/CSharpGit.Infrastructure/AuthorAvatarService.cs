@@ -358,7 +358,8 @@ public sealed class AuthorAvatarService : IAuthorAvatarService
 
         if (TryGetGitHubUserName(trimmed, out var userName))
         {
-            var identity = $"v1|{CanonicalSize}|github|{userName}";
+            var normalizedUserName = userName.ToLowerInvariant();
+            var identity = $"v1|{CanonicalSize}|github|{normalizedUserName}";
             var encoded = Uri.EscapeDataString(userName);
             return new AvatarRoute(
                 identity,
