@@ -126,7 +126,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             return Task.CompletedTask;
         }, () => true);
         SwitchBranchCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.SwitchBranchAsync(Repository!, SelectedLocalBranch!.Name)), () => CanMutate() && SelectedLocalBranch is not null);
-        CreateBranchCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.CreateBranchAsync(Repository!, NewBranchName)), () => CanMutate() && !string.IsNullOrWhiteSpace(NewBranchName));
         DeleteBranchCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.DeleteBranchAsync(Repository!, SelectedLocalBranch!.Name)), () => CanMutate() && SelectedLocalBranch is { IsCurrent: false });
         CheckoutRemoteCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.CheckoutRemoteBranchAsync(Repository!, SelectedRemoteBranch!.Name, NewBranchName)), () => CanMutate() && SelectedRemoteBranch is not null && !string.IsNullOrWhiteSpace(NewBranchName));
         CheckoutTagCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.CheckoutAsync(Repository!, SelectedTag!.Name)), () => CanMutate() && SelectedTag is not null);
@@ -220,7 +219,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public ICommand CancelCommitCommand { get; }
     public ICommand DismissErrorCommand { get; }
     public ICommand SwitchBranchCommand { get; }
-    public ICommand CreateBranchCommand { get; }
     public ICommand DeleteBranchCommand { get; }
     public ICommand CheckoutRemoteCommand { get; }
     public ICommand CheckoutTagCommand { get; }
@@ -361,7 +359,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public bool CanForcePushWithLease => Repository is not null
         && !IsBusy
         && CurrentOperation == RepositoryOperation.None
-        && LocalBranches.Any(branch => branch is { IsCurrent: true } && !string.IsNullOrWhiteSpace(branch.Upstream));
+        && LocalBranches.Any(branch => branch.IsCurrent);
 
     public Task RefreshWhenActivatedAsync() => Repository is null ? Task.CompletedTask : RefreshAllAsync();
 
@@ -865,7 +863,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     private void RaiseCommands()
     {
-        foreach (var command in new[] { RefreshAllCommand, StageCommand, UnstageCommand, StageSelectedCommand, StageAllCommand, UnstageSelectedCommand, UnstageAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, SwitchBranchCommand, CreateBranchCommand, DeleteBranchCommand, CheckoutRemoteCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, ApplyStashCommand, PopStashCommand, MergeCommand, LoadRebasePlanCommand, ApplyRebaseItemCommand, MoveRebaseUpCommand, MoveRebaseDownCommand, StartRebaseCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
+        foreach (var command in new[] { RefreshAllCommand, StageCommand, UnstageCommand, StageSelectedCommand, StageAllCommand, UnstageSelectedCommand, UnstageAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, SwitchBranchCommand, DeleteBranchCommand, CheckoutRemoteCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, ApplyStashCommand, PopStashCommand, MergeCommand, LoadRebasePlanCommand, ApplyRebaseItemCommand, MoveRebaseUpCommand, MoveRebaseDownCommand, StartRebaseCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
     }
 
     private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values)
