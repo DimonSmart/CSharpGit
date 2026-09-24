@@ -41,8 +41,9 @@ internal static class GitTestServices
     internal static GitCommitActionService CreateCommitActionService() =>
         new(CreateExecutor());
 
-    internal static GitReferenceHistoryService CreateReferenceHistoryService() =>
-        new(CreateExecutor());
+    internal static GitReferenceHistoryService CreateReferenceHistoryService(
+        Action<int>? processStarted = null) =>
+        new(CreateExecutor(processStarted: processStarted));
 
     internal static GitFileAwareHistoryService CreateFileAwareHistoryService()
     {
