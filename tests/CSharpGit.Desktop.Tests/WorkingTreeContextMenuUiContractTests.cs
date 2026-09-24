@@ -18,6 +18,7 @@ public sealed class WorkingTreeContextMenuUiContractTests
         Assert.Contains("Could not stage folder", contextMenu, StringComparison.Ordinal);
         Assert.Contains("Could not unstage folder", contextMenu, StringComparison.Ordinal);
         Assert.Contains("selection.SelectSingle(node, roots)", contextMenu, StringComparison.Ordinal);
+        Assert.DoesNotContain("Create stash", contextMenu, StringComparison.Ordinal);
 
         var folderMenu = MethodBody(
             contextMenu,
