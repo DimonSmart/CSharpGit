@@ -92,7 +92,7 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
         var metadata = await RunGitAsync(
             repository.WorkingDirectory,
             cancellationToken,
-            "show", "-s", "--date=iso-strict", "--format=%H%x00%P%x00%an%x00%aI%x00%D%x00%B%x1e", hash);
+            "show", "-s", "--date=iso-strict", "--format=%H%x00%P%x00%an%x00%ae%x00%aI%x00%D%x00%B%x1e", hash);
         var commit = ParseHistory(metadata).Single();
         var stats = await RunGitAsync(
             repository.WorkingDirectory,
@@ -325,7 +325,7 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
             "--topo-order",
             "--date=iso-strict",
             $"--max-count={maxCount}",
-            "--format=%H%x00%P%x00%an%x00%aI%x00%D%x00%B%x1e"
+            "--format=%H%x00%P%x00%an%x00%ae%x00%aI%x00%D%x00%B%x1e"
         };
         arguments.AddRange(revisions);
         var output = await RunGitAsync(repository.WorkingDirectory, cancellationToken, arguments.ToArray());
@@ -339,9 +339,9 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
     {
         foreach (var record in output.Split('\x1e', StringSplitOptions.RemoveEmptyEntries))
         {
-            var fields = record.TrimStart('\r', '\n').Split('\0', 6);
-            if (fields.Length != 6 || !DateTimeOffset.TryParse(fields[3], out var authoredAt)) continue;
-            var message = fields[5].TrimEnd('\r', '\n');
+            var fields = record.TrimStart('\r', '\n').Split('\0', 7);
+            if (fields.Length != 7 || !DateTimeOffset.TryParse(fields[4], out var authoredAt)) continue;
+            var message = fields[6].TrimEnd('\r', '\n');
             yield return new CommitHistoryItem(
                 fields[0],
                 fields[1].Split(' ', StringSplitOptions.RemoveEmptyEntries),
@@ -349,7 +349,8 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
                 message,
                 fields[2],
                 authoredAt,
-                ParseRefs(fields[4]));
+                ParseRefs(fields[5]),
+                fields[3]);
         }
     }
 
