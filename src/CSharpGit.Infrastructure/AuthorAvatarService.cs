@@ -311,6 +311,14 @@ public sealed class AuthorAvatarService : IAuthorAvatarService
             TryDelete(temporary);
         }
 
+        try
+        {
+            File.SetLastWriteTimeUtc(path, _timeProvider.GetUtcNow().UtcDateTime);
+        }
+        catch
+        {
+        }
+
         Touch(path);
         CleanupDiskCache(path);
         return path;
