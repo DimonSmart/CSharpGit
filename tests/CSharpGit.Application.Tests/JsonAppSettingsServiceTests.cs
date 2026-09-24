@@ -262,6 +262,38 @@ public sealed class JsonAppSettingsServiceTests
         Assert.True(document.RootElement.GetProperty("AutoSetupRemoteOnPush").GetBoolean());
     }
 
+    [Fact]
+    public void AuthorAvatarSettingsDefaultToEnabledForMissingAndLegacySettings()
+    {
+        using var fixture = new SettingsFixture();
+        var missing = fixture.CreateService();
+        Assert.True(missing.ShowAuthorAvatars);
+        Assert.True(missing.OnlineAvatarLookupEnabled);
+
+        fixture.WriteSettings("{ \"ThemeMode\": \"Dark\" }");
+        var legacy = fixture.CreateService();
+        Assert.True(legacy.ShowAuthorAvatars);
+        Assert.True(legacy.OnlineAvatarLookupEnabled);
+    }
+
+    [Fact]
+    public async Task AuthorAvatarSettingsArePersistedAndRestored()
+    {
+        using var fixture = new SettingsFixture();
+        var service = fixture.CreateService();
+
+        await service.SetShowAuthorAvatarsAsync(false);
+        await service.SetOnlineAvatarLookupEnabledAsync(false);
+
+        var restored = fixture.CreateService();
+        Assert.False(restored.ShowAuthorAvatars);
+        Assert.False(restored.OnlineAvatarLookupEnabled);
+
+        using var document = JsonDocument.Parse(await File.ReadAllTextAsync(fixture.SettingsPath));
+        Assert.False(document.RootElement.GetProperty("ShowAuthorAvatars").GetBoolean());
+        Assert.False(document.RootElement.GetProperty("OnlineAvatarLookupEnabled").GetBoolean());
+    }
+
     private sealed class SettingsFixture : IDisposable
     {
         public SettingsFixture()
