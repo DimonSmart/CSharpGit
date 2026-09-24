@@ -65,6 +65,29 @@
               </StackPanel>
             </Border>
 
+            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
+              <StackPanel Spacing="{StaticResource Spacing.M}">
+                <TextBlock Text="Author avatars" Style="{StaticResource BodyStrongTextStyle}" />
+                <ToggleSwitch x:Name="ShowAuthorAvatarsToggle"
+                              Header="Show author avatars"
+                              IsOn="{Binding ShowAuthorAvatars, Mode=TwoWay}"
+                              OnContent="On"
+                              OffContent="Off"
+                              Toggled="ShowAuthorAvatarsToggle_Toggled" />
+                <ToggleSwitch x:Name="OnlineAvatarLookupToggle"
+                              Header="Load avatar images from online services"
+                              IsOn="{Binding OnlineAvatarLookupEnabled, Mode=TwoWay}"
+                              IsEnabled="{Binding ShowAuthorAvatars}"
+                              OnContent="On"
+                              OffContent="Off"
+                              Toggled="OnlineAvatarLookupToggle_Toggled" />
+                <TextBlock Text="CSharpGit can contact GitHub or Gravatar to load author avatars. For Gravatar, a SHA-256 hash derived from the commit author email is used. Disable online lookup to use locally generated initials only."
+                           Style="{StaticResource SecondaryTextStyle}"
+                           TextWrapping="Wrap"
+                           MaxWidth="620" />
+              </StackPanel>
+            </Border>
+
             <TextBlock Text="Git push"
                        Style="{StaticResource SectionHeaderTextStyle}"
                        Margin="{StaticResource Margin.Section}" />
