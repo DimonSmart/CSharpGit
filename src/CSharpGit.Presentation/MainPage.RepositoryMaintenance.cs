@@ -38,6 +38,7 @@ public sealed partial class MainPage
         IGitCommandActivitySource gitCommandActivitySource,
         IWorktreeService worktreeService,
         IRepositoryImageService repositoryImageService,
+        IAuthorAvatarService authorAvatarService,
         RecentRepositoryFolderPicker recentRepositoryFolderPicker,
         SettingsWindowController settingsWindowController)
         : this(
@@ -65,6 +66,9 @@ public sealed partial class MainPage
         _gitCommandActivitySource = gitCommandActivitySource ?? throw new ArgumentNullException(nameof(gitCommandActivitySource));
         _worktreeService = worktreeService ?? throw new ArgumentNullException(nameof(worktreeService));
         _repositoryImageService = repositoryImageService ?? throw new ArgumentNullException(nameof(repositoryImageService));
+        _authorAvatarService = authorAvatarService ?? throw new ArgumentNullException(nameof(authorAvatarService));
+        _authorAvatarSettings = appSettings;
+        CommitDetailsContent.ConfigureAuthorAvatar(_authorAvatarService, _authorAvatarSettings);
         _recentRepositoryFolderPicker = recentRepositoryFolderPicker ?? throw new ArgumentNullException(nameof(recentRepositoryFolderPicker));
         _settingsWindowController = settingsWindowController ?? throw new ArgumentNullException(nameof(settingsWindowController));
 
