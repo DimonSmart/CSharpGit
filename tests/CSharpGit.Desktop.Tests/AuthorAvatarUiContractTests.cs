@@ -11,11 +11,11 @@ public sealed class AuthorAvatarUiContractTests
         var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitGraphLayout.cs"));
 
         Assert.Contains("<controls:AuthorAvatar", history, StringComparison.Ordinal);
-        Assert.Contains("AuthorName="{Binding Commit.Author}"", history, StringComparison.Ordinal);
-        Assert.Contains("AuthorEmail="{Binding Commit.AuthorEmail}"", history, StringComparison.Ordinal);
-        Assert.Contains("AvatarSize="18"", history, StringComparison.Ordinal);
-        Assert.Contains("<ColumnDefinition Width="160" />", mainPage, StringComparison.Ordinal);
-        Assert.Contains("MinHeight="{StaticResource Height.DataRow}"", history, StringComparison.Ordinal);
+        Assert.Contains(@"AuthorName=""{Binding Commit.Author}""", history, StringComparison.Ordinal);
+        Assert.Contains(@"AuthorEmail=""{Binding Commit.AuthorEmail}""", history, StringComparison.Ordinal);
+        Assert.Contains(@"AvatarSize=""18""", history, StringComparison.Ordinal);
+        Assert.Contains(@"<ColumnDefinition Width=""160"" />", mainPage, StringComparison.Ordinal);
+        Assert.Contains(@"MinHeight=""{StaticResource Height.DataRow}""", history, StringComparison.Ordinal);
         Assert.Contains("ConfigureAuthorAvatars(container)", lifecycle, StringComparison.Ordinal);
         Assert.DoesNotContain("await avatar", history, StringComparison.OrdinalIgnoreCase);
     }
@@ -34,9 +34,9 @@ public sealed class AuthorAvatarUiContractTests
             .Select(File.ReadAllText)
             .ToArray();
 
-        Assert.Contains("AuthorName="{Binding SelectedHistoryRow.Commit.Author}"", details, StringComparison.Ordinal);
-        Assert.Contains("AuthorEmail="{Binding SelectedHistoryRow.Commit.AuthorEmail}"", details, StringComparison.Ordinal);
-        Assert.Contains("AvatarSize="32"", details, StringComparison.Ordinal);
+        Assert.Contains(@"AuthorName=""{Binding SelectedHistoryRow.Commit.Author}""", details, StringComparison.Ordinal);
+        Assert.Contains(@"AuthorEmail=""{Binding SelectedHistoryRow.Commit.AuthorEmail}""", details, StringComparison.Ordinal);
+        Assert.Contains(@"AvatarSize=""32""", details, StringComparison.Ordinal);
         Assert.Contains("ConfigureAuthorAvatar", detailsCode, StringComparison.Ordinal);
         Assert.Contains("_authorAvatarService", composition, StringComparison.Ordinal);
         Assert.DoesNotContain(presentationFiles, source => source.Contains("ReadCommitAsync(", StringComparison.Ordinal));
