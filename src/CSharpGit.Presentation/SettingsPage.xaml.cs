@@ -3,6 +3,7 @@ using CSharpGit.Domain;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace CSharpGit.Presentation;
 
@@ -17,6 +18,8 @@ public sealed partial class SettingsPage : Page
 {
     private readonly SettingsViewModel _viewModel;
     private readonly GitToolsSettingsViewModel _gitToolsViewModel;
+    private readonly IDesktopShellService _desktopShellService;
+    private readonly string _logFilePath;
     private readonly Func<Repository?> _repositoryAccessor;
     private bool _selectionReady;
     private bool _settingsDetached;
@@ -25,14 +28,21 @@ public sealed partial class SettingsPage : Page
     internal SettingsPage(
         SettingsViewModel viewModel,
         GitToolsSettingsViewModel gitToolsViewModel,
+        IDesktopShellService desktopShellService,
+        string logFilePath,
         Func<Repository?> repositoryAccessor,
         SettingsSection initialSection)
     {
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _gitToolsViewModel = gitToolsViewModel ?? throw new ArgumentNullException(nameof(gitToolsViewModel));
+        _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
+        _logFilePath = string.IsNullOrWhiteSpace(logFilePath)
+            ? throw new ArgumentException("A log file path is required.", nameof(logFilePath))
+            : Path.GetFullPath(logFilePath);
         _repositoryAccessor = repositoryAccessor ?? throw new ArgumentNullException(nameof(repositoryAccessor));
 
         InitializeComponent();
+        LogFilePathText.Text = _logFilePath;
         DataContext = _viewModel;
         GitToolsSettingsPanel.DataContext = _gitToolsViewModel;
 
@@ -214,6 +224,37 @@ public sealed partial class SettingsPage : Page
             await _viewModel.ApplyGitConsoleAutoOpenModeAsync(option);
         }
         catch (Exception exception)
+        {
+            ShowSettingsError(exception);
+        }
+    }
+
+    private void CopyLogPath_Click(object sender, RoutedEventArgs e)
+    {
+        SettingsMessage.IsOpen = false;
+        try
+        {
+            var package = new DataPackage();
+            package.SetText(_logFilePath);
+            Clipboard.SetContent(package);
+        }
+        catch (Exception exception)
+        {
+            ShowSettingsError(exception);
+        }
+    }
+
+    private async void OpenLogFolder_Click(object sender, RoutedEventArgs e)
+    {
+        SettingsMessage.IsOpen = false;
+        try
+        {
+            var directory = Path.GetDirectoryName(_logFilePath)
+                ?? throw new InvalidOperationException("The log directory could not be determined.");
+            Directory.CreateDirectory(directory);
+            await _desktopShellService.OpenFolderAsync(directory);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
             ShowSettingsError(exception);
         }

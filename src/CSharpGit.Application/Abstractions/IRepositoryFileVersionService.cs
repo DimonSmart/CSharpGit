@@ -81,6 +81,10 @@ public interface IDesktopShellService
         string path,
         CancellationToken cancellationToken = default);
 
+    Task OpenFolderAsync(
+        string path,
+        CancellationToken cancellationToken = default);
+
     Task RevealFileAsync(
         string path,
         CancellationToken cancellationToken = default);
