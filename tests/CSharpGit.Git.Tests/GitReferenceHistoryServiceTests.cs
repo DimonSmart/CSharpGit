@@ -6,6 +6,33 @@ public sealed class GitReferenceHistoryServiceTests : IDisposable
 {
     private readonly string _temporaryDirectory = Path.Combine(Path.GetTempPath(), $"csharpgit-ref-history-{Guid.NewGuid():N}");
 
+    [Theory]
+    [InlineData("AuthorName", "author@example.com")]
+    [InlineData("Дмитрий Тест", "12345+DimonSmart@users.noreply.github.com")]
+    [InlineData("Unicode Ω", "not-an-email")]
+    public async Task ReadsAuthorEmailWithExistingCommitMetadata(string authorName, string authorEmail)
+    {
+        InitializeRepository();
+        RunGit("config", "user.name", authorName);
+        RunGit("config", "user.email", authorEmail);
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "file.txt"), "content\n");
+        RunGit("add", "file.txt");
+        RunGit("commit", "-m", "authored commit");
+        var hash = RunGit("rev-parse", "HEAD");
+
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
+        var service = GitTestServices.CreateReferenceHistoryService();
+
+        var page = await service.ReadHistoryAsync(repository, "main", null, 0, 20);
+        var details = await service.ReadCommitAsync(repository, hash);
+
+        var historyCommit = Assert.Single(page.Rows).Commit;
+        Assert.Equal(authorName, historyCommit.Author);
+        Assert.Equal(authorEmail, historyCommit.AuthorEmail);
+        Assert.Equal(authorName, details.Commit.Author);
+        Assert.Equal(authorEmail, details.Commit.AuthorEmail);
+    }
+
     [Fact]
     public async Task ReadsSelectedBranchWithoutCheckingItOut()
     {
