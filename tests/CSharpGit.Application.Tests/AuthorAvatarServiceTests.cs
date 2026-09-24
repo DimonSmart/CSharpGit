@@ -82,6 +82,20 @@ public sealed class AuthorAvatarServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GitHubCacheIdentityIsCaseInsensitive()
+    {
+        var handler = new StubHandler(_ => ImageResponse());
+        var service = CreateService(handler);
+
+        var upper = await service.ResolveAsync("John", "JOHN@users.noreply.github.com");
+        var lower = await service.ResolveAsync("John", "john@users.noreply.github.com");
+
+        Assert.NotNull(upper.ImagePath);
+        Assert.Equal(upper.ImagePath, lower.ImagePath);
+        Assert.Equal(1, handler.RequestCount);
+    }
+
+    [Fact]
     public async Task EmptyOrUnusableEmailDoesNotUseNetwork()
     {
         var handler = new StubHandler(_ => throw new InvalidOperationException("Network must not be used."));
@@ -205,6 +219,20 @@ public sealed class AuthorAvatarServiceTests : IDisposable
         Assert.Null(first.ImagePath);
         Assert.Null(second.ImagePath);
         Assert.Equal(1, handler.RequestCount);
+    }
+
+    [Fact]
+    public async Task NegativeCacheExpiresAfterOneDay()
+    {
+        var clock = new ManualTimeProvider(new DateTimeOffset(2026, 9, 1, 10, 0, 0, TimeSpan.Zero));
+        var handler = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+        var service = CreateService(handler, clock);
+
+        Assert.Null((await service.ResolveAsync("John Doe", "john@example.com")).ImagePath);
+        clock.Advance(TimeSpan.FromHours(25));
+        Assert.Null((await service.ResolveAsync("John Doe", "john@example.com")).ImagePath);
+
+        Assert.Equal(2, handler.RequestCount);
     }
 
     [Fact]
