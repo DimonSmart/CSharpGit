@@ -52,18 +52,19 @@
           RowSpacing="{StaticResource Spacing.M}"
           ColumnSpacing="{StaticResource Spacing.L}">
       <TextBlock Text="Author" Style="{StaticResource SecondaryTextStyle}" />
-      <StackPanel Grid.Column="1"
-                  Orientation="Horizontal"
-                  Spacing="{StaticResource Spacing.M}"
-                  VerticalAlignment="Center">
+      <Grid Grid.Column="1"
+            ColumnDefinitions="Auto,*"
+            VerticalAlignment="Center">
         <controls:AuthorAvatar x:Name="CommitAuthorAvatar"
                                AuthorName="{Binding SelectedHistoryRow.Commit.Author}"
                                AuthorEmail="{Binding SelectedHistoryRow.Commit.AuthorEmail}"
-                               AvatarSize="32" />
-        <TextBlock Text="{Binding SelectedHistoryRow.Commit.Author}"
+                               AvatarSize="32"
+                               Margin="0,0,8,0" />
+        <TextBlock Grid.Column="1"
+                   Text="{Binding SelectedHistoryRow.Commit.Author}"
                    Style="{StaticResource BodyTextStyle}"
                    VerticalAlignment="Center" />
-      </StackPanel>
+      </Grid>
 
       <TextBlock Grid.Row="1" Text="Date" Style="{StaticResource SecondaryTextStyle}" />
       <controls:CommitTimeText Grid.Row="1"
