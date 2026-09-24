@@ -618,6 +618,10 @@
                 <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                   <Button Content="Commit" Command="{Binding CommitCommand}" Style="{StaticResource CompactButtonStyle}" />
                   <Button Content="Amend" Command="{Binding AmendCommand}" Style="{StaticResource CompactButtonStyle}" />
+                  <Button Content="Create stash…"
+                          Click="CreateStash_Click"
+                          IsEnabled="{Binding CanCreateStash}"
+                          Style="{StaticResource CompactButtonStyle}" />
                 </StackPanel>
               </StackPanel>
             </Border>
