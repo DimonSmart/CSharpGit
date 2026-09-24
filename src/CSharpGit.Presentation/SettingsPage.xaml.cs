@@ -214,6 +214,36 @@ public sealed partial class SettingsPage : Page
         }
     }
 
+    private async void ShowAuthorAvatarsToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_selectionReady || _viewModel.IsSynchronizingFromSettings) return;
+
+        SettingsMessage.IsOpen = false;
+        try
+        {
+            await _viewModel.ApplyShowAuthorAvatarsAsync(ShowAuthorAvatarsToggle.IsOn);
+        }
+        catch (Exception exception)
+        {
+            ShowSettingsError(exception);
+        }
+    }
+
+    private async void OnlineAvatarLookupToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_selectionReady || _viewModel.IsSynchronizingFromSettings) return;
+
+        SettingsMessage.IsOpen = false;
+        try
+        {
+            await _viewModel.ApplyOnlineAvatarLookupEnabledAsync(OnlineAvatarLookupToggle.IsOn);
+        }
+        catch (Exception exception)
+        {
+            ShowSettingsError(exception);
+        }
+    }
+
     private async void GitConsoleAutoOpenComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!_selectionReady || _viewModel.IsSynchronizingFromSettings || GitConsoleAutoOpenComboBox.SelectedItem is not GitConsoleAutoOpenOption option) return;
