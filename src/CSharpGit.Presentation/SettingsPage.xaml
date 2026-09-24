@@ -373,6 +373,30 @@
                              TextWrapping="Wrap"
                              MaxWidth="620" />
                 </StackPanel>
+
+                <StackPanel Spacing="{StaticResource Spacing.M}">
+                  <TextBlock Text="Log file" Style="{StaticResource BodyStrongTextStyle}" />
+                  <TextBlock x:Name="LogFilePathText"
+                             Style="{StaticResource TechnicalTextStyle}"
+                             TextWrapping="Wrap"
+                             IsTextSelectionEnabled="True"
+                             MaxWidth="620"
+                             HorizontalAlignment="Left" />
+                  <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.M}">
+                    <Button Content="Copy path"
+                            Click="CopyLogPath_Click"
+                            Style="{StaticResource CompactButtonStyle}"
+                            AutomationProperties.Name="Copy log file path" />
+                    <Button Content="Open folder"
+                            Click="OpenLogFolder_Click"
+                            Style="{StaticResource CompactButtonStyle}"
+                            AutomationProperties.Name="Open log folder" />
+                  </StackPanel>
+                  <TextBlock Text="The file is created after the first enabled log entry is written in this session."
+                             Style="{StaticResource SecondaryTextStyle}"
+                             TextWrapping="Wrap"
+                             MaxWidth="620" />
+                </StackPanel>
               </StackPanel>
             </Border>
           </StackPanel>

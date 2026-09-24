@@ -75,6 +75,23 @@ public sealed class DesktopShellService : IDesktopShellService
         return Task.CompletedTask;
     }
 
+    public Task OpenFolderAsync(string path, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var fullPath = RequireExistingDirectory(path);
+
+        ProcessStartInfo startInfo;
+        if (OperatingSystem.IsWindows())
+            startInfo = CreateCommand("explorer.exe", fullPath);
+        else if (OperatingSystem.IsMacOS())
+            startInfo = CreateCommand("open", fullPath);
+        else
+            startInfo = CreateCommand("xdg-open", fullPath);
+
+        Process.Start(startInfo);
+        return Task.CompletedTask;
+    }
+
     public Task RevealFileAsync(string path, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -115,6 +132,14 @@ public sealed class DesktopShellService : IDesktopShellService
         if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("A file path is required.", nameof(path));
         var fullPath = Path.GetFullPath(path);
         if (!File.Exists(fullPath)) throw new FileNotFoundException("The file is no longer available.", fullPath);
+        return fullPath;
+    }
+
+    private static string RequireExistingDirectory(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("A directory path is required.", nameof(path));
+        var fullPath = Path.GetFullPath(path);
+        if (!Directory.Exists(fullPath)) throw new DirectoryNotFoundException($"The directory is no longer available: {fullPath}");
         return fullPath;
     }
 }

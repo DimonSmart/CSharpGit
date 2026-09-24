@@ -1,5 +1,6 @@
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
+using CSharpGit.Presentation.Diagnostics;
 using CSharpGit.Presentation.Threading;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
@@ -11,6 +12,7 @@ public sealed class SettingsWindowController : IDisposable
     private readonly ApplicationThemeManager _themeManager;
     private readonly IAppSettingsService _settings;
     private readonly IGitToolsService _gitToolsService;
+    private readonly IDesktopShellService _desktopShellService;
     private readonly IUiDispatcher _uiDispatcher;
     private Window? _window;
     private SettingsPage? _page;
@@ -21,11 +23,13 @@ public sealed class SettingsWindowController : IDisposable
         ApplicationThemeManager themeManager,
         IAppSettingsService settings,
         IGitToolsService gitToolsService,
+        IDesktopShellService desktopShellService,
         IUiDispatcher uiDispatcher)
     {
         _themeManager = themeManager ?? throw new ArgumentNullException(nameof(themeManager));
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _gitToolsService = gitToolsService ?? throw new ArgumentNullException(nameof(gitToolsService));
+        _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
     }
 
@@ -47,6 +51,8 @@ public sealed class SettingsWindowController : IDisposable
         var page = new SettingsPage(
             new SettingsViewModel(_settings, _uiDispatcher),
             new GitToolsSettingsViewModel(_gitToolsService),
+            _desktopShellService,
+            SessionFileLoggerProvider.CurrentLogPath,
             repositoryAccessor,
             section);
         var themeRegistration = _themeManager.Register(page);
