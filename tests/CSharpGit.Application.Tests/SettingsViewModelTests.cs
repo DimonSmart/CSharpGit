@@ -35,6 +35,8 @@ public sealed class SettingsViewModelTests
         Assert.Equal(ApplicationLogLevel.Trace, viewModel.SelectedLogLevel.Level);
         Assert.Equal(GitConsoleAutoOpenMode.Always, viewModel.SelectedGitConsoleAutoOpenMode.Mode);
         Assert.True(viewModel.AutoSetupRemoteOnPush);
+        Assert.True(viewModel.ShowAuthorAvatars);
+        Assert.True(viewModel.OnlineAvatarLookupEnabled);
         Assert.Contains(nameof(SettingsViewModel.SelectedCommitTimeMode), changedProperties);
         Assert.Contains(nameof(SettingsViewModel.LoggingEnabled), changedProperties);
         Assert.Contains(nameof(SettingsViewModel.SelectedLogLevel), changedProperties);
@@ -128,6 +130,25 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
+    public async Task AvatarPersistenceFailureRestoresCommittedState()
+    {
+        var settings = new FakeAppSettingsService
+        {
+            ShowAuthorAvatars = true,
+            OnlineAvatarLookupEnabled = true
+        };
+        using var viewModel = CreateViewModel(settings);
+
+        settings.FailNextWrite = true;
+        await Assert.ThrowsAsync<IOException>(() => viewModel.ApplyShowAuthorAvatarsAsync(false));
+        Assert.True(viewModel.ShowAuthorAvatars);
+
+        settings.FailNextWrite = true;
+        await Assert.ThrowsAsync<IOException>(() => viewModel.ApplyOnlineAvatarLookupEnabledAsync(false));
+        Assert.True(viewModel.OnlineAvatarLookupEnabled);
+    }
+
+    [Fact]
     public async Task RollbackPublishesUnderSynchronizationSuppressionAndDoesNotCauseSecondWrite()
     {
         var settings = new FakeAppSettingsService { ThemeMode = ApplicationThemeMode.Light };
@@ -198,6 +219,8 @@ public sealed class SettingsViewModelTests
         public GitConsoleAutoOpenMode GitConsoleAutoOpenMode { get; set; } = GitConsoleAutoOpenMode.OnErrors;
         public bool ShowReflog { get; set; }
         public bool AutoSetupRemoteOnPush { get; set; }
+        public bool ShowAuthorAvatars { get; set; } = true;
+        public bool OnlineAvatarLookupEnabled { get; set; } = true;
         public IReadOnlyList<RecentRepositorySettings> RecentRepositories => [];
         public bool FailNextWrite { get; set; }
         public int ChangedSubscriberCount { get; private set; }
@@ -263,6 +286,24 @@ public sealed class SettingsViewModelTests
             return Task.CompletedTask;
         }
 
+        public Task SetShowAuthorAvatarsAsync(bool value, CancellationToken cancellationToken = default)
+        {
+            ThrowIfWriteFails(cancellationToken);
+            if (ShowAuthorAvatars == value) return Task.CompletedTask;
+            ShowAuthorAvatars = value;
+            _changed?.Invoke(this, EventArgs.Empty);
+            return Task.CompletedTask;
+        }
+
+        public Task SetOnlineAvatarLookupEnabledAsync(bool value, CancellationToken cancellationToken = default)
+        {
+            ThrowIfWriteFails(cancellationToken);
+            if (OnlineAvatarLookupEnabled == value) return Task.CompletedTask;
+            OnlineAvatarLookupEnabled = value;
+            _changed?.Invoke(this, EventArgs.Empty);
+            return Task.CompletedTask;
+        }
+
         public Task RecordRecentRepositoryAsync(string path, string displayName, string? lastBranchName, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
@@ -275,7 +316,9 @@ public sealed class SettingsViewModelTests
             bool loggingEnabled,
             ApplicationLogLevel logLevel,
             GitConsoleAutoOpenMode gitConsoleMode,
-            bool autoSetupRemoteOnPush) =>
+            bool autoSetupRemoteOnPush,
+            bool showAuthorAvatars = true,
+            bool onlineAvatarLookupEnabled = true) =>
             Task.Run(() =>
             {
                 ThemeMode = theme;
@@ -284,6 +327,8 @@ public sealed class SettingsViewModelTests
                 LogLevel = logLevel;
                 GitConsoleAutoOpenMode = gitConsoleMode;
                 AutoSetupRemoteOnPush = autoSetupRemoteOnPush;
+                ShowAuthorAvatars = showAuthorAvatars;
+                OnlineAvatarLookupEnabled = onlineAvatarLookupEnabled;
                 _changed?.Invoke(this, EventArgs.Empty);
             });
 
