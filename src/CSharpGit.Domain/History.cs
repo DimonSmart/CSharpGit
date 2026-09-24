@@ -11,7 +11,8 @@ public sealed record CommitHistoryItem(
     string Message,
     string Author,
     DateTimeOffset AuthoredAt,
-    IReadOnlyList<string> References)
+    IReadOnlyList<string> References,
+    string AuthorEmail = "")
 {
     public string ShortHash => Hash[..Math.Min(8, Hash.Length)];
     public bool IsRootCommit => Parents.Count == 0;
