@@ -59,7 +59,7 @@ internal sealed class GitOutputDisplayBuffer
                 continue;
             }
 
-            _text.Append(character);
+            GitOutputTextEscaper.AppendEscaped(_text, character);
         }
 
         if (replaceFrom is { } index)
@@ -67,6 +67,43 @@ internal sealed class GitOutputDisplayBuffer
 
         if (_text.Length == originalLength) return GitOutputDisplayDelta.None;
         return new GitOutputDisplayDelta(null, _text.ToString(originalLength, _text.Length - originalLength));
+    }
+}
+
+internal static class GitOutputTextEscaper
+{
+    public static string EscapeUnsafeControls(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        var result = new StringBuilder(text.Length);
+        foreach (var character in text)
+            AppendEscaped(result, character);
+        return result.ToString();
+    }
+
+    internal static void AppendEscaped(StringBuilder target, char character)
+    {
+        if (character is '\r' or '\n' or '\t' || !char.IsControl(character))
+        {
+            target.Append(character);
+            return;
+        }
+
+        if (character == '\0')
+        {
+            target.Append("\\0");
+            return;
+        }
+
+        if (character <= '\u00FF')
+        {
+            target.Append("\\x");
+            target.Append(((int)character).ToString("X2"));
+            return;
+        }
+
+        target.Append("\\u");
+        target.Append(((int)character).ToString("X4"));
     }
 }
 

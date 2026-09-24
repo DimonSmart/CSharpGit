@@ -72,6 +72,21 @@ public sealed class GitConsoleUiContractTests
         Assert.Contains("_gitConsoleView.SelectActivity(alreadyOpenId);", integration);
     }
 
+    [Fact]
+    public void GitConsoleRoutesDiagnosticTextThroughPresentationBoundary()
+    {
+        var root = FindRepositoryRoot();
+        var consoleCode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "GitConsoleView.xaml.cs"));
+
+        Assert.Contains("ResetOutputText(StandardOutputText, _standardOutputDisplay", consoleCode);
+        Assert.Contains("ResetOutputText(StandardErrorText, _standardErrorDisplay", consoleCode);
+        Assert.Contains("ApplyOutputChunk(StandardOutputText, _standardOutputDisplay", consoleCode);
+        Assert.Contains("ApplyOutputChunk(StandardErrorText, _standardErrorDisplay", consoleCode);
+        Assert.Contains("GitConsoleClipboardText.Build(activity)", consoleCode);
+        Assert.DoesNotContain("StandardOutputText.Text = activity.StandardOutput", consoleCode);
+        Assert.DoesNotContain("StandardErrorText.Text = activity.StandardError", consoleCode);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

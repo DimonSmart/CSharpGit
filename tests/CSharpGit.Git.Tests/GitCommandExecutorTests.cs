@@ -175,6 +175,44 @@ public sealed class GitCommandExecutorTests
     }
 
     [Fact]
+    public async Task MachineReadableForEachRefPreservesNulAndRecordSeparator()
+    {
+        var directory = CreateTemporaryDirectory();
+        try
+        {
+            var history = new GitCommandActivityHistory();
+            var executor = CreateExecutor(history);
+            await executor.ExecuteAsync(directory, "Setup", CancellationToken.None, "init");
+            await executor.ExecuteAsync(directory, "Setup", CancellationToken.None, "config", "user.email", "tests@csharpgit.local");
+            await executor.ExecuteAsync(directory, "Setup", CancellationToken.None, "config", "user.name", "CSharpGit Tests");
+            await File.WriteAllTextAsync(Path.Combine(directory, "note.txt"), "one\n");
+            await executor.ExecuteAsync(directory, "Setup", CancellationToken.None, "add", "note.txt");
+            await executor.ExecuteAsync(directory, "Setup", CancellationToken.None, "commit", "-m", "initial");
+
+            var result = await executor.ExecuteForResultAsync(
+                directory,
+                "ForEachRef",
+                GitCommandKind.Internal,
+                CancellationToken.None,
+                null,
+                ["for-each-ref", "--format=%(refname)%00%(objectname)%1e", "refs/heads"]);
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains('\0', result.StandardOutput);
+            Assert.Contains('\u001E', result.StandardOutput);
+
+            var activity = history.GetLatest(GitCommandFilter.AllCommands);
+            Assert.NotNull(activity);
+            Assert.Contains('\0', activity.StandardOutput);
+            Assert.Contains('\u001E', activity.StandardOutput);
+        }
+        finally
+        {
+            DeleteTemporaryDirectory(directory);
+        }
+    }
+
+    [Fact]
     public async Task ExecuteToFileWritesBinaryOutputWithoutStringConversion()
     {
         var directory = CreateTemporaryDirectory();
