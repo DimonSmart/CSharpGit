@@ -6,6 +6,27 @@ public sealed class GitReferenceHistoryServiceTests : IDisposable
 {
     private readonly string _temporaryDirectory = Path.Combine(Path.GetTempPath(), $"csharpgit-ref-history-{Guid.NewGuid():N}");
 
+    [Fact]
+    public async Task AuthorEmailDoesNotAddGitProcesses()
+    {
+        InitializeRepository();
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "file.txt"), "content\n");
+        RunGit("add", "file.txt");
+        RunGit("commit", "-m", "initial");
+        var hash = RunGit("rev-parse", "HEAD");
+
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
+        var processCount = 0;
+        var service = GitTestServices.CreateReferenceHistoryService(_ => Interlocked.Increment(ref processCount));
+
+        await service.ReadHistoryAsync(repository, "main", null, 0, 20);
+        Assert.Equal(1, processCount);
+
+        processCount = 0;
+        await service.ReadCommitAsync(repository, hash);
+        Assert.Equal(2, processCount);
+    }
+
     [Theory]
     [InlineData("AuthorName", "author@example.com")]
     [InlineData("Дмитрий Тест", "12345+DimonSmart@users.noreply.github.com")]
