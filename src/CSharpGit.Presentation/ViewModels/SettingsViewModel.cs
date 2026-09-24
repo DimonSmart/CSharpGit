@@ -35,6 +35,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
     private ApplicationLogLevelOption _selectedLogLevel;
     private GitConsoleAutoOpenOption _selectedGitConsoleAutoOpenMode;
     private bool _autoSetupRemoteOnPush;
+    private bool _showAuthorAvatars;
+    private bool _onlineAvatarLookupEnabled;
     private int _disposed;
     private int _synchronizingFromSettings;
 
@@ -94,6 +96,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         _selectedLogLevel = FindLogLevel(_settings.LogLevel);
         _selectedGitConsoleAutoOpenMode = FindGitConsoleMode(_settings.GitConsoleAutoOpenMode);
         _autoSetupRemoteOnPush = _settings.AutoSetupRemoteOnPush;
+        _showAuthorAvatars = _settings.ShowAuthorAvatars;
+        _onlineAvatarLookupEnabled = _settings.OnlineAvatarLookupEnabled;
 
         _settings.Changed += Settings_Changed;
     }
@@ -170,6 +174,28 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         {
             if (_autoSetupRemoteOnPush == value) return;
             _autoSetupRemoteOnPush = value;
+            Notify();
+        }
+    }
+
+    public bool ShowAuthorAvatars
+    {
+        get => _showAuthorAvatars;
+        set
+        {
+            if (_showAuthorAvatars == value) return;
+            _showAuthorAvatars = value;
+            Notify();
+        }
+    }
+
+    public bool OnlineAvatarLookupEnabled
+    {
+        get => _onlineAvatarLookupEnabled;
+        set
+        {
+            if (_onlineAvatarLookupEnabled == value) return;
+            _onlineAvatarLookupEnabled = value;
             Notify();
         }
     }
@@ -263,6 +289,38 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    public async Task ApplyShowAuthorAvatarsAsync(
+        bool value,
+        CancellationToken cancellationToken = default)
+    {
+        ShowAuthorAvatars = value;
+        try
+        {
+            await _settings.SetShowAuthorAvatarsAsync(value, cancellationToken);
+        }
+        catch
+        {
+            await SyncFromSettingsAfterFailureAsync();
+            throw;
+        }
+    }
+
+    public async Task ApplyOnlineAvatarLookupEnabledAsync(
+        bool value,
+        CancellationToken cancellationToken = default)
+    {
+        OnlineAvatarLookupEnabled = value;
+        try
+        {
+            await _settings.SetOnlineAvatarLookupEnabledAsync(value, cancellationToken);
+        }
+        catch
+        {
+            await SyncFromSettingsAfterFailureAsync();
+            throw;
+        }
+    }
+
     private void Settings_Changed(object? sender, EventArgs e)
     {
         if (IsDisposed) return;
@@ -293,6 +351,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
             SelectedLogLevel = FindLogLevel(_settings.LogLevel);
             SelectedGitConsoleAutoOpenMode = FindGitConsoleMode(_settings.GitConsoleAutoOpenMode);
             AutoSetupRemoteOnPush = _settings.AutoSetupRemoteOnPush;
+            ShowAuthorAvatars = _settings.ShowAuthorAvatars;
+            OnlineAvatarLookupEnabled = _settings.OnlineAvatarLookupEnabled;
         }
         finally
         {
