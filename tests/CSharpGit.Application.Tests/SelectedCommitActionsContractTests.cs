@@ -13,8 +13,10 @@ public sealed class SelectedCommitActionsContractTests
         Assert.Contains("if (includeHistory)", viewModel);
         Assert.Contains("includeHistory: false", ExtractMethod(viewModel, "StageActiveAsync"));
         Assert.Contains("includeHistory: false", ExtractMethod(viewModel, "UnstageActiveAsync"));
-        Assert.Contains("includeHistory: false", ExtractMethod(viewModel, "StageSelectedAsync"));
-        Assert.Contains("includeHistory: false", ExtractMethod(viewModel, "UnstageSelectedAsync"));
+        Assert.Contains("StageChangesAsync", ExtractMethod(viewModel, "StageSelectedAsync"));
+        Assert.Contains("includeHistory: false", ExtractMethod(viewModel, "StageChangesAsync"));
+        Assert.Contains("UnstageChangesAsync", ExtractMethod(viewModel, "UnstageSelectedAsync"));
+        Assert.Contains("includeHistory: false", ExtractMethod(viewModel, "UnstageChangesAsync"));
         Assert.DoesNotContain("ClearWorkingTreePresentationSelection", ExtractMethod(viewModel, "StageActiveAsync"));
         Assert.DoesNotContain("ClearWorkingTreePresentationSelection", ExtractMethod(viewModel, "UnstageActiveAsync"));
     }
