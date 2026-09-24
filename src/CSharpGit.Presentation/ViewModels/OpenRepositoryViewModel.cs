@@ -71,7 +71,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private RepositoryOperation _currentOperation;
     private ConflictFile? _selectedConflict;
     private RepositoryOperationState _operationState = RepositoryOperationState.None;
-    private RepositoryRefreshFingerprint? _displayedRefreshFingerprint;
+    private readonly DisplayedRepositoryRefreshBaseline _displayedRefreshBaseline = new();
 
     public OpenRepositoryViewModel(
         IFolderPicker folderPicker,
@@ -265,8 +265,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         new("All references", HistoryScope.AllReferences),
         new("Current branch", HistoryScope.CurrentBranch)
     ];
-    public Repository? Repository { get => _repository; private set { if (ReferenceEquals(_repository, value)) return; ResetCommitChangesSession(); _repository = value; _displayedRefreshFingerprint = null; Notify(); Notify(nameof(DisplayedRefreshFingerprint)); Notify(nameof(HasRepository)); Notify(nameof(RepositoryKind)); Notify(nameof(CanCreateStash)); Notify(nameof(CanForcePushWithLease)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }
-    public RepositoryRefreshFingerprint? DisplayedRefreshFingerprint { get => _displayedRefreshFingerprint; private set { if (Equals(_displayedRefreshFingerprint, value)) return; _displayedRefreshFingerprint = value; Notify(); } }
+    public Repository? Repository { get => _repository; private set { if (ReferenceEquals(_repository, value)) return; ResetCommitChangesSession(); _repository = value; _displayedRefreshBaseline.Clear(); Notify(); Notify(nameof(DisplayedRefreshFingerprint)); Notify(nameof(HasRepository)); Notify(nameof(RepositoryKind)); Notify(nameof(CanCreateStash)); Notify(nameof(CanForcePushWithLease)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }
+    public RepositoryRefreshFingerprint? DisplayedRefreshFingerprint => _displayedRefreshBaseline.Fingerprint;
+    public long DisplayedRefreshBaselineRevision => _displayedRefreshBaseline.Revision;
     public string? ErrorMessage { get => _errorMessage; private set { _errorMessage = value; Notify(); Notify(nameof(HasError)); } }
     public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); Notify(nameof(CanForcePushWithLease)); _openRepositoryCommand.RaiseCanExecuteChanged(); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
@@ -556,8 +557,21 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         CurrentOperation = RepositoryOperation.None;
         OperationState = RepositoryOperationState.None;
         OperationDisplay = string.Empty;
-        DisplayedRefreshFingerprint = null;
+        ClearDisplayedRefreshBaseline();
         RaiseCommands();
+    }
+
+    private void ClearDisplayedRefreshBaseline()
+    {
+        if (_displayedRefreshBaseline.Clear())
+            Notify(nameof(DisplayedRefreshFingerprint));
+    }
+
+    private void PublishDisplayedRefreshBaseline(RepositoryRefreshFingerprint fingerprint)
+    {
+        if (_displayedRefreshBaseline.Publish(fingerprint))
+            Notify(nameof(DisplayedRefreshFingerprint));
+        Notify(nameof(DisplayedRefreshBaselineRevision));
     }
 
     private bool CanMutate() => Repository is not null && !_isMutating;
@@ -634,7 +648,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                 await LoadHistoryAsync(true);
 
             if (refreshFingerprint is not null && ReferenceEquals(repository, Repository))
-                DisplayedRefreshFingerprint = refreshFingerprint;
+                PublishDisplayedRefreshBaseline(refreshFingerprint);
         }
         finally
         {

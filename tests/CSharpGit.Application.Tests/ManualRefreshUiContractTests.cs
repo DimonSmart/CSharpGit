@@ -33,6 +33,9 @@ public sealed class ManualRefreshUiContractTests
         Assert.Contains("QueueRepositoryProbe", refresh);
         Assert.Contains("IRepositoryRefreshProbe", refresh);
         Assert.Contains("Repository state probe:", refresh);
+        Assert.Contains("DisplayedRefreshBaselineRevision", refresh);
+        Assert.Contains("_repositoryChangeMonitor.Suspend()", refresh);
+        Assert.Contains("_repositoryChangeMonitor.Resume()", refresh);
         Assert.DoesNotContain("_repositoryChangeMonitor.Acknowledge()", refresh);
         Assert.Contains("Repository has changed externally. Refresh to see the latest state.", refresh);
         Assert.Contains("Microsoft.UI.Colors.LimeGreen", refresh);
@@ -51,11 +54,16 @@ public sealed class ManualRefreshUiContractTests
         Assert.Contains("repository.GitCommonDirectory", monitor);
         Assert.Contains("RepositoryChanged", monitor);
         Assert.Contains("DebounceDelay", monitor);
+        Assert.Contains("public void Suspend()", monitor);
+        Assert.Contains("public void Resume()", monitor);
+        Assert.DoesNotContain("Acknowledge", monitor);
         Assert.Contains("IsLockNoise", monitor);
         Assert.DoesNotContain("RefreshAllAsync", monitor);
         Assert.DoesNotContain("RefreshStateAsync", monitor);
 
         Assert.Contains("DisplayedRefreshFingerprint", viewModel);
+        Assert.Contains("DisplayedRefreshBaselineRevision", viewModel);
+        Assert.Contains("PublishDisplayedRefreshBaseline", viewModel);
         Assert.Contains("_refreshProbe.ReadAsync(repository)", viewModel);
         Assert.DoesNotContain("PeriodicTimer", session);
         Assert.DoesNotContain("PollInterval", session);

@@ -29,6 +29,7 @@ internal sealed class RepositoryChangeMonitor : IDisposable
     private RepositoryInvalidatedEventArgs? _pendingInvalidation;
     private long _watcherEpoch;
     private long _generation;
+    private bool _suspended;
     private bool _disposed;
 
     public event EventHandler<RepositoryInvalidatedEventArgs>? RepositoryChanged;
@@ -49,15 +50,33 @@ internal sealed class RepositoryChangeMonitor : IDisposable
         {
             ThrowIfDisposed();
             _repository = repository;
+            _suspended = false;
             RestartWatchersNoLock();
         }
     }
 
-    public void Acknowledge()
+    public void Suspend()
     {
         lock (_gate)
         {
-            if (_disposed) return;
+            if (_disposed || _repository is null || _suspended) return;
+
+            _suspended = true;
+            _watcherEpoch++;
+            _pendingInvalidation = null;
+            _debounceTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            DisposeWatchersNoLock();
+        }
+    }
+
+    public void Resume()
+    {
+        lock (_gate)
+        {
+            if (_disposed || _repository is null || !_suspended) return;
+
+            _suspended = false;
+            RestartWatchersNoLock();
         }
     }
 
@@ -67,6 +86,7 @@ internal sealed class RepositoryChangeMonitor : IDisposable
         {
             if (_disposed) return;
             _repository = null;
+            _suspended = false;
             _watcherEpoch++;
             _pendingInvalidation = null;
             _debounceTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
@@ -145,7 +165,7 @@ internal sealed class RepositoryChangeMonitor : IDisposable
     {
         lock (_gate)
         {
-            if (_disposed || _repository is null || epoch != _watcherEpoch) return;
+            if (_disposed || _suspended || _repository is null || epoch != _watcherEpoch) return;
             if (source == RepositoryInvalidationSource.WorkingTree &&
                 fullPath is not null &&
                 IsMetadataPath(fullPath, _repository))
@@ -169,7 +189,7 @@ internal sealed class RepositoryChangeMonitor : IDisposable
         RepositoryInvalidatedEventArgs? invalidation;
         lock (_gate)
         {
-            if (_disposed || _pendingInvalidation is null) return;
+            if (_disposed || _suspended || _pendingInvalidation is null) return;
             invalidation = _pendingInvalidation;
             _pendingInvalidation = null;
             handler = RepositoryChanged;
