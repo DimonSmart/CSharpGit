@@ -12,7 +12,7 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
         Assert.Contains("BoundedChannelFullMode.Wait", source, StringComparison.Ordinal);
         Assert.Contains("Task.Run(WriterLoopAsync)", source, StringComparison.Ordinal);
         Assert.Contains("PeriodicTimer(TimeSpan.FromSeconds(1))", source, StringComparison.Ordinal);
-        Assert.Contains(""type"] = "sessionSummary"", source, StringComparison.Ordinal);
+        Assert.Contains("[\"type\"] = \"sessionSummary\"", source, StringComparison.Ordinal);
         Assert.Contains(".summary.txt", source, StringComparison.Ordinal);
     }
 
@@ -34,17 +34,17 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
     {
         var source = Read("src", "CSharpGit.Presentation", "Diagnostics", "HistoryPerformanceDiagnostics.cs");
 
-        Assert.DoesNotContain("["repositoryPath"]", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("["repositoryName"]", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("["commitMessage"]", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("["commitSha"]", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("["authorName"]", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("["authorEmail"]", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("["remoteUrl"]", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("["gitArguments"]", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("["gitStdout"]", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("["gitStderr"]", source, StringComparison.Ordinal);
-        Assert.Contains("["gitCommandCategories"]", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("[\"repositoryPath\"]", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("[\"repositoryName\"]", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("[\"commitMessage\"]", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("[\"commitSha\"]", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("[\"authorName\"]", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("[\"authorEmail\"]", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("[\"remoteUrl\"]", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("[\"gitArguments\"]", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("[\"gitStdout\"]", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("[\"gitStderr\"]", source, StringComparison.Ordinal);
+        Assert.Contains("[\"gitCommandCategories\"]", source, StringComparison.Ordinal);
     }
 
     [Fact]
