@@ -949,7 +949,7 @@ internal sealed class HistoryPerformanceSession
         builder.AppendLine($"Stop reason:                      {reason}");
         builder.AppendLine();
         builder.AppendLine($"History items:                    {_context.HistoryItems}");
-        builder.AppendLine($"Simplified History rendering:     {YesNo(_context.SimplifiedHistoryRenderingEnabled)}");
+        builder.AppendLine($"Simplified History rendering:     {(_context.SimplifiedHistoryRenderingEnabled ? "yes" : "no")}");
         builder.AppendLine($"Visited indexes:                  {FormatVisitedRange()}");
         builder.AppendLine($"ViewChanged events:               {Volatile.Read(ref ViewChangedCount)}");
         builder.AppendLine($"Intermediate / final:             {Volatile.Read(ref ViewChangedIntermediateCount)} / {Volatile.Read(ref ViewChangedFinalCount)}");

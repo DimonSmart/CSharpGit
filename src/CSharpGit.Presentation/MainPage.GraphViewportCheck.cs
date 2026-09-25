@@ -165,6 +165,7 @@ public sealed partial class MainPage
             layout.ObservedMaxLaneCount,
             _recentRepositorySettings.ShowAuthorAvatars,
             _recentRepositorySettings.OnlineAvatarLookupEnabled,
+            _recentRepositorySettings.HistorySimplifiedRenderingEnabled,
             RootLayout.ActualWidth,
             RootLayout.ActualHeight,
             XamlRoot?.RasterizationScale);
