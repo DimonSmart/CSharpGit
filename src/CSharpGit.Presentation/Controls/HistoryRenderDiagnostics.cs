@@ -266,9 +266,8 @@ internal static class HistoryRenderDiagnostics
 
     internal static void AvatarRequestStarted()
     {
-        if (Session is not { } session) return;
-        Interlocked.Increment(ref session.AvatarRequestsStarted);
-        Volatile.Write(ref session.AvatarOnlineRequestDuringCapture, 1);
+        if (Session is { } session)
+            Interlocked.Increment(ref session.AvatarRequestsStarted);
     }
 
     internal static void AvatarRequestCancelled()

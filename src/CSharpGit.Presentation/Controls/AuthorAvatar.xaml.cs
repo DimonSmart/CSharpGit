@@ -25,7 +25,9 @@ public sealed partial class AuthorAvatar : UserControl
     private IAppSettingsService? _settings;
     private readonly AuthorAvatarRequestGate _requestGate = new();
     private bool _settingsSubscribed;
+    private int _refreshScheduled;
     private string? _displayedRemoteIdentity;
+    private string? _fallbackIdentity;
 
     public AuthorAvatar()
     {
@@ -89,7 +91,7 @@ public sealed partial class AuthorAvatar : UserControl
         if (IsLoaded)
             AttachSettings();
 
-        Refresh();
+        RefreshNow();
     }
 
     private static void IdentityPropertyChanged(
@@ -97,7 +99,7 @@ public sealed partial class AuthorAvatar : UserControl
         DependencyPropertyChangedEventArgs args)
     {
         HistoryRenderDiagnostics.AvatarIdentityChanged();
-        ((AuthorAvatar)dependencyObject).Refresh();
+        ((AuthorAvatar)dependencyObject).ScheduleRefresh();
     }
 
     private static void AvatarSizePropertyChanged(
@@ -106,7 +108,7 @@ public sealed partial class AuthorAvatar : UserControl
     {
         var control = (AuthorAvatar)dependencyObject;
         control.ApplySize();
-        control.Refresh();
+        control.ScheduleRefresh();
     }
 
     private void AuthorAvatar_Loaded(object sender, RoutedEventArgs args)
@@ -114,12 +116,13 @@ public sealed partial class AuthorAvatar : UserControl
         HistoryRenderDiagnostics.AvatarLoaded();
         EnsureServices();
         AttachSettings();
-        Refresh();
+        RefreshNow();
     }
 
     private void AuthorAvatar_Unloaded(object sender, RoutedEventArgs args)
     {
         HistoryRenderDiagnostics.AvatarUnloaded();
+        Interlocked.Exchange(ref _refreshScheduled, 0);
         if (_requestGate.Cancel())
             HistoryRenderDiagnostics.AvatarRequestCancelled();
         DetachSettings();
@@ -154,19 +157,54 @@ public sealed partial class AuthorAvatar : UserControl
     private void Settings_Changed(object? sender, EventArgs args)
     {
         if (DispatcherQueue.HasThreadAccess)
-            Refresh();
+            RefreshNow();
         else
-            DispatcherQueue.TryEnqueue(Refresh);
+            DispatcherQueue.TryEnqueue(RefreshNow);
+    }
+
+    private void ScheduleRefresh()
+    {
+        if (Interlocked.Exchange(ref _refreshScheduled, 1) != 0)
+            return;
+
+        if (DispatcherQueue.TryEnqueue(() =>
+            {
+                if (Interlocked.Exchange(ref _refreshScheduled, 0) != 0)
+                    Refresh();
+            }))
+        {
+            return;
+        }
+
+        Interlocked.Exchange(ref _refreshScheduled, 0);
+        Refresh();
+    }
+
+    private void RefreshNow()
+    {
+        Interlocked.Exchange(ref _refreshScheduled, 0);
+        Refresh();
     }
 
     private void Refresh()
     {
         HistoryRenderDiagnostics.AvatarRefresh();
+
+        var settings = _settings;
+        var identity = CurrentIdentity();
+        if (settings is { ShowAuthorAvatars: true, OnlineAvatarLookupEnabled: true }
+            && IsLoaded
+            && string.Equals(_displayedRemoteIdentity, identity, StringComparison.Ordinal))
+        {
+            Visibility = Visibility.Visible;
+            return;
+        }
+
         if (_requestGate.Cancel())
             HistoryRenderDiagnostics.AvatarRequestCancelled();
         ShowInitials();
 
-        var settings = _settings;
+        settings = _settings;
         if (settings is null)
         {
             Visibility = Visibility.Visible;
@@ -262,7 +300,15 @@ public sealed partial class AuthorAvatar : UserControl
 
     private void ShowInitials()
     {
+        var identity = CurrentIdentity();
+        if (_displayedRemoteIdentity is null
+            && string.Equals(_fallbackIdentity, identity, StringComparison.Ordinal))
+        {
+            return;
+        }
+
         _displayedRemoteIdentity = null;
+        _fallbackIdentity = identity;
         AvatarImage.Source = null;
         AvatarImage.Visibility = Visibility.Collapsed;
         InitialsText.Visibility = Visibility.Visible;

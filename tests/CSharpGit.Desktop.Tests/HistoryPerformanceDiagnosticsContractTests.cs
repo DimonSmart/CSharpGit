@@ -112,6 +112,19 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
     }
 
     [Fact]
+    public void CaptureDoesNotReportInvalidRealizedEstimateAndFlagsOnlyActualAvatarNetwork()
+    {
+        var session = Read("src", "CSharpGit.Presentation", "Diagnostics", "HistoryPerformanceDiagnostics.cs");
+        var facade = Read("src", "CSharpGit.Presentation", "Controls", "HistoryRenderDiagnostics.cs");
+
+        Assert.DoesNotContain("EstimatedRealizedContainers", session, StringComparison.Ordinal);
+        Assert.DoesNotContain("Max estimated realized", session, StringComparison.Ordinal);
+        Assert.Contains("AuthorAvatarDiagnosticActivityKind.RemoteRequest", session, StringComparison.Ordinal);
+        Assert.Contains("Volatile.Write(ref AvatarOnlineRequestDuringCapture, 1)", session, StringComparison.Ordinal);
+        Assert.DoesNotContain("AvatarOnlineRequestDuringCapture", facade, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void CaptureHasAllRequiredTerminationPaths()
     {
         var page = Read("src", "CSharpGit.Presentation", "MainPage.HistoryPerformanceDiagnostics.cs");

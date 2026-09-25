@@ -75,6 +75,20 @@ public sealed class AuthorAvatarUiContractTests
         Assert.DoesNotContain("ServiceProvider", control, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void AvatarIdentityBindingChangesAreCoalescedBeforeRefresh()
+    {
+        var root = FindRepositoryRoot();
+        var control = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "AuthorAvatar.xaml.cs"));
+
+        Assert.Contains("ScheduleRefresh()", control, StringComparison.Ordinal);
+        Assert.Contains("Interlocked.Exchange(ref _refreshScheduled, 1)", control, StringComparison.Ordinal);
+        Assert.Contains("DispatcherQueue.TryEnqueue", control, StringComparison.Ordinal);
+        Assert.Contains("string.Equals(_displayedRemoteIdentity, identity", control, StringComparison.Ordinal);
+        Assert.Contains("string.Equals(_fallbackIdentity, identity", control, StringComparison.Ordinal);
+        Assert.DoesNotContain("((AuthorAvatar)dependencyObject).Refresh();", control, StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

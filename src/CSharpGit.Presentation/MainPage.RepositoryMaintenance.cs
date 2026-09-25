@@ -70,6 +70,7 @@ public sealed partial class MainPage
         _authorAvatarService = authorAvatarService ?? throw new ArgumentNullException(nameof(authorAvatarService));
         _authorAvatarSettings = appSettings;
         AuthorAvatarServiceContext.Configure(_authorAvatarService, _authorAvatarSettings);
+        HistoryReferencePresentationContext.Configure(_viewModel);
         CommitDetailsContent.ConfigureAuthorAvatar(_authorAvatarService, _authorAvatarSettings);
         _recentRepositoryFolderPicker = recentRepositoryFolderPicker ?? throw new ArgumentNullException(nameof(recentRepositoryFolderPicker));
         _settingsWindowController = settingsWindowController ?? throw new ArgumentNullException(nameof(settingsWindowController));

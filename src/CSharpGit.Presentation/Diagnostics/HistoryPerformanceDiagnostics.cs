@@ -259,8 +259,6 @@ internal sealed class HistoryPerformanceSession
     internal long ContainerChanges;
     internal long ContainerRealizations;
     internal long ContainerRecycles;
-    internal long EstimatedRealizedContainers;
-    internal long MaxEstimatedRealizedContainers;
     internal long SelectionChanges;
     internal long ItemsSourceChanges;
     internal long HistoryCollectionResets;
@@ -428,17 +426,10 @@ internal sealed class HistoryPerformanceSession
     {
         Interlocked.Increment(ref ContainerChanges);
         if (recycled)
-        {
             Interlocked.Increment(ref ContainerRecycles);
-            var current = Interlocked.Decrement(ref EstimatedRealizedContainers);
-            if (current < 0) Interlocked.Exchange(ref EstimatedRealizedContainers, 0);
-        }
         else
-        {
             Interlocked.Increment(ref ContainerRealizations);
-            var current = Interlocked.Increment(ref EstimatedRealizedContainers);
-            UpdateMax(ref MaxEstimatedRealizedContainers, current);
-        }
+
         UpdateMin(ref VisitedMinIndex, index);
         UpdateMax(ref VisitedMaxIndex, index);
     }
@@ -635,6 +626,7 @@ internal sealed class HistoryPerformanceSession
                 break;
             case AuthorAvatarDiagnosticActivityKind.RemoteRequest:
                 Interlocked.Increment(ref AvatarRemoteRequests);
+                Volatile.Write(ref AvatarOnlineRequestDuringCapture, 1);
                 break;
             case AuthorAvatarDiagnosticActivityKind.RemoteBytesRead:
                 Interlocked.Add(ref AvatarRemoteBytesRead, Math.Max(0, activity.Bytes));
@@ -776,8 +768,6 @@ internal sealed class HistoryPerformanceSession
         ["viewChanged"] = Volatile.Read(ref ViewChangedCount),
         ["viewChangedIntermediate"] = Volatile.Read(ref ViewChangedIntermediateCount),
         ["viewChangedFinal"] = Volatile.Read(ref ViewChangedFinalCount),
-        ["estimatedRealizedContainers"] = Volatile.Read(ref EstimatedRealizedContainers),
-        ["maxEstimatedRealizedContainers"] = Volatile.Read(ref MaxEstimatedRealizedContainers),
         ["renderCallbacks"] = Volatile.Read(ref RenderCallbacks),
         ["renderIntervalsOver33ms"] = Volatile.Read(ref RenderIntervalsOver33),
         ["graphMeasureCalls"] = Volatile.Read(ref GraphMeasureCalls),
@@ -814,9 +804,7 @@ internal sealed class HistoryPerformanceSession
             ["containerChanges"] = Volatile.Read(ref ContainerChanges),
             ["containerRealizations"] = Volatile.Read(ref ContainerRealizations),
             ["containerRecycles"] = Volatile.Read(ref ContainerRecycles),
-            ["estimatedRealizedContainers"] = Volatile.Read(ref EstimatedRealizedContainers),
-            ["maxEstimatedRealizedContainers"] = Volatile.Read(ref MaxEstimatedRealizedContainers),
-            ["selectionChanges"] = Volatile.Read(ref SelectionChanges),
+                    ["selectionChanges"] = Volatile.Read(ref SelectionChanges),
             ["itemsSourceChanges"] = Volatile.Read(ref ItemsSourceChanges),
             ["historyCollectionResets"] = Volatile.Read(ref HistoryCollectionResets),
             ["historyRowsAppended"] = Volatile.Read(ref HistoryRowsAppended),
@@ -980,7 +968,6 @@ internal sealed class HistoryPerformanceSession
         builder.AppendLine($"Container changes:                {Volatile.Read(ref ContainerChanges)}");
         builder.AppendLine($"Realization events:               {Volatile.Read(ref ContainerRealizations)}");
         builder.AppendLine($"Recycle events:                   {Volatile.Read(ref ContainerRecycles)}");
-        builder.AppendLine($"Max estimated realized:           {Volatile.Read(ref MaxEstimatedRealizedContainers)}");
         builder.AppendLine();
         builder.AppendLine("Commit graph");
         builder.AppendLine("------------");

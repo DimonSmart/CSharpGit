@@ -38,6 +38,23 @@ public sealed class ReferenceBadgeUiContractTests
         Assert.Contains("<x:Double x:Key=\"Height.DataRow\">24</x:Double>", designTokens, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void HistoryReferenceBadgeUsesSharedConstantTimeDefaultBranchContext()
+    {
+        var root = FindRepositoryRoot();
+        var badge = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferenceBadge.xaml.cs"));
+        var context = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferencePresentationContext.cs"));
+        var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
+
+        Assert.Contains("HistoryReferencePresentationContext.IsDefaultRemoteBranch", badge, StringComparison.Ordinal);
+        Assert.DoesNotContain("VisualTreeHelper", badge, StringComparison.Ordinal);
+        Assert.DoesNotContain("RemoteBranches.Any", badge, StringComparison.Ordinal);
+        Assert.Contains("HashSet<string>", context, StringComparison.Ordinal);
+        Assert.Contains(".ToHashSet(StringComparer.Ordinal)", context, StringComparison.Ordinal);
+        Assert.Contains("RemoteBranches.CollectionChanged += RemoteBranches_CollectionChanged", context, StringComparison.Ordinal);
+        Assert.Contains("HistoryReferencePresentationContext.Configure(_viewModel)", composition, StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
