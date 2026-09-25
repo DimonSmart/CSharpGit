@@ -78,6 +78,7 @@ public sealed partial class MainPage
         UpdateOptimizeRepositoryAvailability();
         InitializeRepositoryChangeMonitoring();
         InitializeRecentRepositories();
+        InitializeHistoryPerformanceDiagnostics();
         InitializeGitConsole();
         InitializeWorktreeSupport();
     }
