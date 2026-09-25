@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Windows.Input;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
+using CSharpGit.Presentation.Controls;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Input;
