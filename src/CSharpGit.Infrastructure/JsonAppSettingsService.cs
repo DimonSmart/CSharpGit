@@ -55,7 +55,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
 
     public bool HistoryPerformanceDiagnosticsEnabled => Volatile.Read(ref _state).HistoryPerformanceDiagnosticsEnabled;
 
-    public bool HistorySimplifiedRenderingEnabled => Volatile.Read(ref _state).HistorySimplifiedRenderingEnabled;
+    public HistoryRenderingMode HistoryRenderingMode => Volatile.Read(ref _state).HistoryRenderingMode;
 
     public IReadOnlyList<RecentRepositorySettings> RecentRepositories => Volatile.Read(ref _state).RecentRepositories;
 
@@ -161,14 +161,19 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 : current with { HistoryPerformanceDiagnosticsEnabled = value },
             cancellationToken);
 
-    public Task SetHistorySimplifiedRenderingEnabledAsync(
-        bool value,
-        CancellationToken cancellationToken = default) =>
-        UpdateAsync(
-            current => current.HistorySimplifiedRenderingEnabled == value
+    public Task SetHistoryRenderingModeAsync(
+        HistoryRenderingMode mode,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Enum.IsDefined(typeof(HistoryRenderingMode), mode))
+            throw new ArgumentOutOfRangeException(nameof(mode));
+
+        return UpdateAsync(
+            current => current.HistoryRenderingMode == mode
                 ? current
-                : current with { HistorySimplifiedRenderingEnabled = value },
+                : current with { HistoryRenderingMode = mode },
             cancellationToken);
+    }
 
     public Task RecordRecentRepositoryAsync(
         string path,
@@ -268,6 +273,12 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                                          && Enum.IsDefined(typeof(GitConsoleAutoOpenMode), configuredGitConsoleMode)
                 ? configuredGitConsoleMode
                 : GitConsoleAutoOpenMode.OnErrors;
+            var historyRenderingMode = document.HistoryRenderingMode is { } configuredHistoryRenderingMode
+                                       && Enum.IsDefined(typeof(HistoryRenderingMode), configuredHistoryRenderingMode)
+                ? configuredHistoryRenderingMode
+                : document.HistorySimplifiedRenderingEnabled == true
+                    ? HistoryRenderingMode.SubjectOnly
+                    : HistoryRenderingMode.Full;
             var recentRepositories = NormalizeRecentRepositories(document.RecentRepositories);
 
             return new SettingsState(
@@ -281,7 +292,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 document.ShowAuthorAvatars ?? true,
                 document.OnlineAvatarLookupEnabled ?? true,
                 document.HistoryPerformanceDiagnosticsEnabled,
-                document.HistorySimplifiedRenderingEnabled,
+                historyRenderingMode,
                 recentRepositories);
         }
         catch (JsonException)
@@ -317,7 +328,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             ShowAuthorAvatars = state.ShowAuthorAvatars,
             OnlineAvatarLookupEnabled = state.OnlineAvatarLookupEnabled,
             HistoryPerformanceDiagnosticsEnabled = state.HistoryPerformanceDiagnosticsEnabled,
-            HistorySimplifiedRenderingEnabled = state.HistorySimplifiedRenderingEnabled,
+            HistoryRenderingMode = state.HistoryRenderingMode,
             RecentRepositories = state.RecentRepositories.ToList()
         };
         var json = JsonSerializer.Serialize(document, SerializerOptions);
@@ -406,7 +417,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         bool ShowAuthorAvatars,
         bool OnlineAvatarLookupEnabled,
         bool HistoryPerformanceDiagnosticsEnabled,
-        bool HistorySimplifiedRenderingEnabled,
+        HistoryRenderingMode HistoryRenderingMode,
         IReadOnlyList<RecentRepositorySettings> RecentRepositories)
     {
         public static SettingsState Default { get; } = new(
@@ -420,7 +431,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             true,
             true,
             false,
-            false,
+            HistoryRenderingMode.Full,
             Array.AsReadOnly(Array.Empty<RecentRepositorySettings>()));
     }
 
@@ -436,7 +447,9 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         public bool? ShowAuthorAvatars { get; init; }
         public bool? OnlineAvatarLookupEnabled { get; init; }
         public bool HistoryPerformanceDiagnosticsEnabled { get; init; }
-        public bool HistorySimplifiedRenderingEnabled { get; init; }
+        public HistoryRenderingMode? HistoryRenderingMode { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? HistorySimplifiedRenderingEnabled { get; init; }
         public List<RecentRepositorySettings>? RecentRepositories { get; init; }
     }
 
