@@ -21,6 +21,19 @@ public sealed class SettingsDiagnosticsUiContractTests
     }
 
     [Fact]
+    public void DiagnosticsExposesIndependentHistoryPerformanceCaptureSetting()
+    {
+        var root = FindRepositoryRoot();
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml"));
+        var settings = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IAppSettingsService.cs"));
+
+        Assert.Contains("Enable history performance diagnostics", xaml, StringComparison.Ordinal);
+        Assert.Contains("HistoryPerformanceDiagnosticsEnabled", settings, StringComparison.Ordinal);
+        Assert.Contains("History performance capture", xaml, StringComparison.Ordinal);
+        Assert.Contains("independent of normal file logging", xaml, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void OpenFolderUsesCrossPlatformDesktopShell()
     {
         var root = FindRepositoryRoot();
