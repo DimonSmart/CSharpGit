@@ -1,3 +1,4 @@
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Presentation.Controls;
 using CSharpGit.Presentation.Diagnostics;
 using Microsoft.UI.Dispatching;
