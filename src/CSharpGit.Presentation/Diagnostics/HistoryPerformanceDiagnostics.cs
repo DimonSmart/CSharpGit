@@ -259,6 +259,15 @@ internal sealed class HistoryPerformanceSession
     internal long GitUserCommands;
     internal long GitInternalCommands;
     internal long GitNetworkCommands;
+    internal long GitStatusCommands;
+    internal long GitLogCommands;
+    internal long GitForEachRefCommands;
+    internal long GitFetchCommands;
+    internal long GitPullCommands;
+    internal long GitPushCommands;
+    internal long GitCloneCommands;
+    internal long GitLsRemoteCommands;
+    internal long GitOtherCommands;
     internal long HistoryGlobalScans;
     internal long HistoryIndexLookups;
     internal long RenderCallbacks;
@@ -525,6 +534,19 @@ internal sealed class HistoryPerformanceSession
         var verb = GetGitVerb(activity.Arguments);
         if (IsNetworkVerb(verb))
             Interlocked.Increment(ref GitNetworkCommands);
+
+        switch (verb)
+        {
+            case "status": Interlocked.Increment(ref GitStatusCommands); break;
+            case "log": Interlocked.Increment(ref GitLogCommands); break;
+            case "for-each-ref": Interlocked.Increment(ref GitForEachRefCommands); break;
+            case "fetch": Interlocked.Increment(ref GitFetchCommands); break;
+            case "pull": Interlocked.Increment(ref GitPullCommands); break;
+            case "push": Interlocked.Increment(ref GitPushCommands); break;
+            case "clone": Interlocked.Increment(ref GitCloneCommands); break;
+            case "ls-remote": Interlocked.Increment(ref GitLsRemoteCommands); break;
+            default: Interlocked.Increment(ref GitOtherCommands); break;
+        }
     }
 
     internal void RecordSlowOperation(
@@ -730,6 +752,18 @@ internal sealed class HistoryPerformanceSession
             ["gitUserCommands"] = Volatile.Read(ref GitUserCommands),
             ["gitInternalCommands"] = Volatile.Read(ref GitInternalCommands),
             ["gitNetworkCommands"] = Volatile.Read(ref GitNetworkCommands),
+            ["gitCommandCategories"] = new Dictionary<string, long>
+            {
+                ["status"] = Volatile.Read(ref GitStatusCommands),
+                ["log"] = Volatile.Read(ref GitLogCommands),
+                ["for-each-ref"] = Volatile.Read(ref GitForEachRefCommands),
+                ["fetch"] = Volatile.Read(ref GitFetchCommands),
+                ["pull"] = Volatile.Read(ref GitPullCommands),
+                ["push"] = Volatile.Read(ref GitPushCommands),
+                ["clone"] = Volatile.Read(ref GitCloneCommands),
+                ["ls-remote"] = Volatile.Read(ref GitLsRemoteCommands),
+                ["other"] = Volatile.Read(ref GitOtherCommands)
+            },
             ["runtime"] = runtime,
             ["droppedDiagnosticRecords"] = Volatile.Read(ref DroppedDiagnosticRecords),
             ["droppedSlowEvents"] = Volatile.Read(ref DroppedSlowEvents),
@@ -851,6 +885,10 @@ internal sealed class HistoryPerformanceSession
         builder.AppendLine("Git");
         builder.AppendLine("---");
         builder.AppendLine($"Commands:                         {Volatile.Read(ref GitCommands)}");
+        builder.AppendLine($"User / internal:                  {Volatile.Read(ref GitUserCommands)} / {Volatile.Read(ref GitInternalCommands)}");
+        builder.AppendLine($"Network commands:                 {Volatile.Read(ref GitNetworkCommands)}");
+        builder.AppendLine($"status/log/for-each-ref:          {Volatile.Read(ref GitStatusCommands)} / {Volatile.Read(ref GitLogCommands)} / {Volatile.Read(ref GitForEachRefCommands)}");
+        builder.AppendLine($"fetch/pull/push/clone/ls-remote:  {Volatile.Read(ref GitFetchCommands)} / {Volatile.Read(ref GitPullCommands)} / {Volatile.Read(ref GitPushCommands)} / {Volatile.Read(ref GitCloneCommands)} / {Volatile.Read(ref GitLsRemoteCommands)}");
         builder.AppendLine();
         builder.AppendLine("Capture integrity");
         builder.AppendLine("-----------------");
