@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using CSharpGit.Presentation.Controls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -36,12 +38,16 @@ public sealed partial class MainPage
 
     private async void HistoryScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
+        HistoryRenderDiagnostics.HistoryViewChanged(Stopwatch.GetTimestamp());
         if (sender is not ScrollViewer scrollViewer
             || _isInfiniteHistoryLoading
-            || scrollViewer.ScrollableHeight <= 0
-            || scrollViewer.ScrollableHeight - scrollViewer.VerticalOffset > HistoryLoadMoreThreshold)
+            || scrollViewer.ScrollableHeight <= 0)
             return;
 
+        if (scrollViewer.ScrollableHeight - scrollViewer.VerticalOffset > HistoryLoadMoreThreshold)
+            return;
+
+        HistoryRenderDiagnostics.LoadMoreThresholdReached();
         if (_activeReference is not null)
         {
             if (!_scopedHasMore || _isScopedHistoryLoading) return;
@@ -52,6 +58,7 @@ public sealed partial class MainPage
         }
 
         _isInfiniteHistoryLoading = true;
+        HistoryRenderDiagnostics.PageLoadStarted();
         try
         {
             if (_activeReference is not null)
