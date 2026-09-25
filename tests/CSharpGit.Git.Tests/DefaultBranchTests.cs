@@ -9,18 +9,28 @@ public sealed class DefaultBranchTests : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"csharpgit-default-branch-{Guid.NewGuid():N}");
 
     [Fact]
-    public async Task UsesRemoteHeadWithoutInferringBranchNameAndFallsBackToAdvertisedHead()
+    public async Task MissingLocalRemoteHeadLeavesDefaultUnknownWithoutNetworkLookup()
     {
         var fixture = CreateFixture("develop");
         RunGit(fixture.Work, "remote", "set-head", "origin", "--delete");
 
-        var services = CreateServices();
-        var repository = await services.Repository.OpenAsync(fixture.Work);
-        var state = await services.State.ReadAsync(repository);
+        var activity = new RecordingActivitySink();
+        var executor = new GitCommandExecutor(new GitCliOptions(), activity);
+        var repositoryService = new GitRepositoryService(executor);
+        var stateService = new DefaultBranchRepositoryStateService(
+            new GitRepositoryStateService(executor),
+            new DefaultBranchResolver(executor),
+            new GitTagService(executor));
+        var repository = await repositoryService.OpenAsync(fixture.Work);
 
-        Assert.True(state.Refs.RemoteBranches.Single(branch => branch.Name == "origin/develop").IsDefault);
-        Assert.True(state.Refs.LocalBranches.Single(branch => branch.Name == "develop").IsDefault);
-        Assert.DoesNotContain(state.Refs.RemoteBranches, branch => branch.Name is "origin/main" or "origin/master");
+        var state = await stateService.ReadAsync(repository);
+
+        Assert.DoesNotContain(state.Refs.RemoteBranches, branch => branch.IsDefault);
+        Assert.DoesNotContain(state.Refs.LocalBranches, branch => branch.IsDefault);
+        Assert.DoesNotContain(
+            activity.Commands,
+            arguments => arguments.Count > 0
+                         && string.Equals(arguments[0], "ls-remote", StringComparison.Ordinal));
     }
 
     [Fact]
