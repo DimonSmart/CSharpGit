@@ -43,7 +43,18 @@ public sealed class UnoXamlCompatibilityContractTests
         var historyReferences = ReadStyle("HistoryReferences.xaml");
 
         Assert.Contains("<Thickness x:Key=\"Margin.HistoryColumnGap\">4,0,0,0</Thickness>", workspace);
-        Assert.Equal(3, CountOccurrences(historyReferences, "Margin=\"{StaticResource Margin.HistoryColumnGap}\""));
+
+        var productionTemplateStart = historyReferences.IndexOf(
+            "<DataTemplate x:Key=\"HistoryItemTemplate\">",
+            StringComparison.Ordinal);
+        var diagnosticTemplatesStart = historyReferences.IndexOf(
+            "<DataTemplate x:Key=\"SimplifiedHistoryItemTemplate\">",
+            StringComparison.Ordinal);
+        Assert.True(productionTemplateStart >= 0);
+        Assert.True(diagnosticTemplatesStart > productionTemplateStart);
+        var productionTemplate = historyReferences[productionTemplateStart..diagnosticTemplatesStart];
+
+        Assert.Equal(3, CountOccurrences(productionTemplate, "Margin=\"{StaticResource Margin.HistoryColumnGap}\""));
     }
 
     private static string ReadStyle(string fileName)
