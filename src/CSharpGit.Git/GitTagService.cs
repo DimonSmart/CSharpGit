@@ -20,31 +20,38 @@ internal GitTagService(GitCommandExecutor executor)
     {
         ArgumentNullException.ThrowIfNull(repository);
         var configuredSort = await ReadEffectiveTagSortAsync(repository, cancellationToken);
-        return await ReadTagsWithSortAsync(repository, configuredSort, cancellationToken);
+        return await ReadTagsWithSortAsync(repository, configuredSort, environment: null, cancellationToken);
     }
 
     internal Task<IReadOnlyList<GitTag>> ReadTagsAsync(
         Repository repository,
         string? configuredSort,
+        IReadOnlyDictionary<string, string?>? environment,
         CancellationToken cancellationToken = default) =>
-        ReadTagsWithSortAsync(repository, configuredSort, cancellationToken);
+        ReadTagsWithSortAsync(repository, configuredSort, environment, cancellationToken);
 
     private async Task<IReadOnlyList<GitTag>> ReadTagsWithSortAsync(
         Repository repository,
         string? configuredSort,
+        IReadOnlyDictionary<string, string?>? environment,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(repository);
         var sort = string.IsNullOrWhiteSpace(configuredSort) ? DefaultTagSort : configuredSort;
         const string format = "%(refname)%00%(objecttype)%00%(objectname)%00%(*objectname)%00%(taggername)%00%(taggeremail)%00%(taggerdate:iso-strict)%00%(contents)%1e";
-        var output = await ExecuteAsync(
-            repository,
+        var output = await _executor.ExecuteAsync(
+            repository.WorkingDirectory,
+            "Tags",
             GitCommandKind.Internal,
             cancellationToken,
-            "for-each-ref",
-            $"--sort={sort}",
-            $"--format={format}",
-            "refs/tags");
+            environment,
+            new[]
+            {
+                "for-each-ref",
+                $"--sort={sort}",
+                $"--format={format}",
+                "refs/tags"
+            });
 
         var tags = new List<GitTag>();
         foreach (var record in output.Split('\x1e', StringSplitOptions.RemoveEmptyEntries))
