@@ -48,7 +48,7 @@ public sealed partial class MainPage
             layout.ObservedMaxLaneCount,
             _recentRepositorySettings.ShowAuthorAvatars,
             _recentRepositorySettings.OnlineAvatarLookupEnabled,
-            _recentRepositorySettings.HistorySimplifiedRenderingEnabled,
+            _recentRepositorySettings.HistoryRenderingMode,
             RootLayout.ActualWidth,
             RootLayout.ActualHeight,
             XamlRoot?.RasterizationScale);
@@ -245,9 +245,15 @@ public sealed partial class MainPage
         if (HistoryList is null)
             return;
 
-        var resourceKey = _recentRepositorySettings.HistorySimplifiedRenderingEnabled
-            ? "SimplifiedHistoryItemTemplate"
-            : "HistoryItemTemplate";
+        var resourceKey = _recentRepositorySettings.HistoryRenderingMode switch
+        {
+            HistoryRenderingMode.SubjectOnly => "SimplifiedHistoryItemTemplate",
+            HistoryRenderingMode.TextColumns => "HistoryTextColumnsItemTemplate",
+            HistoryRenderingMode.TextAndGraph => "HistoryTextGraphItemTemplate",
+            HistoryRenderingMode.TextGraphAndReferences => "HistoryTextGraphReferencesItemTemplate",
+            HistoryRenderingMode.Full => "HistoryItemTemplate",
+            _ => "HistoryItemTemplate"
+        };
         if (Microsoft.UI.Xaml.Application.Current.Resources[resourceKey] is DataTemplate template)
             HistoryList.ItemTemplate = template;
     }
