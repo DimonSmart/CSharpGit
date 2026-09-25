@@ -2,7 +2,13 @@ namespace CSharpGit.Domain;
 
 public enum HistoryScope { AllReferences, CurrentBranch }
 
-public sealed record HistoryQuery(HistoryScope Scope, string? Filter, int Skip, int Take = 100, bool IncludeReflog = false);
+public sealed record HistoryQuery(
+    HistoryScope Scope,
+    string? Filter,
+    int Skip,
+    int Take = 100,
+    bool IncludeReflog = false,
+    bool? HeadExists = null);
 
 public sealed record CommitHistoryItem(
     string Hash,

@@ -60,6 +60,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private bool _setUpstream;
     private string _headDisplay = string.Empty;
     private string? _currentBranchName;
+    private bool? _headExists;
     private GitStash? _selectedStash;
     private GitBranch? _selectedMergeBranch;
     private string _operationDisplay = string.Empty;
@@ -262,7 +263,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         new("All references", HistoryScope.AllReferences),
         new("Current branch", HistoryScope.CurrentBranch)
     ];
-    public Repository? Repository { get => _repository; private set { if (ReferenceEquals(_repository, value)) return; ResetCommitChangesSession(); _repository = value; _displayedRefreshBaseline.Clear(); Notify(); Notify(nameof(DisplayedRefreshFingerprint)); Notify(nameof(HasRepository)); Notify(nameof(RepositoryKind)); Notify(nameof(CanCreateStash)); Notify(nameof(CanForcePushWithLease)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }
+    public Repository? Repository { get => _repository; private set { if (ReferenceEquals(_repository, value)) return; ResetCommitChangesSession(); _repository = value; _headExists = null; _displayedRefreshBaseline.Clear(); Notify(); Notify(nameof(DisplayedRefreshFingerprint)); Notify(nameof(HasRepository)); Notify(nameof(RepositoryKind)); Notify(nameof(CanCreateStash)); Notify(nameof(CanForcePushWithLease)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }
     public RepositoryRefreshFingerprint? DisplayedRefreshFingerprint => _displayedRefreshBaseline.Fingerprint;
     public long DisplayedRefreshBaselineRevision => _displayedRefreshBaseline.Revision;
     public string? ErrorMessage { get => _errorMessage; private set { _errorMessage = value; Notify(); Notify(nameof(HasError)); } }
@@ -611,6 +612,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                 _logger.LogDebug("Repository state was read without a reliable refresh fingerprint");
             if (!ReferenceEquals(repository, Repository)) return;
 
+            _headExists = state.HeadCommit is not null;
             var shortHead = state.HeadCommit is { } commit ? commit[..Math.Min(10, commit.Length)] : "no commit";
             CurrentBranchName = state.IsDetached ? null : state.HeadReference;
             HeadDisplay = state.IsDetached ? $"Detached HEAD: {shortHead}" : $"Current branch: {state.HeadReference}";
@@ -903,7 +905,12 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         {
             var page = await _historyService.ReadHistoryAsync(
                 repository,
-                new HistoryQuery(scope, filter, skip, IncludeReflog: _showReflog),
+                new HistoryQuery(
+                    scope,
+                    filter,
+                    skip,
+                    IncludeReflog: _showReflog,
+                    HeadExists: _headExists),
                 cancellation.Token);
 
             if (cancellation.IsCancellationRequested

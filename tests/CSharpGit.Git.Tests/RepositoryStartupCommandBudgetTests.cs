@@ -88,6 +88,36 @@ public sealed class RepositoryStartupCommandBudgetTests : IDisposable
         Assert.DoesNotContain(activity.Commands, IsNetworkCommand);
     }
 
+    [Fact]
+    public async Task KnownUnbornHeadDoesNotTriggerHistoryHeadProbe()
+    {
+        Directory.CreateDirectory(_root);
+        RunGit(_root, "init", "-b", "main");
+
+        var activity = new RecordingActivitySink();
+        var executor = new GitCommandExecutor(new GitCliOptions(), activity);
+        var runner = new GitRepositoryCommandRunner(executor);
+        var repository = await new GitRepositoryService(runner).OpenAsync(_root);
+        var state = await new GitRepositoryStateService(runner).ReadAsync(repository);
+        Assert.Null(state.HeadCommit);
+
+        var history = new GitReferenceHistoryService(executor);
+        var commandCountBeforeHistory = activity.Commands.Count;
+        var page = await history.ReadHistoryAsync(
+            repository,
+            new HistoryQuery(
+                HistoryScope.CurrentBranch,
+                null,
+                0,
+                100,
+                IncludeReflog: false,
+                HeadExists: false));
+
+        Assert.Empty(page.Rows);
+        Assert.False(page.HasMore);
+        Assert.Equal(commandCountBeforeHistory, activity.Commands.Count);
+    }
+
     private string CreateRemoteFixture()
     {
         Directory.CreateDirectory(_root);
