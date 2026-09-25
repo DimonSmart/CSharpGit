@@ -101,9 +101,15 @@ Ordinary vertical scrolling should not cause graph-layout initialization or pres
 
 The summary separately tracks known History-wide or index-lookup work that can run from presentation code. A large-repository capture with a similar call count but much larger total scan time is a strong signal of an O(N) dependency on History size.
 
-### Avatars
+### History scans
+
+The capture distinguishes `HistoryGlobalScan`, `HistoryIndexLookup`, `CommitLookup`, `ParentLookup`, and `RefLookup`. Calls, duration distributions, and naturally known examined-item counts are recorded without adding extra scans just for diagnostics.
+
+### Avatars and owned disk activity
 
 Compare refreshes, resolve requests, cancellations, stale completions, applied results, and sync/async resolve completions. Repeated online avatar work while revisiting already loaded rows can be identified without storing author identity.
+
+When the concrete avatar service exposes diagnostic activity, the capture also counts memory-cache hits/misses, disk-cache hits/misses, remote requests, remote bytes read, avatar-cache writes, and bytes written. Paths and identities are never included.
 
 ### Runtime
 
