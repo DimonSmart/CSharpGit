@@ -55,7 +55,10 @@ public sealed partial class MainPage
         if (IsShuttingDown || _recentRepositoriesShutdown) return;
 
         if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.Repository))
+        {
             UpdateStartScreenVisibility();
+            HandleHistoryPerformanceRepositoryChanged();
+        }
 
         if (eventArgs.PropertyName != nameof(OpenRepositoryViewModel.IsBusy)) return;
 
@@ -70,6 +73,7 @@ public sealed partial class MainPage
 
         if (DispatcherQueue.HasThreadAccess)
         {
+            HandleHistoryPerformanceSettingsChanged();
             UpdateStartScreenVisibility();
             return;
         }
@@ -77,7 +81,10 @@ public sealed partial class MainPage
         DispatcherQueue.TryEnqueue(() =>
         {
             if (!IsShuttingDown && !_recentRepositoriesShutdown)
+            {
+                HandleHistoryPerformanceSettingsChanged();
                 UpdateStartScreenVisibility();
+            }
         });
     }
 
