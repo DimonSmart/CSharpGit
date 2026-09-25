@@ -667,6 +667,7 @@ public sealed partial class MainPage : Page
 
     private async void LoadMoreHistory_Click(object sender, RoutedEventArgs e)
     {
+        HistoryRenderDiagnostics.PageLoadStarted();
         if (_activeReference is not null) await LoadScopedHistoryAsync(false);
         else await ExecuteCommandAsync(_viewModel.LoadMoreCommand);
     }
