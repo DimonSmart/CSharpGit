@@ -135,10 +135,12 @@ public sealed partial class MainPage : Page
         else if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.SelectedHistoryRow) && _activeReference is not null)
         {
             var selectedHash = _viewModel.SelectedHistoryRow?.Commit.Hash;
+            var scanStartedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
             var visibleSelection = selectedHash is null
                 ? null
                 : _scopedHistory.FirstOrDefault(row => string.Equals(row.Commit.Hash, selectedHash, StringComparison.Ordinal));
             visibleSelection ??= _scopedHistory.FirstOrDefault();
+            HistoryRenderDiagnostics.HistoryGlobalScanCompleted(scanStartedAt, _scopedHistory.Count);
             if (!ReferenceEquals(visibleSelection, _viewModel.SelectedHistoryRow))
                 _viewModel.SelectedHistoryRow = visibleSelection;
         }
