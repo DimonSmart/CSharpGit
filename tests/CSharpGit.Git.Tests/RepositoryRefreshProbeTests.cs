@@ -92,6 +92,54 @@ public sealed class RepositoryRefreshProbeTests : IDisposable
         _ = await probe.ReadAsync(repository, timeout.Token);
     }
 
+    [Fact]
+    public async Task FullLoadFingerprintMatchesImmediateProbeAcrossSemanticStates()
+    {
+        var (_, repository, _) = await CreateRepositoryAsync();
+        var executor = GitTestServices.CreateExecutor();
+        var runner = new GitRepositoryCommandRunner(executor);
+        var stateService = new DefaultBranchRepositoryStateService(
+            new GitRepositoryStateService(runner),
+            new DefaultBranchResolver(executor),
+            new GitTagService(executor));
+        var probe = new GitRepositoryRefreshProbe(stateService);
+
+        async Task AssertMatchesAsync()
+        {
+            var fullLoad = await stateService.ReadWithRefreshFingerprintAsync(repository);
+            Assert.NotNull(fullLoad.RefreshFingerprint);
+            Assert.Equal(fullLoad.RefreshFingerprint, await probe.ReadAsync(repository));
+        }
+
+        await AssertMatchesAsync();
+
+        await File.AppendAllTextAsync(Path.Combine(_root, "tracked.txt"), "modified\n");
+        await AssertMatchesAsync();
+
+        RunGit(_root, "add", "tracked.txt");
+        await AssertMatchesAsync();
+
+        await File.WriteAllTextAsync(Path.Combine(_root, "untracked.txt"), "untracked");
+        await AssertMatchesAsync();
+
+        RunGit(_root, "stash", "push", "-u", "-m", "fingerprint");
+        await AssertMatchesAsync();
+
+        RunGit(_root, "branch", "fingerprint-ref");
+        await AssertMatchesAsync();
+
+        var head = RunGitOutput(_root, "rev-parse", "HEAD").Trim();
+        await File.WriteAllTextAsync(Path.Combine(repository.GitDirectory, "MERGE_HEAD"), head);
+        try
+        {
+            await AssertMatchesAsync();
+        }
+        finally
+        {
+            File.Delete(Path.Combine(repository.GitDirectory, "MERGE_HEAD"));
+        }
+    }
+
     private async Task<(GitRepositoryService Service, CSharpGit.Domain.Repository Repository, IRepositoryRefreshProbe Probe)> CreateRepositoryAsync()
     {
         Directory.CreateDirectory(_root);
@@ -113,6 +161,28 @@ public sealed class RepositoryRefreshProbeTests : IDisposable
     }
 
     public void Dispose() => TestDirectory.Delete(_root);
+
+    private static string RunGitOutput(string workingDirectory, params string[] arguments)
+    {
+        var startInfo = new ProcessStartInfo("git")
+        {
+            WorkingDirectory = workingDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
+
+        using var process = Process.Start(startInfo) ??
+            throw new InvalidOperationException("Git did not start.");
+        var stdout = process.StandardOutput.ReadToEnd();
+        var stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        if (process.ExitCode != 0)
+            throw new InvalidOperationException($"Git failed: {stderr}{stdout}");
+        return stdout;
+    }
 
     private static void RunGit(string workingDirectory, params string[] arguments)
     {

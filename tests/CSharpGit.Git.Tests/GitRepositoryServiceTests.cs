@@ -168,6 +168,65 @@ public sealed class GitRepositoryServiceTests : IDisposable
         Assert.Contains(diff.Lines, line => line.Kind == DiffLineKind.Removed && line.Text.Contains("before", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task ReadsDetachedHeadFromPorcelainV2()
+    {
+        Directory.CreateDirectory(_temporaryDirectory);
+        RunGit(_temporaryDirectory, "init", "-b", "main");
+        RunGit(_temporaryDirectory, "config", "user.email", "tests@example.invalid");
+        RunGit(_temporaryDirectory, "config", "user.name", "Detached Tester");
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "tracked.txt"), "tracked\n");
+        RunGit(_temporaryDirectory, "add", "tracked.txt");
+        RunGit(_temporaryDirectory, "commit", "-m", "Initial");
+        RunGit(_temporaryDirectory, "switch", "--detach", "HEAD");
+
+        var executor = GitTestServices.CreateExecutor();
+        var repository = await new GitRepositoryService(executor).OpenAsync(_temporaryDirectory);
+        var state = await new GitRepositoryStateService(executor).ReadAsync(repository);
+
+        Assert.True(state.IsDetached);
+        Assert.Null(state.HeadReference);
+        Assert.NotNull(state.HeadCommit);
+    }
+
+    [Fact]
+    public async Task ReadsUnbornBranchFromPorcelainV2()
+    {
+        Directory.CreateDirectory(_temporaryDirectory);
+        RunGit(_temporaryDirectory, "init", "-b", "main");
+
+        var executor = GitTestServices.CreateExecutor();
+        var repository = await new GitRepositoryService(executor).OpenAsync(_temporaryDirectory);
+        var state = await new GitRepositoryStateService(executor).ReadAsync(repository);
+
+        Assert.False(state.IsDetached);
+        Assert.Equal("main", state.HeadReference);
+        Assert.Null(state.HeadCommit);
+    }
+
+    [Fact]
+    public async Task ReadsDistinctFetchAndPushRemoteUrlsWithoutPerRemoteQueries()
+    {
+        Directory.CreateDirectory(_temporaryDirectory);
+        RunGit(_temporaryDirectory, "init", "-b", "main");
+        RunGit(_temporaryDirectory, "remote", "add", "origin", "https://example.invalid/fetch.git");
+        RunGit(_temporaryDirectory, "remote", "set-url", "--push", "origin", "ssh://example.invalid/push.git");
+
+        var activity = new RecordingActivitySink();
+        var executor = GitTestServices.CreateExecutor(activitySink: activity);
+        var repository = await new GitRepositoryService(executor).OpenAsync(_temporaryDirectory);
+        var state = await new GitRepositoryStateService(executor).ReadAsync(repository);
+
+        var remote = Assert.Single(state.Refs.Remotes);
+        Assert.Equal("https://example.invalid/fetch.git", remote.FetchUrl);
+        Assert.Equal("ssh://example.invalid/push.git", remote.PushUrl);
+        Assert.DoesNotContain(
+            activity.Commands,
+            arguments => arguments.Count > 1
+                         && arguments[0] == "remote"
+                         && arguments[1] == "get-url");
+    }
+
     public void Dispose()
     {
         try
@@ -180,6 +239,25 @@ public sealed class GitRepositoryServiceTests : IDisposable
         catch (UnauthorizedAccessException)
         {
         }
+    }
+
+    private sealed class RecordingActivitySink : IGitCommandActivitySink
+    {
+        public List<IReadOnlyList<string>> Commands { get; } = [];
+
+        public Guid Started(
+            string executable,
+            string workingDirectory,
+            IReadOnlyList<string> arguments,
+            GitCommandKind commandKind)
+        {
+            Commands.Add(arguments.ToArray());
+            return Guid.NewGuid();
+        }
+
+        public void OutputReceived(Guid id, GitOutputStream stream, string chunk) { }
+        public void Completed(Guid id, int exitCode) { }
+        public void Cancelled(Guid id, int? exitCode) { }
     }
 
     private static void RunGit(string workingDirectory, params string[] arguments)
