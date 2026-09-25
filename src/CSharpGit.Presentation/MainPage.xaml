@@ -208,7 +208,7 @@
             </Grid.RowDefinitions>
 
             <Border x:Name="HistoryFilterToolbar" Grid.Row="0" Style="{StaticResource ToolbarSurfaceStyle}">
-              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.M}">
+              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{StaticResource Spacing.M}">
                 <TextBox x:Name="HistoryFilter"
                          Text="{Binding FilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          PlaceholderText="Filter commits…"
@@ -244,6 +244,38 @@
                     <TextBlock x:Name="ActiveReferenceText" Style="{StaticResource BodyTextStyle}" />
                   </Border>
                   <Button Content="All refs" Click="ClearReference_Click" Style="{StaticResource CompactButtonStyle}" />
+                </StackPanel>
+                <StackPanel x:Name="HistoryPerformanceControls"
+                            Grid.Column="2"
+                            Orientation="Horizontal"
+                            Spacing="{StaticResource Spacing.S}"
+                            Visibility="Collapsed"
+                            VerticalAlignment="Center">
+                  <TextBlock x:Name="HistoryPerformanceCaptureStatus"
+                             Text="PERF CAPTURE"
+                             Style="{StaticResource TechnicalTextStyle}"
+                             Visibility="Collapsed"
+                             VerticalAlignment="Center" />
+                  <Button x:Name="HistoryPerformanceButton"
+                          Content="Perf"
+                          Style="{StaticResource CompactButtonStyle}"
+                          AutomationProperties.Name="History performance diagnostics">
+                    <Button.Flyout>
+                      <MenuFlyout>
+                        <MenuFlyoutItem x:Name="StartHistoryPerformanceCaptureMenuItem"
+                                        Text="Start performance capture"
+                                        Click="StartHistoryPerformanceCapture_Click" />
+                        <MenuFlyoutItem x:Name="StopHistoryPerformanceCaptureMenuItem"
+                                        Text="Stop performance capture"
+                                        IsEnabled="False"
+                                        Click="StopHistoryPerformanceCapture_Click" />
+                        <MenuFlyoutSeparator />
+                        <MenuFlyoutItem x:Name="OpenHistoryPerformanceDiagnosticsFolderMenuItem"
+                                        Text="Open diagnostics folder"
+                                        Click="OpenHistoryPerformanceDiagnosticsFolder_Click" />
+                      </MenuFlyout>
+                    </Button.Flyout>
+                  </Button>
                 </StackPanel>
               </Grid>
             </Border>
