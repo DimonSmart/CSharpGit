@@ -260,15 +260,17 @@ public sealed partial class SettingsPage : Page
         }
     }
 
-    private async void HistorySimplifiedRenderingToggle_Toggled(object sender, RoutedEventArgs e)
+    private async void HistoryRenderingModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_selectionReady || _viewModel.IsSynchronizingFromSettings) return;
+        if (!_selectionReady
+            || _viewModel.IsSynchronizingFromSettings
+            || HistoryRenderingModeComboBox.SelectedItem is not HistoryRenderingModeOption option)
+            return;
 
         SettingsMessage.IsOpen = false;
         try
         {
-            await _viewModel.ApplyHistorySimplifiedRenderingEnabledAsync(
-                HistorySimplifiedRenderingToggle.IsOn);
+            await _viewModel.ApplyHistoryRenderingModeAsync(option);
         }
         catch (Exception exception)
         {
