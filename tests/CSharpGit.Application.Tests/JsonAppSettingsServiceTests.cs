@@ -355,6 +355,8 @@ public sealed class JsonAppSettingsServiceTests
         using var fixture = new SettingsFixture();
         var service = fixture.CreateService();
 
+        if (mode == HistoryRenderingMode.Full)
+            await service.SetHistoryRenderingModeAsync(HistoryRenderingMode.SubjectOnly);
         await service.SetHistoryRenderingModeAsync(mode);
 
         Assert.Equal(mode, service.HistoryRenderingMode);
