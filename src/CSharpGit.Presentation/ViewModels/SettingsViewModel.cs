@@ -25,6 +25,11 @@ public sealed record GitConsoleAutoOpenOption(
     string Label,
     string Description);
 
+public sealed record HistoryRenderingModeOption(
+    HistoryRenderingMode Mode,
+    string Label,
+    string Description);
+
 public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly IAppSettingsService _settings;
@@ -38,7 +43,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
     private bool _showAuthorAvatars;
     private bool _onlineAvatarLookupEnabled;
     private bool _historyPerformanceDiagnosticsEnabled;
-    private bool _historySimplifiedRenderingEnabled;
+    private HistoryRenderingModeOption _selectedHistoryRenderingMode;
     private int _disposed;
     private int _synchronizingFromSettings;
 
@@ -92,6 +97,15 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
             new(GitConsoleAutoOpenMode.Never, "Never", "Open only when requested manually.")
         ];
 
+        HistoryRenderingModes =
+        [
+            new(HistoryRenderingMode.SubjectOnly, "1 — Subject only", "Commit subject only. Minimal History row baseline."),
+            new(HistoryRenderingMode.TextColumns, "2 — Text columns", "Subject, author, authored time and hash as simple text. No graph, references or avatar."),
+            new(HistoryRenderingMode.TextAndGraph, "3 — Text + graph", "Text columns plus Commit Graph. No references or avatar."),
+            new(HistoryRenderingMode.TextGraphAndReferences, "4 — Text + graph + references", "Adds reflog and reference badges. No avatar; authored time remains a simple TextBlock."),
+            new(HistoryRenderingMode.Full, "5 — Full production", "Current production History row, including references, author avatar and CommitTimeText.")
+        ];
+
         _selectedThemeMode = FindThemeMode(_settings.ThemeMode);
         _selectedCommitTimeMode = FindCommitTimeMode(_settings.CommitTimeDisplayMode);
         _loggingEnabled = _settings.LoggingEnabled;
@@ -101,7 +115,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         _showAuthorAvatars = _settings.ShowAuthorAvatars;
         _onlineAvatarLookupEnabled = _settings.OnlineAvatarLookupEnabled;
         _historyPerformanceDiagnosticsEnabled = _settings.HistoryPerformanceDiagnosticsEnabled;
-        _historySimplifiedRenderingEnabled = _settings.HistorySimplifiedRenderingEnabled;
+        _selectedHistoryRenderingMode = FindHistoryRenderingMode(_settings.HistoryRenderingMode);
 
         _settings.Changed += Settings_Changed;
     }
@@ -215,13 +229,15 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
-    public bool HistorySimplifiedRenderingEnabled
+    public IReadOnlyList<HistoryRenderingModeOption> HistoryRenderingModes { get; }
+
+    public HistoryRenderingModeOption SelectedHistoryRenderingMode
     {
-        get => _historySimplifiedRenderingEnabled;
+        get => _selectedHistoryRenderingMode;
         set
         {
-            if (_historySimplifiedRenderingEnabled == value) return;
-            _historySimplifiedRenderingEnabled = value;
+            if (Equals(_selectedHistoryRenderingMode, value)) return;
+            _selectedHistoryRenderingMode = value;
             Notify();
         }
     }
@@ -363,14 +379,15 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
-    public async Task ApplyHistorySimplifiedRenderingEnabledAsync(
-        bool value,
+    public async Task ApplyHistoryRenderingModeAsync(
+        HistoryRenderingModeOption option,
         CancellationToken cancellationToken = default)
     {
-        HistorySimplifiedRenderingEnabled = value;
+        ArgumentNullException.ThrowIfNull(option);
+        SelectedHistoryRenderingMode = option;
         try
         {
-            await _settings.SetHistorySimplifiedRenderingEnabledAsync(value, cancellationToken);
+            await _settings.SetHistoryRenderingModeAsync(option.Mode, cancellationToken);
         }
         catch
         {
@@ -412,7 +429,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
             ShowAuthorAvatars = _settings.ShowAuthorAvatars;
             OnlineAvatarLookupEnabled = _settings.OnlineAvatarLookupEnabled;
             HistoryPerformanceDiagnosticsEnabled = _settings.HistoryPerformanceDiagnosticsEnabled;
-            HistorySimplifiedRenderingEnabled = _settings.HistorySimplifiedRenderingEnabled;
+            SelectedHistoryRenderingMode = FindHistoryRenderingMode(_settings.HistoryRenderingMode);
         }
         finally
         {
@@ -462,6 +479,9 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
 
     private GitConsoleAutoOpenOption FindGitConsoleMode(GitConsoleAutoOpenMode mode) =>
         GitConsoleAutoOpenModes.First(option => option.Mode == mode);
+
+    private HistoryRenderingModeOption FindHistoryRenderingMode(HistoryRenderingMode mode) =>
+        HistoryRenderingModes.First(option => option.Mode == mode);
 
     private void Notify([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
