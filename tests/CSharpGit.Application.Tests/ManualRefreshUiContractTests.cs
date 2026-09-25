@@ -36,6 +36,9 @@ public sealed class ManualRefreshUiContractTests
         Assert.Contains("DisplayedRefreshBaselineRevision", refresh);
         Assert.Contains("_repositoryChangeMonitor.Suspend()", refresh);
         Assert.Contains("_repositoryChangeMonitor.Resume()", refresh);
+        Assert.Contains("revalidateAfterPublish", refresh);
+        Assert.Contains("if (revalidateAfterPublish)", refresh);
+        Assert.DoesNotContain("UpdateRefreshIndicator();\n        QueueRepositoryProbe(_repositoryChangeMonitor.Generation);", refresh, StringComparison.Ordinal);
         Assert.DoesNotContain("_repositoryChangeMonitor.Acknowledge()", refresh);
         Assert.Contains("Repository has changed externally. Refresh to see the latest state.", refresh);
         Assert.Contains("Microsoft.UI.Colors.LimeGreen", refresh);

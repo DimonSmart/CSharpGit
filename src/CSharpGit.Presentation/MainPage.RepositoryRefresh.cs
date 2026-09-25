@@ -73,13 +73,22 @@ public sealed partial class MainPage
         if (baseline is null) return;
 
         var baselineRevision = _viewModel.DisplayedRefreshBaselineRevision;
+        var revalidateAfterPublish =
+            _repositoryRefreshLifecycle.IsRefreshRequired
+            || _repositoryProbeRunning
+            || _repositoryProbePending;
         if (!_repositoryRefreshLifecycle.PublishBaseline(baselineRevision)) return;
 
         _displayedRefreshFingerprint = baseline;
         _repositoryProbePending = false;
         _repositoryChangeMonitor.Resume();
         UpdateRefreshIndicator();
-        QueueRepositoryProbe(_repositoryChangeMonitor.Generation);
+
+        // A clean initial/full refresh already produced this baseline. Re-probe only when
+        // an invalidation was observed while the baseline was being produced, or when the
+        // monitor had been suspended after latching an external change.
+        if (revalidateAfterPublish)
+            QueueRepositoryProbe(_repositoryChangeMonitor.Generation);
     }
 
     private void UpdateRepositoryChangeMonitor()
