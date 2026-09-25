@@ -19,10 +19,20 @@ public sealed partial class MainPage
         await RunDesktopDensityCheckAsync(failures);
 
         var originalDetailsHeight = HistoryPane.RowDefinitions[3].Height;
-        var initialCount = _viewModel.History.Count;
         try
         {
-            Check(initialCount >= 80, "graph viewport fixture is too small to exercise ListView recycling", failures);
+            while (_viewModel.History.Count < 300 && _viewModel.HasMore)
+            {
+                if (_viewModel.LoadMoreCommand is not AsyncCommand preload)
+                    break;
+                await preload.ExecuteAsync();
+            }
+
+            Check(_viewModel.History.Count >= 300,
+                $"graph viewport fixture loaded only {_viewModel.History.Count} rows; expected at least 300",
+                failures);
+            HistoryRenderDiagnostics.EnableForCheck();
+            HistoryRenderDiagnostics.Reset();
 
             for (var cycle = 0; cycle < 6; cycle++)
             {
@@ -32,9 +42,10 @@ public sealed partial class MainPage
                 var indexes = new[]
                 {
                     0,
-                    Math.Min(_viewModel.History.Count - 1, 35),
-                    Math.Min(_viewModel.History.Count - 1, 70),
-                    Math.Min(_viewModel.History.Count - 1, 10),
+                    Math.Min(_viewModel.History.Count - 1, 75),
+                    Math.Min(_viewModel.History.Count - 1, 160),
+                    Math.Min(_viewModel.History.Count - 1, 260),
+                    Math.Min(_viewModel.History.Count - 1, 20),
                 };
 
                 foreach (var index in indexes)
@@ -56,6 +67,10 @@ public sealed partial class MainPage
                         $"history row {index} did not paint its current graph after viewport recycle", failures);
                     Check(graph?.HasCurrentClipForCheck() == true,
                         $"history row {index} graph clip does not match its render area", failures);
+                    var avatar = FindDescendant<AuthorAvatar>(container);
+                    Check(avatar is not null, $"history row {index} has no author avatar", failures);
+                    Check(avatar?.HasCurrentIdentityForCheck(row.Commit.Author, row.Commit.AuthorEmail) == true,
+                        $"history row {index} avatar still represents a recycled author", failures);
                     if (graph is not null)
                     {
                         var layout = ActiveCommitGraphLayout;
@@ -93,6 +108,26 @@ public sealed partial class MainPage
                     "commit graph was stale after returning to the top of history", failures);
                 CheckAdjacentHistoryGraphSurfaces(0, failures);
             }
+
+            var diagnostics = HistoryRenderDiagnostics.Snapshot();
+            Check(diagnostics.RecursiveGraphLayoutTraversals == 0,
+                $"history scrolling performed {diagnostics.RecursiveGraphLayoutTraversals} recursive graph layout traversals",
+                failures);
+            Check(diagnostics.RecursiveAvatarConfigurationTraversals == 0,
+                $"history scrolling performed {diagnostics.RecursiveAvatarConfigurationTraversals} recursive avatar configuration traversals",
+                failures);
+            Check(diagnostics.ExplicitAvatarConfigurations == 0,
+                $"history scrolling explicitly reconfigured {diagnostics.ExplicitAvatarConfigurations} author avatars",
+                failures);
+            Check(diagnostics.GraphControlsCreated > 0 && diagnostics.AuthorAvatarsCreated > 0,
+                "history render diagnostics did not observe realized graph/avatar controls",
+                failures);
+            Check(diagnostics.GeometryUpdateAttempts >= diagnostics.GeometryRebuilds,
+                $"geometry rebuild count {diagnostics.GeometryRebuilds} exceeded update attempts {diagnostics.GeometryUpdateAttempts}",
+                failures);
+            Check(diagnostics.GeometryUpdateAttempts > diagnostics.GeometryRebuilds,
+                "commit graph render-key guard did not suppress any geometry update attempt during recycling",
+                failures);
         }
         finally
         {

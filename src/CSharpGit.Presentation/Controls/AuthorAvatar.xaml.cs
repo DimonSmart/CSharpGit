@@ -278,6 +278,17 @@ public sealed partial class AuthorAvatar : UserControl
         InitialsText.FontSize = Math.Max(8, size * 0.42);
     }
 
+    internal bool HasCurrentIdentityForCheck(string authorName, string authorEmail)
+    {
+        var expectedIdentity =
+            (authorEmail ?? string.Empty).Trim().ToLowerInvariant()
+            + "\n"
+            + (authorName ?? string.Empty).Trim();
+        return string.Equals(CurrentIdentity(), expectedIdentity, StringComparison.Ordinal)
+            && (_displayedRemoteIdentity is null
+                || string.Equals(_displayedRemoteIdentity, expectedIdentity, StringComparison.Ordinal));
+    }
+
     private string CurrentIdentity() =>
         (AuthorEmail ?? string.Empty).Trim().ToLowerInvariant()
         + "\n"

@@ -16,7 +16,8 @@ public sealed class AuthorAvatarUiContractTests
         Assert.Contains(@"AvatarSize=""18""", history, StringComparison.Ordinal);
         Assert.Contains(@"<ColumnDefinition Width=""160"" />", mainPage, StringComparison.Ordinal);
         Assert.Contains(@"MinHeight=""{StaticResource Height.DataRow}""", history, StringComparison.Ordinal);
-        Assert.Contains("ConfigureAuthorAvatars(container)", lifecycle, StringComparison.Ordinal);
+        Assert.DoesNotContain("ConfigureAuthorAvatars", lifecycle, StringComparison.Ordinal);
+        Assert.DoesNotContain("VisualTreeHelper", lifecycle, StringComparison.Ordinal);
         Assert.DoesNotContain("await avatar", history, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -58,17 +59,20 @@ public sealed class AuthorAvatarUiContractTests
     }
 
     [Fact]
-    public void AvatarControlUsesExplicitCompositionInsteadOfServiceLocator()
+    public void AvatarControlUsesPresentationContextWithoutHistoryTreeTraversal()
     {
         var root = FindRepositoryRoot();
         var control = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "AuthorAvatar.xaml.cs"));
         var host = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.AuthorAvatars.cs"));
+        var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
 
         Assert.Contains("internal void Configure(", control, StringComparison.Ordinal);
-        Assert.Contains("avatar.Configure(_authorAvatarService, _authorAvatarSettings)", host, StringComparison.Ordinal);
+        Assert.Contains("AuthorAvatarServiceContext.TryGet", control, StringComparison.Ordinal);
+        Assert.Contains("AuthorAvatarServiceContext.Configure", composition, StringComparison.Ordinal);
+        Assert.DoesNotContain("ConfigureAuthorAvatars", host, StringComparison.Ordinal);
+        Assert.DoesNotContain("VisualTreeHelper", host, StringComparison.Ordinal);
         Assert.DoesNotContain("GetRequiredService", control, StringComparison.Ordinal);
         Assert.DoesNotContain("ServiceProvider", control, StringComparison.Ordinal);
-        Assert.DoesNotContain("static IAuthorAvatarService", control, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()
