@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
+using CSharpGit.Presentation.Controls;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
@@ -68,6 +69,7 @@ public sealed partial class MainPage
         _repositoryImageService = repositoryImageService ?? throw new ArgumentNullException(nameof(repositoryImageService));
         _authorAvatarService = authorAvatarService ?? throw new ArgumentNullException(nameof(authorAvatarService));
         _authorAvatarSettings = appSettings;
+        AuthorAvatarServiceContext.Configure(_authorAvatarService, _authorAvatarSettings);
         CommitDetailsContent.ConfigureAuthorAvatar(_authorAvatarService, _authorAvatarSettings);
         _recentRepositoryFolderPicker = recentRepositoryFolderPicker ?? throw new ArgumentNullException(nameof(recentRepositoryFolderPicker));
         _settingsWindowController = settingsWindowController ?? throw new ArgumentNullException(nameof(settingsWindowController));

@@ -29,6 +29,7 @@ public sealed partial class AuthorAvatar : UserControl
 
     public AuthorAvatar()
     {
+        HistoryRenderDiagnostics.AuthorAvatarCreated();
         InitializeComponent();
         Loaded += AuthorAvatar_Loaded;
         Unloaded += AuthorAvatar_Unloaded;
@@ -78,6 +79,7 @@ public sealed partial class AuthorAvatar : UserControl
     {
         ArgumentNullException.ThrowIfNull(avatarService);
         ArgumentNullException.ThrowIfNull(settings);
+        HistoryRenderDiagnostics.ExplicitAvatarConfigured();
 
         if (!ReferenceEquals(_settings, settings))
             DetachSettings();
@@ -106,6 +108,7 @@ public sealed partial class AuthorAvatar : UserControl
 
     private void AuthorAvatar_Loaded(object sender, RoutedEventArgs args)
     {
+        EnsureServices();
         AttachSettings();
         Refresh();
     }
@@ -114,6 +117,18 @@ public sealed partial class AuthorAvatar : UserControl
     {
         _requestGate.Cancel();
         DetachSettings();
+    }
+
+    private void EnsureServices()
+    {
+        if (_avatarService is not null && _settings is not null)
+            return;
+
+        if (!AuthorAvatarServiceContext.TryGet(out var avatarService, out var settings))
+            return;
+
+        _avatarService = avatarService;
+        _settings = settings;
     }
 
     private void AttachSettings()
