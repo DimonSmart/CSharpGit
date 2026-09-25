@@ -178,6 +178,25 @@ public sealed class AuthorAvatarServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task DiagnosticActivityReportsPrivacySafeCacheAndRemoteCategories()
+    {
+        var handler = new StubHandler(_ => ImageResponse());
+        var service = CreateService(handler);
+        var activities = new List<AuthorAvatarDiagnosticActivityEventArgs>();
+        ((IAuthorAvatarDiagnosticSource)service).DiagnosticActivity += (_, activity) => activities.Add(activity);
+
+        await service.ResolveAsync("John Doe", "john@example.com");
+        await service.ResolveAsync("John Doe", "john@example.com");
+
+        Assert.Contains(activities, item => item.Kind == AuthorAvatarDiagnosticActivityKind.MemoryCacheMiss);
+        Assert.Contains(activities, item => item.Kind == AuthorAvatarDiagnosticActivityKind.DiskCacheMiss);
+        Assert.Contains(activities, item => item.Kind == AuthorAvatarDiagnosticActivityKind.RemoteRequest);
+        Assert.Contains(activities, item => item.Kind == AuthorAvatarDiagnosticActivityKind.RemoteBytesRead && item.Bytes > 0);
+        Assert.Contains(activities, item => item.Kind == AuthorAvatarDiagnosticActivityKind.DiskCacheWrite && item.Bytes > 0);
+        Assert.Contains(activities, item => item.Kind == AuthorAvatarDiagnosticActivityKind.MemoryCacheHit);
+    }
+
+    [Fact]
     public async Task FreshDiskCacheAvoidsNetworkAcrossServiceInstances()
     {
         var firstHandler = new StubHandler(_ => ImageResponse());
