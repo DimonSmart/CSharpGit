@@ -171,6 +171,18 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
+    public async Task HistoryPerformanceDiagnosticsAppliesWithoutRestart()
+    {
+        var settings = new FakeAppSettingsService();
+        using var viewModel = CreateViewModel(settings);
+
+        await viewModel.ApplyHistoryPerformanceDiagnosticsEnabledAsync(true);
+
+        Assert.True(settings.HistoryPerformanceDiagnosticsEnabled);
+        Assert.True(viewModel.HistoryPerformanceDiagnosticsEnabled);
+    }
+
+    [Fact]
     public void DisposeIsIdempotent()
     {
         var settings = new FakeAppSettingsService();
