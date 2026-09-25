@@ -23,3 +23,28 @@ public interface IAuthorAvatarService
         string authorEmail,
         CancellationToken cancellationToken = default);
 }
+
+
+public enum AuthorAvatarDiagnosticActivityKind
+{
+    MemoryCacheHit,
+    MemoryCacheMiss,
+    DiskCacheHit,
+    DiskCacheMiss,
+    DiskCacheWrite,
+    RemoteRequest,
+    RemoteBytesRead
+}
+
+public sealed class AuthorAvatarDiagnosticActivityEventArgs(
+    AuthorAvatarDiagnosticActivityKind kind,
+    long bytes = 0) : EventArgs
+{
+    public AuthorAvatarDiagnosticActivityKind Kind { get; } = kind;
+    public long Bytes { get; } = bytes;
+}
+
+public interface IAuthorAvatarDiagnosticSource
+{
+    event EventHandler<AuthorAvatarDiagnosticActivityEventArgs>? DiagnosticActivity;
+}
