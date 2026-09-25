@@ -19,7 +19,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private readonly ILogger<OpenRepositoryViewModel> _logger;
     private readonly IHistoryService _historyService;
     private readonly IRepositoryStateService _stateService;
-    private readonly IRepositoryRefreshProbe _refreshProbe;
     private readonly IWorkingTreeService _workingTreeService;
     private readonly IReferenceService _referenceService;
     private readonly IRepositorySyncService _syncService;
@@ -93,7 +92,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         _repositoryService = repositoryService;
         _historyService = historyService;
         _stateService = stateService;
-        _refreshProbe = refreshProbe ?? throw new ArgumentNullException(nameof(refreshProbe));
+        _ = refreshProbe ?? throw new ArgumentNullException(nameof(refreshProbe));
         _workingTreeService = workingTreeService;
         _referenceService = referenceService;
         _syncService = syncService;
@@ -603,19 +602,13 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         try
         {
             var repository = Repository;
-            RepositoryRefreshFingerprint? refreshFingerprint = null;
-            try
-            {
-                refreshFingerprint = await _refreshProbe.ReadAsync(repository);
-            }
-            catch (Exception exception) when (exception is not OperationCanceledException)
-            {
-                _logger.LogDebug(exception, "Could not capture repository refresh baseline");
-            }
-
-            var state = localOnly
-                ? await _stateService.ReadLocalOnlyAsync(repository)
-                : await _stateService.ReadAsync(repository);
+            var stateRead = await _stateService.ReadWithRefreshFingerprintAsync(
+                repository,
+                localOnly);
+            var state = stateRead.State;
+            var refreshFingerprint = stateRead.RefreshFingerprint;
+            if (refreshFingerprint is null)
+                _logger.LogDebug("Repository state was read without a reliable refresh fingerprint");
             if (!ReferenceEquals(repository, Repository)) return;
 
             var shortHead = state.HeadCommit is { } commit ? commit[..Math.Min(10, commit.Length)] : "no commit";

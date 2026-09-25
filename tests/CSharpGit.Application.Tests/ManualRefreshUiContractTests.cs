@@ -64,7 +64,8 @@ public sealed class ManualRefreshUiContractTests
         Assert.Contains("DisplayedRefreshFingerprint", viewModel);
         Assert.Contains("DisplayedRefreshBaselineRevision", viewModel);
         Assert.Contains("PublishDisplayedRefreshBaseline", viewModel);
-        Assert.Contains("_refreshProbe.ReadAsync(repository)", viewModel);
+        Assert.Contains("ReadWithRefreshFingerprintAsync", viewModel);
+        Assert.DoesNotContain("_refreshProbe.ReadAsync", viewModel);
         Assert.DoesNotContain("PeriodicTimer", session);
         Assert.DoesNotContain("PollInterval", session);
 
