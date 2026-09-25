@@ -56,7 +56,7 @@ internal sealed record HistoryPerformanceStartContext(
     int ObservedMaxLaneCount,
     bool AvatarsEnabled,
     bool OnlineAvatarLookupEnabled,
-    bool SimplifiedHistoryRenderingEnabled,
+    HistoryRenderingMode HistoryRenderingMode,
     double WindowWidth,
     double WindowHeight,
     double? RasterizationScale);
@@ -357,7 +357,7 @@ internal sealed class HistoryPerformanceSession
         await _writerReady.Task.ConfigureAwait(false);
         await WriteRequiredAsync(Serialize(new Dictionary<string, object?>
         {
-            ["schemaVersion"] = 1,
+            ["schemaVersion"] = 2,
             ["type"] = "sessionStart",
             ["elapsedMs"] = 0,
             ["startedUtc"] = _startedUtc,
@@ -391,7 +391,7 @@ internal sealed class HistoryPerformanceSession
             ["observedMaxLaneCount"] = _context.ObservedMaxLaneCount,
             ["avatarsEnabled"] = _context.AvatarsEnabled,
             ["onlineAvatarLookupEnabled"] = _context.OnlineAvatarLookupEnabled,
-            ["simplifiedHistoryRendering"] = _context.SimplifiedHistoryRenderingEnabled
+            ["historyRenderingMode"] = _context.HistoryRenderingMode.ToString()
         })).ConfigureAwait(false);
 
         _snapshotTask = Task.Run(SnapshotLoopAsync);
@@ -949,7 +949,7 @@ internal sealed class HistoryPerformanceSession
         builder.AppendLine($"Stop reason:                      {reason}");
         builder.AppendLine();
         builder.AppendLine($"History items:                    {_context.HistoryItems}");
-        builder.AppendLine($"Simplified History rendering:     {(_context.SimplifiedHistoryRenderingEnabled ? "yes" : "no")}");
+        builder.AppendLine($"History rendering mode:           {_context.HistoryRenderingMode}");
         builder.AppendLine($"Visited indexes:                  {FormatVisitedRange()}");
         builder.AppendLine($"ViewChanged events:               {Volatile.Read(ref ViewChangedCount)}");
         builder.AppendLine($"Intermediate / final:             {Volatile.Read(ref ViewChangedIntermediateCount)} / {Volatile.Read(ref ViewChangedFinalCount)}");
