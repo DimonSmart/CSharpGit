@@ -45,6 +45,8 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
         Assert.DoesNotContain("[\"gitStdout\"]", source, StringComparison.Ordinal);
         Assert.DoesNotContain("[\"gitStderr\"]", source, StringComparison.Ordinal);
         Assert.Contains("[\"gitCommandCategories\"]", source, StringComparison.Ordinal);
+        Assert.Contains("[\"avatarCacheActivity\"]", source, StringComparison.Ordinal);
+        Assert.Contains("AvatarDiskBytesWritten", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -79,6 +81,21 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
     }
 
     [Fact]
+    public void HistoryScanDiagnosticsDistinguishPotentialLinearWork()
+    {
+        var source = Read("src", "CSharpGit.Presentation", "Diagnostics", "HistoryPerformanceDiagnostics.cs");
+        var page = Read("src", "CSharpGit.Presentation", "MainPage.xaml.cs");
+
+        Assert.Contains("HistoryGlobalScan", source, StringComparison.Ordinal);
+        Assert.Contains("HistoryIndexLookup", source, StringComparison.Ordinal);
+        Assert.Contains("CommitLookup", source, StringComparison.Ordinal);
+        Assert.Contains("ParentLookup", source, StringComparison.Ordinal);
+        Assert.Contains("RefLookup", source, StringComparison.Ordinal);
+        Assert.Contains("ItemsExamined", source, StringComparison.Ordinal);
+        Assert.Contains("CommitLookupCompleted", page, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void LayoutAndScrollInstrumentationDoesNotAddFullHistoryScanToScrolling()
     {
         var layout = Read("src", "CSharpGit.Presentation", "MainPage.CommitGraphLayout.cs");
@@ -89,6 +106,7 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
         Assert.Contains("PresentationPublished", Read("src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphPresentationContext.cs"), StringComparison.Ordinal);
         Assert.Contains("HistoryViewChanged", scroll, StringComparison.Ordinal);
         Assert.Contains("PageLoadStarted", scroll, StringComparison.Ordinal);
+        Assert.Contains("e.IsIntermediate", scroll, StringComparison.Ordinal);
         Assert.DoesNotContain("IndexOf", scroll, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach", scroll, StringComparison.Ordinal);
     }
