@@ -29,9 +29,14 @@ public sealed class SettingsDiagnosticsUiContractTests
 
         Assert.Contains("Enable history performance diagnostics", xaml, StringComparison.Ordinal);
         Assert.Contains("HistoryPerformanceDiagnosticsEnabled", settings, StringComparison.Ordinal);
-        Assert.Contains("HistorySimplifiedRenderingEnabled", settings, StringComparison.Ordinal);
-        Assert.Contains("Use simplified History rendering", xaml, StringComparison.Ordinal);
-        Assert.Contains("SimplifiedHistoryItemTemplate", File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml")), StringComparison.Ordinal);
+        Assert.Contains("HistoryRenderingMode", settings, StringComparison.Ordinal);
+        Assert.Contains("History row rendering mode", xaml, StringComparison.Ordinal);
+        Assert.Contains("HistoryRenderingModeComboBox", xaml, StringComparison.Ordinal);
+        var templates = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml"));
+        Assert.Contains("SimplifiedHistoryItemTemplate", templates, StringComparison.Ordinal);
+        Assert.Contains("HistoryTextColumnsItemTemplate", templates, StringComparison.Ordinal);
+        Assert.Contains("HistoryTextGraphItemTemplate", templates, StringComparison.Ordinal);
+        Assert.Contains("HistoryTextGraphReferencesItemTemplate", templates, StringComparison.Ordinal);
         Assert.Contains("History performance capture", xaml, StringComparison.Ordinal);
         Assert.Contains("independent of normal file logging", xaml, StringComparison.OrdinalIgnoreCase);
     }
