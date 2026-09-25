@@ -33,6 +33,9 @@ public sealed partial class MainPage
                 failures);
             HistoryRenderDiagnostics.EnableForCheck();
             HistoryRenderDiagnostics.Reset();
+            using var benchmarkProcess = System.Diagnostics.Process.GetCurrentProcess();
+            var cpuBefore = benchmarkProcess.TotalProcessorTime;
+            var scrollStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
             for (var cycle = 0; cycle < 6; cycle++)
             {
@@ -109,6 +112,8 @@ public sealed partial class MainPage
                 CheckAdjacentHistoryGraphSurfaces(0, failures);
             }
 
+            scrollStopwatch.Stop();
+            var cpuDelta = benchmarkProcess.TotalProcessorTime - cpuBefore;
             var diagnostics = HistoryRenderDiagnostics.Snapshot();
             Check(diagnostics.RecursiveGraphLayoutTraversals == 0,
                 $"history scrolling performed {diagnostics.RecursiveGraphLayoutTraversals} recursive graph layout traversals",
@@ -123,9 +128,14 @@ public sealed partial class MainPage
                 $"geometry rebuild count {diagnostics.GeometryRebuilds} exceeded update attempts {diagnostics.GeometryUpdateAttempts}",
                 failures);
             System.Diagnostics.Trace.WriteLine(
-                $"History render diagnostics: graph controls created={diagnostics.GraphControlsCreated}, "
+                $"History scripted scroll: wall={scrollStopwatch.Elapsed.TotalMilliseconds:0.###} ms, "
+                + $"cpu={cpuDelta.TotalMilliseconds:0.###} ms, "
+                + $"graph controls created={diagnostics.GraphControlsCreated}, "
                 + $"geometry attempts={diagnostics.GeometryUpdateAttempts}, rebuilds={diagnostics.GeometryRebuilds}, "
-                + $"author avatars created={diagnostics.AuthorAvatarsCreated}, explicit avatar configurations={diagnostics.ExplicitAvatarConfigurations}");
+                + $"author avatars created={diagnostics.AuthorAvatarsCreated}, "
+                + $"explicit avatar configurations={diagnostics.ExplicitAvatarConfigurations}, "
+                + $"recursive graph traversals={diagnostics.RecursiveGraphLayoutTraversals}, "
+                + $"recursive avatar traversals={diagnostics.RecursiveAvatarConfigurationTraversals}");
         }
         finally
         {

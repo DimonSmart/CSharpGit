@@ -35,22 +35,11 @@ internal sealed class DefaultBranchRepositoryStateService : IRepositoryStateServ
         CancellationToken cancellationToken = default)
     {
         var read = await ReadDetailedAsync(repository, cancellationToken);
-        RepositoryRefreshFingerprint? fingerprint = null;
-        try
-        {
-            fingerprint = await _inner.BuildRefreshFingerprintAsync(
-                repository,
-                read.State,
-                read.RelevantConfiguration,
-                cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch
-        {
-        }
+        var fingerprint = await _inner.BuildRefreshFingerprintAsync(
+            repository,
+            read.State,
+            read.RelevantConfiguration,
+            cancellationToken);
 
         return new RepositoryStateReadResult(read.State, fingerprint);
     }
