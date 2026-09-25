@@ -221,6 +221,7 @@ public sealed class SettingsViewModelTests
         public bool AutoSetupRemoteOnPush { get; set; }
         public bool ShowAuthorAvatars { get; set; } = true;
         public bool OnlineAvatarLookupEnabled { get; set; } = true;
+        public bool HistoryPerformanceDiagnosticsEnabled { get; set; }
         public IReadOnlyList<RecentRepositorySettings> RecentRepositories => [];
         public bool FailNextWrite { get; set; }
         public int ChangedSubscriberCount { get; private set; }
@@ -300,6 +301,15 @@ public sealed class SettingsViewModelTests
             ThrowIfWriteFails(cancellationToken);
             if (OnlineAvatarLookupEnabled == value) return Task.CompletedTask;
             OnlineAvatarLookupEnabled = value;
+            _changed?.Invoke(this, EventArgs.Empty);
+            return Task.CompletedTask;
+        }
+
+        public Task SetHistoryPerformanceDiagnosticsEnabledAsync(bool value, CancellationToken cancellationToken = default)
+        {
+            ThrowIfWriteFails(cancellationToken);
+            if (HistoryPerformanceDiagnosticsEnabled == value) return Task.CompletedTask;
+            HistoryPerformanceDiagnosticsEnabled = value;
             _changed?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
         }
