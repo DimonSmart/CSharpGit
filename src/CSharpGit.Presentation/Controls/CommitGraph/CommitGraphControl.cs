@@ -1,4 +1,5 @@
 using CSharpGit.Presentation.Controls.CommitGraph;
+using CSharpGit.Presentation.Diagnostics;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -67,11 +68,12 @@ public sealed class CommitGraphControl : Canvas
                 return;
             }
 
+            HistoryRenderDiagnostics.GraphMetricsChanged();
             _metrics = value;
             foreach (var path in _trackPaths)
                 path.StrokeThickness = value.LineThickness;
             InvalidateMeasure();
-            UpdateGeometry();
+            UpdateGeometry(HistoryGeometryUpdateReason.MetricsChanged);
         }
     }
 
@@ -98,21 +100,28 @@ public sealed class CommitGraphControl : Canvas
 
         Loaded += CommitGraphControl_Loaded;
         Unloaded += CommitGraphControl_Unloaded;
-        DataContextChanged += (_, _) => UpdateGeometry();
+        DataContextChanged += (_, _) =>
+        {
+            HistoryRenderDiagnostics.GraphDataContextChanged();
+            UpdateGeometry(HistoryGeometryUpdateReason.DataContextChanged);
+        };
         SizeChanged += (_, _) =>
         {
+            HistoryRenderDiagnostics.GraphSizeChanged();
             UpdateClip();
-            UpdateGeometry();
+            UpdateGeometry(HistoryGeometryUpdateReason.SizeChanged);
         };
         ActualThemeChanged += (_, _) =>
         {
+            HistoryRenderDiagnostics.GraphThemeChanged();
             UpdateBrushes();
-            UpdateGeometry();
+            UpdateGeometry(HistoryGeometryUpdateReason.ThemeChanged);
         };
     }
 
     private void CommitGraphControl_Loaded(object sender, RoutedEventArgs args)
     {
+        HistoryRenderDiagnostics.GraphLoaded();
         if (!_presentationContextSubscribed)
         {
             CommitGraphPresentationContext.Changed += CommitGraphPresentationContext_Changed;
@@ -121,11 +130,12 @@ public sealed class CommitGraphControl : Canvas
 
         ApplyPresentationLayout();
         UpdateClip();
-        UpdateGeometry();
+        UpdateGeometry(HistoryGeometryUpdateReason.Loaded);
     }
 
     private void CommitGraphControl_Unloaded(object sender, RoutedEventArgs args)
     {
+        HistoryRenderDiagnostics.GraphUnloaded();
         if (!_presentationContextSubscribed)
             return;
 
@@ -133,8 +143,14 @@ public sealed class CommitGraphControl : Canvas
         _presentationContextSubscribed = false;
     }
 
-    private void CommitGraphPresentationContext_Changed(object? sender, EventArgs args) =>
+    private void CommitGraphPresentationContext_Changed(object? sender, EventArgs args)
+    {
+        var startedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
+        HistoryRenderDiagnostics.GraphPresentationContextChanged();
         ApplyPresentationLayout();
+        UpdateGeometry(HistoryGeometryUpdateReason.PresentationContextChanged);
+        HistoryRenderDiagnostics.PresentationDelivered(startedAt);
+    }
 
     private void ApplyPresentationLayout()
     {
@@ -145,9 +161,20 @@ public sealed class CommitGraphControl : Canvas
 
     protected override Size MeasureOverride(Size availableSize)
     {
+        var startedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
         var measured = base.MeasureOverride(availableSize);
         var width = double.IsFinite(availableSize.Width) ? Math.Max(0, availableSize.Width) : 0;
-        return new Size(width, measured.Height);
+        var result = new Size(width, measured.Height);
+        HistoryRenderDiagnostics.GraphMeasureCompleted(startedAt);
+        return result;
+    }
+
+    protected override Size ArrangeOverride(Size finalSize)
+    {
+        var startedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
+        var result = base.ArrangeOverride(finalSize);
+        HistoryRenderDiagnostics.GraphArrangeCompleted(startedAt);
+        return result;
     }
 
     private static void OnGraphChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
@@ -157,8 +184,9 @@ public sealed class CommitGraphControl : Canvas
             return;
         }
 
+        HistoryRenderDiagnostics.GraphChanged();
         control.InvalidateMeasure();
-        control.UpdateGeometry();
+        control.UpdateGeometry(HistoryGeometryUpdateReason.GraphChanged);
     }
 
     private void UpdateClip()
@@ -168,13 +196,15 @@ public sealed class CommitGraphControl : Canvas
         _clipGeometry.Rect = new Rect(0, 0, width, height);
     }
 
-    private void UpdateGeometry()
+    private void UpdateGeometry(HistoryGeometryUpdateReason reason = HistoryGeometryUpdateReason.Unknown)
     {
-        HistoryRenderDiagnostics.GeometryUpdateAttempted();
+        HistoryRenderDiagnostics.GeometryUpdateAttempted(reason);
+        var rebuildStartedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
         var graph = Graph;
         var height = ActualHeight;
         if (!double.IsFinite(height) || height <= 0)
         {
+            HistoryRenderDiagnostics.GeometrySkippedInvalidHeight();
             return;
         }
 
@@ -186,10 +216,9 @@ public sealed class CommitGraphControl : Canvas
             && _renderedTheme == theme
             && _renderedMetrics == metrics)
         {
+            HistoryRenderDiagnostics.GeometryCacheHit();
             return;
         }
-
-        HistoryRenderDiagnostics.GeometryRebuilt();
 
         foreach (var path in _trackPaths)
             path.Data = null;
@@ -202,12 +231,22 @@ public sealed class CommitGraphControl : Canvas
         _renderedMetrics = metrics;
         Interlocked.Increment(ref _renderCount);
 
+        var laneCount = graph?.LaneCount ?? 0;
+        var segmentCount = graph is null
+            ? 0
+            : graph.IncomingSegments.Count + graph.OutgoingSegments.Count;
+
         if (graph is null)
         {
+            HistoryRenderDiagnostics.GeometryRebuilt(reason, rebuildStartedAt, laneCount, segmentCount);
             return;
         }
 
+        var builderStartedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
         var geometry = CommitGraphGeometryBuilder.Build(graph, height, metrics);
+        HistoryRenderDiagnostics.GeometryBuilderCompleted(builderStartedAt);
+
+        var materializationStartedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
         var pathGeometries = Enumerable.Range(0, _trackPaths.Length)
             .Select(_ => new PathGeometry())
             .ToArray();
@@ -257,6 +296,9 @@ public sealed class CommitGraphControl : Canvas
             };
             _nodePath.Fill = GetTrackBrush(node.TrackId);
         }
+
+        HistoryRenderDiagnostics.GeometryMaterializationCompleted(materializationStartedAt);
+        HistoryRenderDiagnostics.GeometryRebuilt(reason, rebuildStartedAt, laneCount, segmentCount);
     }
 
     internal bool HasCurrentRenderForCheck()
