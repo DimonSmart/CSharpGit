@@ -8,6 +8,8 @@ namespace CSharpGit.Git;
 internal sealed class GitRepositoryCommandRunner
 {
     private readonly GitCommandExecutor _executor;
+    private readonly SemaphoreSlim _availabilityGate = new(1, 1);
+    private int _gitAvailabilityValidated;
 
     internal GitRepositoryCommandRunner(GitCommandExecutor executor)
     {
@@ -18,21 +20,36 @@ internal sealed class GitRepositoryCommandRunner
 
     internal async Task EnsureGitAvailableAsync(CancellationToken cancellationToken)
     {
+        if (Volatile.Read(ref _gitAvailabilityValidated) != 0)
+            return;
+
+        await _availabilityGate.WaitAsync(cancellationToken);
         try
         {
-            _ = await RunAsync(Environment.CurrentDirectory, cancellationToken, true, "--version");
+            if (Volatile.Read(ref _gitAvailabilityValidated) != 0)
+                return;
+
+            try
+            {
+                _ = await RunAsync(Environment.CurrentDirectory, cancellationToken, true, "--version");
+                Volatile.Write(ref _gitAvailabilityValidated, 1);
+            }
+            catch (RepositoryOpenException exception)
+            {
+                throw new RepositoryOpenException(
+                    "Git is installed but could not start correctly. Check the Git executable configuration.",
+                    exception);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                throw new RepositoryOpenException(
+                    $"Git executable '{_executor.ExecutablePath}' was not found or could not be started.",
+                    exception);
+            }
         }
-        catch (RepositoryOpenException exception)
+        finally
         {
-            throw new RepositoryOpenException(
-                "Git is installed but could not start correctly. Check the Git executable configuration.",
-                exception);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            throw new RepositoryOpenException(
-                $"Git executable '{_executor.ExecutablePath}' was not found or could not be started.",
-                exception);
+            _availabilityGate.Release();
         }
     }
 

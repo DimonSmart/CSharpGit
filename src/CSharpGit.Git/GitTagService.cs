@@ -19,8 +19,22 @@ internal GitTagService(GitCommandExecutor executor)
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(repository);
-
         var configuredSort = await ReadEffectiveTagSortAsync(repository, cancellationToken);
+        return await ReadTagsWithSortAsync(repository, configuredSort, cancellationToken);
+    }
+
+    internal Task<IReadOnlyList<GitTag>> ReadTagsAsync(
+        Repository repository,
+        string? configuredSort,
+        CancellationToken cancellationToken = default) =>
+        ReadTagsWithSortAsync(repository, configuredSort, cancellationToken);
+
+    private async Task<IReadOnlyList<GitTag>> ReadTagsWithSortAsync(
+        Repository repository,
+        string? configuredSort,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
         var sort = string.IsNullOrWhiteSpace(configuredSort) ? DefaultTagSort : configuredSort;
         const string format = "%(refname)%00%(objecttype)%00%(objectname)%00%(*objectname)%00%(taggername)%00%(taggeremail)%00%(taggerdate:iso-strict)%00%(contents)%1e";
         var output = await ExecuteAsync(

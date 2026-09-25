@@ -3,9 +3,15 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
 
+internal sealed record GitRepositoryStateReadResult(
+    RepositoryState State,
+    string? EffectiveTagSort,
+    string? LocalDefaultRemoteBranch,
+    IReadOnlyList<string> RelevantConfiguration);
+
 internal sealed class GitRepositoryStateService : IRepositoryStateService
 {
-private readonly GitRepositoryCommandRunner _runner;
+    private readonly GitRepositoryCommandRunner _runner;
 
     internal GitRepositoryStateService(GitCommandExecutor executor)
         : this(new GitRepositoryCommandRunner(executor))
@@ -17,218 +23,109 @@ private readonly GitRepositoryCommandRunner _runner;
         _runner = runner ?? throw new ArgumentNullException(nameof(runner));
     }
 
-    public Task<RepositoryState> ReadLocalOnlyAsync(
+    public async Task<RepositoryState> ReadLocalOnlyAsync(
         Repository repository,
         CancellationToken cancellationToken = default) =>
-        ReadAsync(repository, cancellationToken);
+        (await ReadDetailedAsync(repository, cancellationToken)).State;
 
     public async Task<RepositoryState> ReadAsync(
+        Repository repository,
+        CancellationToken cancellationToken = default) =>
+        (await ReadDetailedAsync(repository, cancellationToken)).State;
+
+    internal async Task<GitRepositoryStateReadResult> ReadDetailedAsync(
         Repository repository,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(repository);
         await _runner.EnsureGitAvailableAsync(cancellationToken);
 
-        var headReference = await _runner.RunOptionalAsync(
-            repository.WorkingDirectory,
-            cancellationToken,
-            "symbolic-ref",
-            "--quiet",
-            "--short",
-            "HEAD");
-        var headCommit = await _runner.RunOptionalAsync(
-            repository.WorkingDirectory,
-            cancellationToken,
-            "rev-parse",
-            "--verify",
-            "HEAD");
-        var status = await _runner.RunAsync(
+        var statusOutput = await _runner.RunAsync(
             repository.WorkingDirectory,
             cancellationToken,
             false,
             "status",
-            "--porcelain=v1",
+            "--porcelain=v2",
             "-z",
+            "--branch",
             "--untracked-files=all");
-        var globalConfig = await _runner.RunAsync(
+        var status = ParseStatusV2(statusOutput);
+
+        var configurationOutput = await _runner.RunAsync(
             repository.WorkingDirectory,
             cancellationToken,
             false,
             "config",
-            "--global",
             "--null",
-            "--list");
-        var localConfig = await _runner.RunAsync(
-            repository.WorkingDirectory,
-            cancellationToken,
-            false,
-            "config",
-            "--local",
-            "--null",
-            "--list");
-        var references = await ReadReferencesAsync(
-            repository,
-            headReference,
-            cancellationToken);
-        var stashes = await ReadStashesAsync(repository, cancellationToken);
+            "--list",
+            "--show-scope");
+        var configuration = ParseConfiguration(configurationOutput);
 
-        var operation = GitOperationDetector.Detect(repository);
-        var operationState = await ReadOperationStateAsync(
-            repository,
-            operation,
-            status,
-            cancellationToken);
-
-        return new RepositoryState(
-            repository,
-            EmptyToNull(headReference),
-            EmptyToNull(headCommit),
-            string.IsNullOrWhiteSpace(headReference),
-            operation,
-            ParseStatus(status),
-            ParseConfiguration(globalConfig),
-            ParseConfiguration(localConfig),
-            DateTimeOffset.UtcNow,
-            references,
-            stashes,
-            operationState);
-    }
-
-    private async Task<GitReferences> ReadReferencesAsync(
-        Repository repository,
-        string currentBranch,
-        CancellationToken cancellationToken)
-    {
-        const string format =
-            "%(refname)%00%(objectname)%00%(*objectname)%00%(upstream:short)%00%(upstream:track)%1e";
-        var output = await _runner.RunAsync(
+        var referenceOutput = await _runner.RunAsync(
             repository.WorkingDirectory,
             cancellationToken,
             false,
             "for-each-ref",
-            $"--format={format}",
+            "--format=%(refname)%00%(objectname)%00%(upstream:short)%00%(upstream:track)%00%(symref:short)%1e",
             "refs/heads",
-            "refs/remotes",
-            "refs/tags");
+            "refs/remotes");
+        var referenceRead = ParseReferences(referenceOutput, status.HeadReference);
 
-        var local = new List<GitBranch>();
-        var remote = new List<GitBranch>();
-        var tags = new List<GitTag>();
-
-        foreach (var record in output.Split(
-                     '\x1e',
-                     StringSplitOptions.RemoveEmptyEntries))
-        {
-            var fields = record.TrimStart('\r', '\n').Split('\0');
-            if (fields.Length < 5) continue;
-
-            var fullName = fields[0];
-            if (fullName.StartsWith("refs/heads/", StringComparison.Ordinal))
-            {
-                var name = fullName[11..];
-                var (ahead, behind) = ParseTracking(fields[4]);
-                local.Add(
-                    new GitBranch(
-                        name,
-                        fields[1],
-                        string.Equals(
-                            name,
-                            currentBranch,
-                            StringComparison.Ordinal),
-                        EmptyToNull(fields[3]),
-                        ahead,
-                        behind));
-            }
-            else if (fullName.StartsWith(
-                         "refs/remotes/",
-                         StringComparison.Ordinal)
-                     && !fullName.EndsWith(
-                         "/HEAD",
-                         StringComparison.Ordinal))
-            {
-                remote.Add(new GitBranch(fullName[13..], fields[1]));
-            }
-            else if (fullName.StartsWith(
-                         "refs/tags/",
-                         StringComparison.Ordinal))
-            {
-                tags.Add(
-                    new GitTag(
-                        fullName[10..],
-                        string.IsNullOrEmpty(fields[2])
-                            ? fields[1]
-                            : fields[2]));
-            }
-        }
-
-        var remotes = new List<GitRemote>();
-        var remoteNames = await _runner.RunAsync(
+        var remoteOutput = await _runner.RunAsync(
             repository.WorkingDirectory,
             cancellationToken,
             false,
-            "remote");
+            "remote",
+            "-v");
+        var remotes = ParseRemotes(remoteOutput);
+        var references = referenceRead.References with { Remotes = remotes };
 
-        foreach (var name in remoteNames.Split(
-                     ['\r', '\n'],
-                     StringSplitOptions.RemoveEmptyEntries
-                     | StringSplitOptions.TrimEntries))
-        {
-            var fetchUrl = await _runner.RunAsync(
-                repository.WorkingDirectory,
-                cancellationToken,
-                false,
-                "remote",
-                "get-url",
-                name);
-            var pushUrl = await _runner.RunAsync(
-                repository.WorkingDirectory,
-                cancellationToken,
-                false,
-                "remote",
-                "get-url",
-                "--push",
-                name);
-            remotes.Add(new GitRemote(name, fetchUrl, pushUrl));
-        }
-
-        return new GitReferences(local, remote, remotes, tags);
-    }
-
-    private async Task<IReadOnlyList<GitStash>> ReadStashesAsync(
-        Repository repository,
-        CancellationToken cancellationToken)
-    {
-        var output = await _runner.RunAsync(
+        var stashOutput = await _runner.RunAsync(
             repository.WorkingDirectory,
             cancellationToken,
             false,
             "stash",
             "list",
             "--format=%gd%x00%H%x00%gs%x1e");
+        var stashes = ParseStashes(stashOutput);
 
-        var result = new List<GitStash>();
-        foreach (var record in output.Split(
-                     '\x1e',
-                     StringSplitOptions.RemoveEmptyEntries))
-        {
-            var fields = record.TrimStart('\r', '\n').Split('\0', 3);
-            if (fields.Length == 3)
-            {
-                result.Add(
-                    new GitStash(
-                        fields[0],
-                        fields[1],
-                        fields[2].TrimEnd('\r', '\n')));
-            }
-        }
+        var operation = GitOperationDetector.Detect(repository);
+        var operationState = await ReadOperationStateAsync(
+            repository,
+            operation,
+            status.Changes,
+            cancellationToken);
 
-        return result;
+        var localDefaultRemoteBranch = ResolveLocalDefaultRemoteBranch(
+            referenceRead.RemoteHeads,
+            remotes,
+            references.RemoteBranches);
+
+        var state = new RepositoryState(
+            repository,
+            status.HeadReference,
+            status.HeadCommit,
+            status.IsDetached,
+            operation,
+            status.Changes,
+            configuration.Global,
+            configuration.Local,
+            DateTimeOffset.UtcNow,
+            references,
+            stashes,
+            operationState);
+
+        return new GitRepositoryStateReadResult(
+            state,
+            configuration.EffectiveTagSort,
+            localDefaultRemoteBranch,
+            configuration.Relevant);
     }
 
     private async Task<RepositoryOperationState> ReadOperationStateAsync(
         Repository repository,
         RepositoryOperation operation,
-        string status,
+        IReadOnlyList<WorkingTreeChange> changes,
         CancellationToken cancellationToken)
     {
         if (operation == RepositoryOperation.None)
@@ -242,46 +139,25 @@ private readonly GitRepositoryCommandRunner _runner;
             "--unmerged",
             "-z");
         var stages = ParseUnmergedStages(unmerged);
-        var knownPaths = new HashSet<string>(
-            stages.Keys,
-            StringComparer.Ordinal);
+        var knownPaths = new HashSet<string>(stages.Keys, StringComparer.Ordinal);
 
-        AddConflictPathsFromMessage(
-            Path.Combine(repository.GitDirectory, "MERGE_MSG"),
-            knownPaths);
-        AddConflictPathsFromMessage(
-            Path.Combine(
-                repository.GitDirectory,
-                "rebase-merge",
-                "message"),
-            knownPaths);
-        AddConflictPathsFromMessage(
-            Path.Combine(
-                repository.GitDirectory,
-                "rebase-apply",
-                "final-commit"),
-            knownPaths);
+        AddConflictPathsFromMessage(Path.Combine(repository.GitDirectory, "MERGE_MSG"), knownPaths);
+        AddConflictPathsFromMessage(Path.Combine(repository.GitDirectory, "rebase-merge", "message"), knownPaths);
+        AddConflictPathsFromMessage(Path.Combine(repository.GitDirectory, "rebase-apply", "final-commit"), knownPaths);
 
-        var changes = ParseStatus(status)
-            .ToDictionary(change => change.Path, StringComparer.Ordinal);
+        var changesByPath = changes.ToDictionary(change => change.Path, StringComparer.Ordinal);
         var conflicts = new List<ConflictFile>();
 
         foreach (var path in knownPaths.Order(StringComparer.Ordinal))
         {
             stages.TryGetValue(path, out var presentStages);
             presentStages ??= [];
-            changes.TryGetValue(path, out var change);
+            changesByPath.TryGetValue(path, out var change);
 
             var unresolved = presentStages.Count > 0;
-            var currentExists = presentStages.Contains(
-                operation == RepositoryOperation.Rebase ? 3 : 2);
-            var incomingExists = presentStages.Contains(
-                operation == RepositoryOperation.Rebase ? 2 : 3);
-            var isBinary = unresolved
-                           && await IsBinaryConflictAsync(
-                               repository,
-                               path,
-                               cancellationToken);
+            var currentExists = presentStages.Contains(operation == RepositoryOperation.Rebase ? 3 : 2);
+            var incomingExists = presentStages.Contains(operation == RepositoryOperation.Rebase ? 2 : 3);
+            var isBinary = unresolved && await IsBinaryConflictAsync(repository, path, cancellationToken);
             var kind = isBinary
                 ? ConflictKind.Binary
                 : change is { IndexStatus: 'A', WorkingTreeStatus: 'A' }
@@ -293,49 +169,29 @@ private readonly GitRepositoryCommandRunner _runner;
                             : ConflictKind.Textual;
 
             var labels = operation == RepositoryOperation.Rebase
-                ? (
-                    "Current/local (replayed commit)",
-                    "Incoming/remote (rebase base)")
+                ? ("Current/local (replayed commit)", "Incoming/remote (rebase base)")
                 : ("Current/local", "Incoming/remote");
 
-            conflicts.Add(
-                new ConflictFile(
-                    path,
-                    kind,
-                    !unresolved,
-                    unresolved
-                    && !isBinary
-                    && File.Exists(
-                        Path.Combine(
-                            repository.WorkingDirectory,
-                            path)),
-                    unresolved && currentExists,
-                    unresolved && incomingExists,
-                    unresolved && (!currentExists || !incomingExists),
-                    unresolved
-                    && File.Exists(
-                        Path.Combine(
-                            repository.WorkingDirectory,
-                            path)),
-                    unresolved,
-                    labels.Item1,
-                    labels.Item2));
+            conflicts.Add(new ConflictFile(
+                path,
+                kind,
+                !unresolved,
+                unresolved && !isBinary && File.Exists(Path.Combine(repository.WorkingDirectory, path)),
+                unresolved && currentExists,
+                unresolved && incomingExists,
+                unresolved && (!currentExists || !incomingExists),
+                unresolved && File.Exists(Path.Combine(repository.WorkingDirectory, path)),
+                unresolved,
+                labels.Item1,
+                labels.Item2));
         }
 
         return new RepositoryOperationState(
             operation,
             conflicts,
-            operation is RepositoryOperation.Merge
-                or RepositoryOperation.Rebase
-                or RepositoryOperation.CherryPick
-                or RepositoryOperation.Revert,
-            operation is RepositoryOperation.Merge
-                or RepositoryOperation.Rebase
-                or RepositoryOperation.CherryPick
-                or RepositoryOperation.Revert,
-            operation is RepositoryOperation.Rebase
-                or RepositoryOperation.CherryPick
-                or RepositoryOperation.Revert);
+            operation is RepositoryOperation.Merge or RepositoryOperation.Rebase or RepositoryOperation.CherryPick or RepositoryOperation.Revert,
+            operation is RepositoryOperation.Merge or RepositoryOperation.Rebase or RepositoryOperation.CherryPick or RepositoryOperation.Revert,
+            operation is RepositoryOperation.Rebase or RepositoryOperation.CherryPick or RepositoryOperation.Revert);
     }
 
     private async Task<bool> IsBinaryConflictAsync(
@@ -353,10 +209,7 @@ private readonly GitRepositoryCommandRunner _runner;
             "--",
             path);
 
-        if (output.Split('\n').Any(
-                line => line.StartsWith(
-                    "-\t-\t",
-                    StringComparison.Ordinal)))
+        if (output.Split('\n').Any(line => line.StartsWith("-\t-\t", StringComparison.Ordinal)))
             return true;
 
         foreach (var stage in new[] { 2, 3 })
@@ -372,103 +225,246 @@ private readonly GitRepositoryCommandRunner _runner;
         return false;
     }
 
-    private static IReadOnlyList<WorkingTreeChange> ParseStatus(
-        string output)
+    private static StatusReadResult ParseStatusV2(string output)
     {
-        var entries = output.Split(
-            '\0',
-            StringSplitOptions.RemoveEmptyEntries);
+        string? headReference = null;
+        string? headCommit = null;
+        var detached = false;
         var changes = new List<WorkingTreeChange>();
+        var records = output.Split('\0', StringSplitOptions.RemoveEmptyEntries);
 
-        for (var index = 0; index < entries.Length; index++)
+        for (var index = 0; index < records.Length; index++)
         {
-            var entry = entries[index];
-            if (entry.Length < 4) continue;
+            var record = records[index];
+            if (record.StartsWith("# branch.oid ", StringComparison.Ordinal))
+            {
+                var value = record[13..];
+                headCommit = value is "(initial)" ? null : EmptyToNull(value);
+                continue;
+            }
 
-            string? originalPath = null;
-            if ((entry[0] is 'R' or 'C'
-                 || entry[1] is 'R' or 'C')
-                && index + 1 < entries.Length)
-                originalPath = entries[++index];
+            if (record.StartsWith("# branch.head ", StringComparison.Ordinal))
+            {
+                var value = record[14..];
+                detached = string.Equals(value, "(detached)", StringComparison.Ordinal);
+                headReference = detached ? null : EmptyToNull(value);
+                continue;
+            }
 
-            changes.Add(
-                new WorkingTreeChange(
-                    entry[3..],
-                    entry[0],
-                    entry[1],
-                    originalPath));
+            if (record.StartsWith("1 ", StringComparison.Ordinal))
+            {
+                var fields = record.Split(' ', 9, StringSplitOptions.None);
+                if (fields.Length == 9)
+                    changes.Add(CreateChange(fields[8], fields[1], null));
+                continue;
+            }
+
+            if (record.StartsWith("2 ", StringComparison.Ordinal))
+            {
+                var fields = record.Split(' ', 10, StringSplitOptions.None);
+                var originalPath = index + 1 < records.Length ? records[++index] : null;
+                if (fields.Length == 10)
+                    changes.Add(CreateChange(fields[9], fields[1], originalPath));
+                continue;
+            }
+
+            if (record.StartsWith("u ", StringComparison.Ordinal))
+            {
+                var fields = record.Split(' ', 11, StringSplitOptions.None);
+                if (fields.Length == 11)
+                    changes.Add(CreateChange(fields[10], fields[1], null));
+                continue;
+            }
+
+            if (record.StartsWith("? ", StringComparison.Ordinal))
+                changes.Add(new WorkingTreeChange(record[2..], '?', '?'));
         }
 
-        return changes;
+        return new StatusReadResult(headReference, headCommit, detached, changes);
     }
 
-    private static IReadOnlyDictionary<string, string> ParseConfiguration(
-        string output)
+    private static WorkingTreeChange CreateChange(string path, string xy, string? originalPath)
     {
-        var result = new Dictionary<string, string>(
-            StringComparer.OrdinalIgnoreCase);
+        var indexStatus = xy.Length > 0 ? NormalizeStatus(xy[0]) : ' ';
+        var workingTreeStatus = xy.Length > 1 ? NormalizeStatus(xy[1]) : ' ';
+        return new WorkingTreeChange(path, indexStatus, workingTreeStatus, originalPath);
+    }
 
-        foreach (var entry in output.Split(
-                     '\0',
-                     StringSplitOptions.RemoveEmptyEntries))
+    private static char NormalizeStatus(char value) => value == '.' ? ' ' : value;
+
+    private static ReferenceReadResult ParseReferences(string output, string? currentBranch)
+    {
+        var local = new List<GitBranch>();
+        var remote = new List<GitBranch>();
+        var remoteHeads = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var record in output.Split('\x1e', StringSplitOptions.RemoveEmptyEntries))
         {
-            var separator = entry.IndexOf('\n');
-            if (separator < 0)
-                separator = entry.IndexOf('=');
+            var fields = record.TrimStart('\r', '\n').Split('\0');
+            if (fields.Length < 5) continue;
 
-            if (separator > 0)
-                result[entry[..separator]] = entry[(separator + 1)..];
-            else
-                result[entry] = string.Empty;
+            var fullName = fields[0];
+            if (fullName.StartsWith("refs/heads/", StringComparison.Ordinal))
+            {
+                var name = fullName[11..];
+                var (ahead, behind) = ParseTracking(fields[3]);
+                local.Add(new GitBranch(
+                    name,
+                    fields[1],
+                    string.Equals(name, currentBranch, StringComparison.Ordinal),
+                    EmptyToNull(fields[2]),
+                    ahead,
+                    behind));
+                continue;
+            }
+
+            if (!fullName.StartsWith("refs/remotes/", StringComparison.Ordinal))
+                continue;
+
+            var shortName = fullName[13..];
+            if (shortName.EndsWith("/HEAD", StringComparison.Ordinal))
+            {
+                var remoteName = shortName[..^5];
+                if (!string.IsNullOrWhiteSpace(fields[4]))
+                    remoteHeads[remoteName] = fields[4];
+                continue;
+            }
+
+            remote.Add(new GitBranch(shortName, fields[1]));
+        }
+
+        return new ReferenceReadResult(
+            new GitReferences(local, remote, [], []),
+            remoteHeads);
+    }
+
+    private static IReadOnlyList<GitRemote> ParseRemotes(string output)
+    {
+        var values = new Dictionary<string, (string? Fetch, string? Push)>(StringComparer.Ordinal);
+        foreach (var line in output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            var tab = line.IndexOf('\t');
+            if (tab <= 0) continue;
+
+            var name = line[..tab];
+            var value = line[(tab + 1)..];
+            var isFetch = value.EndsWith(" (fetch)", StringComparison.Ordinal);
+            var isPush = value.EndsWith(" (push)", StringComparison.Ordinal);
+            if (!isFetch && !isPush) continue;
+
+            var url = value[..^8];
+            values.TryGetValue(name, out var current);
+            if (isFetch && current.Fetch is null) current.Fetch = url;
+            if (isPush && current.Push is null) current.Push = url;
+            values[name] = current;
+        }
+
+        return values
+            .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+            .Select(pair =>
+            {
+                var fetch = pair.Value.Fetch ?? pair.Value.Push ?? string.Empty;
+                var push = pair.Value.Push ?? fetch;
+                return new GitRemote(pair.Key, fetch, push);
+            })
+            .ToArray();
+    }
+
+    private static IReadOnlyList<GitStash> ParseStashes(string output)
+    {
+        var result = new List<GitStash>();
+        foreach (var record in output.Split('\x1e', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var fields = record.TrimStart('\r', '\n').Split('\0', 3);
+            if (fields.Length == 3)
+                result.Add(new GitStash(fields[0], fields[1], fields[2].TrimEnd('\r', '\n')));
         }
 
         return result;
     }
 
-    private static Dictionary<string, HashSet<int>> ParseUnmergedStages(
-        string output)
+    private static ConfigurationReadResult ParseConfiguration(string output)
     {
-        var result = new Dictionary<string, HashSet<int>>(
-            StringComparer.Ordinal);
+        var global = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var local = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var relevant = new List<string>();
+        string? effectiveTagSort = null;
+        var tokens = output.Split('\0', StringSplitOptions.RemoveEmptyEntries);
 
-        foreach (var entry in output.Split(
-                     '\0',
-                     StringSplitOptions.RemoveEmptyEntries))
+        for (var index = 0; index + 1 < tokens.Length; index += 2)
+        {
+            var scope = tokens[index];
+            var entry = tokens[index + 1];
+            var separator = entry.IndexOf('\n');
+            if (separator < 0) separator = entry.IndexOf('=');
+
+            var key = separator > 0 ? entry[..separator] : entry;
+            var value = separator > 0 ? entry[(separator + 1)..] : string.Empty;
+
+            if (string.Equals(scope, "global", StringComparison.OrdinalIgnoreCase))
+                global[key] = value;
+            else if (string.Equals(scope, "local", StringComparison.OrdinalIgnoreCase))
+                local[key] = value;
+
+            if (string.Equals(key, "tag.sort", StringComparison.OrdinalIgnoreCase))
+                effectiveTagSort = value;
+
+            if (string.Equals(key, "tag.sort", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(key, "versionsort.suffix", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(key, "merge.tool", StringComparison.OrdinalIgnoreCase))
+                relevant.Add(scope + "\0" + key.ToLowerInvariant() + "\0" + value);
+        }
+
+        return new ConfigurationReadResult(global, local, effectiveTagSort, relevant);
+    }
+
+    private static string? ResolveLocalDefaultRemoteBranch(
+        IReadOnlyDictionary<string, string> remoteHeads,
+        IReadOnlyList<GitRemote> remotes,
+        IReadOnlyList<GitBranch> remoteBranches)
+    {
+        var remote = remotes.FirstOrDefault(candidate => string.Equals(candidate.Name, "origin", StringComparison.Ordinal))
+                     ?? (remotes.Count == 1 ? remotes[0] : null);
+        if (remote is null || !remoteHeads.TryGetValue(remote.Name, out var candidate))
+            return null;
+
+        if (!candidate.StartsWith(remote.Name + "/", StringComparison.Ordinal))
+            return null;
+
+        return remoteBranches.Any(branch => string.Equals(branch.Name, candidate, StringComparison.Ordinal))
+            ? candidate
+            : null;
+    }
+
+    private static Dictionary<string, HashSet<int>> ParseUnmergedStages(string output)
+    {
+        var result = new Dictionary<string, HashSet<int>>(StringComparer.Ordinal);
+        foreach (var entry in output.Split('\0', StringSplitOptions.RemoveEmptyEntries))
         {
             var tab = entry.IndexOf('\t');
             if (tab < 0) continue;
 
-            var metadata = entry[..tab].Split(
-                ' ',
-                StringSplitOptions.RemoveEmptyEntries);
-            if (metadata.Length != 3
-                || !int.TryParse(metadata[2], out var stage))
+            var metadata = entry[..tab].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (metadata.Length != 3 || !int.TryParse(metadata[2], out var stage))
                 continue;
 
             var path = entry[(tab + 1)..];
             if (!result.TryGetValue(path, out var values))
                 result[path] = values = [];
-
             values.Add(stage);
         }
 
         return result;
     }
 
-    private static void AddConflictPathsFromMessage(
-        string messagePath,
-        HashSet<string> paths)
+    private static void AddConflictPathsFromMessage(string messagePath, HashSet<string> paths)
     {
         if (!File.Exists(messagePath)) return;
-
         foreach (var line in File.ReadLines(messagePath))
         {
-            if (!line.StartsWith("#\t", StringComparison.Ordinal))
-                continue;
-
+            if (!line.StartsWith("#\t", StringComparison.Ordinal)) continue;
             var path = line[2..].TrimEnd();
-            if (!string.IsNullOrWhiteSpace(path))
-                paths.Add(path);
+            if (!string.IsNullOrWhiteSpace(path)) paths.Add(path);
         }
     }
 
@@ -478,21 +474,32 @@ private readonly GitRepositoryCommandRunner _runner;
         {
             var start = text.IndexOf(marker, StringComparison.Ordinal);
             if (start < 0) return 0;
-
             start += marker.Length;
             var end = text.IndexOfAny([',', ']'], start);
-            return int.TryParse(
-                text[start..(end < 0 ? text.Length : end)].Trim(),
-                out var count)
+            return int.TryParse(text[start..(end < 0 ? text.Length : end)].Trim(), out var count)
                 ? count
                 : 0;
         }
 
-        return (
-            ReadCount(value, "ahead "),
-            ReadCount(value, "behind "));
+        return (ReadCount(value, "ahead "), ReadCount(value, "behind "));
     }
 
     private static string? EmptyToNull(string value) =>
         string.IsNullOrWhiteSpace(value) ? null : value;
+
+    private sealed record StatusReadResult(
+        string? HeadReference,
+        string? HeadCommit,
+        bool IsDetached,
+        IReadOnlyList<WorkingTreeChange> Changes);
+
+    private sealed record ReferenceReadResult(
+        GitReferences References,
+        IReadOnlyDictionary<string, string> RemoteHeads);
+
+    private sealed record ConfigurationReadResult(
+        IReadOnlyDictionary<string, string> Global,
+        IReadOnlyDictionary<string, string> Local,
+        string? EffectiveTagSort,
+        IReadOnlyList<string> Relevant);
 }
