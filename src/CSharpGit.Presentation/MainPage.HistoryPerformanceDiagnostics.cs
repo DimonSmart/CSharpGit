@@ -50,7 +50,7 @@ public sealed partial class MainPage
 
         try
         {
-            if (!await HistoryPerformanceDiagnostics.StartAsync(context, _gitCommandActivitySource))
+            if (!await HistoryPerformanceDiagnostics.StartAsync(context, _gitCommandActivitySource, _authorAvatarService))
                 return;
 
             AttachHistoryPerformanceSubscriptions();
