@@ -8,6 +8,7 @@ public sealed class CommitTopologyToGraphVisualConverter : IValueConverter
 {
     public object? Convert(object value, Type targetType, object parameter, string language)
     {
+        var startedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
         if (value is not CommitTopology topology)
         {
             return null;
