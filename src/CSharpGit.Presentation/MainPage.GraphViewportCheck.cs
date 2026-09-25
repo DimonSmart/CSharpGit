@@ -171,7 +171,7 @@ public sealed partial class MainPage
         HistoryPerformanceCaptureFiles? result = null;
         try
         {
-            var started = await HistoryPerformanceDiagnostics.StartAsync(context, _gitCommandActivitySource);
+            var started = await HistoryPerformanceDiagnostics.StartAsync(context, _gitCommandActivitySource, _authorAvatarService);
             Check(started, "History performance capture did not start", failures);
             if (!started) return;
 
