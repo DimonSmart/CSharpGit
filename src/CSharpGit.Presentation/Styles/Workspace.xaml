@@ -72,9 +72,50 @@
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
 
-  <Style x:Key="HistoryRowStyle" TargetType="ListViewItem" BasedOn="{StaticResource DenseListItemStyle}">
+  <Style x:Key="HistoryRowStyle" TargetType="ListViewItem">
+    <Setter Property="MinHeight" Value="{StaticResource Height.DataRow}" />
+    <Setter Property="Margin" Value="0" />
     <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListViewItem">
+          <Border x:Name="Root" Background="Transparent">
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="Root.Background"
+                            Value="{ThemeResource ListViewItemBackgroundPointerOver}" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Selected">
+                  <VisualState.Setters>
+                    <Setter Target="Root.Background"
+                            Value="{ThemeResource ListViewItemBackgroundSelected}" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="PointerOverSelected">
+                  <VisualState.Setters>
+                    <Setter Target="Root.Background"
+                            Value="{ThemeResource ListViewItemBackgroundSelectedPointerOver}" />
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
+                              Padding="{TemplateBinding Padding}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
   </Style>
 
   <Style x:Key="DenseTreeViewStyle" TargetType="TreeView">
