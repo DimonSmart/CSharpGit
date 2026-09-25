@@ -33,7 +33,7 @@ public sealed class CommitGraphViewportLifecycleTests
             var standardError = process.StandardError.ReadToEndAsync();
             try
             {
-                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(75));
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(150));
                 await process.WaitForExitAsync(timeout.Token);
             }
             finally
@@ -77,7 +77,7 @@ public sealed class CommitGraphViewportLifecycleTests
         await GitAsync(repository, home, "commit", "-m", "Graph main before merge");
         await GitAsync(repository, home, "merge", "--no-ff", "graph-feature", "-m", "Graph merge");
 
-        for (var index = 0; index < 125; index++)
+        for (var index = 0; index < 365; index++)
         {
             await File.AppendAllTextAsync(Path.Combine(repository, "tracked.txt"), $"history {index}\n");
             await GitAsync(repository, home, "commit", "-am", $"Graph history {index:000}");

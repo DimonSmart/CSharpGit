@@ -13,7 +13,11 @@ public sealed class CommitGraphAdaptiveLayoutContractTests
         Assert.DoesNotContain("120,*,160,150,90", historyReferences, StringComparison.Ordinal);
         Assert.Contains("HistoryGraphHeaderColumn", mainPage, StringComparison.Ordinal);
         Assert.Contains("HistoryRowRoot", historyReferences, StringComparison.Ordinal);
-        Assert.Contains("HistoryList_ContainerContentChanging", mainPage, StringComparison.Ordinal);
+        Assert.Contains(@"<ColumnDefinition Width=""Auto"" />", historyReferences, StringComparison.Ordinal);
+        Assert.DoesNotContain("ContainerContentChanging=", mainPage, StringComparison.Ordinal);
+        var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitGraphLayout.cs"));
+        Assert.Contains("CommitGraphPresentationContext.Publish", lifecycle, StringComparison.Ordinal);
+        Assert.DoesNotContain("VisualTreeHelper", lifecycle, StringComparison.Ordinal);
     }
 
     [Fact]
