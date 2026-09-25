@@ -323,6 +323,32 @@ public sealed class JsonAppSettingsServiceTests
         Assert.True(document.RootElement.GetProperty("HistoryPerformanceDiagnosticsEnabled").GetBoolean());
     }
 
+    [Fact]
+    public void HistorySimplifiedRenderingDefaultsToFalseForMissingAndLegacySettings()
+    {
+        using var fixture = new SettingsFixture();
+        Assert.False(fixture.CreateService().HistorySimplifiedRenderingEnabled);
+
+        fixture.WriteSettings("{ \"ThemeMode\": \"Dark\", \"HistoryPerformanceDiagnosticsEnabled\": true }");
+        Assert.False(fixture.CreateService().HistorySimplifiedRenderingEnabled);
+    }
+
+    [Fact]
+    public async Task HistorySimplifiedRenderingIsPersistedAndRestored()
+    {
+        using var fixture = new SettingsFixture();
+        var service = fixture.CreateService();
+
+        await service.SetHistorySimplifiedRenderingEnabledAsync(true);
+
+        Assert.True(service.HistorySimplifiedRenderingEnabled);
+        var restored = fixture.CreateService();
+        Assert.True(restored.HistorySimplifiedRenderingEnabled);
+
+        using var document = JsonDocument.Parse(await File.ReadAllTextAsync(fixture.SettingsPath));
+        Assert.True(document.RootElement.GetProperty("HistorySimplifiedRenderingEnabled").GetBoolean());
+    }
+
     private sealed class SettingsFixture : IDisposable
     {
         public SettingsFixture()

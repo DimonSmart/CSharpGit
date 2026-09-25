@@ -56,6 +56,7 @@ internal sealed record HistoryPerformanceStartContext(
     int ObservedMaxLaneCount,
     bool AvatarsEnabled,
     bool OnlineAvatarLookupEnabled,
+    bool SimplifiedHistoryRenderingEnabled,
     double WindowWidth,
     double WindowHeight,
     double? RasterizationScale);
@@ -389,7 +390,8 @@ internal sealed class HistoryPerformanceSession
             ["graphWidth"] = _context.GraphWidth,
             ["observedMaxLaneCount"] = _context.ObservedMaxLaneCount,
             ["avatarsEnabled"] = _context.AvatarsEnabled,
-            ["onlineAvatarLookupEnabled"] = _context.OnlineAvatarLookupEnabled
+            ["onlineAvatarLookupEnabled"] = _context.OnlineAvatarLookupEnabled,
+            ["simplifiedHistoryRendering"] = _context.SimplifiedHistoryRenderingEnabled
         })).ConfigureAwait(false);
 
         _snapshotTask = Task.Run(SnapshotLoopAsync);
@@ -947,6 +949,7 @@ internal sealed class HistoryPerformanceSession
         builder.AppendLine($"Stop reason:                      {reason}");
         builder.AppendLine();
         builder.AppendLine($"History items:                    {_context.HistoryItems}");
+        builder.AppendLine($"Simplified History rendering:     {YesNo(_context.SimplifiedHistoryRenderingEnabled)}");
         builder.AppendLine($"Visited indexes:                  {FormatVisitedRange()}");
         builder.AppendLine($"ViewChanged events:               {Volatile.Read(ref ViewChangedCount)}");
         builder.AppendLine($"Intermediate / final:             {Volatile.Read(ref ViewChangedIntermediateCount)} / {Volatile.Read(ref ViewChangedFinalCount)}");

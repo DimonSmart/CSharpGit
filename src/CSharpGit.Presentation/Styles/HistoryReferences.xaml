@@ -75,4 +75,14 @@
                  VerticalAlignment="Center" />
     </Grid>
   </DataTemplate>
+
+  <DataTemplate x:Key="SimplifiedHistoryItemTemplate">
+    <Grid MinHeight="{StaticResource Height.DataRow}"
+          Padding="{StaticResource Padding.DenseRow}">
+      <TextBlock Text="{Binding Commit.Subject}"
+                 Style="{StaticResource BodyStrongTextStyle}"
+                 TextTrimming="CharacterEllipsis"
+                 VerticalAlignment="Center" />
+    </Grid>
+  </DataTemplate>
 </ResourceDictionary>

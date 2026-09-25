@@ -29,6 +29,9 @@ public sealed class SettingsDiagnosticsUiContractTests
 
         Assert.Contains("Enable history performance diagnostics", xaml, StringComparison.Ordinal);
         Assert.Contains("HistoryPerformanceDiagnosticsEnabled", settings, StringComparison.Ordinal);
+        Assert.Contains("HistorySimplifiedRenderingEnabled", settings, StringComparison.Ordinal);
+        Assert.Contains("Use simplified History rendering", xaml, StringComparison.Ordinal);
+        Assert.Contains("SimplifiedHistoryItemTemplate", File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml")), StringComparison.Ordinal);
         Assert.Contains("History performance capture", xaml, StringComparison.Ordinal);
         Assert.Contains("independent of normal file logging", xaml, StringComparison.OrdinalIgnoreCase);
     }

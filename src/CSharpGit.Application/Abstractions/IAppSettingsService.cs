@@ -42,6 +42,7 @@ public interface IAppSettingsService
     bool ShowAuthorAvatars { get; }
     bool OnlineAvatarLookupEnabled { get; }
     bool HistoryPerformanceDiagnosticsEnabled { get; }
+    bool HistorySimplifiedRenderingEnabled { get; }
     IReadOnlyList<RecentRepositorySettings> RecentRepositories { get; }
 
     /// <summary>
@@ -86,6 +87,10 @@ public interface IAppSettingsService
         CancellationToken cancellationToken = default);
 
     Task SetHistoryPerformanceDiagnosticsEnabledAsync(
+        bool value,
+        CancellationToken cancellationToken = default);
+
+    Task SetHistorySimplifiedRenderingEnabledAsync(
         bool value,
         CancellationToken cancellationToken = default);
 

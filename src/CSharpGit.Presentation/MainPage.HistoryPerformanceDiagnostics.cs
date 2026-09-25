@@ -13,8 +13,11 @@ public sealed partial class MainPage
     private DispatcherQueueTimer? _historyPerformanceTimeoutTimer;
     private bool _historyPerformanceSubscriptionsAttached;
 
-    private void InitializeHistoryPerformanceDiagnostics() =>
+    private void InitializeHistoryPerformanceDiagnostics()
+    {
+        UpdateHistoryRenderingMode();
         UpdateHistoryPerformanceDiagnosticsAvailability();
+    }
 
     private async void StartHistoryPerformanceCapture_Click(object sender, RoutedEventArgs e)
     {
@@ -45,6 +48,7 @@ public sealed partial class MainPage
             layout.ObservedMaxLaneCount,
             _recentRepositorySettings.ShowAuthorAvatars,
             _recentRepositorySettings.OnlineAvatarLookupEnabled,
+            _recentRepositorySettings.HistorySimplifiedRenderingEnabled,
             RootLayout.ActualWidth,
             RootLayout.ActualHeight,
             XamlRoot?.RasterizationScale);
@@ -197,6 +201,7 @@ public sealed partial class MainPage
     private void HandleHistoryPerformanceSettingsChanged()
     {
         HistoryRenderDiagnostics.SettingsChanged();
+        UpdateHistoryRenderingMode();
         if (!_recentRepositorySettings.HistoryPerformanceDiagnosticsEnabled
             && HistoryPerformanceDiagnostics.IsCaptureActive)
         {
@@ -233,6 +238,18 @@ public sealed partial class MainPage
             .StopAsync(HistoryPerformanceStopReason.ApplicationShutdown)
             .GetAwaiter()
             .GetResult();
+    }
+
+    private void UpdateHistoryRenderingMode()
+    {
+        if (HistoryList is null)
+            return;
+
+        var resourceKey = _recentRepositorySettings.HistorySimplifiedRenderingEnabled
+            ? "SimplifiedHistoryItemTemplate"
+            : "HistoryItemTemplate";
+        if (Microsoft.UI.Xaml.Application.Current.Resources[resourceKey] is DataTemplate template)
+            HistoryList.ItemTemplate = template;
     }
 
     private void UpdateHistoryPerformanceDiagnosticsAvailability()

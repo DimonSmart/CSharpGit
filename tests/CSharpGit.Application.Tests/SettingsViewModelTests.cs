@@ -234,6 +234,7 @@ public sealed class SettingsViewModelTests
         public bool ShowAuthorAvatars { get; set; } = true;
         public bool OnlineAvatarLookupEnabled { get; set; } = true;
         public bool HistoryPerformanceDiagnosticsEnabled { get; set; }
+        public bool HistorySimplifiedRenderingEnabled { get; set; }
         public IReadOnlyList<RecentRepositorySettings> RecentRepositories => [];
         public bool FailNextWrite { get; set; }
         public int ChangedSubscriberCount { get; private set; }
@@ -322,6 +323,15 @@ public sealed class SettingsViewModelTests
             ThrowIfWriteFails(cancellationToken);
             if (HistoryPerformanceDiagnosticsEnabled == value) return Task.CompletedTask;
             HistoryPerformanceDiagnosticsEnabled = value;
+            _changed?.Invoke(this, EventArgs.Empty);
+            return Task.CompletedTask;
+        }
+
+        public Task SetHistorySimplifiedRenderingEnabledAsync(bool value, CancellationToken cancellationToken = default)
+        {
+            ThrowIfWriteFails(cancellationToken);
+            if (HistorySimplifiedRenderingEnabled == value) return Task.CompletedTask;
+            HistorySimplifiedRenderingEnabled = value;
             _changed?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
         }

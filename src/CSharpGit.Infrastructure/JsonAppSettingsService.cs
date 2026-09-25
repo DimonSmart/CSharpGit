@@ -55,6 +55,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
 
     public bool HistoryPerformanceDiagnosticsEnabled => Volatile.Read(ref _state).HistoryPerformanceDiagnosticsEnabled;
 
+    public bool HistorySimplifiedRenderingEnabled => Volatile.Read(ref _state).HistorySimplifiedRenderingEnabled;
+
     public IReadOnlyList<RecentRepositorySettings> RecentRepositories => Volatile.Read(ref _state).RecentRepositories;
 
     public event EventHandler? Changed;
@@ -157,6 +159,15 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             current => current.HistoryPerformanceDiagnosticsEnabled == value
                 ? current
                 : current with { HistoryPerformanceDiagnosticsEnabled = value },
+            cancellationToken);
+
+    public Task SetHistorySimplifiedRenderingEnabledAsync(
+        bool value,
+        CancellationToken cancellationToken = default) =>
+        UpdateAsync(
+            current => current.HistorySimplifiedRenderingEnabled == value
+                ? current
+                : current with { HistorySimplifiedRenderingEnabled = value },
             cancellationToken);
 
     public Task RecordRecentRepositoryAsync(
@@ -270,6 +281,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 document.ShowAuthorAvatars ?? true,
                 document.OnlineAvatarLookupEnabled ?? true,
                 document.HistoryPerformanceDiagnosticsEnabled,
+                document.HistorySimplifiedRenderingEnabled,
                 recentRepositories);
         }
         catch (JsonException)
@@ -305,6 +317,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             ShowAuthorAvatars = state.ShowAuthorAvatars,
             OnlineAvatarLookupEnabled = state.OnlineAvatarLookupEnabled,
             HistoryPerformanceDiagnosticsEnabled = state.HistoryPerformanceDiagnosticsEnabled,
+            HistorySimplifiedRenderingEnabled = state.HistorySimplifiedRenderingEnabled,
             RecentRepositories = state.RecentRepositories.ToList()
         };
         var json = JsonSerializer.Serialize(document, SerializerOptions);
@@ -393,6 +406,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         bool ShowAuthorAvatars,
         bool OnlineAvatarLookupEnabled,
         bool HistoryPerformanceDiagnosticsEnabled,
+        bool HistorySimplifiedRenderingEnabled,
         IReadOnlyList<RecentRepositorySettings> RecentRepositories)
     {
         public static SettingsState Default { get; } = new(
@@ -405,6 +419,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             false,
             true,
             true,
+            false,
             false,
             Array.AsReadOnly(Array.Empty<RecentRepositorySettings>()));
     }
@@ -421,6 +436,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         public bool? ShowAuthorAvatars { get; init; }
         public bool? OnlineAvatarLookupEnabled { get; init; }
         public bool HistoryPerformanceDiagnosticsEnabled { get; init; }
+        public bool HistorySimplifiedRenderingEnabled { get; init; }
         public List<RecentRepositorySettings>? RecentRepositories { get; init; }
     }
 
