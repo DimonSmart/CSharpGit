@@ -94,8 +94,11 @@ public sealed partial class AuthorAvatar : UserControl
 
     private static void IdentityPropertyChanged(
         DependencyObject dependencyObject,
-        DependencyPropertyChangedEventArgs args) =>
+        DependencyPropertyChangedEventArgs args)
+    {
+        HistoryRenderDiagnostics.AvatarIdentityChanged();
         ((AuthorAvatar)dependencyObject).Refresh();
+    }
 
     private static void AvatarSizePropertyChanged(
         DependencyObject dependencyObject,
@@ -108,6 +111,7 @@ public sealed partial class AuthorAvatar : UserControl
 
     private void AuthorAvatar_Loaded(object sender, RoutedEventArgs args)
     {
+        HistoryRenderDiagnostics.AvatarLoaded();
         EnsureServices();
         AttachSettings();
         Refresh();
@@ -115,7 +119,9 @@ public sealed partial class AuthorAvatar : UserControl
 
     private void AuthorAvatar_Unloaded(object sender, RoutedEventArgs args)
     {
-        _requestGate.Cancel();
+        HistoryRenderDiagnostics.AvatarUnloaded();
+        if (_requestGate.Cancel())
+            HistoryRenderDiagnostics.AvatarRequestCancelled();
         DetachSettings();
     }
 
@@ -155,7 +161,9 @@ public sealed partial class AuthorAvatar : UserControl
 
     private void Refresh()
     {
-        _requestGate.Cancel();
+        HistoryRenderDiagnostics.AvatarRefresh();
+        if (_requestGate.Cancel())
+            HistoryRenderDiagnostics.AvatarRequestCancelled();
         ShowInitials();
 
         var settings = _settings;
@@ -176,6 +184,7 @@ public sealed partial class AuthorAvatar : UserControl
             return;
 
         var request = _requestGate.Start(CurrentIdentity());
+        HistoryRenderDiagnostics.AvatarRequestStarted();
         _ = ResolveRemoteAsync(request);
     }
 
@@ -185,12 +194,17 @@ public sealed partial class AuthorAvatar : UserControl
         if (service is null) return;
 
         AuthorAvatarResult result;
+        var startedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
+        var resolveTask = service.ResolveAsync(AuthorName, AuthorEmail, request.CancellationToken);
+        var completedSynchronously = resolveTask.IsCompleted;
         try
         {
-            result = await service.ResolveAsync(AuthorName, AuthorEmail, request.CancellationToken);
+            result = await resolveTask;
+            HistoryRenderDiagnostics.AvatarResolveCompleted(startedAt, completedSynchronously);
         }
         catch (OperationCanceledException)
         {
+            HistoryRenderDiagnostics.AvatarRequestCancelled();
             return;
         }
         catch
@@ -199,8 +213,13 @@ public sealed partial class AuthorAvatar : UserControl
         }
 
         if (!_requestGate.IsCurrent(request, CurrentIdentity())
-            || _settings is not { ShowAuthorAvatars: true, OnlineAvatarLookupEnabled: true }
-            || string.IsNullOrWhiteSpace(result.ImagePath))
+            || _settings is not { ShowAuthorAvatars: true, OnlineAvatarLookupEnabled: true })
+        {
+            HistoryRenderDiagnostics.AvatarStaleResultIgnored();
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(result.ImagePath))
             return;
 
         try
@@ -215,6 +234,7 @@ public sealed partial class AuthorAvatar : UserControl
             AvatarImage.Visibility = Visibility.Visible;
             InitialsText.Visibility = Visibility.Collapsed;
             _displayedRemoteIdentity = request.Identity;
+            HistoryRenderDiagnostics.AvatarResultApplied();
         }
         catch
         {
