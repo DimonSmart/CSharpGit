@@ -183,8 +183,8 @@ internal static class HistoryRenderDiagnostics
     internal static void PresentationDelivered(long startedAt) =>
         Session?.RecordPresentationDelivery(startedAt);
 
-    internal static void HistoryViewChanged(long timestamp) =>
-        Session?.RecordViewChanged(timestamp);
+    internal static void HistoryViewChanged(long timestamp, bool isIntermediate) =>
+        Session?.RecordViewChanged(timestamp, isIntermediate);
 
     internal static void LoadMoreThresholdReached()
     {
