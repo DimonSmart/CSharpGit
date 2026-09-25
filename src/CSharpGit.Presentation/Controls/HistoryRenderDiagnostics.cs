@@ -295,6 +295,12 @@ internal static class HistoryRenderDiagnostics
     internal static void HistoryIndexLookupCompleted(long startedAt, int? historyItems = null) =>
         Session?.RecordHistoryIndexLookup(startedAt, historyItems);
 
+    internal static void HistoryScanCompleted(
+        HistoryScanKind kind,
+        long startedAt,
+        int itemsExamined = 0) =>
+        Session?.RecordHistoryScan(kind, startedAt, itemsExamined);
+
     internal static void ExplicitAvatarConfigured()
     {
         if (Enabled) Interlocked.Increment(ref _explicitAvatarConfigurations);
