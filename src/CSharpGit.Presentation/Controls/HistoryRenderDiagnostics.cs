@@ -301,6 +301,15 @@ internal static class HistoryRenderDiagnostics
         int itemsExamined = 0) =>
         Session?.RecordHistoryScan(kind, startedAt, itemsExamined);
 
+    internal static void CommitLookupCompleted(long startedAt, int itemsExamined = 0) =>
+        Session?.RecordHistoryScan(HistoryScanKind.CommitLookup, startedAt, itemsExamined);
+
+    internal static void ParentLookupCompleted(long startedAt, int itemsExamined = 0) =>
+        Session?.RecordHistoryScan(HistoryScanKind.ParentLookup, startedAt, itemsExamined);
+
+    internal static void RefLookupCompleted(long startedAt, int itemsExamined = 0) =>
+        Session?.RecordHistoryScan(HistoryScanKind.RefLookup, startedAt, itemsExamined);
+
     internal static void ExplicitAvatarConfigured()
     {
         if (Enabled) Interlocked.Increment(ref _explicitAvatarConfigurations);
