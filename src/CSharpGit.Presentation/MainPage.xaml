@@ -272,8 +272,7 @@
                         SelectedItem="{Binding SelectedHistoryRow, Mode=TwoWay}"
                         IsItemClickEnabled="False"
                         ItemContainerStyle="{StaticResource HistoryRowStyle}"
-                        ItemTemplate="{StaticResource HistoryItemTemplate}"
-                        ContainerContentChanging="HistoryList_ContainerContentChanging" />
+                        ItemTemplate="{StaticResource HistoryItemTemplate}" />
               <Button x:Name="LoadMoreHistoryButton"
                       Grid.Row="1"
                       Content="↓"

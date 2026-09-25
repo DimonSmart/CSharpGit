@@ -96,12 +96,4 @@ public sealed partial class MainPage
         CommitGraphPresentationContext.Publish(layout);
     }
 
-    private void HistoryList_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
-    {
-        if (args.InRecycleQueue)
-            return;
-
-        var container = args.ItemContainer;
-        DispatcherQueue.TryEnqueue(() => ConfigureAuthorAvatars(container));
-    }
 }
