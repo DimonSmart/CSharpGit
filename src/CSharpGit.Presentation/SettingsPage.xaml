@@ -364,6 +364,28 @@
               </StackPanel>
             </Border>
 
+            <TextBlock Text="History performance capture"
+                       Style="{StaticResource SectionHeaderTextStyle}"
+                       Margin="{StaticResource Margin.Section}" />
+            <TextBlock Text="Collect focused History scrolling and rendering telemetry. Capture files are independent of normal file logging and do not contain repository paths, commit messages, author identities, refs, or Git arguments."
+                       Style="{StaticResource BodySubduedTextStyle}"
+                       TextWrapping="Wrap"
+                       MaxWidth="680" />
+            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
+              <StackPanel Spacing="{StaticResource Spacing.M}">
+                <ToggleSwitch x:Name="HistoryPerformanceDiagnosticsToggle"
+                              Header="Enable history performance diagnostics"
+                              IsOn="{Binding HistoryPerformanceDiagnosticsEnabled, Mode=TwoWay}"
+                              OnContent="On"
+                              OffContent="Off"
+                              Toggled="HistoryPerformanceDiagnosticsToggle_Toggled" />
+                <TextBlock Text="When enabled, the History toolbar exposes Start/Stop performance capture and Open diagnostics folder. No capture runs until Start is pressed."
+                           Style="{StaticResource SecondaryTextStyle}"
+                           TextWrapping="Wrap"
+                           MaxWidth="620" />
+              </StackPanel>
+            </Border>
+
             <TextBlock Text="File logging"
                        Style="{StaticResource SectionHeaderTextStyle}"
                        Margin="{StaticResource Margin.Section}" />
