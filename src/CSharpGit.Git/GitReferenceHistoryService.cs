@@ -26,6 +26,7 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
             query.Take,
             GetHistoryRevisions(query),
             ShouldIncludeReflog(query),
+            query.HeadExists,
             cancellationToken);
     }
 
@@ -79,7 +80,7 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
     {
         ValidateReference(reference);
         if (skip < 0 || take is < 1 or > 1000) throw new ArgumentOutOfRangeException(nameof(take));
-        return ReadHistoryCoreAsync(repository, filter, skip, take, [reference], false, cancellationToken);
+        return ReadHistoryCoreAsync(repository, filter, skip, take, [reference], false, null, cancellationToken);
     }
 
     public async Task<CommitDetails> ReadCommitAsync(
@@ -150,13 +151,18 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
         int take,
         IReadOnlyList<string> revisions,
         bool includeReflog,
+        bool? headExists,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(repository);
 
-        if (IsHeadOnly(revisions)
-            && await IsUnbornHeadAsync(repository, cancellationToken))
-            return new HistoryPage([], false);
+        if (IsHeadOnly(revisions))
+        {
+            if (headExists == false)
+                return new HistoryPage([], false);
+            if (headExists is null && await IsUnbornHeadAsync(repository, cancellationToken))
+                return new HistoryPage([], false);
+        }
 
         if (string.IsNullOrWhiteSpace(filter))
         {
