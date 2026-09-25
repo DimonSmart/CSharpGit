@@ -64,7 +64,8 @@ public sealed class DesignSystemContractTests
 
         Assert.Contains("BasedOn=\"{StaticResource TechnicalTextStyle}\"", typography);
         Assert.Contains("BasedOn=\"{StaticResource CompactButtonStyle}\"", controls);
-        Assert.Contains("BasedOn=\"{StaticResource DenseListItemStyle}\"", workspace);
+        Assert.Contains("<Style x:Key=\"DenseListItemStyle\"", workspace);
+        Assert.Contains("BasedOn=\"{StaticResource ListViewItemExpanded}\"", workspace);
         Assert.Contains("BasedOn=\"{StaticResource DenseTreeItemStyle}\"", repositoryTree);
 
         var dictionaries = new Dictionary<string, string>
