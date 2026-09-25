@@ -37,6 +37,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
     private bool _autoSetupRemoteOnPush;
     private bool _showAuthorAvatars;
     private bool _onlineAvatarLookupEnabled;
+    private bool _historyPerformanceDiagnosticsEnabled;
     private int _disposed;
     private int _synchronizingFromSettings;
 
@@ -98,6 +99,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         _autoSetupRemoteOnPush = _settings.AutoSetupRemoteOnPush;
         _showAuthorAvatars = _settings.ShowAuthorAvatars;
         _onlineAvatarLookupEnabled = _settings.OnlineAvatarLookupEnabled;
+        _historyPerformanceDiagnosticsEnabled = _settings.HistoryPerformanceDiagnosticsEnabled;
 
         _settings.Changed += Settings_Changed;
     }
@@ -196,6 +198,17 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         {
             if (_onlineAvatarLookupEnabled == value) return;
             _onlineAvatarLookupEnabled = value;
+            Notify();
+        }
+    }
+
+    public bool HistoryPerformanceDiagnosticsEnabled
+    {
+        get => _historyPerformanceDiagnosticsEnabled;
+        set
+        {
+            if (_historyPerformanceDiagnosticsEnabled == value) return;
+            _historyPerformanceDiagnosticsEnabled = value;
             Notify();
         }
     }
@@ -321,6 +334,22 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    public async Task ApplyHistoryPerformanceDiagnosticsEnabledAsync(
+        bool value,
+        CancellationToken cancellationToken = default)
+    {
+        HistoryPerformanceDiagnosticsEnabled = value;
+        try
+        {
+            await _settings.SetHistoryPerformanceDiagnosticsEnabledAsync(value, cancellationToken);
+        }
+        catch
+        {
+            await SyncFromSettingsAfterFailureAsync();
+            throw;
+        }
+    }
+
     private void Settings_Changed(object? sender, EventArgs e)
     {
         if (IsDisposed) return;
@@ -353,6 +382,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
             AutoSetupRemoteOnPush = _settings.AutoSetupRemoteOnPush;
             ShowAuthorAvatars = _settings.ShowAuthorAvatars;
             OnlineAvatarLookupEnabled = _settings.OnlineAvatarLookupEnabled;
+            HistoryPerformanceDiagnosticsEnabled = _settings.HistoryPerformanceDiagnosticsEnabled;
         }
         finally
         {
