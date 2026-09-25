@@ -1,4 +1,5 @@
 using CSharpGit.Presentation.Controls;
+using CSharpGit.Presentation.Diagnostics;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -31,6 +32,7 @@ public sealed partial class MainPage
             Check(_viewModel.History.Count >= 300,
                 $"graph viewport fixture loaded only {_viewModel.History.Count} rows; expected at least 300",
                 failures);
+            await RunHistoryPerformanceCaptureCheckAsync(failures);
             HistoryRenderDiagnostics.EnableForCheck();
             HistoryRenderDiagnostics.Reset();
             using var benchmarkProcess = System.Diagnostics.Process.GetCurrentProcess();
@@ -140,6 +142,115 @@ public sealed partial class MainPage
         finally
         {
             HistoryPane.RowDefinitions[3].Height = originalDetailsHeight;
+        }
+    }
+
+    private async Task RunHistoryPerformanceCaptureCheckAsync(ICollection<string> failures)
+    {
+        var layout = ActiveCommitGraphLayout;
+        var context = new HistoryPerformanceStartContext(
+            "main",
+            _viewModel.History.Count,
+            _viewModel.History.Count,
+            null,
+            _viewModel.HasMore,
+            _recentRepositorySettings.ShowReflog,
+            !string.IsNullOrWhiteSpace(_viewModel.FilterText),
+            _viewModel.LocalBranches.Count,
+            _viewModel.RemoteBranches.Count,
+            _viewModel.Tags.Count,
+            _viewModel.LocalBranches.Count + _viewModel.RemoteBranches.Count + _viewModel.Tags.Count,
+            layout.GraphWidth,
+            layout.ObservedMaxLaneCount,
+            _recentRepositorySettings.ShowAuthorAvatars,
+            _recentRepositorySettings.OnlineAvatarLookupEnabled,
+            RootLayout.ActualWidth,
+            RootLayout.ActualHeight,
+            XamlRoot?.RasterizationScale);
+
+        HistoryPerformanceCaptureFiles? result = null;
+        try
+        {
+            var started = await HistoryPerformanceDiagnostics.StartAsync(context, _gitCommandActivitySource);
+            Check(started, "History performance capture did not start", failures);
+            if (!started) return;
+
+            AttachHistoryPerformanceSubscriptions();
+            var indexes = new[]
+            {
+                0,
+                Math.Min(_viewModel.History.Count - 1, 90),
+                Math.Min(_viewModel.History.Count - 1, 180),
+                Math.Min(_viewModel.History.Count - 1, 30)
+            };
+            foreach (var index in indexes)
+            {
+                if (index < 0) continue;
+                HistoryList.ScrollIntoView(_viewModel.History[index]);
+                await Task.Delay(90);
+            }
+        }
+        finally
+        {
+            DetachHistoryPerformanceSubscriptions();
+            if (HistoryPerformanceDiagnostics.IsCaptureActive)
+                result = await HistoryPerformanceDiagnostics.StopAsync(HistoryPerformanceStopReason.Manual);
+        }
+
+        if (result is not { } files)
+        {
+            failures.Add("History performance capture did not produce output files");
+            return;
+        }
+
+        Check(File.Exists(files.JsonlPath), "History performance JSONL was not created", failures);
+        Check(File.Exists(files.SummaryPath), "History performance text summary was not created", failures);
+        if (!File.Exists(files.JsonlPath) || !File.Exists(files.SummaryPath))
+            return;
+
+        var lines = await File.ReadAllLinesAsync(files.JsonlPath);
+        Check(lines.Length >= 2, "History performance JSONL did not contain start and summary records", failures);
+        foreach (var line in lines)
+        {
+            try
+            {
+                using var _ = System.Text.Json.JsonDocument.Parse(line);
+            }
+            catch (System.Text.Json.JsonException exception)
+            {
+                failures.Add($"History performance JSONL contains an invalid record: {exception.Message}");
+                break;
+            }
+        }
+
+        if (lines.Length > 0)
+        {
+            using var last = System.Text.Json.JsonDocument.Parse(lines[^1]);
+            Check(
+                last.RootElement.TryGetProperty("type", out var type)
+                && string.Equals(type.GetString(), "sessionSummary", StringComparison.Ordinal),
+                "History performance JSONL does not end with sessionSummary",
+                failures);
+        }
+
+        var summary = await File.ReadAllTextAsync(files.SummaryPath);
+        Check(summary.Contains("Rendering", StringComparison.Ordinal), "History performance summary has no rendering statistics", failures);
+        Check(summary.Contains("Virtualization", StringComparison.Ordinal), "History performance summary has no virtualization statistics", failures);
+        Check(summary.Contains("Commit graph", StringComparison.Ordinal), "History performance summary has no graph statistics", failures);
+        Check(summary.Contains("Topology converter", StringComparison.Ordinal), "History performance summary has no topology statistics", failures);
+        Check(summary.Contains("Runtime", StringComparison.Ordinal), "History performance summary has no runtime statistics", failures);
+        Check(summary.Contains("Git", StringComparison.Ordinal), "History performance summary has no Git statistics", failures);
+
+        try
+        {
+            File.Delete(files.JsonlPath);
+            File.Delete(files.SummaryPath);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
         }
     }
 
