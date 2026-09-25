@@ -1,10 +1,8 @@
 using System.Collections.Specialized;
 using CSharpGit.Domain;
-using CSharpGit.Presentation.Controls;
 using CSharpGit.Presentation.Controls.CommitGraph;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 
 namespace CSharpGit.Presentation;
 
@@ -95,7 +93,7 @@ public sealed partial class MainPage
 
         var layout = ActiveCommitGraphLayout;
         HistoryGraphHeaderColumn.Width = new GridLength(layout.GraphWidth);
-        ApplyCommitGraphLayout(HistoryList, layout);
+        CommitGraphPresentationContext.Publish(layout);
     }
 
     private void HistoryList_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
@@ -104,23 +102,6 @@ public sealed partial class MainPage
             return;
 
         var container = args.ItemContainer;
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            ApplyCommitGraphLayout(container, ActiveCommitGraphLayout);
-            ConfigureAuthorAvatars(container);
-        });
-    }
-
-    private static void ApplyCommitGraphLayout(DependencyObject root, CommitGraphLayoutState layout)
-    {
-        if (root is Grid { Name: "HistoryRowRoot" } rowGrid && rowGrid.ColumnDefinitions.Count > 0)
-            rowGrid.ColumnDefinitions[0].Width = new GridLength(layout.GraphWidth);
-
-        if (root is CommitGraphControl graph)
-            graph.Metrics = layout.Metrics;
-
-        var childCount = VisualTreeHelper.GetChildrenCount(root);
-        for (var index = 0; index < childCount; index++)
-            ApplyCommitGraphLayout(VisualTreeHelper.GetChild(root, index), layout);
+        DispatcherQueue.TryEnqueue(() => ConfigureAuthorAvatars(container));
     }
 }

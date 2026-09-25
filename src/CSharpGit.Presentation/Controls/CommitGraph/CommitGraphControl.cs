@@ -43,6 +43,7 @@ public sealed class CommitGraphControl : Canvas
     private double _renderedHeight;
     private ElementTheme? _renderedTheme;
     private long _renderCount;
+    private bool _presentationContextSubscribed;
 
     public static readonly DependencyProperty GraphProperty = DependencyProperty.Register(
         nameof(Graph),
@@ -76,6 +77,7 @@ public sealed class CommitGraphControl : Canvas
 
     public CommitGraphControl()
     {
+        HistoryRenderDiagnostics.GraphControlCreated();
         IsHitTestVisible = false;
         Clip = _clipGeometry;
 
@@ -94,11 +96,8 @@ public sealed class CommitGraphControl : Canvas
         Children.Add(_nodePath);
         UpdateBrushes();
 
-        Loaded += (_, _) =>
-        {
-            UpdateClip();
-            UpdateGeometry();
-        };
+        Loaded += CommitGraphControl_Loaded;
+        Unloaded += CommitGraphControl_Unloaded;
         DataContextChanged += (_, _) => UpdateGeometry();
         SizeChanged += (_, _) =>
         {
@@ -110,6 +109,38 @@ public sealed class CommitGraphControl : Canvas
             UpdateBrushes();
             UpdateGeometry();
         };
+    }
+
+    private void CommitGraphControl_Loaded(object sender, RoutedEventArgs args)
+    {
+        if (!_presentationContextSubscribed)
+        {
+            CommitGraphPresentationContext.Changed += CommitGraphPresentationContext_Changed;
+            _presentationContextSubscribed = true;
+        }
+
+        ApplyPresentationLayout();
+        UpdateClip();
+        UpdateGeometry();
+    }
+
+    private void CommitGraphControl_Unloaded(object sender, RoutedEventArgs args)
+    {
+        if (!_presentationContextSubscribed)
+            return;
+
+        CommitGraphPresentationContext.Changed -= CommitGraphPresentationContext_Changed;
+        _presentationContextSubscribed = false;
+    }
+
+    private void CommitGraphPresentationContext_Changed(object? sender, EventArgs args) =>
+        ApplyPresentationLayout();
+
+    private void ApplyPresentationLayout()
+    {
+        var layout = CommitGraphPresentationContext.Current;
+        Width = layout.GraphWidth;
+        Metrics = layout.Metrics;
     }
 
     protected override Size MeasureOverride(Size availableSize)
@@ -139,6 +170,7 @@ public sealed class CommitGraphControl : Canvas
 
     private void UpdateGeometry()
     {
+        HistoryRenderDiagnostics.GeometryUpdateAttempted();
         var graph = Graph;
         var height = ActualHeight;
         if (!double.IsFinite(height) || height <= 0)
@@ -156,6 +188,8 @@ public sealed class CommitGraphControl : Canvas
         {
             return;
         }
+
+        HistoryRenderDiagnostics.GeometryRebuilt();
 
         foreach (var path in _trackPaths)
             path.Data = null;
