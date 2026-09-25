@@ -80,7 +80,18 @@ public sealed class CommitGraphViewportLifecycleTests
         for (var index = 0; index < 365; index++)
         {
             await File.AppendAllTextAsync(Path.Combine(repository, "tracked.txt"), $"history {index}\n");
-            await GitAsync(repository, home, "commit", "-am", $"Graph history {index:000}");
+            var authorName = index % 2 == 0 ? "Graph Author A" : "Graph Author B";
+            var authorEmail = index % 2 == 0 ? "graph-a@example.invalid" : "graph-b@example.invalid";
+            await GitAsync(
+                repository,
+                home,
+                "-c",
+                $"user.name={authorName}",
+                "-c",
+                $"user.email={authorEmail}",
+                "commit",
+                "-am",
+                $"Graph history {index:000}");
         }
 
         await GitAsync(repository, home, "tag", "graph-tag");
