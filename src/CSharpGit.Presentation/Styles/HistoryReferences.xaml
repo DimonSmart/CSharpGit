@@ -8,7 +8,7 @@
           MinHeight="{StaticResource Height.DataRow}"
           Padding="{StaticResource Padding.DenseRow}">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition />
+        <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="160" />
         <ColumnDefinition Width="150" />
