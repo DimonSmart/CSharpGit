@@ -43,7 +43,8 @@ internal sealed record HistoryPerformanceStartContext(
     string HistorySource,
     int HistoryItems,
     int LoadedRows,
-    int? PageSize,
+    int PageSize,
+    string SortMode,
     bool HasMore,
     bool ShowReflog,
     bool HasTextFilter,
@@ -251,10 +252,15 @@ internal sealed class HistoryPerformanceSession
     internal long PresentationPublishes;
     internal long PresentationDeliveries;
     internal long ViewChangedCount;
+    internal long ViewChangedIntermediateCount;
+    internal long ViewChangedFinalCount;
     internal long LoadMoreThresholdCount;
     internal long PageLoadsStarted;
     internal long ContainerChanges;
+    internal long ContainerRealizations;
     internal long ContainerRecycles;
+    internal long EstimatedRealizedContainers;
+    internal long MaxEstimatedRealizedContainers;
     internal long SelectionChanges;
     internal long ItemsSourceChanges;
     internal long HistoryCollectionResets;
@@ -374,6 +380,7 @@ internal sealed class HistoryPerformanceSession
             ["historyItems"] = _context.HistoryItems,
             ["loadedRows"] = _context.LoadedRows,
             ["pageSize"] = _context.PageSize,
+            ["sortMode"] = _context.SortMode,
             ["hasMore"] = _context.HasMore,
             ["showReflog"] = _context.ShowReflog,
             ["hasTextFilter"] = _context.HasTextFilter,
@@ -405,9 +412,13 @@ internal sealed class HistoryPerformanceSession
         if (milliseconds > 100) Interlocked.Increment(ref RenderIntervalsOver100);
     }
 
-    internal void RecordViewChanged(long timestamp)
+    internal void RecordViewChanged(long timestamp, bool isIntermediate)
     {
         Interlocked.Increment(ref ViewChangedCount);
+        if (isIntermediate)
+            Interlocked.Increment(ref ViewChangedIntermediateCount);
+        else
+            Interlocked.Increment(ref ViewChangedFinalCount);
         var previous = Interlocked.Exchange(ref _lastViewChangedTimestamp, timestamp);
         if (previous <= 0 || timestamp <= previous) return;
         UpdateMax(ref _maxViewChangedIntervalTicks, timestamp - previous);
@@ -416,7 +427,18 @@ internal sealed class HistoryPerformanceSession
     internal void RecordVisitedIndex(int index, bool recycled)
     {
         Interlocked.Increment(ref ContainerChanges);
-        if (recycled) Interlocked.Increment(ref ContainerRecycles);
+        if (recycled)
+        {
+            Interlocked.Increment(ref ContainerRecycles);
+            var current = Interlocked.Decrement(ref EstimatedRealizedContainers);
+            if (current < 0) Interlocked.Exchange(ref EstimatedRealizedContainers, 0);
+        }
+        else
+        {
+            Interlocked.Increment(ref ContainerRealizations);
+            var current = Interlocked.Increment(ref EstimatedRealizedContainers);
+            UpdateMax(ref MaxEstimatedRealizedContainers, current);
+        }
         UpdateMin(ref VisitedMinIndex, index);
         UpdateMax(ref VisitedMaxIndex, index);
     }
@@ -752,6 +774,10 @@ internal sealed class HistoryPerformanceSession
         ["visitedMinIndex"] = NormalizeMinIndex(),
         ["visitedMaxIndex"] = NormalizeMaxIndex(),
         ["viewChanged"] = Volatile.Read(ref ViewChangedCount),
+        ["viewChangedIntermediate"] = Volatile.Read(ref ViewChangedIntermediateCount),
+        ["viewChangedFinal"] = Volatile.Read(ref ViewChangedFinalCount),
+        ["estimatedRealizedContainers"] = Volatile.Read(ref EstimatedRealizedContainers),
+        ["maxEstimatedRealizedContainers"] = Volatile.Read(ref MaxEstimatedRealizedContainers),
         ["renderCallbacks"] = Volatile.Read(ref RenderCallbacks),
         ["renderIntervalsOver33ms"] = Volatile.Read(ref RenderIntervalsOver33),
         ["graphMeasureCalls"] = Volatile.Read(ref GraphMeasureCalls),
@@ -775,6 +801,8 @@ internal sealed class HistoryPerformanceSession
             ["visitedMinIndex"] = NormalizeMinIndex(),
             ["visitedMaxIndex"] = NormalizeMaxIndex(),
             ["viewChanged"] = Volatile.Read(ref ViewChangedCount),
+            ["viewChangedIntermediate"] = Volatile.Read(ref ViewChangedIntermediateCount),
+            ["viewChangedFinal"] = Volatile.Read(ref ViewChangedFinalCount),
             ["maxViewChangedIntervalMs"] = HistoryAtomicDurationHistogram.TicksToMilliseconds(Volatile.Read(ref _maxViewChangedIntervalTicks)),
             ["loadMoreThresholdCount"] = Volatile.Read(ref LoadMoreThresholdCount),
             ["pageLoadsDuringCapture"] = Volatile.Read(ref PageLoadsStarted),
@@ -784,7 +812,10 @@ internal sealed class HistoryPerformanceSession
             ["renderIntervalsOver50ms"] = Volatile.Read(ref RenderIntervalsOver50),
             ["renderIntervalsOver100ms"] = Volatile.Read(ref RenderIntervalsOver100),
             ["containerChanges"] = Volatile.Read(ref ContainerChanges),
+            ["containerRealizations"] = Volatile.Read(ref ContainerRealizations),
             ["containerRecycles"] = Volatile.Read(ref ContainerRecycles),
+            ["estimatedRealizedContainers"] = Volatile.Read(ref EstimatedRealizedContainers),
+            ["maxEstimatedRealizedContainers"] = Volatile.Read(ref MaxEstimatedRealizedContainers),
             ["selectionChanges"] = Volatile.Read(ref SelectionChanges),
             ["itemsSourceChanges"] = Volatile.Read(ref ItemsSourceChanges),
             ["historyCollectionResets"] = Volatile.Read(ref HistoryCollectionResets),
@@ -930,6 +961,7 @@ internal sealed class HistoryPerformanceSession
         builder.AppendLine($"History items:                    {_context.HistoryItems}");
         builder.AppendLine($"Visited indexes:                  {FormatVisitedRange()}");
         builder.AppendLine($"ViewChanged events:               {Volatile.Read(ref ViewChangedCount)}");
+        builder.AppendLine($"Intermediate / final:             {Volatile.Read(ref ViewChangedIntermediateCount)} / {Volatile.Read(ref ViewChangedFinalCount)}");
         builder.AppendLine($"Page loads:                       {Volatile.Read(ref PageLoadsStarted)}");
         builder.AppendLine();
         builder.AppendLine("Rendering");
@@ -946,7 +978,9 @@ internal sealed class HistoryPerformanceSession
         builder.AppendLine("Virtualization");
         builder.AppendLine("--------------");
         builder.AppendLine($"Container changes:                {Volatile.Read(ref ContainerChanges)}");
+        builder.AppendLine($"Realization events:               {Volatile.Read(ref ContainerRealizations)}");
         builder.AppendLine($"Recycle events:                   {Volatile.Read(ref ContainerRecycles)}");
+        builder.AppendLine($"Max estimated realized:           {Volatile.Read(ref MaxEstimatedRealizedContainers)}");
         builder.AppendLine();
         builder.AppendLine("Commit graph");
         builder.AppendLine("------------");
