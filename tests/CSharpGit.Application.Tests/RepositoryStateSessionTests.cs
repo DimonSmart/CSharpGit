@@ -479,5 +479,15 @@ public sealed class RepositoryStateSessionTests
             Repository repository,
             CancellationToken cancellationToken = default) =>
             ReadAsync(repository, cancellationToken);
+
+        public async Task<RepositoryStateReadResult> ReadWithRefreshFingerprintAsync(
+            Repository repository,
+            bool localOnly = false,
+            CancellationToken cancellationToken = default) =>
+            new(
+                localOnly
+                    ? await ReadLocalOnlyAsync(repository, cancellationToken)
+                    : await ReadAsync(repository, cancellationToken),
+                null);
     }
 }

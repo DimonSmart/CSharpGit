@@ -27,7 +27,8 @@ public sealed class ReflogHistoryUiContractTests
         Assert.Contains("SetHistoryDisplayMode", reflogState);
         Assert.Contains("HistoryDisplayMode.AllReferencesWithReflog", reflogState);
         Assert.Contains("_viewModel.SetHistoryDisplayMode(mode)", selector);
-        Assert.Contains("new HistoryQuery(scope, filter, skip, IncludeReflog: _showReflog)", viewModel);
+        Assert.Contains("IncludeReflog: _showReflog", viewModel);
+        Assert.Contains("HeadExists: _headExists", viewModel);
         Assert.Contains("DisableReflogForScopedHistoryAsync", page);
         Assert.Contains("IncludeReflog: ShowReflog", navigation);
 
