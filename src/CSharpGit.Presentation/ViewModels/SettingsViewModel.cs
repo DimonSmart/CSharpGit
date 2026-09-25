@@ -38,6 +38,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
     private bool _showAuthorAvatars;
     private bool _onlineAvatarLookupEnabled;
     private bool _historyPerformanceDiagnosticsEnabled;
+    private bool _historySimplifiedRenderingEnabled;
     private int _disposed;
     private int _synchronizingFromSettings;
 
@@ -100,6 +101,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         _showAuthorAvatars = _settings.ShowAuthorAvatars;
         _onlineAvatarLookupEnabled = _settings.OnlineAvatarLookupEnabled;
         _historyPerformanceDiagnosticsEnabled = _settings.HistoryPerformanceDiagnosticsEnabled;
+        _historySimplifiedRenderingEnabled = _settings.HistorySimplifiedRenderingEnabled;
 
         _settings.Changed += Settings_Changed;
     }
@@ -209,6 +211,17 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         {
             if (_historyPerformanceDiagnosticsEnabled == value) return;
             _historyPerformanceDiagnosticsEnabled = value;
+            Notify();
+        }
+    }
+
+    public bool HistorySimplifiedRenderingEnabled
+    {
+        get => _historySimplifiedRenderingEnabled;
+        set
+        {
+            if (_historySimplifiedRenderingEnabled == value) return;
+            _historySimplifiedRenderingEnabled = value;
             Notify();
         }
     }
@@ -350,6 +363,22 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    public async Task ApplyHistorySimplifiedRenderingEnabledAsync(
+        bool value,
+        CancellationToken cancellationToken = default)
+    {
+        HistorySimplifiedRenderingEnabled = value;
+        try
+        {
+            await _settings.SetHistorySimplifiedRenderingEnabledAsync(value, cancellationToken);
+        }
+        catch
+        {
+            await SyncFromSettingsAfterFailureAsync();
+            throw;
+        }
+    }
+
     private void Settings_Changed(object? sender, EventArgs e)
     {
         if (IsDisposed) return;
@@ -383,6 +412,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
             ShowAuthorAvatars = _settings.ShowAuthorAvatars;
             OnlineAvatarLookupEnabled = _settings.OnlineAvatarLookupEnabled;
             HistoryPerformanceDiagnosticsEnabled = _settings.HistoryPerformanceDiagnosticsEnabled;
+            HistorySimplifiedRenderingEnabled = _settings.HistorySimplifiedRenderingEnabled;
         }
         finally
         {

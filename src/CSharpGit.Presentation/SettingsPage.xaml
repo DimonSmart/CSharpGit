@@ -383,6 +383,19 @@
                            Style="{StaticResource SecondaryTextStyle}"
                            TextWrapping="Wrap"
                            MaxWidth="620" />
+                <Border Height="1"
+                        Background="{ThemeResource DividerStrokeColorDefaultBrush}"
+                        Margin="{StaticResource Margin.FormSeparator}" />
+                <ToggleSwitch x:Name="HistorySimplifiedRenderingToggle"
+                              Header="Use simplified History rendering"
+                              IsOn="{Binding HistorySimplifiedRenderingEnabled, Mode=TwoWay}"
+                              OnContent="On"
+                              OffContent="Off"
+                              Toggled="HistorySimplifiedRenderingToggle_Toggled" />
+                <TextBlock Text="Replaces the normal History row content with only the commit subject. Use it for A/B performance captures; the setting applies immediately and each capture records which rendering mode was active."
+                           Style="{StaticResource SecondaryTextStyle}"
+                           TextWrapping="Wrap"
+                           MaxWidth="620" />
               </StackPanel>
             </Border>
 
