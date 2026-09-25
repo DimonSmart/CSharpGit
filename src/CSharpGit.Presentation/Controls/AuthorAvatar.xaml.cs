@@ -204,7 +204,6 @@ public sealed partial class AuthorAvatar : UserControl
         }
         catch (OperationCanceledException)
         {
-            HistoryRenderDiagnostics.AvatarRequestCancelled();
             return;
         }
         catch
