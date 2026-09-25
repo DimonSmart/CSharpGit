@@ -289,7 +289,8 @@ internal sealed class HistoryPerformanceSession
 
         Directory.CreateDirectory(directory);
         var stamp = _startedUtc.ToString("yyyyMMdd-HHmmss");
-        var baseName = $"history-perf-{stamp}-p{Environment.ProcessId}-{Guid.NewGuid():N}"[..Math.Min(74, $"history-perf-{stamp}-p{Environment.ProcessId}-{Guid.NewGuid():N}".Length)];
+        var sessionId = Guid.NewGuid().ToString("N")[..8];
+        var baseName = $"history-perf-{stamp}-p{Environment.ProcessId}-{sessionId}";
         JsonlPath = Path.Combine(directory, baseName + ".jsonl");
         SummaryPath = Path.Combine(directory, baseName + ".summary.txt");
 
@@ -430,7 +431,10 @@ internal sealed class HistoryPerformanceSession
         int outgoing)
     {
         Interlocked.Increment(ref TopologyConversions);
-        Interlocked.Increment(ref exact ? ref TopologyExact : ref TopologyFallback);
+        if (exact)
+            Interlocked.Increment(ref TopologyExact);
+        else
+            Interlocked.Increment(ref TopologyFallback);
         Interlocked.Add(ref TopologyLaneTotal, lanes);
         Interlocked.Add(ref TopologyIncomingTotal, incoming);
         Interlocked.Add(ref TopologyOutgoingTotal, outgoing);
@@ -1104,6 +1108,7 @@ internal static class HistoryPerformanceDiagnostics
     {
         if (args.ChangeKind != GitCommandActivityChangeKind.Started)
             return;
-        ActiveSession?.RecordGitCommand(args.Activity);
+        if (args.Activity is { } activity)
+            ActiveSession?.RecordGitCommand(activity);
     }
 }
