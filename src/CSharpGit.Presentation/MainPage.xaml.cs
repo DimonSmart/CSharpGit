@@ -141,7 +141,7 @@ public sealed partial class MainPage : Page
                 ? null
                 : _scopedHistory.FirstOrDefault(row => string.Equals(row.Commit.Hash, selectedHash, StringComparison.Ordinal));
             visibleSelection ??= _scopedHistory.FirstOrDefault();
-            HistoryRenderDiagnostics.HistoryGlobalScanCompleted(scanStartedAt, _scopedHistory.Count);
+            HistoryRenderDiagnostics.CommitLookupCompleted(scanStartedAt, _scopedHistory.Count);
             if (!ReferenceEquals(visibleSelection, _viewModel.SelectedHistoryRow))
                 _viewModel.SelectedHistoryRow = visibleSelection;
         }
@@ -343,10 +343,12 @@ public sealed partial class MainPage : Page
 
             if (reset)
             {
+                var lookupStartedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
                 var restored = selectedHash is null
                     ? _scopedHistory.FirstOrDefault()
                     : _scopedHistory.FirstOrDefault(row => string.Equals(row.Commit.Hash, selectedHash, StringComparison.Ordinal))
                       ?? _scopedHistory.FirstOrDefault();
+                HistoryRenderDiagnostics.CommitLookupCompleted(lookupStartedAt, _scopedHistory.Count);
                 _viewModel.SelectedHistoryRow = restored;
             }
             else if (_viewModel.SelectedHistoryRow is null && _scopedHistory.FirstOrDefault() is { } first)
@@ -402,10 +404,12 @@ public sealed partial class MainPage : Page
         HistoryList.ItemsSource = _viewModel.History;
         LoadMoreHistoryButton.IsEnabled = _viewModel.HasMore;
 
+        var lookupStartedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
         var restored = selectedHash is null
             ? _viewModel.History.FirstOrDefault()
             : _viewModel.History.FirstOrDefault(row => string.Equals(row.Commit.Hash, selectedHash, StringComparison.Ordinal))
               ?? _viewModel.History.FirstOrDefault();
+        HistoryRenderDiagnostics.CommitLookupCompleted(lookupStartedAt, _viewModel.History.Count);
         _viewModel.SelectedHistoryRow = restored;
 
         if (_viewModel.SelectedScope != _viewModel.Scopes[0])
