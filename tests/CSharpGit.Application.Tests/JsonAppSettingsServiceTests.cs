@@ -324,29 +324,46 @@ public sealed class JsonAppSettingsServiceTests
     }
 
     [Fact]
-    public void HistorySimplifiedRenderingDefaultsToFalseForMissingAndLegacySettings()
+    public void HistoryRenderingModeDefaultsToFullForMissingAndLegacySettings()
     {
         using var fixture = new SettingsFixture();
-        Assert.False(fixture.CreateService().HistorySimplifiedRenderingEnabled);
+        Assert.Equal(HistoryRenderingMode.Full, fixture.CreateService().HistoryRenderingMode);
 
         fixture.WriteSettings("{ \"ThemeMode\": \"Dark\", \"HistoryPerformanceDiagnosticsEnabled\": true }");
-        Assert.False(fixture.CreateService().HistorySimplifiedRenderingEnabled);
+        Assert.Equal(HistoryRenderingMode.Full, fixture.CreateService().HistoryRenderingMode);
     }
 
     [Fact]
-    public async Task HistorySimplifiedRenderingIsPersistedAndRestored()
+    public void LegacySimplifiedHistoryRenderingMigratesToSubjectOnly()
+    {
+        using var fixture = new SettingsFixture();
+        fixture.WriteSettings("{ \"HistorySimplifiedRenderingEnabled\": true }");
+
+        Assert.Equal(HistoryRenderingMode.SubjectOnly, fixture.CreateService().HistoryRenderingMode);
+    }
+
+    [Theory]
+    [InlineData(HistoryRenderingMode.SubjectOnly, "SubjectOnly")]
+    [InlineData(HistoryRenderingMode.TextColumns, "TextColumns")]
+    [InlineData(HistoryRenderingMode.TextAndGraph, "TextAndGraph")]
+    [InlineData(HistoryRenderingMode.TextGraphAndReferences, "TextGraphAndReferences")]
+    [InlineData(HistoryRenderingMode.Full, "Full")]
+    public async Task HistoryRenderingModeIsPersistedAndRestored(
+        HistoryRenderingMode mode,
+        string expectedJsonValue)
     {
         using var fixture = new SettingsFixture();
         var service = fixture.CreateService();
 
-        await service.SetHistorySimplifiedRenderingEnabledAsync(true);
+        await service.SetHistoryRenderingModeAsync(mode);
 
-        Assert.True(service.HistorySimplifiedRenderingEnabled);
+        Assert.Equal(mode, service.HistoryRenderingMode);
         var restored = fixture.CreateService();
-        Assert.True(restored.HistorySimplifiedRenderingEnabled);
+        Assert.Equal(mode, restored.HistoryRenderingMode);
 
         using var document = JsonDocument.Parse(await File.ReadAllTextAsync(fixture.SettingsPath));
-        Assert.True(document.RootElement.GetProperty("HistorySimplifiedRenderingEnabled").GetBoolean());
+        Assert.Equal(expectedJsonValue, document.RootElement.GetProperty("HistoryRenderingMode").GetString());
+        Assert.False(document.RootElement.TryGetProperty("HistorySimplifiedRenderingEnabled", out _));
     }
 
     private sealed class SettingsFixture : IDisposable
