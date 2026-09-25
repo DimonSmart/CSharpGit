@@ -258,6 +258,14 @@ internal sealed class HistoryPerformanceSession
     internal long AvatarStaleResultsIgnored;
     internal long AvatarImmediateResolveCompletions;
     internal long AvatarAsyncResolveCompletions;
+    internal long AvatarMemoryCacheHits;
+    internal long AvatarMemoryCacheMisses;
+    internal long AvatarDiskCacheHits;
+    internal long AvatarDiskCacheMisses;
+    internal long AvatarDiskCacheWrites;
+    internal long AvatarDiskBytesWritten;
+    internal long AvatarRemoteRequests;
+    internal long AvatarRemoteBytesRead;
     internal long GitCommands;
     internal long GitUserCommands;
     internal long GitInternalCommands;
@@ -528,6 +536,35 @@ internal sealed class HistoryPerformanceSession
         RecordSlowOperation("HistoryIndexLookup", duration, 0, null, historyItems);
     }
 
+    internal void RecordAvatarDiagnosticActivity(AuthorAvatarDiagnosticActivityEventArgs activity)
+    {
+        switch (activity.Kind)
+        {
+            case AuthorAvatarDiagnosticActivityKind.MemoryCacheHit:
+                Interlocked.Increment(ref AvatarMemoryCacheHits);
+                break;
+            case AuthorAvatarDiagnosticActivityKind.MemoryCacheMiss:
+                Interlocked.Increment(ref AvatarMemoryCacheMisses);
+                break;
+            case AuthorAvatarDiagnosticActivityKind.DiskCacheHit:
+                Interlocked.Increment(ref AvatarDiskCacheHits);
+                break;
+            case AuthorAvatarDiagnosticActivityKind.DiskCacheMiss:
+                Interlocked.Increment(ref AvatarDiskCacheMisses);
+                break;
+            case AuthorAvatarDiagnosticActivityKind.DiskCacheWrite:
+                Interlocked.Increment(ref AvatarDiskCacheWrites);
+                Interlocked.Add(ref AvatarDiskBytesWritten, Math.Max(0, activity.Bytes));
+                break;
+            case AuthorAvatarDiagnosticActivityKind.RemoteRequest:
+                Interlocked.Increment(ref AvatarRemoteRequests);
+                break;
+            case AuthorAvatarDiagnosticActivityKind.RemoteBytesRead:
+                Interlocked.Add(ref AvatarRemoteBytesRead, Math.Max(0, activity.Bytes));
+                break;
+        }
+    }
+
     internal void RecordGitCommand(GitCommandActivity activity)
     {
         Interlocked.Increment(ref GitCommands);
@@ -755,6 +792,17 @@ internal sealed class HistoryPerformanceSession
             ["avatarImmediateResolveCompletions"] = Volatile.Read(ref AvatarImmediateResolveCompletions),
             ["avatarAsyncResolveCompletions"] = Volatile.Read(ref AvatarAsyncResolveCompletions),
             ["avatarResolveDuration"] = _avatarResolve.Snapshot(),
+            ["avatarCacheActivity"] = new Dictionary<string, long>
+            {
+                ["memoryHits"] = Volatile.Read(ref AvatarMemoryCacheHits),
+                ["memoryMisses"] = Volatile.Read(ref AvatarMemoryCacheMisses),
+                ["diskHits"] = Volatile.Read(ref AvatarDiskCacheHits),
+                ["diskMisses"] = Volatile.Read(ref AvatarDiskCacheMisses),
+                ["diskWrites"] = Volatile.Read(ref AvatarDiskCacheWrites),
+                ["diskBytesWritten"] = Volatile.Read(ref AvatarDiskBytesWritten),
+                ["remoteRequests"] = Volatile.Read(ref AvatarRemoteRequests),
+                ["remoteBytesRead"] = Volatile.Read(ref AvatarRemoteBytesRead)
+            },
             ["gitCommands"] = Volatile.Read(ref GitCommands),
             ["gitUserCommands"] = Volatile.Read(ref GitUserCommands),
             ["gitInternalCommands"] = Volatile.Read(ref GitInternalCommands),
@@ -883,6 +931,15 @@ internal sealed class HistoryPerformanceSession
         builder.AppendLine($"Resolve requests:                 {Volatile.Read(ref AvatarRequestsStarted)}");
         builder.AppendLine($"Cancelled:                        {Volatile.Read(ref AvatarRequestsCancelled)}");
         builder.AppendLine($"Async completions:                {Volatile.Read(ref AvatarAsyncResolveCompletions)}");
+        builder.AppendLine($"Memory cache hits/misses:         {Volatile.Read(ref AvatarMemoryCacheHits)} / {Volatile.Read(ref AvatarMemoryCacheMisses)}");
+        builder.AppendLine($"Disk cache hits/misses:           {Volatile.Read(ref AvatarDiskCacheHits)} / {Volatile.Read(ref AvatarDiskCacheMisses)}");
+        builder.AppendLine($"Remote requests:                  {Volatile.Read(ref AvatarRemoteRequests)}");
+        builder.AppendLine();
+        builder.AppendLine("Owned disk activity");
+        builder.AppendLine("-------------------");
+        builder.AppendLine($"Avatar cache writes:              {Volatile.Read(ref AvatarDiskCacheWrites)}");
+        builder.AppendLine($"Avatar cache bytes written:       {FormatBytes(Volatile.Read(ref AvatarDiskBytesWritten))}");
+        builder.AppendLine($"Avatar remote bytes read:         {FormatBytes(Volatile.Read(ref AvatarRemoteBytesRead))}");
         builder.AppendLine();
         builder.AppendLine("Runtime");
         builder.AppendLine("-------");
@@ -1132,6 +1189,7 @@ internal static class HistoryPerformanceDiagnostics
 {
     private static HistoryPerformanceSession? _activeSession;
     private static IGitCommandActivitySource? _gitActivitySource;
+    private static IAuthorAvatarDiagnosticSource? _avatarDiagnosticSource;
 
     internal static HistoryPerformanceSession? ActiveSession => Volatile.Read(ref _activeSession);
     internal static bool IsCaptureActive => ActiveSession is not null;
@@ -1151,7 +1209,8 @@ internal static class HistoryPerformanceDiagnostics
 
     internal static async Task<bool> StartAsync(
         HistoryPerformanceStartContext context,
-        IGitCommandActivitySource gitActivitySource)
+        IGitCommandActivitySource gitActivitySource,
+        IAuthorAvatarService? authorAvatarService = null)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(gitActivitySource);
@@ -1163,6 +1222,11 @@ internal static class HistoryPerformanceDiagnostics
 
         _gitActivitySource = gitActivitySource;
         gitActivitySource.Changed += GitActivitySource_Changed;
+        if (authorAvatarService is IAuthorAvatarDiagnosticSource avatarDiagnosticSource)
+        {
+            _avatarDiagnosticSource = avatarDiagnosticSource;
+            avatarDiagnosticSource.DiagnosticActivity += AvatarDiagnosticSource_DiagnosticActivity;
+        }
         CompositionTarget.Rendering += CompositionTarget_Rendering;
 
         try
@@ -1175,6 +1239,9 @@ internal static class HistoryPerformanceDiagnostics
             CompositionTarget.Rendering -= CompositionTarget_Rendering;
             gitActivitySource.Changed -= GitActivitySource_Changed;
             _gitActivitySource = null;
+            if (_avatarDiagnosticSource is { } avatarSource)
+                avatarSource.DiagnosticActivity -= AvatarDiagnosticSource_DiagnosticActivity;
+            _avatarDiagnosticSource = null;
             Interlocked.CompareExchange(ref _activeSession, null, session);
             throw;
         }
@@ -1190,12 +1257,20 @@ internal static class HistoryPerformanceDiagnostics
         if (_gitActivitySource is { } source)
             source.Changed -= GitActivitySource_Changed;
         _gitActivitySource = null;
+        if (_avatarDiagnosticSource is { } avatarSource)
+            avatarSource.DiagnosticActivity -= AvatarDiagnosticSource_DiagnosticActivity;
+        _avatarDiagnosticSource = null;
 
         return await session.StopAsync(reason).ConfigureAwait(false);
     }
 
     private static void CompositionTarget_Rendering(object? sender, object args) =>
         ActiveSession?.RecordRenderingCallback(Stopwatch.GetTimestamp());
+
+    private static void AvatarDiagnosticSource_DiagnosticActivity(
+        object? sender,
+        AuthorAvatarDiagnosticActivityEventArgs args) =>
+        ActiveSession?.RecordAvatarDiagnosticActivity(args);
 
     private static void GitActivitySource_Changed(
         object? sender,
