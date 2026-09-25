@@ -1,8 +1,5 @@
-using System.Collections.Specialized;
-using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 
 namespace CSharpGit.Presentation.Controls;
 
@@ -14,7 +11,7 @@ public sealed partial class HistoryReferenceBadge : UserControl
         typeof(HistoryReferenceBadge),
         new PropertyMetadata(string.Empty, OnReferenceNameChanged));
 
-    private OpenRepositoryViewModel? _viewModel;
+    private bool _presentationContextSubscribed;
 
     public HistoryReferenceBadge()
     {
@@ -29,51 +26,40 @@ public sealed partial class HistoryReferenceBadge : UserControl
         set => SetValue(ReferenceNameProperty, value);
     }
 
-    private static void OnReferenceNameChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args) =>
+    private static void OnReferenceNameChanged(
+        DependencyObject dependencyObject,
+        DependencyPropertyChangedEventArgs args) =>
         ((HistoryReferenceBadge)dependencyObject).UpdatePresentation();
 
     private void HistoryReferenceBadge_Loaded(object sender, RoutedEventArgs args)
     {
-        AttachViewModel();
-        UpdatePresentation();
-    }
-
-    private void HistoryReferenceBadge_Unloaded(object sender, RoutedEventArgs args) => DetachViewModel();
-
-    private void AttachViewModel()
-    {
-        DetachViewModel();
-        _viewModel = FindViewModel();
-        if (_viewModel is not null)
-            _viewModel.RemoteBranches.CollectionChanged += RemoteBranches_CollectionChanged;
-    }
-
-    private void DetachViewModel()
-    {
-        if (_viewModel is not null)
-            _viewModel.RemoteBranches.CollectionChanged -= RemoteBranches_CollectionChanged;
-        _viewModel = null;
-    }
-
-    private void RemoteBranches_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs args) =>
-        UpdatePresentation();
-
-    private OpenRepositoryViewModel? FindViewModel()
-    {
-        for (DependencyObject? current = this; current is not null; current = VisualTreeHelper.GetParent(current))
+        if (!_presentationContextSubscribed)
         {
-            if (current is FrameworkElement { DataContext: OpenRepositoryViewModel viewModel })
-                return viewModel;
+            HistoryReferencePresentationContext.Changed += PresentationContext_Changed;
+            _presentationContextSubscribed = true;
         }
 
-        return null;
+        UpdatePresentation();
     }
+
+    private void HistoryReferenceBadge_Unloaded(object sender, RoutedEventArgs args)
+    {
+        if (!_presentationContextSubscribed)
+            return;
+
+        HistoryReferencePresentationContext.Changed -= PresentationContext_Changed;
+        _presentationContextSubscribed = false;
+    }
+
+    private void PresentationContext_Changed(object? sender, EventArgs args) =>
+        UpdatePresentation();
 
     private void UpdatePresentation()
     {
         ReferenceText.Text = ReferenceName;
-        var isDefaultRemoteBranch = _viewModel?.RemoteBranches.Any(branch =>
-            branch.IsDefault && string.Equals(branch.Name, ReferenceName, StringComparison.Ordinal)) == true;
-        DefaultBranchIcon.Visibility = isDefaultRemoteBranch ? Visibility.Visible : Visibility.Collapsed;
+        DefaultBranchIcon.Visibility =
+            HistoryReferencePresentationContext.IsDefaultRemoteBranch(ReferenceName)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
     }
 }
