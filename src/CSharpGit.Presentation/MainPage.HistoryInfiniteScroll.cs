@@ -38,7 +38,7 @@ public sealed partial class MainPage
 
     private async void HistoryScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
-        HistoryRenderDiagnostics.HistoryViewChanged(Stopwatch.GetTimestamp());
+        HistoryRenderDiagnostics.HistoryViewChanged(Stopwatch.GetTimestamp(), e.IsIntermediate);
         if (sender is not ScrollViewer scrollViewer
             || _isInfiniteHistoryLoading
             || scrollViewer.ScrollableHeight <= 0)
