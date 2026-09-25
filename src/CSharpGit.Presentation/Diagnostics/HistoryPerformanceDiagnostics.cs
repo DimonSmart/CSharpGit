@@ -18,6 +18,15 @@ internal enum HistoryPerformanceStopReason
     Timeout
 }
 
+internal enum HistoryScanKind
+{
+    HistoryGlobalScan,
+    HistoryIndexLookup,
+    CommitLookup,
+    ParentLookup,
+    RefLookup
+}
+
 internal enum HistoryGeometryUpdateReason
 {
     Unknown,
@@ -195,6 +204,9 @@ internal sealed class HistoryPerformanceSession
     private readonly HistoryAtomicDurationHistogram _avatarResolve = new();
     private readonly HistoryAtomicDurationHistogram _historyGlobalScan = new();
     private readonly HistoryAtomicDurationHistogram _historyIndexLookup = new();
+    private readonly HistoryAtomicDurationHistogram _commitLookup = new();
+    private readonly HistoryAtomicDurationHistogram _parentLookup = new();
+    private readonly HistoryAtomicDurationHistogram _refLookup = new();
 
     private readonly long[] _geometryRebuildReasons =
         new long[Enum.GetValues<HistoryGeometryUpdateReason>().Length];
@@ -281,6 +293,13 @@ internal sealed class HistoryPerformanceSession
     internal long GitOtherCommands;
     internal long HistoryGlobalScans;
     internal long HistoryIndexLookups;
+    internal long CommitLookups;
+    internal long ParentLookups;
+    internal long RefLookups;
+    internal long HistoryItemsExamined;
+    internal long CommitItemsExamined;
+    internal long ParentItemsExamined;
+    internal long RefItemsExamined;
     internal long RenderCallbacks;
     internal long RenderIntervalsOver16;
     internal long RenderIntervalsOver33;
@@ -518,23 +537,59 @@ internal sealed class HistoryPerformanceSession
             Interlocked.Increment(ref AvatarAsyncResolveCompletions);
     }
 
-    internal void RecordHistoryGlobalScan(long startTicks, int? historyItems = null)
+    internal void RecordHistoryScan(
+        HistoryScanKind kind,
+        long startTicks,
+        int itemsExamined = 0)
     {
-        Interlocked.Increment(ref HistoryGlobalScans);
+        HistoryAtomicDurationHistogram histogram;
+        string operation;
+        switch (kind)
+        {
+            case HistoryScanKind.HistoryGlobalScan:
+                Interlocked.Increment(ref HistoryGlobalScans);
+                Interlocked.Add(ref HistoryItemsExamined, Math.Max(0, itemsExamined));
+                histogram = _historyGlobalScan;
+                operation = "HistoryGlobalScan";
+                break;
+            case HistoryScanKind.HistoryIndexLookup:
+                Interlocked.Increment(ref HistoryIndexLookups);
+                histogram = _historyIndexLookup;
+                operation = "HistoryIndexLookup";
+                break;
+            case HistoryScanKind.CommitLookup:
+                Interlocked.Increment(ref CommitLookups);
+                Interlocked.Add(ref CommitItemsExamined, Math.Max(0, itemsExamined));
+                histogram = _commitLookup;
+                operation = "CommitLookup";
+                break;
+            case HistoryScanKind.ParentLookup:
+                Interlocked.Increment(ref ParentLookups);
+                Interlocked.Add(ref ParentItemsExamined, Math.Max(0, itemsExamined));
+                histogram = _parentLookup;
+                operation = "ParentLookup";
+                break;
+            case HistoryScanKind.RefLookup:
+                Interlocked.Increment(ref RefLookups);
+                Interlocked.Add(ref RefItemsExamined, Math.Max(0, itemsExamined));
+                histogram = _refLookup;
+                operation = "RefLookup";
+                break;
+            default:
+                return;
+        }
+
         if (startTicks <= 0) return;
         var duration = Stopwatch.GetTimestamp() - startTicks;
-        _historyGlobalScan.ObserveTicks(duration);
-        RecordSlowOperation("HistoryGlobalScan", duration, 0, null, historyItems);
+        histogram.ObserveTicks(duration);
+        RecordSlowOperation(operation, duration, 0, null, itemsExamined > 0 ? itemsExamined : null);
     }
 
-    internal void RecordHistoryIndexLookup(long startTicks, int? historyItems = null)
-    {
-        Interlocked.Increment(ref HistoryIndexLookups);
-        if (startTicks <= 0) return;
-        var duration = Stopwatch.GetTimestamp() - startTicks;
-        _historyIndexLookup.ObserveTicks(duration);
-        RecordSlowOperation("HistoryIndexLookup", duration, 0, null, historyItems);
-    }
+    internal void RecordHistoryGlobalScan(long startTicks, int? historyItems = null) =>
+        RecordHistoryScan(HistoryScanKind.HistoryGlobalScan, startTicks, historyItems ?? 0);
+
+    internal void RecordHistoryIndexLookup(long startTicks, int? historyItems = null) =>
+        RecordHistoryScan(HistoryScanKind.HistoryIndexLookup, startTicks, historyItems ?? 0);
 
     internal void RecordAvatarDiagnosticActivity(AuthorAvatarDiagnosticActivityEventArgs activity)
     {
@@ -780,6 +835,14 @@ internal sealed class HistoryPerformanceSession
             ["historyGlobalScanDuration"] = _historyGlobalScan.Snapshot(),
             ["historyIndexLookups"] = Volatile.Read(ref HistoryIndexLookups),
             ["historyIndexLookupDuration"] = _historyIndexLookup.Snapshot(),
+            ["historyScanCategories"] = new Dictionary<string, object?>
+            {
+                ["historyGlobalScan"] = new { Calls = Volatile.Read(ref HistoryGlobalScans), ItemsExamined = Volatile.Read(ref HistoryItemsExamined), Duration = _historyGlobalScan.Snapshot() },
+                ["historyIndexLookup"] = new { Calls = Volatile.Read(ref HistoryIndexLookups), Duration = _historyIndexLookup.Snapshot() },
+                ["commitLookup"] = new { Calls = Volatile.Read(ref CommitLookups), ItemsExamined = Volatile.Read(ref CommitItemsExamined), Duration = _commitLookup.Snapshot() },
+                ["parentLookup"] = new { Calls = Volatile.Read(ref ParentLookups), ItemsExamined = Volatile.Read(ref ParentItemsExamined), Duration = _parentLookup.Snapshot() },
+                ["refLookup"] = new { Calls = Volatile.Read(ref RefLookups), ItemsExamined = Volatile.Read(ref RefItemsExamined), Duration = _refLookup.Snapshot() }
+            },
             ["avatarControlsCreated"] = Volatile.Read(ref AvatarControlsCreated),
             ["avatarLoaded"] = Volatile.Read(ref AvatarLoaded),
             ["avatarUnloaded"] = Volatile.Read(ref AvatarUnloaded),
@@ -924,6 +987,11 @@ internal sealed class HistoryPerformanceSession
         builder.AppendLine($"Global scan total:                {globalScan.TotalMs:F2} ms");
         builder.AppendLine($"Global scan p95:                  {globalScan.P95Ms:F2} ms");
         builder.AppendLine($"Global scan max:                  {globalScan.MaxMs:F2} ms");
+        builder.AppendLine($"Global scan items examined:       {Volatile.Read(ref HistoryItemsExamined)}");
+        builder.AppendLine($"Index lookup calls:               {Volatile.Read(ref HistoryIndexLookups)}");
+        builder.AppendLine($"Commit lookup calls/items:        {Volatile.Read(ref CommitLookups)} / {Volatile.Read(ref CommitItemsExamined)}");
+        builder.AppendLine($"Parent lookup calls/items:        {Volatile.Read(ref ParentLookups)} / {Volatile.Read(ref ParentItemsExamined)}");
+        builder.AppendLine($"Ref lookup calls/items:           {Volatile.Read(ref RefLookups)} / {Volatile.Read(ref RefItemsExamined)}");
         builder.AppendLine();
         builder.AppendLine("Avatars");
         builder.AppendLine("-------");
@@ -1007,6 +1075,9 @@ internal sealed class HistoryPerformanceSession
         {
             new SlowCategorySummary("HistoryGlobalScan", _historyGlobalScan.Snapshot().TotalMs),
             new SlowCategorySummary("HistoryIndexLookup", _historyIndexLookup.Snapshot().TotalMs),
+            new SlowCategorySummary("CommitLookup", _commitLookup.Snapshot().TotalMs),
+            new SlowCategorySummary("ParentLookup", _parentLookup.Snapshot().TotalMs),
+            new SlowCategorySummary("RefLookup", _refLookup.Snapshot().TotalMs),
             new SlowCategorySummary("CommitGraph.Measure", _graphMeasure.Snapshot().TotalMs),
             new SlowCategorySummary("CommitGraph.Arrange", _graphArrange.Snapshot().TotalMs),
             new SlowCategorySummary("CommitGraph.GeometryRebuild", _geometryRebuild.Snapshot().TotalMs),
