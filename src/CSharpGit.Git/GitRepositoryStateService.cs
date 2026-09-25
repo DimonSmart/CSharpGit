@@ -40,6 +40,20 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
         CancellationToken cancellationToken = default) =>
         (await ReadDetailedAsync(repository, cancellationToken)).State;
 
+    public async Task<RepositoryStateReadResult> ReadWithRefreshFingerprintAsync(
+        Repository repository,
+        bool localOnly = false,
+        CancellationToken cancellationToken = default)
+    {
+        var read = await ReadDetailedAsync(repository, cancellationToken);
+        var fingerprint = await BuildRefreshFingerprintAsync(
+            repository,
+            read.State,
+            read.RelevantConfiguration,
+            cancellationToken);
+        return new RepositoryStateReadResult(read.State, fingerprint);
+    }
+
     internal async Task<GitRepositoryStateReadResult> ReadDetailedAsync(
         Repository repository,
         CancellationToken cancellationToken = default)
@@ -393,7 +407,8 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
             var isPush = value.EndsWith(" (push)", StringComparison.Ordinal);
             if (!isFetch && !isPush) continue;
 
-            var url = value[..^8];
+            var suffixLength = isFetch ? " (fetch)".Length : " (push)".Length;
+            var url = value[..^suffixLength];
             values.TryGetValue(name, out var current);
             if (isFetch && current.Fetch is null) current.Fetch = url;
             if (isPush && current.Push is null) current.Push = url;
