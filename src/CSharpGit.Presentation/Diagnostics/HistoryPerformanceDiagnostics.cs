@@ -804,7 +804,7 @@ internal sealed class HistoryPerformanceSession
             ["containerChanges"] = Volatile.Read(ref ContainerChanges),
             ["containerRealizations"] = Volatile.Read(ref ContainerRealizations),
             ["containerRecycles"] = Volatile.Read(ref ContainerRecycles),
-                    ["selectionChanges"] = Volatile.Read(ref SelectionChanges),
+            ["selectionChanges"] = Volatile.Read(ref SelectionChanges),
             ["itemsSourceChanges"] = Volatile.Read(ref ItemsSourceChanges),
             ["historyCollectionResets"] = Volatile.Read(ref HistoryCollectionResets),
             ["historyRowsAppended"] = Volatile.Read(ref HistoryRowsAppended),
