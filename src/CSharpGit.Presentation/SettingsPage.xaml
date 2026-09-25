@@ -386,13 +386,20 @@
                 <Border Height="1"
                         Background="{ThemeResource DividerStrokeColorDefaultBrush}"
                         Margin="{StaticResource Margin.FormSeparator}" />
-                <ToggleSwitch x:Name="HistorySimplifiedRenderingToggle"
-                              Header="Use simplified History rendering"
-                              IsOn="{Binding HistorySimplifiedRenderingEnabled, Mode=TwoWay}"
-                              OnContent="On"
-                              OffContent="Off"
-                              Toggled="HistorySimplifiedRenderingToggle_Toggled" />
-                <TextBlock Text="Replaces the normal History row content with only the commit subject. Use it for A/B performance captures; the setting applies immediately and each capture records which rendering mode was active."
+                <TextBlock Text="History row rendering mode" Style="{StaticResource BodyStrongTextStyle}" />
+                <ComboBox x:Name="HistoryRenderingModeComboBox"
+                          ItemsSource="{Binding HistoryRenderingModes}"
+                          SelectedItem="{Binding SelectedHistoryRenderingMode, Mode=TwoWay}"
+                          DisplayMemberPath="Label"
+                          Style="{StaticResource CompactComboBoxStyle}"
+                          MinWidth="300"
+                          HorizontalAlignment="Left"
+                          SelectionChanged="HistoryRenderingModeComboBox_SelectionChanged" />
+                <TextBlock Text="{Binding SelectedHistoryRenderingMode.Description}"
+                           Style="{StaticResource SecondaryTextStyle}"
+                           TextWrapping="Wrap"
+                           MaxWidth="620" />
+                <TextBlock Text="Use modes 1 through 5 for comparable captures. Change the mode between captures; each capture records the exact active mode."
                            Style="{StaticResource SecondaryTextStyle}"
                            TextWrapping="Wrap"
                            MaxWidth="620" />
