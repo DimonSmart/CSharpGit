@@ -1,3 +1,5 @@
+using CSharpGit.Presentation.Controls;
+
 namespace CSharpGit.Presentation.Controls.CommitGraph;
 
 internal static class CommitGraphPresentationContext
@@ -11,7 +13,9 @@ internal static class CommitGraphPresentationContext
     internal static void Publish(CommitGraphLayoutState layout)
     {
         ArgumentNullException.ThrowIfNull(layout);
+        var startedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
         _current = layout;
         Changed?.Invoke(null, EventArgs.Empty);
+        HistoryRenderDiagnostics.PresentationPublished(startedAt);
     }
 }
