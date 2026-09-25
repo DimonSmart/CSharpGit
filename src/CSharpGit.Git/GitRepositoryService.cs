@@ -28,33 +28,31 @@ private readonly GitRepositoryCommandRunner _runner;
         try
         {
             await _runner.EnsureGitAvailableAsync(cancellationToken);
-            var root = await _runner.RunAsync(
-                path,
-                cancellationToken,
-                true,
-                "rev-parse",
-                "--show-toplevel");
-            var gitDirectory = await _runner.RunAsync(
-                path,
-                cancellationToken,
-                true,
-                "rev-parse",
-                "--absolute-git-dir");
-            var commonDirectory = await _runner.RunAsync(
+            var discovery = await _runner.RunAsync(
                 path,
                 cancellationToken,
                 true,
                 "rev-parse",
                 "--path-format=absolute",
+                "--show-toplevel",
+                "--absolute-git-dir",
                 "--git-common-dir");
+            var values = discovery
+                .Replace("\r\n", "\n", StringComparison.Ordinal)
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            if (values.Length != 3)
+                throw new RepositoryOpenException("Git returned an unexpected repository discovery result.");
 
+            var root = Path.GetFullPath(values[0]);
+            var gitDirectory = Path.GetFullPath(values[1]);
+            var commonDirectory = Path.GetFullPath(values[2]);
             return new Repository(
                 Path.GetFullPath(path),
-                Path.GetFullPath(root),
-                Path.GetFullPath(gitDirectory),
+                root,
+                gitDirectory,
                 !PathsEqual(gitDirectory, commonDirectory))
             {
-                GitCommonDirectory = Path.GetFullPath(commonDirectory)
+                GitCommonDirectory = commonDirectory
             };
         }
         catch (RepositoryOpenException)
