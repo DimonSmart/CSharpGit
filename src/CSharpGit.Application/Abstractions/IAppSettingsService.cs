@@ -41,6 +41,7 @@ public interface IAppSettingsService
     bool AutoSetupRemoteOnPush { get; }
     bool ShowAuthorAvatars { get; }
     bool OnlineAvatarLookupEnabled { get; }
+    bool HistoryPerformanceDiagnosticsEnabled => false;
     IReadOnlyList<RecentRepositorySettings> RecentRepositories { get; }
 
     /// <summary>
@@ -83,6 +84,10 @@ public interface IAppSettingsService
     Task SetOnlineAvatarLookupEnabledAsync(
         bool value,
         CancellationToken cancellationToken = default);
+
+    Task SetHistoryPerformanceDiagnosticsEnabledAsync(
+        bool value,
+        CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     Task RecordRecentRepositoryAsync(
         string path,
