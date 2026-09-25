@@ -31,12 +31,20 @@ public sealed class CommitTopologyToGraphVisualConverter : IValueConverter
                 .Concat(topology.Edges.Select(edge => new CommitGraphSegment(edge.FromLane, edge.ToLane, edge.FromLane)))
                 .ToList();
 
-        return new CommitGraphRowVisual(
+        var visual = new CommitGraphRowVisual(
             topology.Lane,
             exactTopology ? topology.NodeTrackId : topology.Lane,
             laneCount,
             incoming,
             outgoing);
+
+        HistoryRenderDiagnostics.TopologyConverted(
+            startedAt,
+            exactTopology,
+            laneCount,
+            incoming.Count,
+            outgoing.Count);
+        return visual;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
