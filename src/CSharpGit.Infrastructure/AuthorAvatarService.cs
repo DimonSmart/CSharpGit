@@ -7,7 +7,7 @@ using CSharpGit.Application.Abstractions;
 
 namespace CSharpGit.Infrastructure;
 
-public sealed class AuthorAvatarService : IAuthorAvatarService
+public sealed class AuthorAvatarService : IAuthorAvatarService, IAuthorAvatarDiagnosticSource
 {
     private const int CanonicalSize = 64;
     private const long MaxImageBytes = 1024L * 1024;
@@ -25,6 +25,8 @@ public sealed class AuthorAvatarService : IAuthorAvatarService
     private readonly object _memoryGate = new();
     private readonly Dictionary<string, MemoryCacheEntry> _memoryCache = new(StringComparer.Ordinal);
     private readonly LinkedList<string> _memoryLru = [];
+
+    public event EventHandler<AuthorAvatarDiagnosticActivityEventArgs>? DiagnosticActivity;
 
     public AuthorAvatarService()
         : this(
@@ -63,13 +65,19 @@ public sealed class AuthorAvatarService : IAuthorAvatarService
             return Task.FromResult(new AuthorAvatarResult(null, AuthorAvatarSource.None));
 
         if (TryGetMemory(route.CacheIdentity, out var cached))
+        {
+            PublishDiagnostic(AuthorAvatarDiagnosticActivityKind.MemoryCacheHit);
             return Task.FromResult(cached);
+        }
+        PublishDiagnostic(AuthorAvatarDiagnosticActivityKind.MemoryCacheMiss);
 
         if (TryGetDisk(route, out cached))
         {
+            PublishDiagnostic(AuthorAvatarDiagnosticActivityKind.DiskCacheHit);
             StoreMemory(route.CacheIdentity, cached, RemoteTtl);
             return Task.FromResult(cached);
         }
+        PublishDiagnostic(AuthorAvatarDiagnosticActivityKind.DiskCacheMiss);
 
         var lazy = _inFlight.GetOrAdd(route.CacheIdentity, _ => CreateSharedResolve(route));
         return lazy.Value.WaitAsync(cancellationToken);
@@ -155,6 +163,7 @@ public sealed class AuthorAvatarService : IAuthorAvatarService
         var enteredGate = false;
         try
         {
+            PublishDiagnostic(AuthorAvatarDiagnosticActivityKind.RemoteRequest);
             await _remoteRequestGate.WaitAsync(timeout.Token).ConfigureAwait(false);
             enteredGate = true;
 
@@ -174,6 +183,7 @@ public sealed class AuthorAvatarService : IAuthorAvatarService
                 return fallback;
 
             var bytes = await ReadLimitedAsync(response.Content, timeout.Token).ConfigureAwait(false);
+            PublishDiagnostic(AuthorAvatarDiagnosticActivityKind.RemoteBytesRead, bytes.LongLength);
             if (bytes.Length == 0)
                 return fallback;
 
@@ -304,6 +314,7 @@ public sealed class AuthorAvatarService : IAuthorAvatarService
         try
         {
             File.WriteAllBytes(temporary, bytes);
+            PublishDiagnostic(AuthorAvatarDiagnosticActivityKind.DiskCacheWrite, bytes.LongLength);
             File.Move(temporary, path, true);
         }
         finally
@@ -428,6 +439,15 @@ public sealed class AuthorAvatarService : IAuthorAvatarService
         catch
         {
         }
+    }
+
+    private void PublishDiagnostic(
+        AuthorAvatarDiagnosticActivityKind kind,
+        long bytes = 0)
+    {
+        var handler = DiagnosticActivity;
+        if (handler is null) return;
+        handler(this, new AuthorAvatarDiagnosticActivityEventArgs(kind, bytes));
     }
 
     private static HttpClient CreateHttpClient()
