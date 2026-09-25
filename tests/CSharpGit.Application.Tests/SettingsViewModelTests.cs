@@ -183,6 +183,20 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
+    public async Task HistoryRenderingModeAppliesWithoutRestart()
+    {
+        var settings = new FakeAppSettingsService();
+        using var viewModel = CreateViewModel(settings);
+        var mode = viewModel.HistoryRenderingModes.Single(
+            option => option.Mode == HistoryRenderingMode.TextAndGraph);
+
+        await viewModel.ApplyHistoryRenderingModeAsync(mode);
+
+        Assert.Equal(HistoryRenderingMode.TextAndGraph, settings.HistoryRenderingMode);
+        Assert.Equal(HistoryRenderingMode.TextAndGraph, viewModel.SelectedHistoryRenderingMode.Mode);
+    }
+
+    [Fact]
     public void DisposeIsIdempotent()
     {
         var settings = new FakeAppSettingsService();
@@ -234,7 +248,7 @@ public sealed class SettingsViewModelTests
         public bool ShowAuthorAvatars { get; set; } = true;
         public bool OnlineAvatarLookupEnabled { get; set; } = true;
         public bool HistoryPerformanceDiagnosticsEnabled { get; set; }
-        public bool HistorySimplifiedRenderingEnabled { get; set; }
+        public HistoryRenderingMode HistoryRenderingMode { get; set; } = HistoryRenderingMode.Full;
         public IReadOnlyList<RecentRepositorySettings> RecentRepositories => [];
         public bool FailNextWrite { get; set; }
         public int ChangedSubscriberCount { get; private set; }
@@ -327,11 +341,11 @@ public sealed class SettingsViewModelTests
             return Task.CompletedTask;
         }
 
-        public Task SetHistorySimplifiedRenderingEnabledAsync(bool value, CancellationToken cancellationToken = default)
+        public Task SetHistoryRenderingModeAsync(HistoryRenderingMode mode, CancellationToken cancellationToken = default)
         {
             ThrowIfWriteFails(cancellationToken);
-            if (HistorySimplifiedRenderingEnabled == value) return Task.CompletedTask;
-            HistorySimplifiedRenderingEnabled = value;
+            if (HistoryRenderingMode == mode) return Task.CompletedTask;
+            HistoryRenderingMode = mode;
             _changed?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
         }
