@@ -25,12 +25,13 @@ internal sealed class AuthorAvatarRequestGate : IDisposable
         && request.Generation == Volatile.Read(ref _generation)
         && string.Equals(request.Identity, currentIdentity, StringComparison.Ordinal);
 
-    public void Cancel()
+    public bool Cancel()
     {
         var cancellation = Interlocked.Exchange(ref _cancellation, null);
-        if (cancellation is null) return;
+        if (cancellation is null) return false;
         cancellation.Cancel();
         cancellation.Dispose();
+        return true;
     }
 
     public void Dispose() => Cancel();
