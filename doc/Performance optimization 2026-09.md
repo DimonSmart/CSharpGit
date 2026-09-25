@@ -58,6 +58,12 @@ The after count is enforced as an upper bound (`<= 10`) by
 cold `git --version` included. A second open using the same
 `GitRepositoryCommandRunner` must not run `git --version` again.
 
+The presentation refresh monitor no longer schedules an unconditional probe immediately
+after publishing that freshly-read baseline. It revalidates only when an external
+invalidation/probe was already pending or running, or when a previously detected external
+change had suspended the monitor. Therefore the normal clean open remains at the measured
+service-path budget instead of immediately paying for a second state/probe cycle.
+
 The command-budget test also verifies absence of:
 
 - duplicate status, branch/ref, tag and stash scans;
