@@ -294,6 +294,35 @@ public sealed class JsonAppSettingsServiceTests
         Assert.False(document.RootElement.GetProperty("OnlineAvatarLookupEnabled").GetBoolean());
     }
 
+    [Fact]
+    public void HistoryPerformanceDiagnosticsDefaultsToFalseForMissingAndLegacySettings()
+    {
+        using var fixture = new SettingsFixture();
+        Assert.False(fixture.CreateService().HistoryPerformanceDiagnosticsEnabled);
+
+        fixture.WriteSettings("{ \"ThemeMode\": \"Dark\", \"LoggingEnabled\": true }");
+        Assert.False(fixture.CreateService().HistoryPerformanceDiagnosticsEnabled);
+    }
+
+    [Fact]
+    public async Task HistoryPerformanceDiagnosticsIsPersistedAndRestored()
+    {
+        using var fixture = new SettingsFixture();
+        var service = fixture.CreateService();
+        var changes = 0;
+        service.Changed += (_, _) => changes++;
+
+        await service.SetHistoryPerformanceDiagnosticsEnabledAsync(true);
+
+        Assert.True(service.HistoryPerformanceDiagnosticsEnabled);
+        Assert.Equal(1, changes);
+        var restored = fixture.CreateService();
+        Assert.True(restored.HistoryPerformanceDiagnosticsEnabled);
+
+        using var document = JsonDocument.Parse(await File.ReadAllTextAsync(fixture.SettingsPath));
+        Assert.True(document.RootElement.GetProperty("HistoryPerformanceDiagnosticsEnabled").GetBoolean());
+    }
+
     private sealed class SettingsFixture : IDisposable
     {
         public SettingsFixture()
