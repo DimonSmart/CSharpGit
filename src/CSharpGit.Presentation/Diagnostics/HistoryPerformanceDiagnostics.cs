@@ -164,6 +164,9 @@ internal sealed class HistoryPerformanceSession
     private readonly Channel<string> _writerChannel;
     private readonly CancellationTokenSource _snapshotCts = new();
     private readonly HistorySlowOperation[] _slowOperations = new HistorySlowOperation[SlowOperationCapacity];
+    private readonly long[] _laneCountHistogram = new long[65];
+    private readonly TaskCompletionSource _writerReady =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Process _process = Process.GetCurrentProcess();
     private readonly Task _writerTask;
     private Task? _snapshotTask;
@@ -319,6 +322,7 @@ internal sealed class HistoryPerformanceSession
 
     internal async Task StartAsync()
     {
+        await _writerReady.Task.ConfigureAwait(false);
         await WriteRequiredAsync(Serialize(new Dictionary<string, object?>
         {
             ["schemaVersion"] = 1,
@@ -413,6 +417,8 @@ internal sealed class HistoryPerformanceSession
         Interlocked.Increment(ref GeometryRebuilds);
         Interlocked.Add(ref GeometrySegmentCount, Math.Max(0, segmentCount));
         Interlocked.Increment(ref _geometryRebuildReasons[(int)reason]);
+        var laneBucket = Math.Clamp(laneCount, 0, _laneCountHistogram.Length - 1);
+        Interlocked.Increment(ref _laneCountHistogram[laneBucket]);
         if (startTicks <= 0) return;
 
         var duration = Stopwatch.GetTimestamp() - startTicks;
@@ -711,6 +717,7 @@ internal sealed class HistoryPerformanceSession
             ["geometryMaterialization"] = _geometryMaterialization.Snapshot(),
             ["geometrySegmentCount"] = Volatile.Read(ref GeometrySegmentCount),
             ["geometryRebuildReasons"] = GeometryReasonSnapshot(),
+            ["laneCountHistogram"] = LaneCountHistogramSnapshot(),
             ["topologyConversions"] = Volatile.Read(ref TopologyConversions),
             ["topologyExact"] = Volatile.Read(ref TopologyExact),
             ["topologyFallback"] = Volatile.Read(ref TopologyFallback),
@@ -768,7 +775,8 @@ internal sealed class HistoryPerformanceSession
             ["droppedDiagnosticRecords"] = Volatile.Read(ref DroppedDiagnosticRecords),
             ["droppedSlowEvents"] = Volatile.Read(ref DroppedSlowEvents),
             ["writerFailure"] = _writerFailure?.GetType().Name,
-            ["captureIntegrity"] = CaptureIntegritySnapshot()
+            ["captureIntegrity"] = CaptureIntegritySnapshot(),
+            ["topSlowOperationCategories"] = TopSlowOperationCategories()
         };
     }
 
@@ -844,6 +852,9 @@ internal sealed class HistoryPerformanceSession
         builder.AppendLine("Geometry rebuild reasons:");
         foreach (var pair in reasons)
             builder.AppendLine($"{pair.Key,-32} {pair.Value}");
+        builder.AppendLine("Lane count histogram (geometry rebuilds):");
+        foreach (var pair in LaneCountHistogramSnapshot())
+            builder.AppendLine($"{pair.Key,-32} {pair.Value}");
         builder.AppendLine();
         builder.AppendLine("Topology converter");
         builder.AppendLine("------------------");
@@ -903,6 +914,11 @@ internal sealed class HistoryPerformanceSession
         builder.AppendLine();
         builder.AppendLine($"Dropped diagnostic records:       {Volatile.Read(ref DroppedDiagnosticRecords)}");
         builder.AppendLine($"Dropped slow events:              {Volatile.Read(ref DroppedSlowEvents)}");
+        builder.AppendLine();
+        builder.AppendLine("Top slow-operation categories");
+        builder.AppendLine("------------------------------");
+        foreach (var item in TopSlowOperationCategories())
+            builder.AppendLine($"{item.Name,-32} {item.TotalMs:F2} ms");
         if (_writerFailure is not null)
             builder.AppendLine($"Writer failure:                    {_writerFailure.GetType().Name}");
         return builder.ToString();
@@ -915,6 +931,44 @@ internal sealed class HistoryPerformanceSession
             result[reason.ToString()] = Volatile.Read(ref _geometryRebuildReasons[(int)reason]);
         return result;
     }
+
+    private Dictionary<string, long> LaneCountHistogramSnapshot()
+    {
+        var result = new Dictionary<string, long>();
+        for (var laneCount = 0; laneCount < _laneCountHistogram.Length; laneCount++)
+        {
+            var count = Volatile.Read(ref _laneCountHistogram[laneCount]);
+            if (count == 0) continue;
+            result[laneCount == _laneCountHistogram.Length - 1 ? "64+" : laneCount.ToString()] = count;
+        }
+        return result;
+    }
+
+    private IReadOnlyList<SlowCategorySummary> TopSlowOperationCategories()
+    {
+        var categories = new[]
+        {
+            new SlowCategorySummary("HistoryGlobalScan", _historyGlobalScan.Snapshot().TotalMs),
+            new SlowCategorySummary("HistoryIndexLookup", _historyIndexLookup.Snapshot().TotalMs),
+            new SlowCategorySummary("CommitGraph.Measure", _graphMeasure.Snapshot().TotalMs),
+            new SlowCategorySummary("CommitGraph.Arrange", _graphArrange.Snapshot().TotalMs),
+            new SlowCategorySummary("CommitGraph.GeometryRebuild", _geometryRebuild.Snapshot().TotalMs),
+            new SlowCategorySummary("CommitGraph.GeometryBuilder", _geometryBuilder.Snapshot().TotalMs),
+            new SlowCategorySummary("CommitGraph.XamlMaterialization", _geometryMaterialization.Snapshot().TotalMs),
+            new SlowCategorySummary("TopologyConverter", _topologyConverter.Snapshot().TotalMs),
+            new SlowCategorySummary("GraphLayout.Initialize", _layoutInitialize.Snapshot().TotalMs),
+            new SlowCategorySummary("GraphLayout.Update", _layoutUpdate.Snapshot().TotalMs),
+            new SlowCategorySummary("GraphLayout.Apply", _layoutApply.Snapshot().TotalMs),
+            new SlowCategorySummary("Avatar.Resolve", _avatarResolve.Snapshot().TotalMs)
+        };
+        return categories
+            .Where(item => item.TotalMs > 0)
+            .OrderByDescending(item => item.TotalMs)
+            .Take(5)
+            .ToArray();
+    }
+
+    private sealed record SlowCategorySummary(string Name, double TotalMs);
 
     private Dictionary<string, object?> CaptureRuntimeDelta()
     {
@@ -960,6 +1014,7 @@ internal sealed class HistoryPerformanceSession
                 64 * 1024,
                 FileOptions.Asynchronous);
             await using var writer = new StreamWriter(stream, new UTF8Encoding(false));
+            _writerReady.TrySetResult();
 
             await foreach (var line in _writerChannel.Reader.ReadAllAsync().ConfigureAwait(false))
             {
@@ -970,6 +1025,8 @@ internal sealed class HistoryPerformanceSession
         catch (Exception exception)
         {
             _writerFailure = exception;
+            _writerReady.TrySetException(exception);
+            _writerChannel.Writer.TryComplete(exception);
         }
     }
 
