@@ -24,6 +24,15 @@ public enum GitConsoleAutoOpenMode
     Never
 }
 
+public enum HistoryRenderingMode
+{
+    SubjectOnly,
+    TextColumns,
+    TextAndGraph,
+    TextGraphAndReferences,
+    Full
+}
+
 public sealed record RecentRepositorySettings(
     string Path,
     string DisplayName,
@@ -42,7 +51,7 @@ public interface IAppSettingsService
     bool ShowAuthorAvatars { get; }
     bool OnlineAvatarLookupEnabled { get; }
     bool HistoryPerformanceDiagnosticsEnabled { get; }
-    bool HistorySimplifiedRenderingEnabled { get; }
+    HistoryRenderingMode HistoryRenderingMode { get; }
     IReadOnlyList<RecentRepositorySettings> RecentRepositories { get; }
 
     /// <summary>
@@ -90,8 +99,8 @@ public interface IAppSettingsService
         bool value,
         CancellationToken cancellationToken = default);
 
-    Task SetHistorySimplifiedRenderingEnabledAsync(
-        bool value,
+    Task SetHistoryRenderingModeAsync(
+        HistoryRenderingMode mode,
         CancellationToken cancellationToken = default);
 
     Task RecordRecentRepositoryAsync(
