@@ -54,3 +54,4 @@ opened.
 | IDD-0032 | Spec | Repository maintenance | Explicit repository GC with typed options, before/after object-storage statistics and serialized local refresh | — |
 | IDD-0033 | Spec | Repository creation | Git-owned working-tree and bare/shared initialization, safe workspace switching and unborn repository state | — |
 | IDD-0034 | ADR | Machine-readable Git output | Keep captured Git diagnostics raw for application semantics and encode UI-unsafe controls at Presentation boundaries | — |
+| IDD-0035 | Spec | History performance diagnostics | Opt-in bounded scroll/render telemetry with privacy-safe output and negligible inactive overhead | — |
