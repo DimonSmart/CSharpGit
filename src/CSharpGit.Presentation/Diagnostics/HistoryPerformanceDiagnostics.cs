@@ -1292,6 +1292,7 @@ internal sealed class HistoryPerformanceSession
 
 internal static class HistoryPerformanceDiagnostics
 {
+    private static readonly object SessionGate = new();
     private static HistoryPerformanceSession? _activeSession;
     private static IGitCommandActivitySource? _gitActivitySource;
     private static IAuthorAvatarDiagnosticSource? _avatarDiagnosticSource;
@@ -1319,11 +1320,14 @@ internal static class HistoryPerformanceDiagnostics
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(gitActivitySource);
-        if (ActiveSession is not null) return false;
 
-        var session = new HistoryPerformanceSession(context, DiagnosticsDirectory);
-        if (Interlocked.CompareExchange(ref _activeSession, session, null) is not null)
-            return false;
+        HistoryPerformanceSession session;
+        lock (SessionGate)
+        {
+            if (_activeSession is not null) return false;
+            session = new HistoryPerformanceSession(context, DiagnosticsDirectory);
+            Volatile.Write(ref _activeSession, session);
+        }
 
         _gitActivitySource = gitActivitySource;
         gitActivitySource.Changed += GitActivitySource_Changed;
@@ -1347,7 +1351,11 @@ internal static class HistoryPerformanceDiagnostics
             if (_avatarDiagnosticSource is { } avatarSource)
                 avatarSource.DiagnosticActivity -= AvatarDiagnosticSource_DiagnosticActivity;
             _avatarDiagnosticSource = null;
-            Interlocked.CompareExchange(ref _activeSession, null, session);
+            lock (SessionGate)
+            {
+                if (ReferenceEquals(_activeSession, session))
+                    Volatile.Write(ref _activeSession, null);
+            }
             throw;
         }
     }
@@ -1355,8 +1363,13 @@ internal static class HistoryPerformanceDiagnostics
     internal static async Task<HistoryPerformanceCaptureFiles?> StopAsync(
         HistoryPerformanceStopReason reason)
     {
-        var session = Interlocked.Exchange(ref _activeSession, null);
-        if (session is null) return null;
+        HistoryPerformanceSession? session;
+        lock (SessionGate)
+        {
+            session = _activeSession;
+            if (session is null) return null;
+            Volatile.Write(ref _activeSession, null);
+        }
 
         CompositionTarget.Rendering -= CompositionTarget_Rendering;
         if (_gitActivitySource is { } source)
