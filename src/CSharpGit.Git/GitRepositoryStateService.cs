@@ -11,7 +11,14 @@ internal sealed record GitRepositoryStateReadResult(
 
 internal sealed class GitRepositoryStateService : IRepositoryStateService
 {
+    internal static readonly IReadOnlyDictionary<string, string?> ReadOnlyEnvironment =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["GIT_OPTIONAL_LOCKS"] = "0"
+        };
+
     private readonly GitRepositoryCommandRunner _runner;
+    internal GitRepositoryCommandRunner Runner => _runner;
 
     internal GitRepositoryStateService(GitCommandExecutor executor)
         : this(new GitRepositoryCommandRunner(executor))
@@ -40,10 +47,9 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
         ArgumentNullException.ThrowIfNull(repository);
         await _runner.EnsureGitAvailableAsync(cancellationToken);
 
-        var statusOutput = await _runner.RunAsync(
-            repository.WorkingDirectory,
+        var statusOutput = await RunReadAsync(
+            repository,
             cancellationToken,
-            false,
             "status",
             "--porcelain=v2",
             "-z",
@@ -51,39 +57,35 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
             "--untracked-files=all");
         var status = ParseStatusV2(statusOutput);
 
-        var configurationOutput = await _runner.RunAsync(
-            repository.WorkingDirectory,
+        var configurationOutput = await RunReadAsync(
+            repository,
             cancellationToken,
-            false,
             "config",
             "--null",
             "--list",
             "--show-scope");
         var configuration = ParseConfiguration(configurationOutput);
 
-        var referenceOutput = await _runner.RunAsync(
-            repository.WorkingDirectory,
+        var referenceOutput = await RunReadAsync(
+            repository,
             cancellationToken,
-            false,
             "for-each-ref",
             "--format=%(refname)%00%(objectname)%00%(upstream:short)%00%(upstream:track)%00%(symref:short)%1e",
             "refs/heads",
             "refs/remotes");
         var referenceRead = ParseReferences(referenceOutput, status.HeadReference);
 
-        var remoteOutput = await _runner.RunAsync(
-            repository.WorkingDirectory,
+        var remoteOutput = await RunReadAsync(
+            repository,
             cancellationToken,
-            false,
             "remote",
             "-v");
         var remotes = ParseRemotes(remoteOutput);
         var references = referenceRead.References with { Remotes = remotes };
 
-        var stashOutput = await _runner.RunAsync(
-            repository.WorkingDirectory,
+        var stashOutput = await RunReadAsync(
+            repository,
             cancellationToken,
-            false,
             "stash",
             "list",
             "--format=%gd%x00%H%x00%gs%x1e");
@@ -131,10 +133,9 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
         if (operation == RepositoryOperation.None)
             return RepositoryOperationState.None;
 
-        var unmerged = await _runner.RunAsync(
-            repository.WorkingDirectory,
+        var unmerged = await RunReadAsync(
+            repository,
             cancellationToken,
-            false,
             "ls-files",
             "--unmerged",
             "-z");
@@ -199,10 +200,9 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
         string path,
         CancellationToken cancellationToken)
     {
-        var output = await _runner.RunAsync(
-            repository.WorkingDirectory,
+        var output = await RunReadAsync(
+            repository,
             cancellationToken,
-            false,
             "diff",
             "--cached",
             "--numstat",
@@ -214,8 +214,8 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
 
         foreach (var stage in new[] { 2, 3 })
         {
-            var blob = await _runner.RunOptionalAsync(
-                repository.WorkingDirectory,
+            var blob = await RunOptionalReadAsync(
+                repository,
                 cancellationToken,
                 "show",
                 $":{stage}:{path}");
@@ -223,6 +223,47 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
         }
 
         return false;
+    }
+
+    internal Task<RepositoryRefreshFingerprint> BuildRefreshFingerprintAsync(
+        Repository repository,
+        RepositoryState repositoryState,
+        IReadOnlyList<string> relevantConfiguration,
+        CancellationToken cancellationToken = default) =>
+        RepositoryRefreshFingerprintBuilder.BuildAsync(
+            _runner,
+            repository,
+            repositoryState,
+            relevantConfiguration,
+            cancellationToken);
+
+    private Task<string> RunReadAsync(
+        Repository repository,
+        CancellationToken cancellationToken,
+        params string[] arguments) =>
+        _runner.RunAsync(
+            repository.WorkingDirectory,
+            cancellationToken,
+            false,
+            ReadOnlyEnvironment,
+            arguments);
+
+    private async Task<string> RunOptionalReadAsync(
+        Repository repository,
+        CancellationToken cancellationToken,
+        params string[] arguments)
+    {
+        var result = await _runner.RunForResultAsync(
+            repository.WorkingDirectory,
+            "RepositoryOptional",
+            GitCommandKind.Internal,
+            cancellationToken,
+            ReadOnlyEnvironment,
+            arguments);
+        if (result.ExitCode == 0) return result.StandardOutput;
+        if (arguments.Length > 0 && string.Equals(arguments[0], "show", StringComparison.Ordinal) && result.ExitCode == 128)
+            return string.Empty;
+        throw GitRepositoryCommandRunner.CreateCommandFailure(result);
     }
 
     private static StatusReadResult ParseStatusV2(string output)

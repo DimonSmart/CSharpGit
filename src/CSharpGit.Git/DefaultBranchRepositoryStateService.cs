@@ -29,6 +29,32 @@ internal sealed class DefaultBranchRepositoryStateService : IRepositoryStateServ
         CancellationToken cancellationToken = default) =>
         ReadCoreAsync(repository, cancellationToken);
 
+    public async Task<RepositoryStateReadResult> ReadWithRefreshFingerprintAsync(
+        Repository repository,
+        bool localOnly = false,
+        CancellationToken cancellationToken = default)
+    {
+        var read = await ReadDetailedAsync(repository, cancellationToken);
+        RepositoryRefreshFingerprint? fingerprint = null;
+        try
+        {
+            fingerprint = await _inner.BuildRefreshFingerprintAsync(
+                repository,
+                read.State,
+                read.RelevantConfiguration,
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+        }
+
+        return new RepositoryStateReadResult(read.State, fingerprint);
+    }
+
     internal async Task<GitRepositoryStateReadResult> ReadDetailedAsync(
         Repository repository,
         CancellationToken cancellationToken = default)
@@ -37,6 +63,7 @@ internal sealed class DefaultBranchRepositoryStateService : IRepositoryStateServ
         var tags = await _tagService.ReadTagsAsync(
             repository,
             read.EffectiveTagSort,
+            GitRepositoryStateService.ReadOnlyEnvironment,
             cancellationToken);
 
         var references = read.State.Refs;
