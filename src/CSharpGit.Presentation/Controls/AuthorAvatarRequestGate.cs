@@ -2,33 +2,56 @@ namespace CSharpGit.Presentation.Controls;
 
 internal readonly record struct AuthorAvatarRequest(
     long Generation,
-    string Identity,
-    CancellationToken CancellationToken);
+    AuthorAvatarLookupKey LookupKey,
+    CancellationToken CancellationToken,
+    CancellationTokenSource CancellationSource);
 
 internal sealed class AuthorAvatarRequestGate : IDisposable
 {
     private long _generation;
     private CancellationTokenSource? _cancellation;
 
-    public AuthorAvatarRequest Start(string identity)
+    public AuthorAvatarRequest Start(AuthorAvatarLookupKey lookupKey)
     {
-        ArgumentNullException.ThrowIfNull(identity);
         Cancel();
         var cancellation = new CancellationTokenSource();
         _cancellation = cancellation;
         var generation = Interlocked.Increment(ref _generation);
-        return new AuthorAvatarRequest(generation, identity, cancellation.Token);
+        return new AuthorAvatarRequest(
+            generation,
+            lookupKey,
+            cancellation.Token,
+            cancellation);
     }
 
-    public bool IsCurrent(AuthorAvatarRequest request, string currentIdentity) =>
+    public bool IsCurrent(AuthorAvatarRequest request, AuthorAvatarLookupKey currentKey) =>
         !request.CancellationToken.IsCancellationRequested
         && request.Generation == Volatile.Read(ref _generation)
-        && string.Equals(request.Identity, currentIdentity, StringComparison.Ordinal);
+        && request.LookupKey == currentKey;
+
+    public bool TryComplete(AuthorAvatarRequest request)
+    {
+        if (request.Generation != Volatile.Read(ref _generation))
+            return false;
+
+        var cancellation = Interlocked.CompareExchange(
+            ref _cancellation,
+            null,
+            request.CancellationSource);
+        if (!ReferenceEquals(cancellation, request.CancellationSource))
+            return false;
+
+        request.CancellationSource.Dispose();
+        return true;
+    }
 
     public bool Cancel()
     {
         var cancellation = Interlocked.Exchange(ref _cancellation, null);
-        if (cancellation is null) return false;
+        if (cancellation is null)
+            return false;
+
+        Interlocked.Increment(ref _generation);
         cancellation.Cancel();
         cancellation.Dispose();
         return true;

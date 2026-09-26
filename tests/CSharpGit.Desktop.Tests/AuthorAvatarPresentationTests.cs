@@ -31,25 +31,40 @@ public sealed class AuthorAvatarPresentationTests
     public void RecyclingGateRejectsLateResultForPreviousIdentity()
     {
         using var gate = new AuthorAvatarRequestGate();
+        var keyA = new AuthorAvatarLookupKey("a@example.com\nAuthor A", 1);
+        var keyB = new AuthorAvatarLookupKey("b@example.com\nAuthor B", 1);
 
-        var authorA = gate.Start("a@example.com\nAuthor A");
-        var authorB = gate.Start("b@example.com\nAuthor B");
+        var authorA = gate.Start(keyA);
+        var authorB = gate.Start(keyB);
 
         Assert.True(authorA.CancellationToken.IsCancellationRequested);
-        Assert.False(gate.IsCurrent(authorA, "b@example.com\nAuthor B"));
-        Assert.True(gate.IsCurrent(authorB, "b@example.com\nAuthor B"));
-        Assert.False(gate.IsCurrent(authorB, "a@example.com\nAuthor A"));
+        Assert.False(gate.IsCurrent(authorA, keyB));
+        Assert.True(gate.IsCurrent(authorB, keyB));
+        Assert.False(gate.IsCurrent(authorB, keyA));
     }
 
     [Fact]
     public void CancellationInvalidatesCurrentRequest()
     {
         using var gate = new AuthorAvatarRequestGate();
-        var request = gate.Start("a@example.com\nAuthor A");
+        var key = new AuthorAvatarLookupKey("a@example.com\nAuthor A", 1);
+        var request = gate.Start(key);
 
         gate.Cancel();
 
         Assert.True(request.CancellationToken.IsCancellationRequested);
-        Assert.False(gate.IsCurrent(request, "a@example.com\nAuthor A"));
+        Assert.False(gate.IsCurrent(request, key));
+    }
+
+    [Fact]
+    public void CompletionDisposesRequestWithoutSemanticCancellation()
+    {
+        using var gate = new AuthorAvatarRequestGate();
+        var key = new AuthorAvatarLookupKey("a@example.com\nAuthor A", 1);
+        var request = gate.Start(key);
+
+        Assert.True(gate.TryComplete(request));
+        Assert.False(request.CancellationToken.IsCancellationRequested);
+        Assert.False(gate.Cancel());
     }
 }
