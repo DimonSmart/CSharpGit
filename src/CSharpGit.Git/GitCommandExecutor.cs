@@ -85,15 +85,30 @@ internal sealed class GitCommandExecutor
         string operation,
         CancellationToken cancellationToken,
         IReadOnlyList<string> arguments) =>
-        ExecuteProcessCoreAsync(
-            _gitExecutable,
+        ExecuteForResultPreservingGitEditorAsync(
             workingDirectory,
             operation,
             GitCommandKind.Internal,
             cancellationToken,
+            null,
+            arguments);
+
+    internal Task<GitCommandResult> ExecuteForResultPreservingGitEditorAsync(
+        string workingDirectory,
+        string operation,
+        GitCommandKind commandKind,
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, string?>? environment,
+        IReadOnlyList<string> arguments) =>
+        ExecuteProcessCoreAsync(
+            _gitExecutable,
+            workingDirectory,
+            operation,
+            commandKind,
+            cancellationToken,
             arguments,
             _activitySink,
-            null,
+            environment,
             _processStarted,
             installNoOpGitEditor: false);
 
