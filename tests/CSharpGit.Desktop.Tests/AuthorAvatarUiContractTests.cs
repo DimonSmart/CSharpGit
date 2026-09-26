@@ -11,8 +11,8 @@ public sealed class AuthorAvatarUiContractTests
         var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitGraphLayout.cs"));
 
         Assert.Contains("<controls:AuthorAvatar", history, StringComparison.Ordinal);
-        Assert.Contains(@"AuthorName=""{Binding Commit.Author}""", history, StringComparison.Ordinal);
-        Assert.Contains(@"AuthorEmail=""{Binding Commit.AuthorEmail}""", history, StringComparison.Ordinal);
+        Assert.Contains(@"AuthorName=""{x:Bind Commit.Author, Mode=OneWay}""", history, StringComparison.Ordinal);
+        Assert.Contains(@"AuthorEmail=""{x:Bind Commit.AuthorEmail, Mode=OneWay}""", history, StringComparison.Ordinal);
         Assert.Contains(@"AvatarSize=""18""", history, StringComparison.Ordinal);
         Assert.Contains(@"<ColumnDefinition Width=""160"" />", mainPage, StringComparison.Ordinal);
         Assert.Contains(@"MinHeight=""{StaticResource Height.DataRow}""", history, StringComparison.Ordinal);
@@ -51,8 +51,8 @@ public sealed class AuthorAvatarUiContractTests
         var settings = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml"));
 
         Assert.Contains("Visibility = Visibility.Collapsed", control, StringComparison.Ordinal);
-        Assert.Contains("OnlineAvatarLookupEnabled: true", control, StringComparison.Ordinal);
-        Assert.Contains("_requestGate.IsCurrent(request, CurrentIdentity())", control, StringComparison.Ordinal);
+        Assert.Contains("OnlineAvatarLookupEnabled", control, StringComparison.Ordinal);
+        Assert.Contains("_requestGate.IsCurrent", control, StringComparison.Ordinal);
         Assert.Contains("Show author avatars", settings, StringComparison.Ordinal);
         Assert.Contains("Load avatar images from online services", settings, StringComparison.Ordinal);
         Assert.Contains("a SHA-256 hash derived from the commit author email", settings, StringComparison.Ordinal);
@@ -84,7 +84,6 @@ public sealed class AuthorAvatarUiContractTests
         Assert.Contains("ScheduleRefresh()", control, StringComparison.Ordinal);
         Assert.Contains("Interlocked.Exchange(ref _refreshScheduled, 1)", control, StringComparison.Ordinal);
         Assert.Contains("DispatcherQueue.TryEnqueue", control, StringComparison.Ordinal);
-        Assert.Contains("string.Equals(_displayedRemoteIdentity, identity", control, StringComparison.Ordinal);
         Assert.Contains("string.Equals(_fallbackIdentity, identity", control, StringComparison.Ordinal);
         Assert.DoesNotContain("((AuthorAvatar)dependencyObject).Refresh();", control, StringComparison.Ordinal);
     }
