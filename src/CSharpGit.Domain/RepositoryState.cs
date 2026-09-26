@@ -91,7 +91,14 @@ public sealed record RebasePlanItem(string Commit, string Subject, RebaseAction 
 {
     public string Display => $"{Action.ToString().ToLowerInvariant()} {Commit[..Math.Min(8, Commit.Length)]} {Subject}";
 }
-public sealed record InteractiveRebasePlan(string Onto, IReadOnlyList<RebasePlanItem> Items);
+public sealed record InteractiveRebaseSourceSnapshot(
+    string ExpectedHeadCommit,
+    string? ExpectedHeadReference);
+
+public sealed record InteractiveRebasePlan(
+    string Onto,
+    IReadOnlyList<RebasePlanItem> Items,
+    InteractiveRebaseSourceSnapshot? SourceSnapshot = null);
 public enum RebaseResultKind { Completed, Conflicts, Failed }
 public sealed record RebaseResult(RebaseResultKind Kind, string Message);
 
