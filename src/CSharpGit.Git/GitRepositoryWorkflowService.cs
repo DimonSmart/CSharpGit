@@ -234,36 +234,87 @@ private readonly GitRepositoryCommandRunner _runner;
     {
         GitRefValidator.Validate(onto, nameof(onto));
 
-        var resolvedOnto = await _runner.RunAsync(
-            repository.WorkingDirectory,
-            cancellationToken,
-            true,
-            "rev-parse",
-            "--verify",
-            $"{onto}^{{commit}}");
-        var output = await _runner.RunAsync(
+        var sourceSnapshot = await ReadRebaseSourceSnapshotAsync(
+            repository,
+            requireAttachedLocalBranch: false,
+            cancellationToken);
+        var resolvedOnto = await ResolveCommitAsync(
+            repository,
+            onto,
+            cancellationToken);
+        var plan = await BuildInteractiveRebasePlanAsync(
+            repository,
+            resolvedOnto,
+            sourceSnapshot,
+            cancellationToken);
+
+        await EnsureRebaseSourceUnchangedAsync(
+            repository,
+            sourceSnapshot,
+            cancellationToken);
+        return plan;
+    }
+
+    public async Task<InteractiveRebasePlan> ReadInteractiveRebasePlanFromCommitAsync(
+        Repository repository,
+        string firstCommit,
+        CancellationToken cancellationToken = default)
+    {
+        GitRefValidator.ValidateObjectId(firstCommit, nameof(firstCommit));
+
+        var resolvedFirstCommit = await ResolveCommitAsync(
+            repository,
+            firstCommit,
+            cancellationToken);
+        var sourceSnapshot = await ReadRebaseSourceSnapshotAsync(
+            repository,
+            requireAttachedLocalBranch: true,
+            cancellationToken);
+
+        await EnsureCommitIsInCurrentHeadHistoryAsync(
+            repository,
+            resolvedFirstCommit,
+            sourceSnapshot.ExpectedHeadCommit,
+            cancellationToken);
+
+        var parentOutput = await _runner.RunAsync(
             repository.WorkingDirectory,
             cancellationToken,
             false,
-            "log",
-            "--reverse",
-            "--format=%H%x00%s%x1e",
-            $"{resolvedOnto}..HEAD");
+            "show",
+            "-s",
+            "--format=%P",
+            resolvedFirstCommit);
+        var parents = parentOutput.Split(
+            ' ',
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        var items = output.Split(
-                '\x1e',
-                StringSplitOptions.RemoveEmptyEntries)
-            .Select(record =>
-                record.TrimStart('\r', '\n').Split('\0', 2))
-            .Where(fields => fields.Length == 2)
-            .Select(fields =>
-                new RebasePlanItem(
-                    fields[0],
-                    fields[1].TrimEnd('\r', '\n'),
-                    RebaseAction.Pick))
-            .ToList();
+        if (parents.Length == 0)
+            throw new InvalidOperationException(
+                "Interactive rebase including the root commit is not supported yet.");
 
-        return new InteractiveRebasePlan(resolvedOnto, items);
+        if (parents.Length != 1)
+            throw new InvalidOperationException(
+                "Interactive rebase currently supports linear history only.\n\nThe selected range contains merge commits.");
+
+        var plan = await BuildInteractiveRebasePlanAsync(
+            repository,
+            parents[0],
+            sourceSnapshot,
+            cancellationToken);
+
+        if (plan.Items.Count == 0
+            || !string.Equals(
+                plan.Items[0].Commit,
+                resolvedFirstCommit,
+                StringComparison.Ordinal))
+            throw CreateStaleRebasePlanException();
+
+        await EnsureRebaseSourceUnchangedAsync(
+            repository,
+            sourceSnapshot,
+            cancellationToken);
+        return plan;
     }
 
     public async Task<RebaseResult> StartInteractiveRebaseAsync(
@@ -273,26 +324,43 @@ private readonly GitRepositoryCommandRunner _runner;
     {
         ArgumentNullException.ThrowIfNull(plan);
 
-        if (GitOperationDetector.Detect(repository) != RepositoryOperation.None)
-            throw new InvalidOperationException(
-                "Complete or abort the current Git operation first.");
-
+        EnsureNoActiveOperation(repository);
         ValidateRebasePlan(plan);
 
-        var expected = await ReadInteractiveRebasePlanAsync(
+        if (plan.SourceSnapshot is null)
+            throw new InvalidOperationException(
+                "The rebase plan does not contain repository source information.\n\nRebuild the plan before starting interactive rebase.");
+
+        await EnsureRebaseSourceUnchangedAsync(
+            repository,
+            plan.SourceSnapshot,
+            cancellationToken);
+
+        var resolvedOnto = await ResolveCommitAsync(
             repository,
             plan.Onto,
             cancellationToken);
+        var expected = await BuildInteractiveRebasePlanAsync(
+            repository,
+            resolvedOnto,
+            plan.SourceSnapshot,
+            cancellationToken);
+
         if (!expected.Items
                 .Select(item => item.Commit)
-                .Order()
+                .OrderBy(commit => commit, StringComparer.Ordinal)
                 .SequenceEqual(
                     plan.Items
                         .Select(item => item.Commit)
-                        .Order(),
+                        .OrderBy(commit => commit, StringComparer.Ordinal),
                     StringComparer.Ordinal))
             throw new InvalidOperationException(
                 "The plan must contain every commit in the range exactly once. Use drop to exclude a commit.");
+
+        await EnsureRebaseSourceUnchangedAsync(
+            repository,
+            plan.SourceSnapshot,
+            cancellationToken);
 
         var supportDirectory = Path.Combine(
             repository.GitDirectory,
@@ -340,7 +408,7 @@ private readonly GitRepositoryCommandRunner _runner;
                 cancellationToken,
                 "rebase",
                 "--interactive",
-                plan.Onto);
+                resolvedOnto);
 
             if (GitOperationDetector.Detect(repository)
                 != RepositoryOperation.Rebase)
@@ -356,7 +424,6 @@ private readonly GitRepositoryCommandRunner _runner;
             throw;
         }
     }
-
     public Task<RebaseResult> ContinueRebaseAsync(
         Repository repository,
         CancellationToken cancellationToken = default)
@@ -546,6 +613,180 @@ private readonly GitRepositoryCommandRunner _runner;
             $"--{action}");
     }
 
+    private async Task<InteractiveRebasePlan> BuildInteractiveRebasePlanAsync(
+        Repository repository,
+        string resolvedOnto,
+        InteractiveRebaseSourceSnapshot sourceSnapshot,
+        CancellationToken cancellationToken)
+    {
+        await EnsureLinearRebaseRangeAsync(
+            repository,
+            resolvedOnto,
+            sourceSnapshot.ExpectedHeadCommit,
+            cancellationToken);
+
+        var output = await _runner.RunAsync(
+            repository.WorkingDirectory,
+            cancellationToken,
+            false,
+            "log",
+            "--reverse",
+            "--format=%H%x00%s%x1e",
+            $"{resolvedOnto}..{sourceSnapshot.ExpectedHeadCommit}");
+
+        var items = output.Split(
+                '\x1e',
+                StringSplitOptions.RemoveEmptyEntries)
+            .Select(record =>
+                record.TrimStart('\r', '\n').Split('\0', 2))
+            .Where(fields => fields.Length == 2)
+            .Select(fields =>
+                new RebasePlanItem(
+                    fields[0],
+                    fields[1].TrimEnd('\r', '\n'),
+                    RebaseAction.Pick))
+            .ToList();
+
+        return new InteractiveRebasePlan(
+            resolvedOnto,
+            items,
+            sourceSnapshot);
+    }
+
+    private async Task<InteractiveRebaseSourceSnapshot> ReadRebaseSourceSnapshotAsync(
+        Repository repository,
+        bool requireAttachedLocalBranch,
+        CancellationToken cancellationToken)
+    {
+        EnsureNoActiveOperation(repository);
+
+        var headCommit = await ResolveCommitAsync(
+            repository,
+            "HEAD",
+            cancellationToken);
+        var symbolicHead = NormalizeSymbolicHead(
+            await _runner.RunOptionalAsync(
+                repository.WorkingDirectory,
+                cancellationToken,
+                "symbolic-ref",
+                "-q",
+                "HEAD"));
+
+        if (requireAttachedLocalBranch
+            && (symbolicHead is null
+                || !symbolicHead.StartsWith(
+                    "refs/heads/",
+                    StringComparison.Ordinal)))
+            throw new InvalidOperationException(
+                "Interactive rebase from History requires a local branch to be checked out.");
+
+        return new InteractiveRebaseSourceSnapshot(
+            headCommit,
+            symbolicHead);
+    }
+
+    private async Task EnsureRebaseSourceUnchangedAsync(
+        Repository repository,
+        InteractiveRebaseSourceSnapshot expected,
+        CancellationToken cancellationToken)
+    {
+        EnsureNoActiveOperation(repository);
+
+        var actualHeadCommit = await ResolveCommitAsync(
+            repository,
+            "HEAD",
+            cancellationToken);
+        var actualHeadReference = NormalizeSymbolicHead(
+            await _runner.RunOptionalAsync(
+                repository.WorkingDirectory,
+                cancellationToken,
+                "symbolic-ref",
+                "-q",
+                "HEAD"));
+
+        if (!string.Equals(
+                expected.ExpectedHeadCommit,
+                actualHeadCommit,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                expected.ExpectedHeadReference,
+                actualHeadReference,
+                StringComparison.Ordinal))
+            throw CreateStaleRebasePlanException();
+    }
+
+    private async Task EnsureCommitIsInCurrentHeadHistoryAsync(
+        Repository repository,
+        string commit,
+        string headCommit,
+        CancellationToken cancellationToken)
+    {
+        var result = await _runner.RunForResultAsync(
+            repository.WorkingDirectory,
+            "Repository",
+            GitCommandKind.Internal,
+            cancellationToken,
+            null,
+            ["merge-base", "--is-ancestor", commit, headCommit]);
+
+        if (result.ExitCode == 0) return;
+
+        if (result.ExitCode == 1)
+            throw new InvalidOperationException(
+                "This commit is not part of the current branch history.\n\nSwitch to a branch containing this commit before starting interactive rebase.");
+
+        throw GitRepositoryCommandRunner.CreateCommandFailure(result);
+    }
+
+    private async Task EnsureLinearRebaseRangeAsync(
+        Repository repository,
+        string resolvedOnto,
+        string headCommit,
+        CancellationToken cancellationToken)
+    {
+        var merges = await _runner.RunAsync(
+            repository.WorkingDirectory,
+            cancellationToken,
+            false,
+            "rev-list",
+            "--merges",
+            $"{resolvedOnto}..{headCommit}");
+
+        if (!string.IsNullOrWhiteSpace(merges))
+            throw new InvalidOperationException(
+                "Interactive rebase currently supports linear history only.\n\nThe selected range contains merge commits.");
+    }
+
+    private async Task<string> ResolveCommitAsync(
+        Repository repository,
+        string value,
+        CancellationToken cancellationToken) =>
+        (await _runner.RunAsync(
+            repository.WorkingDirectory,
+            cancellationToken,
+            true,
+            "rev-parse",
+            "--verify",
+            $"{value}^{{commit}}")).Trim();
+
+    private static string? NormalizeSymbolicHead(string value)
+    {
+        var normalized = value.Trim();
+        return normalized.Length == 0
+            ? null
+            : normalized;
+    }
+
+    private static void EnsureNoActiveOperation(Repository repository)
+    {
+        if (GitOperationDetector.Detect(repository) != RepositoryOperation.None)
+            throw new InvalidOperationException(
+                "Complete or abort the current Git operation first.");
+    }
+
+    private static InvalidOperationException CreateStaleRebasePlanException() =>
+        new(
+            "Repository history changed after the rebase plan was built.\n\nRebuild the plan before starting interactive rebase.");
     private static void ValidateRebasePlan(
         InteractiveRebasePlan plan)
     {

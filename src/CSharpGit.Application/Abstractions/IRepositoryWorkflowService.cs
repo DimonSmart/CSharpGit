@@ -9,6 +9,7 @@ public interface IRepositoryWorkflowService
     Task PopStashAsync(Repository repository, string stashName, CancellationToken cancellationToken = default);
     Task<MergeResult> MergeAsync(Repository repository, string branch, CancellationToken cancellationToken = default);
     Task<InteractiveRebasePlan> ReadInteractiveRebasePlanAsync(Repository repository, string onto, CancellationToken cancellationToken = default);
+    Task<InteractiveRebasePlan> ReadInteractiveRebasePlanFromCommitAsync(Repository repository, string firstCommit, CancellationToken cancellationToken = default);
     Task<RebaseResult> StartInteractiveRebaseAsync(Repository repository, InteractiveRebasePlan plan, CancellationToken cancellationToken = default);
     Task<RebaseResult> ContinueRebaseAsync(Repository repository, CancellationToken cancellationToken = default);
     Task AbortRebaseAsync(Repository repository, CancellationToken cancellationToken = default);
