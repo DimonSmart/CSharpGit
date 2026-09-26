@@ -128,7 +128,7 @@ internal sealed partial class GitCommitActionService
 
         var rebaseResult = await _workflowService.StartInteractiveRebaseAsync(
             repository,
-            new InteractiveRebasePlan(parent, items),
+            existingPlan with { Items = items },
             cancellationToken);
 
         var newHead = NullIfEmpty(await _runner.RunOptionalAsync(

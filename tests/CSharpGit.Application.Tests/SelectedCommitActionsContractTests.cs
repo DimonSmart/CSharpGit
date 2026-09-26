@@ -67,8 +67,8 @@ public sealed class SelectedCommitActionsContractTests
         Assert.Contains("Interactive rebase from here…", actions);
         Assert.Contains("HistoryList.RightTapped += HistoryList_RightTapped", actions);
         Assert.Contains("PrepareInteractiveRebaseFromCommitAsync(hash)", actions);
-        Assert.Contains("CurrentBranchName is not null", ExtractMethod(actions, "UpdateCommitActionAvailability"));
-        Assert.DoesNotContain("_workflowService", ExtractMethod(actions, "UpdateCommitActionAvailability"));
+        Assert.Contains("var hasLocalBranch = _viewModel.CurrentBranchName is not null;", actions);
+        Assert.DoesNotContain("_workflowService", ExtractMethod(actions, "InteractiveRebaseFromHere_Click"));
         Assert.DoesNotContain("^", ExtractMethod(actions, "InteractiveRebaseFromHere_Click"));
         Assert.Contains("ReadInteractiveRebasePlanFromCommitAsync", workflow);
         Assert.Contains("ReadInteractiveRebasePlanFromCommitAsync", rebaseViewModel);
