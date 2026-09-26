@@ -260,6 +260,6 @@ public sealed partial class InteractiveRebaseTodoEditor : UserControl
                 return descendant;
         }
 
-        return null;
+        return default;
     }
 }
