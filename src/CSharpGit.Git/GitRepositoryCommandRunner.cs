@@ -105,6 +105,45 @@ internal sealed class GitRepositoryCommandRunner
         return result.StandardOutput;
     }
 
+    internal async Task<string> RunAsyncPreservingGitEditor(
+        string workingDirectory,
+        CancellationToken cancellationToken,
+        bool requireOutput,
+        IReadOnlyDictionary<string, string?>? environment,
+        GitCommandKind commandKind,
+        params string[] arguments)
+    {
+        GitCommandResult result;
+        try
+        {
+            result = await _executor.ExecuteForResultPreservingGitEditorAsync(
+                workingDirectory,
+                "Repository",
+                commandKind,
+                cancellationToken,
+                environment,
+                arguments);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw new RepositoryOpenException(
+                $"Git executable '{_executor.ExecutablePath}' could not be started.",
+                exception);
+        }
+
+        if (result.ExitCode != 0)
+            throw CreateCommandFailure(result);
+
+        if (requireOutput && string.IsNullOrWhiteSpace(result.StandardOutput))
+            throw new RepositoryOpenException("Git command returned no output.");
+
+        return result.StandardOutput;
+    }
+
     internal async Task<string> RunOptionalAsync(
         string workingDirectory,
         CancellationToken cancellationToken,

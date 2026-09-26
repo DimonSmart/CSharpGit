@@ -414,6 +414,7 @@ internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService
                     ["GIT_SEQUENCE_EDITOR"] = QuoteCommand(sequenceEditor)
                 },
                 cancellationToken,
+                preserveGitEditor: true,
                 "rebase",
                 "--interactive",
                 resolvedOnto);
@@ -527,6 +528,7 @@ internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService
                 repository,
                 environment,
                 cancellationToken,
+                preserveGitEditor: false,
                 "rebase",
                 "--interactive",
                 resolvedOnto);
@@ -606,6 +608,10 @@ internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService
             repository,
             environment,
             cancellationToken,
+            preserveGitEditor: !string.Equals(
+                mode,
+                ManagedRebaseMode,
+                StringComparison.Ordinal),
             "rebase",
             "--continue");
 
@@ -621,17 +627,26 @@ internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService
         Repository repository,
         IReadOnlyDictionary<string, string?> environment,
         CancellationToken cancellationToken,
+        bool preserveGitEditor,
         params string[] arguments)
     {
         try
         {
-            var output = await _runner.RunAsync(
-                repository.WorkingDirectory,
-                cancellationToken,
-                false,
-                environment,
-                GitCommandKind.User,
-                arguments);
+            var output = preserveGitEditor
+                ? await _runner.RunAsyncPreservingGitEditor(
+                    repository.WorkingDirectory,
+                    cancellationToken,
+                    false,
+                    environment,
+                    GitCommandKind.User,
+                    arguments)
+                : await _runner.RunAsync(
+                    repository.WorkingDirectory,
+                    cancellationToken,
+                    false,
+                    environment,
+                    GitCommandKind.User,
+                    arguments);
 
             return await ClassifyRebaseResultAsync(
                 repository,
