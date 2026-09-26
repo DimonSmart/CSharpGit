@@ -43,7 +43,7 @@ public sealed class SelectedCommitActionsContractTests
         var root = FindRepositoryRoot();
         var actions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
 
-        foreach (var label in new[] { "Copy hash", "Create branch here…", "Checkout this commit", "Cherry-pick", "Revert", "Edit commit message…", "Reset current branch to here", "Soft…", "Mixed…", "Hard…" })
+        foreach (var label in new[] { "Copy hash", "Create branch here…", "Checkout this commit", "Cherry-pick", "Revert", "Edit commit message…", "Interactive rebase from here…", "Reset current branch to here", "Soft…", "Mixed…", "Hard…" })
             Assert.Contains(label, actions);
 
         Assert.Contains("HistoryList.RightTapped", actions);
@@ -53,6 +53,33 @@ public sealed class SelectedCommitActionsContractTests
         Assert.Contains("Untracked files will not be deleted", actions);
     }
 
+    [Fact]
+    public void InteractiveRebaseFromHistoryUsesSemanticWorkflowAndExistingEditor()
+    {
+        var root = FindRepositoryRoot();
+        var actions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
+        var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Dialogs.cs"));
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
+        var rebaseViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.InteractiveRebase.cs"));
+        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryWorkflowService.cs"));
+
+        Assert.Contains("Interactive rebase from here…", actions);
+        Assert.Contains("HistoryList.RightTapped += HistoryList_RightTapped", actions);
+        Assert.Contains("PrepareInteractiveRebaseFromCommitAsync(hash)", actions);
+        Assert.Contains("CurrentBranchName is not null", ExtractMethod(actions, "UpdateCommitActionAvailability"));
+        Assert.DoesNotContain("_workflowService", ExtractMethod(actions, "UpdateCommitActionAvailability"));
+        Assert.DoesNotContain("^", ExtractMethod(actions, "InteractiveRebaseFromHere_Click"));
+        Assert.Contains("ReadInteractiveRebasePlanFromCommitAsync", workflow);
+        Assert.Contains("ReadInteractiveRebasePlanFromCommitAsync", rebaseViewModel);
+        Assert.Contains("InvalidatePreparedRebasePlan", viewModel);
+        Assert.Contains("_rebaseSourceSnapshot", viewModel);
+        Assert.Contains("SourceSnapshot", viewModel);
+        Assert.Contains("InteractiveRebaseSection", xaml);
+        Assert.Contains("InteractiveRebasePlanList", xaml);
+        Assert.Contains("ShowInteractiveRebaseEditorAsync", dialogs);
+        Assert.Contains("GitOperationsDialog", dialogs);
+    }
     [Fact]
     public void CancelCommitRemainsPresentationOnly()
     {
