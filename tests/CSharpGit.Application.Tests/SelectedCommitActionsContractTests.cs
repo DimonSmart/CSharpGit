@@ -63,6 +63,10 @@ public sealed class SelectedCommitActionsContractTests
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var rebaseViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.InteractiveRebase.cs"));
         var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryWorkflowService.cs"));
+        var workflowImplementation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitRepositoryWorkflowService.cs"));
+        var todoHelp = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "InteractiveRebaseTodoHelp.cs"));
+        var editorXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "InteractiveRebaseTodoEditor.xaml"));
+        var editorCode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "InteractiveRebaseTodoEditor.xaml.cs"));
 
         Assert.Contains("Interactive rebase from here…", actions);
         Assert.Contains("HistoryList.RightTapped += HistoryList_RightTapped", actions);
@@ -90,20 +94,35 @@ public sealed class SelectedCommitActionsContractTests
         Assert.Contains("InteractiveRebaseSection", xaml);
         Assert.Contains("Open interactive rebase…", xaml);
         Assert.Contains("InteractiveRebaseDialog", xaml);
-        Assert.Contains("InteractiveRebaseTodoEditor", xaml);
-        Assert.Contains("AcceptsReturn=\"True\"", xaml);
-        Assert.Contains("TextWrapping=\"NoWrap\"", xaml);
+        Assert.Contains("<controls:InteractiveRebaseTodoEditor", xaml);
+        Assert.Contains("MaxWidth=\"1200\"", xaml);
         Assert.Contains("PrimaryButtonText=\"Start rebase\"", xaml);
         Assert.Contains("CloseButtonText=\"Cancel\"", xaml);
+        Assert.DoesNotContain("Git interprets this todo directly", xaml);
         Assert.DoesNotContain("InteractiveRebasePlanList", xaml);
         Assert.DoesNotContain("RebaseActions", xaml);
         Assert.DoesNotContain("RebaseMessage", xaml);
         Assert.DoesNotContain("<StackPanel Width=\"620\"", xaml);
 
+        Assert.Contains("LineNumberGutter", editorXaml);
+        Assert.Contains("ExecutableTextOverlay", editorXaml);
+        Assert.Contains("AcceptsReturn=\"True\"", editorXaml);
+        Assert.Contains("TextWrapping=\"NoWrap\"", editorXaml);
+        Assert.Contains("ScrollViewer.HorizontalScrollBarVisibility=\"Auto\"", editorXaml);
+        Assert.Contains("TextFillColorSecondaryBrush", editorXaml);
+        Assert.Contains("IsCommentLine", editorCode);
+        Assert.Contains("ViewChanged", editorCode);
+        Assert.Contains("ChangeView", editorCode);
+
+        foreach (var command in new[] { "# p, pick", "# r, reword", "# e, edit", "# s, squash", "# f, fixup", "# x, exec", "# b, break", "# d, drop" })
+            Assert.Contains(command, todoHelp);
+        Assert.Contains("InteractiveRebaseTodoHelp.Text", workflowImplementation);
+
         Assert.Contains("OpenInteractiveRebase_Click", dialogs);
         Assert.Contains("GitOperationsDialog.Hide()", dialogs);
         Assert.Contains("InteractiveRebaseDialog", dialogs);
         Assert.Contains("ShowInteractiveRebaseEditorAsync", dialogs);
+        Assert.Contains("1200d", dialogs);
         Assert.Contains("StartPreparedInteractiveRebaseAsync", dialogs);
     }
 
