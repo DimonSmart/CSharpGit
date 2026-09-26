@@ -44,7 +44,7 @@ public sealed class HistoryMessageWrappingUiContractTests
             "CSharpGit.Presentation",
             "App.xaml.cs"));
 
-        var subject = ExtractElement(historyXaml, "<TextBlock Text=\"{Binding Commit.Subject}\"");
+        var subject = ExtractElement(historyXaml, "<TextBlock Text=\"{x:Bind Commit.Subject, Mode=OneWay}\"");
         Assert.Contains("TextTrimming=\"CharacterEllipsis\"", subject);
         Assert.DoesNotContain("TextWrapping=", subject);
 

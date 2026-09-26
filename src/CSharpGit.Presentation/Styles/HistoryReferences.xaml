@@ -1,9 +1,20 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:controls="using:CSharpGit.Presentation.Controls">
+    xmlns:controls="using:CSharpGit.Presentation.Controls"
+    xmlns:domain="using:CSharpGit.Domain">
 
-  <DataTemplate x:Key="HistoryItemTemplate">
+  <Style x:Key="HistoryReferenceDefaultBranchIconStyle" TargetType="FontIcon">
+    <Setter Property="Glyph" Value="&#xE80F;" />
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="Width" Value="10" />
+    <Setter Property="Height" Value="10" />
+    <Setter Property="Foreground" Value="{ThemeResource AccentFillColorDefaultBrush}" />
+    <Setter Property="Visibility" Value="Collapsed" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <DataTemplate x:Key="HistoryItemTemplate" x:DataType="domain:HistoryRow">
     <Grid x:Name="HistoryRowRoot"
           MinHeight="{StaticResource Height.DataRow}"
           Padding="{StaticResource Padding.DenseRow}">
@@ -17,76 +28,65 @@
       <Border Grid.ColumnSpan="5"
               Background="{ThemeResource AccentFillColorDefaultBrush}"
               Opacity="0.06"
-              Visibility="{Binding IsReflogOnly, Converter={StaticResource BooleanToVisibilityConverter}}"
+              Visibility="{x:Bind IsReflogOnly, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
               IsHitTestVisible="False" />
-      <controls:CommitGraphControl Graph="{Binding Topology, Converter={StaticResource CommitTopologyToGraphVisualConverter}}"
+      <controls:CommitGraphControl Graph="{x:Bind Topology, Mode=OneWay, Converter={StaticResource CommitTopologyToGraphVisualConverter}}"
                                    VerticalAlignment="Stretch" />
       <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,*" MinWidth="120">
-        <TextBlock Text="{Binding Commit.Subject}"
+        <TextBlock Text="{x:Bind Commit.Subject, Mode=OneWay}"
                    Style="{StaticResource BodyStrongTextStyle}"
                    TextTrimming="CharacterEllipsis"
                    VerticalAlignment="Center" />
         <Border Grid.Column="1"
                 Style="{StaticResource ReferenceBadgeStyle}"
                 Margin="{StaticResource Margin.ReferenceList}"
-                Visibility="{Binding IsReflogOnly, Converter={StaticResource BooleanToVisibilityConverter}}"
+                Visibility="{x:Bind IsReflogOnly, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
                 ToolTipService.ToolTip="This commit is not reachable from normal repository refs and is currently reachable through Git reflog.">
           <TextBlock Text="reflog" Style="{StaticResource ReferenceBadgeTextStyle}" />
         </Border>
-        <ItemsControl Grid.Column="2"
-                      ItemsSource="{Binding Commit.References}"
-                      Margin="{StaticResource Margin.ReferenceList}"
-                      VerticalAlignment="Center">
-          <ItemsControl.ItemsPanel>
-            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-          </ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <Border Style="{StaticResource ReferenceBadgeStyle}">
-                <controls:HistoryReferenceBadge ReferenceName="{Binding}" />
-              </Border>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <controls:HistoryReferencesPresenter Grid.Column="2"
+                                             References="{x:Bind Commit.References, Mode=OneWay}"
+                                             Margin="{StaticResource Margin.ReferenceList}"
+                                             VerticalAlignment="Center" />
       </Grid>
       <Grid Grid.Column="2"
             ColumnDefinitions="Auto,*"
             Margin="{StaticResource Margin.HistoryColumnGap}"
             VerticalAlignment="Center">
-        <controls:AuthorAvatar AuthorName="{Binding Commit.Author}"
-                               AuthorEmail="{Binding Commit.AuthorEmail}"
+        <controls:AuthorAvatar AuthorName="{x:Bind Commit.Author, Mode=OneWay}"
+                               AuthorEmail="{x:Bind Commit.AuthorEmail, Mode=OneWay}"
                                AvatarSize="18"
                                Margin="0,0,6,0" />
         <TextBlock Grid.Column="1"
-                   Text="{Binding Commit.Author}"
+                   Text="{x:Bind Commit.Author, Mode=OneWay}"
                    Style="{StaticResource BodyTextStyle}"
                    TextTrimming="CharacterEllipsis"
                    VerticalAlignment="Center" />
       </Grid>
       <controls:CommitTimeText Grid.Column="3"
-                               Value="{Binding Commit.AuthoredAt}"
+                               Value="{x:Bind Commit.AuthoredAt, Mode=OneWay}"
                                Margin="{StaticResource Margin.HistoryColumnGap}"
                                FontSize="{StaticResource Font.Caption}"
                                VerticalAlignment="Center" />
       <TextBlock Grid.Column="4"
-                 Text="{Binding Commit.ShortHash}"
+                 Text="{x:Bind Commit.ShortHash, Mode=OneWay}"
                  Style="{StaticResource TechnicalSecondaryTextStyle}"
                  Margin="{StaticResource Margin.HistoryColumnGap}"
                  VerticalAlignment="Center" />
     </Grid>
   </DataTemplate>
 
-  <DataTemplate x:Key="SimplifiedHistoryItemTemplate">
+  <DataTemplate x:Key="SimplifiedHistoryItemTemplate" x:DataType="domain:HistoryRow">
     <Grid MinHeight="{StaticResource Height.DataRow}"
           Padding="{StaticResource Padding.DenseRow}">
-      <TextBlock Text="{Binding Commit.Subject}"
+      <TextBlock Text="{x:Bind Commit.Subject, Mode=OneWay}"
                  Style="{StaticResource BodyStrongTextStyle}"
                  TextTrimming="CharacterEllipsis"
                  VerticalAlignment="Center" />
     </Grid>
   </DataTemplate>
 
-  <DataTemplate x:Key="HistoryTextColumnsItemTemplate">
+  <DataTemplate x:Key="HistoryTextColumnsItemTemplate" x:DataType="domain:HistoryRow">
     <Grid MinHeight="{StaticResource Height.DataRow}"
           Padding="{StaticResource Padding.DenseRow}">
       <Grid.ColumnDefinitions>
@@ -96,14 +96,14 @@
         <ColumnDefinition Width="150" />
         <ColumnDefinition Width="90" />
       </Grid.ColumnDefinitions>
-      <TextBlock Grid.Column="1" Text="{Binding Commit.Subject}" Style="{StaticResource BodyStrongTextStyle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-      <TextBlock Grid.Column="2" Text="{Binding Commit.Author}" Style="{StaticResource BodyTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="1" Text="{x:Bind Commit.Subject, Mode=OneWay}" Style="{StaticResource BodyStrongTextStyle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="2" Text="{x:Bind Commit.Author, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
       <TextBlock Grid.Column="3" Text="{Binding Commit.AuthoredAt}" Style="{StaticResource SecondaryTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-      <TextBlock Grid.Column="4" Text="{Binding Commit.ShortHash}" Style="{StaticResource TechnicalSecondaryTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="4" Text="{x:Bind Commit.ShortHash, Mode=OneWay}" Style="{StaticResource TechnicalSecondaryTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" VerticalAlignment="Center" />
     </Grid>
   </DataTemplate>
 
-  <DataTemplate x:Key="HistoryTextGraphItemTemplate">
+  <DataTemplate x:Key="HistoryTextGraphItemTemplate" x:DataType="domain:HistoryRow">
     <Grid MinHeight="{StaticResource Height.DataRow}"
           Padding="{StaticResource Padding.DenseRow}">
       <Grid.ColumnDefinitions>
@@ -113,15 +113,15 @@
         <ColumnDefinition Width="150" />
         <ColumnDefinition Width="90" />
       </Grid.ColumnDefinitions>
-      <controls:CommitGraphControl Graph="{Binding Topology, Converter={StaticResource CommitTopologyToGraphVisualConverter}}" VerticalAlignment="Stretch" />
-      <TextBlock Grid.Column="1" Text="{Binding Commit.Subject}" Style="{StaticResource BodyStrongTextStyle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-      <TextBlock Grid.Column="2" Text="{Binding Commit.Author}" Style="{StaticResource BodyTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+      <controls:CommitGraphControl Graph="{x:Bind Topology, Mode=OneWay, Converter={StaticResource CommitTopologyToGraphVisualConverter}}" VerticalAlignment="Stretch" />
+      <TextBlock Grid.Column="1" Text="{x:Bind Commit.Subject, Mode=OneWay}" Style="{StaticResource BodyStrongTextStyle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="2" Text="{x:Bind Commit.Author, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
       <TextBlock Grid.Column="3" Text="{Binding Commit.AuthoredAt}" Style="{StaticResource SecondaryTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-      <TextBlock Grid.Column="4" Text="{Binding Commit.ShortHash}" Style="{StaticResource TechnicalSecondaryTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="4" Text="{x:Bind Commit.ShortHash, Mode=OneWay}" Style="{StaticResource TechnicalSecondaryTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" VerticalAlignment="Center" />
     </Grid>
   </DataTemplate>
 
-  <DataTemplate x:Key="HistoryTextGraphReferencesItemTemplate">
+  <DataTemplate x:Key="HistoryTextGraphReferencesItemTemplate" x:DataType="domain:HistoryRow">
     <Grid MinHeight="{StaticResource Height.DataRow}"
           Padding="{StaticResource Padding.DenseRow}">
       <Grid.ColumnDefinitions>
@@ -132,31 +132,23 @@
         <ColumnDefinition Width="90" />
       </Grid.ColumnDefinitions>
       <Border Grid.ColumnSpan="5" Background="{ThemeResource AccentFillColorDefaultBrush}" Opacity="0.06"
-              Visibility="{Binding IsReflogOnly, Converter={StaticResource BooleanToVisibilityConverter}}" IsHitTestVisible="False" />
-      <controls:CommitGraphControl Graph="{Binding Topology, Converter={StaticResource CommitTopologyToGraphVisualConverter}}" VerticalAlignment="Stretch" />
+              Visibility="{x:Bind IsReflogOnly, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" IsHitTestVisible="False" />
+      <controls:CommitGraphControl Graph="{x:Bind Topology, Mode=OneWay, Converter={StaticResource CommitTopologyToGraphVisualConverter}}" VerticalAlignment="Stretch" />
       <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,*" MinWidth="120">
-        <TextBlock Text="{Binding Commit.Subject}" Style="{StaticResource BodyStrongTextStyle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+        <TextBlock Text="{x:Bind Commit.Subject, Mode=OneWay}" Style="{StaticResource BodyStrongTextStyle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
         <Border Grid.Column="1" Style="{StaticResource ReferenceBadgeStyle}" Margin="{StaticResource Margin.ReferenceList}"
-                Visibility="{Binding IsReflogOnly, Converter={StaticResource BooleanToVisibilityConverter}}"
+                Visibility="{x:Bind IsReflogOnly, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
                 ToolTipService.ToolTip="This commit is not reachable from normal repository refs and is currently reachable through Git reflog.">
           <TextBlock Text="reflog" Style="{StaticResource ReferenceBadgeTextStyle}" />
         </Border>
-        <ItemsControl Grid.Column="2" ItemsSource="{Binding Commit.References}" Margin="{StaticResource Margin.ReferenceList}" VerticalAlignment="Center">
-          <ItemsControl.ItemsPanel>
-            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-          </ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <Border Style="{StaticResource ReferenceBadgeStyle}">
-                <controls:HistoryReferenceBadge ReferenceName="{Binding}" />
-              </Border>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <controls:HistoryReferencesPresenter Grid.Column="2"
+                                             References="{x:Bind Commit.References, Mode=OneWay}"
+                                             Margin="{StaticResource Margin.ReferenceList}"
+                                             VerticalAlignment="Center" />
       </Grid>
-      <TextBlock Grid.Column="2" Text="{Binding Commit.Author}" Style="{StaticResource BodyTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="2" Text="{x:Bind Commit.Author, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
       <TextBlock Grid.Column="3" Text="{Binding Commit.AuthoredAt}" Style="{StaticResource SecondaryTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-      <TextBlock Grid.Column="4" Text="{Binding Commit.ShortHash}" Style="{StaticResource TechnicalSecondaryTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="4" Text="{x:Bind Commit.ShortHash, Mode=OneWay}" Style="{StaticResource TechnicalSecondaryTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" VerticalAlignment="Center" />
     </Grid>
   </DataTemplate>
 </ResourceDictionary>

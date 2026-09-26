@@ -33,7 +33,7 @@ public sealed class ReflogHistoryUiContractTests
         Assert.Contains("IncludeReflog: ShowReflog", navigation);
 
         Assert.Contains("Text=\"reflog\"", historyReferences);
-        Assert.Contains("Binding IsReflogOnly", historyReferences);
+        Assert.Contains("x:Bind IsReflogOnly", historyReferences);
         Assert.Contains("This commit is not reachable from normal repository refs", historyReferences);
         Assert.Contains("AccentFillColorDefaultBrush", historyReferences);
 
