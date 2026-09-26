@@ -156,6 +156,28 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
         Assert.Contains("StopHistoryPerformanceCaptureOnShutdown", lifecycle, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void AvatarAndReferenceDiagnosticsExposeEffectiveWorkWithoutValues()
+    {
+        var session = Read("src", "CSharpGit.Presentation", "Diagnostics", "HistoryPerformanceDiagnostics.cs");
+        var facade = Read("src", "CSharpGit.Presentation", "Controls", "HistoryRenderDiagnostics.cs");
+
+        Assert.Contains("AvatarEffectiveStateTransitions", session, StringComparison.Ordinal);
+        Assert.Contains("AvatarResolveDeduplicated", session, StringComparison.Ordinal);
+        Assert.Contains("AvatarResolveCompletedNoImage", session, StringComparison.Ordinal);
+        Assert.Contains("AvatarResolveFaulted", session, StringComparison.Ordinal);
+        Assert.Contains("AvatarRequestsCompleted", session, StringComparison.Ordinal);
+        Assert.Contains("ReferencesPresenterUpdates", session, StringComparison.Ordinal);
+        Assert.Contains("ReferenceVisualsCreated", session, StringComparison.Ordinal);
+        Assert.Contains("ReferenceVisualsReused", session, StringComparison.Ordinal);
+        Assert.Contains("ReferencePresentationContextUpdates", session, StringComparison.Ordinal);
+        Assert.Contains("SafeRatio", session, StringComparison.Ordinal);
+        Assert.Contains("AvatarEffectiveStateTransition", facade, StringComparison.Ordinal);
+        Assert.Contains("ReferenceVisualCreated", facade, StringComparison.Ordinal);
+        Assert.DoesNotContain("[\"referenceName\"]", session, StringComparison.Ordinal);
+        Assert.DoesNotContain("[\"avatarIdentity\"]", session, StringComparison.Ordinal);
+    }
+
     private static string Read(params string[] path) =>
         File.ReadAllText(Path.Combine(new[] { FindRepositoryRoot() }.Concat(path).ToArray()));
 

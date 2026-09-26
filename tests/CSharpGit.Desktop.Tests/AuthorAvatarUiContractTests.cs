@@ -88,6 +88,43 @@ public sealed class AuthorAvatarUiContractTests
         Assert.DoesNotContain("((AuthorAvatar)dependencyObject).Refresh();", control, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void AvatarLifecycleDoesNotTurnVisualEventsIntoResolveLifecycle()
+    {
+        var root = FindRepositoryRoot();
+        var control = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "AuthorAvatar.xaml.cs"));
+        var gate = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "AuthorAvatarRequestGate.cs"));
+
+        var unloaded = MethodBlock(control, "private void AuthorAvatar_Unloaded");
+        var avatarSizeChanged = MethodBlock(control, "private static void AvatarSizePropertyChanged");
+
+        Assert.DoesNotContain("_requestGate.Cancel", unloaded, StringComparison.Ordinal);
+        Assert.DoesNotContain("ScheduleRefresh", avatarSizeChanged, StringComparison.Ordinal);
+        Assert.Contains("AuthorAvatarLifecycleState", control, StringComparison.Ordinal);
+        Assert.Contains("ResolvedNoImage", control, StringComparison.Ordinal);
+        Assert.Contains("AvatarResolveFaulted", control, StringComparison.Ordinal);
+        Assert.Contains("_requestGate.TryComplete", control, StringComparison.Ordinal);
+        Assert.Contains("request.CancellationSource.Dispose()", gate, StringComparison.Ordinal);
+        Assert.DoesNotContain("RefreshNow();\n        ResolveAsync", control, StringComparison.Ordinal);
+    }
+
+    private static string MethodBlock(string source, string signature)
+    {
+        var start = source.IndexOf(signature, StringComparison.Ordinal);
+        Assert.True(start >= 0, $"Method signature not found: {signature}");
+        var open = source.IndexOf('{', start);
+        Assert.True(open >= 0);
+        var depth = 0;
+        for (var index = open; index < source.Length; index++)
+        {
+            if (source[index] == '{') depth++;
+            else if (source[index] == '}' && --depth == 0)
+                return source[start..(index + 1)];
+        }
+
+        throw new InvalidOperationException($"Method body is incomplete: {signature}");
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

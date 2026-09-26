@@ -271,6 +271,15 @@ internal sealed partial class HistoryPerformanceSession
     internal long AvatarRefreshCalls;
     internal long AvatarRequestsStarted;
     internal long AvatarRequestsCancelled;
+    internal long AvatarRequestsCompleted;
+    internal long AvatarEffectiveStateTransitions;
+    internal long AvatarResolveDeduplicated;
+    internal long AvatarResolveCompletedNoImage;
+    internal long AvatarResolveFaulted;
+    internal long ReferencesPresenterUpdates;
+    internal long ReferenceVisualsCreated;
+    internal long ReferenceVisualsReused;
+    internal long ReferencePresentationContextUpdates;
     internal long AvatarResultsApplied;
     internal long AvatarStaleResultsIgnored;
     internal long AvatarImmediateResolveCompletions;
@@ -779,6 +788,12 @@ internal sealed partial class HistoryPerformanceSession
         ["geometrySameKeySkips"] = Volatile.Read(ref GeometrySameKeySkips),
         ["geometryMaterializationCalls"] = Volatile.Read(ref GeometryMaterializationCalls),
         ["geometryRebuilds"] = Volatile.Read(ref GeometryRebuilds),
+        ["avatarEffectiveStateTransitions"] = Volatile.Read(ref AvatarEffectiveStateTransitions),
+        ["avatarRequestsStarted"] = Volatile.Read(ref AvatarRequestsStarted),
+        ["avatarRequestsCancelled"] = Volatile.Read(ref AvatarRequestsCancelled),
+        ["referencesPresenterUpdates"] = Volatile.Read(ref ReferencesPresenterUpdates),
+        ["referenceVisualsCreated"] = Volatile.Read(ref ReferenceVisualsCreated),
+        ["referenceVisualsReused"] = Volatile.Read(ref ReferenceVisualsReused),
         ["topologyConversions"] = Volatile.Read(ref TopologyConversions),
         ["layoutPublishes"] = Volatile.Read(ref PresentationPublishes),
         ["gitCommands"] = Volatile.Read(ref GitCommands)
@@ -890,6 +905,27 @@ internal sealed partial class HistoryPerformanceSession
             ["avatarRefreshCalls"] = Volatile.Read(ref AvatarRefreshCalls),
             ["avatarRequestsStarted"] = Volatile.Read(ref AvatarRequestsStarted),
             ["avatarRequestsCancelled"] = Volatile.Read(ref AvatarRequestsCancelled),
+            ["avatarRequestsCompleted"] = Volatile.Read(ref AvatarRequestsCompleted),
+            ["avatarEffectiveStateTransitions"] = Volatile.Read(ref AvatarEffectiveStateTransitions),
+            ["avatarResolveDeduplicated"] = Volatile.Read(ref AvatarResolveDeduplicated),
+            ["avatarResolveCompletedNoImage"] = Volatile.Read(ref AvatarResolveCompletedNoImage),
+            ["avatarResolveFaulted"] = Volatile.Read(ref AvatarResolveFaulted),
+            ["avatarResolveRequestsPerEffectiveStateTransition"] = SafeRatio(
+                Volatile.Read(ref AvatarRequestsStarted),
+                Volatile.Read(ref AvatarEffectiveStateTransitions)),
+            ["avatarCancelledRequestsPerResolveRequest"] = SafeRatio(
+                Volatile.Read(ref AvatarRequestsCancelled),
+                Volatile.Read(ref AvatarRequestsStarted)),
+            ["referencesPresenterUpdates"] = Volatile.Read(ref ReferencesPresenterUpdates),
+            ["referenceVisualsCreated"] = Volatile.Read(ref ReferenceVisualsCreated),
+            ["referenceVisualsReused"] = Volatile.Read(ref ReferenceVisualsReused),
+            ["referencePresentationContextUpdates"] = Volatile.Read(ref ReferencePresentationContextUpdates),
+            ["referenceVisualsCreatedPerPresenterUpdate"] = SafeRatio(
+                Volatile.Read(ref ReferenceVisualsCreated),
+                Volatile.Read(ref ReferencesPresenterUpdates)),
+            ["referenceVisualsReusedPerPresenterUpdate"] = SafeRatio(
+                Volatile.Read(ref ReferenceVisualsReused),
+                Volatile.Read(ref ReferencesPresenterUpdates)),
             ["avatarResultsApplied"] = Volatile.Read(ref AvatarResultsApplied),
             ["avatarStaleResultsIgnored"] = Volatile.Read(ref AvatarStaleResultsIgnored),
             ["avatarImmediateResolveCompletions"] = Volatile.Read(ref AvatarImmediateResolveCompletions),
@@ -1056,13 +1092,31 @@ internal sealed partial class HistoryPerformanceSession
         builder.AppendLine();
         builder.AppendLine("Avatars");
         builder.AppendLine("-------");
+        builder.AppendLine($"Loaded / unloaded:                {Volatile.Read(ref AvatarLoaded)} / {Volatile.Read(ref AvatarUnloaded)}");
+        builder.AppendLine($"Identity property changes:        {Volatile.Read(ref AvatarIdentityChanges)}");
+        builder.AppendLine($"Effective state transitions:      {Volatile.Read(ref AvatarEffectiveStateTransitions)}");
         builder.AppendLine($"Refresh calls:                    {Volatile.Read(ref AvatarRefreshCalls)}");
         builder.AppendLine($"Resolve requests:                 {Volatile.Read(ref AvatarRequestsStarted)}");
+        builder.AppendLine($"Resolve deduplicated:             {Volatile.Read(ref AvatarResolveDeduplicated)}");
+        builder.AppendLine($"Completed:                        {Volatile.Read(ref AvatarRequestsCompleted)}");
         builder.AppendLine($"Cancelled:                        {Volatile.Read(ref AvatarRequestsCancelled)}");
+        builder.AppendLine($"No-image results:                 {Volatile.Read(ref AvatarResolveCompletedNoImage)}");
+        builder.AppendLine($"Faulted results:                  {Volatile.Read(ref AvatarResolveFaulted)}");
+        builder.AppendLine($"Resolve / transition:             {SafeRatio(Volatile.Read(ref AvatarRequestsStarted), Volatile.Read(ref AvatarEffectiveStateTransitions)):F3}");
+        builder.AppendLine($"Cancelled / resolve:              {SafeRatio(Volatile.Read(ref AvatarRequestsCancelled), Volatile.Read(ref AvatarRequestsStarted)):F3}");
         builder.AppendLine($"Async completions:                {Volatile.Read(ref AvatarAsyncResolveCompletions)}");
         builder.AppendLine($"Memory cache hits/misses:         {Volatile.Read(ref AvatarMemoryCacheHits)} / {Volatile.Read(ref AvatarMemoryCacheMisses)}");
         builder.AppendLine($"Disk cache hits/misses:           {Volatile.Read(ref AvatarDiskCacheHits)} / {Volatile.Read(ref AvatarDiskCacheMisses)}");
         builder.AppendLine($"Remote requests:                  {Volatile.Read(ref AvatarRemoteRequests)}");
+        builder.AppendLine();
+        builder.AppendLine("References");
+        builder.AppendLine("----------");
+        builder.AppendLine($"Presenter updates:                {Volatile.Read(ref ReferencesPresenterUpdates)}");
+        builder.AppendLine($"Visuals created:                  {Volatile.Read(ref ReferenceVisualsCreated)}");
+        builder.AppendLine($"Visuals reused:                   {Volatile.Read(ref ReferenceVisualsReused)}");
+        builder.AppendLine($"Presentation-context updates:     {Volatile.Read(ref ReferencePresentationContextUpdates)}");
+        builder.AppendLine($"Created / presenter update:       {SafeRatio(Volatile.Read(ref ReferenceVisualsCreated), Volatile.Read(ref ReferencesPresenterUpdates)):F3}");
+        builder.AppendLine($"Reused / presenter update:        {SafeRatio(Volatile.Read(ref ReferenceVisualsReused), Volatile.Read(ref ReferencesPresenterUpdates)):F3}");
         builder.AppendLine();
         builder.AppendLine("Owned disk activity");
         builder.AppendLine("-------------------");
@@ -1109,6 +1163,9 @@ internal sealed partial class HistoryPerformanceSession
             builder.AppendLine($"Writer failure:                    {_writerFailure.GetType().Name}");
         return builder.ToString();
     }
+
+    private static double SafeRatio(long numerator, long denominator) =>
+        denominator <= 0 ? 0d : (double)numerator / denominator;
 
     private Dictionary<string, long> GeometryReasonSnapshot()
     {

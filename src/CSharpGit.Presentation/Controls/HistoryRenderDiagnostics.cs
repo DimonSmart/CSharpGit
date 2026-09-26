@@ -337,6 +337,51 @@ internal static class HistoryRenderDiagnostics
         if (Session is { } session) Interlocked.Increment(ref session.AvatarRequestsCancelled);
     }
 
+    internal static void AvatarRequestCompleted()
+    {
+        if (Session is { } session) Interlocked.Increment(ref session.AvatarRequestsCompleted);
+    }
+
+    internal static void AvatarEffectiveStateTransition()
+    {
+        if (Session is { } session) Interlocked.Increment(ref session.AvatarEffectiveStateTransitions);
+    }
+
+    internal static void AvatarResolveDeduplicated()
+    {
+        if (Session is { } session) Interlocked.Increment(ref session.AvatarResolveDeduplicated);
+    }
+
+    internal static void AvatarResolveCompletedNoImage()
+    {
+        if (Session is { } session) Interlocked.Increment(ref session.AvatarResolveCompletedNoImage);
+    }
+
+    internal static void AvatarResolveFaulted()
+    {
+        if (Session is { } session) Interlocked.Increment(ref session.AvatarResolveFaulted);
+    }
+
+    internal static void ReferencesPresenterUpdated()
+    {
+        if (Session is { } session) Interlocked.Increment(ref session.ReferencesPresenterUpdates);
+    }
+
+    internal static void ReferenceVisualCreated()
+    {
+        if (Session is { } session) Interlocked.Increment(ref session.ReferenceVisualsCreated);
+    }
+
+    internal static void ReferenceVisualReused()
+    {
+        if (Session is { } session) Interlocked.Increment(ref session.ReferenceVisualsReused);
+    }
+
+    internal static void ReferencePresentationContextUpdated()
+    {
+        if (Session is { } session) Interlocked.Increment(ref session.ReferencePresentationContextUpdates);
+    }
+
     internal static void AvatarResultApplied()
     {
         if (Session is { } session) Interlocked.Increment(ref session.AvatarResultsApplied);
