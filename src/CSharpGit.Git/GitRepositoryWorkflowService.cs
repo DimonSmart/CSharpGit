@@ -1045,13 +1045,18 @@ internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService
             throw new InvalidOperationException(
                 "The rebase plan does not contain repository source information.");
 
-        var todoText = string.Join(
+        var commitCommands = string.Join(
             Environment.NewLine,
             plan.Items.Select(item =>
                 $"pick {item.Commit} {item.Subject}"));
 
-        if (todoText.Length > 0)
-            todoText += Environment.NewLine;
+        var todoText = commitCommands.Length == 0
+            ? InteractiveRebaseTodoHelp.Text + Environment.NewLine
+            : commitCommands
+              + Environment.NewLine
+              + Environment.NewLine
+              + InteractiveRebaseTodoHelp.Text
+              + Environment.NewLine;
 
         return new InteractiveRebaseTodo(
             plan.Onto,

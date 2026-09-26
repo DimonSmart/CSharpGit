@@ -294,10 +294,30 @@ public sealed class InteractiveRebaseTests : IDisposable
         var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _c);
 
         Assert.Equal(_b, todo.Onto);
-        Assert.Equal(
+        Assert.StartsWith(
             $"pick {_c} C{Environment.NewLine}" +
             $"pick {_d} D{Environment.NewLine}" +
-            $"pick {_e} E{Environment.NewLine}",
+            $"pick {_e} E{Environment.NewLine}" +
+            Environment.NewLine +
+            "# Commands:" +
+            Environment.NewLine,
+            todo.TodoText);
+        foreach (var command in new[]
+                 {
+                     "# p, pick <commit>",
+                     "# r, reword <commit>",
+                     "# e, edit <commit>",
+                     "# s, squash <commit>",
+                     "# f, fixup <commit>",
+                     "# x, exec <command>",
+                     "# b, break",
+                     "# d, drop <commit>"
+                 })
+        {
+            Assert.Contains(command, todo.TodoText);
+        }
+        Assert.EndsWith(
+            $"# Lines beginning with # and empty lines are ignored.{Environment.NewLine}",
             todo.TodoText);
         Assert.Equal(_e, todo.SourceSnapshot.ExpectedHeadCommit);
         Assert.Equal("refs/heads/main", todo.SourceSnapshot.ExpectedHeadReference);
