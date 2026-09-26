@@ -65,10 +65,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private GitBranch? _selectedMergeBranch;
     private string _operationDisplay = string.Empty;
     private string _rebaseOnto = "HEAD~3";
-    private InteractiveRebaseSourceSnapshot? _rebaseSourceSnapshot;
-    private RebasePlanItem? _selectedRebaseItem;
-    private string _rebaseAction = "pick";
-    private string _rebaseMessage = string.Empty;
+    private InteractiveRebaseTodo? _preparedInteractiveRebaseTodo;
+    private string _rebaseTodoText = string.Empty;
     private RepositoryOperation _currentOperation;
     private ConflictFile? _selectedConflict;
     private RepositoryOperationState _operationState = RepositoryOperationState.None;
@@ -137,11 +135,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         ApplyStashCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.ApplyStashAsync(Repository!, SelectedStash!.Name)), () => CanMutate() && SelectedStash is not null);
         PopStashCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.PopStashAsync(Repository!, SelectedStash!.Name)), () => CanMutate() && SelectedStash is not null);
         MergeCommand = new AsyncCommand(MergeAsync, () => CanMutate() && SelectedMergeBranch is { IsCurrent: false });
-        LoadRebasePlanCommand = new AsyncCommand(LoadRebasePlanAsync, () => CanMutate() && CurrentOperation == RepositoryOperation.None && !string.IsNullOrWhiteSpace(RebaseOnto));
-        ApplyRebaseItemCommand = new AsyncCommand(ApplyRebaseItemAsync, () => CanMutate() && SelectedRebaseItem is not null);
-        MoveRebaseUpCommand = new AsyncCommand(() => MoveRebaseItemAsync(-1), () => CanMutate() && SelectedRebaseItem is not null && RebasePlan.IndexOf(SelectedRebaseItem) > 0);
-        MoveRebaseDownCommand = new AsyncCommand(() => MoveRebaseItemAsync(1), () => CanMutate() && SelectedRebaseItem is not null && RebasePlan.IndexOf(SelectedRebaseItem) < RebasePlan.Count - 1);
-        StartRebaseCommand = new AsyncCommand(StartRebaseAsync, () => CanMutate() && RebasePlan.Count > 0 && CurrentOperation == RepositoryOperation.None);
         ContinueRebaseCommand = new AsyncCommand(ContinueRebaseAsync, () => CanMutate() && CurrentOperation == RepositoryOperation.Rebase);
         AbortRebaseCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.AbortRebaseAsync(Repository!)), () => CanMutate() && CurrentOperation == RepositoryOperation.Rebase);
         OpenConflictCommand = new AsyncCommand(() => RunConflictActionAsync(() => _gitToolsService.OpenConflictInEditorAsync(Repository!, SelectedConflict!)), () => CanMutate() && SelectedConflict?.CanOpenManually == true);
@@ -230,11 +223,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public ICommand ApplyStashCommand { get; }
     public ICommand PopStashCommand { get; }
     public ICommand MergeCommand { get; }
-    public ICommand LoadRebasePlanCommand { get; }
-    public ICommand ApplyRebaseItemCommand { get; }
-    public ICommand MoveRebaseUpCommand { get; }
-    public ICommand MoveRebaseDownCommand { get; }
-    public ICommand StartRebaseCommand { get; }
     public ICommand ContinueRebaseCommand { get; }
     public ICommand AbortRebaseCommand { get; }
     public ICommand OpenConflictCommand { get; }
@@ -256,9 +244,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public ObservableCollection<GitRemote> Remotes { get; } = new BulkObservableCollection<GitRemote>();
     public ObservableCollection<GitTag> Tags { get; } = new BulkObservableCollection<GitTag>();
     public ObservableCollection<GitStash> Stashes { get; } = new BulkObservableCollection<GitStash>();
-    public ObservableCollection<RebasePlanItem> RebasePlan { get; } = [];
     public ObservableCollection<ConflictFile> Conflicts { get; } = new BulkObservableCollection<ConflictFile>();
-    public IReadOnlyList<string> RebaseActions { get; } = ["pick", "reword", "squash", "fixup", "drop"];
     public IReadOnlyList<UiChoice<HistoryScope>> Scopes { get; } =
     [
         new("All references", HistoryScope.AllReferences),
@@ -351,13 +337,20 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             if (string.Equals(_rebaseOnto, value, StringComparison.Ordinal)) return;
             _rebaseOnto = value;
             Notify();
-            InvalidatePreparedRebasePlan();
+            InvalidatePreparedInteractiveRebaseTodo();
             RaiseCommands();
         }
     }
-    public RebasePlanItem? SelectedRebaseItem { get => _selectedRebaseItem; set { _selectedRebaseItem = value; if (value is not null) { RebaseAction = value.Action.ToString().ToLowerInvariant(); RebaseMessage = value.NewMessage ?? value.Subject; } Notify(); RaiseCommands(); } }
-    public string RebaseAction { get => _rebaseAction; set { _rebaseAction = value; Notify(); } }
-    public string RebaseMessage { get => _rebaseMessage; set { _rebaseMessage = value; Notify(); } }
+    public string RebaseTodoText
+    {
+        get => _rebaseTodoText;
+        set
+        {
+            if (string.Equals(_rebaseTodoText, value, StringComparison.Ordinal)) return;
+            _rebaseTodoText = value;
+            Notify();
+        }
+    }
     public RepositoryOperation CurrentOperation { get => _currentOperation; private set { _currentOperation = value; Notify(); Notify(nameof(CanCreateStash)); Notify(nameof(CanForcePushWithLease)); RaiseCommands(); } }
     public ConflictFile? SelectedConflict { get => _selectedConflict; set { _selectedConflict = value; Notify(); Notify(nameof(CurrentSideLabel)); Notify(nameof(IncomingSideLabel)); RaiseCommands(); } }
     public RepositoryOperationState OperationState { get => _operationState; private set { _operationState = value; Notify(); Notify(nameof(HasActiveOperation)); RaiseCommands(); } }
@@ -546,8 +539,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         Remotes.Clear();
         Tags.Clear();
         Stashes.Clear();
-        RebasePlan.Clear();
-        _rebaseSourceSnapshot = null;
+        InvalidatePreparedInteractiveRebaseTodo();
         Conflicts.Clear();
         SelectedHistoryRow = null;
         SelectedFile = null;
@@ -718,54 +710,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         if (result is not null) OperationDisplay = result.Message;
     }
 
-    private async Task LoadRebasePlanAsync()
-    {
-        var repository = Repository;
-        var onto = RebaseOnto;
-        if (repository is null) return;
-
-        EnterBusy();
-        ErrorMessage = null;
-        InvalidatePreparedRebasePlan();
-        try
-        {
-            var plan = await _workflowService.ReadInteractiveRebasePlanAsync(repository, onto);
-            if (ReferenceEquals(repository, Repository)
-                && string.Equals(RebaseOnto, onto, StringComparison.Ordinal))
-                ApplyPreparedRebasePlan(plan);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException) { ErrorMessage = $"Git: {exception.Message}"; }
-        finally { ExitBusy(); RaiseCommands(); }
-    }
-
-    private Task ApplyRebaseItemAsync()
-    {
-        if (SelectedRebaseItem is null || !Enum.TryParse<CSharpGit.Domain.RebaseAction>(RebaseAction, true, out var action)) return Task.CompletedTask;
-        var index = RebasePlan.IndexOf(SelectedRebaseItem);
-        var updated = SelectedRebaseItem with { Action = action, NewMessage = action == CSharpGit.Domain.RebaseAction.Reword ? RebaseMessage : null };
-        RebasePlan[index] = updated;
-        SelectedRebaseItem = updated;
-        return Task.CompletedTask;
-    }
-
-    private Task MoveRebaseItemAsync(int offset)
-    {
-        if (SelectedRebaseItem is null) return Task.CompletedTask;
-        var oldIndex = RebasePlan.IndexOf(SelectedRebaseItem);
-        var newIndex = oldIndex + offset;
-        if (newIndex >= 0 && newIndex < RebasePlan.Count) RebasePlan.Move(oldIndex, newIndex);
-        RaiseCommands();
-        return Task.CompletedTask;
-    }
-
-    private async Task StartRebaseAsync()
-    {
-        RebaseResult? result = null;
-        var plan = new InteractiveRebasePlan(RebaseOnto, RebasePlan.ToList(), _rebaseSourceSnapshot);
-        await MutateAsync(async () => result = await _workflowService.StartInteractiveRebaseAsync(Repository!, plan));
-        if (result is not null) OperationDisplay = result.Message;
-    }
-
     private async Task ContinueRebaseAsync()
     {
         RebaseResult? result = null;
@@ -876,7 +820,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     private void RaiseCommands()
     {
-        foreach (var command in new[] { RefreshAllCommand, StageCommand, UnstageCommand, StageSelectedCommand, StageAllCommand, UnstageSelectedCommand, UnstageAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, SwitchBranchCommand, DeleteBranchCommand, CheckoutRemoteCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, ApplyStashCommand, PopStashCommand, MergeCommand, LoadRebasePlanCommand, ApplyRebaseItemCommand, MoveRebaseUpCommand, MoveRebaseDownCommand, StartRebaseCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
+        foreach (var command in new[] { RefreshAllCommand, StageCommand, UnstageCommand, StageSelectedCommand, StageAllCommand, UnstageSelectedCommand, UnstageAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, SwitchBranchCommand, DeleteBranchCommand, CheckoutRemoteCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, ApplyStashCommand, PopStashCommand, MergeCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
     }
 
     private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values)

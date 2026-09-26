@@ -54,7 +54,7 @@ public sealed class SelectedCommitActionsContractTests
     }
 
     [Fact]
-    public void InteractiveRebaseFromHistoryUsesSemanticWorkflowAndExistingEditor()
+    public void InteractiveRebaseUsesRawTodoAndDedicatedEditor()
     {
         var root = FindRepositoryRoot();
         var actions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
@@ -66,20 +66,47 @@ public sealed class SelectedCommitActionsContractTests
 
         Assert.Contains("Interactive rebase from here…", actions);
         Assert.Contains("HistoryList.RightTapped += HistoryList_RightTapped", actions);
+        Assert.Contains("var hash = commit.Hash;", actions);
         Assert.Contains("PrepareInteractiveRebaseFromCommitAsync(hash)", actions);
         Assert.Contains("var hasLocalBranch = _viewModel.CurrentBranchName is not null;", actions);
         Assert.DoesNotContain("_workflowService", ExtractMethod(actions, "InteractiveRebaseFromHere_Click"));
         Assert.DoesNotContain("^", ExtractMethod(actions, "InteractiveRebaseFromHere_Click"));
-        Assert.Contains("ReadInteractiveRebasePlanFromCommitAsync", workflow);
-        Assert.Contains("ReadInteractiveRebasePlanFromCommitAsync", rebaseViewModel);
-        Assert.Contains("InvalidatePreparedRebasePlan", viewModel);
-        Assert.Contains("_rebaseSourceSnapshot", viewModel);
-        Assert.Contains("SourceSnapshot", viewModel);
+
+        Assert.Contains("ReadInteractiveRebaseTodoAsync", workflow);
+        Assert.Contains("ReadInteractiveRebaseTodoFromCommitAsync", workflow);
+        Assert.Contains("StartInteractiveRebaseTodoAsync", workflow);
+        Assert.Contains("ReadInteractiveRebaseTodoFromCommitAsync", rebaseViewModel);
+        Assert.Contains("StartInteractiveRebaseTodoAsync", rebaseViewModel);
+        Assert.DoesNotContain("ReadInteractiveRebasePlan", rebaseViewModel);
+
+        Assert.Contains("InteractiveRebaseTodo", viewModel);
+        Assert.Contains("RebaseTodoText", viewModel);
+        Assert.DoesNotContain("RebasePlanItem", viewModel);
+        Assert.DoesNotContain("LoadRebasePlanCommand", viewModel);
+        Assert.DoesNotContain("StartRebaseCommand", viewModel);
+        Assert.DoesNotContain("MoveRebaseUpCommand", viewModel);
+        Assert.DoesNotContain("ApplyRebaseItemCommand", viewModel);
+
         Assert.Contains("InteractiveRebaseSection", xaml);
-        Assert.Contains("InteractiveRebasePlanList", xaml);
+        Assert.Contains("Open interactive rebase…", xaml);
+        Assert.Contains("InteractiveRebaseDialog", xaml);
+        Assert.Contains("InteractiveRebaseTodoEditor", xaml);
+        Assert.Contains("AcceptsReturn=\"True\"", xaml);
+        Assert.Contains("TextWrapping=\"NoWrap\"", xaml);
+        Assert.Contains("PrimaryButtonText=\"Start rebase\"", xaml);
+        Assert.Contains("CloseButtonText=\"Cancel\"", xaml);
+        Assert.DoesNotContain("InteractiveRebasePlanList", xaml);
+        Assert.DoesNotContain("RebaseActions", xaml);
+        Assert.DoesNotContain("RebaseMessage", xaml);
+        Assert.DoesNotContain("<StackPanel Width=\"620\"", xaml);
+
+        Assert.Contains("OpenInteractiveRebase_Click", dialogs);
+        Assert.Contains("GitOperationsDialog.Hide()", dialogs);
+        Assert.Contains("InteractiveRebaseDialog", dialogs);
         Assert.Contains("ShowInteractiveRebaseEditorAsync", dialogs);
-        Assert.Contains("GitOperationsDialog", dialogs);
+        Assert.Contains("StartPreparedInteractiveRebaseAsync", dialogs);
     }
+
     [Fact]
     public void CancelCommitRemainsPresentationOnly()
     {

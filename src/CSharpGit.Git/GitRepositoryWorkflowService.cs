@@ -1,3 +1,4 @@
+using System.Text;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Application.Exceptions;
 using CSharpGit.Domain;
@@ -6,7 +7,11 @@ namespace CSharpGit.Git;
 
 internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService
 {
-private readonly GitRepositoryCommandRunner _runner;
+    private const string ManagedRebaseMode = "managed";
+    private const string RawRebaseMode = "raw";
+    private const string RebaseModeFileName = "mode";
+
+    private readonly GitRepositoryCommandRunner _runner;
     private readonly GitRepositoryStateService _stateService;
 
     internal GitRepositoryWorkflowService(GitCommandExecutor executor)
@@ -317,6 +322,117 @@ private readonly GitRepositoryCommandRunner _runner;
         return plan;
     }
 
+
+    public async Task<InteractiveRebaseTodo> ReadInteractiveRebaseTodoAsync(
+        Repository repository,
+        string onto,
+        CancellationToken cancellationToken = default)
+    {
+        var plan = await ReadInteractiveRebasePlanAsync(
+            repository,
+            onto,
+            cancellationToken);
+        return ToInteractiveRebaseTodo(plan);
+    }
+
+    public async Task<InteractiveRebaseTodo> ReadInteractiveRebaseTodoFromCommitAsync(
+        Repository repository,
+        string firstCommit,
+        CancellationToken cancellationToken = default)
+    {
+        var plan = await ReadInteractiveRebasePlanFromCommitAsync(
+            repository,
+            firstCommit,
+            cancellationToken);
+        return ToInteractiveRebaseTodo(plan);
+    }
+
+    public async Task<RebaseResult> StartInteractiveRebaseTodoAsync(
+        Repository repository,
+        InteractiveRebaseTodo todo,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(todo);
+
+        EnsureNoActiveOperation(repository);
+        GitRefValidator.ValidateObjectId(todo.Onto, nameof(todo.Onto));
+
+        await EnsureRebaseSourceUnchangedAsync(
+            repository,
+            todo.SourceSnapshot,
+            cancellationToken);
+
+        var resolvedOnto = await ResolveCommitAsync(
+            repository,
+            todo.Onto,
+            cancellationToken);
+        await EnsureLinearRebaseRangeAsync(
+            repository,
+            resolvedOnto,
+            todo.SourceSnapshot.ExpectedHeadCommit,
+            cancellationToken);
+        await EnsureRebaseSourceUnchangedAsync(
+            repository,
+            todo.SourceSnapshot,
+            cancellationToken);
+
+        var supportDirectory = Path.Combine(
+            repository.GitDirectory,
+            "csharpgit-rebase");
+
+        CleanupRebaseSupportDirectory(repository);
+        try
+        {
+            Directory.CreateDirectory(supportDirectory);
+
+            var todoPath = Path.Combine(
+                supportDirectory,
+                "todo");
+            var sequenceEditor = Path.Combine(
+                supportDirectory,
+                OperatingSystem.IsWindows()
+                    ? "sequence-editor.cmd"
+                    : "sequence-editor.sh");
+
+            await WriteRawRebaseTodoAsync(
+                todoPath,
+                todo.TodoText,
+                cancellationToken);
+            await WriteSequenceEditorAsync(
+                sequenceEditor,
+                todoPath,
+                cancellationToken);
+            await WriteRebaseModeAsync(
+                supportDirectory,
+                RawRebaseMode,
+                cancellationToken);
+
+            var result = await RunRebaseCommandAsync(
+                repository,
+                new Dictionary<string, string?>
+                {
+                    ["GIT_SEQUENCE_EDITOR"] = QuoteCommand(sequenceEditor)
+                },
+                cancellationToken,
+                "rebase",
+                "--interactive",
+                resolvedOnto);
+
+            if (GitOperationDetector.Detect(repository)
+                != RepositoryOperation.Rebase)
+                CleanupRebaseSupportDirectory(repository);
+
+            return result;
+        }
+        catch
+        {
+            if (GitOperationDetector.Detect(repository)
+                != RepositoryOperation.Rebase)
+                CleanupRebaseSupportDirectory(repository);
+            throw;
+        }
+    }
+
     public async Task<RebaseResult> StartInteractiveRebaseAsync(
         Repository repository,
         InteractiveRebasePlan plan,
@@ -366,6 +482,7 @@ private readonly GitRepositoryCommandRunner _runner;
             repository.GitDirectory,
             "csharpgit-rebase");
 
+        CleanupRebaseSupportDirectory(repository);
         try
         {
             Directory.CreateDirectory(supportDirectory);
@@ -394,6 +511,10 @@ private readonly GitRepositoryCommandRunner _runner;
                 cancellationToken);
             await WriteNoOpEditorAsync(
                 messageEditor,
+                cancellationToken);
+            await WriteRebaseModeAsync(
+                supportDirectory,
+                ManagedRebaseMode,
                 cancellationToken);
 
             var environment = new Dictionary<string, string?>
@@ -442,36 +563,44 @@ private readonly GitRepositoryCommandRunner _runner;
         Repository repository,
         CancellationToken cancellationToken = default)
     {
+        var mode = ReadRebaseMode(repository);
         await _runner.RunMutationAsync(
             repository,
             cancellationToken,
             "rebase",
             "--abort");
-        CleanupRebaseSupportDirectory(repository);
+
+        if (IsCSharpGitRebaseMode(mode))
+            CleanupRebaseSupportDirectory(repository);
     }
 
     private async Task<RebaseResult> ContinueRebaseCoreAsync(
         Repository repository,
         CancellationToken cancellationToken)
     {
-        var supportDirectory = Path.Combine(
-            repository.GitDirectory,
-            "csharpgit-rebase");
-        Directory.CreateDirectory(supportDirectory);
+        var mode = ReadRebaseMode(repository);
+        var environment = new Dictionary<string, string?>();
 
-        var messageEditor = Path.Combine(
-            supportDirectory,
-            OperatingSystem.IsWindows()
-                ? "message-editor.cmd"
-                : "message-editor.sh");
-        await WriteNoOpEditorAsync(
-            messageEditor,
-            cancellationToken);
-
-        var environment = new Dictionary<string, string?>
+        if (string.Equals(
+                mode,
+                ManagedRebaseMode,
+                StringComparison.Ordinal))
         {
-            ["GIT_EDITOR"] = QuoteCommand(messageEditor)
-        };
+            var supportDirectory = Path.Combine(
+                repository.GitDirectory,
+                "csharpgit-rebase");
+            Directory.CreateDirectory(supportDirectory);
+
+            var messageEditor = Path.Combine(
+                supportDirectory,
+                OperatingSystem.IsWindows()
+                    ? "message-editor.cmd"
+                    : "message-editor.sh");
+            await WriteNoOpEditorAsync(
+                messageEditor,
+                cancellationToken);
+            environment["GIT_EDITOR"] = QuoteCommand(messageEditor);
+        }
 
         var result = await RunRebaseCommandAsync(
             repository,
@@ -481,7 +610,8 @@ private readonly GitRepositoryCommandRunner _runner;
             "--continue");
 
         if (GitOperationDetector.Detect(repository)
-            != RepositoryOperation.Rebase)
+                != RepositoryOperation.Rebase
+            && IsCSharpGitRebaseMode(mode))
             CleanupRebaseSupportDirectory(repository);
 
         return result;
@@ -495,7 +625,7 @@ private readonly GitRepositoryCommandRunner _runner;
     {
         try
         {
-            await _runner.RunAsync(
+            var output = await _runner.RunAsync(
                 repository.WorkingDirectory,
                 cancellationToken,
                 false,
@@ -503,23 +633,54 @@ private readonly GitRepositoryCommandRunner _runner;
                 GitCommandKind.User,
                 arguments);
 
-            return new RebaseResult(
-                RebaseResultKind.Completed,
-                "Interactive rebase completed successfully.");
+            return await ClassifyRebaseResultAsync(
+                repository,
+                commandSucceeded: true,
+                output,
+                cancellationToken);
         }
         catch (RepositoryOpenException exception)
         {
-            var state = await _stateService.ReadAsync(
+            return await ClassifyRebaseResultAsync(
                 repository,
+                commandSucceeded: false,
+                exception.Message,
                 cancellationToken);
-
-            return new RebaseResult(
-                state.Operation == RepositoryOperation.Rebase
-                && state.Changes.Any(change => change.IsConflicted)
-                    ? RebaseResultKind.Conflicts
-                    : RebaseResultKind.Failed,
-                exception.Message);
         }
+    }
+
+    private async Task<RebaseResult> ClassifyRebaseResultAsync(
+        Repository repository,
+        bool commandSucceeded,
+        string? diagnostic,
+        CancellationToken cancellationToken)
+    {
+        var state = await _stateService.ReadAsync(
+            repository,
+            cancellationToken);
+
+        if (state.Operation != RepositoryOperation.Rebase)
+        {
+            return new RebaseResult(
+                commandSucceeded
+                    ? RebaseResultKind.Completed
+                    : RebaseResultKind.Failed,
+                commandSucceeded
+                    ? "Interactive rebase completed successfully."
+                    : diagnostic ?? "Interactive rebase failed.");
+        }
+
+        var hasConflicts = state.Changes.Any(change => change.IsConflicted);
+        var kind = hasConflicts
+            ? RebaseResultKind.Conflicts
+            : RebaseResultKind.Paused;
+        var message = !string.IsNullOrWhiteSpace(diagnostic)
+            ? diagnostic.Trim()
+            : hasConflicts
+                ? "Interactive rebase stopped because of conflicts."
+                : "Interactive rebase is paused. Complete the requested Git step, then Continue or Abort.";
+
+        return new RebaseResult(kind, message);
     }
 
     private async Task RunOperationCommandAsync(
@@ -861,6 +1022,95 @@ private readonly GitRepositoryCommandRunner _runner;
             }
         }
     }
+
+    private static InteractiveRebaseTodo ToInteractiveRebaseTodo(
+        InteractiveRebasePlan plan)
+    {
+        if (plan.SourceSnapshot is null)
+            throw new InvalidOperationException(
+                "The rebase plan does not contain repository source information.");
+
+        var todoText = string.Join(
+            Environment.NewLine,
+            plan.Items.Select(item =>
+                $"pick {item.Commit} {item.Subject}"));
+
+        if (todoText.Length > 0)
+            todoText += Environment.NewLine;
+
+        return new InteractiveRebaseTodo(
+            plan.Onto,
+            todoText,
+            plan.SourceSnapshot);
+    }
+
+    private static async Task WriteRawRebaseTodoAsync(
+        string todoPath,
+        string todoText,
+        CancellationToken cancellationToken)
+    {
+        var content = todoText;
+        if (content.Length > 0
+            && !content.EndsWith('\n')
+            && !content.EndsWith('\r'))
+            content += Environment.NewLine;
+
+        await File.WriteAllTextAsync(
+            todoPath,
+            content,
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+            cancellationToken);
+    }
+
+    private static async Task WriteRebaseModeAsync(
+        string supportDirectory,
+        string mode,
+        CancellationToken cancellationToken)
+    {
+        await File.WriteAllTextAsync(
+            Path.Combine(
+                supportDirectory,
+                RebaseModeFileName),
+            mode + Environment.NewLine,
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+            cancellationToken);
+    }
+
+    private static string? ReadRebaseMode(Repository repository)
+    {
+        var path = Path.Combine(
+            repository.GitDirectory,
+            "csharpgit-rebase",
+            RebaseModeFileName);
+        if (!File.Exists(path))
+            return null;
+
+        try
+        {
+            var mode = File.ReadAllText(path).Trim();
+            return IsCSharpGitRebaseMode(mode)
+                ? mode
+                : null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private static bool IsCSharpGitRebaseMode(string? mode) =>
+        string.Equals(
+            mode,
+            ManagedRebaseMode,
+            StringComparison.Ordinal)
+        || string.Equals(
+            mode,
+            RawRebaseMode,
+            StringComparison.Ordinal);
 
     private static async Task WriteSequenceEditorAsync(
         string scriptPath,

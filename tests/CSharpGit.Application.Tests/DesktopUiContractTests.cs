@@ -137,7 +137,7 @@ public sealed class DesktopUiContractTests
             "CommitCommand", "AmendCommand", "RequestDiscardSelectedCommand", "RequestDiscardAllCommand",
             "ConfirmBatchDiscardCommand", "CancelBatchDiscardCommand",
             "FetchCommand", "FetchAllCommand", "PullCommand", "ApplyStashCommand",
-            "PopStashCommand", "MergeCommand", "StartRebaseCommand", "ContinueOperationCommand", "SkipOperationCommand",
+            "PopStashCommand", "MergeCommand", "OpenInteractiveRebase_Click", "ContinueOperationCommand", "SkipOperationCommand",
             "AbortOperationCommand", "MergeToolCommand", "MergeToolWorkflowCommand"
         }) Assert.Contains(command, surface);
 
