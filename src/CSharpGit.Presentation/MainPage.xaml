@@ -27,31 +27,23 @@
                    Title="Interactive rebase"
                    PrimaryButtonText="Start rebase"
                    CloseButtonText="Cancel"
-                   DefaultButton="Primary">
-      <Grid RowDefinitions="Auto,*,Auto"
+                   DefaultButton="Primary"
+                   MaxWidth="1200">
+      <Grid RowDefinitions="Auto,*"
             RowSpacing="{StaticResource Spacing.L}"
-            MaxWidth="900"
+            MaxWidth="1200"
             HorizontalAlignment="Stretch">
         <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
           <TextBlock Text="onto:" Style="{StaticResource BodySubduedTextStyle}" />
           <TextBlock Text="{Binding RebaseOnto}" Style="{StaticResource BodyStrongTextStyle}" IsTextSelectionEnabled="True" />
         </StackPanel>
-        <TextBox x:Name="InteractiveRebaseTodoEditor"
-                 Grid.Row="1"
-                 Text="{Binding RebaseTodoText, Mode=TwoWay}"
-                 AcceptsReturn="True"
-                 TextWrapping="NoWrap"
-                 FontFamily="Consolas"
-                 MinHeight="320"
-                 MaxHeight="560"
-                 HorizontalAlignment="Stretch"
-                 VerticalAlignment="Stretch"
-                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                 ScrollViewer.VerticalScrollBarVisibility="Auto" />
-        <TextBlock Grid.Row="2"
-                   Text="Git interprets this todo directly. Common commands: pick, reword, edit, squash, fixup, drop, exec, break. exec runs with your user permissions."
-                   TextWrapping="Wrap"
-                   Style="{StaticResource BodySubduedTextStyle}" />
+        <controls:InteractiveRebaseTodoEditor x:Name="InteractiveRebaseTodoEditor"
+                                              Grid.Row="1"
+                                              Text="{Binding RebaseTodoText, Mode=TwoWay}"
+                                              MinHeight="350"
+                                              MaxHeight="650"
+                                              HorizontalAlignment="Stretch"
+                                              VerticalAlignment="Stretch" />
       </Grid>
     </ContentDialog>
   </Page.Resources>
