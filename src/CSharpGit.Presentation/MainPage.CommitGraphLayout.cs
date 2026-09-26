@@ -68,7 +68,12 @@ public sealed partial class MainPage
         var layoutChanged = false;
         var newRowsExamined = 0;
         if (reset)
+        {
             layoutChanged |= state.Reset();
+            HistoryRenderDiagnostics.GeometrySharedCacheStateChanged(
+                state.GeometryCache.Count,
+                evicted: false);
+        }
 
         if (args.NewItems is not null)
         {

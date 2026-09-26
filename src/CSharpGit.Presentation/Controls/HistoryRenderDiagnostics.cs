@@ -99,6 +99,26 @@ internal static class HistoryRenderDiagnostics
         if (Session is { } session) Interlocked.Increment(ref session.GraphSizeChanged);
     }
 
+    internal static void GraphSizeChangedWidthOnly()
+    {
+        if (Session is { } session) Interlocked.Increment(ref session.GraphSizeChangedWidthOnly);
+    }
+
+    internal static void GraphSizeChangedHeightChanged()
+    {
+        if (Session is { } session) Interlocked.Increment(ref session.GraphSizeChangedHeightChanged);
+    }
+
+    internal static void GraphSizeChangedInsignificant()
+    {
+        if (Session is { } session) Interlocked.Increment(ref session.GraphSizeChangedInsignificant);
+    }
+
+    internal static void GraphSizeChangedFirstValidHeight()
+    {
+        if (Session is { } session) Interlocked.Increment(ref session.GraphSizeChangedFirstValidHeight);
+    }
+
     internal static void GraphThemeChanged()
     {
         if (Session is { } session) Interlocked.Increment(ref session.GraphThemeChanged);
@@ -130,6 +150,44 @@ internal static class HistoryRenderDiagnostics
         if (Session is { } session) Interlocked.Increment(ref session.GeometryCacheHits);
     }
 
+    internal static void GeometryBuildRequested()
+    {
+        if (Session is { } session) Interlocked.Increment(ref session.GeometryBuildRequests);
+    }
+
+    internal static void GeometrySameKeySkipped()
+    {
+        if (Session is not { } session) return;
+        Interlocked.Increment(ref session.GeometrySameKeySkips);
+        Interlocked.Increment(ref session.GeometryLocalCacheHits);
+        Interlocked.Increment(ref session.GeometryCacheHits);
+    }
+
+    internal static void GeometrySharedCacheHit()
+    {
+        if (Session is not { } session) return;
+        Interlocked.Increment(ref session.GeometrySharedCacheHits);
+        Interlocked.Increment(ref session.GeometryCacheHits);
+    }
+
+    internal static void GeometrySharedCacheMiss()
+    {
+        if (Session is { } session) Interlocked.Increment(ref session.GeometryCacheMisses);
+    }
+
+    internal static void GeometrySharedCacheStateChanged(int entries, bool evicted)
+    {
+        if (Session is not { } session) return;
+        Interlocked.Exchange(ref session.GeometrySharedCacheEntries, Math.Max(0, entries));
+        if (evicted)
+            Interlocked.Increment(ref session.GeometrySharedCacheEvictions);
+    }
+
+    internal static void GeometryActualBuilt(
+        HistoryGeometryUpdateReason trigger,
+        HistoryGeometryBuildCause cause) =>
+        Session?.RecordGeometryActualBuild(trigger, cause);
+
     internal static void GeometryRebuilt(
         HistoryGeometryUpdateReason reason = HistoryGeometryUpdateReason.Unknown,
         long startedAt = 0,
@@ -143,8 +201,12 @@ internal static class HistoryRenderDiagnostics
     internal static void GeometryBuilderCompleted(long startedAt) =>
         Session?.RecordGeometryBuilder(startedAt);
 
-    internal static void GeometryMaterializationCompleted(long startedAt) =>
-        Session?.RecordGeometryMaterialization(startedAt);
+    internal static void GeometryMaterializationCompleted(long startedAt)
+    {
+        if (Session is not { } session) return;
+        Interlocked.Increment(ref session.GeometryMaterializationCalls);
+        session.RecordGeometryMaterialization(startedAt);
+    }
 
     internal static void TopologyConverted(
         long startedAt,
