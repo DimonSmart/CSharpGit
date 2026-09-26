@@ -286,6 +286,204 @@ public sealed class InteractiveRebaseTests : IDisposable
         Assert.Equal(string.Empty, GitOut("stash", "list", "--format=%H"));
     }
 
+    [Fact]
+    public async Task ReadRawTodoFromCommitStartsWithSelectedCommit()
+    {
+        var (repository, service) = await CreateServicesAsync();
+
+        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _c);
+
+        Assert.Equal(_b, todo.Onto);
+        Assert.Equal(
+            $"pick {_c} C{Environment.NewLine}" +
+            $"pick {_d} D{Environment.NewLine}" +
+            $"pick {_e} E{Environment.NewLine}",
+            todo.TodoText);
+        Assert.Equal(_e, todo.SourceSnapshot.ExpectedHeadCommit);
+        Assert.Equal("refs/heads/main", todo.SourceSnapshot.ExpectedHeadReference);
+    }
+
+    [Fact]
+    public async Task RawTodoReorderIsInterpretedByGit()
+    {
+        var (repository, service) = await CreateServicesAsync();
+        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _c);
+        var edited = todo with
+        {
+            TodoText =
+                $"pick {_d} D{Environment.NewLine}" +
+                $"pick {_c} C{Environment.NewLine}" +
+                $"pick {_e} E{Environment.NewLine}"
+        };
+
+        var result = await service.StartInteractiveRebaseTodoAsync(repository, edited);
+
+        Assert.Equal(RebaseResultKind.Completed, result.Kind);
+        Assert.Equal(["D", "C", "E"], SubjectsAfter(_b));
+    }
+
+    [Fact]
+    public async Task RawTodoDropIsInterpretedByGit()
+    {
+        var (repository, service) = await CreateServicesAsync();
+        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _c);
+        var edited = todo with
+        {
+            TodoText =
+                $"drop {_c} C{Environment.NewLine}" +
+                $"pick {_d} D{Environment.NewLine}" +
+                $"pick {_e} E{Environment.NewLine}"
+        };
+
+        var result = await service.StartInteractiveRebaseTodoAsync(repository, edited);
+
+        Assert.Equal(RebaseResultKind.Completed, result.Kind);
+        Assert.Equal(["D", "E"], SubjectsAfter(_b));
+    }
+
+    [Fact]
+    public async Task RawBreakReturnsPausedAndPreservesTodoText()
+    {
+        var (repository, service) = await CreateServicesAsync();
+        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _c);
+        var text =
+            $"# custom comment{Environment.NewLine}" +
+            Environment.NewLine +
+            $"break{Environment.NewLine}" +
+            $"pick {_c} C{Environment.NewLine}" +
+            $"pick {_d} D{Environment.NewLine}" +
+            $"pick {_e} E{Environment.NewLine}";
+
+        var result = await service.StartInteractiveRebaseTodoAsync(
+            repository,
+            todo with { TodoText = text });
+
+        Assert.Equal(RebaseResultKind.Paused, result.Kind);
+        Assert.Equal(RepositoryOperation.Rebase, GitOperationDetector.Detect(repository));
+
+        var supportDirectory = Path.Combine(repository.GitDirectory, "csharpgit-rebase");
+        Assert.Equal(text, File.ReadAllText(Path.Combine(supportDirectory, "todo")));
+        Assert.Equal("raw", File.ReadAllText(Path.Combine(supportDirectory, "mode")).Trim());
+        Assert.False(File.Exists(Path.Combine(
+            supportDirectory,
+            OperatingSystem.IsWindows()
+                ? "message-editor.cmd"
+                : "message-editor.sh")));
+
+        await service.AbortRebaseAsync(repository);
+        Assert.False(Directory.Exists(supportDirectory));
+    }
+
+    [Fact]
+    public async Task RawEditReturnsPaused()
+    {
+        var (repository, service) = await CreateServicesAsync();
+        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _c);
+
+        var result = await service.StartInteractiveRebaseTodoAsync(
+            repository,
+            todo with
+            {
+                TodoText =
+                    $"edit {_c} C{Environment.NewLine}" +
+                    $"pick {_d} D{Environment.NewLine}" +
+                    $"pick {_e} E{Environment.NewLine}"
+            });
+
+        Assert.Equal(RebaseResultKind.Paused, result.Kind);
+        Assert.Equal(RepositoryOperation.Rebase, GitOperationDetector.Detect(repository));
+
+        await service.AbortRebaseAsync(repository);
+    }
+
+    [Fact]
+    public async Task RawFailedExecReturnsPaused()
+    {
+        var (repository, service) = await CreateServicesAsync();
+        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _c);
+
+        var result = await service.StartInteractiveRebaseTodoAsync(
+            repository,
+            todo with
+            {
+                TodoText =
+                    $"pick {_c} C{Environment.NewLine}" +
+                    $"exec git rev-parse --verify refs/heads/definitely-missing-csharpgit-test{Environment.NewLine}" +
+                    $"pick {_d} D{Environment.NewLine}" +
+                    $"pick {_e} E{Environment.NewLine}"
+            });
+
+        Assert.Equal(RebaseResultKind.Paused, result.Kind);
+        Assert.Equal(RepositoryOperation.Rebase, GitOperationDetector.Detect(repository));
+
+        await service.AbortRebaseAsync(repository);
+    }
+
+    [Fact]
+    public async Task RawInvalidCommandIsDelegatedToGit()
+    {
+        var (repository, service) = await CreateServicesAsync();
+        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _c);
+
+        var result = await service.StartInteractiveRebaseTodoAsync(
+            repository,
+            todo with
+            {
+                TodoText =
+                    $"foobar {_c} C{Environment.NewLine}" +
+                    $"pick {_d} D{Environment.NewLine}" +
+                    $"pick {_e} E{Environment.NewLine}"
+            });
+
+        Assert.Equal(RebaseResultKind.Paused, result.Kind);
+        Assert.Contains("invalid", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(RepositoryOperation.Rebase, GitOperationDetector.Detect(repository));
+
+        await service.AbortRebaseAsync(repository);
+    }
+
+    [Fact]
+    public async Task RawContinueUsesConfiguredGitEditor()
+    {
+        ConfigureCommitMessageEditor();
+
+        var (repository, service) = await CreateServicesAsync();
+        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _c);
+        var start = await service.StartInteractiveRebaseTodoAsync(
+            repository,
+            todo with
+            {
+                TodoText =
+                    $"break{Environment.NewLine}" +
+                    $"reword {_c} C{Environment.NewLine}" +
+                    $"pick {_d} D{Environment.NewLine}" +
+                    $"pick {_e} E{Environment.NewLine}"
+            });
+
+        Assert.Equal(RebaseResultKind.Paused, start.Kind);
+
+        var continued = await service.ContinueRebaseAsync(repository);
+
+        Assert.Equal(RebaseResultKind.Completed, continued.Kind);
+        Assert.Equal(["C raw edited", "D", "E"], SubjectsAfter(_b));
+    }
+
+    [Fact]
+    public async Task RawStartRejectsDifferentBranchAtSameHead()
+    {
+        var (repository, service) = await CreateServicesAsync();
+        var todo = await service.ReadInteractiveRebaseTodoAsync(repository, _b);
+
+        Git("branch", "other");
+        Git("switch", "other");
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.StartInteractiveRebaseTodoAsync(repository, todo));
+
+        Assert.Contains("Repository history changed", exception.Message);
+        Assert.Equal(_e, GitOut("rev-parse", "HEAD"));
+    }
+
     private string CreateMergeCommit()
     {
         Git("switch", "-c", "side", _e);
@@ -294,6 +492,38 @@ public sealed class InteractiveRebaseTests : IDisposable
         Commit("Main after E");
         Git("merge", "--no-ff", "side", "-m", "Merge side");
         return GitOut("rev-parse", "HEAD");
+    }
+
+    private void ConfigureCommitMessageEditor()
+    {
+        var path = Path.Combine(
+            _root,
+            OperatingSystem.IsWindows()
+                ? "test-editor.cmd"
+                : "test-editor.sh");
+
+        if (OperatingSystem.IsWindows())
+        {
+            File.WriteAllText(
+                path,
+                $"@echo off{Environment.NewLine}>\"%~1\" echo C raw edited{Environment.NewLine}exit /b 0{Environment.NewLine}");
+        }
+        else
+        {
+            File.WriteAllText(
+                path,
+                $"#!/bin/sh{Environment.NewLine}printf '%s\\n' 'C raw edited' > \"$1\"{Environment.NewLine}");
+            File.SetUnixFileMode(
+                path,
+                UnixFileMode.UserRead
+                | UnixFileMode.UserWrite
+                | UnixFileMode.UserExecute);
+        }
+
+        Git(
+            "config",
+            "core.editor",
+            $"\"{path.Replace('\\', '/')}\"");
     }
 
     private string Commit(string subject) =>

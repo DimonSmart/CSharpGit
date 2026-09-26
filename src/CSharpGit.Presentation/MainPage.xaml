@@ -4,7 +4,7 @@
     <controls:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
     <ContentDialog x:Key="GitOperationsDialog" Title="Git operations" CloseButtonText="Close" DefaultButton="Close">
       <ScrollViewer MaxHeight="650" VerticalScrollBarVisibility="Auto">
-        <StackPanel Width="620" Spacing="{StaticResource Spacing.XL}">
+        <StackPanel MaxWidth="760" HorizontalAlignment="Stretch" Spacing="{StaticResource Spacing.XL}">
           <TextBlock Text="Remote / explicit push" Style="{StaticResource BodyStrongTextStyle}" />
           <Grid ColumnDefinitions="180,*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
             <ComboBox ItemsSource="{Binding Remotes}" SelectedItem="{Binding SelectedRemote, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Remote" Style="{StaticResource CompactComboBoxStyle}" />
@@ -17,19 +17,42 @@
           <TextBlock x:Name="InteractiveRebaseSection" Text="Interactive rebase" Style="{StaticResource BodyStrongTextStyle}" />
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
             <TextBox Text="{Binding RebaseOnto, Mode=TwoWay}" PlaceholderText="onto (for example HEAD~3)" Style="{StaticResource CompactTextBoxStyle}" />
-            <Button Grid.Column="1" Content="Build plan" Command="{Binding LoadRebasePlanCommand}" Style="{StaticResource CompactButtonStyle}" />
+            <Button Grid.Column="1" Content="Open interactive rebase…" Click="OpenInteractiveRebase_Click" Style="{StaticResource CompactButtonStyle}" />
           </Grid>
-          <ListView x:Name="InteractiveRebasePlanList" ItemsSource="{Binding RebasePlan}" SelectedItem="{Binding SelectedRebaseItem, Mode=TwoWay}" DisplayMemberPath="Display" Height="130" ItemContainerStyle="{StaticResource DenseListItemStyle}" />
-          <Grid ColumnDefinitions="Auto,Auto,140,*,Auto" ColumnSpacing="{StaticResource Spacing.M}">
-            <Button Content="↑" Command="{Binding MoveRebaseUpCommand}" Style="{StaticResource IconButtonStyle}" />
-            <Button Grid.Column="1" Content="↓" Command="{Binding MoveRebaseDownCommand}" Style="{StaticResource IconButtonStyle}" />
-            <ComboBox Grid.Column="2" ItemsSource="{Binding RebaseActions}" SelectedItem="{Binding RebaseAction, Mode=TwoWay}" Style="{StaticResource CompactComboBoxStyle}" />
-            <TextBox Grid.Column="3" Text="{Binding RebaseMessage, Mode=TwoWay}" PlaceholderText="New message for reword" Style="{StaticResource CompactTextBoxStyle}" />
-            <Button Grid.Column="4" Content="Apply" Command="{Binding ApplyRebaseItemCommand}" Style="{StaticResource CompactButtonStyle}" />
-          </Grid>
-          <Button Content="Start rebase" Command="{Binding StartRebaseCommand}" HorizontalAlignment="Left" Style="{StaticResource CompactButtonStyle}" />
         </StackPanel>
       </ScrollViewer>
+    </ContentDialog>
+
+    <ContentDialog x:Key="InteractiveRebaseDialog"
+                   Title="Interactive rebase"
+                   PrimaryButtonText="Start rebase"
+                   CloseButtonText="Cancel"
+                   DefaultButton="Primary">
+      <Grid RowDefinitions="Auto,*,Auto"
+            RowSpacing="{StaticResource Spacing.L}"
+            MaxWidth="900"
+            HorizontalAlignment="Stretch">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+          <TextBlock Text="onto:" Style="{StaticResource BodySubduedTextStyle}" />
+          <TextBlock Text="{Binding RebaseOnto}" Style="{StaticResource BodyStrongTextStyle}" IsTextSelectionEnabled="True" />
+        </StackPanel>
+        <TextBox x:Name="InteractiveRebaseTodoEditor"
+                 Grid.Row="1"
+                 Text="{Binding RebaseTodoText, Mode=TwoWay}"
+                 AcceptsReturn="True"
+                 TextWrapping="NoWrap"
+                 FontFamily="Consolas"
+                 MinHeight="320"
+                 MaxHeight="560"
+                 HorizontalAlignment="Stretch"
+                 VerticalAlignment="Stretch"
+                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto" />
+        <TextBlock Grid.Row="2"
+                   Text="Git interprets this todo directly. Common commands: pick, reword, edit, squash, fixup, drop, exec, break. exec runs with your user permissions."
+                   TextWrapping="Wrap"
+                   Style="{StaticResource BodySubduedTextStyle}" />
+      </Grid>
     </ContentDialog>
   </Page.Resources>
 

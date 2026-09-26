@@ -7,29 +7,52 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage
 {
     private ContentDialog GitOperationsDialog => GetPageDialog("GitOperationsDialog");
+    private ContentDialog InteractiveRebaseDialog => GetPageDialog("InteractiveRebaseDialog");
+
+    private async void OpenInteractiveRebase_Click(object sender, RoutedEventArgs e)
+    {
+        if (!await _viewModel.PrepareInteractiveRebaseAsync())
+            return;
+
+        GitOperationsDialog.Hide();
+        await Task.Delay(20);
+        await ShowInteractiveRebaseEditorAsync();
+    }
 
     private async Task ShowInteractiveRebaseEditorAsync()
     {
-        var dialog = GitOperationsDialog;
+        var dialog = InteractiveRebaseDialog;
 
         void Dialog_Opened(ContentDialog sender, ContentDialogOpenedEventArgs args)
         {
-            if (FindNamedDescendant<FrameworkElement>(sender, "InteractiveRebaseSection") is { } section)
-                section.StartBringIntoView();
+            if (FindNamedDescendant<TextBox>(sender, "InteractiveRebaseTodoEditor") is not { } editor)
+                return;
 
-            if (FindNamedDescendant<ListView>(sender, "InteractiveRebasePlanList") is { } plan)
-                plan.Focus(FocusState.Programmatic);
+            editor.Width = Math.Min(
+                900,
+                Math.Max(
+                    240,
+                    ActualWidth - 96));
+            editor.Focus(FocusState.Programmatic);
+            editor.Select(editor.Text.Length, 0);
         }
 
         dialog.Opened += Dialog_Opened;
+        ContentDialogResult result;
         try
         {
-            await dialog.ShowAsync();
+            result = await dialog.ShowAsync();
         }
         finally
         {
             dialog.Opened -= Dialog_Opened;
         }
+
+        if (result != ContentDialogResult.Primary)
+            return;
+
+        if (FindNamedDescendant<TextBox>(dialog, "InteractiveRebaseTodoEditor") is { } editor)
+            await _viewModel.StartPreparedInteractiveRebaseAsync(editor.Text);
     }
 
     private static T? FindNamedDescendant<T>(DependencyObject root, string name)

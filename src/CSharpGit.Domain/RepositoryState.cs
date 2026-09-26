@@ -99,7 +99,13 @@ public sealed record InteractiveRebasePlan(
     string Onto,
     IReadOnlyList<RebasePlanItem> Items,
     InteractiveRebaseSourceSnapshot? SourceSnapshot = null);
-public enum RebaseResultKind { Completed, Conflicts, Failed }
+
+public sealed record InteractiveRebaseTodo(
+    string Onto,
+    string TodoText,
+    InteractiveRebaseSourceSnapshot SourceSnapshot);
+
+public enum RebaseResultKind { Completed, Paused, Conflicts, Failed }
 public sealed record RebaseResult(RebaseResultKind Kind, string Message);
 
 public enum ApplyCommitResultKind
