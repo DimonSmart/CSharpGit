@@ -64,24 +64,26 @@ public sealed class AuthorAvatarLifecycleStateTests
         Assert.False(state.TryStartResolve(isLoaded: true));
     }
 
-    [Theory]
-    [InlineData(AuthorAvatarResolutionStatus.ResolvedNoImage)]
-    [InlineData(AuthorAvatarResolutionStatus.Faulted)]
-    public void CompletedNoImageAndFaultedStatesDoNotRetryOnLifecycle(
-        AuthorAvatarResolutionStatus completedState)
+    [Fact]
+    public void NoImageStateDoesNotRetryOnLifecycle() =>
+        VerifyCompletedStateDoesNotRetry(
+            AuthorAvatarResolutionStatus.ResolvedNoImage,
+            static (state, key) => state.TrySetResolvedNoImage(key));
+
+    [Fact]
+    public void FaultedStateDoesNotRetryOnLifecycle() =>
+        VerifyCompletedStateDoesNotRetry(
+            AuthorAvatarResolutionStatus.Faulted,
+            static (state, key) => state.TrySetFaulted(key));
+
+    private static void VerifyCompletedStateDoesNotRetry(
+        AuthorAvatarResolutionStatus completedState,
+        Func<AuthorAvatarLifecycleState, AuthorAvatarLookupKey, bool> complete)
     {
         var state = new AuthorAvatarLifecycleState();
         state.Apply(EnabledA);
         Assert.True(state.TryStartResolve(isLoaded: true));
-
-        Assert.True(completedState switch
-        {
-            AuthorAvatarResolutionStatus.ResolvedNoImage =>
-                state.TrySetResolvedNoImage(EnabledA.LookupKey),
-            AuthorAvatarResolutionStatus.Faulted =>
-                state.TrySetFaulted(EnabledA.LookupKey),
-            _ => false
-        });
+        Assert.True(complete(state, EnabledA.LookupKey));
 
         Assert.False(state.TryStartResolve(isLoaded: false));
         Assert.False(state.Apply(EnabledA).Changed);

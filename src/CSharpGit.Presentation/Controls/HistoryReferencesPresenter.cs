@@ -161,11 +161,11 @@ public sealed class HistoryReferencesPresenter : Panel
     private static ReferenceVisual CreateVisual()
     {
         var icon = new FontIcon();
-        if (Application.Current.Resources["HistoryReferenceDefaultBranchIconStyle"] is Style iconStyle)
+        if (Microsoft.UI.Xaml.Application.Current.Resources["HistoryReferenceDefaultBranchIconStyle"] is Style iconStyle)
             icon.Style = iconStyle;
 
         var text = new TextBlock();
-        if (Application.Current.Resources["ReferenceBadgeTextStyle"] is Style textStyle)
+        if (Microsoft.UI.Xaml.Application.Current.Resources["ReferenceBadgeTextStyle"] is Style textStyle)
             text.Style = textStyle;
         text.VerticalAlignment = VerticalAlignment.Center;
 
@@ -181,7 +181,7 @@ public sealed class HistoryReferencesPresenter : Panel
         content.Children.Add(text);
 
         var border = new Border { Child = content };
-        if (Application.Current.Resources["ReferenceBadgeStyle"] is Style borderStyle)
+        if (Microsoft.UI.Xaml.Application.Current.Resources["ReferenceBadgeStyle"] is Style borderStyle)
             border.Style = borderStyle;
 
         return new ReferenceVisual(border, icon, text);
