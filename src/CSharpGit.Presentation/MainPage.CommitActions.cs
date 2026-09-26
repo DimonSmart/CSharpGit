@@ -17,6 +17,7 @@ public sealed partial class MainPage
     private MenuFlyoutItem? _cherryPickItem;
     private MenuFlyoutItem? _revertItem;
     private MenuFlyoutItem? _editCommitMessageItem;
+    private MenuFlyoutItem? _interactiveRebaseFromHereItem;
     private MenuFlyoutSubItem? _resetItem;
 
     private void InitializeCommitActions()
@@ -35,6 +36,8 @@ public sealed partial class MainPage
         _revertItem.Click += RevertCommit_Click;
         _editCommitMessageItem = new MenuFlyoutItem { Text = "Edit commit message…" };
         _editCommitMessageItem.Click += EditCommitMessage_Click;
+        _interactiveRebaseFromHereItem = new MenuFlyoutItem { Text = "Interactive rebase from here…" };
+        _interactiveRebaseFromHereItem.Click += InteractiveRebaseFromHere_Click;
 
         _resetItem = new MenuFlyoutSubItem { Text = "Reset current branch to here" };
         foreach (var (mode, label) in new[]
@@ -58,6 +61,7 @@ public sealed partial class MainPage
         _commitActionsFlyout.Items.Add(_cherryPickItem);
         _commitActionsFlyout.Items.Add(_revertItem);
         _commitActionsFlyout.Items.Add(_editCommitMessageItem);
+        _commitActionsFlyout.Items.Add(_interactiveRebaseFromHereItem);
         _commitActionsFlyout.Items.Add(new MenuFlyoutSeparator());
         _commitActionsFlyout.Items.Add(_resetItem);
         _commitActionsFlyout.Opening += (_, _) => UpdateCommitActionAvailability();
@@ -89,7 +93,7 @@ public sealed partial class MainPage
                         _viewModel.Repository is not null &&
                         !_viewModel.IsBusy &&
                         _viewModel.CurrentOperation == RepositoryOperation.None;
-        var hasLocalBranch = _viewModel.LocalBranches.Any(branch => branch.IsCurrent);
+        var hasLocalBranch = _viewModel.CurrentBranchName is not null;
 
         if (_copyHashItem is not null) _copyHashItem.IsEnabled = hasCommit;
         if (_createBranchHereItem is not null) _createBranchHereItem.IsEnabled = canMutate;
@@ -97,6 +101,7 @@ public sealed partial class MainPage
         if (_cherryPickItem is not null) _cherryPickItem.IsEnabled = canMutate;
         if (_revertItem is not null) _revertItem.IsEnabled = canMutate;
         if (_editCommitMessageItem is not null) _editCommitMessageItem.IsEnabled = canMutate;
+        if (_interactiveRebaseFromHereItem is not null) _interactiveRebaseFromHereItem.IsEnabled = canMutate && hasLocalBranch;
         if (_resetItem is not null) _resetItem.IsEnabled = canMutate && hasLocalBranch;
     }
 
@@ -214,6 +219,16 @@ public sealed partial class MainPage
         await RestoreCommitActionSelectionAsync(selection);
     }
 
+    private async void InteractiveRebaseFromHere_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryGetCommitActionContext(out _, out var commit)) return;
+
+        var hash = commit.Hash;
+        if (!await _viewModel.PrepareInteractiveRebaseFromCommitAsync(hash))
+            return;
+
+        await ShowInteractiveRebaseEditorAsync();
+    }
     private async void ResetCommit_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuFlyoutItem { Tag: ResetMode mode }) return;
