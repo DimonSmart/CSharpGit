@@ -14,12 +14,12 @@
           <Button Content="Push" Click="ExplicitPush_Click" HorizontalAlignment="Left" Style="{StaticResource CompactButtonStyle}" />
 
           <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="{StaticResource Margin.FormSeparator}" />
-          <TextBlock Text="Interactive rebase" Style="{StaticResource BodyStrongTextStyle}" />
+          <TextBlock x:Name="InteractiveRebaseSection" Text="Interactive rebase" Style="{StaticResource BodyStrongTextStyle}" />
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
             <TextBox Text="{Binding RebaseOnto, Mode=TwoWay}" PlaceholderText="onto (for example HEAD~3)" Style="{StaticResource CompactTextBoxStyle}" />
             <Button Grid.Column="1" Content="Build plan" Command="{Binding LoadRebasePlanCommand}" Style="{StaticResource CompactButtonStyle}" />
           </Grid>
-          <ListView ItemsSource="{Binding RebasePlan}" SelectedItem="{Binding SelectedRebaseItem, Mode=TwoWay}" DisplayMemberPath="Display" Height="130" ItemContainerStyle="{StaticResource DenseListItemStyle}" />
+          <ListView x:Name="InteractiveRebasePlanList" ItemsSource="{Binding RebasePlan}" SelectedItem="{Binding SelectedRebaseItem, Mode=TwoWay}" DisplayMemberPath="Display" Height="130" ItemContainerStyle="{StaticResource DenseListItemStyle}" />
           <Grid ColumnDefinitions="Auto,Auto,140,*,Auto" ColumnSpacing="{StaticResource Spacing.M}">
             <Button Content="↑" Command="{Binding MoveRebaseUpCommand}" Style="{StaticResource IconButtonStyle}" />
             <Button Grid.Column="1" Content="↓" Command="{Binding MoveRebaseDownCommand}" Style="{StaticResource IconButtonStyle}" />

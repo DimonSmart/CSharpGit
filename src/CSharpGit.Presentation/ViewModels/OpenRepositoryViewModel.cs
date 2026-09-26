@@ -65,6 +65,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private GitBranch? _selectedMergeBranch;
     private string _operationDisplay = string.Empty;
     private string _rebaseOnto = "HEAD~3";
+    private InteractiveRebaseSourceSnapshot? _rebaseSourceSnapshot;
     private RebasePlanItem? _selectedRebaseItem;
     private string _rebaseAction = "pick";
     private string _rebaseMessage = string.Empty;
@@ -136,7 +137,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         ApplyStashCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.ApplyStashAsync(Repository!, SelectedStash!.Name)), () => CanMutate() && SelectedStash is not null);
         PopStashCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.PopStashAsync(Repository!, SelectedStash!.Name)), () => CanMutate() && SelectedStash is not null);
         MergeCommand = new AsyncCommand(MergeAsync, () => CanMutate() && SelectedMergeBranch is { IsCurrent: false });
-        LoadRebasePlanCommand = new AsyncCommand(LoadRebasePlanAsync, () => CanMutate() && !string.IsNullOrWhiteSpace(RebaseOnto));
+        LoadRebasePlanCommand = new AsyncCommand(LoadRebasePlanAsync, () => CanMutate() && CurrentOperation == RepositoryOperation.None && !string.IsNullOrWhiteSpace(RebaseOnto));
         ApplyRebaseItemCommand = new AsyncCommand(ApplyRebaseItemAsync, () => CanMutate() && SelectedRebaseItem is not null);
         MoveRebaseUpCommand = new AsyncCommand(() => MoveRebaseItemAsync(-1), () => CanMutate() && SelectedRebaseItem is not null && RebasePlan.IndexOf(SelectedRebaseItem) > 0);
         MoveRebaseDownCommand = new AsyncCommand(() => MoveRebaseItemAsync(1), () => CanMutate() && SelectedRebaseItem is not null && RebasePlan.IndexOf(SelectedRebaseItem) < RebasePlan.Count - 1);
@@ -342,7 +343,18 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public GitStash? SelectedStash { get => _selectedStash; set { _selectedStash = value; Notify(); RaiseCommands(); } }
     public GitBranch? SelectedMergeBranch { get => _selectedMergeBranch; set { _selectedMergeBranch = value; Notify(); RaiseCommands(); } }
     public string OperationDisplay { get => _operationDisplay; private set { _operationDisplay = value; Notify(); } }
-    public string RebaseOnto { get => _rebaseOnto; set { _rebaseOnto = value; Notify(); RaiseCommands(); } }
+    public string RebaseOnto
+    {
+        get => _rebaseOnto;
+        set
+        {
+            if (string.Equals(_rebaseOnto, value, StringComparison.Ordinal)) return;
+            _rebaseOnto = value;
+            Notify();
+            InvalidatePreparedRebasePlan();
+            RaiseCommands();
+        }
+    }
     public RebasePlanItem? SelectedRebaseItem { get => _selectedRebaseItem; set { _selectedRebaseItem = value; if (value is not null) { RebaseAction = value.Action.ToString().ToLowerInvariant(); RebaseMessage = value.NewMessage ?? value.Subject; } Notify(); RaiseCommands(); } }
     public string RebaseAction { get => _rebaseAction; set { _rebaseAction = value; Notify(); } }
     public string RebaseMessage { get => _rebaseMessage; set { _rebaseMessage = value; Notify(); } }
@@ -535,6 +547,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         Tags.Clear();
         Stashes.Clear();
         RebasePlan.Clear();
+        _rebaseSourceSnapshot = null;
         Conflicts.Clear();
         SelectedHistoryRow = null;
         SelectedFile = null;
@@ -707,14 +720,19 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     private async Task LoadRebasePlanAsync()
     {
+        var repository = Repository;
+        var onto = RebaseOnto;
+        if (repository is null) return;
+
         EnterBusy();
         ErrorMessage = null;
+        InvalidatePreparedRebasePlan();
         try
         {
-            var plan = await _workflowService.ReadInteractiveRebasePlanAsync(Repository!, RebaseOnto);
-            RebaseOnto = plan.Onto;
-            Replace(RebasePlan, plan.Items);
-            SelectedRebaseItem = RebasePlan.FirstOrDefault();
+            var plan = await _workflowService.ReadInteractiveRebasePlanAsync(repository, onto);
+            if (ReferenceEquals(repository, Repository)
+                && string.Equals(RebaseOnto, onto, StringComparison.Ordinal))
+                ApplyPreparedRebasePlan(plan);
         }
         catch (Exception exception) when (exception is not OperationCanceledException) { ErrorMessage = $"Git: {exception.Message}"; }
         finally { ExitBusy(); RaiseCommands(); }
@@ -743,7 +761,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private async Task StartRebaseAsync()
     {
         RebaseResult? result = null;
-        var plan = new InteractiveRebasePlan(RebaseOnto, RebasePlan.ToList());
+        var plan = new InteractiveRebasePlan(RebaseOnto, RebasePlan.ToList(), _rebaseSourceSnapshot);
         await MutateAsync(async () => result = await _workflowService.StartInteractiveRebaseAsync(Repository!, plan));
         if (result is not null) OperationDisplay = result.Message;
     }
