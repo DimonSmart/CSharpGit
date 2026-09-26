@@ -45,10 +45,10 @@ public sealed class UnoXamlCompatibilityContractTests
         Assert.Contains("<Thickness x:Key=\"Margin.HistoryColumnGap\">4,0,0,0</Thickness>", workspace);
 
         var productionTemplateStart = historyReferences.IndexOf(
-            "<DataTemplate x:Key=\"HistoryItemTemplate\">",
+            "<DataTemplate x:Key=\"HistoryItemTemplate\"",
             StringComparison.Ordinal);
         var diagnosticTemplatesStart = historyReferences.IndexOf(
-            "<DataTemplate x:Key=\"SimplifiedHistoryItemTemplate\">",
+            "<DataTemplate x:Key=\"SimplifiedHistoryItemTemplate\"",
             StringComparison.Ordinal);
         Assert.True(productionTemplateStart >= 0);
         Assert.True(diagnosticTemplatesStart > productionTemplateStart);

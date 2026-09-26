@@ -26,24 +26,26 @@ public sealed class DefaultBranchMarkerUiContractTests
     public void HistoryDefaultBranchMarkerUsesResolvedRemoteBranchAndKeepsCompactHeight()
     {
         var root = FindRepositoryRoot();
-        var badgeCode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferenceBadge.xaml.cs"));
+        var presenter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferencesPresenter.cs"));
         var presentationContext = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferencePresentationContext.cs"));
-        var badgeXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferenceBadge.xaml"));
         var historyStyles = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml"));
         var app = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml"));
         var defaultBranchState = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "DefaultBranchRepositoryStateService.cs"));
 
-        Assert.Contains("HistoryReferencePresentationContext.IsDefaultRemoteBranch(ReferenceName)", badgeCode, StringComparison.Ordinal);
+        Assert.Contains("HistoryReferencePresentationContext.IsDefaultRemoteBranch(referenceName)", presenter, StringComparison.Ordinal);
         Assert.Contains(".Where(branch => branch.IsDefault)", presentationContext, StringComparison.Ordinal);
         Assert.Contains(".ToHashSet(StringComparer.Ordinal)", presentationContext, StringComparison.Ordinal);
-        Assert.DoesNotContain("RemoteBranches.Any", badgeCode, StringComparison.Ordinal);
-        Assert.DoesNotContain("VisualTreeHelper", badgeCode, StringComparison.Ordinal);
-        Assert.DoesNotContain("origin/main", badgeCode, StringComparison.Ordinal);
+        Assert.DoesNotContain("RemoteBranches.Any", presenter, StringComparison.Ordinal);
+        Assert.DoesNotContain("VisualTreeHelper", presenter, StringComparison.Ordinal);
+        Assert.DoesNotContain("origin/main", presenter, StringComparison.Ordinal);
         Assert.Contains("IsDefault = defaultRemoteBranch is not null", defaultBranchState, StringComparison.Ordinal);
-        Assert.Contains("Glyph=\"&#xE80F;\"", badgeXaml, StringComparison.Ordinal);
-        Assert.Contains("Width=\"10\"", badgeXaml, StringComparison.Ordinal);
-        Assert.Contains("Height=\"10\"", badgeXaml, StringComparison.Ordinal);
-        Assert.Contains("<controls:HistoryReferenceBadge ReferenceName=\"{Binding}\" />", historyStyles, StringComparison.Ordinal);
+        Assert.Contains("<Style x:Key=\"HistoryReferenceDefaultBranchIconStyle\" TargetType=\"FontIcon\">", historyStyles, StringComparison.Ordinal);
+        Assert.Contains("<Setter Property=\"Glyph\" Value=\"&#xE80F;\" />", historyStyles, StringComparison.Ordinal);
+        Assert.Contains("<Setter Property=\"Width\" Value=\"10\" />", historyStyles, StringComparison.Ordinal);
+        Assert.Contains("<Setter Property=\"Height\" Value=\"10\" />", historyStyles, StringComparison.Ordinal);
+        Assert.Contains("HistoryReferenceDefaultBranchIconStyle", presenter, StringComparison.Ordinal);
+        Assert.Contains("<controls:HistoryReferencesPresenter", historyStyles, StringComparison.Ordinal);
+        Assert.DoesNotContain("HistoryReferenceBadge", historyStyles, StringComparison.Ordinal);
         Assert.Contains("HistoryReferences.xaml", app, StringComparison.Ordinal);
     }
 
