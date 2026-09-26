@@ -36,14 +36,17 @@ public sealed class CommitGraphControl : Canvas
     ];
 
     private readonly XamlPath[] _trackPaths = new XamlPath[8];
+    private readonly PathGeometry[] _pathGeometries = new PathGeometry[8];
     private readonly XamlPath _nodePath;
+    private readonly EllipseGeometry _nodeGeometry = new();
     private readonly RectangleGeometry _clipGeometry = new();
-    private CommitGraphRowVisual? _renderedGraph;
+    private CommitGraphGeometryCache _geometryCache =
+        CommitGraphPresentationContext.Current.GeometryCache;
     private CommitGraphMetrics _metrics = CommitGraphMetrics.Default;
-    private CommitGraphMetrics _renderedMetrics;
-    private double _renderedHeight;
-    private ElementTheme? _renderedTheme;
+    private CommitGraphGeometryKey? _renderedGeometryKey;
+    private int? _renderedNodeTrackId;
     private long _renderCount;
+    private bool _hasRenderedState;
     private bool _presentationContextSubscribed;
 
     public static readonly DependencyProperty GraphProperty = DependencyProperty.Register(
@@ -61,20 +64,10 @@ public sealed class CommitGraphControl : Canvas
     public CommitGraphMetrics Metrics
     {
         get => _metrics;
-        set
-        {
-            if (_metrics == value)
-            {
-                return;
-            }
-
-            HistoryRenderDiagnostics.GraphMetricsChanged();
-            _metrics = value;
-            foreach (var path in _trackPaths)
-                path.StrokeThickness = value.LineThickness;
-            InvalidateMeasure();
-            UpdateGeometry(HistoryGeometryUpdateReason.MetricsChanged);
-        }
+        set => ApplyMetrics(
+            value,
+            HistoryGeometryUpdateReason.MetricsChanged,
+            requestGeometryUpdate: true);
     }
 
     public CommitGraphControl()
@@ -85,6 +78,7 @@ public sealed class CommitGraphControl : Canvas
 
         for (var paletteIndex = 0; paletteIndex < _trackPaths.Length; paletteIndex++)
         {
+            _pathGeometries[paletteIndex] = new PathGeometry();
             var path = new XamlPath
             {
                 StrokeThickness = Metrics.LineThickness,
@@ -100,23 +94,9 @@ public sealed class CommitGraphControl : Canvas
 
         Loaded += CommitGraphControl_Loaded;
         Unloaded += CommitGraphControl_Unloaded;
-        DataContextChanged += (_, _) =>
-        {
-            HistoryRenderDiagnostics.GraphDataContextChanged();
-            UpdateGeometry(HistoryGeometryUpdateReason.DataContextChanged);
-        };
-        SizeChanged += (_, _) =>
-        {
-            HistoryRenderDiagnostics.GraphSizeChanged();
-            UpdateClip();
-            UpdateGeometry(HistoryGeometryUpdateReason.SizeChanged);
-        };
-        ActualThemeChanged += (_, _) =>
-        {
-            HistoryRenderDiagnostics.GraphThemeChanged();
-            UpdateBrushes();
-            UpdateGeometry(HistoryGeometryUpdateReason.ThemeChanged);
-        };
+        DataContextChanged += (_, _) => HandleDataContextChanged();
+        SizeChanged += (_, args) => HandleSizeChanged(args);
+        ActualThemeChanged += (_, _) => HandleThemeChanged();
     }
 
     private void CommitGraphControl_Loaded(object sender, RoutedEventArgs args)
@@ -143,11 +123,73 @@ public sealed class CommitGraphControl : Canvas
         _presentationContextSubscribed = false;
     }
 
+    private void HandleDataContextChanged()
+    {
+        HistoryRenderDiagnostics.GraphDataContextChanged();
+    }
+
+    private void HandleThemeChanged()
+    {
+        HistoryRenderDiagnostics.GraphThemeChanged();
+        UpdateBrushes();
+    }
+
+    private void HandleSizeChanged(SizeChangedEventArgs args)
+    {
+        HistoryRenderDiagnostics.GraphSizeChanged();
+        UpdateClip();
+
+        var previousHeight = args.PreviousSize.Height;
+        var currentHeight = args.NewSize.Height;
+        var previousValid = IsValidHeight(previousHeight);
+        var currentValid = IsValidHeight(currentHeight);
+
+        if (!previousValid && currentValid)
+        {
+            HistoryRenderDiagnostics.GraphSizeChangedFirstValidHeight();
+            UpdateGeometry(HistoryGeometryUpdateReason.SizeChanged);
+            return;
+        }
+
+        if (previousValid && !currentValid)
+        {
+            HistoryRenderDiagnostics.GraphSizeChangedHeightChanged();
+            return;
+        }
+
+        if (previousValid && currentValid)
+        {
+            var heightDelta = Math.Abs(currentHeight - previousHeight);
+            if (heightDelta > CommitGraphGeometryKey.GeometryEpsilon)
+            {
+                HistoryRenderDiagnostics.GraphSizeChangedHeightChanged();
+                UpdateGeometry(HistoryGeometryUpdateReason.SizeChanged);
+                return;
+            }
+
+            if (heightDelta > 0)
+            {
+                HistoryRenderDiagnostics.GraphSizeChangedInsignificant();
+                return;
+            }
+        }
+
+        if (Math.Abs(args.NewSize.Width - args.PreviousSize.Width)
+            > CommitGraphGeometryKey.GeometryEpsilon)
+        {
+            HistoryRenderDiagnostics.GraphSizeChangedWidthOnly();
+            return;
+        }
+
+        HistoryRenderDiagnostics.GraphSizeChangedInsignificant();
+    }
+
     private void CommitGraphPresentationContext_Changed(object? sender, EventArgs args)
     {
         var startedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
         HistoryRenderDiagnostics.GraphPresentationContextChanged();
         ApplyPresentationLayout();
+        UpdateClip();
         UpdateGeometry(HistoryGeometryUpdateReason.PresentationContextChanged);
         HistoryRenderDiagnostics.PresentationDelivered(startedAt);
     }
@@ -155,8 +197,44 @@ public sealed class CommitGraphControl : Canvas
     private void ApplyPresentationLayout()
     {
         var layout = CommitGraphPresentationContext.Current;
-        Width = layout.GraphWidth;
-        Metrics = layout.Metrics;
+        _geometryCache = layout.GeometryCache;
+        HistoryRenderDiagnostics.GeometrySharedCacheStateChanged(
+            _geometryCache.Count,
+            evicted: false);
+
+        if (!double.IsFinite(Width)
+            || Math.Abs(Width - layout.GraphWidth) > CommitGraphGeometryKey.GeometryEpsilon)
+        {
+            Width = layout.GraphWidth;
+        }
+
+        ApplyMetrics(
+            layout.Metrics,
+            HistoryGeometryUpdateReason.PresentationContextChanged,
+            requestGeometryUpdate: false);
+    }
+
+    private void ApplyMetrics(
+        CommitGraphMetrics value,
+        HistoryGeometryUpdateReason reason,
+        bool requestGeometryUpdate)
+    {
+        if (_metrics == value)
+            return;
+
+        HistoryRenderDiagnostics.GraphMetricsChanged();
+        var geometryChanged = !CommitGraphGeometryKey.GeometryMetricsEqual(_metrics, value);
+        var lineThicknessChanged = !_metrics.LineThickness.Equals(value.LineThickness);
+        _metrics = value;
+
+        if (lineThicknessChanged)
+        {
+            foreach (var path in _trackPaths)
+                path.StrokeThickness = value.LineThickness;
+        }
+
+        if (requestGeometryUpdate && geometryChanged)
+            UpdateGeometry(reason);
     }
 
     protected override Size MeasureOverride(Size availableSize)
@@ -177,15 +255,14 @@ public sealed class CommitGraphControl : Canvas
         return result;
     }
 
-    private static void OnGraphChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
+    private static void OnGraphChanged(
+        DependencyObject dependencyObject,
+        DependencyPropertyChangedEventArgs args)
     {
         if (dependencyObject is not CommitGraphControl control)
-        {
             return;
-        }
 
         HistoryRenderDiagnostics.GraphChanged();
-        control.InvalidateMeasure();
         control.UpdateGeometry(HistoryGeometryUpdateReason.GraphChanged);
     }
 
@@ -196,60 +273,103 @@ public sealed class CommitGraphControl : Canvas
         _clipGeometry.Rect = new Rect(0, 0, width, height);
     }
 
-    private void UpdateGeometry(HistoryGeometryUpdateReason reason = HistoryGeometryUpdateReason.Unknown)
+    private void UpdateGeometry(
+        HistoryGeometryUpdateReason reason = HistoryGeometryUpdateReason.Unknown)
     {
         HistoryRenderDiagnostics.GeometryUpdateAttempted(reason);
-        var rebuildStartedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
+
         var graph = Graph;
         var height = ActualHeight;
-        if (!double.IsFinite(height) || height <= 0)
+        if (!IsValidHeight(height))
         {
             HistoryRenderDiagnostics.GeometrySkippedInvalidHeight();
             return;
         }
 
-        var metrics = Metrics;
-        var theme = ActualTheme;
-
-        if (ReferenceEquals(_renderedGraph, graph)
-            && Math.Abs(_renderedHeight - height) <= 0.01
-            && _renderedTheme == theme
-            && _renderedMetrics == metrics)
-        {
-            HistoryRenderDiagnostics.GeometryCacheHit();
-            return;
-        }
-
-        foreach (var path in _trackPaths)
-            path.Data = null;
-        _nodePath.Data = null;
-        _nodePath.Fill = null;
-
-        _renderedGraph = graph;
-        _renderedHeight = height;
-        _renderedTheme = theme;
-        _renderedMetrics = metrics;
-        Interlocked.Increment(ref _renderCount);
-
-        var laneCount = graph?.LaneCount ?? 0;
-        var segmentCount = graph is null
-            ? 0
-            : graph.IncomingSegments.Count + graph.OutgoingSegments.Count;
-
         if (graph is null)
         {
-            HistoryRenderDiagnostics.GeometryRebuilt(reason, rebuildStartedAt, laneCount, segmentCount);
+            if (_hasRenderedState && _renderedGeometryKey is null)
+            {
+                HistoryRenderDiagnostics.GeometrySameKeySkipped();
+                return;
+            }
+
+            ClearMaterializedGeometry();
+            _renderedGeometryKey = null;
+            _renderedNodeTrackId = null;
+            _hasRenderedState = true;
+            Interlocked.Increment(ref _renderCount);
             return;
         }
 
-        var builderStartedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
-        var geometry = CommitGraphGeometryBuilder.Build(graph, height, metrics);
-        HistoryRenderDiagnostics.GeometryBuilderCompleted(builderStartedAt);
+        if (!CommitGraphGeometryKey.TryCreate(graph, height, Metrics, out var requestedKey))
+        {
+            HistoryRenderDiagnostics.GeometrySkippedInvalidHeight();
+            return;
+        }
 
-        var materializationStartedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
-        var pathGeometries = Enumerable.Range(0, _trackPaths.Length)
-            .Select(_ => new PathGeometry())
-            .ToArray();
+        if (_renderedGeometryKey is { } currentKey)
+            requestedKey = requestedKey.ReuseHeightIfEquivalent(currentKey);
+
+        if (_hasRenderedState
+            && _renderedGeometryKey is { } renderedKey
+            && renderedKey == requestedKey)
+        {
+            HistoryRenderDiagnostics.GeometrySameKeySkipped();
+            return;
+        }
+
+        HistoryRenderDiagnostics.GeometryBuildRequested();
+        var buildCause = DetermineBuildCause(_renderedGeometryKey, requestedKey);
+        var laneCount = graph.LaneCount;
+        var segmentCount = (graph.IncomingSegments?.Count ?? 0)
+            + (graph.OutgoingSegments?.Count ?? 0);
+        CommitGraphGeometry geometry;
+
+        if (_geometryCache.TryGet(requestedKey, out var cached))
+        {
+            geometry = cached;
+            HistoryRenderDiagnostics.GeometrySharedCacheHit();
+        }
+        else
+        {
+            HistoryRenderDiagnostics.GeometrySharedCacheMiss();
+            var builderStartedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
+            geometry = CommitGraphGeometryBuilder.Build(graph, requestedKey.Height, Metrics);
+            HistoryRenderDiagnostics.GeometryBuilderCompleted(builderStartedAt);
+            HistoryRenderDiagnostics.GeometryActualBuilt(reason, buildCause);
+
+            var evicted = _geometryCache.Add(requestedKey, geometry);
+            HistoryRenderDiagnostics.GeometrySharedCacheStateChanged(
+                _geometryCache.Count,
+                evicted);
+        }
+
+        var rebuildStartedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
+        var materializationStartedAt =
+            HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
+        MaterializeGeometry(geometry);
+        HistoryRenderDiagnostics.GeometryMaterializationCompleted(materializationStartedAt);
+
+        _renderedGeometryKey = requestedKey;
+        _renderedNodeTrackId = geometry.Node?.TrackId;
+        _hasRenderedState = true;
+        Interlocked.Increment(ref _renderCount);
+
+        HistoryRenderDiagnostics.GeometryRebuilt(
+            reason,
+            rebuildStartedAt,
+            laneCount,
+            segmentCount);
+    }
+
+    private void MaterializeGeometry(CommitGraphGeometry geometry)
+    {
+        for (var paletteIndex = 0; paletteIndex < _trackPaths.Length; paletteIndex++)
+        {
+            _trackPaths[paletteIndex].Data = null;
+            _pathGeometries[paletteIndex].Figures.Clear();
+        }
 
         foreach (var bezier in geometry.Beziers)
         {
@@ -265,7 +385,7 @@ public sealed class CommitGraphControl : Canvas
                 Point2 = ToPoint(bezier.Control2),
                 Point3 = ToPoint(bezier.End),
             });
-            pathGeometries[PaletteIndex(bezier.TrackId)].Figures.Add(figure);
+            _pathGeometries[PaletteIndex(bezier.TrackId)].Figures.Add(figure);
         }
 
         foreach (var line in geometry.Lines)
@@ -277,60 +397,120 @@ public sealed class CommitGraphControl : Canvas
                 IsFilled = false,
             };
             figure.Segments.Add(new LineSegment { Point = ToPoint(line.End) });
-            pathGeometries[PaletteIndex(line.TrackId)].Figures.Add(figure);
+            _pathGeometries[PaletteIndex(line.TrackId)].Figures.Add(figure);
         }
 
         for (var paletteIndex = 0; paletteIndex < _trackPaths.Length; paletteIndex++)
         {
-            if (pathGeometries[paletteIndex].Figures.Count > 0)
-                _trackPaths[paletteIndex].Data = pathGeometries[paletteIndex];
+            if (_pathGeometries[paletteIndex].Figures.Count > 0)
+                _trackPaths[paletteIndex].Data = _pathGeometries[paletteIndex];
         }
 
         if (geometry.Node is { } node)
         {
-            _nodePath.Data = new EllipseGeometry
-            {
-                Center = ToPoint(node.Center),
-                RadiusX = node.Radius,
-                RadiusY = node.Radius,
-            };
+            _nodeGeometry.Center = ToPoint(node.Center);
+            _nodeGeometry.RadiusX = node.Radius;
+            _nodeGeometry.RadiusY = node.Radius;
+            _nodePath.Data = _nodeGeometry;
             _nodePath.Fill = GetTrackBrush(node.TrackId);
         }
+        else
+        {
+            _nodePath.Data = null;
+            _nodePath.Fill = null;
+        }
+    }
 
-        HistoryRenderDiagnostics.GeometryMaterializationCompleted(materializationStartedAt);
-        HistoryRenderDiagnostics.GeometryRebuilt(reason, rebuildStartedAt, laneCount, segmentCount);
+    private void ClearMaterializedGeometry()
+    {
+        for (var paletteIndex = 0; paletteIndex < _trackPaths.Length; paletteIndex++)
+        {
+            _trackPaths[paletteIndex].Data = null;
+            _pathGeometries[paletteIndex].Figures.Clear();
+        }
+
+        _nodePath.Data = null;
+        _nodePath.Fill = null;
+    }
+
+    private static HistoryGeometryBuildCause DetermineBuildCause(
+        CommitGraphGeometryKey? renderedKey,
+        in CommitGraphGeometryKey requestedKey)
+    {
+        if (renderedKey is not { } currentKey)
+            return HistoryGeometryBuildCause.FirstRender;
+        if (!currentKey.HasSameTopology(requestedKey))
+            return HistoryGeometryBuildCause.TopologyChanged;
+        if (!currentKey.HasSameGeometryMetrics(requestedKey))
+            return HistoryGeometryBuildCause.GeometryMetricsChanged;
+        if (Math.Abs(currentKey.Height - requestedKey.Height)
+            > CommitGraphGeometryKey.GeometryEpsilon)
+        {
+            return HistoryGeometryBuildCause.HeightChanged;
+        }
+
+        return HistoryGeometryBuildCause.CacheMiss;
     }
 
     internal bool HasCurrentRenderForCheck()
     {
         var height = ActualHeight;
-        if (!double.IsFinite(height) || height <= 0
-            || !ReferenceEquals(_renderedGraph, Graph)
-            || _renderedTheme != ActualTheme
-            || _renderedMetrics != Metrics
-            || Volatile.Read(ref _renderCount) == 0
-            || Math.Abs(_renderedHeight - height) > 0.01)
+        if (!IsValidHeight(height)
+            || !_hasRenderedState
+            || Volatile.Read(ref _renderCount) == 0)
         {
             return false;
         }
 
         if (Graph is null)
         {
-            return _trackPaths.All(path => path.Data is null) && _nodePath.Data is null;
+            return _renderedGeometryKey is null
+                && _trackPaths.All(path => path.Data is null)
+                && _nodePath.Data is null;
         }
 
-        var geometry = CommitGraphGeometryBuilder.Build(Graph, height, Metrics);
+        if (_renderedGeometryKey is not { } renderedKey
+            || !CommitGraphGeometryKey.TryCreate(Graph, height, Metrics, out var currentKey))
+        {
+            return false;
+        }
+
+        currentKey = currentKey.ReuseHeightIfEquivalent(renderedKey);
+        if (currentKey != renderedKey)
+            return false;
+
+        var geometry = CommitGraphGeometryBuilder.Build(Graph, renderedKey.Height, Metrics);
         var expectedPaletteIndexes = geometry.Lines.Select(line => PaletteIndex(line.TrackId))
             .Concat(geometry.Beziers.Select(bezier => PaletteIndex(bezier.TrackId)))
             .ToHashSet();
 
         for (var paletteIndex = 0; paletteIndex < _trackPaths.Length; paletteIndex++)
         {
-            if ((_trackPaths[paletteIndex].Data is not null) != expectedPaletteIndexes.Contains(paletteIndex))
+            if ((_trackPaths[paletteIndex].Data is not null)
+                != expectedPaletteIndexes.Contains(paletteIndex))
+            {
+                return false;
+            }
+
+            if (Math.Abs(_trackPaths[paletteIndex].StrokeThickness - Metrics.LineThickness)
+                > CommitGraphGeometryKey.GeometryEpsilon)
+            {
+                return false;
+            }
+
+            if (!ReferenceEquals(_trackPaths[paletteIndex].Stroke, GetPaletteBrush(paletteIndex)))
                 return false;
         }
 
-        return (_nodePath.Data is not null) == (geometry.Node is not null);
+        if ((_nodePath.Data is not null) != (geometry.Node is not null))
+            return false;
+        if (geometry.Node is { } node
+            && !ReferenceEquals(_nodePath.Fill, GetTrackBrush(node.TrackId)))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     internal bool HasCurrentClipForCheck()
@@ -338,30 +518,40 @@ public sealed class CommitGraphControl : Canvas
         var expectedWidth = double.IsFinite(ActualWidth) && ActualWidth > 0 ? ActualWidth : 0;
         var expectedHeight = double.IsFinite(ActualHeight) && ActualHeight > 0 ? ActualHeight : 0;
         var clip = _clipGeometry.Rect;
-        return Math.Abs(clip.X) <= 0.01
-            && Math.Abs(clip.Y) <= 0.01
-            && Math.Abs(clip.Width - expectedWidth) <= 0.01
-            && Math.Abs(clip.Height - expectedHeight) <= 0.01;
+        return Math.Abs(clip.X) <= CommitGraphGeometryKey.GeometryEpsilon
+            && Math.Abs(clip.Y) <= CommitGraphGeometryKey.GeometryEpsilon
+            && Math.Abs(clip.Width - expectedWidth) <= CommitGraphGeometryKey.GeometryEpsilon
+            && Math.Abs(clip.Height - expectedHeight) <= CommitGraphGeometryKey.GeometryEpsilon;
     }
 
     private void UpdateBrushes()
     {
-        var palette = ActualTheme == ElementTheme.Dark ? DarkPalette : LightPalette;
+        var palette = GetPalette();
         for (var paletteIndex = 0; paletteIndex < _trackPaths.Length; paletteIndex++)
             _trackPaths[paletteIndex].Stroke = palette[paletteIndex];
+
+        _nodePath.Fill = _renderedNodeTrackId is { } trackId
+            ? GetTrackBrush(trackId)
+            : null;
     }
 
-    private SolidColorBrush GetTrackBrush(int trackId)
-    {
-        var palette = ActualTheme == ElementTheme.Dark ? DarkPalette : LightPalette;
-        return palette[PaletteIndex(trackId)];
-    }
+    private SolidColorBrush GetTrackBrush(int trackId) =>
+        GetPalette()[PaletteIndex(trackId)];
 
-    private static int PaletteIndex(int trackId)
-        => CommitGraphGeometryBuilder.GetPaletteIndex(trackId, LightPalette.Length);
+    private SolidColorBrush GetPaletteBrush(int paletteIndex) =>
+        GetPalette()[paletteIndex];
+
+    private SolidColorBrush[] GetPalette() =>
+        ActualTheme == ElementTheme.Dark ? DarkPalette : LightPalette;
+
+    private static bool IsValidHeight(double height) =>
+        double.IsFinite(height) && height > 0;
+
+    private static int PaletteIndex(int trackId) =>
+        CommitGraphGeometryBuilder.GetPaletteIndex(trackId, LightPalette.Length);
 
     private static Point ToPoint(GraphPoint point) => new(point.X, point.Y);
 
-    private static SolidColorBrush Brush(byte red, byte green, byte blue)
-        => new(ColorHelper.FromArgb(0xFF, red, green, blue));
+    private static SolidColorBrush Brush(byte red, byte green, byte blue) =>
+        new(ColorHelper.FromArgb(0xFF, red, green, blue));
 }

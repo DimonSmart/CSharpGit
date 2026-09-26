@@ -70,14 +70,31 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
         var converter = Read("src", "CSharpGit.Presentation", "Controls", "CommitTopologyToGraphVisualConverter.cs");
 
         Assert.Contains("HistoryGeometryUpdateReason.GraphChanged", graph, StringComparison.Ordinal);
-        Assert.Contains("HistoryGeometryUpdateReason.DataContextChanged", graph, StringComparison.Ordinal);
         Assert.Contains("HistoryGeometryUpdateReason.SizeChanged", graph, StringComparison.Ordinal);
         Assert.Contains("HistoryGeometryUpdateReason.PresentationContextChanged", graph, StringComparison.Ordinal);
-        Assert.Contains("GeometryCacheHit", graph, StringComparison.Ordinal);
+        Assert.DoesNotContain("UpdateGeometry(HistoryGeometryUpdateReason.DataContextChanged)", graph, StringComparison.Ordinal);
+        Assert.Contains("GeometrySameKeySkipped", graph, StringComparison.Ordinal);
+        Assert.Contains("GeometrySharedCacheHit", graph, StringComparison.Ordinal);
         Assert.Contains("GeometryBuilderCompleted", graph, StringComparison.Ordinal);
         Assert.Contains("TopologyConverted", converter, StringComparison.Ordinal);
         Assert.DoesNotContain("HistoryItems.IndexOf", graph, StringComparison.Ordinal);
         Assert.DoesNotContain(".IndexOf(", graph, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GraphDiagnosticsSeparateTriggerCauseCacheAndSizeCategories()
+    {
+        var source = Read("src", "CSharpGit.Presentation", "Diagnostics", "HistoryPerformanceDiagnostics.cs");
+        var graphDetail = Read("src", "CSharpGit.Presentation", "Diagnostics", "HistoryPerformanceSession.CommitGraph.cs");
+
+        Assert.Contains("geometryBuildTriggers", source, StringComparison.Ordinal);
+        Assert.Contains("geometryBuildCauses", source, StringComparison.Ordinal);
+        Assert.Contains("geometrySameKeySkips", source, StringComparison.Ordinal);
+        Assert.Contains("geometrySharedCacheHits", source, StringComparison.Ordinal);
+        Assert.Contains("geometryMaterializationCalls", source, StringComparison.Ordinal);
+        Assert.Contains("graphSizeChangedWidthOnly", source, StringComparison.Ordinal);
+        Assert.Contains("HistoryGeometryBuildCause", graphDetail, StringComparison.Ordinal);
+        Assert.Contains("GeometrySharedCacheEvictions", graphDetail, StringComparison.Ordinal);
     }
 
     [Fact]

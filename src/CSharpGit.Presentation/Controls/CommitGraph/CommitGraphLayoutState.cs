@@ -6,6 +6,7 @@ public sealed class CommitGraphLayoutState
     public double GraphWidth { get; private set; } = CommitGraphMetrics.DefaultGraphWidth;
     public double LaneWidth { get; private set; } = CommitGraphMetrics.DefaultLaneWidth;
     public CommitGraphMetrics Metrics => CommitGraphMetrics.Default with { LaneWidth = LaneWidth };
+    internal CommitGraphGeometryCache GeometryCache { get; } = new();
 
     public bool ObserveLaneCount(int laneCount)
     {
@@ -23,6 +24,7 @@ public sealed class CommitGraphLayoutState
 
     public bool Reset()
     {
+        GeometryCache.Clear();
         var changed = ObservedMaxLaneCount != 0
             || !AreEqual(GraphWidth, CommitGraphMetrics.DefaultGraphWidth)
             || !AreEqual(LaneWidth, CommitGraphMetrics.DefaultLaneWidth);

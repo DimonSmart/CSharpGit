@@ -161,7 +161,7 @@ internal sealed class HistoryAtomicDurationHistogram
     }
 }
 
-internal sealed class HistoryPerformanceSession
+internal sealed partial class HistoryPerformanceSession
 {
     private const int SlowOperationCapacity = 2048;
     private const int WriterCapacity = 128;
@@ -774,6 +774,10 @@ internal sealed class HistoryPerformanceSession
         ["renderIntervalsOver33ms"] = Volatile.Read(ref RenderIntervalsOver33),
         ["graphMeasureCalls"] = Volatile.Read(ref GraphMeasureCalls),
         ["geometryAttempts"] = Volatile.Read(ref GeometryAttempts),
+        ["geometryBuildRequests"] = Volatile.Read(ref GeometryBuildRequests),
+        ["geometryActualBuilds"] = Volatile.Read(ref GeometryActualBuilds),
+        ["geometrySameKeySkips"] = Volatile.Read(ref GeometrySameKeySkips),
+        ["geometryMaterializationCalls"] = Volatile.Read(ref GeometryMaterializationCalls),
         ["geometryRebuilds"] = Volatile.Read(ref GeometryRebuilds),
         ["topologyConversions"] = Volatile.Read(ref TopologyConversions),
         ["layoutPublishes"] = Volatile.Read(ref PresentationPublishes),
@@ -818,18 +822,33 @@ internal sealed class HistoryPerformanceSession
             ["graphPresentationContextChanged"] = Volatile.Read(ref GraphPresentationContextChanged),
             ["graphMetricsChanged"] = Volatile.Read(ref GraphMetricsChanged),
             ["graphSizeChanged"] = Volatile.Read(ref GraphSizeChanged),
+            ["graphSizeChangedWidthOnly"] = Volatile.Read(ref GraphSizeChangedWidthOnly),
+            ["graphSizeChangedHeightChanged"] = Volatile.Read(ref GraphSizeChangedHeightChanged),
+            ["graphSizeChangedInsignificant"] = Volatile.Read(ref GraphSizeChangedInsignificant),
+            ["graphSizeChangedFirstValidHeight"] = Volatile.Read(ref GraphSizeChangedFirstValidHeight),
             ["graphThemeChanged"] = Volatile.Read(ref GraphThemeChanged),
             ["graphMeasure"] = _graphMeasure.Snapshot(),
             ["graphArrange"] = _graphArrange.Snapshot(),
             ["geometryAttempts"] = Volatile.Read(ref GeometryAttempts),
+            ["geometryBuildRequests"] = Volatile.Read(ref GeometryBuildRequests),
+            ["geometryActualBuilds"] = Volatile.Read(ref GeometryActualBuilds),
+            ["geometrySameKeySkips"] = Volatile.Read(ref GeometrySameKeySkips),
             ["geometrySkippedInvalidHeight"] = Volatile.Read(ref GeometrySkippedInvalidHeight),
             ["geometryCacheHits"] = Volatile.Read(ref GeometryCacheHits),
+            ["geometryLocalCacheHits"] = Volatile.Read(ref GeometryLocalCacheHits),
+            ["geometrySharedCacheHits"] = Volatile.Read(ref GeometrySharedCacheHits),
+            ["geometryCacheMisses"] = Volatile.Read(ref GeometryCacheMisses),
+            ["geometrySharedCacheEntries"] = Volatile.Read(ref GeometrySharedCacheEntries),
+            ["geometrySharedCacheEvictions"] = Volatile.Read(ref GeometrySharedCacheEvictions),
+            ["geometryMaterializationCalls"] = Volatile.Read(ref GeometryMaterializationCalls),
             ["geometryRebuilds"] = Volatile.Read(ref GeometryRebuilds),
             ["geometryRebuildDuration"] = _geometryRebuild.Snapshot(),
             ["geometryBuilder"] = _geometryBuilder.Snapshot(),
             ["geometryMaterialization"] = _geometryMaterialization.Snapshot(),
             ["geometrySegmentCount"] = Volatile.Read(ref GeometrySegmentCount),
             ["geometryRebuildReasons"] = GeometryReasonSnapshot(),
+            ["geometryBuildTriggers"] = GeometryBuildTriggerSnapshot(),
+            ["geometryBuildCauses"] = GeometryBuildCauseSnapshot(),
             ["laneCountHistogram"] = LaneCountHistogramSnapshot(),
             ["topologyConversions"] = Volatile.Read(ref TopologyConversions),
             ["topologyExact"] = Volatile.Read(ref TopologyExact),
@@ -980,10 +999,28 @@ internal sealed class HistoryPerformanceSession
         builder.AppendLine($"Measure calls:                    {graphMeasure.Count}");
         builder.AppendLine($"Measure p95:                      {graphMeasure.P95Ms:F2} ms");
         builder.AppendLine($"Geometry attempts:                {Volatile.Read(ref GeometryAttempts)}");
-        builder.AppendLine($"Geometry cache hits:              {Volatile.Read(ref GeometryCacheHits)}");
+        builder.AppendLine($"Geometry build requests:          {Volatile.Read(ref GeometryBuildRequests)}");
+        builder.AppendLine($"Geometry actual builds:           {Volatile.Read(ref GeometryActualBuilds)}");
+        builder.AppendLine($"Geometry same-key skips:          {Volatile.Read(ref GeometrySameKeySkips)}");
+        builder.AppendLine($"Geometry local cache hits:        {Volatile.Read(ref GeometryLocalCacheHits)}");
+        builder.AppendLine($"Geometry shared cache hits:       {Volatile.Read(ref GeometrySharedCacheHits)}");
+        builder.AppendLine($"Geometry cache misses:            {Volatile.Read(ref GeometryCacheMisses)}");
+        builder.AppendLine($"Geometry cache entries:           {Volatile.Read(ref GeometrySharedCacheEntries)}");
+        builder.AppendLine($"Geometry cache evictions:         {Volatile.Read(ref GeometrySharedCacheEvictions)}");
+        builder.AppendLine($"Materialization calls:            {Volatile.Read(ref GeometryMaterializationCalls)}");
         builder.AppendLine($"Geometry rebuilds:                {Volatile.Read(ref GeometryRebuilds)}");
         builder.AppendLine($"Geometry rebuild p95:             {geometry.P95Ms:F2} ms");
+        builder.AppendLine($"SizeChanged width-only:           {Volatile.Read(ref GraphSizeChangedWidthOnly)}");
+        builder.AppendLine($"SizeChanged height-changed:       {Volatile.Read(ref GraphSizeChangedHeightChanged)}");
+        builder.AppendLine($"SizeChanged insignificant:        {Volatile.Read(ref GraphSizeChangedInsignificant)}");
+        builder.AppendLine($"SizeChanged first-valid-height:   {Volatile.Read(ref GraphSizeChangedFirstValidHeight)}");
         builder.AppendLine();
+        builder.AppendLine("Geometry build triggers:");
+        foreach (var pair in GeometryBuildTriggerSnapshot())
+            builder.AppendLine($"{pair.Key,-32} {pair.Value}");
+        builder.AppendLine("Geometry build causes:");
+        foreach (var pair in GeometryBuildCauseSnapshot())
+            builder.AppendLine($"{pair.Key,-32} {pair.Value}");
         builder.AppendLine("Geometry rebuild reasons:");
         foreach (var pair in reasons)
             builder.AppendLine($"{pair.Key,-32} {pair.Value}");
