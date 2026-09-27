@@ -32,16 +32,18 @@ public sealed class CommitGraphAdaptiveLayoutContractTests
     }
 
     [Fact]
-    public void GraphControlUsesStructuralGeometryIdentityAndOwnsHardClip()
+    public void GraphControlUsesStructuralGeometryIdentityAndSingleDrawingSurface()
     {
         var control = ReadControl();
 
         Assert.Contains("CommitGraphGeometryKey", control, StringComparison.Ordinal);
         Assert.Contains("GeometrySameKeySkipped", control, StringComparison.Ordinal);
         Assert.Contains("GeometrySharedCacheHit", control, StringComparison.Ordinal);
-        Assert.Contains("Clip = _clipGeometry", control, StringComparison.Ordinal);
-        Assert.Contains("_pathGeometries", control, StringComparison.Ordinal);
-        Assert.Contains("_nodeGeometry", control, StringComparison.Ordinal);
+        Assert.Contains("CommitGraphControl : SKCanvasElement", control, StringComparison.Ordinal);
+        Assert.Contains("protected override void RenderOverride", control, StringComparison.Ordinal);
+        Assert.DoesNotContain("Microsoft.UI.Xaml.Shapes.Path", control, StringComparison.Ordinal);
+        Assert.DoesNotContain("PathGeometry", control, StringComparison.Ordinal);
+        Assert.DoesNotContain("canvas.Clear", control, StringComparison.Ordinal);
         Assert.DoesNotContain("ReferenceEquals(_renderedGraph", control, StringComparison.Ordinal);
     }
 

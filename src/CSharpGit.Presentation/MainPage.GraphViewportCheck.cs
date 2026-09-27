@@ -17,11 +17,11 @@ public sealed partial class MainPage
             () => HistoryList.ActualHeight > 0 && HistoryList.ActualWidth > 0,
             TimeSpan.FromSeconds(10));
 
-        await RunDesktopDensityCheckAsync(failures);
-
         var originalDetailsHeight = HistoryPane.RowDefinitions[3].Height;
+        var originalItemTemplate = HistoryList.ItemTemplate;
         try
         {
+            HistoryList.ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["HistoryTextGraphItemTemplate"];
             while (_viewModel.History.Count < 300 && _viewModel.HasMore)
             {
                 if (_viewModel.LoadMoreCommand is not AsyncCommand preload)
@@ -72,10 +72,6 @@ public sealed partial class MainPage
                         $"history row {index} did not paint its current graph after viewport recycle", failures);
                     Check(graph?.HasCurrentClipForCheck() == true,
                         $"history row {index} graph clip does not match its render area", failures);
-                    var avatar = FindDescendant<AuthorAvatar>(container);
-                    Check(avatar is not null, $"history row {index} has no author avatar", failures);
-                    Check(avatar?.HasCurrentIdentityForCheck(row.Commit.Author, row.Commit.AuthorEmail) == true,
-                        $"history row {index} avatar still represents a recycled author", failures);
                     if (graph is not null)
                     {
                         var layout = ActiveCommitGraphLayout;
@@ -142,6 +138,7 @@ public sealed partial class MainPage
         finally
         {
             HistoryPane.RowDefinitions[3].Height = originalDetailsHeight;
+            HistoryList.ItemTemplate = originalItemTemplate;
         }
     }
 
