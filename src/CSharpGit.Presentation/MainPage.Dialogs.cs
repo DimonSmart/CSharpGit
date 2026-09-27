@@ -31,13 +31,17 @@ public sealed partial class MainPage
                     "InteractiveRebaseTodoEditor") is not { } editor)
                 return;
 
-            var availableDialogWidth = Math.Max(320d, ActualWidth - 96d);
+            var rootSize = sender.XamlRoot?.Size;
+            var viewportWidth = rootSize?.Width ?? ActualWidth;
+            var viewportHeight = rootSize?.Height ?? ActualHeight;
+
+            var availableDialogWidth = Math.Max(320d, viewportWidth - 96d);
             var dialogWidth = Math.Min(1200d, availableDialogWidth);
             dialog.MaxWidth = dialogWidth;
             dialog.MinWidth = Math.Min(900d, dialogWidth);
             editor.Width = Math.Max(240d, dialogWidth - 48d);
 
-            var availableEditorHeight = Math.Max(220d, ActualHeight - 220d);
+            var availableEditorHeight = Math.Max(220d, viewportHeight - 220d);
             editor.MinHeight = Math.Min(350d, availableEditorHeight);
             editor.MaxHeight = Math.Min(
                 650d,

@@ -57,6 +57,7 @@ public sealed class SelectedCommitActionsContractTests
     public void InteractiveRebaseUsesRawTodoAndDedicatedEditor()
     {
         var root = FindRepositoryRoot();
+        var appXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml"));
         var actions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
         var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Dialogs.cs"));
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
@@ -117,6 +118,12 @@ public sealed class SelectedCommitActionsContractTests
         foreach (var command in new[] { "# p, pick", "# r, reword", "# e, edit", "# s, squash", "# f, fixup", "# x, exec", "# b, break", "# d, drop" })
             Assert.Contains(command, todoHelp);
         Assert.Contains("InteractiveRebaseTodoHelp.Text", workflowImplementation);
+
+        Assert.Contains("<x:Double x:Key=\"ContentDialogMaxWidth\">1200</x:Double>", appXaml);
+        Assert.Contains("<x:Double x:Key=\"SimpleContentDialogMaxWidth\">1200</x:Double>", appXaml);
+        Assert.Contains("sender.XamlRoot?.Size", dialogs);
+        Assert.DoesNotContain("ActualWidth - 96d", dialogs);
+        Assert.DoesNotContain("ActualHeight - 220d", dialogs);
 
         Assert.Contains("OpenInteractiveRebase_Click", dialogs);
         Assert.Contains("GitOperationsDialog.Hide()", dialogs);
