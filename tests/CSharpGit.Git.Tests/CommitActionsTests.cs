@@ -178,6 +178,64 @@ public sealed class CommitActionsTests : IDisposable
     }
 
     [Fact]
+    public async Task FixupIntoPreviousCommitRewritesHistoryWithoutChangingHeadTree()
+    {
+        Init();
+        var baseCommit = Commit("base.txt", "base\n", "base");
+        Commit("previous.txt", "previous\n", "previous");
+        var selected = Commit("selected.txt", "selected\n", "selected");
+        Commit("tail.txt", "tail\n", "tail");
+        var originalHeadTree = Git("rev-parse", "HEAD^{tree}");
+
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_root);
+        var commitActionService = GitTestServices.CreateCommitActionService();
+
+        var result = await commitActionService.FixupIntoPreviousCommitAsync(repository, selected);
+
+        Assert.Equal(RebaseResultKind.Completed, result.Kind);
+        Assert.Equal("refs/heads/main", Git("symbolic-ref", "HEAD"));
+        Assert.Equal(originalHeadTree, Git("rev-parse", "HEAD^{tree}"));
+
+        var subjects = Git("log", "--reverse", "--format=%s", $"{baseCommit}..HEAD")
+            .Split(
+                '\n',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        Assert.Equal(["previous", "tail"], subjects);
+
+        var combinedCommit = Git("rev-parse", "HEAD~1");
+        var combinedFiles = Git(
+                "diff-tree",
+                "--no-commit-id",
+                "--name-only",
+                "-r",
+                combinedCommit)
+            .Split(
+                '\n',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        Assert.Contains("previous.txt", combinedFiles);
+        Assert.Contains("selected.txt", combinedFiles);
+    }
+
+    [Fact]
+    public async Task FixupIntoRootCommitIsRejectedWithoutChangingHistory()
+    {
+        Init();
+        Commit("base.txt", "base\n", "base");
+        var selected = Commit("selected.txt", "selected\n", "selected");
+        var originalHead = Git("rev-parse", "HEAD");
+
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_root);
+        var commitActionService = GitTestServices.CreateCommitActionService();
+
+        var result = await commitActionService.FixupIntoPreviousCommitAsync(repository, selected);
+
+        Assert.Equal(RebaseResultKind.Failed, result.Kind);
+        Assert.Contains("root commit", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(originalHead, Git("rev-parse", "HEAD"));
+        Assert.Equal("refs/heads/main", Git("symbolic-ref", "HEAD"));
+    }
+
+    [Fact]
     public async Task ResetModesFollowGitSemanticsAndHardKeepsUntrackedFiles()
     {
         Init();

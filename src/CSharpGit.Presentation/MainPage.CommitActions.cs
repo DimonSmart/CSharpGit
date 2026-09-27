@@ -17,6 +17,7 @@ public sealed partial class MainPage
     private MenuFlyoutItem? _cherryPickItem;
     private MenuFlyoutItem? _revertItem;
     private MenuFlyoutItem? _editCommitMessageItem;
+    private MenuFlyoutItem? _fixupIntoPreviousCommitItem;
     private MenuFlyoutItem? _interactiveRebaseFromHereItem;
     private MenuFlyoutSubItem? _resetItem;
 
@@ -36,6 +37,8 @@ public sealed partial class MainPage
         _revertItem.Click += RevertCommit_Click;
         _editCommitMessageItem = new MenuFlyoutItem { Text = "Edit commit message…" };
         _editCommitMessageItem.Click += EditCommitMessage_Click;
+        _fixupIntoPreviousCommitItem = new MenuFlyoutItem { Text = "Fixup into previous commit" };
+        _fixupIntoPreviousCommitItem.Click += FixupIntoPreviousCommit_Click;
         _interactiveRebaseFromHereItem = new MenuFlyoutItem { Text = "Interactive rebase from here…" };
         _interactiveRebaseFromHereItem.Click += InteractiveRebaseFromHere_Click;
 
@@ -61,6 +64,7 @@ public sealed partial class MainPage
         _commitActionsFlyout.Items.Add(_cherryPickItem);
         _commitActionsFlyout.Items.Add(_revertItem);
         _commitActionsFlyout.Items.Add(_editCommitMessageItem);
+        _commitActionsFlyout.Items.Add(_fixupIntoPreviousCommitItem);
         _commitActionsFlyout.Items.Add(_interactiveRebaseFromHereItem);
         _commitActionsFlyout.Items.Add(new MenuFlyoutSeparator());
         _commitActionsFlyout.Items.Add(_resetItem);
@@ -101,6 +105,11 @@ public sealed partial class MainPage
         if (_cherryPickItem is not null) _cherryPickItem.IsEnabled = canMutate;
         if (_revertItem is not null) _revertItem.IsEnabled = canMutate;
         if (_editCommitMessageItem is not null) _editCommitMessageItem.IsEnabled = canMutate;
+        if (_fixupIntoPreviousCommitItem is not null)
+            _fixupIntoPreviousCommitItem.IsEnabled =
+                canMutate &&
+                hasLocalBranch &&
+                _viewModel.SelectedHistoryRow?.Commit.Parents.Count == 1;
         if (_interactiveRebaseFromHereItem is not null) _interactiveRebaseFromHereItem.IsEnabled = canMutate && hasLocalBranch;
         if (_resetItem is not null) _resetItem.IsEnabled = canMutate && hasLocalBranch;
     }
@@ -217,6 +226,23 @@ public sealed partial class MainPage
 
         var selection = result.Kind == ApplyCommitResultKind.Completed ? result.HeadCommit : commit.Hash;
         await RestoreCommitActionSelectionAsync(selection);
+    }
+
+    private async void FixupIntoPreviousCommit_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryGetCommitActionContext(out var repository, out var commit)) return;
+
+        RebaseResult? result = null;
+        await _viewModel.RunHistoryRewriteMutationAsync(
+            async () =>
+            {
+                result = await _commitActionService.FixupIntoPreviousCommitAsync(
+                    repository,
+                    commit.Hash);
+                if (result.Kind == RebaseResultKind.Failed)
+                    throw new InvalidOperationException(result.Message);
+            },
+            "Could not fixup commit");
     }
 
     private async void InteractiveRebaseFromHere_Click(object sender, RoutedEventArgs e)
