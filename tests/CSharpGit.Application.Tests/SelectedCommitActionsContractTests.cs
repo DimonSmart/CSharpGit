@@ -43,7 +43,7 @@ public sealed class SelectedCommitActionsContractTests
         var root = FindRepositoryRoot();
         var actions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
 
-        foreach (var label in new[] { "Copy hash", "Create branch here…", "Checkout this commit", "Cherry-pick", "Revert", "Edit commit message…", "Interactive rebase from here…", "Reset current branch to here", "Soft…", "Mixed…", "Hard…" })
+        foreach (var label in new[] { "Copy hash", "Create branch here…", "Checkout this commit", "Cherry-pick", "Revert", "Edit commit message…", "Fixup into previous commit", "Interactive rebase from here…", "Reset current branch to here", "Soft…", "Mixed…", "Hard…" })
             Assert.Contains(label, actions);
 
         Assert.Contains("HistoryList.RightTapped", actions);
@@ -51,6 +51,11 @@ public sealed class SelectedCommitActionsContractTests
         Assert.Contains("Mainline parent", actions);
         Assert.Contains("Uncommitted tracked changes will be lost", actions);
         Assert.Contains("Untracked files will not be deleted", actions);
+        var fixup = ExtractMethod(actions, "FixupIntoPreviousCommit_Click");
+        Assert.Contains("FixupIntoPreviousCommitAsync", fixup);
+        Assert.Contains("RunHistoryRewriteMutationAsync", fixup);
+        Assert.DoesNotContain("ContentDialog", fixup);
+        Assert.DoesNotContain("ShowInteractiveRebaseEditorAsync", fixup);
     }
 
     [Fact]
