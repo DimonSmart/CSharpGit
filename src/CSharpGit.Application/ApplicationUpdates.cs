@@ -36,7 +36,7 @@ public static class ReleaseVersionParser
         if (metadataIndex >= 0)
             normalized = normalized[..metadataIndex];
 
-        if (normalized.Contains('-', StringComparison.Ordinal))
+        if (normalized.Contains('-'))
             return false;
 
         var parts = normalized.Split('.');
