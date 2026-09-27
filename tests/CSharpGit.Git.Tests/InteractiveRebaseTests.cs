@@ -287,11 +287,11 @@ public sealed class InteractiveRebaseTests : IDisposable
     }
 
     [Fact]
-    public async Task ReadRawTodoFromCommitStartsWithSelectedCommit()
+    public async Task ReadRawTodoFromCommitUsesSelectedCommitAsOnto()
     {
         var (repository, service) = await CreateServicesAsync();
 
-        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _c);
+        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _b);
 
         Assert.Equal(_b, todo.Onto);
         Assert.StartsWith(
@@ -302,6 +302,7 @@ public sealed class InteractiveRebaseTests : IDisposable
             "# Commands:" +
             Environment.NewLine,
             todo.TodoText);
+        Assert.DoesNotContain($"pick {_b} B", todo.TodoText);
         foreach (var command in new[]
                  {
                      "# p, pick <commit>",
@@ -324,10 +325,45 @@ public sealed class InteractiveRebaseTests : IDisposable
     }
 
     [Fact]
+    public async Task RawMiddleFixupCombinesWithPreviousCommitAndKeepsBranchAtRewrittenHead()
+    {
+        var (repository, service) = await CreateServicesAsync();
+        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _b);
+        var edited = todo with
+        {
+            TodoText =
+                $"pick {_c} C{Environment.NewLine}" +
+                $"fixup {_d} D{Environment.NewLine}" +
+                $"pick {_e} E{Environment.NewLine}"
+        };
+
+        var result = await service.StartInteractiveRebaseTodoAsync(repository, edited);
+
+        Assert.Equal(RebaseResultKind.Completed, result.Kind);
+        Assert.Equal(RepositoryOperation.None, GitOperationDetector.Detect(repository));
+        Assert.Equal("refs/heads/main", GitOut("symbolic-ref", "HEAD"));
+        Assert.Equal(_b, GitOut("rev-parse", "HEAD~2"));
+        Assert.Equal(["C", "E"], SubjectsAfter(_b));
+
+        var combinedCommit = GitOut("rev-parse", "HEAD~1");
+        var combinedFiles = GitOut(
+                "diff-tree",
+                "--no-commit-id",
+                "--name-only",
+                "-r",
+                combinedCommit)
+            .Split(
+                '\n',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        Assert.Contains("commit-3.txt", combinedFiles);
+        Assert.Contains("commit-4.txt", combinedFiles);
+    }
+
+    [Fact]
     public async Task RawTodoReorderIsInterpretedByGit()
     {
         var (repository, service) = await CreateServicesAsync();
-        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _c);
+        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _b);
         var edited = todo with
         {
             TodoText =
@@ -346,7 +382,7 @@ public sealed class InteractiveRebaseTests : IDisposable
     public async Task RawTodoDropIsInterpretedByGit()
     {
         var (repository, service) = await CreateServicesAsync();
-        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _c);
+        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _b);
         var edited = todo with
         {
             TodoText =
@@ -365,7 +401,7 @@ public sealed class InteractiveRebaseTests : IDisposable
     public async Task RawBreakReturnsPausedAndPreservesTodoText()
     {
         var (repository, service) = await CreateServicesAsync();
-        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _c);
+        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _b);
         var text =
             $"# custom comment{Environment.NewLine}" +
             Environment.NewLine +
@@ -398,7 +434,7 @@ public sealed class InteractiveRebaseTests : IDisposable
     public async Task RawEditReturnsPaused()
     {
         var (repository, service) = await CreateServicesAsync();
-        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _c);
+        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _b);
 
         var result = await service.StartInteractiveRebaseTodoAsync(
             repository,
@@ -420,7 +456,7 @@ public sealed class InteractiveRebaseTests : IDisposable
     public async Task RawFailedExecReturnsPaused()
     {
         var (repository, service) = await CreateServicesAsync();
-        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _c);
+        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _b);
 
         var result = await service.StartInteractiveRebaseTodoAsync(
             repository,
@@ -443,7 +479,7 @@ public sealed class InteractiveRebaseTests : IDisposable
     public async Task RawInvalidCommandIsDelegatedToGit()
     {
         var (repository, service) = await CreateServicesAsync();
-        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _c);
+        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _b);
 
         var result = await service.StartInteractiveRebaseTodoAsync(
             repository,
@@ -468,7 +504,7 @@ public sealed class InteractiveRebaseTests : IDisposable
         ConfigureCommitMessageEditor();
 
         var (repository, service) = await CreateServicesAsync();
-        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _c);
+        var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _b);
         var start = await service.StartInteractiveRebaseTodoAsync(
             repository,
             todo with
