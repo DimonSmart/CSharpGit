@@ -7,10 +7,10 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private readonly IApplicationVersionProvider _applicationVersionProvider;
-    private readonly IUpdateCheckService _updateCheckService;
-    private readonly IApplicationUpdateInstaller _applicationUpdateInstaller;
-    private readonly ISystemUriLauncher _systemUriLauncher;
+    private readonly IApplicationVersionProvider _applicationVersionProvider = null!;
+    private readonly IUpdateCheckService _updateCheckService = null!;
+    private readonly IApplicationUpdateInstaller _applicationUpdateInstaller = null!;
+    private readonly ISystemUriLauncher _systemUriLauncher = null!;
     private int _applicationUpdateInProgress;
 
     internal bool IsApplicationUpdateInProgress =>
@@ -97,8 +97,8 @@ public sealed partial class MainPage
                 switch (result.Status)
                 {
                     case UpdateCheckStatus.UpToDate:
-                        statusText.Text = result.LatestVersion is { } latest
-                            ? $"You are up to date.\nLatest version: {latest}"
+                        statusText.Text = result.LatestVersion is { } upToDateVersion
+                            ? $"You are up to date.\nLatest version: {upToDateVersion}"
                             : "You are up to date.";
                         break;
 
