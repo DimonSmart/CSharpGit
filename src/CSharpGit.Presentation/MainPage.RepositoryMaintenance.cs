@@ -41,7 +41,11 @@ public sealed partial class MainPage
         IRepositoryImageService repositoryImageService,
         IAuthorAvatarService authorAvatarService,
         RecentRepositoryFolderPicker recentRepositoryFolderPicker,
-        SettingsWindowController settingsWindowController)
+        SettingsWindowController settingsWindowController,
+        IApplicationVersionProvider applicationVersionProvider,
+        IUpdateCheckService updateCheckService,
+        IApplicationUpdateInstaller applicationUpdateInstaller,
+        ISystemUriLauncher systemUriLauncher)
         : this(
             viewModel,
             referenceHistoryService,
@@ -74,6 +78,10 @@ public sealed partial class MainPage
         CommitDetailsContent.ConfigureAuthorAvatar(_authorAvatarService, _authorAvatarSettings);
         _recentRepositoryFolderPicker = recentRepositoryFolderPicker ?? throw new ArgumentNullException(nameof(recentRepositoryFolderPicker));
         _settingsWindowController = settingsWindowController ?? throw new ArgumentNullException(nameof(settingsWindowController));
+        _applicationVersionProvider = applicationVersionProvider ?? throw new ArgumentNullException(nameof(applicationVersionProvider));
+        _updateCheckService = updateCheckService ?? throw new ArgumentNullException(nameof(updateCheckService));
+        _applicationUpdateInstaller = applicationUpdateInstaller ?? throw new ArgumentNullException(nameof(applicationUpdateInstaller));
+        _systemUriLauncher = systemUriLauncher ?? throw new ArgumentNullException(nameof(systemUriLauncher));
 
         _viewModel.PropertyChanged += RepositoryMaintenanceViewModel_PropertyChanged;
         UpdateOptimizeRepositoryAvailability();
