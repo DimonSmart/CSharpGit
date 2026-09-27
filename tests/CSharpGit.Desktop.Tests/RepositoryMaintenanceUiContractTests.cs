@@ -9,7 +9,7 @@ public sealed class RepositoryMaintenanceUiContractTests
 
         var moreOperations = source.IndexOf("More Git operations…", StringComparison.Ordinal);
         var optimize = source.IndexOf("Optimize repository…", StringComparison.Ordinal);
-        var settings = source.IndexOf("Settings…", StringComparison.Ordinal);
+        var settings = source.IndexOf("Settings…", optimize, StringComparison.Ordinal);
 
         Assert.True(moreOperations >= 0);
         Assert.True(optimize > moreOperations);
