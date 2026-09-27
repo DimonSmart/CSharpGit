@@ -333,7 +333,7 @@ public sealed class InteractiveRebaseTests : IDisposable
         {
             TodoText =
                 $"pick {_c} C{Environment.NewLine}" +
-                $"fixup {_d} D{Environment.NewLine}" +
+                $"f {_d} D{Environment.NewLine}" +
                 $"pick {_e} E{Environment.NewLine}"
         };
 
