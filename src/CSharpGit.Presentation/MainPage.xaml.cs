@@ -50,7 +50,11 @@ public sealed partial class MainPage : Page
         ICommitActionService commitActionService,
         ITagService tagService,
         IRepositoryRefreshProbe repositoryRefreshProbe,
-        IWorkingTreeDiffService workingTreeDiffService)
+        IWorkingTreeDiffService workingTreeDiffService,
+        IApplicationVersionProvider applicationVersionProvider,
+        IUpdateCheckService updateCheckService,
+        IApplicationUpdateInstaller applicationUpdateInstaller,
+        ISystemUriLauncher systemUriLauncher)
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
@@ -61,6 +65,10 @@ public sealed partial class MainPage : Page
         _tagService = tagService ?? throw new ArgumentNullException(nameof(tagService));
         _repositoryRefreshProbe = repositoryRefreshProbe ?? throw new ArgumentNullException(nameof(repositoryRefreshProbe));
         _workingTreeDiffService = workingTreeDiffService ?? throw new ArgumentNullException(nameof(workingTreeDiffService));
+        _applicationVersionProvider = applicationVersionProvider ?? throw new ArgumentNullException(nameof(applicationVersionProvider));
+        _updateCheckService = updateCheckService ?? throw new ArgumentNullException(nameof(updateCheckService));
+        _applicationUpdateInstaller = applicationUpdateInstaller ?? throw new ArgumentNullException(nameof(applicationUpdateInstaller));
+        _systemUriLauncher = systemUriLauncher ?? throw new ArgumentNullException(nameof(systemUriLauncher));
         InitializeBusyStatusPresentation();
 
         RepositoryTree.ItemsSource = _repositoryTreeRoots;
