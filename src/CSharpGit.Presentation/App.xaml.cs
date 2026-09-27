@@ -97,6 +97,15 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 services.AddSingleton<IFolderPicker>(provider => provider.GetRequiredService<RecentRepositoryFolderPicker>());
 
                 services.AddSingleton<IExternalToolProcessService, ExternalToolProcessService>();
+                services.AddSingleton<IApplicationVersionProvider>(_ => new ApplicationVersionProvider(typeof(App).Assembly));
+                services.AddSingleton<IUpdateCheckService, GitHubUpdateCheckService>();
+                services.AddSingleton<IProcessExecutor, ProcessExecutor>();
+                services.AddSingleton<IApplicationUpdateEnvironment, DefaultApplicationUpdateEnvironment>();
+                if (OperatingSystem.IsMacOS())
+                    services.AddSingleton<IApplicationUpdateInstaller, MacOsHomebrewUpdateInstaller>();
+                else
+                    services.AddSingleton<IApplicationUpdateInstaller, UnsupportedApplicationUpdateInstaller>();
+                services.AddSingleton<ISystemUriLauncher, SystemUriLauncher>();
                 services.AddCSharpGitGit();
                 services.AddSingleton<IRepositoryPathService, RepositoryPathService>();
                 services.AddSingleton<IDesktopShellService, DesktopShellService>();
@@ -142,7 +151,8 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         {
             var page = _window.Content as MainPage;
             if (page?.IsHistoryRewriteInProgress == true
-                || page?.IsRepositoryMaintenanceInProgress == true)
+                || page?.IsRepositoryMaintenanceInProgress == true
+                || page?.IsApplicationUpdateInProgress == true)
             {
                 eventArgs.Cancel = true;
                 return;
@@ -240,6 +250,16 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         if (_shutdownRequested) return;
         _shutdownRequested = true;
         page?.BeginShutdown();
+    }
+
+    internal void CompleteApplicationUpdateRestart(MainPage page)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        if (_shutdownRequested) return;
+
+        _closeConfirmed = true;
+        BeginShutdown(page);
+        page.DispatcherQueue.TryEnqueue(() => _window?.Close());
     }
 
     internal void StopHost()
