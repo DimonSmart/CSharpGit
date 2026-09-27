@@ -203,8 +203,7 @@ public sealed class DefaultApplicationUpdateEnvironment : IApplicationUpdateEnvi
         catch (Exception exception) when (
             exception is IOException
                 or UnauthorizedAccessException
-                or NotSupportedException
-                or PlatformNotSupportedException)
+                or NotSupportedException)
         {
             return false;
         }
