@@ -74,9 +74,7 @@ public sealed partial class MainPage
             }
             catch (Exception)
             {
-                await ShowUpdateMessageAsync(
-                    "Unable to open release page",
-                    "The release page could not be opened in the system browser.");
+                statusText.Text = "Unable to open release page.";
             }
         };
 
