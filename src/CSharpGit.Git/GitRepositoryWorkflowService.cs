@@ -337,12 +337,35 @@ internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService
 
     public async Task<InteractiveRebaseTodo> ReadInteractiveRebaseTodoFromCommitAsync(
         Repository repository,
-        string firstCommit,
+        string ontoCommit,
         CancellationToken cancellationToken = default)
     {
-        var plan = await ReadInteractiveRebasePlanFromCommitAsync(
+        GitRefValidator.ValidateObjectId(ontoCommit, nameof(ontoCommit));
+
+        var resolvedOnto = await ResolveCommitAsync(
             repository,
-            firstCommit,
+            ontoCommit,
+            cancellationToken);
+        var sourceSnapshot = await ReadRebaseSourceSnapshotAsync(
+            repository,
+            requireAttachedLocalBranch: true,
+            cancellationToken);
+
+        await EnsureCommitIsInCurrentHeadHistoryAsync(
+            repository,
+            resolvedOnto,
+            sourceSnapshot.ExpectedHeadCommit,
+            cancellationToken);
+
+        var plan = await BuildInteractiveRebasePlanAsync(
+            repository,
+            resolvedOnto,
+            sourceSnapshot,
+            cancellationToken);
+
+        await EnsureRebaseSourceUnchangedAsync(
+            repository,
+            sourceSnapshot,
             cancellationToken);
         return ToInteractiveRebaseTodo(plan);
     }
