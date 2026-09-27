@@ -51,7 +51,8 @@ public sealed class AboutUpdateUiContractTests
         Assert.Contains("_closeConfirmed = true", app);
         Assert.Contains("page?.BeginShutdown()", app);
 
-        Assert.DoesNotContain("brew ", about, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("brew update", about, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("brew upgrade", about, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("https://api.github.com/repos/DimonSmart/CSharpGit/releases/latest", infrastructure);
         Assert.Contains("\"update\"", infrastructure);
         Assert.Contains("\"info\", \"--cask\", \"--json=v2\"", infrastructure);
@@ -73,7 +74,7 @@ public sealed class AboutUpdateUiContractTests
         var releaseIntent = File.ReadAllText(Path.Combine(
             root, ".idd", "intent", "IDD-0020.spec-release-distribution.md"));
 
-        Assert.Contains("GitHub Releases", updateIntent);
+        Assert.Contains("GitHub Release", updateIntent);
         Assert.Contains("Homebrew", updateIntent);
         Assert.Contains("/Applications/CSharpGit.app", updateIntent);
         Assert.Contains("safe restart", updateIntent, StringComparison.OrdinalIgnoreCase);

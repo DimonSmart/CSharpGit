@@ -489,7 +489,7 @@ public sealed class SystemUriLauncher : ISystemUriLauncher
         if (!uri.IsAbsoluteUri || uri.Scheme is not ("https" or "http"))
             throw new ArgumentException("Only absolute HTTP(S) URLs can be opened.", nameof(uri));
 
-        Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true })
+        _ = Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true })
             ?? throw new InvalidOperationException("The system browser could not be started.");
         return Task.CompletedTask;
     }
