@@ -1,3 +1,4 @@
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
