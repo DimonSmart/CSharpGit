@@ -779,6 +779,14 @@ public sealed partial class MainPage : Page
             Check(_viewModel.Repository?.IsWorktree == (Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_WORKTREE") == "1"), "repository kind is incorrect", failures);
             Check(_viewModel.Scopes.All(scope => scope.Label is "All references" or "Current branch"), "English history scopes are missing", failures);
 
+            if (Environment.GetEnvironmentVariable("CSHARPGIT_GRAPH_VIEWPORT_CHECK") == "1")
+            {
+                await RunCommitGraphViewportLifecycleCheckAsync(failures);
+                await File.WriteAllTextAsync(resultPath, JsonSerializer.Serialize(
+                    new DesktopCheckResult(failures.Count == 0, failures, false)));
+                return;
+            }
+
             var settings = _recentRepositorySettings;
             await settings.SetThemeModeAsync(ApplicationThemeMode.System);
             await WaitUntilAsync(() => RequestedTheme == ElementTheme.Default, TimeSpan.FromSeconds(5));
@@ -883,9 +891,6 @@ public sealed partial class MainPage : Page
                 ShowAllHistory();
                 Check(_viewModel.SelectedHistoryRow is null || _viewModel.History.Any(row => ReferenceEquals(row, _viewModel.SelectedHistoryRow)), "all-history selection is not part of the current ItemsSource", failures);
             }
-
-            if (Environment.GetEnvironmentVariable("CSHARPGIT_GRAPH_VIEWPORT_CHECK") == "1")
-                await RunCommitGraphViewportLifecycleCheckAsync(failures);
 
             _viewModel.CommitMessage = "draft retained by close guard";
             Check(_viewModel.HasUnappliedCommitMessage, "commit draft close guard is inactive", failures);

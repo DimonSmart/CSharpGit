@@ -52,7 +52,27 @@ public sealed class CommitGraphViewportLifecycleTests
         }
         finally
         {
-            if (Directory.Exists(root)) Directory.Delete(root, true);
+            await DeleteDirectoryAsync(root);
+        }
+    }
+
+    private static async Task DeleteDirectoryAsync(string path)
+    {
+        for (var attempt = 0; Directory.Exists(path); attempt++)
+        {
+            try
+            {
+                foreach (var file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
+                    File.SetAttributes(file, File.GetAttributes(file) & ~FileAttributes.ReadOnly);
+                Directory.Delete(path, true);
+                return;
+            }
+            catch (Exception exception) when (
+                exception is IOException or UnauthorizedAccessException
+                && attempt < 7)
+            {
+                await Task.Delay(100 * (attempt + 1));
+            }
         }
     }
 
@@ -145,7 +165,7 @@ public sealed class CommitGraphViewportLifecycleTests
     private static string? FindApplication()
     {
         var root = FindRepositoryRoot();
-        var name = OperatingSystem.IsWindows() ? "CSharpGit.Presentation.exe" : "CSharpGit.Presentation";
+        var name = OperatingSystem.IsWindows() ? "CSharpGit.exe" : "CSharpGit";
         var configuration = new DirectoryInfo(AppContext.BaseDirectory).Parent?.Name;
         if (!string.IsNullOrWhiteSpace(configuration))
         {

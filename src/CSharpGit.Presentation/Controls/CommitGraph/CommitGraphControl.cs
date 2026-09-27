@@ -1,50 +1,43 @@
 using CSharpGit.Presentation.Controls.CommitGraph;
 using CSharpGit.Presentation.Diagnostics;
-using Microsoft.UI;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
-using XamlPath = Microsoft.UI.Xaml.Shapes.Path;
+using SkiaSharp;
+using Uno.WinUI.Graphics2DSK;
 
 namespace CSharpGit.Presentation.Controls;
 
-public sealed class CommitGraphControl : Canvas
+public sealed class CommitGraphControl : SKCanvasElement
 {
-    private static readonly SolidColorBrush[] LightPalette =
+    private static readonly SKColor[] LightPalette =
     [
-        Brush(0x00, 0x5A, 0x9E),
-        Brush(0xC2, 0x39, 0x74),
-        Brush(0x10, 0x7C, 0x10),
-        Brush(0xCA, 0x50, 0x10),
-        Brush(0x74, 0x4D, 0xA9),
-        Brush(0x03, 0x83, 0x87),
-        Brush(0xA4, 0x26, 0x2C),
-        Brush(0x6B, 0x69, 0x00),
+        Color(0x00, 0x5A, 0x9E),
+        Color(0xC2, 0x39, 0x74),
+        Color(0x10, 0x7C, 0x10),
+        Color(0xCA, 0x50, 0x10),
+        Color(0x74, 0x4D, 0xA9),
+        Color(0x03, 0x83, 0x87),
+        Color(0xA4, 0x26, 0x2C),
+        Color(0x6B, 0x69, 0x00),
     ];
 
-    private static readonly SolidColorBrush[] DarkPalette =
+    private static readonly SKColor[] DarkPalette =
     [
-        Brush(0x60, 0xCD, 0xFF),
-        Brush(0xFF, 0x99, 0xA4),
-        Brush(0x6C, 0xCB, 0x5F),
-        Brush(0xFF, 0xB9, 0x00),
-        Brush(0xB4, 0xA0, 0xFF),
-        Brush(0x4C, 0xE4, 0xE4),
-        Brush(0xFF, 0x8A, 0x80),
-        Brush(0xD7, 0xD0, 0x6B),
+        Color(0x60, 0xCD, 0xFF),
+        Color(0xFF, 0x99, 0xA4),
+        Color(0x6C, 0xCB, 0x5F),
+        Color(0xFF, 0xB9, 0x00),
+        Color(0xB4, 0xA0, 0xFF),
+        Color(0x4C, 0xE4, 0xE4),
+        Color(0xFF, 0x8A, 0x80),
+        Color(0xD7, 0xD0, 0x6B),
     ];
 
-    private readonly XamlPath[] _trackPaths = new XamlPath[8];
-    private readonly PathGeometry[] _pathGeometries = new PathGeometry[8];
-    private readonly XamlPath _nodePath;
-    private readonly EllipseGeometry _nodeGeometry = new();
-    private readonly RectangleGeometry _clipGeometry = new();
+    private CommitGraphGeometry? _geometry;
     private CommitGraphGeometryCache _geometryCache =
         CommitGraphPresentationContext.Current.GeometryCache;
     private CommitGraphMetrics _metrics = CommitGraphMetrics.Default;
     private CommitGraphGeometryKey? _renderedGeometryKey;
-    private int? _renderedNodeTrackId;
     private long _renderCount;
     private bool _hasRenderedState;
     private bool _presentationContextSubscribed;
@@ -74,23 +67,6 @@ public sealed class CommitGraphControl : Canvas
     {
         HistoryRenderDiagnostics.GraphControlCreated();
         IsHitTestVisible = false;
-        Clip = _clipGeometry;
-
-        for (var paletteIndex = 0; paletteIndex < _trackPaths.Length; paletteIndex++)
-        {
-            _pathGeometries[paletteIndex] = new PathGeometry();
-            var path = new XamlPath
-            {
-                StrokeThickness = Metrics.LineThickness,
-                IsHitTestVisible = false,
-            };
-            _trackPaths[paletteIndex] = path;
-            Children.Add(path);
-        }
-
-        _nodePath = new XamlPath { IsHitTestVisible = false };
-        Children.Add(_nodePath);
-        UpdateBrushes();
 
         Loaded += CommitGraphControl_Loaded;
         Unloaded += CommitGraphControl_Unloaded;
@@ -109,7 +85,6 @@ public sealed class CommitGraphControl : Canvas
         }
 
         ApplyPresentationLayout();
-        UpdateClip();
         UpdateGeometry(HistoryGeometryUpdateReason.Loaded);
     }
 
@@ -131,14 +106,12 @@ public sealed class CommitGraphControl : Canvas
     private void HandleThemeChanged()
     {
         HistoryRenderDiagnostics.GraphThemeChanged();
-        UpdateBrushes();
+        Invalidate();
     }
 
     private void HandleSizeChanged(SizeChangedEventArgs args)
     {
         HistoryRenderDiagnostics.GraphSizeChanged();
-        UpdateClip();
-
         var previousHeight = args.PreviousSize.Height;
         var currentHeight = args.NewSize.Height;
         var previousValid = IsValidHeight(previousHeight);
@@ -189,7 +162,6 @@ public sealed class CommitGraphControl : Canvas
         var startedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
         HistoryRenderDiagnostics.GraphPresentationContextChanged();
         ApplyPresentationLayout();
-        UpdateClip();
         UpdateGeometry(HistoryGeometryUpdateReason.PresentationContextChanged);
         HistoryRenderDiagnostics.PresentationDelivered(startedAt);
     }
@@ -229,8 +201,7 @@ public sealed class CommitGraphControl : Canvas
 
         if (lineThicknessChanged)
         {
-            foreach (var path in _trackPaths)
-                path.StrokeThickness = value.LineThickness;
+            Invalidate();
         }
 
         if (requestGeometryUpdate && geometryChanged)
@@ -266,13 +237,6 @@ public sealed class CommitGraphControl : Canvas
         control.UpdateGeometry(HistoryGeometryUpdateReason.GraphChanged);
     }
 
-    private void UpdateClip()
-    {
-        var width = double.IsFinite(ActualWidth) && ActualWidth > 0 ? ActualWidth : 0;
-        var height = double.IsFinite(ActualHeight) && ActualHeight > 0 ? ActualHeight : 0;
-        _clipGeometry.Rect = new Rect(0, 0, width, height);
-    }
-
     private void UpdateGeometry(
         HistoryGeometryUpdateReason reason = HistoryGeometryUpdateReason.Unknown)
     {
@@ -294,9 +258,9 @@ public sealed class CommitGraphControl : Canvas
                 return;
             }
 
-            ClearMaterializedGeometry();
+            _geometry = null;
+            Invalidate();
             _renderedGeometryKey = null;
-            _renderedNodeTrackId = null;
             _hasRenderedState = true;
             Interlocked.Increment(ref _renderCount);
             return;
@@ -346,13 +310,10 @@ public sealed class CommitGraphControl : Canvas
         }
 
         var rebuildStartedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
-        var materializationStartedAt =
-            HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
-        MaterializeGeometry(geometry);
-        HistoryRenderDiagnostics.GeometryMaterializationCompleted(materializationStartedAt);
+        _geometry = geometry;
+        Invalidate();
 
         _renderedGeometryKey = requestedKey;
-        _renderedNodeTrackId = geometry.Node?.TrackId;
         _hasRenderedState = true;
         Interlocked.Increment(ref _renderCount);
 
@@ -363,74 +324,40 @@ public sealed class CommitGraphControl : Canvas
             segmentCount);
     }
 
-    private void MaterializeGeometry(CommitGraphGeometry geometry)
+    protected override void RenderOverride(SKCanvas canvas, Size area)
     {
-        for (var paletteIndex = 0; paletteIndex < _trackPaths.Length; paletteIndex++)
+        // SKCanvasVisual already clips to its arranged bounds. Do not clear this
+        // compositor canvas: a transparent clear erases the row hover/selection.
+        if (_geometry is not { } geometry) return;
+        using var paint = new SKPaint
         {
-            _trackPaths[paletteIndex].Data = null;
-            _pathGeometries[paletteIndex].Figures.Clear();
-        }
-
-        foreach (var bezier in geometry.Beziers)
+            IsAntialias = true,
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = (float)Metrics.LineThickness,
+        };
+        using var path = new SKPath();
+        foreach (var curve in geometry.Beziers)
         {
-            var figure = new PathFigure
-            {
-                StartPoint = ToPoint(bezier.Start),
-                IsClosed = false,
-                IsFilled = false,
-            };
-            figure.Segments.Add(new BezierSegment
-            {
-                Point1 = ToPoint(bezier.Control1),
-                Point2 = ToPoint(bezier.Control2),
-                Point3 = ToPoint(bezier.End),
-            });
-            _pathGeometries[PaletteIndex(bezier.TrackId)].Figures.Add(figure);
+            paint.Color = GetTrackColor(curve.TrackId);
+            path.Rewind();
+            path.MoveTo((float)curve.Start.X, (float)curve.Start.Y);
+            path.CubicTo((float)curve.Control1.X, (float)curve.Control1.Y,
+                (float)curve.Control2.X, (float)curve.Control2.Y,
+                (float)curve.End.X, (float)curve.End.Y);
+            canvas.DrawPath(path, paint);
         }
-
         foreach (var line in geometry.Lines)
         {
-            var figure = new PathFigure
-            {
-                StartPoint = ToPoint(line.Start),
-                IsClosed = false,
-                IsFilled = false,
-            };
-            figure.Segments.Add(new LineSegment { Point = ToPoint(line.End) });
-            _pathGeometries[PaletteIndex(line.TrackId)].Figures.Add(figure);
+            paint.Color = GetTrackColor(line.TrackId);
+            canvas.DrawLine((float)line.Start.X, (float)line.Start.Y,
+                (float)line.End.X, (float)line.End.Y, paint);
         }
-
-        for (var paletteIndex = 0; paletteIndex < _trackPaths.Length; paletteIndex++)
-        {
-            if (_pathGeometries[paletteIndex].Figures.Count > 0)
-                _trackPaths[paletteIndex].Data = _pathGeometries[paletteIndex];
-        }
-
         if (geometry.Node is { } node)
         {
-            _nodeGeometry.Center = ToPoint(node.Center);
-            _nodeGeometry.RadiusX = node.Radius;
-            _nodeGeometry.RadiusY = node.Radius;
-            _nodePath.Data = _nodeGeometry;
-            _nodePath.Fill = GetTrackBrush(node.TrackId);
+            paint.Style = SKPaintStyle.Fill;
+            paint.Color = GetTrackColor(node.TrackId);
+            canvas.DrawCircle((float)node.Center.X, (float)node.Center.Y, (float)node.Radius, paint);
         }
-        else
-        {
-            _nodePath.Data = null;
-            _nodePath.Fill = null;
-        }
-    }
-
-    private void ClearMaterializedGeometry()
-    {
-        for (var paletteIndex = 0; paletteIndex < _trackPaths.Length; paletteIndex++)
-        {
-            _trackPaths[paletteIndex].Data = null;
-            _pathGeometries[paletteIndex].Figures.Clear();
-        }
-
-        _nodePath.Data = null;
-        _nodePath.Fill = null;
     }
 
     private static HistoryGeometryBuildCause DetermineBuildCause(
@@ -464,9 +391,7 @@ public sealed class CommitGraphControl : Canvas
 
         if (Graph is null)
         {
-            return _renderedGeometryKey is null
-                && _trackPaths.All(path => path.Data is null)
-                && _nodePath.Data is null;
+            return _renderedGeometryKey is null && _geometry is null;
         }
 
         if (_renderedGeometryKey is not { } renderedKey
@@ -479,69 +404,19 @@ public sealed class CommitGraphControl : Canvas
         if (currentKey != renderedKey)
             return false;
 
-        var geometry = CommitGraphGeometryBuilder.Build(Graph, renderedKey.Height, Metrics);
-        var expectedPaletteIndexes = geometry.Lines.Select(line => PaletteIndex(line.TrackId))
-            .Concat(geometry.Beziers.Select(bezier => PaletteIndex(bezier.TrackId)))
-            .ToHashSet();
-
-        for (var paletteIndex = 0; paletteIndex < _trackPaths.Length; paletteIndex++)
-        {
-            if ((_trackPaths[paletteIndex].Data is not null)
-                != expectedPaletteIndexes.Contains(paletteIndex))
-            {
-                return false;
-            }
-
-            if (Math.Abs(_trackPaths[paletteIndex].StrokeThickness - Metrics.LineThickness)
-                > CommitGraphGeometryKey.GeometryEpsilon)
-            {
-                return false;
-            }
-
-            if (!ReferenceEquals(_trackPaths[paletteIndex].Stroke, GetPaletteBrush(paletteIndex)))
-                return false;
-        }
-
-        if ((_nodePath.Data is not null) != (geometry.Node is not null))
-            return false;
-        if (geometry.Node is { } node
-            && !ReferenceEquals(_nodePath.Fill, GetTrackBrush(node.TrackId)))
-        {
-            return false;
-        }
-
-        return true;
+        return _geometry is not null;
     }
 
     internal bool HasCurrentClipForCheck()
     {
-        var expectedWidth = double.IsFinite(ActualWidth) && ActualWidth > 0 ? ActualWidth : 0;
-        var expectedHeight = double.IsFinite(ActualHeight) && ActualHeight > 0 ? ActualHeight : 0;
-        var clip = _clipGeometry.Rect;
-        return Math.Abs(clip.X) <= CommitGraphGeometryKey.GeometryEpsilon
-            && Math.Abs(clip.Y) <= CommitGraphGeometryKey.GeometryEpsilon
-            && Math.Abs(clip.Width - expectedWidth) <= CommitGraphGeometryKey.GeometryEpsilon
-            && Math.Abs(clip.Height - expectedHeight) <= CommitGraphGeometryKey.GeometryEpsilon;
+        // SKCanvasVisual clips RenderOverride to the arranged element size.
+        return double.IsFinite(ActualWidth) && ActualWidth > 0
+            && IsValidHeight(ActualHeight);
     }
 
-    private void UpdateBrushes()
-    {
-        var palette = GetPalette();
-        for (var paletteIndex = 0; paletteIndex < _trackPaths.Length; paletteIndex++)
-            _trackPaths[paletteIndex].Stroke = palette[paletteIndex];
+    private SKColor GetTrackColor(int trackId) => GetPalette()[PaletteIndex(trackId)];
 
-        _nodePath.Fill = _renderedNodeTrackId is { } trackId
-            ? GetTrackBrush(trackId)
-            : null;
-    }
-
-    private SolidColorBrush GetTrackBrush(int trackId) =>
-        GetPalette()[PaletteIndex(trackId)];
-
-    private SolidColorBrush GetPaletteBrush(int paletteIndex) =>
-        GetPalette()[paletteIndex];
-
-    private SolidColorBrush[] GetPalette() =>
+    private SKColor[] GetPalette() =>
         ActualTheme == ElementTheme.Dark ? DarkPalette : LightPalette;
 
     private static bool IsValidHeight(double height) =>
@@ -550,8 +425,5 @@ public sealed class CommitGraphControl : Canvas
     private static int PaletteIndex(int trackId) =>
         CommitGraphGeometryBuilder.GetPaletteIndex(trackId, LightPalette.Length);
 
-    private static Point ToPoint(GraphPoint point) => new(point.X, point.Y);
-
-    private static SolidColorBrush Brush(byte red, byte green, byte blue) =>
-        new(ColorHelper.FromArgb(0xFF, red, green, blue));
+    private static SKColor Color(byte red, byte green, byte blue) => new(red, green, blue);
 }
