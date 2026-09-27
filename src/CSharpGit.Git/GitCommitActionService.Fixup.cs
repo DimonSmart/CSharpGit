@@ -1,4 +1,3 @@
-using CSharpGit.Application.Exceptions;
 using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
