@@ -86,7 +86,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("TileOpacity", recentView);
         Assert.Contains("controls:RecentRepositoriesGridView", recentView);
         Assert.Contains("VariableSizedWrapGrid", recentView);
-        Assert.Contains("ItemsWrapGrid", recentView);
+        Assert.DoesNotContain("ItemsWrapGrid", recentView);
         Assert.Contains("ItemWidth=\"344\" ItemHeight=\"156\"", recentView);
         Assert.Contains("Width=\"64\" Height=\"64\"", recentView);
         Assert.Contains("Grid.RowSpan=\"3\"", recentView);
