@@ -1,4 +1,5 @@
 using CSharpGit.Application.Abstractions;
+using CSharpGit.Application.Exceptions;
 using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
@@ -29,6 +30,7 @@ internal sealed partial class GitRepositorySyncService : IRepositorySyncService
             repository,
             cancellationToken,
             "fetch",
+            "--prune",
             remote);
     }
 
@@ -39,7 +41,8 @@ internal sealed partial class GitRepositorySyncService : IRepositorySyncService
             repository,
             cancellationToken,
             "fetch",
-            "--all");
+            "--all",
+            "--prune");
 
     public async Task DeleteRemoteBranchAsync(
         Repository repository,
@@ -50,14 +53,34 @@ internal sealed partial class GitRepositorySyncService : IRepositorySyncService
         ArgumentNullException.ThrowIfNull(repository);
         GitRefValidator.Validate(remote, nameof(remote));
         GitRefValidator.Validate(branch, nameof(branch));
-        await _pushExecutor.RunAsync(
-            repository,
-            cancellationToken,
-            "push",
-            "--porcelain",
-            remote,
-            "--delete",
-            branch);
+        try
+        {
+            await _pushExecutor.RunAsync(
+                repository,
+                cancellationToken,
+                "push",
+                "--porcelain",
+                remote,
+                "--delete",
+                branch);
+        }
+        catch (PushRejectedException)
+        {
+            if (!await TryConfirmRemoteBranchMissingAsync(
+                    repository,
+                    remote,
+                    branch,
+                    cancellationToken))
+                throw;
+
+            await _runner.RunAsync(
+                repository.WorkingDirectory,
+                cancellationToken,
+                false,
+                "update-ref",
+                "-d",
+                $"refs/remotes/{remote}/{branch}");
+        }
     }
 
     public async Task PullAsync(
@@ -167,6 +190,57 @@ internal sealed partial class GitRepositorySyncService : IRepositorySyncService
                     remote,
                     refspec
                 ]);
+    }
+
+    private async Task<bool> TryConfirmRemoteBranchMissingAsync(
+        Repository repository,
+        string remote,
+        string branch,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var pushUrlsResult = await _runner.RunForResultAsync(
+                repository.WorkingDirectory,
+                "Repository",
+                GitCommandKind.Internal,
+                cancellationToken,
+                null,
+                ["remote", "get-url", "--push", "--all", remote]);
+
+            if (pushUrlsResult.ExitCode != 0)
+                return false;
+
+            var pushUrls = pushUrlsResult.StandardOutput.Split(
+                ['\r', '\n'],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (pushUrls.Length == 0)
+                return false;
+
+            foreach (var pushUrl in pushUrls)
+            {
+                var remoteRefResult = await _runner.RunForResultAsync(
+                    repository.WorkingDirectory,
+                    "Repository",
+                    GitCommandKind.Internal,
+                    cancellationToken,
+                    null,
+                    ["ls-remote", "--exit-code", "--heads", pushUrl, $"refs/heads/{branch}"]);
+
+                if (remoteRefResult.ExitCode != 2)
+                    return false;
+            }
+
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private async Task<IReadOnlyList<string>> ReadRemoteNamesAsync(

@@ -52,6 +52,66 @@ public sealed class BranchDeletionTests : IDisposable
     }
 
     [Fact]
+    public async Task FetchPrunesRemoteTrackingBranchDeletedOnServer()
+    {
+        var (work, remote) = CreateRepositoryWithRemote();
+        const string branch = "feature/stale/fetch";
+        RunGit(work, "switch", "-c", branch);
+        RunGit(work, "push", "-u", "origin", branch);
+        RunGit(remote, "update-ref", "-d", $"refs/heads/{branch}");
+        Assert.True(RemoteTrackingRefExists(work, "origin", branch));
+
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateRepositorySyncService();
+        var repository = await repositoryService.OpenAsync(work);
+
+        await service.FetchAsync(repository, "origin");
+
+        Assert.False(RemoteTrackingRefExists(work, "origin", branch));
+    }
+
+    [Fact]
+    public async Task TreatsAlreadyDeletedRemoteBranchAsSuccessfulAndRemovesStaleTrackingRef()
+    {
+        var (work, remote) = CreateRepositoryWithRemote();
+        const string branch = "domain-review/rec-2026-09-09";
+        RunGit(work, "switch", "-c", branch);
+        RunGit(work, "push", "-u", "origin", branch);
+        RunGit(remote, "update-ref", "-d", $"refs/heads/{branch}");
+        Assert.True(RemoteTrackingRefExists(work, "origin", branch));
+
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateRepositorySyncService();
+        var repository = await repositoryService.OpenAsync(work);
+
+        await service.DeleteRemoteBranchAsync(repository, "origin", branch);
+
+        Assert.False(RemoteRefExists(remote, $"refs/heads/{branch}"));
+        Assert.False(RemoteTrackingRefExists(work, "origin", branch));
+    }
+
+    [Fact]
+    public async Task RemoteDeletionDoesNotHideUnverifiablePushFailure()
+    {
+        var (work, remote) = CreateRepositoryWithRemote();
+        const string branch = "feature/push-failure";
+        RunGit(work, "switch", "-c", branch);
+        RunGit(work, "push", "-u", "origin", branch);
+        var missingPushDestination = Path.Combine(_temporaryDirectory, $"missing-{Guid.NewGuid():N}.git");
+        RunGit(work, "remote", "set-url", "--push", "origin", missingPushDestination);
+
+        var repositoryService = GitTestServices.CreateRepositoryService();
+        var service = GitTestServices.CreateRepositorySyncService();
+        var repository = await repositoryService.OpenAsync(work);
+
+        await Assert.ThrowsAsync<PushRejectedException>(() =>
+            service.DeleteRemoteBranchAsync(repository, "origin", branch));
+
+        Assert.True(RemoteRefExists(remote, $"refs/heads/{branch}"));
+        Assert.True(RemoteTrackingRefExists(work, "origin", branch));
+    }
+
+    [Fact]
     public async Task RemoteDeletionDoesNotDeleteMatchingLocalBranch()
     {
         var (work, remote) = CreateRepositoryWithRemote();
@@ -154,6 +214,9 @@ public sealed class BranchDeletionTests : IDisposable
 
     private static bool RemoteRefExists(string remote, string reference) =>
         RunGitExitCode(remote, "show-ref", "--verify", reference) == 0;
+
+    private static bool RemoteTrackingRefExists(string work, string remote, string branch) =>
+        RunGitExitCode(work, "show-ref", "--verify", $"refs/remotes/{remote}/{branch}") == 0;
 
     private static void RunGit(string workingDirectory, params string[] arguments)
     {
