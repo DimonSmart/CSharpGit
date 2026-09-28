@@ -137,7 +137,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("HasUnavailableRepositories", recentViewModel);
         Assert.Contains("RemoveUnavailableRepositoriesAsync", recentViewModel);
         Assert.Contains("Where(item => !item.IsAvailable)", recentViewModel);
-        Assert.Contains("await _settings.RemoveRecentRepositoryAsync(path)", recentViewModel);
+        Assert.Contains("await _settings.RemoveRecentRepositoryAsync(item.Path)", recentViewModel);
 
         Assert.Contains("Directory.Exists(item.Path)", integration);
         Assert.Contains("RecordRecentRepositoryAsync", integration);
