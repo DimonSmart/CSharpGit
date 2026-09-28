@@ -70,7 +70,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("Recent repositories", recentView);
         Assert.Contains("Search repositories...", recentView);
         Assert.Contains("SearchText", recentView);
-        Assert.Contains("Pinned repositories", recentViewModel);
+        Assert.Contains("Text=\"Pinned\"", recentView);
         Assert.Contains("PinnedRepositories", recentView);
         Assert.Contains("PinCommand", recentView);
         Assert.Contains("PinActionLabel", recentView);
