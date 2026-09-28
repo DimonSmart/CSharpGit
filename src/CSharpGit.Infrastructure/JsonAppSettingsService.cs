@@ -6,7 +6,7 @@ namespace CSharpGit.Infrastructure;
 
 public sealed class JsonAppSettingsService : IAppSettingsService
 {
-    private const int MaxRecentRepositories = 8;
+    private const int MaxUnpinnedRecentRepositories = 1000;
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         WriteIndented = true,
@@ -191,17 +191,46 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         return UpdateAsync(
             current =>
             {
+                var existing = current.RecentRepositories.FirstOrDefault(
+                    candidate => PathComparer.Equals(candidate.Path, normalizedPath));
                 var entry = new RecentRepositorySettings(
                     normalizedPath,
                     normalizedDisplayName,
                     DateTimeOffset.UtcNow,
-                    normalizedBranchName);
-                var recentRepositories = new[] { entry }
-                    .Concat(current.RecentRepositories.Where(
-                        candidate => !PathComparer.Equals(candidate.Path, normalizedPath)))
-                    .Take(MaxRecentRepositories)
-                    .ToArray();
-                return current with { RecentRepositories = Array.AsReadOnly(recentRepositories) };
+                    normalizedBranchName,
+                    existing?.IsPinned ?? false,
+                    existing?.PinnedOrder);
+                var updated = current.RecentRepositories
+                    .Where(candidate => !PathComparer.Equals(candidate.Path, normalizedPath))
+                    .Append(entry);
+                return current with { RecentRepositories = NormalizeRecentRepositories(updated) };
+            },
+            cancellationToken);
+    }
+
+    public Task SetRecentRepositoryPinnedAsync(
+        string path,
+        bool pinned,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var normalizedPath = NormalizePath(path);
+
+        return UpdateAsync(
+            current =>
+            {
+                var existing = current.RecentRepositories.FirstOrDefault(
+                    candidate => PathComparer.Equals(candidate.Path, normalizedPath));
+                if (existing is null || existing.IsPinned == pinned) return current;
+
+                int? pinnedOrder = pinned
+                    ? current.RecentRepositories.Count(candidate => candidate.IsPinned)
+                    : null;
+                var updated = current.RecentRepositories.Select(
+                    candidate => PathComparer.Equals(candidate.Path, normalizedPath)
+                        ? candidate with { IsPinned = pinned, PinnedOrder = pinnedOrder }
+                        : candidate);
+                return current with { RecentRepositories = NormalizeRecentRepositories(updated) };
             },
             cancellationToken);
     }
@@ -221,7 +250,43 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                     .ToArray();
                 return updated.Length == current.RecentRepositories.Count
                     ? current
-                    : current with { RecentRepositories = Array.AsReadOnly(updated) };
+                    : current with { RecentRepositories = NormalizeRecentRepositories(updated) };
+            },
+            cancellationToken);
+    }
+
+    public Task MovePinnedRepositoryAsync(
+        string path,
+        int newIndex,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (newIndex < 0) throw new ArgumentOutOfRangeException(nameof(newIndex));
+
+        var normalizedPath = NormalizePath(path);
+        return UpdateAsync(
+            current =>
+            {
+                var pinned = current.RecentRepositories
+                    .Where(candidate => candidate.IsPinned)
+                    .OrderBy(candidate => candidate.PinnedOrder ?? int.MaxValue)
+                    .ToList();
+                var currentIndex = pinned.FindIndex(
+                    candidate => PathComparer.Equals(candidate.Path, normalizedPath));
+                if (currentIndex < 0) return current;
+                if (newIndex >= pinned.Count) throw new ArgumentOutOfRangeException(nameof(newIndex));
+                if (currentIndex == newIndex) return current;
+
+                var moving = pinned[currentIndex];
+                pinned.RemoveAt(currentIndex);
+                pinned.Insert(newIndex, moving);
+
+                var reordered = pinned
+                    .Select((candidate, index) => candidate with { PinnedOrder = index })
+                    .ToDictionary(candidate => candidate.Path, PathComparer);
+                var updated = current.RecentRepositories.Select(
+                    candidate => candidate.IsPinned ? reordered[candidate.Path] : candidate);
+                return current with { RecentRepositories = NormalizeRecentRepositories(updated) };
             },
             cancellationToken);
     }
@@ -358,37 +423,78 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     {
         if (entries is null) return [];
 
-        var result = new List<RecentRepositorySettings>(MaxRecentRepositories);
-        foreach (var entry in entries.OrderByDescending(candidate => candidate.LastOpenedUtc))
-        {
-            if (string.IsNullOrWhiteSpace(entry.Path)) continue;
+        var normalizedEntries = entries
+            .Select(NormalizeRecentRepository)
+            .Where(candidate => candidate is not null)
+            .Select(candidate => candidate!)
+            .OrderByDescending(candidate => candidate.LastOpenedUtc)
+            .ThenBy(candidate => candidate.Path, PathComparer)
+            .ThenByDescending(candidate => candidate.IsPinned)
+            .ThenBy(candidate => candidate.PinnedOrder ?? int.MaxValue)
+            .ToArray();
 
-            string normalizedPath;
-            try
-            {
-                normalizedPath = NormalizePath(entry.Path);
-            }
-            catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException)
-            {
-                continue;
-            }
+        var deduplicated = normalizedEntries
+            .GroupBy(candidate => candidate.Path, PathComparer)
+            .Select(group => group.First())
+            .ToArray();
 
-            if (result.Any(candidate => PathComparer.Equals(candidate.Path, normalizedPath))) continue;
-
-            var displayName = string.IsNullOrWhiteSpace(entry.DisplayName)
-                ? GetDisplayName(normalizedPath)
-                : entry.DisplayName.Trim();
-            result.Add(entry with
+        var pinned = deduplicated
+            .Where(candidate => candidate.IsPinned)
+            .OrderBy(candidate => candidate.PinnedOrder.HasValue ? 0 : 1)
+            .ThenBy(candidate => candidate.PinnedOrder ?? int.MaxValue)
+            .ThenByDescending(candidate => candidate.LastOpenedUtc)
+            .ThenBy(candidate => candidate.Path, PathComparer)
+            .Select((candidate, index) => candidate with
             {
-                Path = normalizedPath,
-                DisplayName = displayName,
-                LastOpenedUtc = entry.LastOpenedUtc.ToUniversalTime(),
-                LastBranchName = string.IsNullOrWhiteSpace(entry.LastBranchName) ? null : entry.LastBranchName.Trim()
+                IsPinned = true,
+                PinnedOrder = index
             });
-            if (result.Count == MaxRecentRepositories) break;
+
+        var unpinned = deduplicated
+            .Where(candidate => !candidate.IsPinned)
+            .OrderByDescending(candidate => candidate.LastOpenedUtc)
+            .ThenBy(candidate => candidate.Path, PathComparer)
+            .Take(MaxUnpinnedRecentRepositories)
+            .Select(candidate => candidate with
+            {
+                IsPinned = false,
+                PinnedOrder = null
+            });
+
+        return Array.AsReadOnly(pinned.Concat(unpinned).ToArray());
+    }
+
+    private static RecentRepositorySettings? NormalizeRecentRepository(RecentRepositorySettings entry)
+    {
+        if (string.IsNullOrWhiteSpace(entry.Path)) return null;
+
+        string normalizedPath;
+        try
+        {
+            normalizedPath = NormalizePath(entry.Path);
+        }
+        catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return null;
         }
 
-        return result.AsReadOnly();
+        var displayName = string.IsNullOrWhiteSpace(entry.DisplayName)
+            ? GetDisplayName(normalizedPath)
+            : entry.DisplayName.Trim();
+        var isPinned = entry.IsPinned;
+        var pinnedOrder = isPinned && entry.PinnedOrder is >= 0
+            ? entry.PinnedOrder
+            : null;
+
+        return entry with
+        {
+            Path = normalizedPath,
+            DisplayName = displayName,
+            LastOpenedUtc = entry.LastOpenedUtc.ToUniversalTime(),
+            LastBranchName = string.IsNullOrWhiteSpace(entry.LastBranchName) ? null : entry.LastBranchName.Trim(),
+            IsPinned = isPinned,
+            PinnedOrder = pinnedOrder
+        };
     }
 
     private static string NormalizePath(string path) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));

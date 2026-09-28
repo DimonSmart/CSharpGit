@@ -37,7 +37,9 @@ public sealed record RecentRepositorySettings(
     string Path,
     string DisplayName,
     DateTimeOffset LastOpenedUtc,
-    string? LastBranchName);
+    string? LastBranchName,
+    bool IsPinned = false,
+    int? PinnedOrder = null);
 
 public interface IAppSettingsService
 {
@@ -107,6 +109,16 @@ public interface IAppSettingsService
         string path,
         string displayName,
         string? lastBranchName,
+        CancellationToken cancellationToken = default);
+
+    Task SetRecentRepositoryPinnedAsync(
+        string path,
+        bool pinned,
+        CancellationToken cancellationToken = default);
+
+    Task MovePinnedRepositoryAsync(
+        string path,
+        int newIndex,
         CancellationToken cancellationToken = default);
 
     Task RemoveRecentRepositoryAsync(
