@@ -215,6 +215,7 @@ public sealed partial class MainPage
         });
 
         CheckBox? deleteLocalCheckBox = null;
+        CheckBox? forceDeleteLocalCheckBox = null;
         if (target.LocalBranch is { } localBranch)
         {
             deleteLocalCheckBox = new CheckBox
@@ -224,6 +225,27 @@ public sealed partial class MainPage
                 IsEnabled = !localBranch.IsCurrent
             };
             content.Children.Add(deleteLocalCheckBox);
+
+            var forceCheckBox = new CheckBox
+            {
+                Content = "Force delete local branch even if it is not fully merged",
+                IsChecked = false,
+                IsEnabled = false
+            };
+            forceDeleteLocalCheckBox = forceCheckBox;
+            deleteLocalCheckBox.Checked += (_, _) => forceCheckBox.IsEnabled = true;
+            deleteLocalCheckBox.Unchecked += (_, _) =>
+            {
+                forceCheckBox.IsChecked = false;
+                forceCheckBox.IsEnabled = false;
+            };
+            content.Children.Add(forceCheckBox);
+            content.Children.Add(new TextBlock
+            {
+                Text = "Force delete may remove the only branch reference to commits. Those commits may become difficult to recover.",
+                TextWrapping = TextWrapping.Wrap,
+                Opacity = 0.72
+            });
 
             if (localBranch.IsCurrent)
             {
@@ -253,6 +275,10 @@ public sealed partial class MainPage
 
         _viewModel.SelectedRemoteBranch = remoteBranch;
         var deleteLocal = deleteLocalCheckBox?.IsChecked == true && target.LocalBranch is { IsCurrent: false };
+        var forceDeleteLocal = deleteLocal && forceDeleteLocalCheckBox?.IsChecked == true;
+        var localDeletionMode = forceDeleteLocal
+            ? BranchDeletionMode.Force
+            : BranchDeletionMode.Safe;
         Exception? localFailure = null;
 
         await _viewModel.RunMutationAsync(
@@ -279,7 +305,7 @@ public sealed partial class MainPage
                     await _referenceService.DeleteBranchAsync(
                         _viewModel.Repository!,
                         target.LocalBranch.Name,
-                        BranchDeletionMode.Safe);
+                        localDeletionMode);
                     if (string.Equals(_activeReference, target.LocalBranch.Name, StringComparison.Ordinal))
                     {
                         ShowAllHistory();
