@@ -49,51 +49,58 @@
   </Page.Resources>
 
   <Grid x:Name="RootLayout" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" KeyDown="Page_KeyDown">
-    <Button x:Name="StartScreenOverflowButton"
-            HorizontalAlignment="Right"
-            VerticalAlignment="Top"
-            Margin="12"
-            Style="{StaticResource IconButtonStyle}"
-            Visibility="{Binding HasRepository, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}"
-            AutomationProperties.Name="Application menu">
-      <FontIcon Glyph="&#xE712;" FontSize="{StaticResource Icon.Normal}" />
-      <Button.Flyout>
-        <MenuFlyout>
-          <MenuFlyoutItem Text="Settings…" Click="Settings_Click" />
-          <MenuFlyoutItem Text="About CSharpGit…" Click="About_Click" />
-        </MenuFlyout>
-      </Button.Flyout>
-    </Button>
+    <Grid x:Name="StartScreenHost"
+          Visibility="{Binding HasRepository, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}">
+      <StackPanel x:Name="EmptyStartScreen"
+                  Width="520"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Spacing="{StaticResource Spacing.XXL}">
+        <FontIcon Glyph="&#xE8B7;" FontSize="56" HorizontalAlignment="Center" />
+        <TextBlock Text="Open a Git repository" Style="{StaticResource TitleTextStyle}" TextAlignment="Center" />
+        <TextBlock Text="Select the folder of an existing repository or worktree."
+                   Style="{StaticResource BodySubduedTextStyle}"
+                   TextWrapping="Wrap"
+                   TextAlignment="Center" />
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    Spacing="{StaticResource Spacing.M}">
+          <Button Content="Select folder…"
+                  Command="{Binding OpenRepositoryCommand}"
+                  Style="{StaticResource CompactButtonStyle}" />
+          <Button Content="Create repository…"
+                  Click="CreateRepository_Click"
+                  Style="{StaticResource CompactButtonStyle}" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    Spacing="{StaticResource Spacing.L}"
+                    Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}">
+          <ProgressRing IsActive="{Binding IsBusy}" Width="20" Height="20" />
+          <TextBlock Text="Opening repository…" Style="{StaticResource BodyTextStyle}" VerticalAlignment="Center" />
+        </StackPanel>
+      </StackPanel>
 
-    <StackPanel Width="520"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Spacing="{StaticResource Spacing.XXL}"
-                Visibility="{Binding HasRepository, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}">
-      <FontIcon Glyph="&#xE8B7;" FontSize="56" HorizontalAlignment="Center" />
-      <TextBlock Text="Open a Git repository" Style="{StaticResource TitleTextStyle}" TextAlignment="Center" />
-      <TextBlock Text="Select the folder of an existing repository or worktree."
-                 Style="{StaticResource BodySubduedTextStyle}"
-                 TextWrapping="Wrap"
-                 TextAlignment="Center" />
-      <StackPanel Orientation="Horizontal"
-                  HorizontalAlignment="Center"
-                  Spacing="{StaticResource Spacing.M}">
-        <Button Content="Select folder…"
-                Command="{Binding OpenRepositoryCommand}"
-                Style="{StaticResource CompactButtonStyle}" />
-        <Button Content="Create repository…"
-                Click="CreateRepository_Click"
-                Style="{StaticResource CompactButtonStyle}" />
-      </StackPanel>
-      <StackPanel Orientation="Horizontal"
-                  HorizontalAlignment="Center"
-                  Spacing="{StaticResource Spacing.L}"
-                  Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}">
-        <ProgressRing IsActive="{Binding IsBusy}" Width="20" Height="20" />
-        <TextBlock Text="Opening repository…" Style="{StaticResource BodyTextStyle}" VerticalAlignment="Center" />
-      </StackPanel>
-    </StackPanel>
+      <ContentControl x:Name="RecentRepositoriesHost"
+                      Visibility="Collapsed"
+                      HorizontalContentAlignment="Stretch"
+                      VerticalContentAlignment="Stretch" />
+
+      <Button x:Name="StartScreenOverflowButton"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Top"
+              Margin="12"
+              Style="{StaticResource IconButtonStyle}"
+              AutomationProperties.Name="Application menu">
+        <FontIcon Glyph="&#xE712;" FontSize="{StaticResource Icon.Normal}" />
+        <Button.Flyout>
+          <MenuFlyout>
+            <MenuFlyoutItem Text="Settings…" Click="Settings_Click" />
+            <MenuFlyoutItem Text="About CSharpGit…" Click="About_Click" />
+          </MenuFlyout>
+        </Button.Flyout>
+      </Button>
+    </Grid>
 
     <Grid x:Name="RepositoryWorkspace" Visibility="{Binding HasRepository, Converter={StaticResource BooleanToVisibilityConverter}}" RowDefinitions="Auto,Auto,*,Auto">
       <Border x:Name="MainToolbar" Grid.Row="0" Style="{StaticResource ToolbarSurfaceStyle}">
