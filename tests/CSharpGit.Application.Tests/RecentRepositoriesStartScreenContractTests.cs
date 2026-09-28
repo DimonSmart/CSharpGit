@@ -67,10 +67,14 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.DoesNotContain("RootLayout.Children[", integration);
         Assert.DoesNotContain("RootLayout.Children.Insert", integration);
         Assert.Contains("RecentRepositoriesHost.Content = _recentRepositoriesView", integration);
-        Assert.Contains("Recent repositories", recentView);
-        Assert.Contains("Search repositories...", recentView);
+        Assert.Contains("Text=\"Repositories\"", recentView);
+        Assert.Contains("PlaceholderText=\"Search by name or path…\"", recentView);
+        Assert.Contains("AutomationProperties.Name=\"Search repositories by name or path\"", recentView);
+        Assert.DoesNotContain("Continue with a repository you opened recently", recentView);
+        Assert.DoesNotContain("Recent repositories", recentView);
         Assert.Contains("SearchText", recentView);
         Assert.Contains("Text=\"Pinned\"", recentView);
+        Assert.Contains("Text=\"Recent\"", recentView);
         Assert.Contains("PinnedRepositories", recentView);
         Assert.Contains("PinCommand", recentView);
         Assert.Contains("PinActionLabel", recentView);
