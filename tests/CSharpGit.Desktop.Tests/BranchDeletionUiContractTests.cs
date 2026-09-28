@@ -28,7 +28,7 @@ public sealed class BranchDeletionUiContractTests
         Assert.Contains("Title = \"Delete remote branch?\"", workflow, StringComparison.Ordinal);
         Assert.Contains("Content = $\"Also delete local branch '{localBranch.Name}'\"", workflow, StringComparison.Ordinal);
         Assert.Contains("Content = \"Force delete local branch even if it is not fully merged\"", workflow, StringComparison.Ordinal);
-        Assert.Equal(3, CountOccurrences(workflow, "IsChecked = false"));
+        Assert.Equal(4, CountOccurrences(workflow, "IsChecked = false"));
         Assert.Contains("IsEnabled = !localBranch.IsCurrent", workflow, StringComparison.Ordinal);
         Assert.Contains("var forceCheckBox = new CheckBox", workflow, StringComparison.Ordinal);
         Assert.Contains("IsEnabled = false", workflow, StringComparison.Ordinal);
