@@ -137,6 +137,11 @@ public sealed partial class MainPage
             return;
         }
 
+        var remoteTarget = BranchDeletionResolver.ResolveRemoteForLocal(
+            branch,
+            _viewModel.RemoteBranches,
+            _viewModel.Remotes);
+
         var content = new StackPanel { Spacing = 8 };
         content.Children.Add(new TextBlock
         {
@@ -157,6 +162,17 @@ public sealed partial class MainPage
             Opacity = 0.72
         });
 
+        CheckBox? deleteRemoteCheckBox = null;
+        if (remoteTarget is not null)
+        {
+            deleteRemoteCheckBox = new CheckBox
+            {
+                Content = $"Also delete remote branch '{remoteTarget.Remote.Name}/{remoteTarget.BranchName}'",
+                IsChecked = false
+            };
+            content.Children.Add(deleteRemoteCheckBox);
+        }
+
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
@@ -175,6 +191,8 @@ public sealed partial class MainPage
         var deletionMode = forceDeleteCheckBox.IsChecked == true
             ? BranchDeletionMode.Force
             : BranchDeletionMode.Safe;
+        var deleteRemote = deleteRemoteCheckBox?.IsChecked == true && remoteTarget is not null;
+        Exception? remoteFailure = null;
 
         _viewModel.SelectedLocalBranch = branch;
         await _viewModel.RunMutationAsync(
@@ -185,8 +203,38 @@ public sealed partial class MainPage
                 {
                     ShowAllHistory();
                 }
+
+                if (!deleteRemote || remoteTarget is null)
+                {
+                    return;
+                }
+
+                try
+                {
+                    await _repositorySyncService.DeleteRemoteBranchAsync(
+                        _viewModel.Repository!,
+                        remoteTarget.Remote.Name,
+                        remoteTarget.BranchName);
+
+                    var remoteReference = $"{remoteTarget.Remote.Name}/{remoteTarget.BranchName}";
+                    if (string.Equals(_activeReference, remoteReference, StringComparison.Ordinal))
+                    {
+                        ShowAllHistory();
+                    }
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    remoteFailure = exception;
+                }
             },
             "Could not delete local branch");
+
+        if (remoteFailure is not null && remoteTarget is not null)
+        {
+            await ShowErrorAsync(
+                "Local branch deleted; remote branch retained",
+                $"Local branch '{branch.Name}' was deleted, but remote branch '{remoteTarget.Remote.Name}/{remoteTarget.BranchName}' could not be deleted.\n\nGit: {remoteFailure.Message}");
+        }
     }
 
     private async Task ConfirmDeleteRemoteBranchAsync(GitBranch remoteBranch)

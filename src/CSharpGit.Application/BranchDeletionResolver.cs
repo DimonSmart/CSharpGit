@@ -7,6 +7,10 @@ public sealed record RemoteBranchDeletionTarget(
     string BranchName,
     GitBranch? LocalBranch);
 
+public sealed record LocalBranchRemoteDeletionTarget(
+    GitRemote Remote,
+    string BranchName);
+
 public static class BranchDeletionResolver
 {
     public static RemoteBranchDeletionTarget Resolve(
@@ -18,10 +22,8 @@ public static class BranchDeletionResolver
         ArgumentNullException.ThrowIfNull(localBranches);
         ArgumentNullException.ThrowIfNull(remotes);
 
-        var remote = remotes
-            .Where(candidate => remoteBranch.Name.StartsWith(candidate.Name + "/", StringComparison.Ordinal))
-            .OrderByDescending(candidate => candidate.Name.Length)
-            .FirstOrDefault()
+        var configuredRemotes = remotes.ToArray();
+        var remote = ResolveConfiguredRemote(remoteBranch.Name, configuredRemotes)
             ?? throw new InvalidOperationException($"Remote branch '{remoteBranch.Name}' does not belong to a configured remote.");
 
         var branchName = remoteBranch.Name[(remote.Name.Length + 1)..];
@@ -36,4 +38,52 @@ public static class BranchDeletionResolver
 
         return new RemoteBranchDeletionTarget(remote, branchName, localBranch);
     }
+
+    public static LocalBranchRemoteDeletionTarget? ResolveRemoteForLocal(
+        GitBranch localBranch,
+        IEnumerable<GitBranch> remoteBranches,
+        IEnumerable<GitRemote> remotes)
+    {
+        ArgumentNullException.ThrowIfNull(localBranch);
+        ArgumentNullException.ThrowIfNull(remoteBranches);
+        ArgumentNullException.ThrowIfNull(remotes);
+
+        var configuredRemotes = remotes.ToArray();
+
+        if (!string.IsNullOrWhiteSpace(localBranch.Upstream))
+            return ResolveRemoteTarget(localBranch.Upstream, configuredRemotes);
+
+        var matches = remoteBranches
+            .Select(candidate => ResolveRemoteTarget(candidate.Name, configuredRemotes))
+            .OfType<LocalBranchRemoteDeletionTarget>()
+            .Where(candidate => string.Equals(candidate.BranchName, localBranch.Name, StringComparison.Ordinal))
+            .GroupBy(candidate => (candidate.Remote.Name, candidate.BranchName))
+            .Select(group => group.First())
+            .Take(2)
+            .ToArray();
+
+        return matches.Length == 1 ? matches[0] : null;
+    }
+
+    private static LocalBranchRemoteDeletionTarget? ResolveRemoteTarget(
+        string referenceName,
+        IReadOnlyCollection<GitRemote> remotes)
+    {
+        var remote = ResolveConfiguredRemote(referenceName, remotes);
+        if (remote is null)
+            return null;
+
+        var branchName = referenceName[(remote.Name.Length + 1)..];
+        return string.IsNullOrEmpty(branchName)
+            ? null
+            : new LocalBranchRemoteDeletionTarget(remote, branchName);
+    }
+
+    private static GitRemote? ResolveConfiguredRemote(
+        string referenceName,
+        IEnumerable<GitRemote> remotes) =>
+        remotes
+            .Where(candidate => referenceName.StartsWith(candidate.Name + "/", StringComparison.Ordinal))
+            .OrderByDescending(candidate => candidate.Name.Length)
+            .FirstOrDefault();
 }

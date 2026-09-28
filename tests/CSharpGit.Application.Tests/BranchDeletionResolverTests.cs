@@ -76,4 +76,145 @@ public sealed class BranchDeletionResolverTests
         Assert.Same(current, target.LocalBranch);
         Assert.True(target.LocalBranch!.IsCurrent);
     }
+
+    [Fact]
+    public void ResolveRemoteForLocalUsesConfiguredUpstream()
+    {
+        var local = new GitBranch("feature/foo", "1", Upstream: "origin/feature/foo");
+
+        var target = BranchDeletionResolver.ResolveRemoteForLocal(local, [], [Origin]);
+
+        Assert.NotNull(target);
+        Assert.Equal("origin", target.Remote.Name);
+        Assert.Equal("feature/foo", target.BranchName);
+    }
+
+    [Fact]
+    public void ResolveRemoteForLocalUsesLongestConfiguredRemotePrefix()
+    {
+        var nestedRemote = new GitRemote("company/origin", "fetch", "push");
+        var local = new GitBranch(
+            "add/db-schema-review-skill",
+            "1",
+            Upstream: "company/origin/add/db-schema-review-skill");
+
+        var target = BranchDeletionResolver.ResolveRemoteForLocal(
+            local,
+            [],
+            [Origin, nestedRemote]);
+
+        Assert.NotNull(target);
+        Assert.Equal("company/origin", target.Remote.Name);
+        Assert.Equal("add/db-schema-review-skill", target.BranchName);
+    }
+
+    [Fact]
+    public void ResolveRemoteForLocalAcceptsStaleConfiguredUpstream()
+    {
+        var local = new GitBranch("feature/foo/bar", "1", Upstream: "origin/feature/foo/bar");
+
+        var target = BranchDeletionResolver.ResolveRemoteForLocal(
+            local,
+            [new GitBranch("origin/unrelated", "2")],
+            [Origin]);
+
+        Assert.NotNull(target);
+        Assert.Equal("origin", target.Remote.Name);
+        Assert.Equal("feature/foo/bar", target.BranchName);
+    }
+
+    [Fact]
+    public void ResolveRemoteForLocalDoesNotFallbackWhenUpstreamRemoteIsNotConfigured()
+    {
+        var local = new GitBranch("feature/foo", "1", Upstream: "old-origin/feature/foo");
+
+        var target = BranchDeletionResolver.ResolveRemoteForLocal(
+            local,
+            [new GitBranch("origin/feature/foo", "2")],
+            [Origin]);
+
+        Assert.Null(target);
+    }
+
+    [Fact]
+    public void ResolveRemoteForLocalFallsBackToUniqueRemoteTrackingName()
+    {
+        var local = new GitBranch("feature/foo/bar", "1");
+
+        var target = BranchDeletionResolver.ResolveRemoteForLocal(
+            local,
+            [new GitBranch("origin/feature/foo/bar", "2")],
+            [Origin]);
+
+        Assert.NotNull(target);
+        Assert.Equal("origin", target.Remote.Name);
+        Assert.Equal("feature/foo/bar", target.BranchName);
+    }
+
+    [Fact]
+    public void ResolveRemoteForLocalReturnsNullWhenFallbackHasNoMatch()
+    {
+        var target = BranchDeletionResolver.ResolveRemoteForLocal(
+            new GitBranch("feature/foo", "1"),
+            [new GitBranch("origin/other", "2")],
+            [Origin]);
+
+        Assert.Null(target);
+    }
+
+    [Fact]
+    public void ResolveRemoteForLocalReturnsNullWhenFallbackIsAmbiguous()
+    {
+        var upstream = new GitRemote("upstream", "fetch", "push");
+
+        var target = BranchDeletionResolver.ResolveRemoteForLocal(
+            new GitBranch("feature/foo", "1"),
+            [
+                new GitBranch("origin/feature/foo", "2"),
+                new GitBranch("upstream/feature/foo", "3")
+            ],
+            [Origin, upstream]);
+
+        Assert.Null(target);
+    }
+
+    [Fact]
+    public void ResolveRemoteForLocalUpstreamWinsOverFallbackCandidates()
+    {
+        var upstream = new GitRemote("upstream", "fetch", "push");
+        var local = new GitBranch("feature/foo", "1", Upstream: "upstream/feature/foo");
+
+        var target = BranchDeletionResolver.ResolveRemoteForLocal(
+            local,
+            [
+                new GitBranch("origin/feature/foo", "2"),
+                new GitBranch("upstream/feature/foo", "3")
+            ],
+            [Origin, upstream]);
+
+        Assert.NotNull(target);
+        Assert.Equal("upstream", target.Remote.Name);
+        Assert.Equal("feature/foo", target.BranchName);
+    }
+
+    [Fact]
+    public void ResolveRemoteForLocalIgnoresFallbackWithUnconfiguredRemotePrefix()
+    {
+        var target = BranchDeletionResolver.ResolveRemoteForLocal(
+            new GitBranch("feature/foo", "1"),
+            [new GitBranch("old-origin/feature/foo", "2")],
+            [Origin]);
+
+        Assert.Null(target);
+    }
+
+    [Fact]
+    public void ResolveRemoteForLocalRejectsEmptyRelativeBranchName()
+    {
+        var local = new GitBranch("feature/foo", "1", Upstream: "origin/");
+
+        var target = BranchDeletionResolver.ResolveRemoteForLocal(local, [], [Origin]);
+
+        Assert.Null(target);
+    }
 }
