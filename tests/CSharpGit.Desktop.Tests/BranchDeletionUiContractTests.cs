@@ -25,7 +25,7 @@ public sealed class BranchDeletionUiContractTests
         Assert.Contains("DeleteBranchAsync(_viewModel.Repository!, branch.Name, deletionMode)", workflow, StringComparison.Ordinal);
         Assert.Equal(1, CountOccurrences(workflow, "Force delete even if the branch is not fully merged"));
         Assert.Contains("BranchDeletionResolver.ResolveRemoteForLocal(", workflow, StringComparison.Ordinal);
-        Assert.Contains("var deleteRemoteCheckBox = new CheckBox", workflow, StringComparison.Ordinal);
+        Assert.Contains("deleteRemoteCheckBox = new CheckBox", workflow, StringComparison.Ordinal);
         Assert.Contains("Content = $\"Also delete remote branch '{remoteTarget.Remote.Name}/{remoteTarget.BranchName}'\"", workflow, StringComparison.Ordinal);
         Assert.Contains("if (remoteTarget is not null)", workflow, StringComparison.Ordinal);
 
