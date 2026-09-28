@@ -24,9 +24,14 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("RecentRepositorySettings", settingsContract);
         Assert.Contains("LastOpenedUtc", settingsContract);
         Assert.Contains("LastBranchName", settingsContract);
+        Assert.Contains("IsPinned", settingsContract);
+        Assert.Contains("PinnedOrder", settingsContract);
+        Assert.Contains("SetRecentRepositoryPinnedAsync", settingsContract);
+        Assert.Contains("MovePinnedRepositoryAsync", settingsContract);
         Assert.DoesNotContain("RepositoryImage", settingsContract);
-        Assert.Contains("MaxRecentRepositories = 8", settingsPersistence);
-        Assert.Contains("Take(MaxRecentRepositories)", settingsPersistence);
+        Assert.Contains("MaxUnpinnedRecentRepositories = 1000", settingsPersistence);
+        Assert.Contains("Take(MaxUnpinnedRecentRepositories)", settingsPersistence);
+        Assert.Contains("NormalizeRecentRepositories", settingsPersistence);
         Assert.Contains("PathComparer.Equals", settingsPersistence);
 
         Assert.Contains("IRepositoryImageService", imageContract);
@@ -56,7 +61,23 @@ public sealed class RecentRepositoriesStartScreenContractTests
 
         Assert.Contains("Open a Git repository", mainPage);
         Assert.Contains("Select the folder of an existing repository or worktree.", mainPage);
+        Assert.Contains("x:Name=\"StartScreenHost\"", mainPage);
+        Assert.Contains("x:Name=\"EmptyStartScreen\"", mainPage);
+        Assert.Contains("x:Name=\"RecentRepositoriesHost\"", mainPage);
+        Assert.DoesNotContain("RootLayout.Children[", integration);
+        Assert.DoesNotContain("RootLayout.Children.Insert", integration);
+        Assert.Contains("RecentRepositoriesHost.Content = _recentRepositoriesView", integration);
         Assert.Contains("Recent repositories", recentView);
+        Assert.Contains("Search repositories...", recentView);
+        Assert.Contains("SearchText", recentView);
+        Assert.Contains("Pinned repositories", recentViewModel);
+        Assert.Contains("PinnedRepositories", recentView);
+        Assert.Contains("PinCommand", recentView);
+        Assert.Contains("PinActionLabel", recentView);
+        Assert.Contains("Move earlier", recentView);
+        Assert.Contains("Move later", recentView);
+        Assert.Contains("DragItemsStarting", recentView);
+        Assert.Contains("CanReorderItems=\"False\"", recentView);
         Assert.Contains("Open repository", recentView);
         Assert.Contains("RemoveCommand", recentView);
         Assert.Contains("RemoveUnavailableRepositoriesCommand", recentView);
@@ -65,7 +86,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("TileOpacity", recentView);
         Assert.Contains("controls:RecentRepositoriesGridView", recentView);
         Assert.Contains("VariableSizedWrapGrid", recentView);
-        Assert.DoesNotContain("ItemsWrapGrid", recentView);
+        Assert.Contains("ItemsWrapGrid", recentView);
         Assert.Contains("ItemWidth=\"344\" ItemHeight=\"156\"", recentView);
         Assert.Contains("Width=\"64\" Height=\"64\"", recentView);
         Assert.Contains("Grid.RowSpan=\"3\"", recentView);
@@ -107,7 +128,12 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("await Task.Yield()", recentViewModel);
         Assert.Contains("ResolveAsync(", recentViewModel);
         Assert.Contains("CancellationTokenSource", recentViewModel);
-        Assert.Contains("OrderByDescending(settings => Directory.Exists(settings.Path))", recentViewModel);
+        Assert.DoesNotContain("OrderByDescending(settings => Directory.Exists(settings.Path))", recentViewModel);
+        Assert.Contains("_itemsByPath", recentViewModel);
+        Assert.Contains("UpdateSettings(settings", recentViewModel);
+        Assert.Contains("RecentRepositoriesProjectionBuilder.Build", recentViewModel);
+        Assert.Contains("SearchText", recentViewModel);
+        Assert.Contains("SetMoveCapabilities", recentViewModel);
         Assert.Contains("HasUnavailableRepositories", recentViewModel);
         Assert.Contains("RemoveUnavailableRepositoriesAsync", recentViewModel);
         Assert.Contains("Where(item => !item.IsAvailable)", recentViewModel);
