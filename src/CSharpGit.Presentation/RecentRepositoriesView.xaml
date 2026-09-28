@@ -164,17 +164,12 @@
                   Margin="{StaticResource Padding.Page}"
                   Spacing="{StaticResource Spacing.XL}"
                   HorizontalAlignment="Center">
-        <StackPanel Spacing="{StaticResource Spacing.M}">
-          <TextBlock Text="Recent repositories" Style="{StaticResource TitleTextStyle}" />
-          <TextBlock Text="Continue with a repository you opened recently, or choose another local repository."
-                     Style="{StaticResource BodySubduedTextStyle}"
-                     TextWrapping="Wrap" />
-        </StackPanel>
+        <TextBlock Text="Repositories" Style="{StaticResource TitleTextStyle}" />
 
         <TextBox Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                 PlaceholderText="Search repositories..."
+                 PlaceholderText="Search by name or path…"
                  Style="{StaticResource CompactTextBoxStyle}"
-                 AutomationProperties.Name="Search repositories" />
+                 AutomationProperties.Name="Search repositories by name or path" />
 
         <StackPanel Spacing="{StaticResource Spacing.S}"
                     Visibility="{Binding HasPinnedRepositories, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -200,7 +195,7 @@
 
         <StackPanel Spacing="{StaticResource Spacing.S}"
                     Visibility="{Binding HasRecentRepositories, Converter={StaticResource BooleanToVisibilityConverter}}">
-          <TextBlock Text="Recent repositories" Style="{StaticResource BodyStrongTextStyle}" />
+          <TextBlock Text="Recent" Style="{StaticResource BodyStrongTextStyle}" />
           <controls:RecentRepositoriesGridView x:Name="RecentRepositoriesGridView"
                                                ItemsSource="{Binding RecentRepositories}"
                                                SelectionMode="None"
