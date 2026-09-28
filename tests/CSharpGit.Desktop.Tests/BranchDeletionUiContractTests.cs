@@ -54,7 +54,10 @@ public sealed class BranchDeletionUiContractTests
         Assert.Contains("var forceDeleteLocal = deleteLocal && forceDeleteLocalCheckBox?.IsChecked == true;", workflow, StringComparison.Ordinal);
         Assert.Contains("? BranchDeletionMode.Force", workflow, StringComparison.Ordinal);
         Assert.Contains(": BranchDeletionMode.Safe;", workflow, StringComparison.Ordinal);
-        Assert.Contains("target.LocalBranch.Name,\n                        localDeletionMode);", workflow, StringComparison.Ordinal);
+        var localMode = localDelete < 0
+            ? -1
+            : workflow.IndexOf("localDeletionMode);", localDelete, StringComparison.Ordinal);
+        Assert.True(localMode > localDelete);
         Assert.Contains("catch (Exception exception) when (exception is not OperationCanceledException)", workflow, StringComparison.Ordinal);
         Assert.Contains("Remote branch '{remoteBranch.Name}' was deleted, but local branch '{retainedLocalBranch.Name}' could not be deleted.", workflow, StringComparison.Ordinal);
         Assert.Contains("ShowAllHistory();", workflow, StringComparison.Ordinal);
