@@ -13,7 +13,6 @@ public sealed partial class MainPage
     private IRepositoryImageService _repositoryImageService = null!;
     private RecentRepositoriesView? _recentRepositoriesView;
     private RecentRepositoriesViewModel? _recentRepositoriesViewModel;
-    private FrameworkElement? _emptyStartScreen;
     private bool _recentRepositoryWasBusy;
     private string? _lastRecordedRecentRepositoryPath;
     private bool _recentRepositoriesShutdown;
@@ -23,12 +22,6 @@ public sealed partial class MainPage
         if (_recentRepositoriesView is not null) return;
 
         _recentRepositoriesShutdown = false;
-        _emptyStartScreen = RootLayout.Children.Count > 0
-            ? RootLayout.Children[0] as FrameworkElement
-            : null;
-        if (_emptyStartScreen is null)
-            throw new InvalidOperationException("The empty repository start screen was not found.");
-
         _recentRepositoriesViewModel = new RecentRepositoriesViewModel(
             _recentRepositorySettings,
             _repositoryImageService,
@@ -40,8 +33,7 @@ public sealed partial class MainPage
         {
             DataContext = _recentRepositoriesViewModel
         };
-
-        RootLayout.Children.Insert(1, _recentRepositoriesView);
+        RecentRepositoriesHost.Content = _recentRepositoriesView;
 
         _recentRepositoryWasBusy = _viewModel.IsBusy;
         _viewModel.PropertyChanged += RecentRepositoryHost_PropertyChanged;
@@ -90,14 +82,14 @@ public sealed partial class MainPage
 
     private void UpdateStartScreenVisibility()
     {
-        if (IsShuttingDown || _recentRepositoriesShutdown || _recentRepositoriesView is null || _emptyStartScreen is null) return;
+        if (IsShuttingDown || _recentRepositoriesShutdown || _recentRepositoriesView is null) return;
 
         var repositoryOpen = _viewModel.Repository is not null;
         var hasRecentRepositories = _recentRepositorySettings.RecentRepositories.Count > 0;
-        _recentRepositoriesView.Visibility = !repositoryOpen && hasRecentRepositories
+        EmptyStartScreen.Visibility = !repositoryOpen && !hasRecentRepositories
             ? Visibility.Visible
             : Visibility.Collapsed;
-        _emptyStartScreen.Visibility = !repositoryOpen && !hasRecentRepositories
+        RecentRepositoriesHost.Visibility = !repositoryOpen && hasRecentRepositories
             ? Visibility.Visible
             : Visibility.Collapsed;
     }
