@@ -27,8 +27,14 @@ public sealed class BranchDeletionUiContractTests
 
         Assert.Contains("Title = \"Delete remote branch?\"", workflow, StringComparison.Ordinal);
         Assert.Contains("Content = $\"Also delete local branch '{localBranch.Name}'\"", workflow, StringComparison.Ordinal);
-        Assert.Equal(2, CountOccurrences(workflow, "IsChecked = false"));
+        Assert.Contains("Content = \"Force delete local branch even if it is not fully merged\"", workflow, StringComparison.Ordinal);
+        Assert.Equal(3, CountOccurrences(workflow, "IsChecked = false"));
         Assert.Contains("IsEnabled = !localBranch.IsCurrent", workflow, StringComparison.Ordinal);
+        Assert.Contains("var forceCheckBox = new CheckBox", workflow, StringComparison.Ordinal);
+        Assert.Contains("IsEnabled = false", workflow, StringComparison.Ordinal);
+        Assert.Contains("deleteLocalCheckBox.Checked += (_, _) => forceCheckBox.IsEnabled = true;", workflow, StringComparison.Ordinal);
+        Assert.Contains("forceCheckBox.IsChecked = false;", workflow, StringComparison.Ordinal);
+        Assert.Contains("forceCheckBox.IsEnabled = false;", workflow, StringComparison.Ordinal);
         Assert.Contains("The local branch is currently checked out and cannot be deleted.", workflow, StringComparison.Ordinal);
         Assert.Contains("AddMenuItem(flyout, \"Delete\", !_viewModel.IsBusy, () => ConfirmDeleteRemoteBranchAsync(remoteBranch))", workflow, StringComparison.Ordinal);
         Assert.Equal(2, CountOccurrences(workflow, "Show branch history only"));
@@ -37,17 +43,18 @@ public sealed class BranchDeletionUiContractTests
     }
 
     [Fact]
-    public void CombinedDeletionDeletesRemoteBeforeSafeLocalAndReportsPartialSuccess()
+    public void CombinedDeletionDeletesRemoteBeforeExplicitlySelectedLocalModeAndReportsPartialSuccess()
     {
         var root = FindRepositoryRoot();
         var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchDeletion.cs"));
 
         var remoteDelete = workflow.IndexOf("DeleteRemoteBranchAsync(", StringComparison.Ordinal);
         var localDelete = workflow.IndexOf("target.LocalBranch.Name,", StringComparison.Ordinal);
-        var safeMode = localDelete < 0
-            ? -1
-            : workflow.IndexOf("BranchDeletionMode.Safe);", localDelete, StringComparison.Ordinal);
-        Assert.True(remoteDelete >= 0 && localDelete > remoteDelete && safeMode > localDelete);
+        Assert.True(remoteDelete >= 0 && localDelete > remoteDelete);
+        Assert.Contains("var forceDeleteLocal = deleteLocal && forceDeleteLocalCheckBox?.IsChecked == true;", workflow, StringComparison.Ordinal);
+        Assert.Contains("? BranchDeletionMode.Force", workflow, StringComparison.Ordinal);
+        Assert.Contains(": BranchDeletionMode.Safe;", workflow, StringComparison.Ordinal);
+        Assert.Contains("target.LocalBranch.Name,\n                        localDeletionMode);", workflow, StringComparison.Ordinal);
         Assert.Contains("catch (Exception exception) when (exception is not OperationCanceledException)", workflow, StringComparison.Ordinal);
         Assert.Contains("Remote branch '{remoteBranch.Name}' was deleted, but local branch '{retainedLocalBranch.Name}' could not be deleted.", workflow, StringComparison.Ordinal);
         Assert.Contains("ShowAllHistory();", workflow, StringComparison.Ordinal);
