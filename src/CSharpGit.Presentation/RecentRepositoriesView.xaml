@@ -138,7 +138,7 @@
                   BorderThickness="0"
                   ToolTipService.ToolTip="{Binding PinActionLabel}"
                   AutomationProperties.Name="{Binding PinActionLabel}">
-            <FontIcon Glyph="&#xE718;"
+            <FontIcon Glyph="{Binding PinGlyph}"
                       FontSize="{StaticResource Icon.Small}"
                       Opacity="{Binding PinIndicatorOpacity}" />
           </Button>

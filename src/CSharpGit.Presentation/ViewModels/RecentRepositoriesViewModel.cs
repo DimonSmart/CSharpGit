@@ -60,6 +60,7 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
     public bool IsPinned => _isPinned;
     public int? PinnedOrder => _pinnedOrder;
     public string PinActionLabel => IsPinned ? "Unpin repository" : "Pin repository";
+    public string PinGlyph => IsPinned ? "\uE840" : "\uE718";
     public double PinIndicatorOpacity => IsPinned ? 1d : 0.55d;
     public bool CanMoveEarlier => _canMoveEarlier;
     public bool CanMoveLater => _canMoveLater;
@@ -112,6 +113,7 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
             _isPinned = settings.IsPinned;
             OnPropertyChanged(nameof(IsPinned));
             OnPropertyChanged(nameof(PinActionLabel));
+            OnPropertyChanged(nameof(PinGlyph));
             OnPropertyChanged(nameof(PinIndicatorOpacity));
         }
 
