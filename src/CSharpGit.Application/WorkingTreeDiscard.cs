@@ -86,60 +86,93 @@ public static class WorkingTreeDiscard
     public static async Task<IReadOnlyList<WorkingTreeDiscardResult>> ExecuteAsync(
         Repository repository,
         WorkingTreeDiscardRequest request,
-        Func<WorkingTreeChange, CancellationToken, Task> discard,
+        Func<IReadOnlyCollection<WorkingTreeChange>, CancellationToken, Task> discardTrackedBatch,
+        Func<WorkingTreeChange, CancellationToken, Task> discardSingle,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(request);
-        ArgumentNullException.ThrowIfNull(discard);
+        ArgumentNullException.ThrowIfNull(discardTrackedBatch);
+        ArgumentNullException.ThrowIfNull(discardSingle);
 
-        var results = new List<WorkingTreeDiscardResult>(request.Changes.Count);
-        foreach (var change in request.Changes)
+        var results = new WorkingTreeDiscardResult?[request.Changes.Count];
+        var tracked = new List<IndexedChange>();
+        var single = new List<IndexedChange>();
+
+        for (var index = 0; index < request.Changes.Count; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var change = request.Changes[index];
 
             if (!IsEligible(change))
             {
-                results.Add(new WorkingTreeDiscardResult(
+                results[index] = new WorkingTreeDiscardResult(
                     change,
                     WorkingTreeDiscardOutcome.Failed,
                     change.IsConflicted
                         ? "Conflict paths must be handled by the conflict workflow."
-                        : "The path is not an unstaged working-tree change."));
+                        : "The path is not an unstaged working-tree change.");
                 continue;
             }
 
+            var item = new IndexedChange(index, change);
+            if (IsBatchEligibleTracked(change))
+                tracked.Add(item);
+            else
+                single.Add(item);
+        }
+
+        foreach (var chunk in CreateTrackedChunks(tracked))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var changes = chunk.Select(item => item.Change).ToArray();
+
             try
             {
-                await discard(change, cancellationToken);
-
-                if (change.IndexStatus == '?' && PathStillExists(repository, change.Path))
+                await discardTrackedBatch(changes, cancellationToken);
+                foreach (var item in chunk)
+                    results[item.Index] = new WorkingTreeDiscardResult(
+                        item.Change,
+                        WorkingTreeDiscardOutcome.Restored);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception batchException)
+            {
+                foreach (var item in chunk)
                 {
-                    results.Add(new WorkingTreeDiscardResult(
-                        change,
-                        WorkingTreeDiscardOutcome.Failed,
-                        DirectoryExists(repository, change.Path)
-                            ? "Untracked directories are not removed recursively by Discard."
-                            : "The untracked file still exists after deletion."));
-                    continue;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    try
+                    {
+                        await discardSingle(item.Change, cancellationToken);
+                        results[item.Index] = CreateSuccessfulSingleResult(repository, item.Change);
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception exception)
+                    {
+                        results[item.Index] = new WorkingTreeDiscardResult(
+                            item.Change,
+                            WorkingTreeDiscardOutcome.Failed,
+                            string.IsNullOrWhiteSpace(exception.Message)
+                                ? batchException.Message
+                                : exception.Message);
+                    }
                 }
+            }
+        }
 
-                if (change.WorkingTreeStatus == 'R' &&
-                    change.OriginalPath is not null &&
-                    PathStillExists(repository, change.Path))
-                {
-                    results.Add(new WorkingTreeDiscardResult(
-                        change,
-                        WorkingTreeDiscardOutcome.Failed,
-                        "The renamed destination still exists after restoring the index state."));
-                    continue;
-                }
-
-                results.Add(new WorkingTreeDiscardResult(
-                    change,
-                    change.IndexStatus == '?'
-                        ? WorkingTreeDiscardOutcome.Deleted
-                        : WorkingTreeDiscardOutcome.Restored));
+        foreach (var item in single)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                await discardSingle(item.Change, cancellationToken);
+                results[item.Index] = CreateSuccessfulSingleResult(repository, item.Change);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -147,14 +180,16 @@ public static class WorkingTreeDiscard
             }
             catch (Exception exception)
             {
-                results.Add(new WorkingTreeDiscardResult(
-                    change,
+                results[item.Index] = new WorkingTreeDiscardResult(
+                    item.Change,
                     WorkingTreeDiscardOutcome.Failed,
-                    exception.Message));
+                    exception.Message);
             }
         }
 
-        return results;
+        return results
+            .Select(result => result ?? throw new InvalidOperationException("Discard did not produce a result for every confirmed path."))
+            .ToArray();
     }
 
     public static string FormatFailures(IEnumerable<WorkingTreeDiscardResult> results)
@@ -174,6 +209,74 @@ public static class WorkingTreeDiscard
         WorkingTreeDiscardScope scope,
         WorkingTreeChange[] snapshot) =>
         new(scope, Array.AsReadOnly(snapshot));
+
+    private static bool IsBatchEligibleTracked(WorkingTreeChange change) =>
+        change.IndexStatus != '?' &&
+        change.OriginalPath is null &&
+        change.Kind != FileChangeKind.Renamed;
+
+    private static IEnumerable<IReadOnlyList<IndexedChange>> CreateTrackedChunks(
+        IReadOnlyList<IndexedChange> changes)
+    {
+        var budget = OperatingSystem.IsWindows() ? 24 * 1024 : 64 * 1024;
+        const int fixedArgumentBudget = 256;
+
+        var chunk = new List<IndexedChange>();
+        var estimatedLength = fixedArgumentBudget;
+
+        foreach (var item in changes)
+        {
+            var itemLength = EstimateSerializedPathLength(item.Change.Path);
+            if (chunk.Count > 0 && estimatedLength + itemLength > budget)
+            {
+                yield return chunk.ToArray();
+                chunk = [];
+                estimatedLength = fixedArgumentBudget;
+            }
+
+            chunk.Add(item);
+            estimatedLength += itemLength;
+        }
+
+        if (chunk.Count > 0)
+            yield return chunk.ToArray();
+    }
+
+    private static int EstimateSerializedPathLength(string path) =>
+        path.Length * 4 + 64;
+
+    private static WorkingTreeDiscardResult CreateSuccessfulSingleResult(
+        Repository repository,
+        WorkingTreeChange change)
+    {
+        if (change.IndexStatus == '?' && PathStillExists(repository, change.Path))
+        {
+            return new WorkingTreeDiscardResult(
+                change,
+                WorkingTreeDiscardOutcome.Failed,
+                DirectoryExists(repository, change.Path)
+                    ? "Untracked directories are not removed recursively by Discard."
+                    : "The untracked file still exists after deletion.");
+        }
+
+        if (change.WorkingTreeStatus == 'R' &&
+            change.OriginalPath is not null &&
+            PathStillExists(repository, change.Path))
+        {
+            return new WorkingTreeDiscardResult(
+                change,
+                WorkingTreeDiscardOutcome.Failed,
+                "The renamed destination still exists after restoring the index state.");
+        }
+
+        return new WorkingTreeDiscardResult(
+            change,
+            change.IndexStatus == '?'
+                ? WorkingTreeDiscardOutcome.Deleted
+                : WorkingTreeDiscardOutcome.Restored);
+    }
+
+    private sealed record IndexedChange(int Index, WorkingTreeChange Change);
 
     private static bool PathStillExists(Repository repository, string relativePath)
     {

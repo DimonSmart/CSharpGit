@@ -82,6 +82,140 @@ public sealed class WorkingTreeDiscardContractTests
     }
 
     [Fact]
+    public async Task SmallTrackedSetUsesOneBatchAndPreservesResultOrder()
+    {
+        var changes = new[]
+        {
+            new WorkingTreeChange("one.cs", ' ', 'M'),
+            new WorkingTreeChange("two.cs", ' ', 'D'),
+            new WorkingTreeChange("three.cs", ' ', 'M')
+        };
+        var request = WorkingTreeDiscard.CreateSelected(changes)!;
+        var batchCalls = new List<string[]>();
+        var singleCalls = 0;
+
+        var results = await WorkingTreeDiscard.ExecuteAsync(
+            CreateDummyRepository(),
+            request,
+            (batch, _) =>
+            {
+                batchCalls.Add(batch.Select(change => change.Path).ToArray());
+                return Task.CompletedTask;
+            },
+            (_, _) =>
+            {
+                singleCalls++;
+                return Task.CompletedTask;
+            });
+
+        var batch = Assert.Single(batchCalls);
+        Assert.Equal(changes.Select(change => change.Path), batch);
+        Assert.Equal(0, singleCalls);
+        Assert.Equal(changes.Select(change => change.Path), results.Select(result => result.Path));
+        Assert.All(results, result => Assert.Equal(WorkingTreeDiscardOutcome.Restored, result.Outcome));
+    }
+
+    [Fact]
+    public async Task FailedTrackedChunkFallsBackOnlyForThatChunkAndContinues()
+    {
+        var changes = Enumerable.Range(0, 160)
+            .Select(index => new WorkingTreeChange(
+                $"{index:D3}-{new string('x', 600)}.txt",
+                ' ',
+                'M'))
+            .ToArray();
+        var request = WorkingTreeDiscard.CreateSelected(changes)!;
+        var batches = new List<string[]>();
+        var fallback = new List<string>();
+
+        var results = await WorkingTreeDiscard.ExecuteAsync(
+            CreateDummyRepository(),
+            request,
+            (batch, _) =>
+            {
+                batches.Add(batch.Select(change => change.Path).ToArray());
+                if (batches.Count == 2)
+                    throw new IOException("simulated batch failure");
+                return Task.CompletedTask;
+            },
+            (change, _) =>
+            {
+                fallback.Add(change.Path);
+                return Task.CompletedTask;
+            });
+
+        Assert.True(batches.Count >= 3);
+        Assert.Equal(batches[1], fallback);
+        Assert.Equal(changes.Select(change => change.Path), results.Select(result => result.Path));
+        Assert.All(results, result => Assert.Equal(WorkingTreeDiscardOutcome.Restored, result.Outcome));
+    }
+
+    [Fact]
+    public async Task CancellationBetweenChunksStopsStartingNewDestructiveOperations()
+    {
+        var changes = Enumerable.Range(0, 160)
+            .Select(index => new WorkingTreeChange(
+                $"{index:D3}-{new string('x', 600)}.txt",
+                ' ',
+                'M'))
+            .ToArray();
+        var request = WorkingTreeDiscard.CreateSelected(changes)!;
+        using var cancellation = new CancellationTokenSource();
+        var batchCalls = 0;
+        var singleCalls = 0;
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            WorkingTreeDiscard.ExecuteAsync(
+                CreateDummyRepository(),
+                request,
+                (_, _) =>
+                {
+                    batchCalls++;
+                    cancellation.Cancel();
+                    return Task.CompletedTask;
+                },
+                (_, _) =>
+                {
+                    singleCalls++;
+                    return Task.CompletedTask;
+                },
+                cancellation.Token));
+
+        Assert.Equal(1, batchCalls);
+        Assert.Equal(0, singleCalls);
+    }
+
+    [Fact]
+    public async Task CancellationBeforeFallbackDoesNotStartPerFileFallback()
+    {
+        var changes = new[]
+        {
+            new WorkingTreeChange("one.cs", ' ', 'M'),
+            new WorkingTreeChange("two.cs", ' ', 'M')
+        };
+        using var cancellation = new CancellationTokenSource();
+        var singleCalls = 0;
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            WorkingTreeDiscard.ExecuteAsync(
+                CreateDummyRepository(),
+                WorkingTreeDiscard.CreateSelected(changes)!,
+                (_, _) =>
+                {
+                    cancellation.Cancel();
+                    throw new IOException("simulated batch failure");
+                },
+                (_, _) =>
+                {
+                    singleCalls++;
+                    return Task.CompletedTask;
+                },
+                cancellation.Token));
+
+        Assert.Equal(0, singleCalls);
+    }
+
+    [Fact]
     public void WorkingTreeUiUsesModalDiscardConfirmation()
     {
         var root = FindRepositoryRoot();
@@ -109,6 +243,8 @@ public sealed class WorkingTreeDiscardContractTests
         Assert.Contains("WorkingTreeDiscard.CreateSelected(_selectedUnstagedChanges)", discardViewModel);
         Assert.Contains("WorkingTreeDiscard.CreateAll(Changes)", discardViewModel);
         Assert.Contains("WorkingTreeDiscard.ExecuteAsync", discardViewModel);
+        Assert.Contains("DiscardTrackedFilesAsync(repository, changes, cancellationToken)", discardViewModel);
+        Assert.Contains("DiscardFileAsync(repository, change, cancellationToken)", discardViewModel);
         Assert.Contains("WorkingTreeDiscard.FormatFailures(results)", discardViewModel);
         Assert.DoesNotContain("BatchDiscardConfirmationVisibility", discardViewModel);
     }
@@ -143,6 +279,9 @@ public sealed class WorkingTreeDiscardContractTests
         Assert.Contains("await mutation()", mutate);
         Assert.Contains("await RefreshStateAsync(includeHistory)", mutate);
     }
+
+    private static Repository CreateDummyRepository() =>
+        new("work", "work", ".git", false);
 
     private static string ExtractMethod(string source, string startMarker, string endMarker)
     {

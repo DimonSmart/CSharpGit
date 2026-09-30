@@ -266,6 +266,7 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         var results = await WorkingTreeDiscard.ExecuteAsync(
             repository,
             request,
+            (_, _) => Task.CompletedTask,
             (change, _) =>
             {
                 if (change.Path == "locked.tmp") throw new IOException("simulated filesystem error");
@@ -318,6 +319,11 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         var result = Assert.Single(await WorkingTreeDiscard.ExecuteAsync(
             repository,
             request,
+            (_, _) =>
+            {
+                calls++;
+                return Task.CompletedTask;
+            },
             (_, _) =>
             {
                 calls++;
@@ -385,6 +391,88 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         Assert.Equal(string.Empty, RunGitOutput(_temporaryDirectory, "diff", "--cached", "--", "initial.txt"));
     }
 
+    [Fact]
+    public async Task SuccessfulTrackedBatchUsesSingleRestoreInvocation()
+    {
+        InitializeRepository(withCommit: true);
+        CommitFile("one.txt", "one\n", "add one");
+        CommitFile("two.txt", "two\n", "add two");
+        CommitFile("three.txt", "three\n", "add three");
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "one.txt"), "one changed\n");
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "two.txt"), "two changed\n");
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "three.txt"), "three changed\n");
+
+        var activity = new GitCommandActivityHistory();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
+        var stateService = GitTestServices.CreateRepositoryStateService();
+        var workingTreeService = new GitWorkingTreeService(
+            GitTestServices.CreateExecutor(activitySink: activity));
+        var changes = (await stateService.ReadAsync(repository)).Changes
+            .Where(change => change.Path is "one.txt" or "two.txt" or "three.txt")
+            .ToArray();
+
+        var results = await ExecuteAsync(
+            workingTreeService,
+            repository,
+            WorkingTreeDiscard.CreateSelected(changes)!);
+
+        Assert.All(results, result => Assert.Equal(WorkingTreeDiscardOutcome.Restored, result.Outcome));
+        var command = Assert.Single(activity.GetSnapshot());
+        Assert.Equal("restore", command.Arguments[0]);
+        Assert.Contains("--worktree", command.Arguments);
+        Assert.Contains(":(literal)one.txt", command.Arguments);
+        Assert.Contains(":(literal)two.txt", command.Arguments);
+        Assert.Contains(":(literal)three.txt", command.Arguments);
+    }
+
+    [Fact]
+    public async Task DiscardTreatsPathspecMetacharactersLiterally()
+    {
+        InitializeRepository(withCommit: true);
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "file[1].txt"), "bracket\n");
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "file1.txt"), "plain\n");
+        RunGit(_temporaryDirectory, "--literal-pathspecs", "add", "--", "file[1].txt", "file1.txt");
+        RunGit(_temporaryDirectory, "commit", "-m", "add pathspec fixture");
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "file[1].txt"), "bracket changed\n");
+        File.WriteAllText(Path.Combine(_temporaryDirectory, "file1.txt"), "plain changed\n");
+
+        var (stateService, workingTreeService, repository) = await OpenAsync();
+        var selected = Assert.Single(
+            (await stateService.ReadAsync(repository)).Changes,
+            change => change.Path == "file[1].txt");
+
+        var result = Assert.Single(await ExecuteAsync(
+            workingTreeService,
+            repository,
+            WorkingTreeDiscard.CreateSelected([selected])!));
+
+        Assert.Equal(WorkingTreeDiscardOutcome.Restored, result.Outcome);
+        Assert.Equal("bracket\n", File.ReadAllText(Path.Combine(_temporaryDirectory, "file[1].txt")));
+        Assert.Equal("plain changed\n", File.ReadAllText(Path.Combine(_temporaryDirectory, "file1.txt")));
+    }
+
+    [Fact]
+    public async Task TrackedBatchApiRejectsEmptyAndSpecialChanges()
+    {
+        InitializeRepository(withCommit: true);
+        var (_, workingTreeService, repository) = await OpenAsync();
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => workingTreeService.DiscardTrackedFilesAsync(repository, []));
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => workingTreeService.DiscardTrackedFilesAsync(
+                repository,
+                [new WorkingTreeChange("untracked.tmp", '?', '?')]));
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => workingTreeService.DiscardTrackedFilesAsync(
+                repository,
+                [new WorkingTreeChange("conflict.txt", 'U', 'U')]));
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => workingTreeService.DiscardTrackedFilesAsync(
+                repository,
+                [new WorkingTreeChange("new.txt", ' ', 'R', "old.txt")]));
+    }
+
     public void Dispose() => TestDirectory.Delete(_temporaryDirectory);
 
     private async Task<(GitRepositoryStateService State, GitWorkingTreeService WorkingTree, Repository Repository)> OpenAsync()
@@ -400,6 +488,7 @@ public sealed class WorkingTreeDiscardTests : IDisposable
         WorkingTreeDiscard.ExecuteAsync(
             repository,
             request,
+            (changes, cancellationToken) => workingTreeService.DiscardTrackedFilesAsync(repository, changes, cancellationToken),
             (change, cancellationToken) => workingTreeService.DiscardFileAsync(repository, change, cancellationToken));
 
     private void InitializeRepository(bool withCommit)

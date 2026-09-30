@@ -70,6 +70,46 @@ private readonly GitRepositoryCommandRunner _runner;
         }
     }
 
+    public Task DiscardTrackedFilesAsync(
+        Repository repository,
+        IReadOnlyCollection<WorkingTreeChange> changes,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
+        ArgumentNullException.ThrowIfNull(changes);
+        if (changes.Count == 0)
+            throw new ArgumentException(
+                "At least one working-tree change is required.",
+                nameof(changes));
+
+        var paths = new List<string>(changes.Count);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var change in changes)
+        {
+            GitPathValidator.ValidateChange(change);
+            if (!change.IsUnstaged)
+                throw new InvalidOperationException(
+                    "Only unstaged working-tree changes can be discarded.");
+            if (change.IndexStatus == '?')
+                throw new InvalidOperationException(
+                    "Untracked paths must use the single-item discard workflow.");
+            if (change.IsConflicted)
+                throw new InvalidOperationException(
+                    "Conflict paths must be handled by the conflict workflow.");
+            if (change.OriginalPath is not null || change.Kind == FileChangeKind.Renamed)
+                throw new InvalidOperationException(
+                    "Rename/path-pair changes must use the single-item discard workflow.");
+
+            if (seen.Add(change.Path))
+                paths.Add(LiteralPathspec(change.Path));
+        }
+
+        return _runner.RunMutationAsync(
+            repository,
+            cancellationToken,
+            ["restore", "--worktree", "--", .. paths]);
+    }
+
     public async Task DiscardFileAsync(
         Repository repository,
         WorkingTreeChange change,
@@ -108,7 +148,7 @@ private readonly GitRepositoryCommandRunner _runner;
                 "restore",
                 "--worktree",
                 "--",
-                change.OriginalPath);
+                LiteralPathspec(change.OriginalPath));
             return;
         }
 
@@ -118,7 +158,7 @@ private readonly GitRepositoryCommandRunner _runner;
             "restore",
             "--worktree",
             "--",
-            change.Path);
+            LiteralPathspec(change.Path));
     }
 
     public async Task DiscardAllFileChangesAsync(
@@ -203,6 +243,9 @@ private readonly GitRepositoryCommandRunner _runner;
             cancellationToken,
             arguments.ToArray());
     }
+
+    private static string LiteralPathspec(string path) =>
+        $":(literal){path}";
 
     private static string[] PathArguments(
         string command,
