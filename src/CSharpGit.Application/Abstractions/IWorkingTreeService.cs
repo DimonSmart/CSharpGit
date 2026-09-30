@@ -10,6 +10,10 @@ public interface IWorkingTreeService
     Task UnstageFileAsync(Repository repository, WorkingTreeChange change, CancellationToken cancellationToken = default);
     Task UnstageFilesAsync(Repository repository, IReadOnlyCollection<WorkingTreeChange> changes, CancellationToken cancellationToken = default);
     Task UnstageAllAsync(Repository repository, CancellationToken cancellationToken = default);
+    Task DiscardTrackedFilesAsync(
+        Repository repository,
+        IReadOnlyCollection<WorkingTreeChange> changes,
+        CancellationToken cancellationToken = default);
     Task DiscardFileAsync(Repository repository, WorkingTreeChange change, CancellationToken cancellationToken = default);
     Task DiscardAllFileChangesAsync(
         Repository repository,

@@ -97,6 +97,8 @@ public sealed partial class OpenRepositoryViewModel
                 results = await WorkingTreeDiscard.ExecuteAsync(
                     repository,
                     request,
+                    (changes, cancellationToken) =>
+                        _workingTreeService.DiscardTrackedFilesAsync(repository, changes, cancellationToken),
                     (change, cancellationToken) =>
                         _workingTreeService.DiscardFileAsync(repository, change, cancellationToken));
             },
