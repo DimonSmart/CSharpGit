@@ -1,0 +1,50 @@
+<UserControl x:Class="CSharpGit.Presentation.Controls.SelectableDiffViewer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ScrollViewer x:Name="DiffScroller"
+                HorizontalScrollMode="Auto"
+                HorizontalScrollBarVisibility="Auto"
+                VerticalScrollMode="Auto"
+                VerticalScrollBarVisibility="Auto">
+    <Grid MinWidth="76">
+      <ItemsRepeater x:Name="RowsRepeater"
+                     HorizontalAlignment="Stretch"
+                     IsHitTestVisible="False">
+        <ItemsRepeater.Layout>
+          <StackLayout Orientation="Vertical" Spacing="0" />
+        </ItemsRepeater.Layout>
+        <ItemsRepeater.ItemTemplate>
+          <DataTemplate>
+            <Border Height="{StaticResource Height.DiffRow}"
+                    Background="{Binding Kind, Converter={StaticResource DiffLineKindToBrushConverter}}">
+              <Grid ColumnDefinitions="38,38,*">
+                <TextBlock Text="{Binding OldLineNumber}"
+                           Style="{StaticResource DiffSecondaryTextStyle}"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Center"
+                           Margin="{StaticResource Margin.DiffNumber}" />
+                <TextBlock Grid.Column="1"
+                           Text="{Binding NewLineNumber}"
+                           Style="{StaticResource DiffSecondaryTextStyle}"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Center"
+                           Margin="{StaticResource Margin.DiffNumber}" />
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsRepeater.ItemTemplate>
+      </ItemsRepeater>
+
+      <Grid ColumnDefinitions="76,*">
+        <TextBlock x:Name="DiffText"
+                   Grid.Column="1"
+                   Style="{StaticResource SelectableDiffTextStyle}"
+                   TextWrapping="NoWrap"
+                   Padding="{StaticResource Padding.DiffText}"
+                   HorizontalAlignment="Stretch"
+                   VerticalAlignment="Top"
+                   AutomationProperties.Name="Diff text" />
+      </Grid>
+    </Grid>
+  </ScrollViewer>
+</UserControl>

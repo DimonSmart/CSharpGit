@@ -13,7 +13,6 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private readonly ObservableCollection<CompactDiffLine> _workingTreeCompactDiffLines = [];
     private readonly ObservableCollection<WorkingTreeTreeNode> _unstagedTreeRoots = [];
     private readonly ObservableCollection<WorkingTreeTreeNode> _stagedTreeRoots = [];
     private readonly WorkingTreeTreeSelection _unstagedTreeSelection = new();
@@ -34,7 +33,6 @@ public sealed partial class MainPage
 
     private void InitializeWorkingTreeDiffSurface()
     {
-        WorkingTreeCompactDiffList.ItemsSource = _workingTreeCompactDiffLines;
         UnstagedChangesTree.ItemsSource = _unstagedTreeRoots;
         StagedChangesTree.ItemsSource = _stagedTreeRoots;
 
@@ -220,8 +218,8 @@ public sealed partial class MainPage
                 return;
             }
 
-            foreach (var line in compactLines) _workingTreeCompactDiffLines.Add(line);
-            WorkingTreeCompactDiffList.Visibility = Visibility.Visible;
+            WorkingTreeDiffViewer.SetLines(compactLines);
+            WorkingTreeDiffViewer.Visibility = Visibility.Visible;
         }
         catch (OperationCanceledException)
         {
@@ -392,8 +390,8 @@ public sealed partial class MainPage
 
     private void ClearWorkingTreeDiffViewer(bool clearSelectionKind)
     {
-        _workingTreeCompactDiffLines.Clear();
-        WorkingTreeCompactDiffList.Visibility = Visibility.Collapsed;
+        WorkingTreeDiffViewer.Clear();
+        WorkingTreeDiffViewer.Visibility = Visibility.Collapsed;
         WorkingTreeBinaryInfo.Visibility = Visibility.Collapsed;
         WorkingTreeNoChangesInfo.Visibility = Visibility.Collapsed;
         WorkingTreeDiffHeader.Text = string.Empty;

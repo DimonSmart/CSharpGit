@@ -112,7 +112,7 @@
           <Border Grid.Column="1" Width="1" Height="{StaticResource Height.DiffRow}" Background="{ThemeResource DividerStrokeColorDefaultBrush}" VerticalAlignment="Center" />
           <TextBlock Grid.Column="2"
                      Text="{Binding Repository.WorkingDirectory}"
-                     Style="{StaticResource TechnicalTextStyle}"
+                     Style="{StaticResource SelectableTechnicalTextStyle}"
                      TextTrimming="CharacterEllipsis"
                      MaxWidth="430"
                      VerticalAlignment="Center"
@@ -451,17 +451,11 @@
                                Visibility="{Binding HasBinaryDiff, Converter={StaticResource BooleanToVisibilityConverter}}"
                                IsClosable="False"
                                VerticalAlignment="Top" />
-                      <ListView x:Name="CompactDiffList"
-                                Visibility="{Binding HasTextDiff, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                SelectionMode="None"
-                                MinHeight="96"
-                                ItemContainerStyle="{StaticResource DiffRowStyle}"
-                                ItemTemplate="{StaticResource DiffItemTemplate}"
-                                HorizontalContentAlignment="Stretch"
-                                ScrollViewer.HorizontalScrollMode="Auto"
-                                ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                                ScrollViewer.VerticalScrollMode="Auto"
-                                ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                      <controls:SelectableDiffViewer x:Name="CompactDiffViewer"
+                                                     Visibility="{Binding HasTextDiff, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                     MinHeight="96"
+                                                     HorizontalAlignment="Stretch"
+                                                     VerticalAlignment="Stretch" />
                     </Grid>
                   </Grid>
                 </Grid>
@@ -635,16 +629,10 @@
                            Visibility="Collapsed"
                            IsClosable="False"
                            VerticalAlignment="Top" />
-                  <ListView x:Name="WorkingTreeCompactDiffList"
-                            Visibility="Collapsed"
-                            SelectionMode="None"
-                            ItemContainerStyle="{StaticResource DiffRowStyle}"
-                            ItemTemplate="{StaticResource DiffItemTemplate}"
-                            HorizontalContentAlignment="Stretch"
-                            ScrollViewer.HorizontalScrollMode="Auto"
-                            ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                            ScrollViewer.VerticalScrollMode="Auto"
-                            ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                  <controls:SelectableDiffViewer x:Name="WorkingTreeDiffViewer"
+                                                 Visibility="Collapsed"
+                                                 HorizontalAlignment="Stretch"
+                                                 VerticalAlignment="Stretch" />
                 </Grid>
               </Grid>
             </Grid>

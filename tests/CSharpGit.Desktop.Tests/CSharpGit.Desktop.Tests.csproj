@@ -43,6 +43,7 @@
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorkingTreeTreeNode.cs" Link="WorkingTree/WorkingTreeTreeNode.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorkingTreeTreeSelection.cs" Link="WorkingTree/WorkingTreeTreeSelection.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CompactDiffLine.cs" Link="Changes/CompactDiffLine.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/DiffLogicalText.cs" Link="Changes/DiffLogicalText.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositorySnapshotTreeNode.cs" Link="RepositoryFiles/RepositorySnapshotTreeNode.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Previewing/FilePreviewModels.cs" Link="RepositoryFiles/Previewing/FilePreviewModels.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Previewing/FileLanguageClassifier.cs" Link="RepositoryFiles/Previewing/FileLanguageClassifier.cs" />
