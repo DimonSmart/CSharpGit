@@ -1,3 +1,4 @@
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Windows.System;
@@ -16,6 +17,9 @@ public sealed partial class SelectableDiffViewer : UserControl
     }
 
     public string LogicalText => DiffText.Text;
+
+    internal FrameworkElement? FirstRealizedRow =>
+        RowsRepeater.TryGetElement(0) as FrameworkElement;
 
     public void SetLines(IReadOnlyList<CompactDiffLine> lines)
     {

@@ -17,22 +17,22 @@ public sealed class SelectableTextUiContractTests
         Assert.Contains("SelectableTechnicalTextStyle", typography, StringComparison.Ordinal);
         Assert.Contains("IsTextSelectionEnabled", typography, StringComparison.Ordinal);
 
-        Assert.Contains("Style="{StaticResource SelectableBodyTextStyle}"", details, StringComparison.Ordinal);
-        Assert.Contains("Style="{StaticResource SelectableTechnicalTextStyle}"", details, StringComparison.Ordinal);
-        Assert.Contains("IsTextSelectionEnabled="True"", details, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{StaticResource SelectableBodyTextStyle}\"", details, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{StaticResource SelectableTechnicalTextStyle}\"", details, StringComparison.Ordinal);
+        Assert.Contains("IsTextSelectionEnabled=\"True\"", details, StringComparison.Ordinal);
         Assert.Contains("Copy commit message", details, StringComparison.Ordinal);
         Assert.Contains("Copy commit hash", details, StringComparison.Ordinal);
         Assert.Contains("Copy parent hash", details, StringComparison.Ordinal);
         Assert.Contains("IsTextSelectionEnabledProperty", commitTime, StringComparison.Ordinal);
 
         Assert.Contains("Repository.WorkingDirectory", main, StringComparison.Ordinal);
-        Assert.Contains("Style="{StaticResource SelectableTechnicalTextStyle}"", main, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{StaticResource SelectableTechnicalTextStyle}\"", main, StringComparison.Ordinal);
 
-        Assert.Contains("x:Name="CommandText"", console, StringComparison.Ordinal);
-        Assert.Contains("x:Name="WorkingDirectoryText"", console, StringComparison.Ordinal);
-        Assert.Contains("x:Name="StartedText"", console, StringComparison.Ordinal);
-        Assert.Contains("x:Name="DurationText"", console, StringComparison.Ordinal);
-        Assert.Contains("x:Name="ExitCodeText"", console, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"CommandText\"", console, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"WorkingDirectoryText\"", console, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"StartedText\"", console, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"DurationText\"", console, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExitCodeText\"", console, StringComparison.Ordinal);
         Assert.Contains("SelectableTechnicalTextStyle", console, StringComparison.Ordinal);
         Assert.Contains("SelectableBodyTextStyle", console, StringComparison.Ordinal);
         Assert.Contains("Copy command", console, StringComparison.Ordinal);
@@ -51,18 +51,18 @@ public sealed class SelectableTextUiContractTests
         var changes = Read(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs");
         var workingTree = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs");
 
-        Assert.Contains("controls:SelectableDiffViewer x:Name="CompactDiffViewer"", main, StringComparison.Ordinal);
-        Assert.Contains("controls:SelectableDiffViewer x:Name="WorkingTreeDiffViewer"", main, StringComparison.Ordinal);
-        Assert.DoesNotContain("x:Name="CompactDiffList"", main, StringComparison.Ordinal);
-        Assert.DoesNotContain("x:Name="WorkingTreeCompactDiffList"", main, StringComparison.Ordinal);
+        Assert.Contains("controls:SelectableDiffViewer x:Name=\"CompactDiffViewer\"", main, StringComparison.Ordinal);
+        Assert.Contains("controls:SelectableDiffViewer x:Name=\"WorkingTreeDiffViewer\"", main, StringComparison.Ordinal);
+        Assert.DoesNotContain("x:Name=\"CompactDiffList\"", main, StringComparison.Ordinal);
+        Assert.DoesNotContain("x:Name=\"WorkingTreeCompactDiffList\"", main, StringComparison.Ordinal);
 
-        Assert.Contains("ItemsRepeater x:Name="RowsRepeater"", viewerXaml, StringComparison.Ordinal);
-        Assert.Contains("ColumnDefinitions="38,38,*"", viewerXaml, StringComparison.Ordinal);
-        Assert.Contains("x:Name="DiffText"", viewerXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemsRepeater x:Name=\"RowsRepeater\"", viewerXaml, StringComparison.Ordinal);
+        Assert.Contains("ColumnDefinitions=\"38,38,*\"", viewerXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"DiffText\"", viewerXaml, StringComparison.Ordinal);
         Assert.Contains("SelectableDiffTextStyle", viewerXaml, StringComparison.Ordinal);
-        Assert.Contains("HorizontalScrollBarVisibility="Auto"", viewerXaml, StringComparison.Ordinal);
-        Assert.Contains("VerticalScrollBarVisibility="Auto"", viewerXaml, StringComparison.Ordinal);
-        Assert.Contains("IsHitTestVisible="False"", viewerXaml, StringComparison.Ordinal);
+        Assert.Contains("HorizontalScrollBarVisibility=\"Auto\"", viewerXaml, StringComparison.Ordinal);
+        Assert.Contains("VerticalScrollBarVisibility=\"Auto\"", viewerXaml, StringComparison.Ordinal);
+        Assert.Contains("IsHitTestVisible=\"False\"", viewerXaml, StringComparison.Ordinal);
 
         Assert.Contains("new DiffLogicalText(snapshot)", viewerCode, StringComparison.Ordinal);
         Assert.Contains("DiffText.Text = string.Empty", viewerCode, StringComparison.Ordinal);

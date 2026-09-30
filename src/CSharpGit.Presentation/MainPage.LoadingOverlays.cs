@@ -17,7 +17,7 @@ public sealed partial class MainPage
     {
         if (_loadingOverlaysInitialized || _viewModel is null) return;
         if (ChangedFilesTree.Parent is not Grid filesViewer) return;
-        if (CompactDiffList.Parent is not Grid diffViewer) return;
+        if (CompactDiffViewer.Parent is not Grid diffViewer) return;
 
         _changesLoadingOverlay = CreateLoadingOverlay("Loading changes…", out _changesLoadingRing);
         Grid.SetRow(_changesLoadingOverlay, 1);
