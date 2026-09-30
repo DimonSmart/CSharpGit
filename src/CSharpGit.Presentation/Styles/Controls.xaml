@@ -23,14 +23,6 @@
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
 
-  <Style x:Key="RepositoryTileActionCapsuleStyle" TargetType="Border">
-    <Setter Property="Background" Value="{ThemeResource ControlSolidFillColorDefaultBrush}" />
-    <Setter Property="BorderBrush" Value="{ThemeResource ControlStrongStrokeColorDefaultBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="18" />
-    <Setter Property="Padding" Value="2" />
-  </Style>
-
   <Style x:Key="RepositoryTileActionButtonStyle"
          TargetType="Button"
          BasedOn="{StaticResource IconButtonStyle}">
