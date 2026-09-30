@@ -32,7 +32,8 @@ public sealed class WorkingTreeDiffUiContractTests
         var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs"));
         var selection = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeTreeSelection.cs"));
         var repositoryTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "RepositoryTree.xaml"));
-        var workspace = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
+        var selectableDiff = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "SelectableDiffViewer.xaml"));
+        var selectableDiffCode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "SelectableDiffViewer.xaml.cs"));
 
         Assert.Contains("<TreeView x:Name=\"UnstagedChangesTree\"", xaml);
         Assert.Contains("<TreeView x:Name=\"StagedChangesTree\"", xaml);
@@ -67,14 +68,15 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("ShowDiscardConfirmationAsync", confirmations);
         Assert.DoesNotContain("BatchDiscardConfirmationVisibility", xaml);
 
-        Assert.Contains("x:Name=\"WorkingTreeCompactDiffList\"", xaml);
+        Assert.Contains("controls:SelectableDiffViewer x:Name=\"WorkingTreeDiffViewer\"", xaml);
         Assert.Contains("controls:GridSplitter", xaml);
         Assert.Contains("Text=\"OLD\"", xaml);
         Assert.Contains("Text=\"NEW\"", xaml);
         Assert.Contains("WorkingTreeDiffKindText", xaml);
-        Assert.Contains("ItemContainerStyle=\"{StaticResource DiffRowStyle}\"", xaml);
-        Assert.Contains("ItemTemplate=\"{StaticResource DiffItemTemplate}\"", xaml);
-        Assert.Contains("x:Key=\"DiffRowStyle\"", workspace);
+        Assert.Contains("x:Name=\"RowsRepeater\"", selectableDiff);
+        Assert.Contains("ColumnDefinitions=\"38,38,*\"", selectableDiff);
+        Assert.Contains("SelectableDiffTextStyle", selectableDiff);
+        Assert.Contains("new DiffLogicalText(snapshot)", selectableDiffCode);
         Assert.DoesNotContain("CompactResource<", workingTree);
         Assert.Contains("CompactDiffLine.Build", workingTree);
     }
