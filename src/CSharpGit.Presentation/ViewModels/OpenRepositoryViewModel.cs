@@ -60,6 +60,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private bool _setUpstream;
     private string _headDisplay = string.Empty;
     private string? _currentBranchName;
+    private string? _currentHeadCommit;
+    private bool _isDetachedHead;
     private bool? _headExists;
     private GitStash? _selectedStash;
     private GitBranch? _selectedMergeBranch;
@@ -250,7 +252,27 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         new("All references", HistoryScope.AllReferences),
         new("Current branch", HistoryScope.CurrentBranch)
     ];
-    public Repository? Repository { get => _repository; private set { if (ReferenceEquals(_repository, value)) return; ResetCommitChangesSession(); _repository = value; _headExists = null; _displayedRefreshBaseline.Clear(); Notify(); Notify(nameof(DisplayedRefreshFingerprint)); Notify(nameof(HasRepository)); Notify(nameof(RepositoryKind)); Notify(nameof(CanCreateStash)); Notify(nameof(CanForcePushWithLease)); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); } }
+    public Repository? Repository
+    {
+        get => _repository;
+        private set
+        {
+            if (ReferenceEquals(_repository, value)) return;
+
+            ResetCommitChangesSession();
+            SetHeadPresentationState(null, null, false, string.Empty);
+            _repository = value;
+            _headExists = null;
+            _displayedRefreshBaseline.Clear();
+            Notify();
+            Notify(nameof(DisplayedRefreshFingerprint));
+            Notify(nameof(HasRepository));
+            Notify(nameof(RepositoryKind));
+            Notify(nameof(CanCreateStash));
+            Notify(nameof(CanForcePushWithLease));
+            ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged();
+        }
+    }
     public RepositoryRefreshFingerprint? DisplayedRefreshFingerprint => _displayedRefreshBaseline.Fingerprint;
     public long DisplayedRefreshBaselineRevision => _displayedRefreshBaseline.Revision;
     public string? ErrorMessage { get => _errorMessage; private set { _errorMessage = value; Notify(); Notify(nameof(HasError)); } }
@@ -314,18 +336,10 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public string NewBranchName { get => _newBranchName; set { _newBranchName = value; Notify(); RaiseCommands(); } }
     public string PushBranchName { get => _pushBranchName; set { _pushBranchName = value; Notify(); } }
     public bool SetUpstream { get => _setUpstream; set { _setUpstream = value; Notify(); } }
-    public string HeadDisplay { get => _headDisplay; private set { _headDisplay = value; Notify(); } }
-    public string? CurrentBranchName
-    {
-        get => _currentBranchName;
-        private set
-        {
-            if (string.Equals(_currentBranchName, value, StringComparison.Ordinal))
-                return;
-            _currentBranchName = value;
-            Notify();
-        }
-    }
+    public string HeadDisplay => _headDisplay;
+    public string? CurrentBranchName => _currentBranchName;
+    public string? CurrentHeadCommit => _currentHeadCommit;
+    public bool IsDetachedHead => _isDetachedHead;
     public GitStash? SelectedStash { get => _selectedStash; set { _selectedStash = value; Notify(); RaiseCommands(); } }
     public GitBranch? SelectedMergeBranch { get => _selectedMergeBranch; set { _selectedMergeBranch = value; Notify(); RaiseCommands(); } }
     public string OperationDisplay { get => _operationDisplay; private set { _operationDisplay = value; Notify(); } }
@@ -554,14 +568,35 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         SelectedStash = null;
         SelectedMergeBranch = null;
         SelectedConflict = null;
-        HeadDisplay = string.Empty;
-        CurrentBranchName = null;
+        SetHeadPresentationState(null, null, false, string.Empty);
         HasMore = false;
         CurrentOperation = RepositoryOperation.None;
         OperationState = RepositoryOperationState.None;
         OperationDisplay = string.Empty;
         ClearDisplayedRefreshBaseline();
         RaiseCommands();
+    }
+
+    private void SetHeadPresentationState(
+        string? branchName,
+        string? headCommit,
+        bool isDetachedHead,
+        string headDisplay)
+    {
+        var headDisplayChanged = !string.Equals(_headDisplay, headDisplay, StringComparison.Ordinal);
+        var branchChanged = !string.Equals(_currentBranchName, branchName, StringComparison.Ordinal);
+        var commitChanged = !string.Equals(_currentHeadCommit, headCommit, StringComparison.Ordinal);
+        var detachedChanged = _isDetachedHead != isDetachedHead;
+
+        _headDisplay = headDisplay;
+        _currentBranchName = branchName;
+        _currentHeadCommit = headCommit;
+        _isDetachedHead = isDetachedHead;
+
+        if (headDisplayChanged) Notify(nameof(HeadDisplay));
+        if (branchChanged) Notify(nameof(CurrentBranchName));
+        if (commitChanged) Notify(nameof(CurrentHeadCommit));
+        if (detachedChanged) Notify(nameof(IsDetachedHead));
     }
 
     private void ClearDisplayedRefreshBaseline()
@@ -619,8 +654,11 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
             _headExists = state.HeadCommit is not null;
             var shortHead = state.HeadCommit is { } commit ? commit[..Math.Min(10, commit.Length)] : "no commit";
-            CurrentBranchName = state.IsDetached ? null : state.HeadReference;
-            HeadDisplay = state.IsDetached ? $"Detached HEAD: {shortHead}" : $"Current branch: {state.HeadReference}";
+            SetHeadPresentationState(
+                state.IsDetached ? null : state.HeadReference,
+                state.HeadCommit,
+                state.IsDetached,
+                state.IsDetached ? $"Detached HEAD: {shortHead}" : $"Current branch: {state.HeadReference}");
             Replace(Changes, state.Changes);
             Replace(LocalBranches, state.Refs.LocalBranches);
             Notify(nameof(CanForcePushWithLease));

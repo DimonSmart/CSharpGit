@@ -16,6 +16,7 @@
     <Compile Include="../../src/CSharpGit.Presentation/RepositoryChangeMonitor.cs" Link="RepositoryChangeMonitor.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/RepositoryRefreshLifecycleState.cs" Link="RepositoryRefreshLifecycleState.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/DisplayedRepositoryRefreshBaseline.cs" Link="DisplayedRepositoryRefreshBaseline.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/MainWindowTitleFormatter.cs" Link="MainWindowTitleFormatter.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitTimeFormatter.cs" Link="CommitTime/CommitTimeFormatter.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Controls/AuthorAvatarFallback.cs" Link="Avatars/AuthorAvatarFallback.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Controls/AuthorAvatarRequestGate.cs" Link="Avatars/AuthorAvatarRequestGate.cs" />
