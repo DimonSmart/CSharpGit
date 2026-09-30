@@ -21,7 +21,7 @@
               HorizontalAlignment="Stretch">
     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.XS}">
       <TextBlock Text="{Binding SelectedHistoryRow.Commit.Message}"
-                 Style="{StaticResource BodyTextStyle}"
+                 Style="{StaticResource SelectableBodyTextStyle}"
                  TextWrapping="Wrap" />
       <Button Grid.Column="1"
               Tag="{Binding SelectedHistoryRow.Commit.Message}"
@@ -62,7 +62,7 @@
                                Margin="0,0,8,0" />
         <TextBlock Grid.Column="1"
                    Text="{Binding SelectedHistoryRow.Commit.Author}"
-                   Style="{StaticResource BodyTextStyle}"
+                   Style="{StaticResource SelectableBodyTextStyle}"
                    VerticalAlignment="Center" />
       </Grid>
 
@@ -71,6 +71,7 @@
                                Grid.Column="1"
                                Value="{Binding SelectedHistoryRow.Commit.AuthoredAt}"
                                Mode="{Binding CommitTimeDisplayMode}"
+                               IsTextSelectionEnabled="True"
                                FontSize="{StaticResource Font.Body}" />
 
       <TextBlock Grid.Row="2" Text="Hash" Style="{StaticResource SecondaryTextStyle}" />
@@ -79,7 +80,7 @@
                   Orientation="Horizontal"
                   Spacing="{StaticResource Spacing.XS}">
         <TextBlock Text="{Binding SelectedHistoryRow.Commit.Hash}"
-                   Style="{StaticResource TechnicalTextStyle}"
+                   Style="{StaticResource SelectableTechnicalTextStyle}"
                    TextWrapping="Wrap"
                    VerticalAlignment="Center" />
         <Button Tag="{Binding SelectedHistoryRow.Commit.Hash}"
@@ -97,14 +98,14 @@
                   Grid.Column="1"
                   Spacing="{StaticResource Spacing.XS}">
         <TextBlock Text="{Binding SelectedHistoryRow.Commit.ParentsDisplay}"
-                   Style="{StaticResource TechnicalTextStyle}"
+                   Style="{StaticResource SelectableTechnicalTextStyle}"
                    Visibility="{Binding SelectedHistoryRow.Commit.IsRootCommit, Converter={StaticResource BooleanToVisibilityConverter}}" />
         <ItemsControl ItemsSource="{Binding SelectedHistoryRow.Commit.Parents}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
               <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.XS}">
                 <TextBlock Text="{Binding}"
-                           Style="{StaticResource TechnicalTextStyle}"
+                           Style="{StaticResource SelectableTechnicalTextStyle}"
                            TextWrapping="Wrap"
                            VerticalAlignment="Center" />
                 <Button Tag="{Binding}"

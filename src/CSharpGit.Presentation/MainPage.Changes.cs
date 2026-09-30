@@ -10,7 +10,6 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage
 {
     private readonly ObservableCollection<ChangedFileTreeNode> _changedFileTreeRoots = [];
-    private readonly ObservableCollection<CompactDiffLine> _compactDiffLines = [];
     private bool _changesSurfaceInitialized;
     private bool _changedFileTreeRefreshQueued;
 
@@ -23,7 +22,6 @@ public sealed partial class MainPage
         _changesSurfaceInitialized = true;
 
         ChangedFilesTree.ItemsSource = _changedFileTreeRoots;
-        CompactDiffList.ItemsSource = _compactDiffLines;
         _commitFiles.CollectionChanged += CommitFiles_CollectionChanged;
         _viewModel.PropertyChanged += ChangesViewModel_PropertyChanged;
 
@@ -88,9 +86,13 @@ public sealed partial class MainPage
     {
         if (!_changesSurfaceInitialized) return;
 
-        _compactDiffLines.Clear();
-        if (_viewModel.SelectedDiff is not { IsBinary: false } diff) return;
-        foreach (var line in CompactDiffLine.Build(diff.Lines)) _compactDiffLines.Add(line);
+        if (_viewModel.SelectedDiff is not { IsBinary: false } diff)
+        {
+            CompactDiffViewer.Clear();
+            return;
+        }
+
+        CompactDiffViewer.SetLines(CompactDiffLine.Build(diff.Lines));
     }
 
     private void EnsureCurrentCommitFileSelection()

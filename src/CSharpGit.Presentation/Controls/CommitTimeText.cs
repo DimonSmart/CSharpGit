@@ -18,6 +18,12 @@ public sealed class CommitTimeText : UserControl
         typeof(CommitTimeText),
         new PropertyMetadata(CommitTimeDisplayMode.Smart, OnDisplayPropertyChanged));
 
+    public static readonly DependencyProperty IsTextSelectionEnabledProperty = DependencyProperty.Register(
+        nameof(IsTextSelectionEnabled),
+        typeof(bool),
+        typeof(CommitTimeText),
+        new PropertyMetadata(false, OnTextSelectionEnabledChanged));
+
     private readonly TextBlock _textBlock = new()
     {
         VerticalAlignment = VerticalAlignment.Center,
@@ -49,10 +55,19 @@ public sealed class CommitTimeText : UserControl
         set => SetValue(ModeProperty, value);
     }
 
+    public bool IsTextSelectionEnabled
+    {
+        get => (bool)GetValue(IsTextSelectionEnabledProperty);
+        set => SetValue(IsTextSelectionEnabledProperty, value);
+    }
+
     public string Text => _textBlock.Text;
 
     private static void OnDisplayPropertyChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args) =>
         ((CommitTimeText)dependencyObject).UpdateDisplay();
+
+    private static void OnTextSelectionEnabledChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args) =>
+        ((CommitTimeText)dependencyObject)._textBlock.IsTextSelectionEnabled = (bool)args.NewValue;
 
     private void UpdateDisplay()
     {
