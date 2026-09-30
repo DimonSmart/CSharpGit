@@ -138,6 +138,8 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         _window = new Window { Title = "CSharpGit" };
         var themeManager = _host.Services.GetRequiredService<ApplicationThemeManager>();
         var mainPage = _host.Services.GetRequiredService<MainPage>();
+        mainPage.WindowTitleChanged += MainPage_WindowTitleChanged;
+        _window.Title = mainPage.CurrentWindowTitle;
         _mainThemeRegistration = themeManager.Register(mainPage);
         _window.Content = mainPage;
         _window.AppWindow.Changed += (_, eventArgs) =>
@@ -197,6 +199,12 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             await mainPage.OpenInitialRepositoryAsync();
     }
 
+    private void MainPage_WindowTitleChanged(string title)
+    {
+        if (_window is not null)
+            _window.Title = title;
+    }
+
     private static void SetWindowIcon(Window window, ILogger logger)
     {
         if (!OperatingSystem.IsWindows()) return;
@@ -249,6 +257,8 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     {
         if (_shutdownRequested) return;
         _shutdownRequested = true;
+        if (page is not null)
+            page.WindowTitleChanged -= MainPage_WindowTitleChanged;
         page?.BeginShutdown();
     }
 

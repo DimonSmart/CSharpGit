@@ -42,6 +42,14 @@ public sealed partial class MainPage : Page
     private readonly SolidColorBrush _busyStatusBackgroundBrush = new(Windows.UI.Color.FromArgb(28, 34, 197, 94));
     private bool _busyPulseRunning;
 
+    internal event Action<string>? WindowTitleChanged;
+
+    internal string CurrentWindowTitle => MainWindowTitleFormatter.Format(
+        _viewModel.Repository,
+        _viewModel.CurrentBranchName,
+        _viewModel.CurrentHeadCommit,
+        _viewModel.IsDetachedHead);
+
     private MainPage(
         OpenRepositoryViewModel viewModel,
         IReferenceHistoryService referenceHistoryService,
@@ -118,6 +126,12 @@ public sealed partial class MainPage : Page
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
+        if (eventArgs.PropertyName is nameof(OpenRepositoryViewModel.Repository)
+            or nameof(OpenRepositoryViewModel.CurrentBranchName)
+            or nameof(OpenRepositoryViewModel.CurrentHeadCommit)
+            or nameof(OpenRepositoryViewModel.IsDetachedHead))
+            PublishWindowTitle();
+
         if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.Repository))
         {
             ResetReferenceHistoryForRepositorySwitch();
@@ -160,6 +174,8 @@ public sealed partial class MainPage : Page
                 _ = LoadScopedHistoryAsync(true);
         }
     }
+
+    private void PublishWindowTitle() => WindowTitleChanged?.Invoke(CurrentWindowTitle);
 
     private void RefreshPresentationCollections()
     {

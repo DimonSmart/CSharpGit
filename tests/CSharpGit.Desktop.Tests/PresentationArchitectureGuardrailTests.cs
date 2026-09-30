@@ -95,6 +95,28 @@ public sealed class PresentationArchitectureGuardrailTests
         }
     }
 
+    [Fact]
+    public void WindowTitleUsesPresentationStateAndShellOwnedWindow()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
+        var mainPage = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+        var viewModel = File.ReadAllText(Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.cs"));
+        var formatter = File.ReadAllText(Path.Combine(presentation, "MainWindowTitleFormatter.cs"));
+
+        Assert.Contains("mainPage.WindowTitleChanged += MainPage_WindowTitleChanged;", app, StringComparison.Ordinal);
+        Assert.Contains("page.WindowTitleChanged -= MainPage_WindowTitleChanged;", app, StringComparison.Ordinal);
+        Assert.Contains("_window.Title = title;", app, StringComparison.Ordinal);
+        Assert.Contains("CurrentHeadCommit", mainPage, StringComparison.Ordinal);
+        Assert.Contains("IsDetachedHead", mainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("Window.Title", viewModel, StringComparison.Ordinal);
+        Assert.DoesNotContain("Microsoft.UI.Xaml", viewModel, StringComparison.Ordinal);
+        Assert.DoesNotContain("IRepositoryStateService", formatter, StringComparison.Ordinal);
+        Assert.DoesNotContain("IProcessExecutor", formatter, StringComparison.Ordinal);
+        Assert.DoesNotContain("HeadDisplay", formatter, StringComparison.Ordinal);
+    }
+
     private static IEnumerable<string> ProductionCsFiles(string root) =>
         Directory
             .GetFiles(root, "*.cs", SearchOption.AllDirectories)
