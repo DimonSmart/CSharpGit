@@ -89,7 +89,7 @@ public sealed partial class MainPage
 
     private void InstallCommitFileActions()
     {
-        if (CompactDiffList.Parent is not Grid diffBody || diffBody.Parent is not Grid diffGrid)
+        if (CompactDiffViewer.Parent is not Grid diffBody || diffBody.Parent is not Grid diffGrid)
             return;
         var header = diffGrid.Children.OfType<Border>().FirstOrDefault(element => Grid.GetRow(element) == 0);
         if (header?.Child is not UIElement existingContent) return;

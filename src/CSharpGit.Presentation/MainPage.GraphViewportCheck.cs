@@ -369,13 +369,12 @@ public sealed partial class MainPage
 
             CheckActualHeight(ChangedFilesHeader, 0, 26, "changed files header", failures);
 
-            if (_compactDiffLines.FirstOrDefault() is { } firstDiffLine)
+            if (!string.IsNullOrEmpty(CompactDiffViewer.LogicalText))
             {
-                CompactDiffList.ScrollIntoView(firstDiffLine);
                 await WaitUntilAsync(
-                    () => CompactDiffList.ContainerFromItem(firstDiffLine) is ListViewItem,
+                    () => CompactDiffViewer.FirstRealizedRow is not null,
                     TimeSpan.FromSeconds(5));
-                CheckActualHeight(CompactDiffList.ContainerFromItem(firstDiffLine) as FrameworkElement, 19, 21, "diff row", failures);
+                CheckActualHeight(CompactDiffViewer.FirstRealizedRow, 19, 21, "diff row", failures);
             }
         }
         finally
