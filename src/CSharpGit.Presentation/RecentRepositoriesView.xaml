@@ -17,6 +17,52 @@
       <Setter Property="VerticalContentAlignment" Value="Stretch" />
     </Style>
 
+    <DataTemplate x:Key="RecentRepositoryTextTemplate">
+      <Grid RowDefinitions="38,Auto,*">
+        <TextBlock Text="{Binding DisplayName}"
+                   Style="{StaticResource TitleTextStyle}"
+                   Margin="0,0,76,0"
+                   VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis" />
+        <TextBlock Grid.Row="1"
+                   Text="{Binding Path}"
+                   Style="{StaticResource TechnicalSecondaryTextStyle}"
+                   Margin="0,2,0,0"
+                   TextTrimming="CharacterEllipsis"
+                   ToolTipService.ToolTip="{Binding Path}" />
+        <TextBlock Grid.Row="2"
+                   Text="{Binding Metadata}"
+                   Style="{StaticResource SecondaryTextStyle}"
+                   Margin="0,6,0,0"
+                   VerticalAlignment="Top"
+                   TextWrapping="Wrap"
+                   MaxLines="2"
+                   TextTrimming="CharacterEllipsis" />
+      </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="RecentRepositoryActionsTemplate">
+      <Border Style="{StaticResource RepositoryTileActionCapsuleStyle}">
+        <StackPanel Orientation="Horizontal">
+          <Button Command="{Binding PinCommand}"
+                  Style="{StaticResource RepositoryTileActionButtonStyle}"
+                  Foreground="{ThemeResource AccentFillColorDefaultBrush}"
+                  ToolTipService.ToolTip="{Binding PinActionLabel}"
+                  AutomationProperties.Name="{Binding PinActionLabel}">
+            <FontIcon Glyph="{Binding PinGlyph}"
+                      FontSize="{StaticResource Icon.Small}"
+                      Opacity="{Binding PinIndicatorOpacity}" />
+          </Button>
+          <Button Command="{Binding RemoveCommand}"
+                  Style="{StaticResource RepositoryTileActionButtonStyle}"
+                  ToolTipService.ToolTip="Remove from recent"
+                  AutomationProperties.Name="Remove from recent">
+            <FontIcon Glyph="&#xE711;" FontSize="{StaticResource Icon.Small}" />
+          </Button>
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+
     <DataTemplate x:Key="RecentRepositoryTileTemplate">
       <Grid Height="156" Padding="6">
         <Grid.ContextFlyout>
@@ -47,10 +93,8 @@
             <Grid>
               <Grid Visibility="{Binding RepositoryCompactLayoutVisibility}"
                     ColumnDefinitions="64,*"
-                    RowDefinitions="Auto,Auto,*"
                     ColumnSpacing="{StaticResource Spacing.XL}">
-                <Border Grid.RowSpan="3"
-                        Width="64" Height="64" CornerRadius="9"
+                <Border Width="64" Height="64" CornerRadius="9"
                         Background="{ThemeResource AccentFillColorSecondaryBrush}"
                         VerticalAlignment="Top">
                   <Grid>
@@ -67,49 +111,21 @@
                            ImageFailed="RepositoryImage_ImageFailed" />
                   </Grid>
                 </Border>
-                <TextBlock Grid.Column="1"
-                           Text="{Binding DisplayName}"
-                           Style="{StaticResource TitleTextStyle}"
-                           Margin="0,1,76,0"
-                           TextTrimming="CharacterEllipsis" />
-                <TextBlock Grid.Row="1"
-                           Grid.Column="1"
-                           Text="{Binding Path}"
-                           Style="{StaticResource TechnicalSecondaryTextStyle}"
-                           Margin="0,5,10,0"
-                           TextTrimming="CharacterEllipsis"
-                           ToolTipService.ToolTip="{Binding Path}" />
-                <TextBlock Grid.Row="2"
-                           Grid.Column="1"
-                           Text="{Binding Metadata}"
-                           Style="{StaticResource SecondaryTextStyle}"
-                           Margin="0,8,10,0"
-                           VerticalAlignment="Top"
-                           TextTrimming="CharacterEllipsis" />
+                <ContentControl Grid.Column="1"
+                                Content="{Binding}"
+                                ContentTemplate="{StaticResource RecentRepositoryTextTemplate}"
+                                HorizontalContentAlignment="Stretch"
+                                VerticalContentAlignment="Stretch" />
               </Grid>
 
               <Grid Visibility="{Binding RepositoryPreviewLayoutVisibility}"
                     ColumnDefinitions="*,280"
-                    RowDefinitions="Auto,Auto,*"
                     ColumnSpacing="{StaticResource Spacing.XL}">
-                <TextBlock Text="{Binding DisplayName}"
-                           Style="{StaticResource TitleTextStyle}"
-                           Margin="0,1,76,0"
-                           TextTrimming="CharacterEllipsis" />
-                <TextBlock Grid.Row="1"
-                           Text="{Binding Path}"
-                           Style="{StaticResource TechnicalSecondaryTextStyle}"
-                           Margin="0,5,0,0"
-                           TextTrimming="CharacterEllipsis"
-                           ToolTipService.ToolTip="{Binding Path}" />
-                <TextBlock Grid.Row="2"
-                           Text="{Binding Metadata}"
-                           Style="{StaticResource SecondaryTextStyle}"
-                           Margin="0,8,0,0"
-                           VerticalAlignment="Top"
-                           TextTrimming="CharacterEllipsis" />
-                <Border Grid.RowSpan="3"
-                        Grid.Column="1"
+                <ContentControl Content="{Binding}"
+                                ContentTemplate="{StaticResource RecentRepositoryTextTemplate}"
+                                HorizontalContentAlignment="Stretch"
+                                VerticalContentAlignment="Stretch" />
+                <Border Grid.Column="1"
                         Width="280" Height="116"
                         CornerRadius="7"
                         BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
@@ -126,32 +142,23 @@
           </Border>
         </Button>
 
-        <StackPanel Orientation="Horizontal"
-                    Spacing="2"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Top"
-                    Margin="0,12,12,0">
-          <Button Command="{Binding PinCommand}"
-                  Width="30" Height="30"
-                  Padding="0"
-                  Background="Transparent"
-                  BorderThickness="0"
-                  ToolTipService.ToolTip="{Binding PinActionLabel}"
-                  AutomationProperties.Name="{Binding PinActionLabel}">
-            <FontIcon Glyph="{Binding PinGlyph}"
-                      FontSize="{StaticResource Icon.Small}"
-                      Opacity="{Binding PinIndicatorOpacity}" />
-          </Button>
-          <Button Command="{Binding RemoveCommand}"
-                  Width="30" Height="30"
-                  Padding="0"
-                  Background="Transparent"
-                  BorderThickness="0"
-                  ToolTipService.ToolTip="Remove from recent"
-                  AutomationProperties.Name="Remove from recent">
-            <FontIcon Glyph="&#xE711;" FontSize="{StaticResource Icon.Small}" />
-          </Button>
-        </StackPanel>
+        <Grid Visibility="{Binding RepositoryCompactLayoutVisibility}"
+              Margin="18">
+          <ContentControl Content="{Binding}"
+                          ContentTemplate="{StaticResource RecentRepositoryActionsTemplate}"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Top" />
+        </Grid>
+
+        <Grid Visibility="{Binding RepositoryPreviewLayoutVisibility}"
+              Margin="18"
+              ColumnDefinitions="*,280"
+              ColumnSpacing="{StaticResource Spacing.XL}">
+          <ContentControl Content="{Binding}"
+                          ContentTemplate="{StaticResource RecentRepositoryActionsTemplate}"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Top" />
+        </Grid>
       </Grid>
     </DataTemplate>
   </UserControl.Resources>

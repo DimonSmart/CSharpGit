@@ -61,7 +61,7 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
     public int? PinnedOrder => _pinnedOrder;
     public string PinActionLabel => IsPinned ? "Unpin repository" : "Pin repository";
     public string PinGlyph => IsPinned ? "\uE718" : "\uE77A";
-    public double PinIndicatorOpacity => IsPinned ? 1d : 0.55d;
+    public double PinIndicatorOpacity => IsPinned ? 1d : 0.85d;
     public bool CanMoveEarlier => _canMoveEarlier;
     public bool CanMoveLater => _canMoveLater;
     public ICommand OpenCommand { get; }

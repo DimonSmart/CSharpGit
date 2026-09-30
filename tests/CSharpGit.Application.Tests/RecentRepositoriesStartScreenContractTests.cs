@@ -16,6 +16,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
         var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var recentView = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "RecentRepositoriesView.xaml"));
+        var controlsStyles = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Controls.xaml"));
         var recentViewCodeBehind = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "RecentRepositoriesView.xaml.cs"));
         var recentGrid = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "RecentRepositoriesGridView.cs"));
         var recentViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RecentRepositoriesViewModel.cs"));
@@ -78,6 +79,16 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("PinnedRepositories", recentView);
         Assert.Contains("PinCommand", recentView);
         Assert.Contains("PinActionLabel", recentView);
+        Assert.Contains("RecentRepositoryTextTemplate", recentView);
+        Assert.Contains("RecentRepositoryActionsTemplate", recentView);
+        Assert.Contains("RowDefinitions=\"38,Auto,*\"", recentView);
+        Assert.Contains("TextWrapping=\"Wrap\"", recentView);
+        Assert.Contains("MaxLines=\"2\"", recentView);
+        Assert.Contains("RepositoryTileActionCapsuleStyle", recentView);
+        Assert.Contains("RepositoryTileActionButtonStyle", recentView);
+        Assert.Contains("RepositoryTileActionCapsuleStyle", controlsStyles);
+        Assert.Contains("RepositoryTileActionButtonStyle", controlsStyles);
+        Assert.Contains("UseSystemFocusVisuals", controlsStyles);
         Assert.Contains("Move earlier", recentView);
         Assert.Contains("Move later", recentView);
         Assert.Contains("DragItemsStarting", recentView);
@@ -93,7 +104,6 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.DoesNotContain("ItemsWrapGrid", recentView);
         Assert.Contains("ItemWidth=\"344\" ItemHeight=\"156\"", recentView);
         Assert.Contains("Width=\"64\" Height=\"64\"", recentView);
-        Assert.Contains("Grid.RowSpan=\"3\"", recentView);
         Assert.Contains("Source=\"{Binding RepositoryImage}\"", recentView);
         Assert.Contains("RepositoryGlyphOpacity", recentView);
         Assert.Contains("RepositoryCompactLayoutVisibility", recentView);
