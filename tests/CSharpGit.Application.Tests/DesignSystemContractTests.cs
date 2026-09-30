@@ -50,7 +50,9 @@ public sealed class DesignSystemContractTests
             "BodyTextStyle", "BodyStrongTextStyle", "BodySubduedTextStyle",
             "SecondaryTextStyle", "CaptionTextStyle", "CaptionStrongTextStyle",
             "PaneHeaderTextStyle", "SectionHeaderTextStyle", "ToolbarProductTextStyle", "TitleTextStyle",
-            "TechnicalTextStyle", "TechnicalSecondaryTextStyle", "DiffTextStyle"
+            "TechnicalTextStyle", "TechnicalSecondaryTextStyle", "DiffTextStyle",
+            "SelectableBodyTextStyle", "SelectableSecondaryTextStyle",
+            "SelectableTechnicalTextStyle", "SelectableDiffTextStyle"
         })
             Assert.Contains($"x:Key=\"{style}\"", typography);
 
@@ -115,6 +117,7 @@ public sealed class DesignSystemContractTests
         var workspace = Read(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml");
         var repositoryTree = Read(root, "src", "CSharpGit.Presentation", "Styles", "RepositoryTree.xaml");
         var historyReferences = Read(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml");
+        var selectableDiff = Read(root, "src", "CSharpGit.Presentation", "Controls", "SelectableDiffViewer.xaml");
 
         Assert.Contains("<x:Double x:Key=\"Height.DataRow\">24</x:Double>", tokens);
         Assert.Contains("<x:Double x:Key=\"Height.Header\">26</x:Double>", tokens);
@@ -132,8 +135,12 @@ public sealed class DesignSystemContractTests
         Assert.Contains("ItemTemplate=\"{StaticResource HistoryItemTemplate}\"", main);
         Assert.DoesNotContain("ChangedFileRowStyle", main);
         Assert.Contains("ItemTemplate=\"{StaticResource ChangedFileTreeItemTemplate}\"", main);
-        Assert.True(Count(main, "ItemContainerStyle=\"{StaticResource DiffRowStyle}\"") >= 2);
-        Assert.True(Count(main, "ItemTemplate=\"{StaticResource DiffItemTemplate}\"") >= 2);
+        Assert.Equal(2, Count(main, "<controls:SelectableDiffViewer"));
+        Assert.Contains("x:Name=\"CompactDiffViewer\"", main);
+        Assert.Contains("x:Name=\"WorkingTreeDiffViewer\"", main);
+        Assert.Contains("Height=\"{StaticResource Height.DiffRow}\"", selectableDiff);
+        Assert.Contains("DiffLineKindToBrushConverter", selectableDiff);
+        Assert.Contains("SelectableDiffTextStyle", selectableDiff);
         Assert.Contains("Style=\"{StaticResource ToolbarSurfaceStyle}\"", main);
         Assert.Contains("Style=\"{StaticResource StatusBarSurfaceStyle}\"", main);
         Assert.Contains("Style=\"{StaticResource DenseColumnHeaderSurfaceStyle}\"", main);
@@ -146,7 +153,6 @@ public sealed class DesignSystemContractTests
         Assert.DoesNotContain("x:Key=\"WorkingTreeRowStyle\"", workspace);
         Assert.Contains("x:Key=\"HistoryRowStyle\"", workspace);
         Assert.DoesNotContain("x:Key=\"ChangedFileRowStyle\"", workspace);
-        Assert.Contains("x:Key=\"DiffRowStyle\"", workspace);
         Assert.Contains("x:Key=\"DenseColumnHeaderSurfaceStyle\"", workspace);
         Assert.Contains("x:Key=\"CompactPivotHeaderItemStyle\"", workspace);
         Assert.Contains("x:Key=\"DenseTreeItemStyle\"", repositoryTree);
@@ -174,7 +180,7 @@ public sealed class DesignSystemContractTests
         var details = Read(root, "src", "CSharpGit.Presentation", "Controls", "CommitDetailsView.xaml");
 
         var bodyMessage = new Regex(
-            "Text=\"\\{Binding SelectedHistoryRow\\.Commit\\.Message\\}\"\\s+Style=\"\\{StaticResource BodyTextStyle\\}\"",
+            "Text=\"\\{Binding SelectedHistoryRow\\.Commit\\.Message\\}\"\\s+Style=\"\\{StaticResource SelectableBodyTextStyle\\}\"",
             RegexOptions.CultureInvariant);
 
         Assert.Contains("<controls:CommitDetailsView x:Name=\"CommitDetailsContent\" />", main);
@@ -183,7 +189,7 @@ public sealed class DesignSystemContractTests
             new Regex("SelectedHistoryRow\\.Commit\\.Message[\\s\\S]{0,120}SectionHeaderTextStyle", RegexOptions.CultureInvariant),
             details);
 
-        Assert.Contains("Style=\"{StaticResource TechnicalTextStyle}\"", details);
+        Assert.Contains("Style=\"{StaticResource SelectableTechnicalTextStyle}\"", details);
         Assert.DoesNotContain("Style=\"{StaticResource DiffTextStyle}\"", details);
     }
 

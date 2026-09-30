@@ -14,6 +14,7 @@ public sealed class DesktopUiContractTests
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var program = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Platforms", "Desktop", "Program.cs"));
         var splitter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "GridSplitter.cs"));
+        var selectableDiff = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "SelectableDiffViewer.xaml"));
 
         Assert.Contains("OpenRepositoryCommand", xaml);
         Assert.Contains("HistoryFilter", xaml);
@@ -28,8 +29,8 @@ public sealed class DesktopUiContractTests
         Assert.Contains("HasVisualSurfaceForCheck", splitter);
         Assert.Contains("ResizeCompleted", splitter);
         Assert.Contains("layout.json", splitter);
-        Assert.Contains("HorizontalScrollBarVisibility=\"Auto\"", xaml);
-        Assert.Contains("VerticalScrollBarVisibility=\"Auto\"", xaml);
+        Assert.Contains("HorizontalScrollBarVisibility=\"Auto\"", selectableDiff);
+        Assert.Contains("VerticalScrollBarVisibility=\"Auto\"", selectableDiff);
         Assert.Contains("TextTrimming=\"CharacterEllipsis\"", xaml);
         Assert.Contains("MaxHeight=", xaml);
         Assert.Contains("IsActive=\"{Binding IsBusy}\"", xaml);
