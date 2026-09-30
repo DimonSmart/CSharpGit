@@ -84,9 +84,9 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("RowDefinitions=\"38,Auto,*\"", recentView);
         Assert.Contains("TextWrapping=\"Wrap\"", recentView);
         Assert.Contains("MaxLines=\"2\"", recentView);
-        Assert.Contains("RepositoryTileActionCapsuleStyle", recentView);
+        Assert.DoesNotContain("RepositoryTileActionCapsuleStyle", recentView);
         Assert.Contains("RepositoryTileActionButtonStyle", recentView);
-        Assert.Contains("RepositoryTileActionCapsuleStyle", controlsStyles);
+        Assert.DoesNotContain("RepositoryTileActionCapsuleStyle", controlsStyles);
         Assert.Contains("RepositoryTileActionButtonStyle", controlsStyles);
         Assert.Contains("UseSystemFocusVisuals", controlsStyles);
         Assert.Contains("Move earlier", recentView);

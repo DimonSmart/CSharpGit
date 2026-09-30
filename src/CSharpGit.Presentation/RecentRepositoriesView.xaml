@@ -42,25 +42,24 @@
     </DataTemplate>
 
     <DataTemplate x:Key="RecentRepositoryActionsTemplate">
-      <Border Style="{StaticResource RepositoryTileActionCapsuleStyle}">
-        <StackPanel Orientation="Horizontal">
-          <Button Command="{Binding PinCommand}"
-                  Style="{StaticResource RepositoryTileActionButtonStyle}"
-                  Foreground="{ThemeResource AccentFillColorDefaultBrush}"
-                  ToolTipService.ToolTip="{Binding PinActionLabel}"
-                  AutomationProperties.Name="{Binding PinActionLabel}">
-            <FontIcon Glyph="{Binding PinGlyph}"
-                      FontSize="{StaticResource Icon.Small}"
-                      Opacity="{Binding PinIndicatorOpacity}" />
-          </Button>
-          <Button Command="{Binding RemoveCommand}"
-                  Style="{StaticResource RepositoryTileActionButtonStyle}"
-                  ToolTipService.ToolTip="Remove from recent"
-                  AutomationProperties.Name="Remove from recent">
-            <FontIcon Glyph="&#xE711;" FontSize="{StaticResource Icon.Small}" />
-          </Button>
-        </StackPanel>
-      </Border>
+      <StackPanel Orientation="Horizontal"
+                  Spacing="{StaticResource Spacing.XS}">
+        <Button Command="{Binding PinCommand}"
+                Style="{StaticResource RepositoryTileActionButtonStyle}"
+                Foreground="{ThemeResource AccentFillColorDefaultBrush}"
+                ToolTipService.ToolTip="{Binding PinActionLabel}"
+                AutomationProperties.Name="{Binding PinActionLabel}">
+          <FontIcon Glyph="{Binding PinGlyph}"
+                    FontSize="{StaticResource Icon.Small}"
+                    Opacity="{Binding PinIndicatorOpacity}" />
+        </Button>
+        <Button Command="{Binding RemoveCommand}"
+                Style="{StaticResource RepositoryTileActionButtonStyle}"
+                ToolTipService.ToolTip="Remove from recent"
+                AutomationProperties.Name="Remove from recent">
+          <FontIcon Glyph="&#xE711;" FontSize="{StaticResource Icon.Small}" />
+        </Button>
+      </StackPanel>
     </DataTemplate>
 
     <DataTemplate x:Key="RecentRepositoryTileTemplate">
