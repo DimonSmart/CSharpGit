@@ -1,4 +1,5 @@
 using CSharpGit.Domain;
+using CSharpGit.Presentation;
 
 namespace CSharpGit.Desktop.Tests;
 
