@@ -32,6 +32,7 @@ public sealed class WorkingTreeDiffUiContractTests
         var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs"));
         var selection = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeTreeSelection.cs"));
         var repositoryTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "RepositoryTree.xaml"));
+        var workspace = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
         var selectableDiff = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "SelectableDiffViewer.xaml"));
         var selectableDiffCode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "SelectableDiffViewer.xaml.cs"));
 
