@@ -169,13 +169,13 @@
               <Grid Width="16" Height="16">
                 <FontIcon x:Name="RefreshIcon"
                           Glyph="&#xE72C;"
-                          FontSize="16"
+                          FontSize="{StaticResource Icon.Normal}"
                           Foreground="{ThemeResource SystemFillColorSuccessBrush}"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Center" />
                 <FontIcon x:Name="RefreshRequiredIcon"
                           Glyph="&#xE72C;"
-                          FontSize="16"
+                          FontSize="{StaticResource Icon.Normal}"
                           Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Center"

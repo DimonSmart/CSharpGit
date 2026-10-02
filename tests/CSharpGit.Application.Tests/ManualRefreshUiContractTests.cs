@@ -26,6 +26,10 @@ public sealed class ManualRefreshUiContractTests
         Assert.Contains("x:Name=\"RefreshButton\"", xaml);
         Assert.Contains("Click=\"RefreshIndicator_Click\"", xaml);
         Assert.Contains("x:Name=\"RefreshIcon\"", xaml);
+        Assert.Contains("x:Name=\"RefreshRequiredIcon\"", xaml);
+        Assert.Contains("SystemFillColorSuccessBrush", xaml);
+        Assert.Contains("SystemFillColorCriticalBrush", xaml);
+        Assert.Contains("FontSize=\"{StaticResource Icon.Normal}\"", xaml);
         Assert.Contains("x:Name=\"RefreshProgressRing\"", xaml);
         Assert.DoesNotContain("x:Name=\"BusyIndicator\"", xaml);
         Assert.DoesNotContain("Text=\"Refresh\"", xaml);
@@ -41,8 +45,7 @@ public sealed class ManualRefreshUiContractTests
         Assert.DoesNotContain("_repositoryChangeMonitor.Suspend()", refresh);
         Assert.DoesNotContain("_repositoryChangeMonitor.Resume()", refresh);
         Assert.Contains("Repository has changed externally. Refresh to see the latest state.", refresh);
-        Assert.Contains("Microsoft.UI.Colors.LimeGreen", refresh);
-        Assert.Contains("Microsoft.UI.Colors.Red", refresh);
+        Assert.Contains("RefreshRequiredIcon.Visibility", refresh);
         Assert.Contains("Microsoft.UI.Colors.Goldenrod", refresh);
         Assert.Contains("RefreshProgressRing.IsActive = isRefreshing", refresh);
 
