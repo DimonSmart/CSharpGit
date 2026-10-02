@@ -12,6 +12,8 @@ public sealed class HistoryReferencesPresenter : Panel
     private readonly RectangleGeometry _clip = new();
     private readonly Border _overflowBorder;
     private readonly TextBlock _overflowText;
+    private readonly Border _overflowMeasureBorder;
+    private readonly TextBlock _overflowMeasureText;
     private int _activeCount;
     private int _overflowVisibleCount = -1;
     private bool _presentationContextSubscribed;
@@ -25,6 +27,7 @@ public sealed class HistoryReferencesPresenter : Panel
     public HistoryReferencesPresenter()
     {
         (_overflowBorder, _overflowText) = CreateOverflowVisual();
+        (_overflowMeasureBorder, _overflowMeasureText) = CreateOverflowVisual();
         Children.Add(_overflowBorder);
         Clip = _clip;
 
@@ -55,11 +58,12 @@ public sealed class HistoryReferencesPresenter : Panel
         if (_activeCount > 0)
         {
             var maximumOverflowText = $"+{_activeCount}";
-            if (!string.Equals(_overflowText.Text, maximumOverflowText, StringComparison.Ordinal))
-                _overflowText.Text = maximumOverflowText;
+            if (!string.Equals(_overflowMeasureText.Text, maximumOverflowText, StringComparison.Ordinal))
+                _overflowMeasureText.Text = maximumOverflowText;
 
+            _overflowMeasureBorder.Measure(childAvailableSize);
             _overflowBorder.Measure(childAvailableSize);
-            height = Math.Max(height, _overflowBorder.DesiredSize.Height);
+            height = Math.Max(height, _overflowMeasureBorder.DesiredSize.Height);
         }
 
         if (double.IsFinite(availableSize.Width))
@@ -82,7 +86,7 @@ public sealed class HistoryReferencesPresenter : Panel
             totalWidth += _visuals[index].Border.DesiredSize.Width;
 
         var overflowRequired = totalWidth > finalSize.Width;
-        var overflowWidth = overflowRequired ? _overflowBorder.DesiredSize.Width : 0d;
+        var overflowWidth = overflowRequired ? _overflowMeasureBorder.DesiredSize.Width : 0d;
         var showOverflow = overflowRequired && overflowWidth <= finalSize.Width;
         var availableForReferences = showOverflow
             ? Math.Max(0, finalSize.Width - overflowWidth)
@@ -112,6 +116,7 @@ public sealed class HistoryReferencesPresenter : Panel
             UpdateOverflowPresentation(visibleCount);
             _overflowBorder.Opacity = 1;
             _overflowBorder.IsHitTestVisible = true;
+            _overflowBorder.Measure(new Size(overflowWidth, finalSize.Height));
             _overflowBorder.Arrange(new Rect(
                 x,
                 0,

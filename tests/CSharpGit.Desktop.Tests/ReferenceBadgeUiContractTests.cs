@@ -80,6 +80,8 @@ public sealed class ReferenceBadgeUiContractTests
 
         Assert.Contains("private readonly RectangleGeometry _clip = new()", presenter, StringComparison.Ordinal);
         Assert.Contains("Clip = _clip;", presenter, StringComparison.Ordinal);
+        Assert.Contains("_overflowMeasureText.Text = maximumOverflowText", presenter, StringComparison.Ordinal);
+        Assert.DoesNotContain("_overflowText.Text, maximumOverflowText", presenter, StringComparison.Ordinal);
         Assert.Contains("totalWidth > finalSize.Width", presenter, StringComparison.Ordinal);
         Assert.Contains("Math.Max(0, finalSize.Width - overflowWidth)", presenter, StringComparison.Ordinal);
         Assert.Contains("GetVisibleReferenceCount(availableForReferences)", presenter, StringComparison.Ordinal);
