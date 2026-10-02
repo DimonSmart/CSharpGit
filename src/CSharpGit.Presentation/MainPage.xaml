@@ -169,9 +169,17 @@
               <Grid Width="16" Height="16">
                 <FontIcon x:Name="RefreshIcon"
                           Glyph="&#xE72C;"
-                          FontSize="{StaticResource Icon.Normal}"
+                          FontSize="16"
+                          Foreground="{ThemeResource SystemFillColorSuccessBrush}"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Center" />
+                <FontIcon x:Name="RefreshRequiredIcon"
+                          Glyph="&#xE72C;"
+                          FontSize="16"
+                          Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          Visibility="Collapsed" />
                 <ProgressRing x:Name="RefreshProgressRing"
                               IsActive="False"
                               Visibility="Collapsed"
