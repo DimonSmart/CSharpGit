@@ -8,8 +8,8 @@ public sealed class WorkingTreeInvalidationEvaluatorTests
     [Fact]
     public void ChangedStatusSnapshotRequiresRefresh()
     {
-        var displayed = Snapshot(new("a.cs", "1 .M N... 100644 100644 100644 aaa aaa a.cs"));
-        var current = Snapshot(new("a.cs", "1 M. N... 100644 100644 100644 aaa bbb a.cs"));
+        var displayed = Snapshot(new WorkingTreeStatusEntry("a.cs", "1 .M N... 100644 100644 100644 aaa aaa a.cs"));
+        var current = Snapshot(new WorkingTreeStatusEntry("a.cs", "1 M. N... 100644 100644 100644 aaa bbb a.cs"));
         var invalidation = Batch("a.cs");
 
         var reason = WorkingTreeInvalidationEvaluator.Evaluate(
@@ -23,7 +23,7 @@ public sealed class WorkingTreeInvalidationEvaluatorTests
     [Fact]
     public void RepeatedEditOfAlreadyModifiedPathRequiresRefreshEvenWhenStatusIsEqual()
     {
-        var snapshot = Snapshot(new("a.cs", "1 .M N... 100644 100644 100644 aaa aaa a.cs"));
+        var snapshot = Snapshot(new WorkingTreeStatusEntry("a.cs", "1 .M N... 100644 100644 100644 aaa aaa a.cs"));
 
         var reason = WorkingTreeInvalidationEvaluator.Evaluate(
             snapshot,
@@ -36,7 +36,7 @@ public sealed class WorkingTreeInvalidationEvaluatorTests
     [Fact]
     public void RepeatedEditOfUntrackedPathRequiresRefreshEvenWhenStatusIsEqual()
     {
-        var snapshot = Snapshot(new("notes.tmp", "? notes.tmp"));
+        var snapshot = Snapshot(new WorkingTreeStatusEntry("notes.tmp", "? notes.tmp"));
 
         var reason = WorkingTreeInvalidationEvaluator.Evaluate(
             snapshot,
@@ -49,7 +49,7 @@ public sealed class WorkingTreeInvalidationEvaluatorTests
     [Fact]
     public void IgnoredPathDoesNotRequireRefreshWhenStatusIsEqual()
     {
-        var snapshot = Snapshot(new("src/a.cs", "1 .M N... 100644 100644 100644 aaa aaa src/a.cs"));
+        var snapshot = Snapshot(new WorkingTreeStatusEntry("src/a.cs", "1 .M N... 100644 100644 100644 aaa aaa src/a.cs"));
 
         var reason = WorkingTreeInvalidationEvaluator.Evaluate(
             snapshot,
@@ -62,7 +62,7 @@ public sealed class WorkingTreeInvalidationEvaluatorTests
     [Fact]
     public void DirectoryInvalidationIntersectsGitVisibleDescendant()
     {
-        var snapshot = Snapshot(new("src/a.cs", "1 .M N... 100644 100644 100644 aaa aaa src/a.cs"));
+        var snapshot = Snapshot(new WorkingTreeStatusEntry("src/a.cs", "1 .M N... 100644 100644 100644 aaa aaa src/a.cs"));
 
         var reason = WorkingTreeInvalidationEvaluator.Evaluate(
             snapshot,
