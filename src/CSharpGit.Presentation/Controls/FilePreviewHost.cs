@@ -2,7 +2,6 @@ using CSharpGit.Presentation.Previewing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace CSharpGit.Presentation.Controls;
 
@@ -70,7 +69,7 @@ internal sealed class FilePreviewHost : Grid
         {
             var notice = new TextBlock
             {
-                Text = $"Preview truncated — file is {FormatSize(content.FileSize)}",
+                Text = $"Preview truncated — file is {ImagePreviewFormatting.FormatSize(content.FileSize)}",
                 Margin = new Thickness(8, 6, 8, 6),
                 Opacity = 0.72
             };
@@ -98,32 +97,14 @@ internal sealed class FilePreviewHost : Grid
         return layout;
     }
 
-    private UIElement BuildImage(ImagePreviewContent content)
+    private static UIElement BuildImage(ImagePreviewContent content)
     {
-        var layout = new Grid { Margin = new Thickness(8) };
-        var image = new Image
+        var view = new ImagePreviewView
         {
-            Stretch = Stretch.Uniform,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch
+            Margin = new Thickness(8)
         };
-        var error = new TextBlock
-        {
-            Text = "Preview unavailable",
-            TextAlignment = TextAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            Visibility = Visibility.Collapsed
-        };
-        image.ImageFailed += (_, _) =>
-        {
-            image.Visibility = Visibility.Collapsed;
-            error.Visibility = Visibility.Visible;
-        };
-        image.Source = new BitmapImage(new Uri(content.LocalPath, UriKind.Absolute));
-        layout.Children.Add(image);
-        layout.Children.Add(error);
-        return layout;
+        view.Show(content);
+        return view;
     }
 
     private static UIElement BuildBinary(BinaryPreviewContent content)
@@ -150,7 +131,7 @@ internal sealed class FilePreviewHost : Grid
         });
         panel.Children.Add(new TextBlock
         {
-            Text = $"Size: {FormatSize(content.FileSize)}",
+            Text = $"Size: {ImagePreviewFormatting.FormatSize(content.FileSize)}",
             HorizontalAlignment = HorizontalAlignment.Center,
             Opacity = 0.72
         });
@@ -172,18 +153,5 @@ internal sealed class FilePreviewHost : Grid
     {
         Children.Clear();
         Children.Add(content);
-    }
-
-    private static string FormatSize(long bytes)
-    {
-        string[] units = ["B", "KB", "MB", "GB"];
-        var value = (double)Math.Max(0, bytes);
-        var unit = 0;
-        while (value >= 1024 && unit < units.Length - 1)
-        {
-            value /= 1024;
-            unit++;
-        }
-        return unit == 0 ? $"{value:0} {units[unit]}" : $"{value:0.#} {units[unit]}";
     }
 }
