@@ -59,7 +59,9 @@ public sealed partial class MainPage
 
     private void ChangesViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
-        if (args.PropertyName == nameof(OpenRepositoryViewModel.SelectedDiff))
+        if (args.PropertyName is nameof(OpenRepositoryViewModel.SelectedDiff)
+            or nameof(OpenRepositoryViewModel.IsDiffLoading)
+            or nameof(OpenRepositoryViewModel.DiffLoadErrorMessage))
         {
             RebuildCompactDiff();
         }
@@ -67,6 +69,10 @@ public sealed partial class MainPage
         {
             CancelCommitImageDiff(clearSurface: true);
             CompactDiffViewer.Clear();
+            SetCommitDiffPresentationState(
+                _viewModel.SelectedFile is null
+                    ? DiffPresentationState.NothingSelected
+                    : DiffPresentationState.LoadingDiff);
             SyncChangedFileTreeSelection();
         }
         else if (args.PropertyName == nameof(OpenRepositoryViewModel.SelectedChangedFiles))
@@ -96,19 +102,35 @@ public sealed partial class MainPage
         if (_viewModel.SelectedDiff is not { } diff)
         {
             CompactDiffViewer.Clear();
-            SetCommitDiffPresentationState(DiffPresentationState.None);
+            var state = _viewModel.SelectedFile is null
+                ? DiffPresentationState.NothingSelected
+                : !string.IsNullOrWhiteSpace(_viewModel.DiffLoadErrorMessage)
+                    ? DiffPresentationState.Error
+                    : DiffPresentationState.LoadingDiff;
+            SetCommitDiffPresentationState(state);
             return;
         }
 
-        if (diff.IsBinary)
+        var compactLines = diff.IsBinary
+            ? []
+            : CompactDiffLine.Build(diff.Lines);
+        switch (DiffPresentationResolver.Resolve(diff, compactLines.Count))
         {
-            CompactDiffViewer.Clear();
-            _ = LoadCommitImageDiffAsync();
-            return;
+            case DiffContentPresentation.Binary:
+                CompactDiffViewer.Clear();
+                _ = LoadCommitImageDiffAsync();
+                return;
+            case DiffContentPresentation.NoTextualPatch:
+                CompactDiffViewer.Clear();
+                SetCommitDiffPresentationState(DiffPresentationState.NoTextualPatch);
+                return;
+            case DiffContentPresentation.Text:
+                CompactDiffViewer.SetLines(compactLines, diff.Diagnostics);
+                SetCommitDiffPresentationState(DiffPresentationState.Text);
+                return;
+            default:
+                throw new ArgumentOutOfRangeException();
         }
-
-        CompactDiffViewer.SetLines(CompactDiffLine.Build(diff.Lines));
-        SetCommitDiffPresentationState(DiffPresentationState.Text);
     }
 
     private void EnsureCurrentCommitFileSelection()

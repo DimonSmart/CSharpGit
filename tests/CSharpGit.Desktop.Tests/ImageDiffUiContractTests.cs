@@ -10,6 +10,7 @@ public sealed class ImageDiffUiContractTests
         var changes = Read(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs");
         var workingTree = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs");
         var lifecycle = Read(root, "src", "CSharpGit.Presentation", "MainPage.ImageDiff.cs");
+        var presentation = Read(root, "src", "CSharpGit.Presentation", "MainPage.DiffPresentation.cs");
 
         Assert.Contains("x:Name=\"CommitDiffHeader\"", xaml);
         Assert.Contains("x:Name=\"CommitTextDiffHeader\"", xaml);
@@ -17,12 +18,14 @@ public sealed class ImageDiffUiContractTests
         Assert.Contains("x:Name=\"WorkingTreeImageDiffHost\"", xaml);
         Assert.Contains("Loading image comparison…", xaml);
         Assert.DoesNotContain("Visibility=\"{Binding HasBinaryDiff", xaml);
-        Assert.Contains("DiffPresentationState", lifecycle);
+        Assert.Contains("DiffPresentationState", presentation);
+        Assert.Contains("NoTextualPatch", presentation);
+        Assert.Contains("DeltaMissing", presentation);
         Assert.Contains("LoadCommitImageDiffAsync", changes);
         Assert.Contains("ImageDiffService.LoadWorkingTreeAsync", workingTree);
-        Assert.Contains("SetCommitDiffPresentationState", lifecycle);
-        Assert.Contains("CommitDiffHeader.Visibility", lifecycle);
-        Assert.Contains("SetWorkingTreeDiffPresentationState", lifecycle);
+        Assert.Contains("SetCommitDiffPresentationState", presentation);
+        Assert.Contains("CommitDiffHeader.Visibility", presentation);
+        Assert.Contains("SetWorkingTreeDiffPresentationState", presentation);
     }
 
     [Fact]

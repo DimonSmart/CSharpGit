@@ -166,9 +166,14 @@ internal GitFileAwareHistoryService(
             "Diff",
             cancellationToken,
             arguments.ToArray());
-        var binary = output.Contains("Binary files ", StringComparison.Ordinal) ||
-                     output.Contains("GIT binary patch", StringComparison.Ordinal);
-        return new FileDiff(file.Path, binary, binary ? [] : GitDiffParser.ParseLines(output));
+        var binary = GitDiffParser.IsBinary(output);
+        if (binary) return new FileDiff(file.Path, true, []);
+
+        var parsed = GitDiffParser.Parse(output);
+        return new FileDiff(file.Path, false, parsed.Lines)
+        {
+            Diagnostics = parsed.Diagnostics
+        };
     }
 
     public async Task<IReadOnlyDictionary<string, string>> ReadFileStatusesAsync(

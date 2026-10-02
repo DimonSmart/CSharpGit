@@ -17,6 +17,8 @@ public sealed partial class OpenRepositoryViewModel
     private IReadOnlyList<ChangedFile> _selectedChangedFiles = [];
     private bool _isChangedFilesLoading;
     private bool _isChangesViewActive;
+    private string? _diffLoadErrorMessage;
+    private ChangedFileSelectionKey? _selectedChangedFileRestoreKey;
     private readonly BoundedLruCache<ChangedFilesCacheKey, IReadOnlyList<ChangedFile>> _changedFilesCache =
         new(ChangedFilesCacheEntries, ChangedFilesCacheEntries, _ => 1);
     private readonly BoundedLruCache<DiffCacheKey, FileDiff> _diffCache =
@@ -46,6 +48,17 @@ public sealed partial class OpenRepositoryViewModel
 
     public bool IsChangesViewActive => _isChangesViewActive;
 
+    public string? DiffLoadErrorMessage
+    {
+        get => _diffLoadErrorMessage;
+        private set
+        {
+            if (string.Equals(_diffLoadErrorMessage, value, StringComparison.Ordinal)) return;
+            _diffLoadErrorMessage = value;
+            Notify();
+        }
+    }
+
     public void SetChangesViewActive(bool active)
     {
         if (_isChangesViewActive == active) return;
@@ -64,13 +77,22 @@ public sealed partial class OpenRepositoryViewModel
         _ = EnsureChangedFilesLoadedAsync(debounce: false);
     }
 
-    private void OnSelectedHistoryRowChanged()
+    private void OnSelectedHistoryRowChanged(HistoryRow? previous)
     {
+        _selectedChangedFileRestoreKey =
+            previous is not null &&
+            SelectedHistoryRow is { } current &&
+            string.Equals(previous.Commit.Hash, current.Commit.Hash, StringComparison.Ordinal) &&
+            SelectedFile is { } selected
+                ? new ChangedFileSelectionKey(selected.Path, selected.OriginalPath)
+                : null;
+
         InvalidateChangedFilesLoad();
         InvalidateDiffLoad();
         SelectedChangedFiles = [];
         SelectedFile = null;
         SelectedDiff = null;
+        DiffLoadErrorMessage = null;
         IsChangedFilesLoading = false;
         IsDiffLoading = false;
 
@@ -82,6 +104,7 @@ public sealed partial class OpenRepositoryViewModel
     {
         InvalidateDiffLoad();
         SelectedDiff = null;
+        DiffLoadErrorMessage = null;
         IsDiffLoading = false;
         if (_isChangesViewActive && SelectedFile is not null)
             _ = LoadSelectedDiffAsync();
@@ -96,6 +119,8 @@ public sealed partial class OpenRepositoryViewModel
         SelectedChangedFiles = [];
         SelectedFile = null;
         SelectedDiff = null;
+        DiffLoadErrorMessage = null;
+        _selectedChangedFileRestoreKey = null;
         IsChangedFilesLoading = false;
         IsDiffLoading = false;
     }
@@ -147,6 +172,7 @@ public sealed partial class OpenRepositoryViewModel
                 SelectedChangedFiles = [];
                 SelectedFile = null;
                 SelectedDiff = null;
+                _selectedChangedFileRestoreKey = null;
                 ErrorMessage = $"Could not read changes: {exception.Message}";
                 _logger.LogWarning(exception, "Changed-files loading failed for {Commit}", row.Commit.Hash);
             }
@@ -162,10 +188,15 @@ public sealed partial class OpenRepositoryViewModel
     private void PublishChangedFiles(Repository repository, HistoryRow row, IReadOnlyList<ChangedFile> files)
     {
         if (!_isChangesViewActive || !ReferenceEquals(repository, Repository) || !ReferenceEquals(row, SelectedHistoryRow)) return;
+        var restored = _selectedChangedFileRestoreKey is { } restoreKey
+            ? files.FirstOrDefault(restoreKey.Matches)
+            : null;
+        _selectedChangedFileRestoreKey = null;
+        var target = restored ?? files.FirstOrDefault();
+
+        if (!ReferenceEquals(SelectedFile, target)) SelectedFile = target;
         SelectedChangedFiles = files;
-        var first = files.FirstOrDefault();
-        if (!ReferenceEquals(SelectedFile, first)) SelectedFile = first;
-        else if (first is not null && SelectedDiff is null && !IsDiffLoading) _ = LoadSelectedDiffAsync();
+        if (target is not null && SelectedDiff is null && !IsDiffLoading) _ = LoadSelectedDiffAsync();
     }
 
     private async Task LoadSelectedDiffAsync()
@@ -175,6 +206,7 @@ public sealed partial class OpenRepositoryViewModel
         var file = SelectedFile;
         if (!_isChangesViewActive || repository is null || row is null || file is null) return;
 
+        DiffLoadErrorMessage = null;
         var parentHash = row.Commit.Parents.FirstOrDefault();
         var cacheKey = new DiffCacheKey(repository.GitDirectory, row.Commit.Hash, parentHash, file.Path, file.OriginalPath);
         if (_diffCache.TryGet(cacheKey, out var cached))
@@ -214,6 +246,7 @@ public sealed partial class OpenRepositoryViewModel
             if (IsCurrentDiffRequest(generation, cancellation, repository, row, file))
             {
                 SelectedDiff = null;
+                DiffLoadErrorMessage = exception.Message;
                 ErrorMessage = $"Could not read change: {exception.Message}";
                 _logger.LogWarning(exception, "Diff loading failed for {Commit} {Path}", row.Commit.Hash, file.Path);
             }
@@ -282,7 +315,19 @@ public sealed partial class OpenRepositoryViewModel
     {
         long size = diff.Path.Length;
         foreach (var line in diff.Lines) size += line.Text.Length + 1L;
+        size += diff.Diagnostics.Count * 32L;
         return (int)Math.Min(size, int.MaxValue);
+    }
+
+    private readonly record struct ChangedFileSelectionKey(string Path, string? OriginalPath)
+    {
+        public bool Matches(ChangedFile file) =>
+            string.Equals(file.Path, Path, StringComparison.Ordinal) ||
+            OriginalPath is not null &&
+                (string.Equals(file.Path, OriginalPath, StringComparison.Ordinal) ||
+                 string.Equals(file.OriginalPath, OriginalPath, StringComparison.Ordinal)) ||
+            file.OriginalPath is not null &&
+                string.Equals(file.OriginalPath, Path, StringComparison.Ordinal);
     }
 
     private readonly record struct ChangedFilesCacheKey(string Repository, string Commit, string? Parent);

@@ -92,6 +92,25 @@ public sealed class HistoryDiffUiContractTests
     }
 
     [Fact]
+    public void HistoricalDiffHasExplicitEmptyErrorAndSelectionRestoreStates()
+    {
+        var root = FindRepositoryRoot();
+        var changes = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs"));
+        var presentation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.DiffPresentation.cs"));
+        var lazy = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.CommitChanges.cs"));
+
+        Assert.Contains("DiffPresentationResolver.Resolve", changes);
+        Assert.Contains("DiffPresentationState.NoTextualPatch", changes);
+        Assert.Contains("DiffPresentationState.Error", changes);
+        Assert.Contains("DiffLoadErrorMessage", lazy);
+        Assert.Contains("ChangedFileSelectionKey", lazy);
+        Assert.Contains("previous.Commit.Hash", lazy);
+        Assert.Contains("Select a changed file to view its diff.", presentation);
+        Assert.Contains("Git reports this file as changed, but there is no textual patch to display.", presentation);
+        Assert.Contains("Could not load diff", presentation);
+    }
+
+    [Fact]
     public void GitHotPathUsesOneCombinedChangedFilesProcessAndNoHardCopySearch()
     {
         var root = FindRepositoryRoot();

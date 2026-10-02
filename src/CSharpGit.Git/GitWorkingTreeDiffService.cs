@@ -109,10 +109,14 @@ private readonly GitRepositoryCommandRunner _runner;
     private static FileDiff BuildWorkingTreeDiff(string path, string output)
     {
         var binary = GitDiffParser.IsBinary(output);
-        return new FileDiff(
-            path,
-            binary,
-            binary || output.Length == 0 ? [] : GitDiffParser.ParseLines(output));
+        if (binary || output.Length == 0)
+            return new FileDiff(path, binary, []);
+
+        var parsed = GitDiffParser.Parse(output);
+        return new FileDiff(path, false, parsed.Lines)
+        {
+            Diagnostics = parsed.Diagnostics
+        };
     }
 
     private static string ResolveSafeWorkingTreePath(Repository repository, string path)

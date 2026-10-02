@@ -59,6 +59,7 @@ public sealed class SelectableTextUiContractTests
         Assert.Contains("ItemsRepeater x:Name=\"RowsRepeater\"", viewerXaml, StringComparison.Ordinal);
         Assert.Contains("ColumnDefinitions=\"38,38,*\"", viewerXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"DiffText\"", viewerXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"DiffDiagnosticsInfo\"", viewerXaml, StringComparison.Ordinal);
         Assert.Contains("SelectableDiffTextStyle", viewerXaml, StringComparison.Ordinal);
         Assert.Contains("HorizontalScrollBarVisibility=\"Auto\"", viewerXaml, StringComparison.Ordinal);
         Assert.Contains("VerticalScrollBarVisibility=\"Auto\"", viewerXaml, StringComparison.Ordinal);
@@ -71,10 +72,14 @@ public sealed class SelectableTextUiContractTests
         Assert.Contains("DiffText.CopySelectionToClipboard()", viewerCode, StringComparison.Ordinal);
         Assert.Contains("DiffText.SelectedText", viewerCode, StringComparison.Ordinal);
         Assert.Contains("OperatingSystem.IsMacOS()", viewerCode, StringComparison.Ordinal);
+        Assert.Contains("_viewportResetGate.BeginReplacement()", viewerCode, StringComparison.Ordinal);
+        Assert.Contains("DiffScroller.ChangeView(0d, 0d, null, true)", viewerCode, StringComparison.Ordinal);
+        Assert.Contains("DispatcherQueue.TryEnqueue(() => ResetViewport(ticket))", viewerCode, StringComparison.Ordinal);
+        Assert.Contains("_viewportResetGate.RegisterInteraction()", viewerCode, StringComparison.Ordinal);
 
-        Assert.Contains("CompactDiffViewer.SetLines(CompactDiffLine.Build(diff.Lines))", changes, StringComparison.Ordinal);
+        Assert.Contains("CompactDiffViewer.SetLines(compactLines, diff.Diagnostics)", changes, StringComparison.Ordinal);
         Assert.Contains("CompactDiffViewer.Clear()", changes, StringComparison.Ordinal);
-        Assert.Contains("WorkingTreeDiffViewer.SetLines(compactLines)", workingTree, StringComparison.Ordinal);
+        Assert.Contains("WorkingTreeDiffViewer.SetLines(compactLines, diff.Diagnostics)", workingTree, StringComparison.Ordinal);
         Assert.Contains("WorkingTreeDiffViewer.Clear()", workingTree, StringComparison.Ordinal);
     }
 

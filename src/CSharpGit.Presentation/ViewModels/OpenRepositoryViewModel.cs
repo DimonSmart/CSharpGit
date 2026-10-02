@@ -282,7 +282,19 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public string RepositoryKind => Repository?.IsWorktree == true ? "Git worktree" : "Git repository";
     public string FilterText { get => _filterText; set { _filterText = value; Notify(); } }
     public UiChoice<HistoryScope> SelectedScope { get => _selectedScope; set { if (_selectedScope == value) return; _selectedScope = value; Notify(); if (value.Value != HistoryScope.AllReferences) DisableReflogForScopeChange(); _ = LoadHistoryAsync(true); } }
-    public HistoryRow? SelectedHistoryRow { get => _selectedHistoryRow; set { if (ReferenceEquals(_selectedHistoryRow, value)) return; _selectedHistoryRow = value; Notify(); Notify(nameof(HasSelectedCommit)); OnSelectedHistoryRowChanged(); } }
+    public HistoryRow? SelectedHistoryRow
+    {
+        get => _selectedHistoryRow;
+        set
+        {
+            if (ReferenceEquals(_selectedHistoryRow, value)) return;
+            var previous = _selectedHistoryRow;
+            _selectedHistoryRow = value;
+            Notify();
+            Notify(nameof(HasSelectedCommit));
+            OnSelectedHistoryRowChanged(previous);
+        }
+    }
     public ChangedFile? SelectedFile { get => _selectedFile; set { if (_selectedFile == value) return; _selectedFile = value; Notify(); OnSelectedFileChanged(); } }
     public FileDiff? SelectedDiff { get => _selectedDiff; private set { _selectedDiff = value; Notify(); Notify(nameof(HasTextDiff)); Notify(nameof(HasBinaryDiff)); } }
     public bool IsDiffLoading { get => _isDiffLoading; private set { if (_isDiffLoading == value) return; _isDiffLoading = value; Notify(); } }
