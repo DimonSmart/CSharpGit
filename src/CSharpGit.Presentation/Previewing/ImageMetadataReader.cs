@@ -22,6 +22,11 @@ internal static class SharedImageMetadataReader
 
 internal sealed class ImageMetadataReader
 {
+    private const int TerminalMarkerProbeBytes = 64 * 1024;
+    private static readonly byte[] PngEndMarker =
+        [0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82];
+    private static readonly byte[] JpegEndMarker = [0xFF, 0xD9];
+
     internal ImageFormat? DetectFormat(ReadOnlySpan<byte> bytes)
     {
         if (bytes.Length >= 8
@@ -75,7 +80,7 @@ internal sealed class ImageMetadataReader
         FileStream stream,
         CancellationToken cancellationToken)
     {
-        var header = new byte[24];
+        var header = new byte[33];
         if (!await ReadExactlyAsync(stream, header, cancellationToken))
             return Invalid(ImageFormat.Png, "PNG header is incomplete.");
 
@@ -86,10 +91,17 @@ internal sealed class ImageMetadataReader
             || header[14] != (byte)'D' || header[15] != (byte)'R')
             return Invalid(ImageFormat.Png, "PNG IHDR is invalid.");
 
+        var expectedCrc = BinaryPrimitives.ReadUInt32BigEndian(header.AsSpan(29, 4));
+        if (PngCrc32(header.AsSpan(12, 17)) != expectedCrc)
+            return Invalid(ImageFormat.Png, "PNG IHDR checksum is invalid.");
+
         var width = BinaryPrimitives.ReadUInt32BigEndian(header.AsSpan(16, 4));
         var height = BinaryPrimitives.ReadUInt32BigEndian(header.AsSpan(20, 4));
         if (width is 0 or > int.MaxValue || height is 0 or > int.MaxValue)
             return Invalid(ImageFormat.Png, "PNG dimensions are invalid.");
+
+        if (!await ContainsTailMarkerAsync(stream, PngEndMarker, cancellationToken))
+            return Invalid(ImageFormat.Png, "PNG is missing the terminal IEND chunk.");
 
         return new(
             ImageMetadataReadStatus.Success,
@@ -105,6 +117,10 @@ internal sealed class ImageMetadataReader
         if (!await ReadExactlyAsync(stream, two, cancellationToken) || two[0] != 0xFF || two[1] != 0xD8)
             return Invalid(ImageFormat.Jpeg, "JPEG SOI marker is invalid.");
 
+        if (!await ContainsTailMarkerAsync(stream, JpegEndMarker, cancellationToken))
+            return Invalid(ImageFormat.Jpeg, "JPEG is missing the terminal EOI marker.");
+
+        stream.Position = 2;
         var one = new byte[1];
         long scanned = 2;
         while (scanned < FilePreviewLimits.MetadataScanBytes)
@@ -178,6 +194,33 @@ internal sealed class ImageMetadataReader
             or 0xC5 or 0xC6 or 0xC7
             or 0xC9 or 0xCA or 0xCB
             or 0xCD or 0xCE or 0xCF;
+
+    private static uint PngCrc32(ReadOnlySpan<byte> bytes)
+    {
+        var crc = uint.MaxValue;
+        foreach (var value in bytes)
+        {
+            crc ^= value;
+            for (var bit = 0; bit < 8; bit++)
+                crc = (crc & 1) != 0 ? 0xEDB88320U ^ (crc >> 1) : crc >> 1;
+        }
+        return crc ^ uint.MaxValue;
+    }
+
+    private static async Task<bool> ContainsTailMarkerAsync(
+        FileStream stream,
+        byte[] marker,
+        CancellationToken cancellationToken)
+    {
+        if (stream.Length < marker.Length) return false;
+
+        var length = (int)Math.Min(stream.Length, TerminalMarkerProbeBytes);
+        var tail = new byte[length];
+        stream.Position = stream.Length - length;
+        if (!await ReadExactlyAsync(stream, tail, cancellationToken)) return false;
+
+        return tail.AsSpan().IndexOf(marker) >= 0;
+    }
 
     private static ImageMetadataReadResult Invalid(ImageFormat format, string error) =>
         new(ImageMetadataReadStatus.Invalid, null, format, error);
