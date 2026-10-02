@@ -2,12 +2,18 @@ namespace CSharpGit.Presentation.Previewing;
 
 internal sealed class FilePreviewService
 {
-    private readonly IReadOnlyList<IFilePreviewProvider> _providers =
-    [
-        new ImageFilePreviewProvider(),
-        new TextFilePreviewProvider(),
-        new BinaryFilePreviewProvider()
-    ];
+    private readonly IReadOnlyList<IFilePreviewProvider> _providers;
+
+    internal FilePreviewService(ImageMetadataReader? metadataReader = null)
+    {
+        var reader = metadataReader ?? SharedImageMetadataReader.Instance;
+        _providers =
+        [
+            new ImageFilePreviewProvider(reader),
+            new TextFilePreviewProvider(),
+            new BinaryFilePreviewProvider()
+        ];
+    }
 
     internal async Task<FilePreviewContent> LoadAsync(
         string gitPath,

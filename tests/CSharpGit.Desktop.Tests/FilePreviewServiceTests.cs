@@ -103,15 +103,19 @@ public sealed class FilePreviewServiceTests
         var path = TempPath();
         try
         {
+            var png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAIAAAASFvFNAAAAEElEQVR4nGP8zwAFTDAGAwATKQED8NgHhAAAAABJRU5ErkJggg==");
             await using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
-                await stream.WriteAsync(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A });
+                await stream.WriteAsync(png);
                 stream.SetLength(FilePreviewLimits.ImageDecodeBytes + 1);
             }
 
             var result = await new FilePreviewService().LoadAsync("large.png", path, CancellationToken.None);
 
-            Assert.IsType<BinaryPreviewContent>(result);
+            var image = Assert.IsType<ImagePreviewContent>(result);
+            Assert.False(image.CanRender);
+            Assert.NotNull(image.Metadata);
+            Assert.Contains("size limit", image.UnavailableReason, StringComparison.OrdinalIgnoreCase);
         }
         finally
         {
