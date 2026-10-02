@@ -181,7 +181,7 @@ public sealed class CloneRepositoryViewModelTests : IDisposable
 
     private sealed class BlockingCloneService : IRepositoryCloneService
     {
-        public TaskCompletionSource Started { get; } =
+        public TaskCompletionSource<bool> Started { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public async Task CloneAsync(
@@ -189,7 +189,7 @@ public sealed class CloneRepositoryViewModelTests : IDisposable
             string targetPath,
             CancellationToken cancellationToken = default)
         {
-            Started.TrySetResult();
+            Started.TrySetResult(true);
             await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
         }
     }
