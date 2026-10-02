@@ -76,6 +76,53 @@ public sealed class RecentRepositoriesProjectionTests
         Assert.Equal(new[] { "match recent new", "match recent old" }, projection.Recent.Select(x => x.DisplayName));
     }
 
+    [Fact]
+    public void QuickListExcludesCurrentAndPreservesPinnedThenRecentOrder()
+    {
+        var currentPath = Path.Combine(Path.GetTempPath(), "CSharpGit", "current");
+        var repositories = new[]
+        {
+            Repository("Current pinned", currentPath + Path.DirectorySeparatorChar, null, true, 0, 10),
+            Repository("Pinned", Path.Combine(Path.GetTempPath(), "CSharpGit", "pinned"), null, true, 1, 1),
+            Repository("Recent old", Path.Combine(Path.GetTempPath(), "CSharpGit", "old"), null, false, null, 2),
+            Repository("Recent new", Path.Combine(Path.GetTempPath(), "CSharpGit", "new"), null, false, null, 5)
+        };
+
+        var result = RecentRepositoriesProjectionBuilder.BuildQuickList(
+            repositories,
+            currentPath,
+            8);
+
+        Assert.Equal(
+            new[] { "Pinned", "Recent new", "Recent old" },
+            result.Select(repository => repository.DisplayName));
+    }
+
+    [Fact]
+    public void QuickListAppliesCentralLimitAfterCurrentRepositoryIsRemoved()
+    {
+        var repositories = Enumerable.Range(0, 12)
+            .Select(index => Repository(
+                $"Repository {index}",
+                Path.Combine(Path.GetTempPath(), "CSharpGit", $"repo-{index}"),
+                null,
+                false,
+                null,
+                index))
+            .ToArray();
+
+        var result = RecentRepositoriesProjectionBuilder.BuildQuickList(
+            repositories,
+            repositories[^1].Path,
+            8);
+
+        Assert.Equal(8, result.Count);
+        Assert.DoesNotContain(result, repository =>
+            RecentRepositoriesProjectionBuilder.PathsEqual(
+                repository.Path,
+                repositories[^1].Path));
+    }
+
     private static RecentRepositorySettings Repository(
         string displayName,
         string path,
