@@ -47,6 +47,8 @@
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/DiffLogicalText.cs" Link="Changes/DiffLogicalText.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositorySnapshotTreeNode.cs" Link="RepositoryFiles/RepositorySnapshotTreeNode.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Previewing/FilePreviewModels.cs" Link="RepositoryFiles/Previewing/FilePreviewModels.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/Previewing/ImageMetadataReader.cs" Link="RepositoryFiles/Previewing/ImageMetadataReader.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/Previewing/ImageDiffPreviewModels.cs" Link="RepositoryFiles/Previewing/ImageDiffPreviewModels.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Previewing/FileLanguageClassifier.cs" Link="RepositoryFiles/Previewing/FileLanguageClassifier.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Previewing/FilePreviewService.cs" Link="RepositoryFiles/Previewing/FilePreviewService.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Previewing/ImageFilePreviewProvider.cs" Link="RepositoryFiles/Previewing/ImageFilePreviewProvider.cs" />
