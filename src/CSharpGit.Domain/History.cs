@@ -55,6 +55,28 @@ public sealed record CommitDetails(CommitHistoryItem Commit, IReadOnlyList<Chang
 
 public enum DiffLineKind { Header, Context, Added, Removed }
 
-public sealed record DiffLine(string Text, DiffLineKind Kind);
+public enum DiffTextLineEnding { Lf, CrLf }
 
-public sealed record FileDiff(string Path, bool IsBinary, IReadOnlyList<DiffLine> Lines);
+public enum DiffDiagnosticKind
+{
+    Utf8BomAdded,
+    Utf8BomRemoved,
+    LineEndingsChanged,
+    NoFinalNewline
+}
+
+public sealed record DiffDiagnostic(DiffDiagnosticKind Kind)
+{
+    public DiffTextLineEnding? OriginalLineEnding { get; init; }
+    public DiffTextLineEnding? ChangedLineEnding { get; init; }
+}
+
+public sealed record DiffLine(string Text, DiffLineKind Kind)
+{
+    public bool HadTrailingCarriageReturn { get; init; }
+}
+
+public sealed record FileDiff(string Path, bool IsBinary, IReadOnlyList<DiffLine> Lines)
+{
+    public IReadOnlyList<DiffDiagnostic> Diagnostics { get; init; } = [];
+}

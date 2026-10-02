@@ -194,6 +194,8 @@ public sealed partial class MainPage
 
         WorkingTreeDiffHeader.Text = BuildWorkingTreeDiffHeader(change, kind);
         WorkingTreeDiffKindText.Text = kind.ToString().ToUpperInvariant();
+        _workingTreeDiffErrorMessage = null;
+        SetWorkingTreeDiffPresentationState(DiffPresentationState.LoadingDiff);
 
         var cts = new CancellationTokenSource();
         _workingTreeDiffCts = cts;
@@ -244,14 +246,24 @@ public sealed partial class MainPage
             }
 
             var compactLines = CompactDiffLine.Build(diff.Lines);
-            if (compactLines.Count == 0)
+            switch (DiffPresentationResolver.Resolve(diff, compactLines.Count))
             {
-                SetWorkingTreeDiffPresentationState(DiffPresentationState.NoChanges);
-                return;
+                case DiffContentPresentation.NoTextualPatch:
+                    WorkingTreeDiffViewer.Clear();
+                    SetWorkingTreeDiffPresentationState(
+                        HasCurrentWorkingTreeDelta(change.Path, kind)
+                            ? DiffPresentationState.NoTextualPatch
+                            : DiffPresentationState.DeltaMissing);
+                    return;
+                case DiffContentPresentation.Text:
+                    WorkingTreeDiffViewer.SetLines(compactLines, diff.Diagnostics);
+                    SetWorkingTreeDiffPresentationState(DiffPresentationState.Text);
+                    return;
+                case DiffContentPresentation.Binary:
+                    throw new InvalidOperationException("Binary diff should have been handled before text presentation.");
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
-
-            WorkingTreeDiffViewer.SetLines(compactLines);
-            SetWorkingTreeDiffPresentationState(DiffPresentationState.Text);
         }
         catch (OperationCanceledException)
         {
@@ -260,7 +272,10 @@ public sealed partial class MainPage
         {
             if (IsCurrentWorkingTreeDiffRequest(repository, change, kind, generation, CancellationToken.None))
             {
-                ClearWorkingTreeDiffViewer(clearSelectionKind: false);
+                WorkingTreeDiffViewer.Clear();
+                _viewModel.SelectedWorkingTreeDiff = null;
+                _workingTreeDiffErrorMessage = exception.Message;
+                SetWorkingTreeDiffPresentationState(DiffPresentationState.Error);
                 await ShowErrorAsync("Could not read working tree diff", exception.Message);
             }
         }
@@ -368,7 +383,7 @@ public sealed partial class MainPage
 
         if (target?.Change is null)
         {
-            ClearActiveWorkingTreeChange();
+            ClearActiveWorkingTreeChange(showMissingDelta: true);
             return;
         }
 
@@ -403,11 +418,16 @@ public sealed partial class MainPage
         ClearActiveWorkingTreeChange();
     }
 
-    private void ClearActiveWorkingTreeChange()
+    private void ClearActiveWorkingTreeChange(bool showMissingDelta = false)
     {
+        var previousPath = _desiredWorkingTreePath ?? _viewModel.ActiveWorkingTreeChange?.Path;
         _desiredWorkingTreePath = null;
         _viewModel.ActiveWorkingTreeChange = null;
-        ClearWorkingTreeDiffViewer(clearSelectionKind: true);
+        ClearWorkingTreeDiffViewer(
+            clearSelectionKind: true,
+            showMissingDelta ? DiffPresentationState.DeltaMissing : DiffPresentationState.NothingSelected);
+        if (showMissingDelta && previousPath is not null)
+            WorkingTreeDiffHeader.Text = previousPath;
     }
 
     private void CancelWorkingTreeDiff(bool clearViewer)
@@ -420,15 +440,24 @@ public sealed partial class MainPage
         if (clearViewer) ClearWorkingTreeDiffViewer(clearSelectionKind: false);
     }
 
-    private void ClearWorkingTreeDiffViewer(bool clearSelectionKind)
+    private void ClearWorkingTreeDiffViewer(
+        bool clearSelectionKind,
+        DiffPresentationState state = DiffPresentationState.NothingSelected)
     {
         WorkingTreeDiffViewer.Clear();
-        SetWorkingTreeDiffPresentationState(DiffPresentationState.None);
+        _workingTreeDiffErrorMessage = null;
+        SetWorkingTreeDiffPresentationState(state);
         WorkingTreeDiffHeader.Text = string.Empty;
         WorkingTreeDiffKindText.Text = string.Empty;
         _viewModel.SelectedWorkingTreeDiff = null;
         if (clearSelectionKind) _viewModel.ActiveWorkingTreeDiffKind = null;
     }
+
+    private bool HasCurrentWorkingTreeDelta(string path, WorkingTreeDiffKind kind) =>
+        _viewModel.Changes.Any(change =>
+            (string.Equals(change.Path, path, StringComparison.Ordinal) ||
+             string.Equals(change.OriginalPath, path, StringComparison.Ordinal)) &&
+            (kind == WorkingTreeDiffKind.Unstaged ? change.IsUnstaged : change.IsStaged));
 
     private static string BuildWorkingTreeDiffHeader(WorkingTreeChange change, WorkingTreeDiffKind kind)
     {

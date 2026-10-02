@@ -6,17 +6,6 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private enum DiffPresentationState
-    {
-        None,
-        LoadingImage,
-        Text,
-        Image,
-        OtherBinary,
-        NoChanges,
-        Unavailable
-    }
-
     private ImageDiffPreviewService? _imageDiffPreviewService;
     private CancellationTokenSource? _commitImageDiffCts;
     private long _commitImageDiffGeneration;
@@ -110,64 +99,4 @@ public sealed partial class MainPage
             SetCommitDiffPresentationState(DiffPresentationState.None);
     }
 
-    private void SetCommitDiffPresentationState(DiffPresentationState state)
-    {
-        CommitDiffHeader.Visibility =
-            state is DiffPresentationState.LoadingImage
-                or DiffPresentationState.Text
-                or DiffPresentationState.Image
-                or DiffPresentationState.OtherBinary
-                or DiffPresentationState.Unavailable
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-        CommitTextDiffHeader.Visibility = state == DiffPresentationState.Text ? Visibility.Visible : Visibility.Collapsed;
-        CompactDiffViewer.Visibility = state == DiffPresentationState.Text ? Visibility.Visible : Visibility.Collapsed;
-        CommitImageLoading.Visibility = state == DiffPresentationState.LoadingImage ? Visibility.Visible : Visibility.Collapsed;
-        CommitImageDiffHost.Visibility = state == DiffPresentationState.Image ? Visibility.Visible : Visibility.Collapsed;
-        CommitBinaryInfo.Visibility =
-            state is DiffPresentationState.OtherBinary or DiffPresentationState.Unavailable
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-
-        if (state == DiffPresentationState.OtherBinary)
-        {
-            CommitBinaryInfo.Title = "Binary file";
-            CommitBinaryInfo.Message = "Binary file — text diff is not available.";
-        }
-        else if (state == DiffPresentationState.Unavailable)
-        {
-            CommitBinaryInfo.Title = "Preview unavailable";
-            CommitBinaryInfo.Message = "The selected diff could not be previewed.";
-        }
-
-        if (state != DiffPresentationState.Image)
-            CommitImageDiffHost.Clear();
-    }
-
-    private void SetWorkingTreeDiffPresentationState(DiffPresentationState state)
-    {
-        WorkingTreeTextDiffHeader.Visibility = state == DiffPresentationState.Text ? Visibility.Visible : Visibility.Collapsed;
-        WorkingTreeDiffViewer.Visibility = state == DiffPresentationState.Text ? Visibility.Visible : Visibility.Collapsed;
-        WorkingTreeImageLoading.Visibility = state == DiffPresentationState.LoadingImage ? Visibility.Visible : Visibility.Collapsed;
-        WorkingTreeImageDiffHost.Visibility = state == DiffPresentationState.Image ? Visibility.Visible : Visibility.Collapsed;
-        WorkingTreeBinaryInfo.Visibility =
-            state is DiffPresentationState.OtherBinary or DiffPresentationState.Unavailable
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-        WorkingTreeNoChangesInfo.Visibility = state == DiffPresentationState.NoChanges ? Visibility.Visible : Visibility.Collapsed;
-
-        if (state == DiffPresentationState.OtherBinary)
-        {
-            WorkingTreeBinaryInfo.Title = "Binary file";
-            WorkingTreeBinaryInfo.Message = "Binary file — text diff is not available.";
-        }
-        else if (state == DiffPresentationState.Unavailable)
-        {
-            WorkingTreeBinaryInfo.Title = "Preview unavailable";
-            WorkingTreeBinaryInfo.Message = "The selected diff could not be previewed.";
-        }
-
-        if (state != DiffPresentationState.Image)
-            WorkingTreeImageDiffHost.Clear();
-    }
 }

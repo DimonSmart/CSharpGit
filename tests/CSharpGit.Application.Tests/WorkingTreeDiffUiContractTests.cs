@@ -145,6 +145,12 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("IsCurrentWorkingTreeDiffRequest", workingTree);
         Assert.Contains("OperationCanceledException", workingTree);
         Assert.Contains("ReadDiffAsync(repository, change, kind", workingTree);
+        Assert.Contains("DiffPresentationState.LoadingDiff", workingTree);
+        Assert.Contains("DiffPresentationState.NoTextualPatch", workingTree);
+        Assert.Contains("DiffPresentationState.DeltaMissing", workingTree);
+        Assert.Contains("HasCurrentWorkingTreeDelta", workingTree);
+        Assert.Contains("_viewModel.Changes.Any", workingTree);
+        Assert.Contains("WorkingTreeDiffViewer.SetLines(compactLines, diff.Diagnostics)", workingTree);
         Assert.DoesNotContain("foreach (var change in _viewModel.Changes)", workingTree);
 
         var discardStart = git.IndexOf("public async Task DiscardFileAsync", StringComparison.Ordinal);

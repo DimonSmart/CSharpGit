@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 
@@ -184,6 +185,88 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task DetectsUtf8BomAddedAndRemoved()
+    {
+        var repository = await CreateRepositoryAsync();
+        const string path = "bom.txt";
+        CommitBytes(path, Utf8Bytes("value\n", withBom: false), "without bom");
+
+        File.WriteAllBytes(Path.Combine(_temporaryDirectory, path), Utf8Bytes("value\n", withBom: true));
+        var added = await _service.ReadDiffAsync(
+            repository,
+            await ReadChangeAsync(repository, path),
+            WorkingTreeDiffKind.Unstaged);
+        Assert.Contains(added.Diagnostics, diagnostic => diagnostic.Kind == DiffDiagnosticKind.Utf8BomAdded);
+
+        RunGit("add", path);
+        RunGit("commit", "-m", "with bom");
+        File.WriteAllBytes(Path.Combine(_temporaryDirectory, path), Utf8Bytes("value\n", withBom: false));
+        var removed = await _service.ReadDiffAsync(
+            repository,
+            await ReadChangeAsync(repository, path),
+            WorkingTreeDiffKind.Unstaged);
+        Assert.Contains(removed.Diagnostics, diagnostic => diagnostic.Kind == DiffDiagnosticKind.Utf8BomRemoved);
+    }
+
+    [Fact]
+    public async Task DetectsLfAndCrLfConversions()
+    {
+        var repository = await CreateRepositoryAsync();
+        const string path = "endings.txt";
+        CommitBytes(path, Encoding.UTF8.GetBytes("one\ntwo\n"), "lf");
+
+        File.WriteAllBytes(Path.Combine(_temporaryDirectory, path), Encoding.UTF8.GetBytes("one\r\ntwo\r\n"));
+        var toCrLf = await _service.ReadDiffAsync(
+            repository,
+            await ReadChangeAsync(repository, path),
+            WorkingTreeDiffKind.Unstaged);
+        var crlfDiagnostic = Assert.Single(
+            toCrLf.Diagnostics,
+            diagnostic => diagnostic.Kind == DiffDiagnosticKind.LineEndingsChanged);
+        Assert.Equal(DiffTextLineEnding.Lf, crlfDiagnostic.OriginalLineEnding);
+        Assert.Equal(DiffTextLineEnding.CrLf, crlfDiagnostic.ChangedLineEnding);
+
+        RunGit("add", path);
+        RunGit("commit", "-m", "crlf");
+        File.WriteAllBytes(Path.Combine(_temporaryDirectory, path), Encoding.UTF8.GetBytes("one\ntwo\n"));
+        var toLf = await _service.ReadDiffAsync(
+            repository,
+            await ReadChangeAsync(repository, path),
+            WorkingTreeDiffKind.Unstaged);
+        var lfDiagnostic = Assert.Single(
+            toLf.Diagnostics,
+            diagnostic => diagnostic.Kind == DiffDiagnosticKind.LineEndingsChanged);
+        Assert.Equal(DiffTextLineEnding.CrLf, lfDiagnostic.OriginalLineEnding);
+        Assert.Equal(DiffTextLineEnding.Lf, lfDiagnostic.ChangedLineEnding);
+    }
+
+    [Fact]
+    public async Task PreservesNoFinalNewlineChanges()
+    {
+        var repository = await CreateRepositoryAsync();
+        const string path = "newline.txt";
+        CommitBytes(path, Encoding.UTF8.GetBytes("value"), "no newline");
+
+        File.WriteAllBytes(Path.Combine(_temporaryDirectory, path), Encoding.UTF8.GetBytes("value\n"));
+        var addNewline = await _service.ReadDiffAsync(
+            repository,
+            await ReadChangeAsync(repository, path),
+            WorkingTreeDiffKind.Unstaged);
+        Assert.Contains(addNewline.Diagnostics, diagnostic => diagnostic.Kind == DiffDiagnosticKind.NoFinalNewline);
+        Assert.Contains(addNewline.Lines, line => line.Text == "\\ No newline at end of file");
+
+        RunGit("add", path);
+        RunGit("commit", "-m", "with newline");
+        File.WriteAllBytes(Path.Combine(_temporaryDirectory, path), Encoding.UTF8.GetBytes("value"));
+        var removeNewline = await _service.ReadDiffAsync(
+            repository,
+            await ReadChangeAsync(repository, path),
+            WorkingTreeDiffKind.Unstaged);
+        Assert.Contains(removeNewline.Diagnostics, diagnostic => diagnostic.Kind == DiffDiagnosticKind.NoFinalNewline);
+        Assert.Contains(removeNewline.Lines, line => line.Text == "\\ No newline at end of file");
+    }
+
+    [Fact]
     public async Task ReportsConflictWithoutPretendingItIsTwoWayDiff()
     {
         var repository = await CreateRepositoryAsync();
@@ -225,6 +308,7 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
         RunGit("init", "-b", "main");
         RunGit("config", "user.email", "tests@example.invalid");
         RunGit("config", "user.name", "CSharpGit Tests");
+        RunGit("config", "core.autocrlf", "false");
         if (createInitialCommit)
             CommitFile("seed.txt", "seed\n", "seed");
         return await _repositoryService.OpenAsync(_temporaryDirectory);
@@ -235,6 +319,19 @@ public sealed class WorkingTreeDiffServiceTests : IDisposable
         File.WriteAllText(Path.Combine(_temporaryDirectory, path), contents);
         RunGit("add", "--", path);
         RunGit("commit", "-m", message);
+    }
+
+    private void CommitBytes(string path, byte[] contents, string message)
+    {
+        File.WriteAllBytes(Path.Combine(_temporaryDirectory, path), contents);
+        RunGit("add", "--", path);
+        RunGit("commit", "-m", message);
+    }
+
+    private static byte[] Utf8Bytes(string text, bool withBom)
+    {
+        var content = Encoding.UTF8.GetBytes(text);
+        return withBom ? [0xEF, 0xBB, 0xBF, .. content] : content;
     }
 
     private async Task<WorkingTreeChange> ReadChangeAsync(Repository repository, string path)
