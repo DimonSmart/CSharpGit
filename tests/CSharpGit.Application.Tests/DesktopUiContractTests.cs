@@ -16,7 +16,7 @@ public sealed class DesktopUiContractTests
         var splitter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "GridSplitter.cs"));
         var selectableDiff = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "SelectableDiffViewer.xaml"));
 
-        Assert.Contains("OpenRepositoryCommand", xaml);
+        Assert.Contains("OpenRepository_Click", xaml);
         Assert.Contains("HistoryFilter", xaml);
         Assert.Contains("UpdateSourceTrigger=PropertyChanged", xaml);
         Assert.Contains("UnoPlatformHostBuilder.Create", program);
