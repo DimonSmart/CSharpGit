@@ -249,6 +249,8 @@ public sealed class SettingsViewModelTests
         public bool OnlineAvatarLookupEnabled { get; set; } = true;
         public bool HistoryPerformanceDiagnosticsEnabled { get; set; }
         public HistoryRenderingMode HistoryRenderingMode { get; set; } = HistoryRenderingMode.Full;
+        public string DefaultRepositoriesDirectory { get; set; } =
+            Path.Combine(Path.GetTempPath(), "CSharpGit", "repos");
         public IReadOnlyList<RecentRepositorySettings> RecentRepositories => [];
         public bool FailNextWrite { get; set; }
         public int ChangedSubscriberCount { get; private set; }
@@ -346,6 +348,18 @@ public sealed class SettingsViewModelTests
             ThrowIfWriteFails(cancellationToken);
             if (HistoryRenderingMode == mode) return Task.CompletedTask;
             HistoryRenderingMode = mode;
+            _changed?.Invoke(this, EventArgs.Empty);
+            return Task.CompletedTask;
+        }
+
+        public Task SetDefaultRepositoriesDirectoryAsync(
+            string directory,
+            CancellationToken cancellationToken = default)
+        {
+            ThrowIfWriteFails(cancellationToken);
+            if (string.Equals(DefaultRepositoriesDirectory, directory, StringComparison.Ordinal))
+                return Task.CompletedTask;
+            DefaultRepositoriesDirectory = directory;
             _changed?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
         }
