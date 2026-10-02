@@ -12,7 +12,13 @@ internal static class GitDiffParser
     {
         ArgumentNullException.ThrowIfNull(output);
 
-        var lines = output.Split('\n')
+        var rawLines = output.Split('\n');
+        var count = rawLines.Length;
+        if (count > 0 && rawLines[^1].Length == 0)
+            count--;
+
+        var lines = rawLines
+            .Take(count)
             .Select(ParseLine)
             .ToArray();
         return new ParsedGitDiff(lines, BuildDiagnostics(lines));
