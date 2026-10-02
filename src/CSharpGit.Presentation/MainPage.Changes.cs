@@ -36,8 +36,12 @@ public sealed partial class MainPage
         UpdateRepositoryFilesViewActivity();
     }
 
-    private void UpdateChangesViewActivity() =>
-        _viewModel.SetChangesViewActive(ReferenceEquals(DetailsTabs.SelectedItem, ChangesTabControl));
+    private void UpdateChangesViewActivity()
+    {
+        var active = ReferenceEquals(DetailsTabs.SelectedItem, ChangesTabControl);
+        _viewModel.SetChangesViewActive(active);
+        if (!active) CancelCommitImageDiff(clearSurface: true);
+    }
 
     private void CommitFiles_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs args)
     {
@@ -61,6 +65,8 @@ public sealed partial class MainPage
         }
         else if (args.PropertyName == nameof(OpenRepositoryViewModel.SelectedFile))
         {
+            CancelCommitImageDiff(clearSurface: true);
+            CompactDiffViewer.Clear();
             SyncChangedFileTreeSelection();
         }
         else if (args.PropertyName == nameof(OpenRepositoryViewModel.SelectedChangedFiles))
@@ -86,13 +92,23 @@ public sealed partial class MainPage
     {
         if (!_changesSurfaceInitialized) return;
 
-        if (_viewModel.SelectedDiff is not { IsBinary: false } diff)
+        CancelCommitImageDiff(clearSurface: false);
+        if (_viewModel.SelectedDiff is not { } diff)
         {
             CompactDiffViewer.Clear();
+            SetCommitDiffPresentationState(DiffPresentationState.None);
+            return;
+        }
+
+        if (diff.IsBinary)
+        {
+            CompactDiffViewer.Clear();
+            _ = LoadCommitImageDiffAsync();
             return;
         }
 
         CompactDiffViewer.SetLines(CompactDiffLine.Build(diff.Lines));
+        SetCommitDiffPresentationState(DiffPresentationState.Text);
     }
 
     private void EnsureCurrentCommitFileSelection()

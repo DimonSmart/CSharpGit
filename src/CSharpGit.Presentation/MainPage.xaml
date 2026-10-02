@@ -427,7 +427,9 @@
                                          Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                   <Grid Grid.Column="2" RowDefinitions="Auto,*">
-                    <Border Visibility="{Binding HasTextDiff, Converter={StaticResource BooleanToVisibilityConverter}}" Style="{StaticResource DiffHeaderSurfaceStyle}">
+                    <Border x:Name="CommitTextDiffHeader"
+                            Visibility="Collapsed"
+                            Style="{StaticResource DiffHeaderSurfaceStyle}">
                       <Grid ColumnDefinitions="38,38,*">
                         <TextBlock Text="OLD"
                                    Style="{StaticResource CaptionTextStyle}"
@@ -444,15 +446,29 @@
                     </Border>
 
                     <Grid Grid.Row="1">
-                      <InfoBar IsOpen="True"
+                      <InfoBar x:Name="CommitBinaryInfo"
+                               IsOpen="True"
                                Severity="Informational"
                                Title="Binary file"
                                Message="Binary file — text diff is not available."
-                               Visibility="{Binding HasBinaryDiff, Converter={StaticResource BooleanToVisibilityConverter}}"
+                               Visibility="Collapsed"
                                IsClosable="False"
                                VerticalAlignment="Top" />
+                      <StackPanel x:Name="CommitImageLoading"
+                                  Visibility="Collapsed"
+                                  Orientation="Horizontal"
+                                  Spacing="8"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center">
+                        <ProgressRing Width="18" Height="18" IsActive="True" />
+                        <TextBlock Text="Loading image comparison…" VerticalAlignment="Center" />
+                      </StackPanel>
+                      <controls:ImageDiffPreviewHost x:Name="CommitImageDiffHost"
+                                                     Visibility="Collapsed"
+                                                     HorizontalAlignment="Stretch"
+                                                     VerticalAlignment="Stretch" />
                       <controls:SelectableDiffViewer x:Name="CompactDiffViewer"
-                                                     Visibility="{Binding HasTextDiff, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                     Visibility="Collapsed"
                                                      MinHeight="96"
                                                      HorizontalAlignment="Stretch"
                                                      VerticalAlignment="Stretch" />
@@ -596,7 +612,10 @@
                   </Grid>
                 </Border>
 
-                <Border Grid.Row="1" Style="{StaticResource DiffHeaderSurfaceStyle}">
+                <Border x:Name="WorkingTreeTextDiffHeader"
+                        Grid.Row="1"
+                        Visibility="Collapsed"
+                        Style="{StaticResource DiffHeaderSurfaceStyle}">
                   <Grid ColumnDefinitions="38,38,*">
                     <TextBlock Text="OLD"
                                Style="{StaticResource CaptionTextStyle}"
@@ -629,6 +648,19 @@
                            Visibility="Collapsed"
                            IsClosable="False"
                            VerticalAlignment="Top" />
+                  <StackPanel x:Name="WorkingTreeImageLoading"
+                              Visibility="Collapsed"
+                              Orientation="Horizontal"
+                              Spacing="8"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center">
+                    <ProgressRing Width="18" Height="18" IsActive="True" />
+                    <TextBlock Text="Loading image comparison…" VerticalAlignment="Center" />
+                  </StackPanel>
+                  <controls:ImageDiffPreviewHost x:Name="WorkingTreeImageDiffHost"
+                                                 Visibility="Collapsed"
+                                                 HorizontalAlignment="Stretch"
+                                                 VerticalAlignment="Stretch" />
                   <controls:SelectableDiffViewer x:Name="WorkingTreeDiffViewer"
                                                  Visibility="Collapsed"
                                                  HorizontalAlignment="Stretch"
