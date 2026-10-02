@@ -11,14 +11,12 @@ internal sealed class ImageDiffPreviewService
 
     internal ImageDiffPreviewService(
         IRepositoryFileVersionService fileVersionService,
-        IRepositoryPathService repositoryPathService,
+        DiffFileVersionPathResolver pathResolver,
         ImageMetadataReader? metadataReader = null)
     {
         _fileVersionService = fileVersionService ?? throw new ArgumentNullException(nameof(fileVersionService));
+        _pathResolver = pathResolver ?? throw new ArgumentNullException(nameof(pathResolver));
         _metadataReader = metadataReader ?? SharedImageMetadataReader.Instance;
-        _pathResolver = new DiffFileVersionPathResolver(
-            fileVersionService,
-            repositoryPathService ?? throw new ArgumentNullException(nameof(repositoryPathService)));
     }
 
     internal async Task<ImageDiffLoadResult> LoadCommitAsync(
