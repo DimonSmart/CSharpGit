@@ -269,6 +269,7 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
         IRepositoryImageService repositoryImageService,
         Func<RecentRepositoryItem, Task> openRecentAsync,
         Func<Task> openRepositoryAsync,
+        Func<Task> cloneRepositoryAsync,
         Func<Task> createRepositoryAsync,
         DispatcherQueue dispatcherQueue)
     {
@@ -277,6 +278,7 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
         _openRecentAsync = openRecentAsync;
         _dispatcherQueue = dispatcherQueue ?? throw new ArgumentNullException(nameof(dispatcherQueue));
         OpenRepositoryCommand = new AsyncCommand(openRepositoryAsync, () => true);
+        CloneRepositoryCommand = new AsyncCommand(cloneRepositoryAsync, () => true);
         CreateRepositoryCommand = new AsyncCommand(createRepositoryAsync, () => true);
         RemoveUnavailableRepositoriesCommand = new AsyncCommand(RemoveUnavailableRepositoriesAsync, () => true);
         _settings.Changed += Settings_Changed;
@@ -295,6 +297,8 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
     public ObservableCollection<RecentRepositoryItem> RecentRepositories { get; } = [];
 
     public ICommand OpenRepositoryCommand { get; }
+
+    public ICommand CloneRepositoryCommand { get; }
 
     public ICommand CreateRepositoryCommand { get; }
 

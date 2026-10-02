@@ -16,7 +16,9 @@ public sealed partial class MainPage
 
     private async Task ShowCreateRepositoryAsync()
     {
-        if (_repositoryCreationWorkflowActive || _viewModel.IsBusy)
+        if (_repositoryCreationWorkflowActive
+            || _repositoryCloningWorkflowActive
+            || _viewModel.IsBusy)
             return;
 
         _repositoryCreationWorkflowActive = true;

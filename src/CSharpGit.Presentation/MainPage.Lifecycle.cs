@@ -25,6 +25,7 @@ public sealed partial class MainPage
         if (Interlocked.Exchange(ref _shutdownStarted, 1) != 0) return;
 
         StopHistoryPerformanceCaptureOnShutdown();
+        _cloneRepositoryViewModel.Cancel();
         Loaded -= RunDesktopCheckWhenRequested;
         _viewModel.Changes.CollectionChanged -= RepositoryPresentationChanges_CollectionChanged;
         _viewModel.LocalBranches.CollectionChanged -= RepositoryPresentationLocalBranches_CollectionChanged;
