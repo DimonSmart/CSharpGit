@@ -67,22 +67,26 @@ public sealed class RepositoryCreationUiContractTests
             root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var mainPage = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+        var switching = File.ReadAllText(Path.Combine(
+            root, "src", "CSharpGit.Presentation", "MainPage.RepositorySwitching.cs"));
 
-        Assert.Contains("Discard commit message?", workflow);
+        Assert.Contains("ConfirmDiscardCommitMessageAsync(closing: false)", workflow);
+        Assert.Contains("Discard commit message?", switching);
         Assert.Contains(
-            "Creating and opening another repository will discard the current commit message.",
-            workflow);
-        Assert.Contains("Keep editing", workflow);
-        Assert.Contains("Discard and continue", workflow);
+            "Opening another repository will discard the current commit message.",
+            switching);
+        Assert.Contains("Keep editing", switching);
+        Assert.Contains("Discard and continue", switching);
         Assert.True(
             workflow.IndexOf(
-                "ConfirmDiscardCommitMessageForRepositorySwitchAsync",
+                "ConfirmDiscardCommitMessageAsync(closing: false)",
                 StringComparison.Ordinal)
             < workflow.IndexOf(
                 "_createRepositoryViewModel.CreateAsync()",
                 StringComparison.Ordinal));
 
-        Assert.Contains("OpenRepositoryPathAsync", workflow);
+        Assert.Contains("SwitchRepositoryCoreAsync(path, discardDraft)", workflow);
+        Assert.Contains("OpenRepositoryPathAsync", switching);
         Assert.Contains("OpenRepositoryPathAsync", openViewModel);
         Assert.DoesNotContain("QueuePath", workflow);
         Assert.Contains(
