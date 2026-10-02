@@ -32,6 +32,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private bool _isBusy;
     private int _busyOperations;
     private bool _isMutating;
+    private int _repositoryChangeInProgress;
     private readonly SemaphoreSlim _mutationGate = new(1, 1);
     private CancellationTokenSource? _historyLoadCts;
     private long _historyLoadGeneration;
@@ -279,6 +280,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); Notify(nameof(CanForcePushWithLease)); _openRepositoryCommand.RaiseCanExecuteChanged(); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
     public bool HasRepository => Repository is not null;
+    public bool CanChangeRepository => !_isMutating && Volatile.Read(ref _repositoryChangeInProgress) == 0;
     public string RepositoryKind => Repository?.IsWorktree == true ? "Git worktree" : "Git repository";
     public string FilterText { get => _filterText; set { _filterText = value; Notify(); } }
     public UiChoice<HistoryScope> SelectedScope { get => _selectedScope; set { if (_selectedScope == value) return; _selectedScope = value; Notify(); if (value.Value != HistoryScope.AllReferences) DisableReflogForScopeChange(); _ = LoadHistoryAsync(true); } }
@@ -489,6 +491,11 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         string path,
         CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (_isMutating || Interlocked.CompareExchange(ref _repositoryChangeInProgress, 1, 0) != 0)
+            return false;
+
+        Notify(nameof(CanChangeRepository));
         var previousRepository = Repository;
         ErrorMessage = null;
         EnterBusy();
@@ -552,8 +559,23 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         finally
         {
             ExitBusy();
+            Interlocked.Exchange(ref _repositoryChangeInProgress, 0);
+            Notify(nameof(CanChangeRepository));
             _openRepositoryCommand.RaiseCanExecuteChanged();
         }
+    }
+
+    internal bool CloseRepository()
+    {
+        if (Repository is null) return true;
+        if (!CanChangeRepository) return false;
+
+        InvalidateHistoryLoad();
+        Repository = null;
+        ClearRepositoryPresentation();
+        ErrorMessage = null;
+        _openRepositoryCommand.RaiseCanExecuteChanged();
+        return true;
     }
 
     private void ClearRepositoryPresentation()
@@ -716,6 +738,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         if (!await _mutationGate.WaitAsync(0)) return false;
         _isMutating = true;
         Notify(nameof(CanCreateStash));
+        Notify(nameof(CanChangeRepository));
         EnterBusy();
         RaiseCommands();
         ErrorMessage = null;
@@ -745,6 +768,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         {
             _isMutating = false;
             Notify(nameof(CanCreateStash));
+            Notify(nameof(CanChangeRepository));
             ExitBusy();
             _mutationGate.Release();
             RaiseCommands();
