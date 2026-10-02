@@ -98,11 +98,33 @@ public sealed partial class MainPage
     {
         if (!Directory.Exists(item.Path))
         {
+            await ShowUnavailableRepositoryAsync(item.Path);
+            return;
+        }
+
+        await TrySwitchRepositoryAsync(item.Path);
+    }
+
+    private async Task OpenRepositoryPickerAsync()
+    {
+        if (!_viewModel.CanChangeRepository) return;
+
+        string? path;
+        try
+        {
+            path = await _recentRepositoryFolderPicker.PickFolderAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (Exception exception)
+        {
             var dialog = new ContentDialog
             {
                 XamlRoot = XamlRoot,
-                Title = "Repository folder not found",
-                Content = $"The folder for this recent repository no longer exists:\n\n{item.Path}\n\nYou can remove it from Recent repositories with the remove button.",
+                Title = "Could not open folder picker",
+                Content = $"The system folder picker could not be opened:\n\n{exception.Message}",
                 CloseButtonText = "OK",
                 DefaultButton = ContentDialogButton.Close
             };
@@ -110,17 +132,8 @@ public sealed partial class MainPage
             return;
         }
 
-        var command = (AsyncCommand)_viewModel.OpenRepositoryCommand;
-        if (!command.CanExecute(null)) return;
-
-        _recentRepositoryFolderPicker.QueuePath(item.Path);
-        await command.ExecuteAsync();
-    }
-
-    private async Task OpenRepositoryPickerAsync()
-    {
-        var command = (AsyncCommand)_viewModel.OpenRepositoryCommand;
-        if (command.CanExecute(null)) await command.ExecuteAsync();
+        if (path is not null)
+            await TrySwitchRepositoryAsync(path);
     }
 
     private async Task RecordOpenedRepositoryAsync()
@@ -160,11 +173,6 @@ public sealed partial class MainPage
         Unloaded -= RecentRepositories_Unloaded;
     }
 
-    private static bool PathsEqual(string left, string right)
-    {
-        var comparison = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
-            ? StringComparison.OrdinalIgnoreCase
-            : StringComparison.Ordinal;
-        return string.Equals(left, right, comparison);
-    }
+    private static bool PathsEqual(string left, string right) =>
+        RecentRepositoriesProjectionBuilder.PathsEqual(left, right);
 }
