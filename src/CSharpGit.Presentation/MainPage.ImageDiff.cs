@@ -112,6 +112,14 @@ public sealed partial class MainPage
 
     private void SetCommitDiffPresentationState(DiffPresentationState state)
     {
+        CommitDiffHeader.Visibility =
+            state is DiffPresentationState.LoadingImage
+                or DiffPresentationState.Text
+                or DiffPresentationState.Image
+                or DiffPresentationState.OtherBinary
+                or DiffPresentationState.Unavailable
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         CommitTextDiffHeader.Visibility = state == DiffPresentationState.Text ? Visibility.Visible : Visibility.Collapsed;
         CompactDiffViewer.Visibility = state == DiffPresentationState.Text ? Visibility.Visible : Visibility.Collapsed;
         CommitImageLoading.Visibility = state == DiffPresentationState.LoadingImage ? Visibility.Visible : Visibility.Collapsed;
