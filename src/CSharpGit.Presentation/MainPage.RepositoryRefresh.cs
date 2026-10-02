@@ -365,14 +365,17 @@ public sealed partial class MainPage
                 : RefreshIndicatorState.UpToDate;
         var isRefreshing = state == RefreshIndicatorState.Refreshing;
 
-        RefreshIcon.Visibility = isRefreshing ? Visibility.Collapsed : Visibility.Visible;
+        RefreshIcon.Visibility =
+            !isRefreshing && state == RefreshIndicatorState.UpToDate
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        RefreshRequiredIcon.Visibility =
+            !isRefreshing && state == RefreshIndicatorState.RefreshRequired
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         RefreshProgressRing.Visibility = isRefreshing ? Visibility.Visible : Visibility.Collapsed;
         RefreshProgressRing.IsActive = isRefreshing;
 
-        RefreshIcon.Foreground = new SolidColorBrush(
-            state == RefreshIndicatorState.RefreshRequired
-                ? Microsoft.UI.Colors.Red
-                : Microsoft.UI.Colors.LimeGreen);
         RefreshProgressRing.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Goldenrod);
 
         ToolTipService.SetToolTip(
