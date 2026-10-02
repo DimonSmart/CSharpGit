@@ -52,6 +52,44 @@ public sealed class ImageMetadataReaderTests
     }
 
     [Fact]
+    public async Task TruncatedPngWithReadableIhdrIsInvalid()
+    {
+        var path = TempPath();
+        try
+        {
+            await File.WriteAllBytesAsync(path, Png[..33]);
+            var result = await new ImageMetadataReader().ReadAsync(path, CancellationToken.None);
+
+            Assert.Equal(ImageMetadataReadStatus.Invalid, result.Status);
+            Assert.Equal(ImageFormat.Png, result.DetectedFormat);
+            Assert.Null(result.Metadata);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task JpegWithoutEoiIsInvalidEvenWhenFrameMetadataExists()
+    {
+        var path = TempPath();
+        try
+        {
+            await File.WriteAllBytesAsync(path, Jpeg[..^2]);
+            var result = await new ImageMetadataReader().ReadAsync(path, CancellationToken.None);
+
+            Assert.Equal(ImageMetadataReadStatus.Invalid, result.Status);
+            Assert.Equal(ImageFormat.Jpeg, result.DetectedFormat);
+            Assert.Null(result.Metadata);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task UnsupportedBinaryIsNotAnImage()
     {
         var path = TempPath();
