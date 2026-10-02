@@ -161,7 +161,7 @@ internal GitFileAwareHistoryService(
         }
         arguments.AddRange(paths);
 
-        var output = await _executor.ExecuteAsync(
+        var output = await _executor.ExecuteAsyncPreservingOutputEndings(
             repository.WorkingDirectory,
             "Diff",
             cancellationToken,

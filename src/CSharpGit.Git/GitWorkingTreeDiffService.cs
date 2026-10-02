@@ -55,7 +55,11 @@ private readonly GitRepositoryCommandRunner _runner;
         arguments.Add(change.Path);
         if (change.OriginalPath is not null) arguments.Add(change.OriginalPath);
 
-        var output = await _runner.RunAsync(repository.WorkingDirectory, cancellationToken, false, arguments.ToArray());
+        var output = await _runner.RunAsyncPreservingOutputEndings(
+            repository.WorkingDirectory,
+            cancellationToken,
+            false,
+            arguments.ToArray());
         return BuildWorkingTreeDiff(change.Path, output);
     }
 
@@ -72,7 +76,7 @@ private readonly GitRepositoryCommandRunner _runner;
         await File.WriteAllBytesAsync(emptyPath, [], cancellationToken);
         try
         {
-            var result = await _runner.RunForResultAsync(
+            var result = await _runner.RunForResultPreservingOutputEndingsAsync(
                 repository.WorkingDirectory,
                 "WorkingTreeNoIndexDiff",
                 GitCommandKind.Internal,

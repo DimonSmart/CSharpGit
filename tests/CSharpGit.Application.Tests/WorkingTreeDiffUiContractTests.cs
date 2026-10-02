@@ -181,7 +181,8 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("\"--no-index\"", gitDiff);
         Assert.Contains("result.ExitCode is not 0 and not 1", gitDiff);
         Assert.Contains("_runner.RunForResultAsync", gitDiff);
-        Assert.Contains("GitDiffParser.ParseLines", gitDiff);
+        Assert.Contains("GitDiffParser.Parse(output)", gitDiff);
+        Assert.Contains("RunAsyncPreservingOutputEndings", gitDiff);
     }
 
     private static int Count(string value, string fragment) =>
