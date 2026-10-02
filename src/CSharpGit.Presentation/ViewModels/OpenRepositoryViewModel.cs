@@ -497,7 +497,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
         Notify(nameof(CanChangeRepository));
         RaiseCommands();
-        if (!await _mutationGate.WaitAsync(0, cancellationToken))
+        if (!await _mutationGate.WaitAsync(0))
         {
             Interlocked.Exchange(ref _repositoryChangeInProgress, 0);
             Notify(nameof(CanChangeRepository));
