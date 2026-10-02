@@ -58,3 +58,4 @@ opened.
 | IDD-0036 | Spec | About and application update | Release-version About, GitHub update check and guarded Homebrew-only macOS self-update with safe restart | — |
 | IDD-0037 | Spec | Recent repositories start screen | Search, pinning, stable manual order, large recent history and explicit start-screen layout | — |
 | IDD-0038 | Spec | Image diff preview | Exact Original/Changed image comparison, shared bounded metadata and explicit text/image/binary presentation | — |
+| IDD-0039 | Spec | Repository switching | Single-workspace switch/close lifecycle, quick selector, draft protection and stale-result safety | — |
