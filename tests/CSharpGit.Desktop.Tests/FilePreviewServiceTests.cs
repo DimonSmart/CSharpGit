@@ -56,6 +56,29 @@ public sealed class FilePreviewServiceTests
     }
 
     [Fact]
+    public async Task ValidImageWithUnrelatedExtensionUsesImagePreviewAndMetadata()
+    {
+        var png = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAIAAAASFvFNAAAAEElEQVR4nGP8zwAFTDAGAwATKQED8NgHhAAAAABJRU5ErkJggg==");
+
+        var result = await PreviewAsync("picture.bin", png);
+
+        var image = Assert.IsType<ImagePreviewContent>(result);
+        Assert.True(image.CanRender);
+        Assert.Equal(ImageFormat.Png, image.Metadata!.Format);
+        Assert.Equal(3, image.Metadata.Width);
+        Assert.Equal(2, image.Metadata.Height);
+    }
+
+    [Fact]
+    public async Task ImageExtensionWithInvalidBinaryContentUsesBinaryFallback()
+    {
+        var result = await PreviewAsync("broken.png", [0x00, 0x01, 0x02, 0x03]);
+
+        Assert.IsType<BinaryPreviewContent>(result);
+    }
+
+    [Fact]
     public async Task PngSignatureIsImage()
     {
         var result = await PreviewAsync("wrong.txt", [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
