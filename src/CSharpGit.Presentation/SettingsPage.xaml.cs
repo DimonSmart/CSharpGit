@@ -19,6 +19,7 @@ public sealed partial class SettingsPage : Page
     private readonly SettingsViewModel _viewModel;
     private readonly GitToolsSettingsViewModel _gitToolsViewModel;
     private readonly IDesktopShellService _desktopShellService;
+    private readonly IFolderPicker _folderPicker;
     private readonly string _logFilePath;
     private readonly Func<Repository?> _repositoryAccessor;
     private bool _selectionReady;
@@ -29,6 +30,7 @@ public sealed partial class SettingsPage : Page
         SettingsViewModel viewModel,
         GitToolsSettingsViewModel gitToolsViewModel,
         IDesktopShellService desktopShellService,
+        IFolderPicker folderPicker,
         string logFilePath,
         Func<Repository?> repositoryAccessor,
         SettingsSection initialSection)
@@ -36,6 +38,7 @@ public sealed partial class SettingsPage : Page
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _gitToolsViewModel = gitToolsViewModel ?? throw new ArgumentNullException(nameof(gitToolsViewModel));
         _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
+        _folderPicker = folderPicker ?? throw new ArgumentNullException(nameof(folderPicker));
         _logFilePath = string.IsNullOrWhiteSpace(logFilePath)
             ? throw new ArgumentException("A log file path is required.", nameof(logFilePath))
             : Path.GetFullPath(logFilePath);
@@ -164,6 +167,44 @@ public sealed partial class SettingsPage : Page
             ShowSettingsSuccess(successMessage);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            ShowSettingsError(exception);
+        }
+    }
+
+    private async void DefaultRepositoriesDirectoryTextBox_LostFocus(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (!_selectionReady || _viewModel.IsSynchronizingFromSettings) return;
+
+        SettingsMessage.IsOpen = false;
+        try
+        {
+            await _viewModel.ApplyDefaultRepositoriesDirectoryAsync(
+                _viewModel.DefaultRepositoriesDirectory);
+        }
+        catch (Exception exception)
+        {
+            ShowSettingsError(exception);
+        }
+    }
+
+    private async void DefaultRepositoriesDirectoryBrowse_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        SettingsMessage.IsOpen = false;
+        try
+        {
+            var selected = await _folderPicker.PickFolderAsync();
+            if (selected is null) return;
+            await _viewModel.ApplyDefaultRepositoriesDirectoryAsync(selected);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
         {
             ShowSettingsError(exception);
         }

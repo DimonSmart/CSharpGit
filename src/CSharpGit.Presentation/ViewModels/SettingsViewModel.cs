@@ -44,6 +44,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
     private bool _onlineAvatarLookupEnabled;
     private bool _historyPerformanceDiagnosticsEnabled;
     private HistoryRenderingModeOption _selectedHistoryRenderingMode;
+    private string _defaultRepositoriesDirectory;
     private int _disposed;
     private int _synchronizingFromSettings;
 
@@ -116,6 +117,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         _onlineAvatarLookupEnabled = _settings.OnlineAvatarLookupEnabled;
         _historyPerformanceDiagnosticsEnabled = _settings.HistoryPerformanceDiagnosticsEnabled;
         _selectedHistoryRenderingMode = FindHistoryRenderingMode(_settings.HistoryRenderingMode);
+        _defaultRepositoriesDirectory = _settings.DefaultRepositoriesDirectory;
 
         _settings.Changed += Settings_Changed;
     }
@@ -238,6 +240,19 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         {
             if (Equals(_selectedHistoryRenderingMode, value)) return;
             _selectedHistoryRenderingMode = value;
+            Notify();
+        }
+    }
+
+    public string DefaultRepositoriesDirectory
+    {
+        get => _defaultRepositoriesDirectory;
+        set
+        {
+            var next = value ?? string.Empty;
+            if (string.Equals(_defaultRepositoriesDirectory, next, StringComparison.Ordinal))
+                return;
+            _defaultRepositoriesDirectory = next;
             Notify();
         }
     }
@@ -396,6 +411,24 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    public async Task ApplyDefaultRepositoriesDirectoryAsync(
+        string directory,
+        CancellationToken cancellationToken = default)
+    {
+        DefaultRepositoriesDirectory = directory;
+        try
+        {
+            await _settings.SetDefaultRepositoriesDirectoryAsync(
+                directory,
+                cancellationToken);
+        }
+        catch
+        {
+            await SyncFromSettingsAfterFailureAsync();
+            throw;
+        }
+    }
+
     private void Settings_Changed(object? sender, EventArgs e)
     {
         if (IsDisposed) return;
@@ -430,6 +463,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
             OnlineAvatarLookupEnabled = _settings.OnlineAvatarLookupEnabled;
             HistoryPerformanceDiagnosticsEnabled = _settings.HistoryPerformanceDiagnosticsEnabled;
             SelectedHistoryRenderingMode = FindHistoryRenderingMode(_settings.HistoryRenderingMode);
+            DefaultRepositoriesDirectory = _settings.DefaultRepositoriesDirectory;
         }
         finally
         {
