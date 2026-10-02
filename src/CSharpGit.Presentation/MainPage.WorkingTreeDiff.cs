@@ -207,19 +207,51 @@ public sealed partial class MainPage
             _viewModel.SelectedWorkingTreeDiff = diff;
             if (diff.IsBinary)
             {
-                WorkingTreeBinaryInfo.Visibility = Visibility.Visible;
+                SetWorkingTreeDiffPresentationState(DiffPresentationState.LoadingImage);
+                try
+                {
+                    var imageResult = await ImageDiffService.LoadWorkingTreeAsync(
+                        repository,
+                        change,
+                        kind,
+                        cts.Token);
+                    if (!IsCurrentWorkingTreeDiffRequest(repository, change, kind, generation, cts.Token))
+                        return;
+
+                    _workingTreeFileVersions = imageResult.Versions;
+                    _workingTreeRevealPath = TryResolveReveal(repository, imageResult.Versions.RevealPath);
+                    UpdateWorkingTreeButtons();
+
+                    if (imageResult.Content is null)
+                    {
+                        SetWorkingTreeDiffPresentationState(DiffPresentationState.OtherBinary);
+                        return;
+                    }
+
+                    WorkingTreeImageDiffHost.Show(imageResult.Content);
+                    SetWorkingTreeDiffPresentationState(DiffPresentationState.Image);
+                }
+                catch (OperationCanceledException) when (cts.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception)
+                {
+                    if (IsCurrentWorkingTreeDiffRequest(repository, change, kind, generation, cts.Token))
+                        SetWorkingTreeDiffPresentationState(DiffPresentationState.OtherBinary);
+                }
                 return;
             }
 
             var compactLines = CompactDiffLine.Build(diff.Lines);
             if (compactLines.Count == 0)
             {
-                WorkingTreeNoChangesInfo.Visibility = Visibility.Visible;
+                SetWorkingTreeDiffPresentationState(DiffPresentationState.NoChanges);
                 return;
             }
 
             WorkingTreeDiffViewer.SetLines(compactLines);
-            WorkingTreeDiffViewer.Visibility = Visibility.Visible;
+            SetWorkingTreeDiffPresentationState(DiffPresentationState.Text);
         }
         catch (OperationCanceledException)
         {
@@ -391,9 +423,7 @@ public sealed partial class MainPage
     private void ClearWorkingTreeDiffViewer(bool clearSelectionKind)
     {
         WorkingTreeDiffViewer.Clear();
-        WorkingTreeDiffViewer.Visibility = Visibility.Collapsed;
-        WorkingTreeBinaryInfo.Visibility = Visibility.Collapsed;
-        WorkingTreeNoChangesInfo.Visibility = Visibility.Collapsed;
+        SetWorkingTreeDiffPresentationState(DiffPresentationState.None);
         WorkingTreeDiffHeader.Text = string.Empty;
         WorkingTreeDiffKindText.Text = string.Empty;
         _viewModel.SelectedWorkingTreeDiff = null;
