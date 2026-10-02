@@ -13,6 +13,7 @@ public sealed class SettingsWindowController : IDisposable
     private readonly IAppSettingsService _settings;
     private readonly IGitToolsService _gitToolsService;
     private readonly IDesktopShellService _desktopShellService;
+    private readonly IFolderPicker _folderPicker;
     private readonly IUiDispatcher _uiDispatcher;
     private Window? _window;
     private SettingsPage? _page;
@@ -24,12 +25,14 @@ public sealed class SettingsWindowController : IDisposable
         IAppSettingsService settings,
         IGitToolsService gitToolsService,
         IDesktopShellService desktopShellService,
+        IFolderPicker folderPicker,
         IUiDispatcher uiDispatcher)
     {
         _themeManager = themeManager ?? throw new ArgumentNullException(nameof(themeManager));
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _gitToolsService = gitToolsService ?? throw new ArgumentNullException(nameof(gitToolsService));
         _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
+        _folderPicker = folderPicker ?? throw new ArgumentNullException(nameof(folderPicker));
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
     }
 
@@ -52,6 +55,7 @@ public sealed class SettingsWindowController : IDisposable
             new SettingsViewModel(_settings, _uiDispatcher),
             new GitToolsSettingsViewModel(_gitToolsService),
             _desktopShellService,
+            _folderPicker,
             SessionFileLoggerProvider.CurrentLogPath,
             repositoryAccessor,
             section);

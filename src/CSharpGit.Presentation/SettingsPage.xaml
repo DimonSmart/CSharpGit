@@ -88,6 +88,33 @@
               </StackPanel>
             </Border>
 
+            <TextBlock Text="Repositories"
+                       Style="{StaticResource SectionHeaderTextStyle}"
+                       Margin="{StaticResource Margin.Section}" />
+            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
+              <StackPanel Spacing="{StaticResource Spacing.M}">
+                <TextBlock Text="Default repositories folder"
+                           Style="{StaticResource BodyStrongTextStyle}" />
+                <TextBlock Text="Used as the default location for cloned repositories."
+                           Style="{StaticResource SecondaryTextStyle}"
+                           TextWrapping="Wrap"
+                           MaxWidth="620" />
+                <Grid ColumnDefinitions="*,Auto"
+                      ColumnSpacing="{StaticResource Spacing.M}">
+                  <TextBox x:Name="DefaultRepositoriesDirectoryTextBox"
+                           Text="{Binding DefaultRepositoriesDirectory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                           Style="{StaticResource CompactTextBoxStyle}"
+                           MinWidth="360"
+                           HorizontalAlignment="Stretch"
+                           LostFocus="DefaultRepositoriesDirectoryTextBox_LostFocus" />
+                  <Button Grid.Column="1"
+                          Content="Browse…"
+                          Style="{StaticResource CompactButtonStyle}"
+                          Click="DefaultRepositoriesDirectoryBrowse_Click" />
+                </Grid>
+              </StackPanel>
+            </Border>
+
             <TextBlock Text="Git push"
                        Style="{StaticResource SectionHeaderTextStyle}"
                        Margin="{StaticResource Margin.Section}" />
