@@ -80,6 +80,42 @@ internal sealed class GitCommandExecutor
             environment,
             _processStarted);
 
+    internal async Task<string> ExecuteAsyncPreservingOutputEndings(
+        string workingDirectory,
+        string operation,
+        CancellationToken cancellationToken,
+        params string[] arguments)
+    {
+        var result = await ExecuteForResultPreservingOutputEndingsAsync(
+            workingDirectory,
+            operation,
+            GitCommandKind.Internal,
+            cancellationToken,
+            null,
+            arguments);
+        ThrowIfFailed(result);
+        return result.StandardOutput;
+    }
+
+    internal Task<GitCommandResult> ExecuteForResultPreservingOutputEndingsAsync(
+        string workingDirectory,
+        string operation,
+        GitCommandKind commandKind,
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, string?>? environment,
+        IReadOnlyList<string> arguments) =>
+        ExecuteProcessCoreAsync(
+            _gitExecutable,
+            workingDirectory,
+            operation,
+            commandKind,
+            cancellationToken,
+            arguments,
+            _activitySink,
+            environment,
+            _processStarted,
+            trimOutputEndings: false);
+
     internal Task<GitCommandResult> ExecuteForResultPreservingGitEditorAsync(
         string workingDirectory,
         string operation,
@@ -187,7 +223,8 @@ internal sealed class GitCommandExecutor
         IGitCommandActivitySink? activitySink,
         IReadOnlyDictionary<string, string?>? environment = null,
         Action<int>? processStarted = null,
-        bool installNoOpGitEditor = true)
+        bool installNoOpGitEditor = true,
+        bool trimOutputEndings = true)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var effectiveArguments = GitProgressPolicy.Apply(arguments, commandKind);
@@ -226,7 +263,8 @@ internal sealed class GitCommandExecutor
         }
 
         await Task.WhenAll(outputTask, errorTask);
-        var output = outputTask.Result.TrimEnd('\r', '\n');
+        var rawOutput = outputTask.Result;
+        var output = trimOutputEndings ? rawOutput.TrimEnd('\r', '\n') : rawOutput;
         var error = errorTask.Result.TrimEnd('\r', '\n');
         if (cancellationToken.IsCancellationRequested)
         {

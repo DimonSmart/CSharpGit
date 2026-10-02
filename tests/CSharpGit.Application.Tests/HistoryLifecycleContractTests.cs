@@ -15,7 +15,7 @@ public sealed class HistoryLifecycleContractTests
         Assert.Contains("CancellationTokenSource? _historyLoadCts", viewModel);
         Assert.Contains("generation != Volatile.Read(ref _historyLoadGeneration)", viewModel);
         Assert.Contains("internal void InvalidateHistoryLoad()", viewModel);
-        Assert.Contains("OnSelectedHistoryRowChanged();", viewModel);
+        Assert.Contains("OnSelectedHistoryRowChanged(previous);", viewModel);
 
         Assert.Contains("_changedFilesLoadGeneration", lazyChanges);
         Assert.Contains("_diffLoadGeneration", lazyChanges);
