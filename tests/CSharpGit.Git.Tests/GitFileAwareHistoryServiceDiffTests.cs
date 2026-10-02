@@ -1,3 +1,4 @@
+using System.Text;
 using CSharpGit.Application;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
@@ -35,6 +36,47 @@ public sealed class GitFileAwareHistoryServiceDiffTests
             Assert.DoesNotContain("--find-renames", command.DisplayCommand, StringComparison.Ordinal);
             Assert.DoesNotContain("--find-copies", command.DisplayCommand, StringComparison.Ordinal);
             Assert.Contains(diff.Lines, line => line.Kind == DiffLineKind.Added && line.Text == "+two");
+        }
+        finally
+        {
+            DeleteTemporaryDirectory(directory);
+        }
+    }
+
+    [Fact]
+    public async Task HistoricalDiffPreservesBomAndLineEndingDiagnostics()
+    {
+        var directory = CreateTemporaryDirectory();
+        try
+        {
+            var setupExecutor = await InitializeRepositoryAsync(directory);
+            const string path = "format.txt";
+            await File.WriteAllBytesAsync(
+                Path.Combine(directory, path),
+                Encoding.UTF8.GetBytes("one\ntwo\n"));
+            await CommitAllAsync(setupExecutor, directory, "lf without bom");
+            var parent = await ResolveHeadAsync(setupExecutor, directory);
+
+            var crlf = Encoding.UTF8.GetBytes("one\r\ntwo\r\n");
+            await File.WriteAllBytesAsync(
+                Path.Combine(directory, path),
+                [0xEF, 0xBB, 0xBF, .. crlf]);
+            await CommitAllAsync(setupExecutor, directory, "crlf with bom");
+            var commit = await ResolveHeadAsync(setupExecutor, directory);
+
+            var activity = new GitCommandActivityHistory();
+            var service = CreateService(activity);
+            var repository = CreateRepository(directory);
+            var file = Assert.Single(await service.ReadChangedFilesAsync(repository, commit, parent));
+
+            var diff = await service.ReadDiffAsync(repository, commit, parent, file);
+
+            Assert.Contains(diff.Diagnostics, diagnostic =>
+                diagnostic.Kind == DiffDiagnosticKind.Utf8BomAdded);
+            var lineEndings = Assert.Single(diff.Diagnostics, diagnostic =>
+                diagnostic.Kind == DiffDiagnosticKind.LineEndingsChanged);
+            Assert.Equal(DiffTextLineEnding.Lf, lineEndings.OriginalLineEnding);
+            Assert.Equal(DiffTextLineEnding.CrLf, lineEndings.ChangedLineEnding);
         }
         finally
         {
@@ -97,6 +139,7 @@ public sealed class GitFileAwareHistoryServiceDiffTests
         await executor.ExecuteAsync(directory, "Setup", CancellationToken.None, "init");
         await executor.ExecuteAsync(directory, "Setup", CancellationToken.None, "config", "user.email", "tests@csharpgit.local");
         await executor.ExecuteAsync(directory, "Setup", CancellationToken.None, "config", "user.name", "CSharpGit Tests");
+        await executor.ExecuteAsync(directory, "Setup", CancellationToken.None, "config", "core.autocrlf", "false");
         return executor;
     }
 
