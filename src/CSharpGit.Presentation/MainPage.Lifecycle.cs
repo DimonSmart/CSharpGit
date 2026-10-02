@@ -17,6 +17,7 @@ public sealed partial class MainPage
         InitializeConfirmationDialogs();
         InitializeBranchRename();
         InitializeBranchDragDrop();
+        InitializeRepositorySwitching();
     }
 
     public void BeginShutdown()
