@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
+using CSharpGit.Presentation.Previewing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -13,6 +14,7 @@ public sealed partial class MainPage
     private readonly IRepositoryFileVersionService _fileVersionService = null!;
     private readonly IDesktopShellService _desktopShellService = null!;
     private readonly IRepositoryPathService _repositoryPathService = null!;
+    private readonly DiffFileVersionPathResolver _diffFileVersionPathResolver = null!;
     private readonly IGitToolsService _gitToolsService = null!;
     private DiffFileVersionPair? _commitFileVersions;
     private DiffFileVersionPair? _workingTreeFileVersions;
@@ -46,6 +48,7 @@ public sealed partial class MainPage
         _fileVersionService = fileVersionService ?? throw new ArgumentNullException(nameof(fileVersionService));
         _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
         _repositoryPathService = repositoryPathService ?? throw new ArgumentNullException(nameof(repositoryPathService));
+        _diffFileVersionPathResolver = new DiffFileVersionPathResolver(_fileVersionService, _repositoryPathService);
         InitializeFileOpening();
     }
 
@@ -477,18 +480,11 @@ public sealed partial class MainPage
 
     private async Task OpenResolvedVersionAsync(Repository repository, DiffFileVersion version, DiffFileSide side)
     {
-        if (!version.CanOpen)
-            throw new InvalidOperationException(version.UnavailableReason ?? "This file version is unavailable.");
-
-        string path;
-        if (version.Location == DiffFileVersionLocation.WorkingCopy)
-        {
-            path = _repositoryPathService.ResolveExistingWorkingTreeFile(repository, version.GitPath);
-        }
-        else
-        {
-            path = (await _fileVersionService.MaterializeAsync(repository, version, side)).Path;
-        }
+        var path = await _diffFileVersionPathResolver.ResolveAsync(
+            repository,
+            version,
+            side,
+            CancellationToken.None);
         await _desktopShellService.OpenFileAsync(path);
     }
 
