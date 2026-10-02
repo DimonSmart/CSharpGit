@@ -60,7 +60,6 @@ public sealed partial class MainPage
     private void ChangesViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (args.PropertyName is nameof(OpenRepositoryViewModel.SelectedDiff)
-            or nameof(OpenRepositoryViewModel.IsDiffLoading)
             or nameof(OpenRepositoryViewModel.DiffLoadErrorMessage))
         {
             RebuildCompactDiff();
