@@ -63,7 +63,7 @@ public sealed partial class MainPage
         catch (Exception)
         {
             if (IsCurrentCommitImageDiffRequest(repository, commit.Hash, file.Path, generation, cts))
-                SetCommitDiffPresentationState(DiffPresentationState.OtherBinary);
+                SetCommitDiffPresentationState(DiffPresentationState.Unavailable);
         }
         finally
         {

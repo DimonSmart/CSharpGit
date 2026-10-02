@@ -240,7 +240,7 @@ public sealed partial class MainPage
                 catch (Exception)
                 {
                     if (IsCurrentWorkingTreeDiffRequest(repository, change, kind, generation, cts.Token))
-                        SetWorkingTreeDiffPresentationState(DiffPresentationState.OtherBinary);
+                        SetWorkingTreeDiffPresentationState(DiffPresentationState.Unavailable);
                 }
                 return;
             }
