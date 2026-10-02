@@ -131,6 +131,8 @@ public sealed class FilePreviewServiceTests
             {
                 await stream.WriteAsync(png);
                 stream.SetLength(FilePreviewLimits.ImageDecodeBytes + 1);
+                stream.Position = stream.Length - 12;
+                await stream.WriteAsync(png.AsMemory(png.Length - 12, 12));
             }
 
             var result = await new FilePreviewService().LoadAsync("large.png", path, CancellationToken.None);
