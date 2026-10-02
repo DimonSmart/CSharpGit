@@ -35,7 +35,7 @@ public sealed partial class MainPage
                 && _viewModel.HasUnappliedCommitMessage)
             {
                 discardDraft =
-                    await ConfirmDiscardCommitMessageForRepositorySwitchAsync();
+                    await ConfirmDiscardCommitMessageAsync(closing: false);
                 if (!discardDraft)
                     return;
             }
@@ -68,7 +68,7 @@ public sealed partial class MainPage
                 return;
             }
 
-            var opened = await _viewModel.OpenRepositoryPathAsync(path);
+            var opened = await SwitchRepositoryCoreAsync(path, discardDraft);
             if (!opened)
             {
                 await ShowRepositoryCreationMessageAsync(
@@ -80,11 +80,6 @@ public sealed partial class MainPage
                         : $"\n\n{_viewModel.ErrorMessage}"));
                 return;
             }
-
-            if (discardDraft)
-                _viewModel.CommitMessage = string.Empty;
-
-            RefreshPresentationCollections();
         }
         finally
         {
@@ -243,22 +238,6 @@ public sealed partial class MainPage
             _createRepositoryViewModel.PropertyChanged -= creationChanged;
             _viewModel.PropertyChanged -= repositoryChanged;
         }
-    }
-
-    private async Task<bool> ConfirmDiscardCommitMessageForRepositorySwitchAsync()
-    {
-        var dialog = new ContentDialog
-        {
-            XamlRoot = XamlRoot,
-            Title = "Discard commit message?",
-            Content =
-                "Creating and opening another repository will discard the current commit message.",
-            PrimaryButtonText = "Discard and continue",
-            CloseButtonText = "Keep editing",
-            DefaultButton = ContentDialogButton.Close
-        };
-
-        return await dialog.ShowAsync() == ContentDialogResult.Primary;
     }
 
     private async Task ShowRepositoryCreationMessageAsync(
