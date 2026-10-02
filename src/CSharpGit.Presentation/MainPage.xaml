@@ -122,7 +122,8 @@
                          Style="{StaticResource BodyStrongTextStyle}"
                          TextTrimming="CharacterEllipsis" />
               <TextBlock x:Name="RepositorySelectorPath"
-                         Style="{StaticResource TechnicalTextStyle}"
+                         Text="{Binding Repository.WorkingDirectory}"
+                         Style="{StaticResource SelectableTechnicalTextStyle}"
                          Opacity="0.7"
                          TextTrimming="CharacterEllipsis" />
             </StackPanel>
