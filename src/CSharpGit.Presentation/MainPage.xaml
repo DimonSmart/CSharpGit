@@ -427,10 +427,12 @@
                                          Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                   <Grid Grid.Column="2" RowDefinitions="Auto,*">
-                    <Border x:Name="CommitTextDiffHeader"
+                    <Border x:Name="CommitDiffHeader"
                             Visibility="Collapsed"
                             Style="{StaticResource DiffHeaderSurfaceStyle}">
-                      <Grid ColumnDefinitions="38,38,*">
+                      <Grid x:Name="CommitTextDiffHeader"
+                            Visibility="Collapsed"
+                            ColumnDefinitions="38,38,*">
                         <TextBlock Text="OLD"
                                    Style="{StaticResource CaptionTextStyle}"
                                    HorizontalAlignment="Right"
