@@ -696,7 +696,7 @@
                 <TextBlock Text="Commit message"
                            Style="{StaticResource BodyStrongTextStyle}" />
                 <TextBox x:Name="CommitMessageEditor"
-                         Text="{Binding CommitMessage, Mode=TwoWay}"
+                         Text="{Binding CommitMessage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          AcceptsReturn="True"
                          TextWrapping="Wrap"
                          Style="{StaticResource CompactMultilineTextBoxStyle}"

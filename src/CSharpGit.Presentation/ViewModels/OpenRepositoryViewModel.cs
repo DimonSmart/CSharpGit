@@ -709,7 +709,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         string? errorContext = null,
         Action? beforeMutation = null,
         bool includeHistory = true,
-        bool localOnlyRefresh = false)
+        bool localOnlyRefresh = false,
+        Action? afterSuccessfulMutation = null)
     {
         var succeeded = false;
         if (!await _mutationGate.WaitAsync(0)) return false;
@@ -722,7 +723,11 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         {
             beforeMutation?.Invoke();
             Exception? failure = null;
-            try { await mutation(); }
+            try
+            {
+                await mutation();
+                afterSuccessfulMutation?.Invoke();
+            }
             catch (Exception exception) when (exception is not OperationCanceledException) { failure = exception; }
             try
             {
@@ -838,6 +843,21 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         RaiseCommands();
     }
 
+    private void ClearCommittedWorkingTreePresentationSelection()
+    {
+        _selectedStagedChanges.Clear();
+        Notify(nameof(SelectedStagedChanges));
+
+        if (SelectedWorkingTreeDiffKind == WorkingTreeDiffKind.Staged)
+        {
+            SelectedChange = null;
+            SelectedWorkingTreeDiffKind = null;
+            SelectedWorkingTreeDiff = null;
+        }
+
+        RaiseCommands();
+    }
+
     private async Task StageAllAndCommitAsync()
     {
         IsEmptyIndexChoiceOpen = false;
@@ -864,7 +884,10 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private async Task CommitAsync(bool amend, bool empty)
     {
         var message = CommitMessage;
-        if (await MutateAsync(() => _workingTreeService.CommitAsync(Repository!, message, amend, empty)) && CommitMessage == message)
+        if (await MutateAsync(
+                () => _workingTreeService.CommitAsync(Repository!, message, amend, empty),
+                afterSuccessfulMutation: ClearCommittedWorkingTreePresentationSelection) &&
+            CommitMessage == message)
             CommitMessage = string.Empty;
     }
 

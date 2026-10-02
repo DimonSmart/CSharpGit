@@ -185,6 +185,27 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("RunAsyncPreservingOutputEndings", gitDiff);
     }
 
+    [Fact]
+    public void CommitClearsConsumedStagedPreviewAndMessageBindingUpdatesImmediately()
+    {
+        var root = FindRepositoryRoot();
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
+
+        Assert.Contains("Text=\"{Binding CommitMessage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", xaml);
+        Assert.Contains("ClearCommittedWorkingTreePresentationSelection", viewModel);
+        Assert.Contains("afterSuccessfulMutation: ClearCommittedWorkingTreePresentationSelection", viewModel);
+        Assert.Contains("SelectedWorkingTreeDiffKind == WorkingTreeDiffKind.Staged", viewModel);
+
+        var mutationStart = viewModel.IndexOf("private async Task<bool> MutateAsync", StringComparison.Ordinal);
+        var mutationEnd = viewModel.IndexOf("private async Task RunConflictActionAsync", mutationStart, StringComparison.Ordinal);
+        var mutation = viewModel[mutationStart..mutationEnd];
+        var executeIndex = mutation.IndexOf("await mutation();", StringComparison.Ordinal);
+        var callbackIndex = mutation.IndexOf("afterSuccessfulMutation?.Invoke();", StringComparison.Ordinal);
+        var refreshIndex = mutation.IndexOf("await RefreshState", StringComparison.Ordinal);
+        Assert.True(executeIndex >= 0 && callbackIndex > executeIndex && refreshIndex > callbackIndex);
+    }
+
     private static int Count(string value, string fragment) =>
         (value.Length - value.Replace(fragment, string.Empty, StringComparison.Ordinal).Length) / fragment.Length;
 
