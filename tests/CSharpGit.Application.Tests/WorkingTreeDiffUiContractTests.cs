@@ -180,7 +180,7 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("change.OriginalPath", gitDiff);
         Assert.Contains("\"--no-index\"", gitDiff);
         Assert.Contains("result.ExitCode is not 0 and not 1", gitDiff);
-        Assert.Contains("_runner.RunForResultAsync", gitDiff);
+        Assert.Contains("_runner.RunForResultPreservingOutputEndingsAsync", gitDiff);
         Assert.Contains("GitDiffParser.Parse(output)", gitDiff);
         Assert.Contains("RunAsyncPreservingOutputEndings", gitDiff);
     }

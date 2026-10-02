@@ -76,6 +76,15 @@ public sealed class GitDiffParserTests
     }
 
     [Fact]
+    public void FinalTransportNewlineDoesNotCreateSyntheticDiffLine()
+    {
+        var parsed = GitDiffParser.Parse("@@ -1 +1 @@\n-old\n+new\n");
+
+        Assert.Equal(3, parsed.Lines.Count);
+        Assert.DoesNotContain(parsed.Lines, line => line.Text.Length == 0);
+    }
+
+    [Fact]
     public void HeadersDoNotProduceContentDiagnostics()
     {
         var parsed = GitDiffParser.Parse(
