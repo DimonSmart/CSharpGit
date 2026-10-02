@@ -480,7 +480,7 @@ public sealed class RepositoryStateSessionTests
             CancellationToken cancellationToken = default) =>
             ReadAsync(repository, cancellationToken);
 
-        public async Task<RepositoryStateReadResult> ReadWithRefreshFingerprintAsync(
+        public async Task<RepositoryStateReadResult> ReadWithWorkingTreeStatusAsync(
             Repository repository,
             bool localOnly = false,
             CancellationToken cancellationToken = default) =>
@@ -488,6 +488,6 @@ public sealed class RepositoryStateSessionTests
                 localOnly
                     ? await ReadLocalOnlyAsync(repository, cancellationToken)
                     : await ReadAsync(repository, cancellationToken),
-                null);
+                WorkingTreeStatusSnapshot.Empty);
     }
 }
