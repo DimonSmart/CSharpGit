@@ -57,6 +57,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
 
     public HistoryRenderingMode HistoryRenderingMode => Volatile.Read(ref _state).HistoryRenderingMode;
 
+    public string DefaultRepositoriesDirectory => Volatile.Read(ref _state).DefaultRepositoriesDirectory;
+
     public IReadOnlyList<RecentRepositorySettings> RecentRepositories => Volatile.Read(ref _state).RecentRepositories;
 
     public event EventHandler? Changed;
@@ -172,6 +174,21 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             current => current.HistoryRenderingMode == mode
                 ? current
                 : current with { HistoryRenderingMode = mode },
+            cancellationToken);
+    }
+
+    public Task SetDefaultRepositoriesDirectoryAsync(
+        string directory,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = NormalizeConfiguredRepositoriesDirectory(directory);
+        return UpdateAsync(
+            current => string.Equals(
+                current.DefaultRepositoriesDirectory,
+                normalized,
+                PathComparison)
+                ? current
+                : current with { DefaultRepositoriesDirectory = normalized },
             cancellationToken);
     }
 
@@ -344,6 +361,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 : document.HistorySimplifiedRenderingEnabled == true
                     ? HistoryRenderingMode.SubjectOnly
                     : HistoryRenderingMode.Full;
+            var defaultRepositoriesDirectory = NormalizePersistedRepositoriesDirectory(
+                document.DefaultRepositoriesDirectory);
             var recentRepositories = NormalizeRecentRepositories(document.RecentRepositories);
 
             return new SettingsState(
@@ -358,6 +377,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 document.OnlineAvatarLookupEnabled ?? true,
                 document.HistoryPerformanceDiagnosticsEnabled,
                 historyRenderingMode,
+                defaultRepositoriesDirectory,
                 recentRepositories);
         }
         catch (JsonException)
@@ -394,6 +414,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             OnlineAvatarLookupEnabled = state.OnlineAvatarLookupEnabled,
             HistoryPerformanceDiagnosticsEnabled = state.HistoryPerformanceDiagnosticsEnabled,
             HistoryRenderingMode = state.HistoryRenderingMode,
+            DefaultRepositoriesDirectory = state.DefaultRepositoriesDirectory,
             RecentRepositories = state.RecentRepositories.ToList()
         };
         var json = JsonSerializer.Serialize(document, SerializerOptions);
@@ -497,6 +518,58 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         };
     }
 
+    private static StringComparison PathComparison =>
+        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+
+    private static string NormalizeConfiguredRepositoriesDirectory(string directory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        var trimmed = directory.Trim();
+        if (!Path.IsPathFullyQualified(trimmed))
+            throw new ArgumentException("The repositories directory must be an absolute path.", nameof(directory));
+
+        try
+        {
+            return Path.TrimEndingDirectorySeparator(Path.GetFullPath(trimmed));
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException
+                or NotSupportedException
+                or PathTooLongException)
+        {
+            throw new ArgumentException("The repositories directory is not a valid filesystem path.", nameof(directory), exception);
+        }
+    }
+
+    private static string NormalizePersistedRepositoriesDirectory(string? directory)
+    {
+        if (string.IsNullOrWhiteSpace(directory))
+            return GetDefaultRepositoriesDirectory();
+
+        try
+        {
+            return NormalizeConfiguredRepositoriesDirectory(directory);
+        }
+        catch (ArgumentException)
+        {
+            return GetDefaultRepositoriesDirectory();
+        }
+    }
+
+    private static string GetDefaultRepositoriesDirectory()
+    {
+        var root = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (string.IsNullOrWhiteSpace(root))
+            root = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        if (string.IsNullOrWhiteSpace(root))
+            root = AppContext.BaseDirectory;
+
+        return Path.TrimEndingDirectorySeparator(
+            Path.GetFullPath(Path.Combine(root, "source", "repos")));
+    }
+
     private static string NormalizePath(string path) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
 
     private static string GetDisplayName(string path)
@@ -524,6 +597,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         bool OnlineAvatarLookupEnabled,
         bool HistoryPerformanceDiagnosticsEnabled,
         HistoryRenderingMode HistoryRenderingMode,
+        string DefaultRepositoriesDirectory,
         IReadOnlyList<RecentRepositorySettings> RecentRepositories)
     {
         public static SettingsState Default { get; } = new(
@@ -538,6 +612,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             true,
             false,
             HistoryRenderingMode.Full,
+            GetDefaultRepositoriesDirectory(),
             Array.AsReadOnly(Array.Empty<RecentRepositorySettings>()));
     }
 
@@ -554,6 +629,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         public bool? OnlineAvatarLookupEnabled { get; init; }
         public bool HistoryPerformanceDiagnosticsEnabled { get; init; }
         public HistoryRenderingMode? HistoryRenderingMode { get; init; }
+        public string? DefaultRepositoriesDirectory { get; init; }
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public bool? HistorySimplifiedRenderingEnabled { get; init; }
         public List<RecentRepositorySettings>? RecentRepositories { get; init; }
