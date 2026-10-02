@@ -72,6 +72,23 @@ public sealed class ReferenceBadgeUiContractTests
         Assert.Contains("HistoryReferencePresentationContext.Configure(_viewModel)", composition, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void HistoryReferencesPresenterKeepsBadgesInsideMessageColumnAndSummarizesOverflow()
+    {
+        var root = FindRepositoryRoot();
+        var presenter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferencesPresenter.cs"));
+
+        Assert.Contains("private readonly RectangleGeometry _clip = new()", presenter, StringComparison.Ordinal);
+        Assert.Contains("Clip = _clip;", presenter, StringComparison.Ordinal);
+        Assert.Contains("totalWidth > finalSize.Width", presenter, StringComparison.Ordinal);
+        Assert.Contains("Math.Max(0, finalSize.Width - overflowWidth)", presenter, StringComparison.Ordinal);
+        Assert.Contains("GetVisibleReferenceCount(availableForReferences)", presenter, StringComparison.Ordinal);
+        Assert.Contains("_overflowText.Text = $\"+{hiddenCount}\"", presenter, StringComparison.Ordinal);
+        Assert.Contains("ToolTipService.SetToolTip(_overflowBorder, BuildOverflowToolTip(visibleCount))", presenter, StringComparison.Ordinal);
+        Assert.Contains("child.Arrange(new Rect(0, 0, 0, 0))", presenter, StringComparison.Ordinal);
+        Assert.Contains("SetReferenceVisibility(child, false)", presenter, StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
