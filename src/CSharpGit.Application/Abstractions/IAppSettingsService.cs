@@ -54,6 +54,7 @@ public interface IAppSettingsService
     bool OnlineAvatarLookupEnabled { get; }
     bool HistoryPerformanceDiagnosticsEnabled { get; }
     HistoryRenderingMode HistoryRenderingMode { get; }
+    string DefaultRepositoriesDirectory { get; }
     IReadOnlyList<RecentRepositorySettings> RecentRepositories { get; }
 
     /// <summary>
@@ -103,6 +104,10 @@ public interface IAppSettingsService
 
     Task SetHistoryRenderingModeAsync(
         HistoryRenderingMode mode,
+        CancellationToken cancellationToken = default);
+
+    Task SetDefaultRepositoriesDirectoryAsync(
+        string directory,
         CancellationToken cancellationToken = default);
 
     Task RecordRecentRepositoryAsync(
