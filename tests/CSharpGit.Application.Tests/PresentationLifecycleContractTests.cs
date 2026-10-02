@@ -27,15 +27,15 @@ public sealed class PresentationLifecycleContractTests
         Assert.Contains("ApplyGitCommandLifecycleChange", gitConsole, StringComparison.Ordinal);
 
         Assert.Contains("if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;", refresh, StringComparison.Ordinal);
-        Assert.Contains("_repositoryProbePending = false;", refresh, StringComparison.Ordinal);
-        Assert.Contains("_repositoryProbeToken", refresh, StringComparison.Ordinal);
+        Assert.Contains("_workingTreeStatusPending = null;", refresh, StringComparison.Ordinal);
+        Assert.Contains("_workingTreeStatusToken", refresh, StringComparison.Ordinal);
         Assert.Contains("if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;", refresh, StringComparison.Ordinal);
         Assert.Contains("!IsShuttingDown && DispatcherQueue.HasThreadAccess", refresh, StringComparison.Ordinal);
         Assert.Contains("ClearRepositoryPresentationRefreshQueue();", refresh, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void RepositoryProbeRechecksLifecycleAfterAwaitAndBeforeRestart()
+    public void WorkingTreeStatusCheckRechecksLifecycleAfterAwaitAndBeforeRestart()
     {
         var refresh = File.ReadAllText(Path.Combine(
             FindRepositoryRoot(),
@@ -43,14 +43,14 @@ public sealed class PresentationLifecycleContractTests
             "CSharpGit.Presentation",
             "MainPage.RepositoryRefresh.cs"));
 
-        var awaitIndex = refresh.IndexOf("await _repositoryRefreshProbe.ReadAsync", StringComparison.Ordinal);
+        var awaitIndex = refresh.IndexOf("await _workingTreeStatusReader.ReadAsync", StringComparison.Ordinal);
         var postAwaitFenceIndex = refresh.IndexOf(
             "if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;",
             awaitIndex,
             StringComparison.Ordinal);
         var finallyIndex = refresh.IndexOf("finally", awaitIndex, StringComparison.Ordinal);
         var restartFenceIndex = refresh.IndexOf(
-            "!IsShuttingDown &&",
+            "StartWorkingTreeStatusLoopIfNeeded();",
             finallyIndex,
             StringComparison.Ordinal);
 

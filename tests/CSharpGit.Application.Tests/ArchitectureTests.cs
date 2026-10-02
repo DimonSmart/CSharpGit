@@ -52,7 +52,7 @@ public sealed class ArchitectureTests
 
         foreach (var declaration in new[]
                  {
-                     "IRepositoryRefreshProbe",
+                     "IWorkingTreeStatusReader",
                      "IWorkingTreeService",
                      "IReferenceService",
                      "IRepositorySyncService",
@@ -65,7 +65,7 @@ public sealed class ArchitectureTests
         foreach (var file in new[]
                  {
                      "IRepositoryStateService.cs",
-                     "IRepositoryRefreshProbe.cs",
+                     "IWorkingTreeStatusReader.cs",
                      "IWorkingTreeService.cs",
                      "IReferenceService.cs",
                      "IRepositorySyncService.cs",
@@ -74,6 +74,10 @@ public sealed class ArchitectureTests
                      "IRepositoryStateSession.cs"
                  })
             Assert.True(File.Exists(Path.Combine(abstractions, file)), $"Missing application contract file: {file}");
+
+        Assert.False(
+            File.Exists(Path.Combine(abstractions, "IRepositoryRefreshProbe.cs")),
+            "Legacy repository-wide refresh probe contract should be removed.");
     }
 
     [Fact]
