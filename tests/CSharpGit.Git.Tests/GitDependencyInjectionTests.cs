@@ -33,7 +33,7 @@ public sealed class GitDependencyInjectionTests
                 provider.GetRequiredService<IRepositoryWorkflowService>(),
                 provider.GetRequiredService<ICommitActionService>(),
                 provider.GetRequiredService<ITagService>(),
-                provider.GetRequiredService<IRepositoryRefreshProbe>(),
+                provider.GetRequiredService<IWorkingTreeStatusReader>(),
                 provider.GetRequiredService<IWorktreeService>(),
                 provider.GetRequiredService<IRepositoryFileVersionService>(),
                 provider.GetRequiredService<IRepositorySnapshotService>(),

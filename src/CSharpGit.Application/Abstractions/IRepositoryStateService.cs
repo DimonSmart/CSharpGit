@@ -4,7 +4,7 @@ namespace CSharpGit.Application.Abstractions;
 
 public sealed record RepositoryStateReadResult(
     RepositoryState State,
-    RepositoryRefreshFingerprint? RefreshFingerprint);
+    WorkingTreeStatusSnapshot WorkingTreeStatus);
 
 public interface IRepositoryStateService
 {
@@ -16,7 +16,7 @@ public interface IRepositoryStateService
         Repository repository,
         CancellationToken cancellationToken = default);
 
-    Task<RepositoryStateReadResult> ReadWithRefreshFingerprintAsync(
+    Task<RepositoryStateReadResult> ReadWithWorkingTreeStatusAsync(
         Repository repository,
         bool localOnly = false,
         CancellationToken cancellationToken = default);

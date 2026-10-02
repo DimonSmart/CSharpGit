@@ -1,9 +1,9 @@
 namespace CSharpGit.Presentation;
 
-internal enum RepositoryProbeResultDisposition
+internal enum RepositoryStatusCheckDisposition
 {
     StaleRevision,
-    Unchanged,
+    UpToDate,
     RefreshRequired,
     IgnoredWhileLatched
 }
@@ -14,7 +14,7 @@ internal sealed class RepositoryRefreshLifecycleState
 
     public long BaselineRevision { get; private set; }
 
-    public bool CanQueueProbe => !IsRefreshRequired;
+    public bool CanRunBackgroundStatusCheck => !IsRefreshRequired;
 
     public void Reset(long baselineRevision)
     {
@@ -31,18 +31,23 @@ internal sealed class RepositoryRefreshLifecycleState
         return true;
     }
 
-    public RepositoryProbeResultDisposition ApplyProbeResult(long probeBaselineRevision, bool changed)
+    public RepositoryStatusCheckDisposition ApplyStatusCheckResult(
+        long baselineRevision,
+        bool changed)
     {
-        if (probeBaselineRevision != BaselineRevision)
-            return RepositoryProbeResultDisposition.StaleRevision;
+        if (baselineRevision != BaselineRevision)
+            return RepositoryStatusCheckDisposition.StaleRevision;
 
         if (IsRefreshRequired)
-            return RepositoryProbeResultDisposition.IgnoredWhileLatched;
+            return RepositoryStatusCheckDisposition.IgnoredWhileLatched;
 
         if (!changed)
-            return RepositoryProbeResultDisposition.Unchanged;
+            return RepositoryStatusCheckDisposition.UpToDate;
 
         IsRefreshRequired = true;
-        return RepositoryProbeResultDisposition.RefreshRequired;
+        return RepositoryStatusCheckDisposition.RefreshRequired;
     }
+
+    public RepositoryStatusCheckDisposition Latch(long baselineRevision) =>
+        ApplyStatusCheckResult(baselineRevision, changed: true);
 }

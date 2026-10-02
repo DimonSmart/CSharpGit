@@ -72,7 +72,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private RepositoryOperation _currentOperation;
     private ConflictFile? _selectedConflict;
     private RepositoryOperationState _operationState = RepositoryOperationState.None;
-    private readonly DisplayedRepositoryRefreshBaseline _displayedRefreshBaseline = new();
+    private readonly DisplayedWorkingTreeBaseline _displayedWorkingTreeBaseline = new();
+    internal event Action<Repository>? RepositoryStateRefreshStarting;
+    internal event Action<Repository>? RepositoryStateRefreshCompleted;
 
     public OpenRepositoryViewModel(
         IFolderPicker folderPicker,
@@ -86,15 +88,13 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         IGitToolsService gitToolsService,
         IAppSettingsService settings,
         IUiDispatcher uiDispatcher,
-        ILogger<OpenRepositoryViewModel> logger,
-        IRepositoryRefreshProbe refreshProbe)
+        ILogger<OpenRepositoryViewModel> logger)
     {
         _selectedScope = Scopes[0];
         _folderPicker = folderPicker;
         _repositoryService = repositoryService;
         _historyService = historyService;
         _stateService = stateService;
-        _ = refreshProbe ?? throw new ArgumentNullException(nameof(refreshProbe));
         _workingTreeService = workingTreeService;
         _referenceService = referenceService;
         _syncService = syncService;
@@ -263,9 +263,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             SetHeadPresentationState(null, null, false, string.Empty);
             _repository = value;
             _headExists = null;
-            _displayedRefreshBaseline.Clear();
+            _displayedWorkingTreeBaseline.Clear();
             Notify();
-            Notify(nameof(DisplayedRefreshFingerprint));
+            Notify(nameof(DisplayedWorkingTreeStatusSnapshot));
             Notify(nameof(HasRepository));
             Notify(nameof(RepositoryKind));
             Notify(nameof(CanCreateStash));
@@ -273,8 +273,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged();
         }
     }
-    public RepositoryRefreshFingerprint? DisplayedRefreshFingerprint => _displayedRefreshBaseline.Fingerprint;
-    public long DisplayedRefreshBaselineRevision => _displayedRefreshBaseline.Revision;
+    public WorkingTreeStatusSnapshot? DisplayedWorkingTreeStatusSnapshot => _displayedWorkingTreeBaseline.Snapshot;
+    public long DisplayedRefreshBaselineRevision => _displayedWorkingTreeBaseline.Revision;
     public string? ErrorMessage { get => _errorMessage; private set { _errorMessage = value; Notify(); Notify(nameof(HasError)); } }
     public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); Notify(nameof(CanForcePushWithLease)); _openRepositoryCommand.RaiseCanExecuteChanged(); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
@@ -573,7 +573,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         CurrentOperation = RepositoryOperation.None;
         OperationState = RepositoryOperationState.None;
         OperationDisplay = string.Empty;
-        ClearDisplayedRefreshBaseline();
+        ClearDisplayedWorkingTreeBaseline();
         RaiseCommands();
     }
 
@@ -599,16 +599,16 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         if (detachedChanged) Notify(nameof(IsDetachedHead));
     }
 
-    private void ClearDisplayedRefreshBaseline()
+    private void ClearDisplayedWorkingTreeBaseline()
     {
-        if (_displayedRefreshBaseline.Clear())
-            Notify(nameof(DisplayedRefreshFingerprint));
+        if (_displayedWorkingTreeBaseline.Clear())
+            Notify(nameof(DisplayedWorkingTreeStatusSnapshot));
     }
 
-    private void PublishDisplayedRefreshBaseline(RepositoryRefreshFingerprint fingerprint)
+    private void PublishDisplayedWorkingTreeBaseline(WorkingTreeStatusSnapshot snapshot)
     {
-        if (_displayedRefreshBaseline.Publish(fingerprint))
-            Notify(nameof(DisplayedRefreshFingerprint));
+        if (_displayedWorkingTreeBaseline.Publish(snapshot))
+            Notify(nameof(DisplayedWorkingTreeStatusSnapshot));
         Notify(nameof(DisplayedRefreshBaselineRevision));
     }
 
@@ -640,16 +640,15 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     {
         if (Repository is null) return;
         EnterBusy();
+        var repository = Repository;
+        RepositoryStateRefreshStarting?.Invoke(repository);
         try
         {
-            var repository = Repository;
-            var stateRead = await _stateService.ReadWithRefreshFingerprintAsync(
+            var stateRead = await _stateService.ReadWithWorkingTreeStatusAsync(
                 repository,
                 localOnly);
             var state = stateRead.State;
-            var refreshFingerprint = stateRead.RefreshFingerprint;
-            if (refreshFingerprint is null)
-                _logger.LogDebug("Repository state was read without a reliable refresh fingerprint");
+            var workingTreeStatus = stateRead.WorkingTreeStatus;
             if (!ReferenceEquals(repository, Repository)) return;
 
             _headExists = state.HeadCommit is not null;
@@ -683,11 +682,12 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             if (includeHistory)
                 await LoadHistoryAsync(true);
 
-            if (refreshFingerprint is not null && ReferenceEquals(repository, Repository))
-                PublishDisplayedRefreshBaseline(refreshFingerprint);
+            if (ReferenceEquals(repository, Repository))
+                PublishDisplayedWorkingTreeBaseline(workingTreeStatus);
         }
         finally
         {
+            RepositoryStateRefreshCompleted?.Invoke(repository);
             ExitBusy();
         }
     }

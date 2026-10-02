@@ -15,17 +15,20 @@ public sealed partial class MainPage
     private const string RefreshingRepositoryTooltip = "Refreshing repository…";
 
     private readonly RepositoryChangeMonitor _repositoryChangeMonitor = new();
-    private readonly CancellationTokenSource _repositoryProbeStop = new();
-    private CancellationToken _repositoryProbeToken;
-    private readonly IRepositoryRefreshProbe _repositoryRefreshProbe;
+    private readonly CancellationTokenSource _workingTreeStatusStop = new();
+    private CancellationToken _workingTreeStatusToken;
+    private readonly IWorkingTreeStatusReader _workingTreeStatusReader;
     private readonly RepositoryRefreshLifecycleState _repositoryRefreshLifecycle = new();
     private bool _repositoryChangeMonitoringInitialized;
     private bool _isRefreshInProgress;
     private Repository? _monitoredRepository;
-    private RepositoryRefreshFingerprint? _displayedRefreshFingerprint;
-    private bool _repositoryProbeRunning;
-    private bool _repositoryProbePending;
-    private long _repositoryProbeGeneration;
+    private WorkingTreeStatusSnapshot? _displayedWorkingTreeStatus;
+    private bool _workingTreeStatusRunning;
+    private RepositoryInvalidationBatch? _workingTreeStatusPending;
+    private bool _repositoryRefreshWindowActive;
+    private long _repositoryRefreshStartGeneration;
+    private Repository? _repositoryRefreshWindowRepository;
+    private long _handledInvalidationGeneration;
     private bool _repositoryPresentationRefreshQueued;
     private bool _repositoryTreePresentationDirty;
     private bool _workingTreePresentationDirty;
@@ -35,11 +38,13 @@ public sealed partial class MainPage
     private void InitializeRepositoryChangeMonitoring()
     {
         if (IsShuttingDown || _repositoryChangeMonitoringInitialized) return;
-        _repositoryProbeToken = _repositoryProbeStop.Token;
+        _workingTreeStatusToken = _workingTreeStatusStop.Token;
         _repositoryChangeMonitoringInitialized = true;
 
         _repositoryChangeMonitor.RepositoryChanged += RepositoryChangeMonitor_RepositoryChanged;
         _viewModel.PropertyChanged += RepositoryRefreshTracking_PropertyChanged;
+        _viewModel.RepositoryStateRefreshStarting += RepositoryStateRefreshStarting;
+        _viewModel.RepositoryStateRefreshCompleted += RepositoryStateRefreshCompleted;
         UpdateRepositoryChangeMonitor();
         UpdateRefreshIndicator();
     }
@@ -48,16 +53,22 @@ public sealed partial class MainPage
     {
         if (!_repositoryChangeMonitoringInitialized) return;
         _repositoryChangeMonitoringInitialized = false;
-        _repositoryProbePending = false;
+        _workingTreeStatusPending = null;
+        _repositoryRefreshWindowActive = false;
+        _repositoryRefreshWindowRepository = null;
 
         _viewModel.PropertyChanged -= RepositoryRefreshTracking_PropertyChanged;
+        _viewModel.RepositoryStateRefreshStarting -= RepositoryStateRefreshStarting;
+        _viewModel.RepositoryStateRefreshCompleted -= RepositoryStateRefreshCompleted;
         _repositoryChangeMonitor.RepositoryChanged -= RepositoryChangeMonitor_RepositoryChanged;
-        _repositoryProbeStop.Cancel();
+        _workingTreeStatusStop.Cancel();
         _repositoryChangeMonitor.Dispose();
-        _repositoryProbeStop.Dispose();
+        _workingTreeStatusStop.Dispose();
     }
 
-    private void RepositoryRefreshTracking_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+    private void RepositoryRefreshTracking_PropertyChanged(
+        object? sender,
+        PropertyChangedEventArgs eventArgs)
     {
         if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
 
@@ -67,28 +78,71 @@ public sealed partial class MainPage
             return;
         }
 
-        if (eventArgs.PropertyName != nameof(OpenRepositoryViewModel.DisplayedRefreshBaselineRevision)) return;
+        if (eventArgs.PropertyName != nameof(OpenRepositoryViewModel.DisplayedRefreshBaselineRevision))
+            return;
 
-        var baseline = _viewModel.DisplayedRefreshFingerprint;
+        var baseline = _viewModel.DisplayedWorkingTreeStatusSnapshot;
         if (baseline is null) return;
 
+        var repository = _viewModel.Repository;
         var baselineRevision = _viewModel.DisplayedRefreshBaselineRevision;
-        var revalidateAfterPublish =
-            _repositoryRefreshLifecycle.IsRefreshRequired
-            || _repositoryProbeRunning
-            || _repositoryProbePending;
+        var refreshStartGeneration =
+            _repositoryRefreshWindowActive
+            && ReferenceEquals(_repositoryRefreshWindowRepository, repository)
+                ? _repositoryRefreshStartGeneration
+                : _repositoryChangeMonitor.Generation;
+
         if (!_repositoryRefreshLifecycle.PublishBaseline(baselineRevision)) return;
 
-        _displayedRefreshFingerprint = baseline;
-        _repositoryProbePending = false;
-        _repositoryChangeMonitor.Resume();
+        _displayedWorkingTreeStatus = baseline;
+        _workingTreeStatusPending = null;
+        _repositoryRefreshWindowActive = false;
+        _repositoryRefreshWindowRepository = null;
+        _handledInvalidationGeneration = Math.Max(
+            _handledInvalidationGeneration,
+            refreshStartGeneration);
         UpdateRefreshIndicator();
 
-        // A clean initial/full refresh already produced this baseline. Re-probe only when
-        // an invalidation was observed while the baseline was being produced, or when the
-        // monitor had been suspended after latching an external change.
-        if (revalidateAfterPublish)
-            QueueRepositoryProbe(_repositoryChangeMonitor.Generation);
+        var concurrentInvalidation =
+            _repositoryChangeMonitor.GetInvalidationsSince(refreshStartGeneration);
+        Trace.WriteLine(
+            $"Repository baseline published: revision={baselineRevision} startGeneration={refreshStartGeneration} currentGeneration={_repositoryChangeMonitor.Generation} concurrent={concurrentInvalidation.HasAny}");
+
+        if (concurrentInvalidation.HasAny)
+            HandleInvalidationBatch(concurrentInvalidation);
+    }
+
+    private void RepositoryStateRefreshStarting(Repository repository)
+    {
+        if (IsShuttingDown
+            || !_repositoryChangeMonitoringInitialized
+            || !ReferenceEquals(repository, _viewModel.Repository))
+            return;
+
+        _repositoryRefreshWindowActive = true;
+        _repositoryRefreshWindowRepository = repository;
+        _repositoryRefreshStartGeneration = _repositoryChangeMonitor.Generation;
+        Trace.WriteLine(
+            $"Repository refresh window started: generation={_repositoryRefreshStartGeneration}");
+    }
+
+    private void RepositoryStateRefreshCompleted(Repository repository)
+    {
+        if (IsShuttingDown
+            || !_repositoryChangeMonitoringInitialized
+            || !_repositoryRefreshWindowActive
+            || !ReferenceEquals(repository, _repositoryRefreshWindowRepository))
+            return;
+
+        var startGeneration = _repositoryRefreshStartGeneration;
+        _repositoryRefreshWindowActive = false;
+        _repositoryRefreshWindowRepository = null;
+
+        var invalidation = _repositoryChangeMonitor.GetInvalidationsSince(startGeneration);
+        if (invalidation.HasAny)
+            HandleInvalidationBatch(invalidation);
+
+        StartWorkingTreeStatusLoopIfNeeded();
     }
 
     private void UpdateRepositoryChangeMonitor()
@@ -99,8 +153,11 @@ public sealed partial class MainPage
         if (repository is null)
         {
             _monitoredRepository = null;
-            _displayedRefreshFingerprint = null;
-            _repositoryProbePending = false;
+            _displayedWorkingTreeStatus = null;
+            _workingTreeStatusPending = null;
+            _repositoryRefreshWindowActive = false;
+            _repositoryRefreshWindowRepository = null;
+            _handledInvalidationGeneration = _repositoryChangeMonitor.Generation;
             _repositoryRefreshLifecycle.Reset(_viewModel.DisplayedRefreshBaselineRevision);
             _repositoryChangeMonitor.Stop();
             UpdateRefreshIndicator();
@@ -110,14 +167,14 @@ public sealed partial class MainPage
         if (Equals(repository, _monitoredRepository)) return;
 
         _monitoredRepository = repository;
-        _displayedRefreshFingerprint = _viewModel.DisplayedRefreshFingerprint;
-        _repositoryProbePending = false;
+        _displayedWorkingTreeStatus = _viewModel.DisplayedWorkingTreeStatusSnapshot;
+        _workingTreeStatusPending = null;
+        _repositoryRefreshWindowActive = false;
+        _repositoryRefreshWindowRepository = null;
         _repositoryRefreshLifecycle.Reset(_viewModel.DisplayedRefreshBaselineRevision);
         _repositoryChangeMonitor.Start(repository);
+        _handledInvalidationGeneration = _repositoryChangeMonitor.Generation;
         UpdateRefreshIndicator();
-
-        if (_displayedRefreshFingerprint is not null)
-            QueueRepositoryProbe(_repositoryChangeMonitor.Generation);
     }
 
     private void RepositoryChangeMonitor_RepositoryChanged(
@@ -126,89 +183,146 @@ public sealed partial class MainPage
     {
         if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
 
+        var batch = eventArgs.Batch;
         Trace.WriteLine(
-            $"Repository monitor invalidated: source={eventArgs.Source} path={eventArgs.Path ?? "<unknown>"} generation={eventArgs.Generation}");
+            $"Repository monitor invalidated: generation={batch.Generation} workingTree={batch.HasWorkingTreeChanges} metadata={batch.HasRelevantMetadataChanges} unknown={batch.HasUnknownOrOverflow} workingPaths={string.Join(",", batch.WorkingTreePaths)} metadataPaths={string.Join(",", batch.MetadataPaths)}");
 
         if (DispatcherQueue.HasThreadAccess)
         {
-            QueueRepositoryProbe(eventArgs.Generation);
+            HandleInvalidationBatch(batch);
             return;
         }
 
-        DispatcherQueue.TryEnqueue(() => QueueRepositoryProbe(eventArgs.Generation));
+        DispatcherQueue.TryEnqueue(() => HandleInvalidationBatch(batch));
     }
 
-    private void QueueRepositoryProbe(long generation)
+    private void HandleInvalidationBatch(RepositoryInvalidationBatch batch)
     {
-        if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
-        if (!_repositoryRefreshLifecycle.CanQueueProbe) return;
-        if (_viewModel.Repository is null || _displayedRefreshFingerprint is null) return;
+        if (IsShuttingDown
+            || !_repositoryChangeMonitoringInitialized
+            || !batch.HasAny
+            || _viewModel.Repository is null
+            || _displayedWorkingTreeStatus is null)
+            return;
 
-        _repositoryProbeGeneration = Math.Max(_repositoryProbeGeneration, generation);
-        _repositoryProbePending = true;
-        if (_repositoryProbeRunning) return;
+        if (_repositoryRefreshWindowActive)
+            return;
 
-        _repositoryProbeRunning = true;
-        _ = RunRepositoryProbeLoopAsync();
+        if (batch.Generation <= _handledInvalidationGeneration)
+            return;
+
+        _handledInvalidationGeneration = batch.Generation;
+
+        if (!_repositoryRefreshLifecycle.CanRunBackgroundStatusCheck)
+            return;
+
+        if (batch.HasUnknownOrOverflow)
+        {
+            LatchRefreshRequired("WatcherOverflow", batch.Generation);
+            return;
+        }
+
+        if (batch.HasRelevantMetadataChanges)
+        {
+            LatchRefreshRequired(
+                $"MetadataChanged:{batch.MetadataPaths.FirstOrDefault() ?? "<unknown>"}",
+                batch.Generation);
+            return;
+        }
+
+        if (!batch.HasWorkingTreeChanges) return;
+        _workingTreeStatusPending = RepositoryInvalidationBatch.Merge(
+            _workingTreeStatusPending,
+            batch);
+        StartWorkingTreeStatusLoopIfNeeded();
     }
 
-    private async Task RunRepositoryProbeLoopAsync()
+    private void StartWorkingTreeStatusLoopIfNeeded()
+    {
+        if (IsShuttingDown
+            || !_repositoryChangeMonitoringInitialized
+            || _repositoryRefreshWindowActive
+            || !_repositoryRefreshLifecycle.CanRunBackgroundStatusCheck
+            || _workingTreeStatusPending is null
+            || _workingTreeStatusRunning)
+            return;
+
+        _workingTreeStatusRunning = true;
+        _ = RunWorkingTreeStatusLoopAsync();
+    }
+
+    private async Task RunWorkingTreeStatusLoopAsync()
     {
         try
         {
-            while (!IsShuttingDown &&
-                   _repositoryChangeMonitoringInitialized &&
-                   _repositoryProbePending)
+            while (!IsShuttingDown
+                   && _repositoryChangeMonitoringInitialized
+                   && !_repositoryRefreshWindowActive
+                   && _repositoryRefreshLifecycle.CanRunBackgroundStatusCheck
+                   && _workingTreeStatusPending is not null)
             {
-                _repositoryProbePending = false;
-                var generation = _repositoryProbeGeneration;
+                var invalidation = _workingTreeStatusPending;
+                _workingTreeStatusPending = null;
+
                 var repository = _viewModel.Repository;
-                var baseline = _displayedRefreshFingerprint;
+                var baseline = _displayedWorkingTreeStatus;
                 var baselineRevision = _repositoryRefreshLifecycle.BaselineRevision;
                 if (repository is null || baseline is null) continue;
 
-                RepositoryRefreshFingerprint current;
+                WorkingTreeStatusSnapshot current;
                 try
                 {
-                    current = await _repositoryRefreshProbe.ReadAsync(repository, _repositoryProbeToken);
+                    current = await _workingTreeStatusReader.ReadAsync(
+                        repository,
+                        _workingTreeStatusToken);
                 }
-                catch (OperationCanceledException) when (_repositoryProbeToken.IsCancellationRequested)
+                catch (OperationCanceledException) when (_workingTreeStatusToken.IsCancellationRequested)
                 {
                     return;
                 }
                 catch (Exception exception)
                 {
-                    if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
+                    if (IsShuttingDown
+                        || !_repositoryChangeMonitoringInitialized
+                        || _repositoryRefreshWindowActive
+                        || !ReferenceEquals(repository, _viewModel.Repository)
+                        || baselineRevision != _repositoryRefreshLifecycle.BaselineRevision)
+                        continue;
+
                     Trace.WriteLine(
-                        $"Repository state probe: generation={generation} result=error error={exception.GetType().Name}: {exception.Message}");
-                    continue;
+                        $"Working-tree change probe: generation={invalidation.Generation} result=error error={exception.GetType().Name}: {exception.Message}");
+                    LatchRefreshRequired("StatusProbeFailed", invalidation.Generation);
+                    return;
                 }
 
                 if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
+                if (_repositoryRefreshWindowActive) continue;
+                if (!ReferenceEquals(repository, _viewModel.Repository)) continue;
 
-                if (!ReferenceEquals(repository, _viewModel.Repository))
-                    continue;
+                var reason = WorkingTreeInvalidationEvaluator.Evaluate(
+                    baseline,
+                    current,
+                    invalidation);
+                var disposition = _repositoryRefreshLifecycle.ApplyStatusCheckResult(
+                    baselineRevision,
+                    reason != WorkingTreeInvalidationReason.None);
 
-                var changed = !StringComparer.Ordinal.Equals(current.Value, baseline.Value);
-                var disposition = _repositoryRefreshLifecycle.ApplyProbeResult(baselineRevision, changed);
-                if (disposition == RepositoryProbeResultDisposition.StaleRevision)
+                if (disposition == RepositoryStatusCheckDisposition.StaleRevision)
                 {
                     Trace.WriteLine(
-                        $"Repository state probe: generation={generation} result=stale baselineRevision={baselineRevision} currentRevision={_repositoryRefreshLifecycle.BaselineRevision}");
+                        $"Working-tree change probe: generation={invalidation.Generation} result=stale baselineRevision={baselineRevision} currentRevision={_repositoryRefreshLifecycle.BaselineRevision}");
                     continue;
                 }
 
-                if (disposition == RepositoryProbeResultDisposition.IgnoredWhileLatched)
-                    continue;
+                if (disposition == RepositoryStatusCheckDisposition.IgnoredWhileLatched)
+                    return;
 
                 Trace.WriteLine(
-                    $"Repository state probe: generation={generation} result={(changed ? "changed" : "unchanged")} baselineRevision={baselineRevision}");
-                if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
+                    $"Working-tree change probe: generation={invalidation.Generation} result={reason} baselineRevision={baselineRevision}");
 
-                if (disposition == RepositoryProbeResultDisposition.RefreshRequired)
+                if (disposition == RepositoryStatusCheckDisposition.RefreshRequired)
                 {
-                    _repositoryProbePending = false;
-                    _repositoryChangeMonitor.Suspend();
+                    _workingTreeStatusPending = null;
                     UpdateRefreshIndicator();
                     return;
                 }
@@ -216,15 +330,22 @@ public sealed partial class MainPage
         }
         finally
         {
-            _repositoryProbeRunning = false;
-            if (!IsShuttingDown &&
-                _repositoryChangeMonitoringInitialized &&
-                _repositoryProbePending)
-            {
-                _repositoryProbeRunning = true;
-                _ = RunRepositoryProbeLoopAsync();
-            }
+            _workingTreeStatusRunning = false;
+            StartWorkingTreeStatusLoopIfNeeded();
         }
+    }
+
+    private void LatchRefreshRequired(string reason, long generation)
+    {
+        var disposition = _repositoryRefreshLifecycle.Latch(
+            _repositoryRefreshLifecycle.BaselineRevision);
+        if (disposition == RepositoryStatusCheckDisposition.StaleRevision)
+            return;
+
+        _workingTreeStatusPending = null;
+        Trace.WriteLine(
+            $"RefreshRequired reason={reason} generation={generation} baselineRevision={_repositoryRefreshLifecycle.BaselineRevision}");
+        UpdateRefreshIndicator();
     }
 
     private void SetRefreshInProgress(bool value)

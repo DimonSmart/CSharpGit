@@ -5,9 +5,9 @@ namespace CSharpGit.Git;
 
 internal sealed record GitRepositoryStateReadResult(
     RepositoryState State,
+    WorkingTreeStatusSnapshot WorkingTreeStatus,
     string? EffectiveTagSort,
-    string? LocalDefaultRemoteBranch,
-    IReadOnlyList<string> RelevantConfiguration);
+    string? LocalDefaultRemoteBranch);
 
 internal sealed class GitRepositoryStateService : IRepositoryStateService
 {
@@ -40,18 +40,13 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
         CancellationToken cancellationToken = default) =>
         (await ReadDetailedAsync(repository, cancellationToken)).State;
 
-    public async Task<RepositoryStateReadResult> ReadWithRefreshFingerprintAsync(
+    public async Task<RepositoryStateReadResult> ReadWithWorkingTreeStatusAsync(
         Repository repository,
         bool localOnly = false,
         CancellationToken cancellationToken = default)
     {
         var read = await ReadDetailedAsync(repository, cancellationToken);
-        var fingerprint = await BuildRefreshFingerprintAsync(
-            repository,
-            read.State,
-            read.RelevantConfiguration,
-            cancellationToken);
-        return new RepositoryStateReadResult(read.State, fingerprint);
+        return new RepositoryStateReadResult(read.State, read.WorkingTreeStatus);
     }
 
     internal async Task<GitRepositoryStateReadResult> ReadDetailedAsync(
@@ -133,9 +128,9 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
 
         return new GitRepositoryStateReadResult(
             state,
+            status.WorkingTreeStatus,
             configuration.EffectiveTagSort,
-            localDefaultRemoteBranch,
-            configuration.Relevant);
+            localDefaultRemoteBranch);
     }
 
     private async Task<RepositoryOperationState> ReadOperationStateAsync(
@@ -239,18 +234,6 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
         return false;
     }
 
-    internal Task<RepositoryRefreshFingerprint> BuildRefreshFingerprintAsync(
-        Repository repository,
-        RepositoryState repositoryState,
-        IReadOnlyList<string> relevantConfiguration,
-        CancellationToken cancellationToken = default) =>
-        RepositoryRefreshFingerprintBuilder.BuildAsync(
-            _runner,
-            repository,
-            repositoryState,
-            relevantConfiguration,
-            cancellationToken);
-
     private Task<string> RunReadAsync(
         Repository repository,
         CancellationToken cancellationToken,
@@ -280,12 +263,13 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
         throw GitRepositoryCommandRunner.CreateCommandFailure(result);
     }
 
-    private static StatusReadResult ParseStatusV2(string output)
+    internal static StatusReadResult ParseStatusV2(string output)
     {
         string? headReference = null;
         string? headCommit = null;
         var detached = false;
         var changes = new List<WorkingTreeChange>();
+        var statusEntries = new List<WorkingTreeStatusEntry>();
         var records = output.Split('\0', StringSplitOptions.RemoveEmptyEntries);
 
         for (var index = 0; index < records.Length; index++)
@@ -310,7 +294,13 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
             {
                 var fields = record.Split(' ', 9, StringSplitOptions.None);
                 if (fields.Length == 9)
+                {
                     changes.Add(CreateChange(fields[8], fields[1], null));
+                    statusEntries.Add(new WorkingTreeStatusEntry(
+                        fields[8],
+                        record,
+                        IsSubmodule: IsSubmodule(fields[2])));
+                }
                 continue;
             }
 
@@ -319,7 +309,14 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
                 var fields = record.Split(' ', 10, StringSplitOptions.None);
                 var originalPath = index + 1 < records.Length ? records[++index] : null;
                 if (fields.Length == 10)
+                {
                     changes.Add(CreateChange(fields[9], fields[1], originalPath));
+                    statusEntries.Add(new WorkingTreeStatusEntry(
+                        fields[9],
+                        record + '\0' + (originalPath ?? string.Empty),
+                        originalPath,
+                        IsSubmodule(fields[2])));
+                }
                 continue;
             }
 
@@ -327,16 +324,33 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
             {
                 var fields = record.Split(' ', 11, StringSplitOptions.None);
                 if (fields.Length == 11)
+                {
                     changes.Add(CreateChange(fields[10], fields[1], null));
+                    statusEntries.Add(new WorkingTreeStatusEntry(
+                        fields[10],
+                        record,
+                        IsSubmodule: IsSubmodule(fields[2])));
+                }
                 continue;
             }
 
             if (record.StartsWith("? ", StringComparison.Ordinal))
+            {
                 changes.Add(new WorkingTreeChange(record[2..], '?', '?'));
+                statusEntries.Add(new WorkingTreeStatusEntry(record[2..], record));
+            }
         }
 
-        return new StatusReadResult(headReference, headCommit, detached, changes);
+        return new StatusReadResult(
+            headReference,
+            headCommit,
+            detached,
+            changes,
+            new WorkingTreeStatusSnapshot(statusEntries));
     }
+
+    private static bool IsSubmodule(string value) =>
+        value.Length > 0 && value[0] == 'S';
 
     private static WorkingTreeChange CreateChange(string path, string xy, string? originalPath)
     {
@@ -443,7 +457,6 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
     {
         var global = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var local = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var relevant = new List<string>();
         string? effectiveTagSort = null;
         var tokens = output.Split('\0', StringSplitOptions.RemoveEmptyEntries);
 
@@ -465,13 +478,9 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
             if (string.Equals(key, "tag.sort", StringComparison.OrdinalIgnoreCase))
                 effectiveTagSort = value;
 
-            if (string.Equals(key, "tag.sort", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(key, "versionsort.suffix", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(key, "merge.tool", StringComparison.OrdinalIgnoreCase))
-                relevant.Add(scope + "\0" + key.ToLowerInvariant() + "\0" + value);
         }
 
-        return new ConfigurationReadResult(global, local, effectiveTagSort, relevant);
+        return new ConfigurationReadResult(global, local, effectiveTagSort);
     }
 
     private static string? ResolveLocalDefaultRemoteBranch(
@@ -543,11 +552,12 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
     private static string? EmptyToNull(string value) =>
         string.IsNullOrWhiteSpace(value) ? null : value;
 
-    private sealed record StatusReadResult(
+    internal sealed record StatusReadResult(
         string? HeadReference,
         string? HeadCommit,
         bool IsDetached,
-        IReadOnlyList<WorkingTreeChange> Changes);
+        IReadOnlyList<WorkingTreeChange> Changes,
+        WorkingTreeStatusSnapshot WorkingTreeStatus);
 
     private sealed record ReferenceReadResult(
         GitReferences References,
@@ -556,6 +566,5 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
     private sealed record ConfigurationReadResult(
         IReadOnlyDictionary<string, string> Global,
         IReadOnlyDictionary<string, string> Local,
-        string? EffectiveTagSort,
-        IReadOnlyList<string> Relevant);
+        string? EffectiveTagSort);
 }
