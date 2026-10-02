@@ -38,12 +38,12 @@ public sealed partial class MainPage
         IRepositorySyncService syncService,
         ICommitActionService commitActionService,
         ITagService tagService,
-        IRepositoryRefreshProbe repositoryRefreshProbe,
+        IWorkingTreeStatusReader workingTreeStatusReader,
         IWorkingTreeDiffService workingTreeDiffService,
         IRepositoryFileVersionService fileVersionService,
         IDesktopShellService desktopShellService,
         IRepositoryPathService repositoryPathService)
-        : this(viewModel, referenceHistoryService, referenceService, syncService, commitActionService, tagService, repositoryRefreshProbe, workingTreeDiffService)
+        : this(viewModel, referenceHistoryService, referenceService, syncService, commitActionService, tagService, workingTreeStatusReader, workingTreeDiffService)
     {
         _fileVersionService = fileVersionService ?? throw new ArgumentNullException(nameof(fileVersionService));
         _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
@@ -59,13 +59,13 @@ public sealed partial class MainPage
         IRepositorySyncService syncService,
         ICommitActionService commitActionService,
         ITagService tagService,
-        IRepositoryRefreshProbe repositoryRefreshProbe,
+        IWorkingTreeStatusReader workingTreeStatusReader,
         IWorkingTreeDiffService workingTreeDiffService,
         IRepositoryFileVersionService fileVersionService,
         IDesktopShellService desktopShellService,
         IRepositoryPathService repositoryPathService,
         IGitToolsService gitToolsService)
-        : this(viewModel, referenceHistoryService, referenceService, syncService, commitActionService, tagService, repositoryRefreshProbe, workingTreeDiffService, fileVersionService, desktopShellService, repositoryPathService)
+        : this(viewModel, referenceHistoryService, referenceService, syncService, commitActionService, tagService, workingTreeStatusReader, workingTreeDiffService, fileVersionService, desktopShellService, repositoryPathService)
     {
         _gitToolsService = gitToolsService ?? throw new ArgumentNullException(nameof(gitToolsService));
         UpdateCommitButtons();
