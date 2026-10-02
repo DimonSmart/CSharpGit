@@ -136,6 +136,7 @@ public sealed partial class MainPage : Page
         {
             ResetReferenceHistoryForRepositorySwitch();
             UpdateStatusBar();
+            UpdateRepositorySelectorPresentation();
         }
         else if (eventArgs.PropertyName is nameof(OpenRepositoryViewModel.HeadDisplay)
                  or nameof(OpenRepositoryViewModel.CurrentBranchName)
@@ -734,7 +735,12 @@ public sealed partial class MainPage : Page
     private async void Page_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         var control = IsControlDown();
-        if (control && e.Key == VirtualKey.F)
+        if (control && e.Key == VirtualKey.O)
+        {
+            await OpenRepositoryPickerAsync();
+            e.Handled = true;
+        }
+        else if (control && e.Key == VirtualKey.F)
         {
             if (WorkingTreePane.Visibility == Visibility.Visible) ShowAllHistory();
             HistoryFilter.Focus(FocusState.Programmatic);
