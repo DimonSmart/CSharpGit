@@ -24,7 +24,7 @@ public sealed partial class MainPage
     private ImageDiffPreviewService ImageDiffService =>
         _imageDiffPreviewService ??= new ImageDiffPreviewService(
             _fileVersionService,
-            _repositoryPathService,
+            _diffFileVersionPathResolver,
             SharedImageMetadataReader.Instance);
 
     private async Task LoadCommitImageDiffAsync()
