@@ -68,6 +68,9 @@
           <Button Content="Select folder…"
                   Click="OpenRepository_Click"
                   Style="{StaticResource CompactButtonStyle}" />
+          <Button Content="Clone repository…"
+                  Click="CloneRepository_Click"
+                  Style="{StaticResource CompactButtonStyle}" />
           <Button Content="Create repository…"
                   Click="CreateRepository_Click"
                   Style="{StaticResource CompactButtonStyle}" />
@@ -209,6 +212,9 @@
               <MenuFlyout>
                 <MenuFlyoutItem Text="Open repository…"
                                 Click="OpenRepository_Click"
+                                IsEnabled="{Binding CanChangeRepository}" />
+                <MenuFlyoutItem Text="Clone repository…"
+                                Click="CloneRepository_Click"
                                 IsEnabled="{Binding CanChangeRepository}" />
                 <MenuFlyoutItem Text="Create repository…" Click="CreateRepository_Click" />
                 <MenuFlyoutItem Text="Repositories…"

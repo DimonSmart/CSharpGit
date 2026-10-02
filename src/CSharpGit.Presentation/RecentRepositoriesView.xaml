@@ -239,6 +239,20 @@
             </Grid>
           </Button>
 
+          <Button Command="{Binding CloneRepositoryCommand}"
+                  Width="240" Height="82"
+                  Margin="0,0,12,12"
+                  Padding="{StaticResource Padding.Form}"
+                  HorizontalContentAlignment="Stretch">
+            <Grid ColumnDefinitions="42,*" ColumnSpacing="{StaticResource Spacing.XL}">
+              <FontIcon Glyph="&#xE896;" FontSize="24" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Spacing="{StaticResource Spacing.XS}" VerticalAlignment="Center">
+                <TextBlock Text="Clone repository" Style="{StaticResource BodyStrongTextStyle}" />
+                <TextBlock Text="Clone from a remote URL…" Style="{StaticResource SecondaryTextStyle}" />
+              </StackPanel>
+            </Grid>
+          </Button>
+
           <Button Command="{Binding CreateRepositoryCommand}"
                   Width="240" Height="82"
                   Margin="0,0,12,12"

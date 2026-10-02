@@ -74,6 +74,9 @@ public sealed partial class MainPage
             "Open repository…",
             async () => await OpenRepositoryPickerAsync()));
         RepositorySelectorFlyout.Items.Add(CreateRepositoryActionItem(
+            "Clone repository…",
+            ShowCloneRepositoryAsync));
+        RepositorySelectorFlyout.Items.Add(CreateRepositoryActionItem(
             "Create repository…",
             ShowCreateRepositoryAsync));
         RepositorySelectorFlyout.Items.Add(CreateRepositoryActionItem(
@@ -110,7 +113,10 @@ public sealed partial class MainPage
     private async Task<bool> TrySwitchRepositoryAsync(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        if (!_viewModel.CanChangeRepository) return false;
+        if (_repositoryCloningWorkflowActive
+            || _repositoryCreationWorkflowActive
+            || !_viewModel.CanChangeRepository)
+            return false;
 
         var currentPath = _viewModel.Repository?.WorkingDirectory;
         if (currentPath is not null
@@ -160,6 +166,8 @@ public sealed partial class MainPage
 
     private async Task<bool> TryCloseRepositoryAsync()
     {
+        if (_repositoryCloningWorkflowActive || _repositoryCreationWorkflowActive)
+            return false;
         if (_viewModel.Repository is null) return true;
         if (!_viewModel.CanChangeRepository) return false;
 

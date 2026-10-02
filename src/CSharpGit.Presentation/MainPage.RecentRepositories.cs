@@ -27,6 +27,7 @@ public sealed partial class MainPage
             _repositoryImageService,
             OpenRecentRepositoryAsync,
             OpenRepositoryPickerAsync,
+            ShowCloneRepositoryAsync,
             ShowCreateRepositoryAsync,
             DispatcherQueue);
         _recentRepositoriesView = new RecentRepositoriesView
@@ -107,7 +108,10 @@ public sealed partial class MainPage
 
     private async Task OpenRepositoryPickerAsync()
     {
-        if (!_viewModel.CanChangeRepository) return;
+        if (_repositoryCloningWorkflowActive
+            || _repositoryCreationWorkflowActive
+            || !_viewModel.CanChangeRepository)
+            return;
 
         string? path;
         try
