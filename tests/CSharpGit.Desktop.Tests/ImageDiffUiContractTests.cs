@@ -11,6 +11,8 @@ public sealed class ImageDiffUiContractTests
         var workingTree = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs");
         var lifecycle = Read(root, "src", "CSharpGit.Presentation", "MainPage.ImageDiff.cs");
 
+        Assert.Contains("x:Name=\"CommitDiffHeader\"", xaml);
+        Assert.Contains("x:Name=\"CommitTextDiffHeader\"", xaml);
         Assert.Contains("x:Name=\"CommitImageDiffHost\"", xaml);
         Assert.Contains("x:Name=\"WorkingTreeImageDiffHost\"", xaml);
         Assert.Contains("Loading image comparison…", xaml);
@@ -19,6 +21,7 @@ public sealed class ImageDiffUiContractTests
         Assert.Contains("LoadCommitImageDiffAsync", changes);
         Assert.Contains("ImageDiffService.LoadWorkingTreeAsync", workingTree);
         Assert.Contains("SetCommitDiffPresentationState", lifecycle);
+        Assert.Contains("CommitDiffHeader.Visibility", lifecycle);
         Assert.Contains("SetWorkingTreeDiffPresentationState", lifecycle);
     }
 
@@ -28,6 +31,7 @@ public sealed class ImageDiffUiContractTests
         var root = FindRepositoryRoot();
         var service = Read(root, "src", "CSharpGit.Presentation", "Previewing", "ImageDiffPreviewService.cs");
         var resolver = Read(root, "src", "CSharpGit.Presentation", "Previewing", "DiffFileVersionPathResolver.cs");
+        var fileOpening = Read(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs");
 
         Assert.Contains("ResolveCommitAsync", service);
         Assert.Contains("ResolveWorkingTreeAsync", service);
@@ -35,6 +39,7 @@ public sealed class ImageDiffUiContractTests
         Assert.Contains("ResolveExistingWorkingTreeFile", resolver);
         Assert.Contains("DiffFileVersionLocation.GitSnapshot", resolver);
         Assert.Contains("MaterializeAsync", resolver);
+        Assert.Contains("_diffFileVersionPathResolver.ResolveAsync", fileOpening);
         Assert.DoesNotContain("git show", service, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("git cat-file", service, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("git diff", service, StringComparison.OrdinalIgnoreCase);
