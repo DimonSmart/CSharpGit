@@ -29,19 +29,13 @@ internal sealed class DefaultBranchRepositoryStateService : IRepositoryStateServ
         CancellationToken cancellationToken = default) =>
         ReadCoreAsync(repository, cancellationToken);
 
-    public async Task<RepositoryStateReadResult> ReadWithRefreshFingerprintAsync(
+    public async Task<RepositoryStateReadResult> ReadWithWorkingTreeStatusAsync(
         Repository repository,
         bool localOnly = false,
         CancellationToken cancellationToken = default)
     {
         var read = await ReadDetailedAsync(repository, cancellationToken);
-        var fingerprint = await _inner.BuildRefreshFingerprintAsync(
-            repository,
-            read.State,
-            read.RelevantConfiguration,
-            cancellationToken);
-
-        return new RepositoryStateReadResult(read.State, fingerprint);
+        return new RepositoryStateReadResult(read.State, read.WorkingTreeStatus);
     }
 
     internal async Task<GitRepositoryStateReadResult> ReadDetailedAsync(

@@ -13,6 +13,7 @@ public sealed class ManualRefreshUiContractTests
         var refreshAction = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RefreshIndicator.cs"));
         var monitor = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "RepositoryChangeMonitor.cs"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
+        var reader = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitWorkingTreeStatusReader.cs"));
         var session = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "RepositoryStateSession.cs"));
         var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
         var intentIndex = File.ReadAllText(Path.Combine(root, ".idd", "intent", "INDEX.md"));
@@ -30,15 +31,15 @@ public sealed class ManualRefreshUiContractTests
         Assert.DoesNotContain("Text=\"Refresh\"", xaml);
 
         Assert.Contains("IsRefreshRequired", refresh);
-        Assert.Contains("QueueRepositoryProbe", refresh);
-        Assert.Contains("IRepositoryRefreshProbe", refresh);
-        Assert.Contains("Repository state probe:", refresh);
+        Assert.Contains("IWorkingTreeStatusReader", refresh);
+        Assert.Contains("RunWorkingTreeStatusLoopAsync", refresh);
         Assert.Contains("DisplayedRefreshBaselineRevision", refresh);
-        Assert.Contains("_repositoryChangeMonitor.Suspend()", refresh);
-        Assert.Contains("_repositoryChangeMonitor.Resume()", refresh);
-        Assert.Contains("revalidateAfterPublish", refresh);
-        Assert.Contains("if (revalidateAfterPublish)", refresh);
-        Assert.DoesNotContain("_repositoryChangeMonitor.Acknowledge()", refresh);
+        Assert.Contains("GetInvalidationsSince", refresh);
+        Assert.Contains("StatusProbeFailed", refresh);
+        Assert.Contains("WatcherOverflow", refresh);
+        Assert.DoesNotContain("IRepositoryRefreshProbe", refresh);
+        Assert.DoesNotContain("_repositoryChangeMonitor.Suspend()", refresh);
+        Assert.DoesNotContain("_repositoryChangeMonitor.Resume()", refresh);
         Assert.Contains("Repository has changed externally. Refresh to see the latest state.", refresh);
         Assert.Contains("Microsoft.UI.Colors.LimeGreen", refresh);
         Assert.Contains("Microsoft.UI.Colors.Red", refresh);
@@ -54,20 +55,26 @@ public sealed class ManualRefreshUiContractTests
         Assert.Contains("repository.WorkingDirectory", monitor);
         Assert.Contains("repository.GitDirectory", monitor);
         Assert.Contains("repository.GitCommonDirectory", monitor);
-        Assert.Contains("RepositoryChanged", monitor);
-        Assert.Contains("DebounceDelay", monitor);
-        Assert.Contains("public void Suspend()", monitor);
-        Assert.Contains("public void Resume()", monitor);
-        Assert.DoesNotContain("Acknowledge", monitor);
-        Assert.Contains("IsLockNoise", monitor);
+        Assert.Contains("RepositoryInvalidationBatch", monitor);
+        Assert.Contains("GetInvalidationsSince", monitor);
+        Assert.Contains("args.OldFullPath", monitor);
+        Assert.Contains("objects/", monitor);
+        Assert.DoesNotContain("public void Suspend()", monitor);
+        Assert.DoesNotContain("public void Resume()", monitor);
         Assert.DoesNotContain("RefreshAllAsync", monitor);
         Assert.DoesNotContain("RefreshStateAsync", monitor);
 
-        Assert.Contains("DisplayedRefreshFingerprint", viewModel);
+        Assert.Contains("DisplayedWorkingTreeStatusSnapshot", viewModel);
         Assert.Contains("DisplayedRefreshBaselineRevision", viewModel);
-        Assert.Contains("PublishDisplayedRefreshBaseline", viewModel);
-        Assert.Contains("ReadWithRefreshFingerprintAsync", viewModel);
-        Assert.DoesNotContain("_refreshProbe.ReadAsync", viewModel);
+        Assert.Contains("PublishDisplayedWorkingTreeBaseline", viewModel);
+        Assert.Contains("ReadWithWorkingTreeStatusAsync", viewModel);
+        Assert.DoesNotContain("ReadWithRefreshFingerprintAsync", viewModel);
+
+        Assert.Contains("WorkingTreeChangeProbe", reader);
+        Assert.Contains("\"status\", \"--porcelain=v2\", \"-z\", \"--untracked-files=all\"", reader);
+        Assert.DoesNotContain("hash-object", reader);
+        Assert.DoesNotContain("ls-files", reader);
+
         Assert.DoesNotContain("PeriodicTimer", session);
         Assert.DoesNotContain("PollInterval", session);
 

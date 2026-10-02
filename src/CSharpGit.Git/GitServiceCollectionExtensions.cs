@@ -95,9 +95,9 @@ public static class GitServiceCollectionExtensions
             new DefaultBranchResolver(
                 provider.GetRequiredService<GitCommandExecutor>()));
 
-        services.AddSingleton<IRepositoryRefreshProbe>(provider =>
-            new GitRepositoryRefreshProbe(
-                provider.GetRequiredService<IRepositoryStateService>()));
+        services.AddSingleton<IWorkingTreeStatusReader>(provider =>
+            new GitWorkingTreeStatusReader(
+                provider.GetRequiredService<GitRepositoryCommandRunner>()));
         services.AddSingleton<IWorktreeService>(provider =>
             new GitWorktreeService(
                 provider.GetRequiredService<GitCommandExecutor>()));

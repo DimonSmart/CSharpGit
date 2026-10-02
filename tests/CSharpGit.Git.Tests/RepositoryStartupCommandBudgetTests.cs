@@ -26,12 +26,12 @@ public sealed class RepositoryStartupCommandBudgetTests : IDisposable
             executor);
 
         var repository = await repositoryService.OpenAsync(work);
-        var stateRead = await stateService.ReadWithRefreshFingerprintAsync(repository);
+        var stateRead = await stateService.ReadWithWorkingTreeStatusAsync(repository);
         var history = await historyService.ReadHistoryAsync(
             repository,
             new HistoryQuery(HistoryScope.AllReferences, null, 0, 100));
 
-        Assert.NotNull(stateRead.RefreshFingerprint);
+        Assert.NotNull(stateRead.WorkingTreeStatus);
         Assert.NotEmpty(history.Rows);
         Assert.InRange(activity.Commands.Count, 1, 10);
         Assert.Equal(1, Count(activity.Commands, "--version"));
@@ -52,7 +52,7 @@ public sealed class RepositoryStartupCommandBudgetTests : IDisposable
 
         var versionsBeforeSecondOpen = Count(activity.Commands, "--version");
         _ = await repositoryService.OpenAsync(work);
-        _ = await stateService.ReadWithRefreshFingerprintAsync(repository);
+        _ = await stateService.ReadWithWorkingTreeStatusAsync(repository);
         Assert.Equal(versionsBeforeSecondOpen, Count(activity.Commands, "--version"));
     }
 
@@ -79,7 +79,7 @@ public sealed class RepositoryStartupCommandBudgetTests : IDisposable
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var repository = await repositoryService.OpenAsync(_root, timeout.Token);
-        var read = await stateService.ReadWithRefreshFingerprintAsync(
+        var read = await stateService.ReadWithWorkingTreeStatusAsync(
             repository,
             cancellationToken: timeout.Token);
 

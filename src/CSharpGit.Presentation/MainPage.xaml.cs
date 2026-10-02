@@ -57,7 +57,7 @@ public sealed partial class MainPage : Page
         IRepositorySyncService repositorySyncService,
         ICommitActionService commitActionService,
         ITagService tagService,
-        IRepositoryRefreshProbe repositoryRefreshProbe,
+        IWorkingTreeStatusReader workingTreeStatusReader,
         IWorkingTreeDiffService workingTreeDiffService)
     {
         InitializeComponent();
@@ -67,7 +67,7 @@ public sealed partial class MainPage : Page
         _repositorySyncService = repositorySyncService ?? throw new ArgumentNullException(nameof(repositorySyncService));
         _commitActionService = commitActionService ?? throw new ArgumentNullException(nameof(commitActionService));
         _tagService = tagService ?? throw new ArgumentNullException(nameof(tagService));
-        _repositoryRefreshProbe = repositoryRefreshProbe ?? throw new ArgumentNullException(nameof(repositoryRefreshProbe));
+        _workingTreeStatusReader = workingTreeStatusReader ?? throw new ArgumentNullException(nameof(workingTreeStatusReader));
         _workingTreeDiffService = workingTreeDiffService ?? throw new ArgumentNullException(nameof(workingTreeDiffService));
         InitializeBusyStatusPresentation();
 
