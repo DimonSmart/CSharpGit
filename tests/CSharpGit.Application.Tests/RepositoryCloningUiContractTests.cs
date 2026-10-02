@@ -23,7 +23,7 @@ public sealed class RepositoryCloningUiContractTests
         Assert.Contains("Clone from a remote URL…", recentXaml);
         Assert.Contains("CloneRepositoryCommand", recentXaml);
         Assert.Contains("CloneRepositoryCommand", recentViewModel);
-        Assert.Contains(""Clone repository…"", switching);
+        Assert.Contains("\\\"Clone repository…\\\"", switching);
         Assert.Equal(1, Count(workflow, "private async Task ShowCloneRepositoryAsync()"));
     }
 
@@ -57,11 +57,11 @@ public sealed class RepositoryCloningUiContractTests
         var workflow = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "MainPage.RepositoryCloning.cs"));
 
-        Assert.Contains("Header = "Repository URL"", workflow);
-        Assert.Contains("Header = "Local directory"", workflow);
-        Assert.Contains("Content = "Browse…"", workflow);
-        Assert.Contains("Content = "Clone"", workflow);
-        Assert.Contains("Content = "Cancel"", workflow);
+        Assert.Contains("Header = \\\"Repository URL\\\"", workflow);
+        Assert.Contains("Header = \\\"Local directory\\\"", workflow);
+        Assert.Contains("Content = \\\"Browse…\\\"", workflow);
+        Assert.Contains("Content = \\\"Clone\\\"", workflow);
+        Assert.Contains("Content = \\\"Cancel\\\"", workflow);
         Assert.Contains("ProgressRing", workflow);
         Assert.Contains("Cloning {_cloneRepositoryViewModel.RepositoryDisplayName}…", workflow);
         Assert.Contains("repositoryUrlBox.IsEnabled = !busy", workflow);

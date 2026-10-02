@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using CSharpGit.Application;
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Application.Exceptions;
 
 namespace CSharpGit.Git.Tests;
