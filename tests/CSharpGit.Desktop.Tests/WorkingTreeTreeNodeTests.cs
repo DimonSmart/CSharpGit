@@ -119,6 +119,86 @@ public sealed class WorkingTreeTreeNodeTests
         Assert.DoesNotContain("old", folder.Path, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(99, true)]
+    [InlineData(100, true)]
+    [InlineData(101, false)]
+    public void AdaptiveExpansionUsesInclusiveFileLimit(int fileCount, bool expectedExpanded)
+    {
+        var changes = Enumerable.Range(0, fileCount)
+            .Select(index => new WorkingTreeChange($"src/File{index:D3}.cs", ' ', 'M'))
+            .ToArray();
+
+        var src = Assert.Single(WorkingTreeTreeNode.Build(changes, WorkingTreeDiffKind.Unstaged));
+
+        Assert.True(src.IsFolder);
+        Assert.Equal(expectedExpanded, src.IsExpanded);
+    }
+
+    [Fact]
+    public void StagedAndUnstagedExpansionPoliciesUseIndependentFileCounts()
+    {
+        var unstaged = Enumerable.Range(0, 101)
+            .Select(index => new WorkingTreeChange($"unstaged/File{index:D3}.cs", ' ', 'M'));
+        var staged = Enumerable.Range(0, 10)
+            .Select(index => new WorkingTreeChange($"staged/File{index:D3}.cs", 'M', ' '));
+        var changes = unstaged.Concat(staged).ToArray();
+
+        var unstagedRoot = Assert.Single(WorkingTreeTreeNode.Build(changes, WorkingTreeDiffKind.Unstaged));
+        var stagedRoot = Assert.Single(WorkingTreeTreeNode.Build(changes, WorkingTreeDiffKind.Staged));
+
+        Assert.False(unstagedRoot.IsExpanded);
+        Assert.True(stagedRoot.IsExpanded);
+    }
+
+    [Fact]
+    public void RefreshPreservesManualExpansionAndCollapsesNewFolderInLargeTree()
+    {
+        var initialChanges = Enumerable.Range(0, 101)
+            .Select(index => new WorkingTreeChange($"src/File{index:D3}.cs", ' ', 'M'))
+            .ToArray();
+        var initialRoots = WorkingTreeTreeNode.Build(initialChanges, WorkingTreeDiffKind.Unstaged);
+        var src = Assert.Single(initialRoots);
+        Assert.False(src.IsExpanded);
+        src.IsExpanded = true;
+
+        var state = new Dictionary<string, bool>(StringComparer.Ordinal);
+        WorkingTreeTreeExpansionState.Capture(initialRoots, state);
+
+        var refreshedChanges = initialChanges
+            .Append(new WorkingTreeChange("generated/New.cs", ' ', 'M'))
+            .ToArray();
+        var refreshedRoots = WorkingTreeTreeNode.Build(refreshedChanges, WorkingTreeDiffKind.Unstaged);
+        WorkingTreeTreeExpansionState.Restore(refreshedRoots, state);
+
+        Assert.True(Assert.Single(refreshedRoots, node => node.Path == "src").IsExpanded);
+        Assert.False(Assert.Single(refreshedRoots, node => node.Path == "generated").IsExpanded);
+    }
+
+    [Fact]
+    public void RefreshPreservesManualCollapseAndExpandsNewFolderInSmallTree()
+    {
+        var initialChanges = Enumerable.Range(0, 20)
+            .Select(index => new WorkingTreeChange($"src/File{index:D3}.cs", ' ', 'M'))
+            .ToArray();
+        var initialRoots = WorkingTreeTreeNode.Build(initialChanges, WorkingTreeDiffKind.Unstaged);
+        var src = Assert.Single(initialRoots);
+        Assert.True(src.IsExpanded);
+        src.IsExpanded = false;
+
+        var state = new Dictionary<string, bool>(StringComparer.Ordinal);
+        WorkingTreeTreeExpansionState.Capture(initialRoots, state);
+
+        var refreshedChanges = initialChanges
+            .Append(new WorkingTreeChange("generated/New.cs", ' ', 'M'))
+            .ToArray();
+        var refreshedRoots = WorkingTreeTreeNode.Build(refreshedChanges, WorkingTreeDiffKind.Unstaged);
+        WorkingTreeTreeExpansionState.Restore(refreshedRoots, state);
+
+        Assert.False(Assert.Single(refreshedRoots, node => node.Path == "src").IsExpanded);
+        Assert.True(Assert.Single(refreshedRoots, node => node.Path == "generated").IsExpanded);
+    }
+
     private static WorkingTreeTreeNode FindNode(
         IEnumerable<WorkingTreeTreeNode> nodes,
         string path)

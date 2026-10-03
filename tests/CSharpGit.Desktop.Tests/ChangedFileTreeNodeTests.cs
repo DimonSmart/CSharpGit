@@ -259,6 +259,64 @@ public sealed class ChangedFileTreeNodeTests
         Assert.Contains(src.Children, node => node.Path == "src/case.cs");
     }
 
+    [Theory]
+    [InlineData(99, true)]
+    [InlineData(100, true)]
+    [InlineData(101, false)]
+    public void AdaptiveExpansionUsesInclusiveFileLimit(int fileCount, bool expectedExpanded)
+    {
+        var roots = ChangedFileTreeNode.Build(
+            Enumerable.Range(0, fileCount)
+                .Select(index => Entry("M", $"src/File{index:D3}.cs", 1, 0)));
+
+        var src = Assert.Single(roots);
+        Assert.Equal(expectedExpanded, src.IsExpanded);
+    }
+
+    [Fact]
+    public void ReconcilePreservesManualExpansionAndCollapsesNewFolderInLargeTree()
+    {
+        var roots = new ObservableCollection<ChangedFileTreeNode>();
+        var initial = Enumerable.Range(0, 101)
+            .Select(index => Entry("M", $"src/File{index:D3}.cs", 1, 0))
+            .ToArray();
+        ChangedFileTreeSynchronizer.Reconcile(roots, initial);
+
+        var src = Assert.Single(roots);
+        Assert.False(src.IsExpanded);
+        src.IsExpanded = true;
+
+        ChangedFileTreeSynchronizer.Reconcile(
+            roots,
+            initial.Append(Entry("A", "generated/New.cs", 1, 0)));
+
+        Assert.Same(src, Assert.Single(roots, node => node.Path == "src"));
+        Assert.True(src.IsExpanded);
+        Assert.False(Assert.Single(roots, node => node.Path == "generated").IsExpanded);
+    }
+
+    [Fact]
+    public void ReconcilePreservesManualCollapseAndExpandsNewFolderInSmallTree()
+    {
+        var roots = new ObservableCollection<ChangedFileTreeNode>();
+        var initial = Enumerable.Range(0, 20)
+            .Select(index => Entry("M", $"src/File{index:D3}.cs", 1, 0))
+            .ToArray();
+        ChangedFileTreeSynchronizer.Reconcile(roots, initial);
+
+        var src = Assert.Single(roots);
+        Assert.True(src.IsExpanded);
+        src.IsExpanded = false;
+
+        ChangedFileTreeSynchronizer.Reconcile(
+            roots,
+            initial.Append(Entry("A", "generated/New.cs", 1, 0)));
+
+        Assert.Same(src, Assert.Single(roots, node => node.Path == "src"));
+        Assert.False(src.IsExpanded);
+        Assert.True(Assert.Single(roots, node => node.Path == "generated").IsExpanded);
+    }
+
     private static ChangedFileTreeEntry Entry(string status, string path, int added, int removed) =>
         new(status, new ChangedFile(path, added, removed, false));
 }
