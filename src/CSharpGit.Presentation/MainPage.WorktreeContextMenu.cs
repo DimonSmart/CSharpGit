@@ -14,12 +14,6 @@ public sealed partial class MainPage
     {
         var flyout = new MenuFlyout();
         PopulateWorktreeMenu(flyout, worktree);
-
-        flyout.Items.Add(new MenuFlyoutSeparator());
-        if (WorktreePresentation.GetBranchNameForCopy(worktree) is { } branch)
-            AddMenuItem(flyout, "Copy branch name", true, () => CopyTextAsync(branch));
-        AddMenuItem(flyout, "Copy worktree path", true, () => CopyTextAsync(WorktreePresentation.GetPathForCopy(worktree)));
-
         flyout.ShowAt(source, args.GetPosition(source));
         args.Handled = true;
     }

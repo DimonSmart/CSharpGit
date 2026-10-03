@@ -30,6 +30,10 @@ public sealed class PrimaryWorktreeUiContractTests
 
         Assert.Contains("!worktree.IsPrimary && !worktree.IsCurrent && !worktree.IsLocked", worktreesPage, StringComparison.Ordinal);
         Assert.Contains("worktree.IsPrimary || worktree.IsCurrent", worktreesPage, StringComparison.Ordinal);
+        Assert.Contains("_desktopShellService.OpenFolderDescription", worktreesPage, StringComparison.Ordinal);
+        Assert.Contains("Copy worktree path", worktreesPage, StringComparison.Ordinal);
+        Assert.Contains("OpenFolderInDesktopShellAsync(worktree.Path", worktreesPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static void OpenFolder", worktreesPage, StringComparison.Ordinal);
     }
 
     private static int CountOccurrences(string text, string value)

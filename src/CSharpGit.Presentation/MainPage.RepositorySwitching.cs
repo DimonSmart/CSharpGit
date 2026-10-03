@@ -48,6 +48,20 @@ public sealed partial class MainPage
             };
             ToolTipService.SetToolTip(current, currentPath);
             RepositorySelectorFlyout.Items.Add(current);
+
+            var openFolder = new MenuFlyoutItem
+            {
+                Text = _desktopShellService.OpenFolderDescription,
+                IsEnabled = Directory.Exists(currentPath)
+            };
+            openFolder.Click += async (_, _) =>
+                await OpenFolderInDesktopShellAsync(currentPath, "Could not open repository folder");
+            RepositorySelectorFlyout.Items.Add(openFolder);
+
+            var copyPath = new MenuFlyoutItem { Text = "Copy repository path" };
+            copyPath.Click += async (_, _) => await CopyTextAsync(currentPath);
+            RepositorySelectorFlyout.Items.Add(copyPath);
+            RepositorySelectorFlyout.Items.Add(new MenuFlyoutSeparator());
         }
 
         var quickRepositories = RecentRepositoriesProjectionBuilder.BuildQuickList(
@@ -202,6 +216,21 @@ public sealed partial class MainPage
         };
 
         return await dialog.ShowAsync() == ContentDialogResult.Primary;
+    }
+
+    private async Task OpenFolderInDesktopShellAsync(string path, string errorTitle)
+    {
+        try
+        {
+            await _desktopShellService.OpenFolderAsync(path);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            await ShowErrorAsync(errorTitle, exception.Message);
+        }
     }
 
     private async Task ShowUnavailableRepositoryAsync(string path)

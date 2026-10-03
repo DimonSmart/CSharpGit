@@ -75,6 +75,8 @@ public interface IRepositoryPathService
 
 public interface IDesktopShellService
 {
+    string OpenFolderDescription { get; }
+
     string RevealDescription { get; }
 
     Task OpenFileAsync(

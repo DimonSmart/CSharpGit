@@ -61,6 +61,12 @@ public sealed class RepositoryPathService : IRepositoryPathService
 
 public sealed class DesktopShellService : IDesktopShellService
 {
+    public string OpenFolderDescription => OperatingSystem.IsWindows()
+        ? "Open in Explorer"
+        : OperatingSystem.IsMacOS()
+            ? "Open in Finder"
+            : "Open in file manager";
+
     public string RevealDescription => OperatingSystem.IsWindows()
         ? "Reveal in Explorer"
         : OperatingSystem.IsMacOS()

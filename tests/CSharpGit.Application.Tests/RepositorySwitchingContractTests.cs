@@ -71,6 +71,9 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("QuickRepositoryLimit = 8", switching);
         Assert.Contains("BuildQuickList(", switching);
         Assert.Contains("Current repository", switching);
+        Assert.Contains("_desktopShellService.OpenFolderDescription", switching);
+        Assert.Contains("Copy repository path", switching);
+        Assert.Contains("OpenFolderInDesktopShellAsync", switching);
         Assert.Contains("Create repository…", switching);
         Assert.Contains("ShowUnavailableRepositoryAsync", switching);
 
