@@ -26,7 +26,8 @@ public sealed class SelectableTextUiContractTests
         Assert.Contains("IsTextSelectionEnabledProperty", commitTime, StringComparison.Ordinal);
 
         Assert.Contains("Repository.WorkingDirectory", main, StringComparison.Ordinal);
-        Assert.Contains("Style=\"{StaticResource SelectableTechnicalTextStyle}\"", main, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.HelpText=\"{Binding Repository.WorkingDirectory}\"", main, StringComparison.Ordinal);
+        Assert.DoesNotContain("x:Name=\"RepositorySelectorPath\"", main, StringComparison.Ordinal);
 
         Assert.Contains("x:Name=\"CommandText\"", console, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"WorkingDirectoryText\"", console, StringComparison.Ordinal);
