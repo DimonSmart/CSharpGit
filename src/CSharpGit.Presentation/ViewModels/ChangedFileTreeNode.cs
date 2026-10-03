@@ -55,7 +55,7 @@ public sealed class ChangedFileTreeNode : INotifyPropertyChanged
     private int _addedLines;
     private int _removedLines;
 
-    internal ChangedFileTreeNode(ChangedFileTreeDescriptor descriptor)
+    internal ChangedFileTreeNode(ChangedFileTreeDescriptor descriptor, bool expandByDefault)
     {
         Key = descriptor.Key;
         Path = descriptor.Path;
@@ -63,7 +63,7 @@ public sealed class ChangedFileTreeNode : INotifyPropertyChanged
         _entry = descriptor.Entry;
         _addedLines = descriptor.AddedLines;
         _removedLines = descriptor.RemovedLines;
-        _isExpanded = descriptor.Entry is null;
+        _isExpanded = descriptor.Entry is null && expandByDefault;
         Children.CollectionChanged += (_, _) => Notify(nameof(HasChildren));
     }
 
@@ -150,14 +150,16 @@ internal static class ChangedFileTreeSynchronizer
         ObservableCollection<ChangedFileTreeNode> roots,
         IEnumerable<ChangedFileTreeEntry> entries)
     {
-        var desired = ChangedFileTreeDescriptorBuilder.Build(entries);
+        var entrySnapshot = entries as IReadOnlyList<ChangedFileTreeEntry> ?? entries.ToList();
+        var expandByDefault = FileTreeExpansionPolicy.ShouldExpandByDefault(entrySnapshot.Count);
+        var desired = ChangedFileTreeDescriptorBuilder.Build(entrySnapshot);
         IncrementalTreeReconciler.Reconcile(
             roots,
             desired,
             node => node.Key,
             descriptor => descriptor.Key,
             (node, descriptor) => node.UpdateFrom(descriptor),
-            descriptor => new ChangedFileTreeNode(descriptor),
+            descriptor => new ChangedFileTreeNode(descriptor, expandByDefault),
             node => node.Children,
             descriptor => descriptor.Children,
             StringComparer.Ordinal);
