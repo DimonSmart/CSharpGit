@@ -219,7 +219,9 @@ public sealed partial class MainPage
         var generation = _workingTreeDiffGeneration;
         try
         {
-            var diff = await service.ReadDiffAsync(repository, change, kind, mode, cts.Token);
+            var diff = service is IWorkingTreeDiffLoadService controlledDiffService
+                ? await controlledDiffService.ReadDiffAsync(repository, change, kind, mode, cts.Token)
+                : await service.ReadDiffAsync(repository, change, kind, cts.Token);
             if (!IsCurrentWorkingTreeDiffRequest(repository, change, kind, generation, cts.Token))
                 return;
 

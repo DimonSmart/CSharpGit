@@ -3,7 +3,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
 
-public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHistoryService
+public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHistoryService, IHistoryDiffLoadService
 {
     private readonly GitReferenceHistoryService _history;
     private readonly GitCommandExecutor _executor;
