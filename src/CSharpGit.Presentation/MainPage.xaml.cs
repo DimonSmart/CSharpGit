@@ -264,7 +264,6 @@ public sealed partial class MainPage : Page
         var branch = current?.Name
                      ?? _viewModel.CurrentBranchName
                      ?? (_viewModel.Repository is null ? string.Empty : "detached HEAD");
-        ToolbarBranchText.Text = branch;
         StatusBranchText.Text = branch;
         StatusTrackingText.Text = current is null ? string.Empty : $"↑{current.Ahead} ↓{current.Behind}";
         StatusChangesText.Text = $"{_viewModel.Changes.Count} changes";

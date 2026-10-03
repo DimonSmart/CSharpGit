@@ -78,6 +78,54 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("await OpenRepositoryPickerAsync();", page);
     }
 
+
+    [Fact]
+    public void RepositorySelectorLivesInSidebarHeaderAndToolbarContainsActionsOnly()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var xaml = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
+        var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+        var switching = File.ReadAllText(Path.Combine(
+            presentation,
+            "MainPage.RepositorySwitching.cs"));
+
+        Assert.Contains("x:Name=\"RepositoryHeader\"", xaml);
+        Assert.Contains("<ColumnDefinition Width=\"270\" MinWidth=\"180\" MaxWidth=\"430\" />", xaml);
+        Assert.Contains("<controls:GridSplitter Grid.Row=\"2\"", xaml);
+        Assert.Contains("<TreeView x:Name=\"RepositoryTree\"", xaml);
+        Assert.Contains("AutomationProperties.HelpText=\"{Binding Repository.WorkingDirectory}\"", xaml);
+        Assert.Contains("Grid.ColumnSpan=\"3\" Visibility=\"{Binding HasActiveOperation", xaml);
+        Assert.Contains("x:Name=\"StatusBar\" Grid.Row=\"3\" Grid.ColumnSpan=\"3\"", xaml);
+
+        var headerStart = xaml.IndexOf("<Border x:Name=\"RepositoryHeader\"", StringComparison.Ordinal);
+        var toolbarStart = xaml.IndexOf("<Border x:Name=\"MainToolbar\"", StringComparison.Ordinal);
+        var operationStart = xaml.IndexOf("<controls:OperationBanner", toolbarStart, StringComparison.Ordinal);
+        var selectorStart = xaml.IndexOf("x:Name=\"RepositorySelectorButton\"", StringComparison.Ordinal);
+        var treeStart = xaml.IndexOf("x:Name=\"RepositoryTree\"", StringComparison.Ordinal);
+        Assert.True(headerStart >= 0 && selectorStart > headerStart && toolbarStart > selectorStart);
+        Assert.True(operationStart > toolbarStart && treeStart > operationStart);
+
+        var toolbar = xaml[toolbarStart..operationStart];
+        Assert.DoesNotContain("RepositorySelectorButton", toolbar);
+        Assert.DoesNotContain("ToolbarBranchText", toolbar);
+        Assert.DoesNotContain("ToolbarProductTextStyle", toolbar);
+        Assert.Contains("CommitNavigationButton", toolbar);
+        Assert.Contains("Text=\"Fetch\"", toolbar);
+        Assert.Contains("ConverterParameter=Pull", toolbar);
+        Assert.Contains("ConverterParameter=Push", toolbar);
+        Assert.Contains("x:Name=\"RefreshButton\"", toolbar);
+        Assert.Contains("AutomationProperties.Name=\"Application menu\"", toolbar);
+
+        Assert.DoesNotContain("RepositorySelectorPath", xaml);
+        Assert.DoesNotContain("ToolbarBranchText", xaml);
+        Assert.Contains("x:Name=\"StatusBranchText\"", xaml);
+        Assert.DoesNotContain("ToolbarBranchText.Text", page);
+        Assert.Contains("StatusBranchText.Text = branch;", page);
+        Assert.DoesNotContain("RepositorySelectorPath", switching);
+        Assert.Contains("QuickRepositoryLimit = 8", switching);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

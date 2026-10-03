@@ -18,14 +18,12 @@ public sealed partial class MainPage
         if (repository is null)
         {
             RepositorySelectorName.Text = string.Empty;
-            RepositorySelectorPath.Text = string.Empty;
             ToolTipService.SetToolTip(RepositorySelectorButton, null);
             return;
         }
 
         var path = repository.WorkingDirectory;
         RepositorySelectorName.Text = RepositoryDisplayName(path);
-        RepositorySelectorPath.Text = path;
         ToolTipService.SetToolTip(RepositorySelectorButton, path);
     }
 
