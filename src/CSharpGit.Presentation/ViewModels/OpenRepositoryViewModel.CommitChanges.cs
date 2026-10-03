@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 using Microsoft.Extensions.Logging;
 
