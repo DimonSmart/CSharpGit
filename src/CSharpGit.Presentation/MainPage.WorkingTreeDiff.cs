@@ -13,8 +13,8 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private readonly ObservableCollection<WorkingTreeTreeNode> _unstagedTreeRoots = [];
-    private readonly ObservableCollection<WorkingTreeTreeNode> _stagedTreeRoots = [];
+    private readonly BulkObservableCollection<WorkingTreeTreeNode> _unstagedTreeRoots = [];
+    private readonly BulkObservableCollection<WorkingTreeTreeNode> _stagedTreeRoots = [];
     private readonly WorkingTreeTreeSelection _unstagedTreeSelection = new();
     private readonly WorkingTreeTreeSelection _stagedTreeSelection = new();
     private readonly Dictionary<string, bool> _unstagedExpansionState = new(StringComparer.Ordinal);
@@ -24,6 +24,7 @@ public sealed partial class MainPage
     private long _workingTreeDiffGeneration;
     private bool _workingTreeSelectionSync;
     private bool _workingTreeTreeRefreshQueued;
+    private bool _workingTreeTreeRefreshScheduled;
     private bool _workingTreePreviewRestoreQueued;
     private string? _workingTreeExpansionRepositoryIdentity;
     private string? _desiredWorkingTreePath;
@@ -52,15 +53,28 @@ public sealed partial class MainPage
     {
         if (_workingTreeTreeRefreshQueued) return;
         _workingTreeTreeRefreshQueued = true;
+        ScheduleWorkingTreeTreeRefreshIfNeeded();
+    }
+
+    private void ScheduleWorkingTreeTreeRefreshIfNeeded()
+    {
+        if (!_workingTreeTreeRefreshQueued ||
+            _workingTreeTreeRefreshScheduled ||
+            _workingTreeSelectionSync)
+            return;
+
+        _workingTreeTreeRefreshScheduled = true;
         if (DispatcherQueue.TryEnqueue(() =>
         {
+            _workingTreeTreeRefreshScheduled = false;
             if (!_workingTreeTreeRefreshQueued) return;
             _workingTreeTreeRefreshQueued = false;
             RebuildWorkingTreeTrees();
         })) return;
 
+        _workingTreeTreeRefreshScheduled = false;
         _workingTreeTreeRefreshQueued = false;
-        if (!_workingTreeSelectionSync) RebuildWorkingTreeTrees();
+        RebuildWorkingTreeTrees();
     }
 
     private void RebuildWorkingTreeTrees()
@@ -99,12 +113,9 @@ public sealed partial class MainPage
     }
 
     private static void ReplaceRoots(
-        ObservableCollection<WorkingTreeTreeNode> target,
-        IReadOnlyList<WorkingTreeTreeNode> source)
-    {
-        target.Clear();
-        foreach (var node in source) target.Add(node);
-    }
+        BulkObservableCollection<WorkingTreeTreeNode> target,
+        IReadOnlyList<WorkingTreeTreeNode> source) =>
+        target.ReplaceAll(source);
 
     private static void CaptureExpansionState(
         IEnumerable<WorkingTreeTreeNode> nodes,
@@ -327,7 +338,7 @@ public sealed partial class MainPage
     private void EnsureWorkingTreeActivePreview()
     {
         if (WorkingTreePane.Visibility != Visibility.Visible) return;
-        if (_workingTreeTreeRefreshQueued)
+        if (_workingTreeTreeRefreshQueued && !_workingTreeSelectionSync)
         {
             _workingTreeTreeRefreshQueued = false;
             RebuildWorkingTreeTrees();

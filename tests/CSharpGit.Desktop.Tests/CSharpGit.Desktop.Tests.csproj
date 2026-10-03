@@ -44,6 +44,7 @@
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/ChangedFileTreeNode.cs" Link="Changes/ChangedFileTreeNode.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorkingTreeTreeNode.cs" Link="WorkingTree/WorkingTreeTreeNode.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorkingTreeTreeSelection.cs" Link="WorkingTree/WorkingTreeTreeSelection.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BulkObservableCollection.cs" Link="WorkingTree/BulkObservableCollection.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CompactDiffLine.cs" Link="Changes/CompactDiffLine.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/DiffLogicalText.cs" Link="Changes/DiffLogicalText.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Controls/DiffViewportResetGate.cs" Link="Changes/DiffViewportResetGate.cs" />
