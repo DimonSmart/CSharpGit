@@ -279,13 +279,20 @@ public sealed partial class OpenRepositoryViewModel
         var stopwatch = Stopwatch.StartNew();
         try
         {
-            var diff = await _historyService.ReadDiffAsync(
-                repository,
-                row.Commit.Hash,
-                parentHash,
-                file,
-                mode,
-                cancellation.Token);
+            var diff = _historyService is IHistoryDiffLoadService controlledDiffService
+                ? await controlledDiffService.ReadDiffAsync(
+                    repository,
+                    row.Commit.Hash,
+                    parentHash,
+                    file,
+                    mode,
+                    cancellation.Token)
+                : await _historyService.ReadDiffAsync(
+                    repository,
+                    row.Commit.Hash,
+                    parentHash,
+                    file,
+                    cancellation.Token);
             stopwatch.Stop();
 
             if (!IsCurrentDiffRequest(generation, cancellation, repository, row, file)) return;

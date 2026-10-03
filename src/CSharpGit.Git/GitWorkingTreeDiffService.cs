@@ -4,7 +4,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
 
-internal sealed class GitWorkingTreeDiffService : IWorkingTreeDiffService
+internal sealed class GitWorkingTreeDiffService : IWorkingTreeDiffService, IWorkingTreeDiffLoadService
 {
 private readonly GitRepositoryCommandRunner _runner;
 

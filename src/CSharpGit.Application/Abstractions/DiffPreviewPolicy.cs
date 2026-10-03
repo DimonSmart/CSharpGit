@@ -1,3 +1,5 @@
+using CSharpGit.Domain;
+
 namespace CSharpGit.Application.Abstractions;
 
 public enum DiffLoadMode
@@ -22,4 +24,25 @@ public sealed class DiffPreviewTooLargeException : Exception
     }
 
     public int LimitBytes { get; }
+}
+
+public interface IHistoryDiffLoadService
+{
+    Task<FileDiff> ReadDiffAsync(
+        Repository repository,
+        string commitHash,
+        string? parentHash,
+        ChangedFile file,
+        DiffLoadMode mode,
+        CancellationToken cancellationToken = default);
+}
+
+public interface IWorkingTreeDiffLoadService
+{
+    Task<FileDiff> ReadDiffAsync(
+        Repository repository,
+        WorkingTreeChange change,
+        WorkingTreeDiffKind kind,
+        DiffLoadMode mode,
+        CancellationToken cancellationToken = default);
 }
