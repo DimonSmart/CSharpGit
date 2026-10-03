@@ -28,6 +28,35 @@ public sealed class RepositoryCloningUiContractTests
     }
 
     [Fact]
+    public void MainPageCompositionInjectsCloneRepositoryViewModel()
+    {
+        var root = FindRepositoryRoot();
+        var composition = File.ReadAllText(Path.Combine(
+            root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
+
+        const string createParameter =
+            "CreateRepositoryViewModel createRepositoryViewModel";
+        const string cloneParameter =
+            "CloneRepositoryViewModel cloneRepositoryViewModel";
+        const string cloneAssignment =
+            "_cloneRepositoryViewModel = cloneRepositoryViewModel\n"
+            + "            ?? throw new ArgumentNullException(nameof(cloneRepositoryViewModel));";
+
+        Assert.Contains(cloneParameter, composition);
+        Assert.Contains(cloneAssignment, composition);
+
+        var createParameterIndex = composition.IndexOf(
+            createParameter,
+            StringComparison.Ordinal);
+        var cloneParameterIndex = composition.IndexOf(
+            cloneParameter,
+            StringComparison.Ordinal);
+
+        Assert.True(createParameterIndex >= 0);
+        Assert.True(cloneParameterIndex > createParameterIndex);
+    }
+
+    [Fact]
     public void CloneWorkflowProtectsDraftAndUsesCommonRepositorySwitch()
     {
         var root = FindRepositoryRoot();
