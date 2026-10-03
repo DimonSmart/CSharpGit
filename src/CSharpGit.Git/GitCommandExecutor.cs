@@ -97,13 +97,33 @@ internal sealed class GitCommandExecutor
         return result.StandardOutput;
     }
 
+    internal async Task<string> ExecuteAsyncPreservingOutputEndings(
+        string workingDirectory,
+        string operation,
+        CancellationToken cancellationToken,
+        int? maxStandardOutputBytes,
+        IReadOnlyList<string> arguments)
+    {
+        var result = await ExecuteForResultPreservingOutputEndingsAsync(
+            workingDirectory,
+            operation,
+            GitCommandKind.Internal,
+            cancellationToken,
+            null,
+            arguments,
+            maxStandardOutputBytes);
+        ThrowIfFailed(result);
+        return result.StandardOutput;
+    }
+
     internal Task<GitCommandResult> ExecuteForResultPreservingOutputEndingsAsync(
         string workingDirectory,
         string operation,
         GitCommandKind commandKind,
         CancellationToken cancellationToken,
         IReadOnlyDictionary<string, string?>? environment,
-        IReadOnlyList<string> arguments) =>
+        IReadOnlyList<string> arguments,
+        int? maxStandardOutputBytes = null) =>
         ExecuteProcessCoreAsync(
             _gitExecutable,
             workingDirectory,
@@ -114,7 +134,8 @@ internal sealed class GitCommandExecutor
             _activitySink,
             environment,
             _processStarted,
-            trimOutputEndings: false);
+            trimOutputEndings: false,
+            maxStandardOutputBytes: maxStandardOutputBytes);
 
     internal Task<GitCommandResult> ExecuteForResultPreservingGitEditorAsync(
         string workingDirectory,
@@ -224,7 +245,8 @@ internal sealed class GitCommandExecutor
         IReadOnlyDictionary<string, string?>? environment = null,
         Action<int>? processStarted = null,
         bool installNoOpGitEditor = true,
-        bool trimOutputEndings = true)
+        bool trimOutputEndings = true,
+        int? maxStandardOutputBytes = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var effectiveArguments = GitProgressPolicy.Apply(arguments, commandKind);
@@ -240,7 +262,9 @@ internal sealed class GitCommandExecutor
             process.StandardOutput,
             activityId,
             GitOutputStream.StandardOutput,
-            activitySink);
+            activitySink,
+            maxStandardOutputBytes,
+            () => KillProcessTree(process));
         var errorTask = PumpTextAsync(
             process.StandardError,
             activityId,
@@ -262,7 +286,24 @@ internal sealed class GitCommandExecutor
             throw;
         }
 
-        await Task.WhenAll(outputTask, errorTask);
+        try
+        {
+            await Task.WhenAll(outputTask, errorTask);
+        }
+        catch
+        {
+            var outputLimitException = outputTask.Exception?.InnerExceptions
+                .OfType<GitCommandOutputLimitExceededException>()
+                .FirstOrDefault();
+            if (outputLimitException is null) throw;
+
+            await WaitForExitAfterKillAsync(process);
+            stopwatch.Stop();
+            if (activityId is { } limitedId)
+                activitySink!.Cancelled(limitedId, TryGetExitCode(process));
+            throw outputLimitException;
+        }
+
         var rawOutput = outputTask.Result;
         var output = trimOutputEndings ? rawOutput.TrimEnd('\r', '\n') : rawOutput;
         var error = errorTask.Result.TrimEnd('\r', '\n');
@@ -285,10 +326,13 @@ internal sealed class GitCommandExecutor
         StreamReader reader,
         Guid? activityId,
         GitOutputStream stream,
-        IGitCommandActivitySink? activitySink)
+        IGitCommandActivitySink? activitySink,
+        int? maxOutputBytes = null,
+        Action? outputLimitExceeded = null)
     {
         var result = new StringBuilder();
         var buffer = new char[TextReadBufferSize];
+        var outputBytes = 0;
 
         while (true)
         {
@@ -303,6 +347,17 @@ internal sealed class GitCommandExecutor
             }
 
             if (read == 0) break;
+            if (maxOutputBytes is { } limit)
+            {
+                var chunkBytes = Encoding.UTF8.GetByteCount(buffer.AsSpan(0, read));
+                if (outputBytes > limit - chunkBytes)
+                {
+                    outputLimitExceeded?.Invoke();
+                    throw new GitCommandOutputLimitExceededException(limit);
+                }
+                outputBytes += chunkBytes;
+            }
+
             var chunk = new string(buffer, 0, read);
             result.Append(chunk);
             if (activityId is { } id)
@@ -379,7 +434,7 @@ internal sealed class GitCommandExecutor
         {
             await Task.WhenAll(tasks);
         }
-        catch (IOException)
+        catch (Exception exception) when (exception is IOException or GitCommandOutputLimitExceededException)
         {
         }
     }
@@ -410,4 +465,15 @@ internal sealed class GitCommandExecutionException : InvalidOperationException
     }
 
     public GitCommandResult Result { get; }
+}
+
+internal sealed class GitCommandOutputLimitExceededException : InvalidOperationException
+{
+    public GitCommandOutputLimitExceededException(int limitBytes)
+        : base($"Git command output exceeded the configured {limitBytes}-byte limit.")
+    {
+        LimitBytes = limitBytes;
+    }
+
+    public int LimitBytes { get; }
 }

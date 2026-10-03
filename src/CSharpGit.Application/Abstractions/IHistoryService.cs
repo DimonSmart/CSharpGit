@@ -31,6 +31,15 @@ public interface IHistoryService
         string? parentHash,
         ChangedFile file,
         CancellationToken cancellationToken = default);
+
+    Task<FileDiff> ReadDiffAsync(
+        Repository repository,
+        string commitHash,
+        string? parentHash,
+        ChangedFile file,
+        DiffLoadMode mode,
+        CancellationToken cancellationToken = default) =>
+        ReadDiffAsync(repository, commitHash, parentHash, file, cancellationToken);
 }
 
 public interface IReferenceHistoryService

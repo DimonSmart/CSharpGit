@@ -18,6 +18,9 @@ public sealed partial class OpenRepositoryViewModel
     private bool _isChangedFilesLoading;
     private bool _isChangesViewActive;
     private string? _diffLoadErrorMessage;
+    private bool _isDiffPreviewDeferred;
+    private string? _diffPreviewDeferredMessage;
+    private string _diffPreviewActionText = "Load diff";
     private ChangedFileSelectionKey? _selectedChangedFileRestoreKey;
     private readonly BoundedLruCache<ChangedFilesCacheKey, IReadOnlyList<ChangedFile>> _changedFilesCache =
         new(ChangedFilesCacheEntries, ChangedFilesCacheEntries, _ => 1);
@@ -47,6 +50,39 @@ public sealed partial class OpenRepositoryViewModel
     }
 
     public bool IsChangesViewActive => _isChangesViewActive;
+
+    public bool IsDiffPreviewDeferred
+    {
+        get => _isDiffPreviewDeferred;
+        private set
+        {
+            if (_isDiffPreviewDeferred == value) return;
+            _isDiffPreviewDeferred = value;
+            Notify();
+        }
+    }
+
+    public string? DiffPreviewDeferredMessage
+    {
+        get => _diffPreviewDeferredMessage;
+        private set
+        {
+            if (string.Equals(_diffPreviewDeferredMessage, value, StringComparison.Ordinal)) return;
+            _diffPreviewDeferredMessage = value;
+            Notify();
+        }
+    }
+
+    public string DiffPreviewActionText
+    {
+        get => _diffPreviewActionText;
+        private set
+        {
+            if (string.Equals(_diffPreviewActionText, value, StringComparison.Ordinal)) return;
+            _diffPreviewActionText = value;
+            Notify();
+        }
+    }
 
     public string? DiffLoadErrorMessage
     {
@@ -93,6 +129,7 @@ public sealed partial class OpenRepositoryViewModel
         SelectedFile = null;
         SelectedDiff = null;
         DiffLoadErrorMessage = null;
+        ClearDiffPreviewDeferred();
         IsChangedFilesLoading = false;
         IsDiffLoading = false;
 
@@ -106,8 +143,22 @@ public sealed partial class OpenRepositoryViewModel
         SelectedDiff = null;
         DiffLoadErrorMessage = null;
         IsDiffLoading = false;
-        if (_isChangesViewActive && SelectedFile is not null)
-            _ = LoadSelectedDiffAsync();
+        ClearDiffPreviewDeferred();
+        StartSelectedDiffPreview();
+    }
+
+    public void LoadSelectedDiffAnyway()
+    {
+        if (!_isChangesViewActive || SelectedFile is null || IsDiffLoading) return;
+        ClearDiffPreviewDeferred();
+        _ = LoadSelectedDiffAsync(DiffLoadMode.Full);
+    }
+
+    private void StartSelectedDiffPreview()
+    {
+        if (!_isChangesViewActive || SelectedFile is not { } file) return;
+        if (TryDeferLargeHistoricalDiff(file)) return;
+        _ = LoadSelectedDiffAsync(DiffLoadMode.Preview);
     }
 
     private void ResetCommitChangesSession()
@@ -120,6 +171,7 @@ public sealed partial class OpenRepositoryViewModel
         SelectedFile = null;
         SelectedDiff = null;
         DiffLoadErrorMessage = null;
+        ClearDiffPreviewDeferred();
         _selectedChangedFileRestoreKey = null;
         IsChangedFilesLoading = false;
         IsDiffLoading = false;
@@ -196,10 +248,11 @@ public sealed partial class OpenRepositoryViewModel
 
         if (!ReferenceEquals(SelectedFile, target)) SelectedFile = target;
         SelectedChangedFiles = files;
-        if (target is not null && SelectedDiff is null && !IsDiffLoading) _ = LoadSelectedDiffAsync();
+        if (target is not null && SelectedDiff is null && !IsDiffLoading && !IsDiffPreviewDeferred)
+            StartSelectedDiffPreview();
     }
 
-    private async Task LoadSelectedDiffAsync()
+    private async Task LoadSelectedDiffAsync(DiffLoadMode mode)
     {
         var repository = Repository;
         var row = SelectedHistoryRow;
@@ -230,6 +283,7 @@ public sealed partial class OpenRepositoryViewModel
                 row.Commit.Hash,
                 parentHash,
                 file,
+                mode,
                 cancellation.Token);
             stopwatch.Stop();
 
@@ -240,6 +294,18 @@ public sealed partial class OpenRepositoryViewModel
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
+        }
+        catch (DiffPreviewTooLargeException exception) when (mode == DiffLoadMode.Preview)
+        {
+            if (IsCurrentDiffRequest(generation, cancellation, repository, row, file))
+            {
+                SelectedDiff = null;
+                DiffLoadErrorMessage = null;
+                SetDiffPreviewDeferred(
+                    $"The diff is larger than the {FormatByteSize(exception.LimitBytes)} automatic preview limit. " +
+                    "Generating and displaying the full diff may take some time.",
+                    "Load full diff anyway");
+            }
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -258,6 +324,38 @@ public sealed partial class OpenRepositoryViewModel
                 IsDiffLoading = false;
         }
     }
+
+    private bool TryDeferLargeHistoricalDiff(ChangedFile file)
+    {
+        if (file.IsBinary) return false;
+        var changedLines = (long)(file.AddedLines ?? 0) + (file.RemovedLines ?? 0);
+        if (changedLines < DiffPreviewPolicy.LargeChangedLines) return false;
+
+        SetDiffPreviewDeferred(
+            $"This change contains {changedLines:N0} changed lines. " +
+            "Generating and displaying the full diff may take some time.",
+            "Load diff");
+        return true;
+    }
+
+    private void SetDiffPreviewDeferred(string message, string actionText)
+    {
+        DiffPreviewDeferredMessage = message;
+        DiffPreviewActionText = actionText;
+        IsDiffPreviewDeferred = true;
+    }
+
+    private void ClearDiffPreviewDeferred()
+    {
+        IsDiffPreviewDeferred = false;
+        DiffPreviewDeferredMessage = null;
+        DiffPreviewActionText = "Load diff";
+    }
+
+    private static string FormatByteSize(long bytes) =>
+        bytes >= 1024 * 1024
+            ? $"{bytes / (1024d * 1024d):0.#} MB"
+            : $"{Math.Max(1, bytes / 1024d):0.#} KB";
 
     private bool IsCurrentChangedFilesRequest(
         long generation,

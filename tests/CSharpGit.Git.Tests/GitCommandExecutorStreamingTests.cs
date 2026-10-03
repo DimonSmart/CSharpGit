@@ -92,6 +92,29 @@ public sealed class GitCommandExecutorStreamingTests
     }
 
     [Fact]
+    public async Task StandardOutputLimitStopsLargeCommand()
+    {
+        var history = new GitCommandActivityHistory();
+        var executor = CreateShellExecutor(history);
+
+        var exception = await Assert.ThrowsAsync<GitCommandOutputLimitExceededException>(
+            () => executor.ExecuteForResultPreservingOutputEndingsAsync(
+                Path.GetTempPath(),
+                "LimitedOutput",
+                GitCommandKind.Internal,
+                CancellationToken.None,
+                null,
+                LargeOutputShellArguments(),
+                maxStandardOutputBytes: 4096));
+
+        Assert.Equal(4096, exception.LimitBytes);
+        var activity = history.GetLatest(GitCommandFilter.AllCommands);
+        Assert.NotNull(activity);
+        Assert.Equal(GitCommandStatus.Cancelled, activity.Status);
+        Assert.True(activity.StandardOutput.Length < 100_000);
+    }
+
+    [Fact]
     public async Task CancellationPreservesPartialStreamingOutput()
     {
         var history = new GitCommandActivityHistory();
