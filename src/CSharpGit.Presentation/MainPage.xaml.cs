@@ -30,8 +30,8 @@ public sealed partial class MainPage : Page
     private readonly ITagService _tagService;
     private readonly ObservableCollection<RepositoryTreeNode> _repositoryTreeRoots = [];
     private readonly ObservableCollection<HistoryRow> _scopedHistory = [];
-    private readonly ObservableCollection<WorkingTreeChange> _unstagedChanges = [];
-    private readonly ObservableCollection<WorkingTreeChange> _stagedChanges = [];
+    private readonly BulkObservableCollection<WorkingTreeChange> _unstagedChanges = [];
+    private readonly BulkObservableCollection<WorkingTreeChange> _stagedChanges = [];
     private readonly ObservableCollection<CommitFileRow> _commitFiles = [];
     private CancellationTokenSource? _referenceHistoryCts;
     private string? _activeReference;
@@ -180,20 +180,24 @@ public sealed partial class MainPage : Page
 
     private void RefreshPresentationCollections()
     {
+        var unstaged = new List<WorkingTreeChange>();
+        var staged = new List<WorkingTreeChange>();
+        foreach (var change in _viewModel.Changes)
+        {
+            if (change.IsUnstaged) unstaged.Add(change);
+            if (change.IsStaged) staged.Add(change);
+        }
+
         _workingTreeSelectionSync = true;
         try
         {
-            _unstagedChanges.Clear();
-            _stagedChanges.Clear();
-            foreach (var change in _viewModel.Changes)
-            {
-                if (change.IsUnstaged) _unstagedChanges.Add(change);
-                if (change.IsStaged) _stagedChanges.Add(change);
-            }
+            _unstagedChanges.ReplaceAll(unstaged);
+            _stagedChanges.ReplaceAll(staged);
         }
         finally
         {
             _workingTreeSelectionSync = false;
+            ScheduleWorkingTreeTreeRefreshIfNeeded();
         }
 
         UnstagedHeader.Text = $"Unstaged changes ({_unstagedChanges.Count})";

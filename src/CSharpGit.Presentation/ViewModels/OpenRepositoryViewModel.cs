@@ -966,7 +966,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values)
     {
-        var snapshot = values.ToArray();
+        var snapshot = values as IReadOnlyList<T> ?? values.ToArray();
         if (target.SequenceEqual(snapshot)) return;
 
         if (target is BulkObservableCollection<T> bulk)
