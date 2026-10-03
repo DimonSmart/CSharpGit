@@ -487,6 +487,21 @@
                     </Border>
 
                     <Grid Grid.Row="1">
+                      <StackPanel x:Name="CommitLargeDiffInfo"
+                                  Visibility="Collapsed"
+                                  Margin="12"
+                                  Spacing="8"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Top">
+                        <TextBlock Text="Large diff"
+                                   Style="{StaticResource BodyStrongTextStyle}" />
+                        <TextBlock x:Name="CommitLargeDiffMessage"
+                                   TextWrapping="Wrap" />
+                        <Button x:Name="CommitLargeDiffButton"
+                                Content="Load diff"
+                                HorizontalAlignment="Left"
+                                Click="CommitLargeDiffButton_Click" />
+                      </StackPanel>
                       <InfoBar x:Name="CommitBinaryInfo"
                                IsOpen="True"
                                Severity="Informational"
@@ -673,6 +688,21 @@
                 </Border>
 
                 <Grid Grid.Row="2">
+                  <StackPanel x:Name="WorkingTreeLargeDiffInfo"
+                              Visibility="Collapsed"
+                              Margin="12"
+                              Spacing="8"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Top">
+                    <TextBlock Text="Large diff"
+                               Style="{StaticResource BodyStrongTextStyle}" />
+                    <TextBlock x:Name="WorkingTreeLargeDiffMessage"
+                               TextWrapping="Wrap" />
+                    <Button x:Name="WorkingTreeLargeDiffButton"
+                            Content="Load diff"
+                            HorizontalAlignment="Left"
+                            Click="WorkingTreeLargeDiffButton_Click" />
+                  </StackPanel>
                   <StackPanel x:Name="WorkingTreeDiffLoading"
                               Visibility="Collapsed"
                               Orientation="Horizontal"

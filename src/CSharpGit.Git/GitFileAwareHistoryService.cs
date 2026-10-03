@@ -128,11 +128,20 @@ internal GitFileAwareHistoryService(
         return await ReadDiffAsync(repository, hash, parentHash, file, cancellationToken);
     }
 
+    public Task<FileDiff> ReadDiffAsync(
+        Repository repository,
+        string commitHash,
+        string? parentHash,
+        ChangedFile file,
+        CancellationToken cancellationToken = default) =>
+        ReadDiffAsync(repository, commitHash, parentHash, file, DiffLoadMode.Preview, cancellationToken);
+
     public async Task<FileDiff> ReadDiffAsync(
         Repository repository,
         string commitHash,
         string? parentHash,
         ChangedFile file,
+        DiffLoadMode mode,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(repository);
@@ -161,11 +170,20 @@ internal GitFileAwareHistoryService(
         }
         arguments.AddRange(paths);
 
-        var output = await _executor.ExecuteAsyncPreservingOutputEndings(
-            repository.WorkingDirectory,
-            "Diff",
-            cancellationToken,
-            arguments.ToArray());
+        string output;
+        try
+        {
+            output = await _executor.ExecuteAsyncPreservingOutputEndings(
+                repository.WorkingDirectory,
+                "Diff",
+                cancellationToken,
+                mode == DiffLoadMode.Preview ? DiffPreviewPolicy.AutomaticOutputBytes : null,
+                arguments);
+        }
+        catch (GitCommandOutputLimitExceededException exception) when (mode == DiffLoadMode.Preview)
+        {
+            throw new DiffPreviewTooLargeException(exception.LimitBytes);
+        }
         var binary = GitDiffParser.IsBinary(output);
         if (binary) return new FileDiff(file.Path, true, []);
 

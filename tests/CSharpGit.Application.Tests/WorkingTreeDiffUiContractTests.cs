@@ -183,6 +183,11 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("_runner.RunForResultPreservingOutputEndingsAsync", gitDiff);
         Assert.Contains("GitDiffParser.Parse(output)", gitDiff);
         Assert.Contains("RunAsyncPreservingOutputEndings", gitDiff);
+        Assert.Contains("TryDeferLargeWorkingTreeDiff", workingTree);
+        Assert.Contains("DiffPreviewPolicy.LargeFileBytes", workingTree);
+        Assert.Contains("DiffLoadMode.Full", workingTree);
+        Assert.Contains("DiffPreviewTooLargeException", workingTree);
+        Assert.Contains("DiffPreviewPolicy.AutomaticOutputBytes", gitDiff);
     }
 
     [Fact]

@@ -167,13 +167,39 @@ internal sealed class GitRepositoryCommandRunner
         return result.StandardOutput;
     }
 
+    internal async Task<string> RunAsyncPreservingOutputEndings(
+        string workingDirectory,
+        CancellationToken cancellationToken,
+        bool requireOutput,
+        int? maxStandardOutputBytes,
+        IReadOnlyList<string> arguments)
+    {
+        var result = await RunForResultPreservingOutputEndingsAsync(
+            workingDirectory,
+            "RepositoryDiff",
+            GitCommandKind.Internal,
+            cancellationToken,
+            null,
+            arguments,
+            maxStandardOutputBytes);
+
+        if (result.ExitCode != 0)
+            throw CreateCommandFailure(result);
+
+        if (requireOutput && string.IsNullOrWhiteSpace(result.StandardOutput))
+            throw new RepositoryOpenException("Git command returned no output.");
+
+        return result.StandardOutput;
+    }
+
     internal async Task<GitCommandResult> RunForResultPreservingOutputEndingsAsync(
         string workingDirectory,
         string operation,
         GitCommandKind commandKind,
         CancellationToken cancellationToken,
         IReadOnlyDictionary<string, string?>? environment,
-        IReadOnlyList<string> arguments)
+        IReadOnlyList<string> arguments,
+        int? maxStandardOutputBytes = null)
     {
         try
         {
@@ -183,9 +209,14 @@ internal sealed class GitRepositoryCommandRunner
                 commandKind,
                 cancellationToken,
                 environment,
-                arguments);
+                arguments,
+                maxStandardOutputBytes);
         }
         catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (GitCommandOutputLimitExceededException)
         {
             throw;
         }

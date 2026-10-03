@@ -17,10 +17,18 @@ private readonly GitRepositoryCommandRunner _runner;
     {
         _runner = runner ?? throw new ArgumentNullException(nameof(runner));
     }
+    public Task<FileDiff> ReadDiffAsync(
+        Repository repository,
+        WorkingTreeChange change,
+        WorkingTreeDiffKind kind,
+        CancellationToken cancellationToken = default) =>
+        ReadDiffAsync(repository, change, kind, DiffLoadMode.Preview, cancellationToken);
+
     public async Task<FileDiff> ReadDiffAsync(
         Repository repository,
         WorkingTreeChange change,
         WorkingTreeDiffKind kind,
+        DiffLoadMode mode,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(repository);
@@ -45,7 +53,16 @@ private readonly GitRepositoryCommandRunner _runner;
             return new FileDiff(change.Path, false, []);
 
         if (kind == WorkingTreeDiffKind.Unstaged && change.IndexStatus == '?')
-            return await ReadUntrackedDiffAsync(repository, change, cancellationToken);
+        {
+            try
+            {
+                return await ReadUntrackedDiffAsync(repository, change, mode, cancellationToken);
+            }
+            catch (GitCommandOutputLimitExceededException exception) when (mode == DiffLoadMode.Preview)
+            {
+                throw new DiffPreviewTooLargeException(exception.LimitBytes);
+            }
+        }
 
         var arguments = new List<string> { "diff" };
         if (kind == WorkingTreeDiffKind.Staged) arguments.Add("--cached");
@@ -55,17 +72,26 @@ private readonly GitRepositoryCommandRunner _runner;
         arguments.Add(change.Path);
         if (change.OriginalPath is not null) arguments.Add(change.OriginalPath);
 
-        var output = await _runner.RunAsyncPreservingOutputEndings(
-            repository.WorkingDirectory,
-            cancellationToken,
-            false,
-            arguments.ToArray());
-        return BuildWorkingTreeDiff(change.Path, output);
+        try
+        {
+            var output = await _runner.RunAsyncPreservingOutputEndings(
+                repository.WorkingDirectory,
+                cancellationToken,
+                false,
+                mode == DiffLoadMode.Preview ? DiffPreviewPolicy.AutomaticOutputBytes : null,
+                arguments);
+            return BuildWorkingTreeDiff(change.Path, output);
+        }
+        catch (GitCommandOutputLimitExceededException exception) when (mode == DiffLoadMode.Preview)
+        {
+            throw new DiffPreviewTooLargeException(exception.LimitBytes);
+        }
     }
 
     private async Task<FileDiff> ReadUntrackedDiffAsync(
         Repository repository,
         WorkingTreeChange change,
+        DiffLoadMode mode,
         CancellationToken cancellationToken)
     {
         var fullPath = ResolveSafeWorkingTreePath(repository, change.Path);
@@ -82,7 +108,8 @@ private readonly GitRepositoryCommandRunner _runner;
                 GitCommandKind.Internal,
                 cancellationToken,
                 null,
-                ["diff", "--no-index", "--no-ext-diff", "--", emptyPath, fullPath]);
+                ["diff", "--no-index", "--no-ext-diff", "--", emptyPath, fullPath],
+                mode == DiffLoadMode.Preview ? DiffPreviewPolicy.AutomaticOutputBytes : null);
 
             if (result.ExitCode is not 0 and not 1)
             {

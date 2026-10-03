@@ -9,6 +9,7 @@ public sealed partial class MainPage
         None,
         NothingSelected,
         LoadingDiff,
+        LargeDiff,
         LoadingImage,
         Text,
         Image,
@@ -35,6 +36,9 @@ public sealed partial class MainPage
                 : Visibility.Collapsed;
         CommitTextDiffHeader.Visibility = state == DiffPresentationState.Text ? Visibility.Visible : Visibility.Collapsed;
         CompactDiffViewer.Visibility = state == DiffPresentationState.Text ? Visibility.Visible : Visibility.Collapsed;
+        CommitLargeDiffInfo.Visibility = state == DiffPresentationState.LargeDiff ? Visibility.Visible : Visibility.Collapsed;
+        CommitLargeDiffMessage.Text = _viewModel.DiffPreviewDeferredMessage ?? string.Empty;
+        CommitLargeDiffButton.Content = _viewModel.DiffPreviewActionText;
         CommitImageLoading.Visibility = state == DiffPresentationState.LoadingImage ? Visibility.Visible : Visibility.Collapsed;
         CommitImageDiffHost.Visibility = state == DiffPresentationState.Image ? Visibility.Visible : Visibility.Collapsed;
         CommitBinaryInfo.Visibility =
@@ -57,6 +61,9 @@ public sealed partial class MainPage
         WorkingTreeTextDiffHeader.Visibility = state == DiffPresentationState.Text ? Visibility.Visible : Visibility.Collapsed;
         WorkingTreeDiffViewer.Visibility = state == DiffPresentationState.Text ? Visibility.Visible : Visibility.Collapsed;
         WorkingTreeDiffLoading.Visibility = state == DiffPresentationState.LoadingDiff ? Visibility.Visible : Visibility.Collapsed;
+        WorkingTreeLargeDiffInfo.Visibility = state == DiffPresentationState.LargeDiff ? Visibility.Visible : Visibility.Collapsed;
+        WorkingTreeLargeDiffMessage.Text = _workingTreeDiffDeferredMessage ?? string.Empty;
+        WorkingTreeLargeDiffButton.Content = _workingTreeDiffDeferredActionText;
         WorkingTreeImageLoading.Visibility = state == DiffPresentationState.LoadingImage ? Visibility.Visible : Visibility.Collapsed;
         WorkingTreeImageDiffHost.Visibility = state == DiffPresentationState.Image ? Visibility.Visible : Visibility.Collapsed;
         WorkingTreeBinaryInfo.Visibility =

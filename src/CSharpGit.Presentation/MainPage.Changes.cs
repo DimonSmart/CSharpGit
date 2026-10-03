@@ -60,7 +60,10 @@ public sealed partial class MainPage
     private void ChangesViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (args.PropertyName is nameof(OpenRepositoryViewModel.SelectedDiff)
-            or nameof(OpenRepositoryViewModel.DiffLoadErrorMessage))
+            or nameof(OpenRepositoryViewModel.DiffLoadErrorMessage)
+            or nameof(OpenRepositoryViewModel.IsDiffPreviewDeferred)
+            or nameof(OpenRepositoryViewModel.DiffPreviewDeferredMessage)
+            or nameof(OpenRepositoryViewModel.DiffPreviewActionText))
         {
             RebuildCompactDiff();
         }
@@ -103,9 +106,11 @@ public sealed partial class MainPage
             CompactDiffViewer.Clear();
             var state = _viewModel.SelectedFile is null
                 ? DiffPresentationState.NothingSelected
-                : !string.IsNullOrWhiteSpace(_viewModel.DiffLoadErrorMessage)
-                    ? DiffPresentationState.Error
-                    : DiffPresentationState.LoadingDiff;
+                : _viewModel.IsDiffPreviewDeferred
+                    ? DiffPresentationState.LargeDiff
+                    : !string.IsNullOrWhiteSpace(_viewModel.DiffLoadErrorMessage)
+                        ? DiffPresentationState.Error
+                        : DiffPresentationState.LoadingDiff;
             SetCommitDiffPresentationState(state);
             return;
         }
@@ -154,6 +159,9 @@ public sealed partial class MainPage
         if (node is not null && !ReferenceEquals(ChangedFilesTree.SelectedItem, node))
             ChangedFilesTree.SelectedItem = node;
     }
+
+    private void CommitLargeDiffButton_Click(object sender, RoutedEventArgs args) =>
+        _viewModel.LoadSelectedDiffAnyway();
 
     private void ChangedFilesTree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
     {

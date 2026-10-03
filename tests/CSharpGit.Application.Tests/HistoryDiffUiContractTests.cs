@@ -111,6 +111,25 @@ public sealed class HistoryDiffUiContractTests
     }
 
     [Fact]
+    public void HistoricalLargeDiffPreviewUsesStatsAndBoundedStreaming()
+    {
+        var root = FindRepositoryRoot();
+        var policy = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "DiffPreviewPolicy.cs"));
+        var lazy = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.CommitChanges.cs"));
+        var changes = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs"));
+        var executor = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCommandExecutor.cs"));
+
+        Assert.Contains("LargeChangedLines = 10_000", policy);
+        Assert.Contains("AutomaticOutputBytes = 1024 * 1024", policy);
+        Assert.Contains("TryDeferLargeHistoricalDiff", lazy);
+        Assert.Contains("LoadSelectedDiffAnyway", lazy);
+        Assert.Contains("DiffLoadMode.Full", lazy);
+        Assert.Contains("DiffPresentationState.LargeDiff", changes);
+        Assert.Contains("maxStandardOutputBytes", executor);
+        Assert.Contains("GitCommandOutputLimitExceededException", executor);
+    }
+
+    [Fact]
     public void GitHotPathUsesOneCombinedChangedFilesProcessAndNoHardCopySearch()
     {
         var root = FindRepositoryRoot();
