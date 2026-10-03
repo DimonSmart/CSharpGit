@@ -13,6 +13,7 @@ public sealed class FileOpeningUiContractTests
 
         Assert.Contains("IRepositoryFileVersionService", abstractions);
         Assert.Contains("IDesktopShellService", abstractions);
+        Assert.Contains("OpenFolderDescription", abstractions);
         Assert.Contains("IRepositoryPathService", abstractions);
         Assert.Contains("ResolveCommitAsync", page);
         Assert.Contains("ResolveWorkingTreeAsync", page);

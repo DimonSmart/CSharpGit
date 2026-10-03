@@ -33,6 +33,9 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
         RecentRepositorySettings settings,
         CommitTimeDisplayMode commitTimeDisplayMode,
         Func<RecentRepositoryItem, Task> openAsync,
+        Func<RecentRepositoryItem, Task> openFolderAsync,
+        Func<RecentRepositoryItem, Task> copyPathAsync,
+        string openFolderActionLabel,
         Func<RecentRepositoryItem, Task> removeAsync,
         Func<RecentRepositoryItem, Task> togglePinnedAsync,
         Func<RecentRepositoryItem, Task> moveEarlierAsync,
@@ -41,6 +44,9 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
         Path = settings.Path;
         _isAvailable = Directory.Exists(Path);
         OpenCommand = new AsyncCommand(() => openAsync(this), () => true);
+        OpenFolderCommand = new AsyncCommand(() => openFolderAsync(this), () => true);
+        CopyPathCommand = new AsyncCommand(() => copyPathAsync(this), () => true);
+        OpenFolderActionLabel = openFolderActionLabel;
         RemoveCommand = new AsyncCommand(() => removeAsync(this), () => true);
         PinCommand = new AsyncCommand(() => togglePinnedAsync(this), () => true);
         _moveEarlierCommand = new AsyncCommand(() => moveEarlierAsync(this), () => _canMoveEarlier);
@@ -64,7 +70,10 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
     public double PinIndicatorOpacity => IsPinned ? 1d : 0.85d;
     public bool CanMoveEarlier => _canMoveEarlier;
     public bool CanMoveLater => _canMoveLater;
+    public string OpenFolderActionLabel { get; }
     public ICommand OpenCommand { get; }
+    public ICommand OpenFolderCommand { get; }
+    public ICommand CopyPathCommand { get; }
     public ICommand RemoveCommand { get; }
     public ICommand PinCommand { get; }
     public ICommand MoveEarlierCommand => _moveEarlierCommand;
@@ -256,6 +265,9 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
     private readonly IAppSettingsService _settings;
     private readonly IRepositoryImageService _repositoryImageService;
     private readonly Func<RecentRepositoryItem, Task> _openRecentAsync;
+    private readonly Func<RecentRepositoryItem, Task> _openRecentFolderAsync;
+    private readonly Func<RecentRepositoryItem, Task> _copyRecentPathAsync;
+    private readonly string _openFolderActionLabel;
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly Dictionary<string, RecentRepositoryItem> _itemsByPath = new(PathComparer);
     private readonly HashSet<string> _imageLoadsInProgress = new(PathComparer);
@@ -268,6 +280,9 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
         IAppSettingsService settings,
         IRepositoryImageService repositoryImageService,
         Func<RecentRepositoryItem, Task> openRecentAsync,
+        Func<RecentRepositoryItem, Task> openRecentFolderAsync,
+        Func<RecentRepositoryItem, Task> copyRecentPathAsync,
+        string openFolderActionLabel,
         Func<Task> openRepositoryAsync,
         Func<Task> cloneRepositoryAsync,
         Func<Task> createRepositoryAsync,
@@ -276,6 +291,9 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
         _settings = settings;
         _repositoryImageService = repositoryImageService;
         _openRecentAsync = openRecentAsync;
+        _openRecentFolderAsync = openRecentFolderAsync;
+        _copyRecentPathAsync = copyRecentPathAsync;
+        _openFolderActionLabel = openFolderActionLabel;
         _dispatcherQueue = dispatcherQueue ?? throw new ArgumentNullException(nameof(dispatcherQueue));
         OpenRepositoryCommand = new AsyncCommand(openRepositoryAsync, () => true);
         CloneRepositoryCommand = new AsyncCommand(cloneRepositoryAsync, () => true);
@@ -389,6 +407,9 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
                 settings,
                 _settings.CommitTimeDisplayMode,
                 _openRecentAsync,
+                _openRecentFolderAsync,
+                _copyRecentPathAsync,
+                _openFolderActionLabel,
                 RemoveAsync,
                 TogglePinnedAsync,
                 MoveEarlierAsync,

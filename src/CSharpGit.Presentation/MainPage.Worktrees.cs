@@ -211,7 +211,10 @@ public sealed partial class MainPage
     {
         if (!worktree.IsCurrent)
             AddMenuItem(flyout, "Open", !_viewModel.IsBusy, () => OpenWorktreeAsync(worktree));
-        AddMenuItem(flyout, "Open Folder", !_viewModel.IsBusy, () => OpenWorktreeFolderAsync(worktree));
+        AddMenuItem(flyout, _desktopShellService.OpenFolderDescription, !_viewModel.IsBusy, () => OpenWorktreeFolderAsync(worktree));
+        AddMenuItem(flyout, "Copy worktree path", true, () => CopyTextAsync(WorktreePresentation.GetPathForCopy(worktree)));
+        if (WorktreePresentation.GetBranchNameForCopy(worktree) is { } branch)
+            AddMenuItem(flyout, "Copy branch name", true, () => CopyTextAsync(branch));
         flyout.Items.Add(new MenuFlyoutSeparator());
 
         if (worktree.IsLocked)
@@ -235,17 +238,8 @@ public sealed partial class MainPage
         return Task.CompletedTask;
     }
 
-    private async Task OpenWorktreeFolderAsync(WorktreeInfo worktree)
-    {
-        try
-        {
-            OpenFolder(worktree.Path);
-        }
-        catch (Exception exception)
-        {
-            await ShowErrorAsync("Could not open worktree folder", FormatWorktreeError(exception));
-        }
-    }
+    private Task OpenWorktreeFolderAsync(WorktreeInfo worktree) =>
+        OpenFolderInDesktopShellAsync(worktree.Path, "Could not open worktree folder");
 
     private async Task LockWorktreeAsync(WorktreeInfo worktree)
     {
@@ -412,16 +406,6 @@ public sealed partial class MainPage
         if (string.IsNullOrWhiteSpace(executable))
             throw new InvalidOperationException("CSharpGit executable path could not be determined.");
         StartProcess(executable, fullPath);
-    }
-
-    private static void OpenFolder(string path)
-    {
-        var fullPath = Path.GetFullPath(path);
-        if (!Directory.Exists(fullPath))
-            throw new DirectoryNotFoundException($"The worktree path no longer exists: {fullPath}");
-        if (OperatingSystem.IsWindows()) StartProcess("explorer.exe", fullPath);
-        else if (OperatingSystem.IsMacOS()) StartProcess("open", fullPath);
-        else StartProcess("xdg-open", fullPath);
     }
 
     private static void StartProcess(string executable, params string[] arguments)

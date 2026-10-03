@@ -26,6 +26,9 @@ public sealed partial class MainPage
             _recentRepositorySettings,
             _repositoryImageService,
             OpenRecentRepositoryAsync,
+            OpenRecentRepositoryFolderAsync,
+            item => CopyTextAsync(item.Path),
+            _desktopShellService.OpenFolderDescription,
             OpenRepositoryPickerAsync,
             ShowCloneRepositoryAsync,
             ShowCreateRepositoryAsync,
@@ -104,6 +107,17 @@ public sealed partial class MainPage
         }
 
         await TrySwitchRepositoryAsync(item.Path);
+    }
+
+    private async Task OpenRecentRepositoryFolderAsync(RecentRepositoryItem item)
+    {
+        if (!Directory.Exists(item.Path))
+        {
+            await ShowUnavailableRepositoryAsync(item.Path);
+            return;
+        }
+
+        await OpenFolderInDesktopShellAsync(item.Path, "Could not open repository folder");
     }
 
     private async Task OpenRepositoryPickerAsync()

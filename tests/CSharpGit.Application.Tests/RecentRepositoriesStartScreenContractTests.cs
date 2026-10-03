@@ -91,6 +91,11 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("UseSystemFocusVisuals", controlsStyles);
         Assert.Contains("Move earlier", recentView);
         Assert.Contains("Move later", recentView);
+        Assert.Contains("OpenFolderCommand", recentView);
+        Assert.Contains("CopyPathCommand", recentView);
+        Assert.Contains("OpenFolderActionLabel", recentView);
+        Assert.Contains("Copy repository path", recentView);
+        Assert.Contains("Remove from recent", recentView);
         Assert.Contains("DragItemsStarting", recentView);
         Assert.Contains("CanReorderItems=\"False\"", recentView);
         Assert.Contains("Open repository", recentView);
@@ -154,6 +159,8 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("await _settings.RemoveRecentRepositoryAsync(item.Path)", recentViewModel);
 
         Assert.Contains("Directory.Exists(item.Path)", integration);
+        Assert.Contains("OpenRecentRepositoryFolderAsync", integration);
+        Assert.Contains("_desktopShellService.OpenFolderDescription", integration);
         Assert.Contains("RecordRecentRepositoryAsync", integration);
         Assert.Contains("branch.IsCurrent", integration);
         Assert.DoesNotContain("RemoveRecentRepositoryAsync(item.Path)", integration);

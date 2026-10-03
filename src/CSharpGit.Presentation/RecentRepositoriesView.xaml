@@ -66,6 +66,17 @@
       <Grid Height="156" Padding="6">
         <Grid.ContextFlyout>
           <MenuFlyout>
+            <MenuFlyoutItem Text="Open"
+                            Command="{Binding OpenCommand}"
+                            IsEnabled="{Binding IsAvailable}" />
+            <MenuFlyoutItem Text="{Binding OpenFolderActionLabel}"
+                            Command="{Binding OpenFolderCommand}"
+                            IsEnabled="{Binding IsAvailable}" />
+            <MenuFlyoutItem Text="Copy repository path"
+                            Command="{Binding CopyPathCommand}" />
+            <MenuFlyoutSeparator />
+            <MenuFlyoutItem Text="{Binding PinActionLabel}"
+                            Command="{Binding PinCommand}" />
             <MenuFlyoutItem Text="Move earlier"
                             Command="{Binding MoveEarlierCommand}"
                             IsEnabled="{Binding CanMoveEarlier}"
@@ -74,6 +85,9 @@
                             Command="{Binding MoveLaterCommand}"
                             IsEnabled="{Binding CanMoveLater}"
                             Visibility="{Binding IsPinned, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <MenuFlyoutSeparator />
+            <MenuFlyoutItem Text="Remove from recent"
+                            Command="{Binding RemoveCommand}" />
           </MenuFlyout>
         </Grid.ContextFlyout>
 
