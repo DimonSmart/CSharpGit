@@ -106,45 +106,53 @@
     </Grid>
 
     <Grid x:Name="RepositoryWorkspace" Visibility="{Binding HasRepository, Converter={StaticResource BooleanToVisibilityConverter}}" RowDefinitions="Auto,Auto,*,Auto">
-      <Border x:Name="MainToolbar" Grid.Row="0" Style="{StaticResource ToolbarSurfaceStyle}">
-        <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto" ColumnSpacing="{StaticResource Spacing.M}">
-          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.M}" VerticalAlignment="Center">
-            <FontIcon Glyph="&#xE8B7;" FontSize="{StaticResource Icon.Normal}" />
-            <TextBlock Text="CSharpGit" Style="{StaticResource ToolbarProductTextStyle}" VerticalAlignment="Center" />
-          </StackPanel>
-          <Border Grid.Column="1" Width="1" Height="{StaticResource Height.DiffRow}" Background="{ThemeResource DividerStrokeColorDefaultBrush}" VerticalAlignment="Center" />
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="270" MinWidth="180" MaxWidth="430" />
+        <ColumnDefinition Width="4" />
+        <ColumnDefinition Width="*" MinWidth="520" />
+      </Grid.ColumnDefinitions>
+
+      <Border x:Name="RepositoryHeader"
+              Grid.Row="0"
+              Grid.Column="0"
+              Style="{StaticResource PaneHeaderSurfaceStyle}"
+              Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+              BorderThickness="0,0,1,1">
+        <StackPanel HorizontalAlignment="Stretch" Spacing="{StaticResource Spacing.XS}">
+          <TextBlock Text="Repository"
+                     Style="{StaticResource PaneHeaderTextStyle}"
+                     VerticalAlignment="Center" />
           <DropDownButton x:Name="RepositorySelectorButton"
-                          Grid.Column="2"
                           Style="{StaticResource ToolbarButtonStyle}"
-                          MaxWidth="430"
+                          HorizontalAlignment="Stretch"
+                          HorizontalContentAlignment="Stretch"
                           VerticalAlignment="Center"
                           IsEnabled="{Binding CanChangeRepository}"
-                          AutomationProperties.Name="Current repository">
-            <StackPanel MaxWidth="380">
-              <TextBlock x:Name="RepositorySelectorName"
-                         Style="{StaticResource BodyStrongTextStyle}"
-                         TextTrimming="CharacterEllipsis" />
-              <TextBlock x:Name="RepositorySelectorPath"
-                         Text="{Binding Repository.WorkingDirectory}"
-                         Style="{StaticResource SelectableTechnicalTextStyle}"
-                         Opacity="0.7"
-                         TextTrimming="CharacterEllipsis" />
-            </StackPanel>
+                          AutomationProperties.Name="Current repository"
+                          AutomationProperties.HelpText="{Binding Repository.WorkingDirectory}">
+            <TextBlock x:Name="RepositorySelectorName"
+                       Style="{StaticResource BodyStrongTextStyle}"
+                       HorizontalAlignment="Stretch"
+                       TextWrapping="NoWrap"
+                       TextTrimming="CharacterEllipsis" />
             <DropDownButton.Flyout>
               <MenuFlyout x:Name="RepositorySelectorFlyout"
                           Opening="RepositorySelectorFlyout_Opening" />
             </DropDownButton.Flyout>
           </DropDownButton>
-          <Border Grid.Column="3" Width="1" Height="{StaticResource Height.DiffRow}" Background="{ThemeResource DividerStrokeColorDefaultBrush}" VerticalAlignment="Center" />
-          <StackPanel Grid.Column="4"
-                      Orientation="Horizontal"
-                      Spacing="{StaticResource Spacing.S}"
-                      VerticalAlignment="Center"
-                      Margin="2,0,4,0">
-            <FontIcon Glyph="&#xE8F0;" FontSize="{StaticResource Icon.Small}" />
-            <TextBlock x:Name="ToolbarBranchText" Style="{StaticResource BodyStrongTextStyle}" VerticalAlignment="Center" />
-          </StackPanel>
-          <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="{StaticResource Spacing.XS}" VerticalAlignment="Center">
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Row="0"
+              Grid.Column="1"
+              Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+      <Border x:Name="MainToolbar"
+              Grid.Row="0"
+              Grid.Column="2"
+              Style="{StaticResource ToolbarSurfaceStyle}">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.M}">
+          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.XS}" VerticalAlignment="Center">
             <Button x:Name="CommitNavigationButton"
                     Click="CommitNavigation_Click"
                     Style="{StaticResource ToolbarButtonStyle}"
@@ -206,7 +214,7 @@
               </Grid>
             </Button>
           </StackPanel>
-          <Button Grid.Column="6" Style="{StaticResource IconButtonStyle}" VerticalAlignment="Center">
+          <Button Grid.Column="1" Style="{StaticResource IconButtonStyle}" VerticalAlignment="Center" AutomationProperties.Name="Application menu">
             <FontIcon Glyph="&#xE712;" FontSize="{StaticResource Icon.Normal}" />
             <Button.Flyout>
               <MenuFlyout>
@@ -235,48 +243,38 @@
               </MenuFlyout>
             </Button.Flyout>
           </Button>
+
         </Grid>
       </Border>
+      <controls:OperationBanner Grid.Row="1" Grid.ColumnSpan="3" Visibility="{Binding HasActiveOperation, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-      <controls:OperationBanner Grid.Row="1" Visibility="{Binding HasActiveOperation, Converter={StaticResource BooleanToVisibilityConverter}}" />
+      <Border Grid.Row="2"
+              Grid.Column="0"
+              MinHeight="300"
+              Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+              BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+              BorderThickness="0,0,1,0">
+        <TreeView x:Name="RepositoryTree"
+                  Style="{StaticResource DenseTreeViewStyle}"
+                  ItemContainerStyle="{StaticResource DenseTreeItemStyle}"
+                  ItemTemplate="{StaticResource RepositoryTreeItemTemplate}"
+                  SelectionMode="Single"
+                  ItemInvoked="RepositoryTree_ItemInvoked"
+                  RightTapped="RepositoryTreeBranchDeletion_RightTapped"
+                  DoubleTapped="RepositoryTree_DoubleTapped" />
+      </Border>
 
-      <Grid Grid.Row="2" MinHeight="300">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="270" MinWidth="180" MaxWidth="430" />
-          <ColumnDefinition Width="4" />
-          <ColumnDefinition Width="*" MinWidth="520" />
-        </Grid.ColumnDefinitions>
+      <controls:GridSplitter Grid.Row="2"
+                             Grid.Column="1"
+                             ResizeDirection="Columns"
+                             ResizeBehavior="PreviousAndNext"
+                             MinimumFirst="180"
+                             MaximumFirst="430"
+                             MinimumSecond="520"
+                             HorizontalAlignment="Stretch"
+                             Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-        <Border Grid.Column="0"
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                BorderThickness="0,0,1,0">
-          <Grid RowDefinitions="Auto,*">
-            <Border Style="{StaticResource PaneHeaderSurfaceStyle}">
-              <TextBlock Text="Repository" Style="{StaticResource PaneHeaderTextStyle}" VerticalAlignment="Center" />
-            </Border>
-            <TreeView x:Name="RepositoryTree"
-                      Grid.Row="1"
-                      Style="{StaticResource DenseTreeViewStyle}"
-                      ItemContainerStyle="{StaticResource DenseTreeItemStyle}"
-                      ItemTemplate="{StaticResource RepositoryTreeItemTemplate}"
-                      SelectionMode="Single"
-                      ItemInvoked="RepositoryTree_ItemInvoked"
-                      RightTapped="RepositoryTreeBranchDeletion_RightTapped"
-                      DoubleTapped="RepositoryTree_DoubleTapped" />
-          </Grid>
-        </Border>
-
-        <controls:GridSplitter Grid.Column="1"
-                               ResizeDirection="Columns"
-                               ResizeBehavior="PreviousAndNext"
-                               MinimumFirst="180"
-                               MaximumFirst="430"
-                               MinimumSecond="520"
-                               HorizontalAlignment="Stretch"
-                               Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-        <Grid Grid.Column="2">
+      <Grid Grid.Row="2" Grid.Column="2" MinHeight="300">
           <Grid x:Name="HistoryPane">
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto" />
@@ -775,9 +773,8 @@
             </Border>
           </Grid>
         </Grid>
-      </Grid>
 
-      <Border x:Name="StatusBar" Grid.Row="3" Style="{StaticResource StatusBarSurfaceStyle}">
+      <Border x:Name="StatusBar" Grid.Row="3" Grid.ColumnSpan="3" Style="{StaticResource StatusBarSurfaceStyle}">
         <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="{StaticResource Spacing.XL}">
           <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.M}" VerticalAlignment="Center">
             <FontIcon Glyph="&#xE8F0;" FontSize="{StaticResource Icon.Small}" />
