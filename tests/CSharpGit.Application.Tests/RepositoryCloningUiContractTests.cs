@@ -39,11 +39,13 @@ public sealed class RepositoryCloningUiContractTests
         const string cloneParameter =
             "CloneRepositoryViewModel cloneRepositoryViewModel";
         const string cloneAssignment =
-            "_cloneRepositoryViewModel = cloneRepositoryViewModel\n"
-            + "            ?? throw new ArgumentNullException(nameof(cloneRepositoryViewModel));";
+            "_cloneRepositoryViewModel = cloneRepositoryViewModel";
+        const string cloneNullGuard =
+            "?? throw new ArgumentNullException(nameof(cloneRepositoryViewModel));";
 
         Assert.Contains(cloneParameter, composition);
         Assert.Contains(cloneAssignment, composition);
+        Assert.Contains(cloneNullGuard, composition);
 
         var createParameterIndex = composition.IndexOf(
             createParameter,
@@ -51,9 +53,18 @@ public sealed class RepositoryCloningUiContractTests
         var cloneParameterIndex = composition.IndexOf(
             cloneParameter,
             StringComparison.Ordinal);
+        var cloneAssignmentIndex = composition.IndexOf(
+            cloneAssignment,
+            StringComparison.Ordinal);
+        var cloneNullGuardIndex = composition.IndexOf(
+            cloneNullGuard,
+            cloneAssignmentIndex,
+            StringComparison.Ordinal);
 
         Assert.True(createParameterIndex >= 0);
         Assert.True(cloneParameterIndex > createParameterIndex);
+        Assert.True(cloneAssignmentIndex > cloneParameterIndex);
+        Assert.True(cloneNullGuardIndex > cloneAssignmentIndex);
     }
 
     [Fact]
