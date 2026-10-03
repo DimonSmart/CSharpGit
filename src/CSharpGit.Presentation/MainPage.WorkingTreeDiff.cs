@@ -84,8 +84,8 @@ public sealed partial class MainPage
         var repositoryIdentity = _viewModel.Repository?.GitDirectory;
         if (string.Equals(repositoryIdentity, _workingTreeExpansionRepositoryIdentity, StringComparison.Ordinal))
         {
-            CaptureExpansionState(_unstagedTreeRoots, _unstagedExpansionState);
-            CaptureExpansionState(_stagedTreeRoots, _stagedExpansionState);
+            WorkingTreeTreeExpansionState.Capture(_unstagedTreeRoots, _unstagedExpansionState);
+            WorkingTreeTreeExpansionState.Capture(_stagedTreeRoots, _stagedExpansionState);
         }
         else
         {
@@ -99,8 +99,8 @@ public sealed partial class MainPage
 
         ReplaceRoots(_unstagedTreeRoots, WorkingTreeTreeNode.Build(_unstagedChanges, WorkingTreeDiffKind.Unstaged));
         ReplaceRoots(_stagedTreeRoots, WorkingTreeTreeNode.Build(_stagedChanges, WorkingTreeDiffKind.Staged));
-        RestoreExpansionState(_unstagedTreeRoots, _unstagedExpansionState);
-        RestoreExpansionState(_stagedTreeRoots, _stagedExpansionState);
+        WorkingTreeTreeExpansionState.Restore(_unstagedTreeRoots, _unstagedExpansionState);
+        WorkingTreeTreeExpansionState.Restore(_stagedTreeRoots, _stagedExpansionState);
 
         _unstagedTreeSelection.SetSelectedPaths(selectedUnstagedPaths, _unstagedTreeRoots);
         _stagedTreeSelection.SetSelectedPaths(selectedStagedPaths, _stagedTreeRoots);
@@ -118,28 +118,6 @@ public sealed partial class MainPage
         BulkObservableCollection<WorkingTreeTreeNode> target,
         IReadOnlyList<WorkingTreeTreeNode> source) =>
         target.ReplaceAll(source);
-
-    private static void CaptureExpansionState(
-        IEnumerable<WorkingTreeTreeNode> nodes,
-        IDictionary<string, bool> state)
-    {
-        foreach (var node in nodes)
-        {
-            if (node.IsFolder) state[node.Path] = node.IsExpanded;
-            CaptureExpansionState(node.Children, state);
-        }
-    }
-
-    private static void RestoreExpansionState(
-        IEnumerable<WorkingTreeTreeNode> nodes,
-        IReadOnlyDictionary<string, bool> state)
-    {
-        foreach (var node in nodes)
-        {
-            if (node.IsFolder && state.TryGetValue(node.Path, out var expanded)) node.IsExpanded = expanded;
-            RestoreExpansionState(node.Children, state);
-        }
-    }
 
     private void UnstagedChangesTree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args) =>
         WorkingTreeNodeInvoked(ResolveWorkingTreeNode(args.InvokedItem), WorkingTreeDiffKind.Unstaged);

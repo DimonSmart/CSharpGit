@@ -15,7 +15,8 @@ public sealed class WorkingTreeTreeNode : INotifyPropertyChanged
         string path,
         WorkingTreeChange? change,
         IReadOnlyList<WorkingTreeTreeNode> children,
-        WorkingTreeDiffKind kind)
+        WorkingTreeDiffKind kind,
+        bool expandByDefault)
     {
         DisplayName = displayName;
         Path = path;
@@ -24,7 +25,7 @@ public sealed class WorkingTreeTreeNode : INotifyPropertyChanged
         Status = change is null
             ? string.Empty
             : FormatStatus(change, kind);
-        _isExpanded = change is null;
+        _isExpanded = change is null && expandByDefault;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -78,14 +79,16 @@ public sealed class WorkingTreeTreeNode : INotifyPropertyChanged
     {
         ArgumentNullException.ThrowIfNull(changes);
 
-        var filtered = kind == WorkingTreeDiffKind.Unstaged
+        var filtered = (kind == WorkingTreeDiffKind.Unstaged
             ? changes.Where(change => change.IsUnstaged)
-            : changes.Where(change => change.IsStaged);
+            : changes.Where(change => change.IsStaged))
+            .ToList();
+        var expandByDefault = FileTreeExpansionPolicy.ShouldExpandByDefault(filtered.Count);
         var structure = PathTreeBuilder.Build(
             filtered,
             change => change.Path,
             new PathTreeBuildOptions(CollapseSingleChildFolderChains: true));
-        var roots = structure.Select(node => ToPresentationNode(node, kind)).ToList();
+        var roots = structure.Select(node => ToPresentationNode(node, kind, expandByDefault)).ToList();
 
         TreeHierarchyGuideBuilder.Apply(
             roots,
@@ -96,13 +99,15 @@ public sealed class WorkingTreeTreeNode : INotifyPropertyChanged
 
     private static WorkingTreeTreeNode ToPresentationNode(
         PathTreeNode<WorkingTreeChange> source,
-        WorkingTreeDiffKind kind) =>
+        WorkingTreeDiffKind kind,
+        bool expandByDefault) =>
         new(
             source.DisplayName,
             source.Path,
             source.Item,
-            source.Children.Select(child => ToPresentationNode(child, kind)).ToList(),
-            kind);
+            source.Children.Select(child => ToPresentationNode(child, kind, expandByDefault)).ToList(),
+            kind,
+            expandByDefault);
 
     internal static string FormatStatus(WorkingTreeChange change, WorkingTreeDiffKind kind)
     {
