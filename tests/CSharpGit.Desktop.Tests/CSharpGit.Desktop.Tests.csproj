@@ -41,8 +41,10 @@
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeExpansion.cs" Link="RepositoryTree/RepositoryTreeExpansion.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeSelection.cs" Link="RepositoryTree/RepositoryTreeSelection.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/PathTreeBuilder.cs" Link="Trees/PathTreeBuilder.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/FileTreeExpansionPolicy.cs" Link="Trees/FileTreeExpansionPolicy.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/ChangedFileTreeNode.cs" Link="Changes/ChangedFileTreeNode.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorkingTreeTreeNode.cs" Link="WorkingTree/WorkingTreeTreeNode.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorkingTreeTreeExpansionState.cs" Link="WorkingTree/WorkingTreeTreeExpansionState.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorkingTreeTreeSelection.cs" Link="WorkingTree/WorkingTreeTreeSelection.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BulkObservableCollection.cs" Link="WorkingTree/BulkObservableCollection.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CompactDiffLine.cs" Link="Changes/CompactDiffLine.cs" />
