@@ -668,6 +668,15 @@ public sealed partial class MainPage : Page
 
 
 
+    private async void ApplyHistoryFilter_Click(object sender, RoutedEventArgs e) => await RefreshVisibleHistoryAsync();
+    private async void RefreshHistory_Click(object sender, RoutedEventArgs e) => await RefreshVisibleHistoryAsync();
+
+    private async Task RefreshVisibleHistoryAsync()
+    {
+        if (_activeReference is not null) await LoadScopedHistoryAsync(true);
+        else await ExecuteCommandAsync(_viewModel.RefreshHistoryCommand);
+    }
+
     private async void HistoryFilter_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key != VirtualKey.Enter) return;
