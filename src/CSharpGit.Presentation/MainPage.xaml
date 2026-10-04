@@ -385,20 +385,57 @@
                    Grid.Row="3"
                    HeaderTemplate="{StaticResource PivotHeaderTemplate}"
                    SelectionChanged="DetailsTabs_SelectionChanged"
-                   Visibility="{Binding HasSelectedCommit, Converter={StaticResource BooleanToVisibilityConverter}}">
+                   Visibility="{Binding HasSelectedDetailsObject, Converter={StaticResource BooleanToVisibilityConverter}}">
               <Pivot.Resources>
                 <Style TargetType="primitives:PivotHeaderItem" BasedOn="{StaticResource CompactPivotHeaderItemStyle}" />
               </Pivot.Resources>
-              <PivotItem Header="Commit">
-                <ScrollViewer x:Name="DetailsScroller"
-                              HorizontalAlignment="Left"
-                              HorizontalScrollMode="Disabled"
-                              HorizontalScrollBarVisibility="Disabled"
-                              VerticalScrollMode="Auto"
-                              VerticalScrollBarVisibility="Auto"
-                              MinHeight="120">
-                  <controls:CommitDetailsView x:Name="CommitDetailsContent" />
-                </ScrollViewer>
+              <PivotItem x:Name="SummaryTab" Header="{Binding SelectedDetailsTitle}">
+                <Grid>
+                  <ScrollViewer x:Name="DetailsScroller"
+                                Visibility="{Binding HasSelectedCommit, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                HorizontalAlignment="Left"
+                                HorizontalScrollMode="Disabled"
+                                HorizontalScrollBarVisibility="Disabled"
+                                VerticalScrollMode="Auto"
+                                VerticalScrollBarVisibility="Auto"
+                                MinHeight="120">
+                    <controls:CommitDetailsView x:Name="CommitDetailsContent" />
+                  </ScrollViewer>
+
+                  <ScrollViewer Visibility="{Binding HasSelectedStash, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                HorizontalScrollMode="Disabled"
+                                HorizontalScrollBarVisibility="Disabled"
+                                VerticalScrollMode="Auto"
+                                VerticalScrollBarVisibility="Auto"
+                                MinHeight="120">
+                    <StackPanel Margin="12" Spacing="8">
+                      <TextBlock Text="{Binding SelectedStashDisplay}"
+                                 Style="{StaticResource BodyStrongTextStyle}"
+                                 TextWrapping="Wrap" />
+                      <TextBlock Text="{Binding SelectedStashBaseDisplay}"
+                                 Style="{StaticResource SecondaryTextStyle}" />
+                      <TextBlock Text="{Binding SelectedStashHashDisplay}"
+                                 Style="{StaticResource SecondaryTextStyle}" />
+                      <TextBlock Text="{Binding SelectedStashStatsDisplay}"
+                                 Style="{StaticResource SecondaryTextStyle}" />
+                      <TextBlock Text="{Binding SelectedStashDetailsStatus}"
+                                 Style="{StaticResource SecondaryTextStyle}"
+                                 TextWrapping="Wrap" />
+                      <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                        <Button Content="Apply"
+                                Command="{Binding ApplyStashCommand}"
+                                Style="{StaticResource CompactButtonStyle}" />
+                        <Button Content="Pop"
+                                Command="{Binding PopStashCommand}"
+                                Style="{StaticResource CompactButtonStyle}" />
+                        <Button Content="Drop…"
+                                Click="DropSelectedStash_Click"
+                                IsEnabled="{Binding CanMutateSelectedStash}"
+                                Style="{StaticResource CompactButtonStyle}" />
+                      </StackPanel>
+                    </StackPanel>
+                  </ScrollViewer>
+                </Grid>
               </PivotItem>
 
               <PivotItem x:Name="ChangesTab" Header="Changes">
@@ -411,9 +448,9 @@
 
                   <Grid RowDefinitions="Auto,*">
                     <Border x:Name="ChangedFilesHeader" Style="{StaticResource PaneHeaderSurfaceStyle}">
-                      <Grid ColumnDefinitions="*,26,46,46">
+                      <Grid ColumnDefinitions="*,132,46,46">
                         <TextBlock Text="Changed files" Style="{StaticResource PaneHeaderTextStyle}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="1" Text="S" Style="{StaticResource CaptionTextStyle}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="State" Style="{StaticResource CaptionTextStyle}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="2" Text="+" Style="{StaticResource CaptionTextStyle}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="3" Text="−" Style="{StaticResource CaptionTextStyle}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                       </Grid>
@@ -744,7 +781,7 @@
                 <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                   <Button Content="Commit" Command="{Binding CommitCommand}" Style="{StaticResource CompactButtonStyle}" />
                   <Button Content="Amend" Command="{Binding AmendCommand}" Style="{StaticResource CompactButtonStyle}" />
-                  <Button Content="Create stash…"
+                  <Button Content="Stash…"
                           Click="CreateStash_Click"
                           IsEnabled="{Binding CanCreateStash}"
                           Style="{StaticResource CompactButtonStyle}" />

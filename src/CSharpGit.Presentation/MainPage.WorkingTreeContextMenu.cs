@@ -23,10 +23,10 @@ public sealed partial class MainPage
         if (source is null || node is null) return;
 
         var flyout = new MenuFlyout();
-        if (node.Change is { } change)
+        if (node.Change is not null)
         {
-            SelectWorkingTreeContextTarget(node, kind);
-            AddWorkingTreeFileContextMenuItems(flyout, kind, change);
+            var selection = SelectWorkingTreeContextTarget(node, kind);
+            AddWorkingTreeFileContextMenuItems(flyout, kind, selection);
         }
         else if (node.IsFolder)
         {
@@ -45,19 +45,27 @@ public sealed partial class MainPage
     private void AddWorkingTreeFileContextMenuItems(
         MenuFlyout flyout,
         WorkingTreeDiffKind kind,
-        WorkingTreeChange change)
+        IReadOnlyList<WorkingTreeChange> changes)
     {
+        if (changes.Count == 0) return;
+
+        var count = changes.Count;
         if (kind == WorkingTreeDiffKind.Unstaged)
         {
             AddMenuItem(
                 flyout,
-                "Stage",
+                count == 1 ? "Stage" : $"Stage {count} files",
                 _viewModel.StageSelectedCommand.CanExecute(null),
                 () => ExecuteCommandAsync(_viewModel.StageSelectedCommand));
+            AddMenuItem(
+                flyout,
+                count == 1 ? "Stash selected…" : $"Stash {count} files…",
+                _viewModel.CanCreateSelectedStash(changes),
+                () => ShowCreateSelectedStashDialogAsync(changes));
             flyout.Items.Add(new MenuFlyoutSeparator());
             AddMenuItem(
                 flyout,
-                "Discard changes…",
+                count == 1 ? "Discard changes…" : $"Discard {count} files…",
                 _viewModel.RequestDiscardSelectedCommand.CanExecute(null),
                 () => ExecuteCommandAsync(_viewModel.RequestDiscardSelectedCommand));
         }
@@ -65,15 +73,25 @@ public sealed partial class MainPage
         {
             AddMenuItem(
                 flyout,
-                "Unstage",
+                count == 1 ? "Unstage" : $"Unstage {count} files",
                 _viewModel.UnstageSelectedCommand.CanExecute(null),
                 () => ExecuteCommandAsync(_viewModel.UnstageSelectedCommand));
-            flyout.Items.Add(new MenuFlyoutSeparator());
             AddMenuItem(
                 flyout,
-                "Discard changes…",
-                CanDiscardStagedFile(change),
-                () => ConfirmDiscardStagedFileAsync(change));
+                count == 1 ? "Stash selected…" : $"Stash {count} files…",
+                _viewModel.CanCreateSelectedStash(changes),
+                () => ShowCreateSelectedStashDialogAsync(changes));
+
+            if (count == 1)
+            {
+                flyout.Items.Add(new MenuFlyoutSeparator());
+                var change = changes[0];
+                AddMenuItem(
+                    flyout,
+                    "Discard changes…",
+                    CanDiscardStagedFile(change),
+                    () => ConfirmDiscardStagedFileAsync(change));
+            }
         }
     }
 
@@ -100,15 +118,24 @@ public sealed partial class MainPage
         }
     }
 
-    private void SelectWorkingTreeContextTarget(
+    private IReadOnlyList<WorkingTreeChange> SelectWorkingTreeContextTarget(
         WorkingTreeTreeNode node,
         WorkingTreeDiffKind kind)
     {
         var roots = kind == WorkingTreeDiffKind.Unstaged ? _unstagedTreeRoots : _stagedTreeRoots;
         var selection = kind == WorkingTreeDiffKind.Unstaged ? _unstagedTreeSelection : _stagedTreeSelection;
-        selection.SelectSingle(node, roots);
-        _viewModel.SetWorkingTreeSelection(kind, [node.Change!]);
+
+        if (!selection.IsSelected(node.Path))
+            selection.SelectSingle(node, roots);
+
+        var snapshot = selection
+            .GetSelectedLeaves(roots)
+            .Select(selected => selected.Change!)
+            .ToArray();
+
+        _viewModel.SetWorkingTreeSelection(kind, snapshot);
         SelectWorkingTreeChange(node.Change!, kind);
+        return snapshot;
     }
 
     private bool CanDiscardStagedFile(WorkingTreeChange change) =>

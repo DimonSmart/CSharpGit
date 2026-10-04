@@ -111,7 +111,9 @@ public sealed partial class OpenRepositoryViewModel
             return;
         }
 
-        _ = EnsureChangedFilesLoadedAsync(debounce: false);
+        _ = SelectedStash is null
+            ? EnsureChangedFilesLoadedAsync(debounce: false)
+            : EnsureSelectedStashDetailsLoadedAsync();
     }
 
     private void OnSelectedHistoryRowChanged(HistoryRow? previous)
@@ -131,6 +133,7 @@ public sealed partial class OpenRepositoryViewModel
         SelectedDiff = null;
         DiffLoadErrorMessage = null;
         ClearDiffPreviewDeferred();
+        ClearNoNetStashDiff();
         IsChangedFilesLoading = false;
         IsDiffLoading = false;
 
@@ -145,6 +148,7 @@ public sealed partial class OpenRepositoryViewModel
         DiffLoadErrorMessage = null;
         IsDiffLoading = false;
         ClearDiffPreviewDeferred();
+        ClearNoNetStashDiff();
         StartSelectedDiffPreview();
     }
 
@@ -176,13 +180,20 @@ public sealed partial class OpenRepositoryViewModel
         _selectedChangedFileRestoreKey = null;
         IsChangedFilesLoading = false;
         IsDiffLoading = false;
+        ResetStashPresentationSession();
     }
 
     private async Task EnsureChangedFilesLoadedAsync(bool debounce)
     {
         var repository = Repository;
         var row = SelectedHistoryRow;
-        if (!_isChangesViewActive || repository is null || row is null) return;
+        if (!_isChangesViewActive || repository is null) return;
+        if (SelectedStash is not null)
+        {
+            await EnsureSelectedStashDetailsLoadedAsync();
+            return;
+        }
+        if (row is null) return;
 
         var parentHash = row.Commit.Parents.FirstOrDefault();
         var cacheKey = new ChangedFilesCacheKey(repository.GitDirectory, row.Commit.Hash, parentHash);
@@ -257,15 +268,52 @@ public sealed partial class OpenRepositoryViewModel
     {
         var repository = Repository;
         var row = SelectedHistoryRow;
+        var stash = SelectedStash;
         var file = SelectedFile;
-        if (!_isChangesViewActive || repository is null || row is null || file is null) return;
+        if (!_isChangesViewActive
+            || repository is null
+            || file is null
+            || row is null && stash is null)
+            return;
 
         DiffLoadErrorMessage = null;
-        var parentHash = row.Commit.Parents.FirstOrDefault();
-        var cacheKey = new DiffCacheKey(repository.GitDirectory, row.Commit.Hash, parentHash, file.Path, file.OriginalPath);
+        ClearNoNetStashDiff();
+
+        string commitHash;
+        string? parentHash;
+        var selectionIdentity = stash?.Commit ?? row!.Commit.Hash;
+        if (stash is not null)
+        {
+            var details = SelectedStashDetails;
+            var stashChange = details is null ? null : FindSelectedStashChange(file);
+            if (details is null || stashChange is null)
+                return;
+
+            if (stashChange.State != StashChangeState.Untracked
+                && !stashChange.HasCombinedDiff)
+            {
+                SetNoNetStashDiff();
+                return;
+            }
+
+            commitHash = stashChange.State == StashChangeState.Untracked
+                ? details.UntrackedCommit
+                    ?? throw new InvalidOperationException("The selected untracked stash file has no saved untracked tree.")
+                : stash.Commit;
+            parentHash = stashChange.State == StashChangeState.Untracked
+                ? null
+                : details.BaseCommit;
+        }
+        else
+        {
+            commitHash = row!.Commit.Hash;
+            parentHash = row.Commit.Parents.FirstOrDefault();
+        }
+
+        var cacheKey = new DiffCacheKey(repository.GitDirectory, commitHash, parentHash, file.Path, file.OriginalPath);
         if (_diffCache.TryGet(cacheKey, out var cached))
         {
-            _logger.LogDebug("LoadDiff commit={Commit} path={Path} duration={Duration}ms cache={Cache}", row.Commit.Hash, file.Path, 0, "hit");
+            _logger.LogDebug("LoadDiff commit={Commit} path={Path} duration={Duration}ms cache={Cache}", commitHash, file.Path, 0, "hit");
             if (_isChangesViewActive && ReferenceEquals(repository, Repository) && ReferenceEquals(row, SelectedHistoryRow) && ReferenceEquals(file, SelectedFile))
                 SelectedDiff = cached;
             return;
@@ -282,22 +330,22 @@ public sealed partial class OpenRepositoryViewModel
             var diff = _historyService is IHistoryDiffLoadService controlledDiffService
                 ? await controlledDiffService.ReadDiffAsync(
                     repository,
-                    row.Commit.Hash,
+                    commitHash,
                     parentHash,
                     file,
                     mode,
                     cancellation.Token)
                 : await _historyService.ReadDiffAsync(
                     repository,
-                    row.Commit.Hash,
+                    commitHash,
                     parentHash,
                     file,
                     cancellation.Token);
             stopwatch.Stop();
 
-            if (!IsCurrentDiffRequest(generation, cancellation, repository, row, file)) return;
+            if (!IsCurrentDiffRequest(generation, cancellation, repository, selectionIdentity, file)) return;
             _diffCache.Set(cacheKey, diff);
-            _logger.LogDebug("LoadDiff commit={Commit} path={Path} duration={Duration}ms cache={Cache}", row.Commit.Hash, file.Path, stopwatch.ElapsedMilliseconds, "miss");
+            _logger.LogDebug("LoadDiff commit={Commit} path={Path} duration={Duration}ms cache={Cache}", commitHash, file.Path, stopwatch.ElapsedMilliseconds, "miss");
             SelectedDiff = diff;
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
@@ -305,7 +353,7 @@ public sealed partial class OpenRepositoryViewModel
         }
         catch (DiffPreviewTooLargeException exception) when (mode == DiffLoadMode.Preview)
         {
-            if (IsCurrentDiffRequest(generation, cancellation, repository, row, file))
+            if (IsCurrentDiffRequest(generation, cancellation, repository, selectionIdentity, file))
             {
                 SelectedDiff = null;
                 DiffLoadErrorMessage = null;
@@ -317,18 +365,18 @@ public sealed partial class OpenRepositoryViewModel
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            if (IsCurrentDiffRequest(generation, cancellation, repository, row, file))
+            if (IsCurrentDiffRequest(generation, cancellation, repository, selectionIdentity, file))
             {
                 SelectedDiff = null;
                 DiffLoadErrorMessage = exception.Message;
                 ErrorMessage = $"Could not read change: {exception.Message}";
-                _logger.LogWarning(exception, "Diff loading failed for {Commit} {Path}", row.Commit.Hash, file.Path);
+                _logger.LogWarning(exception, "Diff loading failed for {Commit} {Path}", commitHash, file.Path);
             }
         }
         finally
         {
             stopwatch.Stop();
-            if (IsCurrentDiffRequest(generation, cancellation, repository, row, file))
+            if (IsCurrentDiffRequest(generation, cancellation, repository, selectionIdentity, file))
                 IsDiffLoading = false;
         }
     }
@@ -380,13 +428,13 @@ public sealed partial class OpenRepositoryViewModel
         long generation,
         CancellationTokenSource cancellation,
         Repository repository,
-        HistoryRow row,
+        string selectionIdentity,
         ChangedFile file) =>
         !cancellation.IsCancellationRequested &&
         generation == Volatile.Read(ref _diffLoadGeneration) &&
         _isChangesViewActive &&
         ReferenceEquals(repository, Repository) &&
-        ReferenceEquals(row, SelectedHistoryRow) &&
+        string.Equals(selectionIdentity, SelectedObjectCommit, StringComparison.Ordinal) &&
         ReferenceEquals(file, SelectedFile);
 
     private void InvalidateChangedFilesLoad()

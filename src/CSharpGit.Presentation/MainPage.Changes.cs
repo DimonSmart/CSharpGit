@@ -63,7 +63,8 @@ public sealed partial class MainPage
             or nameof(OpenRepositoryViewModel.DiffLoadErrorMessage)
             or nameof(OpenRepositoryViewModel.IsDiffPreviewDeferred)
             or nameof(OpenRepositoryViewModel.DiffPreviewDeferredMessage)
-            or nameof(OpenRepositoryViewModel.DiffPreviewActionText))
+            or nameof(OpenRepositoryViewModel.DiffPreviewActionText)
+            or nameof(OpenRepositoryViewModel.IsNoNetStashDiff))
         {
             RebuildCompactDiff();
         }
@@ -106,6 +107,8 @@ public sealed partial class MainPage
             CompactDiffViewer.Clear();
             var state = _viewModel.SelectedFile is null
                 ? DiffPresentationState.NothingSelected
+                : _viewModel.IsNoNetStashDiff
+                    ? DiffPresentationState.NoNetStashDiff
                 : _viewModel.IsDiffPreviewDeferred
                     ? DiffPresentationState.LargeDiff
                     : !string.IsNullOrWhiteSpace(_viewModel.DiffLoadErrorMessage)

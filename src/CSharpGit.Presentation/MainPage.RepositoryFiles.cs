@@ -211,9 +211,13 @@ public sealed partial class MainPage
             ClearRepositoryFilesTree();
             if (IsRepositoryFilesActive) _ = LoadRepositorySnapshotAsync();
         }
-        else if (args.PropertyName == nameof(OpenRepositoryViewModel.SelectedHistoryRow) && IsRepositoryFilesActive)
+        else if (args.PropertyName is nameof(OpenRepositoryViewModel.SelectedHistoryRow)
+                 or nameof(OpenRepositoryViewModel.SelectedStash))
         {
-            _ = LoadRepositorySnapshotAsync();
+            if (_repositoryFilesTab is not null)
+                _repositoryFilesTab.Header = _viewModel.HasSelectedStash ? "Tracked files" : "Files";
+            if (IsRepositoryFilesActive)
+                _ = LoadRepositorySnapshotAsync();
         }
     }
 
@@ -222,7 +226,7 @@ public sealed partial class MainPage
 
     private bool RepositoryFilesSnapshotMatchesSelection =>
         ReferenceEquals(_repositorySnapshotRepository, _viewModel.Repository)
-        && string.Equals(_repositorySnapshotCommit, _viewModel.SelectedHistoryRow?.Commit.Hash, StringComparison.Ordinal);
+        && string.Equals(_repositorySnapshotCommit, _viewModel.SelectedObjectCommit, StringComparison.Ordinal);
 
     private void UpdateRepositoryFilesViewActivity()
     {
@@ -240,11 +244,11 @@ public sealed partial class MainPage
     {
         if (!IsRepositoryFilesActive) return;
         var repository = _viewModel.Repository;
-        var commitHash = _viewModel.SelectedHistoryRow?.Commit.Hash;
+        var commitHash = _viewModel.SelectedObjectCommit;
         if (repository is null || string.IsNullOrWhiteSpace(commitHash))
         {
             ClearRepositoryFileSelection();
-            SetRepositoryFilesStatus("Select a commit.", loading: false);
+            SetRepositoryFilesStatus("Select a commit or stash.", loading: false);
             ClearRepositoryFilesTree();
             return;
         }
@@ -306,7 +310,7 @@ public sealed partial class MainPage
         && generation == Volatile.Read(ref _repositorySnapshotGeneration)
         && IsRepositoryFilesActive
         && ReferenceEquals(repository, _viewModel.Repository)
-        && string.Equals(commitHash, _viewModel.SelectedHistoryRow?.Commit.Hash, StringComparison.Ordinal);
+        && string.Equals(commitHash, _viewModel.SelectedObjectCommit, StringComparison.Ordinal);
 
     private void PublishRepositorySnapshot(
         Repository repository,
@@ -322,7 +326,19 @@ public sealed partial class MainPage
         RebuildRepositoryFilesTree(restoreSavedExpansionState);
         UpdateRepositoryFilesModeSurface();
         if (_repositoryFilesSearchModeName == "Name" && string.IsNullOrWhiteSpace(_repositoryFilesNameQuery))
-            SetRepositoryFilesStatus(snapshot.Count == 0 ? "This commit has an empty tree." : string.Empty, loading: false);
+            SetRepositoryFilesStatus(RepositoryFilesReadyStatus(snapshot.Count), loading: false);
+    }
+
+    private string RepositoryFilesReadyStatus(int entryCount)
+    {
+        if (_viewModel.HasSelectedStash)
+        {
+            return entryCount == 0
+                ? "The tracked repository snapshot saved in this stash is empty. Untracked stash files are shown in Changes."
+                : "Tracked repository snapshot saved in this stash. Untracked stash files are shown in Changes.";
+        }
+
+        return entryCount == 0 ? "This commit has an empty tree." : string.Empty;
     }
 
     private void RebuildRepositoryFilesTree(bool restoreNormalExpansionState = false)
@@ -357,7 +373,7 @@ public sealed partial class MainPage
             if (searchActive && _repositoryFilesTreeRoots.Count == 0 && _repositorySnapshot.Count > 0)
                 SetRepositoryFilesStatus("No matches", loading: false);
             else if (_repositorySnapshot.Count > 0 && _repositoryFilesSearchModeName == "Name")
-                SetRepositoryFilesStatus(string.Empty, loading: false);
+                SetRepositoryFilesStatus(RepositoryFilesReadyStatus(_repositorySnapshot.Count), loading: false);
         }
         finally
         {
@@ -468,7 +484,7 @@ public sealed partial class MainPage
         }
 
         var repository = _viewModel.Repository;
-        var commitHash = _viewModel.SelectedHistoryRow?.Commit.Hash;
+        var commitHash = _viewModel.SelectedObjectCommit;
         if (repository is null || string.IsNullOrWhiteSpace(commitHash)) return;
 
         CancelRepositoryContentSearch();
@@ -517,7 +533,7 @@ public sealed partial class MainPage
         && IsRepositoryFilesActive
         && _repositoryFilesSearchModeName == "Content"
         && ReferenceEquals(repository, _viewModel.Repository)
-        && string.Equals(commitHash, _viewModel.SelectedHistoryRow?.Commit.Hash, StringComparison.Ordinal);
+        && string.Equals(commitHash, _viewModel.SelectedObjectCommit, StringComparison.Ordinal);
 
     private void RepositoryFilesTree_SelectionChanged(TreeView sender, TreeViewSelectionChangedEventArgs args)
     {
@@ -576,7 +592,7 @@ public sealed partial class MainPage
     private void RepositoryContentResults_SelectionChanged(object sender, SelectionChangedEventArgs args)
     {
         if (_repositoryContentResults?.SelectedItem is not RepositoryContentSearchRow row) return;
-        if (!string.Equals(_repositoryContentCommit, _viewModel.SelectedHistoryRow?.Commit.Hash, StringComparison.Ordinal)) return;
+        if (!string.Equals(_repositoryContentCommit, _viewModel.SelectedObjectCommit, StringComparison.Ordinal)) return;
         var entry = _repositorySnapshot.FirstOrDefault(candidate =>
             string.Equals(candidate.Path, row.Match.Path, StringComparison.Ordinal));
         if (entry is not { Kind: RepositorySnapshotEntryKind.File }) return;
@@ -612,7 +628,7 @@ public sealed partial class MainPage
 
     private async Task OpenRepositoryContentMatchAsync(RepositoryContentSearchMatch match, bool openInEditor)
     {
-        if (!string.Equals(_repositoryContentCommit, _viewModel.SelectedHistoryRow?.Commit.Hash, StringComparison.Ordinal)) return;
+        if (!string.Equals(_repositoryContentCommit, _viewModel.SelectedObjectCommit, StringComparison.Ordinal)) return;
         var entry = _repositorySnapshot.FirstOrDefault(candidate =>
             string.Equals(candidate.Path, match.Path, StringComparison.Ordinal));
         if (entry is not { Kind: RepositorySnapshotEntryKind.File }) return;
@@ -639,7 +655,7 @@ public sealed partial class MainPage
         if (repository is null || string.IsNullOrWhiteSpace(commitHash))
             return;
         if (!ReferenceEquals(repository, _repositorySnapshotRepository)
-            || !string.Equals(commitHash, _viewModel.SelectedHistoryRow?.Commit.Hash, StringComparison.Ordinal))
+            || !string.Equals(commitHash, _viewModel.SelectedObjectCommit, StringComparison.Ordinal))
             return;
 
         try

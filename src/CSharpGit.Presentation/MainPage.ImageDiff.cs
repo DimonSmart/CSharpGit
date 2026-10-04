@@ -19,9 +19,9 @@ public sealed partial class MainPage
     private async Task LoadCommitImageDiffAsync()
     {
         var repository = _viewModel.Repository;
-        var commit = _viewModel.SelectedHistoryRow?.Commit;
+        var commitHash = _viewModel.SelectedDiffCommitHash;
         var file = _viewModel.SelectedFile;
-        if (repository is null || commit is null || file is null || _viewModel.SelectedDiff?.IsBinary != true)
+        if (repository is null || string.IsNullOrWhiteSpace(commitHash) || file is null || _viewModel.SelectedDiff?.IsBinary != true)
         {
             SetCommitDiffPresentationState(DiffPresentationState.None);
             return;
@@ -38,10 +38,10 @@ public sealed partial class MainPage
         {
             var result = await ImageDiffService.LoadCommitAsync(
                 repository,
-                commit.Hash,
+                commitHash,
                 file.Path,
                 cts.Token);
-            if (!IsCurrentCommitImageDiffRequest(repository, commit.Hash, file.Path, generation, cts))
+            if (!IsCurrentCommitImageDiffRequest(repository, commitHash, file.Path, generation, cts))
                 return;
 
             _commitFileVersions = result.Versions;
@@ -62,7 +62,7 @@ public sealed partial class MainPage
         }
         catch (Exception)
         {
-            if (IsCurrentCommitImageDiffRequest(repository, commit.Hash, file.Path, generation, cts))
+            if (IsCurrentCommitImageDiffRequest(repository, commitHash, file.Path, generation, cts))
                 SetCommitDiffPresentationState(DiffPresentationState.Unavailable);
         }
         finally
@@ -85,7 +85,7 @@ public sealed partial class MainPage
         && generation == Volatile.Read(ref _commitImageDiffGeneration)
         && _viewModel.IsChangesViewActive
         && ReferenceEquals(repository, _viewModel.Repository)
-        && string.Equals(commitHash, _viewModel.SelectedHistoryRow?.Commit.Hash, StringComparison.Ordinal)
+        && string.Equals(commitHash, _viewModel.SelectedDiffCommitHash, StringComparison.Ordinal)
         && string.Equals(path, _viewModel.SelectedFile?.Path, StringComparison.Ordinal)
         && _viewModel.SelectedDiff?.IsBinary == true;
 
