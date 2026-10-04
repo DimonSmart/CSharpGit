@@ -66,7 +66,7 @@ public sealed class HistoryDiffUiContractTests
         Assert.Contains("SetChangesViewActive", changes);
         Assert.Contains("ReferenceEquals(DetailsTabs.SelectedItem, ChangesTabControl)", changes);
         Assert.DoesNotContain("ReadFileStatusesAsync", page);
-        Assert.Contains("new CommitFileRow(file.Status, file)", page);
+        Assert.Contains("_viewModel.GetChangedFileDisplayStatus(file)", page);
     }
 
     [Fact]
