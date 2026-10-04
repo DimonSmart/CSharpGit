@@ -167,8 +167,18 @@ internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService
                     if (request.Paths!.Any(path => path.IsUntracked))
                         arguments.Add("--include-untracked");
 
-                    pathspecFile = await WriteLiteralPathspecFileAsync(
-                        selectedPaths,
+                    var pathspecEntries = request.Paths.Any(path =>
+                            !string.IsNullOrWhiteSpace(path.OriginalPath))
+                        ? await BuildRenameSafeSelectedPathspecAsync(
+                            repository,
+                            selectedPaths,
+                            cancellationToken)
+                        : selectedPaths
+                            .Select(path => $":(literal){path}")
+                            .ToArray();
+
+                    pathspecFile = await WritePathspecFileAsync(
+                        pathspecEntries,
                         cancellationToken);
                     arguments.Add($"--pathspec-from-file={pathspecFile}");
                     arguments.Add("--pathspec-file-nul");
@@ -1398,18 +1408,64 @@ internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService
         return normalized;
     }
 
-    private static async Task<string> WriteLiteralPathspecFileAsync(
-        IReadOnlyList<string> paths,
+    private async Task<IReadOnlyList<string>> BuildRenameSafeSelectedPathspecAsync(
+        Repository repository,
+        IReadOnlyList<string> selectedPaths,
+        CancellationToken cancellationToken)
+    {
+        var statusOutput = await _runner.RunAsync(
+            repository.WorkingDirectory,
+            cancellationToken,
+            false,
+            GitRepositoryStateService.ReadOnlyEnvironment,
+            "status",
+            "--porcelain=v2",
+            "-z",
+            "--untracked-files=all");
+        var currentChanges = GitRepositoryStateService.ParseStatusV2(statusOutput).Changes;
+        var selected = selectedPaths.ToHashSet(StringComparer.Ordinal);
+
+        // A staged rename removes the original path from the current index, so a positive
+        // literal pathspec for OriginalPath can be rejected by Git as not matching.
+        // Select everything and exclude every other changed logical path instead. This
+        // keeps both sides of the selected rename in one standard git stash push.
+        var entries = new List<string> { ":(top,glob)**" };
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var change in currentChanges)
+        {
+            if (EnumerateChangePaths(change).Any(selected.Contains))
+                continue;
+
+            foreach (var path in EnumerateChangePaths(change))
+            {
+                var validated = ValidateRepositoryRelativePath(path);
+                if (seen.Add(validated))
+                    entries.Add($":(top,literal,exclude){validated}");
+            }
+        }
+
+        return entries;
+    }
+
+    private static IEnumerable<string> EnumerateChangePaths(WorkingTreeChange change)
+    {
+        yield return change.Path;
+        if (!string.IsNullOrWhiteSpace(change.OriginalPath)
+            && !string.Equals(change.OriginalPath, change.Path, StringComparison.Ordinal))
+            yield return change.OriginalPath!;
+    }
+
+    private static async Task<string> WritePathspecFileAsync(
+        IReadOnlyList<string> entries,
         CancellationToken cancellationToken)
     {
         var file = Path.Combine(
             Path.GetTempPath(),
             $"csharpgit-stash-{Guid.NewGuid():N}.pathspec");
         var builder = new StringBuilder();
-        foreach (var path in paths)
+        foreach (var entry in entries)
         {
-            builder.Append(":(literal)");
-            builder.Append(path);
+            builder.Append(entry);
             builder.Append('\0');
         }
 
