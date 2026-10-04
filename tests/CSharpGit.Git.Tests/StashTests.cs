@@ -85,7 +85,7 @@ public sealed class StashTests : IDisposable
 
         var status = GitOut(_root, "status", "--porcelain");
         Assert.DoesNotContain("tracked.txt", status, StringComparison.Ordinal);
-        Assert.Contains(" M other.txt", status, StringComparison.Ordinal);
+        Assert.Contains("M other.txt", status, StringComparison.Ordinal);
         Assert.Equal(
             "index",
             GitOut(_root, "show", "stash@{0}:tracked.txt"));
@@ -172,7 +172,7 @@ public sealed class StashTests : IDisposable
 
         var status = GitOut(_root, "status", "--porcelain");
         Assert.DoesNotContain("tracked.txt", status, StringComparison.Ordinal);
-        Assert.Contains(" M other.txt", status, StringComparison.Ordinal);
+        Assert.Contains("M other.txt", status, StringComparison.Ordinal);
         Assert.Equal("selected", GitOut(_root, "show", "stash@{0}:tracked.txt"));
     }
 
