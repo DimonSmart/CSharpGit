@@ -658,15 +658,7 @@ public sealed partial class MainPage : Page
 
     private async void Fetch_Click(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(_viewModel.FetchCommand);
     private async void Pull_Click(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(_viewModel.PullCommand);
-    private async void Push_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button)
-        {
-            GitOperationsDialog.Hide();
-            await Task.Delay(20);
-        }
-        await PushFromUiAsync();
-    }
+    private async void Push_Click(object sender, RoutedEventArgs e) => await PushFromUiAsync();
 
     private async void RefreshAll_Click(object sender, RoutedEventArgs e)
     {
@@ -674,16 +666,7 @@ public sealed partial class MainPage : Page
         RefreshPresentationCollections();
     }
 
-    private async void MoreOperations_Click(object sender, RoutedEventArgs e) => await GitOperationsDialog.ShowAsync();
 
-    private async void ApplyHistoryFilter_Click(object sender, RoutedEventArgs e) => await RefreshVisibleHistoryAsync();
-    private async void RefreshHistory_Click(object sender, RoutedEventArgs e) => await RefreshVisibleHistoryAsync();
-
-    private async Task RefreshVisibleHistoryAsync()
-    {
-        if (_activeReference is not null) await LoadScopedHistoryAsync(true);
-        else await ExecuteCommandAsync(_viewModel.RefreshHistoryCommand);
-    }
 
     private async void HistoryFilter_KeyDown(object sender, KeyRoutedEventArgs e)
     {

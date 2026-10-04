@@ -60,9 +60,9 @@ public sealed class ForcePushUiContractTests
         Assert.Contains("target.Value.Remote", forcePush, StringComparison.Ordinal);
         Assert.Contains("target.Value.RemoteBranch", forcePush, StringComparison.Ordinal);
         Assert.DoesNotContain("_viewModel.SelectedRemote", forcePush, StringComparison.Ordinal);
-        Assert.DoesNotContain("_viewModel.PushBranchName", forcePush, StringComparison.Ordinal);
+        Assert.DoesNotContain("_viewModel.Push" + "BranchName", forcePush, StringComparison.Ordinal);
         Assert.DoesNotContain("_viewModel.SetUpstream", forcePush, StringComparison.Ordinal);
-        Assert.DoesNotContain("GitOperationsDialog", forcePush, StringComparison.Ordinal);
+        Assert.DoesNotContain("GitOperations" + "Dialog", forcePush, StringComparison.Ordinal);
 
         Assert.Contains("Title = \"Force push target\"", targetDialog, StringComparison.Ordinal);
         Assert.Contains("Text = \"Local branch\"", targetDialog, StringComparison.Ordinal);
@@ -78,36 +78,52 @@ public sealed class ForcePushUiContractTests
         Assert.Contains("!string.IsNullOrWhiteSpace(remoteBranchBox.Text)", targetDialog, StringComparison.Ordinal);
         Assert.DoesNotContain("SelectedItem =", targetDialog, StringComparison.Ordinal);
         Assert.DoesNotContain("_viewModel.SelectedRemote", targetDialog, StringComparison.Ordinal);
-        Assert.DoesNotContain("_viewModel.PushBranchName", targetDialog, StringComparison.Ordinal);
+        Assert.DoesNotContain("_viewModel.Push" + "BranchName", targetDialog, StringComparison.Ordinal);
         Assert.DoesNotContain("_viewModel.SetUpstream", targetDialog, StringComparison.Ordinal);
         Assert.DoesNotContain("SuggestedRemote", targetDialog, StringComparison.Ordinal);
 
-        Assert.DoesNotContain("GitOperationsDialog", clickHandler, StringComparison.Ordinal);
+        Assert.DoesNotContain("GitOperations" + "Dialog", clickHandler, StringComparison.Ordinal);
         Assert.DoesNotContain("Task.Delay", clickHandler, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void GitOperationsDialogContainsOnlyRemainingLegacyOperations()
+    public void LegacyOperationsContainerIsRemovedAndPushMenuKeepsContextualActions()
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
-        var dialog = ExtractGitOperationsDialog(xaml);
+        var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Dialogs.cs"));
 
-        Assert.DoesNotContain("Branches", dialog, StringComparison.Ordinal);
-        Assert.DoesNotContain("Create and switch", dialog, StringComparison.Ordinal);
-        Assert.DoesNotContain("Branch to merge", dialog, StringComparison.Ordinal);
-        Assert.DoesNotContain("Merge into current", dialog, StringComparison.Ordinal);
-        Assert.DoesNotContain("Tracking branch", dialog, StringComparison.Ordinal);
-        Assert.DoesNotContain("Checkout tracking", dialog, StringComparison.Ordinal);
-        Assert.DoesNotContain("Fetch all", dialog, StringComparison.Ordinal);
-        Assert.DoesNotContain("Force push with lease…", dialog, StringComparison.Ordinal);
+        var legacyDialogName = "GitOperations" + "Dialog";
+        var legacyMenuLabel = "More Git " + "operations…";
+        Assert.DoesNotContain(legacyDialogName, xaml + dialogs, StringComparison.Ordinal);
+        Assert.DoesNotContain(legacyMenuLabel, xaml, StringComparison.Ordinal);
+        Assert.Contains("Push to…", xaml, StringComparison.Ordinal);
+        Assert.Contains("Click=\"PushTo_Click\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Force push with lease…", xaml, StringComparison.Ordinal);
 
-        Assert.Contains("Remote / explicit push", dialog, StringComparison.Ordinal);
-        Assert.Contains("PlaceholderText=\"Remote\"", dialog, StringComparison.Ordinal);
-        Assert.Contains("PlaceholderText=\"Remote branch name\"", dialog, StringComparison.Ordinal);
-        Assert.Contains("Set upstream", dialog, StringComparison.Ordinal);
-        Assert.Contains("Content=\"Push\"", dialog, StringComparison.Ordinal);
-        Assert.Contains("Interactive rebase", dialog, StringComparison.Ordinal);
+        var pushTo = xaml.IndexOf("Push to…", StringComparison.Ordinal);
+        var separator = xaml.IndexOf("<MenuFlyoutSeparator />", pushTo, StringComparison.Ordinal);
+        var forcePush = xaml.IndexOf("Force push with lease…", StringComparison.Ordinal);
+        Assert.True(pushTo >= 0 && separator > pushTo && forcePush > separator);
+    }
+
+    [Fact]
+    public void CanPushToRequiresAttachedBranchRemoteAndIdleRepository()
+    {
+        var root = FindRepositoryRoot();
+        var viewModel = File.ReadAllText(Path.Combine(
+            root,
+            "src",
+            "CSharpGit.Presentation",
+            "ViewModels",
+            "OpenRepositoryViewModel.cs"));
+
+        var property = ExtractUntilSemicolon(viewModel, "public bool CanPushTo");
+        Assert.Contains("Repository is not null", property, StringComparison.Ordinal);
+        Assert.Contains("!IsBusy", property, StringComparison.Ordinal);
+        Assert.Contains("CurrentOperation == RepositoryOperation.None", property, StringComparison.Ordinal);
+        Assert.Contains("LocalBranches.Any(branch => branch.IsCurrent)", property, StringComparison.Ordinal);
+        Assert.Contains("Remotes.Count > 0", property, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -132,16 +148,7 @@ public sealed class ForcePushUiContractTests
         Assert.DoesNotContain("CreateBranchCommand", viewModel, StringComparison.Ordinal);
     }
 
-    private static string ExtractGitOperationsDialog(string xaml)
-    {
-        const string startMarker = "<ContentDialog x:Key=\"GitOperationsDialog\"";
-        const string endMarker = "</ContentDialog>";
-        var start = xaml.IndexOf(startMarker, StringComparison.Ordinal);
-        Assert.True(start >= 0, "GitOperationsDialog start marker was not found.");
-        var end = xaml.IndexOf(endMarker, start, StringComparison.Ordinal);
-        Assert.True(end >= 0, "GitOperationsDialog end marker was not found.");
-        return xaml[start..(end + endMarker.Length)];
-    }
+
 
     private static string ExtractUntilSemicolon(string source, string marker)
     {

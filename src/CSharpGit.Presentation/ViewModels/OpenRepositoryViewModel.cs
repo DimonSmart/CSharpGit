@@ -57,8 +57,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private GitRemote? _selectedRemote;
     private GitTag? _selectedTag;
     private string _newBranchName = string.Empty;
-    private string _pushBranchName = string.Empty;
-    private bool _setUpstream;
     private string _headDisplay = string.Empty;
     private string? _currentBranchName;
     private string? _currentHeadCommit;
@@ -67,7 +65,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private GitStash? _selectedStash;
     private GitBranch? _selectedMergeBranch;
     private string _operationDisplay = string.Empty;
-    private string _rebaseOnto = "HEAD~3";
+    private string _rebaseOnto = string.Empty;
     private InteractiveRebaseTodo? _preparedInteractiveRebaseTodo;
     private string _rebaseTodoText = string.Empty;
     private RepositoryOperation _currentOperation;
@@ -271,13 +269,14 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             Notify(nameof(RepositoryKind));
             Notify(nameof(CanCreateStash));
             Notify(nameof(CanForcePushWithLease));
+            Notify(nameof(CanPushTo));
             ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged();
         }
     }
     public WorkingTreeStatusSnapshot? DisplayedWorkingTreeStatusSnapshot => _displayedWorkingTreeBaseline.Snapshot;
     public long DisplayedRefreshBaselineRevision => _displayedWorkingTreeBaseline.Revision;
     public string? ErrorMessage { get => _errorMessage; private set { _errorMessage = value; Notify(); Notify(nameof(HasError)); } }
-    public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); Notify(nameof(CanForcePushWithLease)); _openRepositoryCommand.RaiseCanExecuteChanged(); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
+    public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); Notify(nameof(CanForcePushWithLease)); Notify(nameof(CanPushTo)); _openRepositoryCommand.RaiseCanExecuteChanged(); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
     public bool HasRepository => Repository is not null;
     public bool CanChangeRepository => !_isMutating && Volatile.Read(ref _repositoryChangeInProgress) == 0;
@@ -348,8 +347,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public GitRemote? SelectedRemote { get => _selectedRemote; set { _selectedRemote = value; Notify(); RaiseCommands(); } }
     public GitTag? SelectedTag { get => _selectedTag; set { _selectedTag = value; Notify(); RaiseCommands(); } }
     public string NewBranchName { get => _newBranchName; set { _newBranchName = value; Notify(); RaiseCommands(); } }
-    public string PushBranchName { get => _pushBranchName; set { _pushBranchName = value; Notify(); } }
-    public bool SetUpstream { get => _setUpstream; set { _setUpstream = value; Notify(); } }
     public string HeadDisplay => _headDisplay;
     public string? CurrentBranchName => _currentBranchName;
     public string? CurrentHeadCommit => _currentHeadCommit;
@@ -357,18 +354,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public GitStash? SelectedStash { get => _selectedStash; set { _selectedStash = value; Notify(); RaiseCommands(); } }
     public GitBranch? SelectedMergeBranch { get => _selectedMergeBranch; set { _selectedMergeBranch = value; Notify(); RaiseCommands(); } }
     public string OperationDisplay { get => _operationDisplay; private set { _operationDisplay = value; Notify(); } }
-    public string RebaseOnto
-    {
-        get => _rebaseOnto;
-        set
-        {
-            if (string.Equals(_rebaseOnto, value, StringComparison.Ordinal)) return;
-            _rebaseOnto = value;
-            Notify();
-            InvalidatePreparedInteractiveRebaseTodo();
-            RaiseCommands();
-        }
-    }
+    public string RebaseOnto => _rebaseOnto;
     public string RebaseTodoText
     {
         get => _rebaseTodoText;
@@ -379,7 +365,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             Notify();
         }
     }
-    public RepositoryOperation CurrentOperation { get => _currentOperation; private set { _currentOperation = value; Notify(); Notify(nameof(CanCreateStash)); Notify(nameof(CanForcePushWithLease)); RaiseCommands(); } }
+    public RepositoryOperation CurrentOperation { get => _currentOperation; private set { _currentOperation = value; Notify(); Notify(nameof(CanCreateStash)); Notify(nameof(CanForcePushWithLease)); Notify(nameof(CanPushTo)); RaiseCommands(); } }
     public ConflictFile? SelectedConflict { get => _selectedConflict; set { _selectedConflict = value; Notify(); Notify(nameof(CurrentSideLabel)); Notify(nameof(IncomingSideLabel)); RaiseCommands(); } }
     public RepositoryOperationState OperationState { get => _operationState; private set { _operationState = value; Notify(); Notify(nameof(HasActiveOperation)); RaiseCommands(); } }
     public string CurrentSideLabel => SelectedConflict?.CurrentLocalLabel ?? "Current/local";
@@ -393,6 +379,12 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         && !IsBusy
         && CurrentOperation == RepositoryOperation.None
         && LocalBranches.Any(branch => branch.IsCurrent);
+
+    public bool CanPushTo => Repository is not null
+        && !IsBusy
+        && CurrentOperation == RepositoryOperation.None
+        && LocalBranches.Any(branch => branch.IsCurrent)
+        && Remotes.Count > 0;
 
     public Task RefreshWhenActivatedAsync() => Repository is null ? Task.CompletedTask : RefreshAllAsync();
 
@@ -732,6 +724,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             Notify(nameof(CanForcePushWithLease));
             Replace(RemoteBranches, state.Refs.RemoteBranches);
             Replace(Remotes, state.Refs.Remotes);
+            Notify(nameof(CanPushTo));
             Replace(Tags, state.Refs.Tags);
             Replace(Stashes, state.Stashes);
             SelectedLocalBranch = LocalBranches.FirstOrDefault(branch => branch.IsCurrent) ?? LocalBranches.FirstOrDefault();

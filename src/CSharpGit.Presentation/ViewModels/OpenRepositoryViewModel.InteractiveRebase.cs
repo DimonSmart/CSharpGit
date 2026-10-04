@@ -4,40 +4,7 @@ namespace CSharpGit.Presentation.ViewModels;
 
 public sealed partial class OpenRepositoryViewModel
 {
-    internal async Task<bool> PrepareInteractiveRebaseAsync()
-    {
-        var repository = Repository;
-        var onto = RebaseOnto;
-        if (repository is null || string.IsNullOrWhiteSpace(onto))
-            return false;
 
-        EnterBusy();
-        ErrorMessage = null;
-        InvalidatePreparedInteractiveRebaseTodo();
-        try
-        {
-            var todo = await _workflowService.ReadInteractiveRebaseTodoAsync(
-                repository,
-                onto);
-
-            if (!ReferenceEquals(repository, Repository)
-                || !string.Equals(RebaseOnto, onto, StringComparison.Ordinal))
-                return false;
-
-            ApplyPreparedInteractiveRebaseTodo(todo);
-            return true;
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            ErrorMessage = $"Git: {exception.Message}";
-            return false;
-        }
-        finally
-        {
-            ExitBusy();
-            RaiseCommands();
-        }
-    }
 
     internal async Task<bool> PrepareInteractiveRebaseFromCommitAsync(string fullSha)
     {

@@ -97,8 +97,8 @@ public sealed class SelectedCommitActionsContractTests
         Assert.DoesNotContain("MoveRebaseUpCommand", viewModel);
         Assert.DoesNotContain("ApplyRebaseItemCommand", viewModel);
 
-        Assert.Contains("InteractiveRebaseSection", xaml);
-        Assert.Contains("Open interactive rebase…", xaml);
+        Assert.DoesNotContain("InteractiveRebaseSection", xaml);
+        Assert.DoesNotContain("Open interactive rebase…", xaml);
         Assert.Contains("InteractiveRebaseDialog", xaml);
         Assert.Contains("<controls:InteractiveRebaseTodoEditor", xaml);
         Assert.Contains("MaxWidth=\"1200\"", xaml);
@@ -130,8 +130,9 @@ public sealed class SelectedCommitActionsContractTests
         Assert.DoesNotContain("ActualWidth - 96d", dialogs);
         Assert.DoesNotContain("ActualHeight - 220d", dialogs);
 
-        Assert.Contains("OpenInteractiveRebase_Click", dialogs);
-        Assert.Contains("GitOperationsDialog.Hide()", dialogs);
+        Assert.DoesNotContain("OpenInteractiveRebase" + "_Click", dialogs);
+        Assert.DoesNotContain("GitOperations" + "Dialog", dialogs);
+        Assert.DoesNotContain("PrepareInteractiveRebase" + "Async()", rebaseViewModel);
         Assert.Contains("InteractiveRebaseDialog", dialogs);
         Assert.Contains("ShowInteractiveRebaseEditorAsync", dialogs);
         Assert.Contains("1200d", dialogs);
