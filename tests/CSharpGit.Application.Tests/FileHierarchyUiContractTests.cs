@@ -28,7 +28,7 @@ public sealed class FileHierarchyUiContractTests
         }
 
         var changedTemplate = Template(repositoryTree, "ChangedFileTreeItemTemplate");
-        Assert.Contains("ColumnDefinitions=\"*,26,46,46\"", changedTemplate);
+        Assert.Contains("ColumnDefinitions=\"*,132,46,46\"", changedTemplate);
         Assert.Contains("Text=\"{Binding Status}\"", changedTemplate);
         Assert.Contains("Text=\"{Binding AddedDisplay}\"", changedTemplate);
         Assert.Contains("Text=\"{Binding RemovedDisplay}\"", changedTemplate);
