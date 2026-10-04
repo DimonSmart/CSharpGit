@@ -108,6 +108,46 @@ public sealed class PublishBranchTests : IDisposable
     }
 
     [Fact]
+    public async Task ExplicitTargetFastForwardsExistingRemoteBranchWithoutChangingTracking()
+    {
+        Git(_root, "switch", "-c", "feature/existing");
+        Commit("feature.txt", "base\n", "Feature base");
+        Git(_root, "push", "origin", "refs/heads/feature/existing:refs/heads/review/existing");
+        Commit("next.txt", "next\n", "Feature next");
+        var (repository, service) = await CreateServicesAsync();
+
+        await service.PublishBranchAsync(
+            repository,
+            new PublishBranchRequest("origin", "review/existing", false));
+
+        Assert.Equal(
+            GitOut(_root, "rev-parse", "refs/heads/feature/existing"),
+            GitOut(_root, "--git-dir", _origin, "rev-parse", "refs/heads/review/existing"));
+        Assert.False(GitTryOut(_root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}").Success);
+    }
+
+    [Fact]
+    public async Task ExplicitSetUpstreamCanReplaceExistingTrackingDestination()
+    {
+        var second = Path.Combine(_root, ".second.git");
+        Git(_root, "init", "--bare", second);
+        Git(_root, "remote", "add", "second", second);
+        Git(_root, "push", "--set-upstream", "origin", "main");
+        var (repository, service) = await CreateServicesAsync();
+
+        await service.PublishBranchAsync(
+            repository,
+            new PublishBranchRequest("second", "review/main", true));
+
+        Assert.Equal(
+            GitOut(_root, "rev-parse", "refs/heads/main"),
+            GitOut(_root, "--git-dir", second, "rev-parse", "refs/heads/review/main"));
+        Assert.Equal(
+            "second/review/main",
+            GitOut(_root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"));
+    }
+
+    [Fact]
     public async Task SuggestedRemoteFollowsGitPriority()
     {
         var second = Path.Combine(_root, ".second.git");

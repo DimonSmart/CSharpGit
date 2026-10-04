@@ -130,7 +130,8 @@ public sealed class DesktopUiContractTests
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var confirmationDialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ConfirmationDialogs.cs"));
         var forcePushPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ForcePush.cs"));
-        var surface = xaml + operationBanner + page + confirmationDialogs + forcePushPage;
+        var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
+        var surface = xaml + operationBanner + page + confirmationDialogs + forcePushPage + commitActions;
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         foreach (var command in new[]
         {
@@ -138,7 +139,7 @@ public sealed class DesktopUiContractTests
             "CommitCommand", "AmendCommand", "RequestDiscardSelectedCommand", "RequestDiscardAllCommand",
             "ConfirmBatchDiscardCommand", "CancelBatchDiscardCommand",
             "FetchCommand", "FetchAllCommand", "PullCommand", "ApplyStashCommand",
-            "PopStashCommand", "MergeCommand", "OpenInteractiveRebase_Click", "ContinueOperationCommand", "SkipOperationCommand",
+            "PopStashCommand", "MergeCommand", "InteractiveRebaseFromHere_Click", "ContinueOperationCommand", "SkipOperationCommand",
             "AbortOperationCommand", "MergeToolCommand", "MergeToolWorkflowCommand"
         }) Assert.Contains(command, surface);
 

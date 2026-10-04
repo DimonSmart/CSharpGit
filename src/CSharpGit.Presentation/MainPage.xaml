@@ -2,26 +2,6 @@
   <Page.Resources>
     <controls:BranchTrackingActionTextConverter x:Key="BranchTrackingActionTextConverter" />
     <controls:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-    <ContentDialog x:Key="GitOperationsDialog" Title="Git operations" CloseButtonText="Close" DefaultButton="Close">
-      <ScrollViewer MaxHeight="650" VerticalScrollBarVisibility="Auto">
-        <StackPanel MaxWidth="760" HorizontalAlignment="Stretch" Spacing="{StaticResource Spacing.XL}">
-          <TextBlock Text="Remote / explicit push" Style="{StaticResource BodyStrongTextStyle}" />
-          <Grid ColumnDefinitions="180,*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
-            <ComboBox ItemsSource="{Binding Remotes}" SelectedItem="{Binding SelectedRemote, Mode=TwoWay}" DisplayMemberPath="Name" PlaceholderText="Remote" Style="{StaticResource CompactComboBoxStyle}" />
-            <TextBox Grid.Column="1" Text="{Binding PushBranchName, Mode=TwoWay}" PlaceholderText="Remote branch name" Style="{StaticResource CompactTextBoxStyle}" />
-            <CheckBox Grid.Column="2" Content="Set upstream" IsChecked="{Binding SetUpstream, Mode=TwoWay}" Style="{StaticResource CompactCheckBoxStyle}" VerticalAlignment="Center" />
-          </Grid>
-          <Button Content="Push" Click="ExplicitPush_Click" HorizontalAlignment="Left" Style="{StaticResource CompactButtonStyle}" />
-
-          <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="{StaticResource Margin.FormSeparator}" />
-          <TextBlock x:Name="InteractiveRebaseSection" Text="Interactive rebase" Style="{StaticResource BodyStrongTextStyle}" />
-          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
-            <TextBox Text="{Binding RebaseOnto, Mode=TwoWay}" PlaceholderText="onto (for example HEAD~3)" Style="{StaticResource CompactTextBoxStyle}" />
-            <Button Grid.Column="1" Content="Open interactive rebase…" Click="OpenInteractiveRebase_Click" Style="{StaticResource CompactButtonStyle}" />
-          </Grid>
-        </StackPanel>
-      </ScrollViewer>
-    </ContentDialog>
 
     <ContentDialog x:Key="InteractiveRebaseDialog"
                    Title="Interactive rebase"
@@ -181,6 +161,7 @@
               <Button.Flyout>
                 <MenuFlyout>
                   <MenuFlyoutItem Text="{Binding SelectedLocalBranch, Converter={StaticResource BranchTrackingActionTextConverter}, ConverterParameter=PushMenu}" Click="Push_Click" />
+                  <MenuFlyoutItem Text="Push to…" Click="PushTo_Click" IsEnabled="{Binding CanPushTo}" />
                   <MenuFlyoutSeparator />
                   <MenuFlyoutItem Text="Force push with lease…" Click="ForcePushWithLease_Click" IsEnabled="{Binding CanForcePushWithLease}" />
                 </MenuFlyout>
@@ -232,7 +213,6 @@
                                 Click="CloseRepository_Click"
                                 IsEnabled="{Binding CanChangeRepository}" />
                 <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="More Git operations…" Click="MoreOperations_Click" />
                 <MenuFlyoutItem x:Name="OptimizeRepositoryMenuItem"
                                 Text="Optimize repository…"
                                 Click="OptimizeRepository_Click"

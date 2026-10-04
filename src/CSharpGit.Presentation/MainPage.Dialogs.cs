@@ -7,18 +7,9 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private ContentDialog GitOperationsDialog => GetPageDialog("GitOperationsDialog");
     private ContentDialog InteractiveRebaseDialog => GetPageDialog("InteractiveRebaseDialog");
 
-    private async void OpenInteractiveRebase_Click(object sender, RoutedEventArgs e)
-    {
-        if (!await _viewModel.PrepareInteractiveRebaseAsync())
-            return;
 
-        GitOperationsDialog.Hide();
-        await Task.Delay(20);
-        await ShowInteractiveRebaseEditorAsync();
-    }
 
     private async Task ShowInteractiveRebaseEditorAsync()
     {

@@ -100,6 +100,56 @@ public sealed partial class MainPage
         if (_viewModel.Repository is null || _viewModel.IsBusy) return;
         var repository = _viewModel.Repository;
 
+        var target = await ShowPushTargetDialogAsync(
+            repository,
+            new PushTargetDialogOptions(
+                "Publish branch",
+                "Publish",
+                DefaultSetUpstream: true));
+        if (target is null) return;
+
+        await RunTargetPushAsync(repository, target, "Publish branch failed");
+    }
+
+    private async Task ShowPushToDialogAsync()
+    {
+        if (_viewModel.Repository is null || _viewModel.IsBusy) return;
+
+        if (_viewModel.CurrentOperation != RepositoryOperation.None)
+        {
+            await ShowErrorAsync("Push to unavailable", "Complete or abort the current Git operation first.");
+            return;
+        }
+
+        var currentBranch = _viewModel.LocalBranches.FirstOrDefault(branch => branch.IsCurrent);
+        if (currentBranch is null)
+        {
+            await ShowErrorAsync("Push to unavailable", "HEAD is detached. Push to requires a current local branch.");
+            return;
+        }
+
+        if (_viewModel.Remotes.Count == 0)
+        {
+            await ShowErrorAsync("Push to unavailable", "No Git remotes are configured for this repository.");
+            return;
+        }
+
+        var repository = _viewModel.Repository;
+        var target = await ShowPushTargetDialogAsync(
+            repository,
+            new PushTargetDialogOptions(
+                "Push to",
+                "Push",
+                DefaultSetUpstream: string.IsNullOrWhiteSpace(currentBranch.Upstream)));
+        if (target is null) return;
+
+        await RunTargetPushAsync(repository, target, "Push failed");
+    }
+
+    private async Task<PushTargetDialogResult?> ShowPushTargetDialogAsync(
+        Repository repository,
+        PushTargetDialogOptions options)
+    {
         PublishBranchPreparation preparation;
         try
         {
@@ -107,8 +157,8 @@ public sealed partial class MainPage
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            await ShowErrorAsync("Publish branch unavailable", exception.Message);
-            return;
+            await ShowErrorAsync($"{options.Title} unavailable", exception.Message);
+            return null;
         }
 
         var localBranchBox = new TextBox
@@ -140,7 +190,7 @@ public sealed partial class MainPage
         var trackCheck = new CheckBox
         {
             Content = "Track this remote branch as upstream",
-            IsChecked = true
+            IsChecked = options.DefaultSetUpstream
         };
 
         var content = new StackPanel
@@ -159,9 +209,9 @@ public sealed partial class MainPage
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
-            Title = "Publish branch",
+            Title = options.Title,
             Content = content,
-            PrimaryButtonText = "Publish",
+            PrimaryButtonText = options.PrimaryAction,
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary
         };
@@ -175,22 +225,33 @@ public sealed partial class MainPage
         remoteBranchBox.TextChanged += (_, _) => UpdatePrimaryState();
         UpdatePrimaryState();
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
-        if (remoteCombo.SelectedItem is not GitRemote selectedRemote) return;
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return null;
+        if (remoteCombo.SelectedItem is not GitRemote selectedRemote) return null;
 
-        var remoteBranch = remoteBranchBox.Text.Trim();
-        _viewModel.SelectedRemote = selectedRemote;
-        _viewModel.PushBranchName = remoteBranch;
-        _viewModel.SetUpstream = trackCheck.IsChecked == true;
+        return new PushTargetDialogResult(
+            selectedRemote.Name,
+            remoteBranchBox.Text.Trim(),
+            trackCheck.IsChecked == true);
+    }
+
+    private async Task RunTargetPushAsync(
+        Repository repository,
+        PushTargetDialogResult target,
+        string failureTitle)
+    {
+        if (!ReferenceEquals(repository, _viewModel.Repository)
+            || _viewModel.IsBusy
+            || _viewModel.CurrentOperation != RepositoryOperation.None)
+            return;
 
         try
         {
             await _repositorySyncService.PublishBranchAsync(
                 repository,
                 new PublishBranchRequest(
-                    selectedRemote.Name,
-                    remoteBranch,
-                    trackCheck.IsChecked == true));
+                    target.Remote,
+                    target.RemoteBranch,
+                    target.SetUpstream));
             await RefreshAfterRemoteOperationAsync();
         }
         catch (PushRejectedException exception)
@@ -202,47 +263,19 @@ public sealed partial class MainPage
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             await RefreshAfterRemoteOperationAsync();
-            await ShowErrorAsync("Publish branch failed", exception.Message);
+            await ShowErrorAsync(failureTitle, exception.Message);
         }
     }
 
-    private async Task RunExplicitPushFromOperationsAsync()
-    {
-        if (_viewModel.Repository is null || _viewModel.IsBusy) return;
+    private sealed record PushTargetDialogOptions(
+        string Title,
+        string PrimaryAction,
+        bool DefaultSetUpstream);
 
-        if (string.IsNullOrWhiteSpace(_viewModel.PushBranchName))
-        {
-            await PushFromUiAsync();
-            return;
-        }
-
-        if (_viewModel.SelectedRemote is not { } remote)
-        {
-            await ShowErrorAsync("Push target required", "Select a remote for the explicit push target.");
-            return;
-        }
-
-        var repository = _viewModel.Repository;
-        var remoteBranch = _viewModel.PushBranchName.Trim();
-        try
-        {
-            await _repositorySyncService.PublishBranchAsync(
-                repository,
-                new PublishBranchRequest(remote.Name, remoteBranch, _viewModel.SetUpstream));
-            await RefreshAfterRemoteOperationAsync();
-        }
-        catch (PushRejectedException exception)
-            when (exception.ResultKind == PushResultKind.NonFastForwardRejected)
-        {
-            await RefreshAfterRemoteOperationAsync();
-            await ShowNonFastForwardDialogAsync(repository);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            await RefreshAfterRemoteOperationAsync();
-            await ShowErrorAsync("Push failed", exception.Message);
-        }
-    }
+    private sealed record PushTargetDialogResult(
+        string Remote,
+        string RemoteBranch,
+        bool SetUpstream);
 
     private async Task ShowNonFastForwardDialogAsync(Repository repository)
     {
@@ -268,15 +301,7 @@ public sealed partial class MainPage
         }
     }
 
-    private async void ExplicitPush_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button)
-        {
-            GitOperationsDialog.Hide();
-            await Task.Delay(20);
-        }
-        await RunExplicitPushFromOperationsAsync();
-    }
+
 
     private async Task RunForcePushWithLeaseAsync()
     {
@@ -476,6 +501,11 @@ public sealed partial class MainPage
 
     private static string ShortOid(string oid) => oid[..Math.Min(10, oid.Length)];
     private static string FormatSubject(string? subject) => string.IsNullOrWhiteSpace(subject) ? string.Empty : $"  {subject}";
+
+    private async void PushTo_Click(object sender, RoutedEventArgs e)
+    {
+        await ShowPushToDialogAsync();
+    }
 
     private async void ForcePushWithLease_Click(object sender, RoutedEventArgs e)
     {
