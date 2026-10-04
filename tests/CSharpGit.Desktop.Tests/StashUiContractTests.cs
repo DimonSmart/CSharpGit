@@ -145,7 +145,7 @@ public sealed class StashUiContractTests
 
     private static string SliceCase(string source, string marker)
     {
-        var start = source.IndexOf(marker, StringComparison.Ordinal);
+        var start = source.LastIndexOf(marker, StringComparison.Ordinal);
         Assert.True(start >= 0);
         var end = source.IndexOf("break;", start, StringComparison.Ordinal);
         Assert.True(end > start);
