@@ -39,6 +39,7 @@ public sealed class GitDependencyInjectionTests
                 provider.GetRequiredService<IRepositorySnapshotService>(),
                 provider.GetRequiredService<IRepositoryHistoryRewriteService>(),
                 provider.GetRequiredService<IRepositoryMaintenanceService>(),
+                provider.GetRequiredService<IStashService>(),
                 provider.GetRequiredService<IHistoryService>(),
                 provider.GetRequiredService<IReferenceHistoryService>()
             },
