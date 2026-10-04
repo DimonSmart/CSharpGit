@@ -295,8 +295,12 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         set
         {
             if (ReferenceEquals(_selectedHistoryRow, value)) return;
-            if (value is not null && SelectedStash is not null)
+            if (value is not null
+                && SelectedStash is { } selectedStash
+                && !string.Equals(value.Commit.Hash, selectedStash.Commit, StringComparison.Ordinal))
+            {
                 ClearSelectedStashSelection();
+            }
 
             var previous = _selectedHistoryRow;
             _selectedHistoryRow = value;
