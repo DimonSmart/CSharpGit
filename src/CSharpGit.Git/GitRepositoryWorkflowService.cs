@@ -167,7 +167,7 @@ internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService
                     if (request.Paths!.Any(path => path.IsUntracked))
                         arguments.Add("--include-untracked");
 
-                    var pathspecEntries = request.Paths.Any(path =>
+                    var pathspecEntries = request.Paths!.Any(path =>
                             !string.IsNullOrWhiteSpace(path.OriginalPath))
                         ? await BuildRenameSafeSelectedPathspecAsync(
                             repository,
