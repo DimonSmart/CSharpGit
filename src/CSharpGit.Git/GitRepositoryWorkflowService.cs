@@ -167,15 +167,10 @@ internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService
                     if (request.Paths!.Any(path => path.IsUntracked))
                         arguments.Add("--include-untracked");
 
-                    var pathspecEntries = request.Paths!.Any(path =>
-                            !string.IsNullOrWhiteSpace(path.OriginalPath))
-                        ? await BuildRenameSafeSelectedPathspecAsync(
-                            repository,
-                            selectedPaths,
-                            cancellationToken)
-                        : selectedPaths
-                            .Select(path => $":(literal){path}")
-                            .ToArray();
+                    var pathspecEntries = await BuildCompactSelectedPathspecAsync(
+                        repository,
+                        selectedPaths,
+                        cancellationToken);
 
                     pathspecFile = await WritePathspecFileAsync(
                         pathspecEntries,
@@ -1408,11 +1403,15 @@ internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService
         return normalized;
     }
 
-    private async Task<IReadOnlyList<string>> BuildRenameSafeSelectedPathspecAsync(
+    private async Task<IReadOnlyList<string>> BuildCompactSelectedPathspecAsync(
         Repository repository,
         IReadOnlyList<string> selectedPaths,
         CancellationToken cancellationToken)
     {
+        var direct = selectedPaths
+            .Select(path => $":(literal){path}")
+            .ToArray();
+
         var statusOutput = await _runner.RunAsync(
             repository.WorkingDirectory,
             cancellationToken,
@@ -1425,12 +1424,14 @@ internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService
         var currentChanges = GitRepositoryStateService.ParseStatusV2(statusOutput).Changes;
         var selected = selectedPaths.ToHashSet(StringComparer.Ordinal);
 
-        // A staged rename removes the original path from the current index, so a positive
-        // literal pathspec for OriginalPath can be rejected by Git as not matching.
-        // Select everything and exclude every other changed logical path instead. This
-        // keeps both sides of the selected rename in one standard git stash push.
-        var entries = new List<string> { ":(top,glob)**" };
-        var seen = new HashSet<string>(StringComparer.Ordinal);
+        // Git stash accepts --pathspec-from-file, but internally it can still pass the
+        // parsed pathspec to child Git processes. On Windows a large direct selection
+        // can therefore hit the process command-line limit. Build the equivalent
+        // "everything except unselected changed paths" form and use whichever
+        // representation is smaller. The complement form also keeps both sides of a
+        // staged rename without passing an unmatched positive OriginalPath pathspec.
+        var complement = new List<string> { ":(top,glob)**" };
+        var excluded = new HashSet<string>(StringComparer.Ordinal);
         foreach (var change in currentChanges)
         {
             if (EnumerateChangePaths(change).Any(selected.Contains))
@@ -1439,13 +1440,18 @@ internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService
             foreach (var path in EnumerateChangePaths(change))
             {
                 var validated = ValidateRepositoryRelativePath(path);
-                if (seen.Add(validated))
-                    entries.Add($":(top,literal,exclude){validated}");
+                if (excluded.Add(validated))
+                    complement.Add($":(top,literal,exclude){validated}");
             }
         }
 
-        return entries;
+        return PathspecCost(complement) < PathspecCost(direct)
+            ? complement
+            : direct;
     }
+
+    private static long PathspecCost(IEnumerable<string> entries) =>
+        entries.Sum(entry => (long)Encoding.UTF8.GetByteCount(entry) + 1);
 
     private static IEnumerable<string> EnumerateChangePaths(WorkingTreeChange change)
     {
