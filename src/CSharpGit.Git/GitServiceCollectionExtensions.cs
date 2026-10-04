@@ -138,6 +138,10 @@ public static class GitServiceCollectionExtensions
         services.AddSingleton<IReferenceHistoryService>(provider =>
             provider.GetRequiredService<GitFileAwareHistoryService>());
 
+        services.AddSingleton<IStashService>(provider =>
+            new GitStashService(
+                provider.GetRequiredService<IHistoryService>()));
+
         return services;
     }
 }
