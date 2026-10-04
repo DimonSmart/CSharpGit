@@ -118,6 +118,13 @@ public sealed partial class OpenRepositoryViewModel
 
     private void OnSelectedHistoryRowChanged(HistoryRow? previous)
     {
+        if (SelectedStash is { } stash
+            && SelectedHistoryRow is { } current
+            && string.Equals(current.Commit.Hash, stash.Commit, StringComparison.Ordinal))
+        {
+            return;
+        }
+
         _selectedChangedFileRestoreKey =
             previous is not null &&
             SelectedHistoryRow is { } current &&

@@ -295,9 +295,12 @@ public sealed partial class MainPage : Page
         return Task.CompletedTask;
     }
 
-    private async Task NavigateToReferenceAsync(string commitHash)
+    private async Task NavigateToReferenceAsync(
+        string commitHash,
+        bool preserveSelectedStash = false)
     {
-        _viewModel.ClearSelectedStashSelection();
+        if (!preserveSelectedStash)
+            _viewModel.ClearSelectedStashSelection();
         _referenceHistoryCts?.Cancel();
         _activeReference = null;
         ShowReflogToggle.IsEnabled = true;
@@ -493,6 +496,7 @@ public sealed partial class MainPage : Page
                 break;
             case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:
                 await _viewModel.SelectStashAsync(stash);
+                await NavigateToReferenceAsync(stash.Commit, preserveSelectedStash: true);
                 UpdateStashPresentation();
                 break;
             case RepositoryTreeNodeKind.Group:

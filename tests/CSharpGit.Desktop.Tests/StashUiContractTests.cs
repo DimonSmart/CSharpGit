@@ -69,16 +69,20 @@ public sealed class StashUiContractTests
     }
 
     [Fact]
-    public void StashSelectionUsesStashPresentationInsteadOfReferenceNavigation()
+    public void StashSelectionPreservesStashPresentationAndNavigatesMatchingHistoryCommit()
     {
         var root = FindRepositoryRoot();
         var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
         var xaml = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
         var repositoryFiles = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs");
+        var viewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs");
+        var commitChanges = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.CommitChanges.cs");
 
-        var stashSelection = SliceCase(page, "case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:");
+        var stashSelection = SliceFirstCase(page, "case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:");
         Assert.Contains("await _viewModel.SelectStashAsync(stash)", stashSelection, StringComparison.Ordinal);
-        Assert.DoesNotContain("NavigateToReferenceAsync(stash.Commit)", stashSelection, StringComparison.Ordinal);
+        Assert.Contains("await NavigateToReferenceAsync(stash.Commit, preserveSelectedStash: true)", stashSelection, StringComparison.Ordinal);
+        Assert.Contains("!string.Equals(value.Commit.Hash, selectedStash.Commit, StringComparison.Ordinal)", viewModel, StringComparison.Ordinal);
+        Assert.Contains("string.Equals(current.Commit.Hash, stash.Commit, StringComparison.Ordinal)", commitChanges, StringComparison.Ordinal);
 
         Assert.Contains("Visibility=\"{Binding HasSelectedDetailsObject", xaml, StringComparison.Ordinal);
         Assert.Contains("Header=\"{Binding SelectedDetailsTitle}\"", xaml, StringComparison.Ordinal);
@@ -140,6 +144,15 @@ public sealed class StashUiContractTests
         var start = source.IndexOf("private async Task ShowCreateSelectedStashDialogAsync", StringComparison.Ordinal);
         var end = source.IndexOf("private async void DropSelectedStash_Click", start, StringComparison.Ordinal);
         Assert.True(start >= 0 && end > start);
+        return source[start..end];
+    }
+
+    private static string SliceFirstCase(string source, string marker)
+    {
+        var start = source.IndexOf(marker, StringComparison.Ordinal);
+        Assert.True(start >= 0);
+        var end = source.IndexOf("break;", start, StringComparison.Ordinal);
+        Assert.True(end > start);
         return source[start..end];
     }
 
