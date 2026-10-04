@@ -10,7 +10,7 @@ public sealed class RepositoryFilesUiContractTests
         var filesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs"));
         var changesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs"));
 
-        Assert.Contains("Header=\"Commit\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Header=\"{Binding SelectedDetailsTitle}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ChangesTab\" Header=\"Changes\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("x:Name=\"FilesTab\" Header=\"Changes\"", xaml, StringComparison.Ordinal);
         Assert.Contains("new PivotItem { Header = \"Files\", Name = \"FilesTab\" }", filesSurface, StringComparison.Ordinal);
