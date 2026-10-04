@@ -1413,11 +1413,19 @@ internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService
             builder.Append('\0');
         }
 
-        await File.WriteAllBytesAsync(
-            file,
-            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(builder.ToString()),
-            cancellationToken);
-        return file;
+        try
+        {
+            await File.WriteAllBytesAsync(
+                file,
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(builder.ToString()),
+                cancellationToken);
+            return file;
+        }
+        catch
+        {
+            DeleteTemporaryPathspecFile(file);
+            throw;
+        }
     }
 
     private static void DeleteTemporaryPathspecFile(string? path)

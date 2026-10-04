@@ -3,64 +3,69 @@ namespace CSharpGit.Desktop.Tests;
 public sealed class WorkingTreeContextMenuUiContractTests
 {
     [Fact]
-    public void WorkingTreeFileAndFolderRowsExposeContextActions()
+    public void FileRightClickPreservesExistingMultiSelection()
     {
         var root = FindRepositoryRoot();
-        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
-        var contextMenu = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs"));
+        var contextMenu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
 
-        Assert.Contains("RightTapped=\"UnstagedChangesTree_RightTapped\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("RightTapped=\"StagedChangesTree_RightTapped\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("ShowWorkingTreeContextMenu", contextMenu, StringComparison.Ordinal);
-        Assert.Contains("node.GetDescendantChanges()", contextMenu, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.CanStageChanges(changes)", contextMenu, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.CanUnstageChanges(changes)", contextMenu, StringComparison.Ordinal);
-        Assert.Contains("Could not stage folder", contextMenu, StringComparison.Ordinal);
-        Assert.Contains("Could not unstage folder", contextMenu, StringComparison.Ordinal);
-        Assert.Contains("selection.SelectSingle(node, roots)", contextMenu, StringComparison.Ordinal);
-        Assert.DoesNotContain("Create stash", contextMenu, StringComparison.Ordinal);
+        var selection = MethodBody(
+            contextMenu,
+            "private IReadOnlyList<WorkingTreeChange> SelectWorkingTreeContextTarget",
+            "private bool CanDiscardStagedFile");
+
+        Assert.Contains("if (!selection.IsSelected(node.Path))", selection, StringComparison.Ordinal);
+        Assert.Contains("selection.SelectSingle(node, roots)", selection, StringComparison.Ordinal);
+        Assert.Contains("selection.GetSelectedLeaves(roots)", selection, StringComparison.Ordinal);
+        Assert.Contains(".ToArray()", selection, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.SetWorkingTreeSelection(kind, snapshot)", selection, StringComparison.Ordinal);
+        Assert.Contains("return snapshot", selection, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FileContextActionsUseImmutableSelectionSnapshot()
+    {
+        var root = FindRepositoryRoot();
+        var contextMenu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
+
+        var fileMenu = MethodBody(
+            contextMenu,
+            "private void AddWorkingTreeFileContextMenuItems",
+            "private void AddWorkingTreeFolderContextMenuItems");
+
+        Assert.Contains("IReadOnlyList<WorkingTreeChange> changes", fileMenu, StringComparison.Ordinal);
+        Assert.Contains("var count = changes.Count", fileMenu, StringComparison.Ordinal);
+        Assert.Contains("\"Stage\"", fileMenu, StringComparison.Ordinal);
+        Assert.Contains("\"Unstage\"", fileMenu, StringComparison.Ordinal);
+        Assert.Contains("\"Stash selected…\"", fileMenu, StringComparison.Ordinal);
+        Assert.Contains("$\"Stash {count} files…\"", fileMenu, StringComparison.Ordinal);
+        Assert.Contains("$\"Discard {count} files…\"", fileMenu, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FolderContextMenuDoesNotGainStashFolderAction()
+    {
+        var root = FindRepositoryRoot();
+        var contextMenu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
 
         var folderMenu = MethodBody(
             contextMenu,
             "private void AddWorkingTreeFolderContextMenuItems",
-            "private void SelectWorkingTreeContextTarget");
-        Assert.Contains("\"Stage\"", folderMenu, StringComparison.Ordinal);
-        Assert.Contains("\"Unstage\"", folderMenu, StringComparison.Ordinal);
+            "private IReadOnlyList<WorkingTreeChange> SelectWorkingTreeContextTarget");
+
+        Assert.Contains("_viewModel.CanStageChanges(changes)", folderMenu, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.CanUnstageChanges(changes)", folderMenu, StringComparison.Ordinal);
+        Assert.DoesNotContain("Stash", folderMenu, StringComparison.Ordinal);
         Assert.DoesNotContain("Discard changes…", folderMenu, StringComparison.Ordinal);
-        Assert.DoesNotContain("StageSelectedCommand", folderMenu, StringComparison.Ordinal);
-        Assert.DoesNotContain("UnstageSelectedCommand", folderMenu, StringComparison.Ordinal);
-        Assert.DoesNotContain("SelectWorkingTreeContextTarget", folderMenu, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void FolderBatchWorkflowUsesExplicitChangesWithoutReplacingSelection()
+    public void StagedDiscardRemainsSingleFileAndExplicitlyDestructive()
     {
         var root = FindRepositoryRoot();
-        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
-        var contextMenu = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs"));
+        var contextMenu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
+        var viewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.Discard.cs");
 
-        Assert.Contains("internal bool CanStageChanges", viewModel, StringComparison.Ordinal);
-        Assert.Contains("internal bool CanUnstageChanges", viewModel, StringComparison.Ordinal);
-        Assert.Contains("_workingTreeService.StageFilesAsync(Repository!, snapshot)", viewModel, StringComparison.Ordinal);
-        Assert.Contains("_workingTreeService.UnstageFilesAsync(Repository!, snapshot)", viewModel, StringComparison.Ordinal);
-        Assert.Contains("await StageChangesAsync(changes, \"Could not stage selected files\")", viewModel, StringComparison.Ordinal);
-        Assert.Contains("await UnstageChangesAsync(changes, \"Could not unstage selected files\")", viewModel, StringComparison.Ordinal);
-
-        var folderBranch = MethodBody(
-            contextMenu,
-            "private void AddWorkingTreeFolderContextMenuItems",
-            "private void SelectWorkingTreeContextTarget");
-        Assert.DoesNotContain("SetWorkingTreeSelection", folderBranch, StringComparison.Ordinal);
-        Assert.DoesNotContain("SelectWorkingTreeChange", folderBranch, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void StagedDiscardIsExplicitAndDestructive()
-    {
-        var root = FindRepositoryRoot();
-        var contextMenu = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs"));
-        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.Discard.cs"));
-
+        Assert.Contains("if (count == 1)", contextMenu, StringComparison.Ordinal);
         Assert.Contains("ConfirmDiscardStagedFileAsync", contextMenu, StringComparison.Ordinal);
         Assert.Contains("This file also has unstaged changes", contextMenu, StringComparison.Ordinal);
         Assert.Contains("PrimaryButtonText = \"Discard\"", contextMenu, StringComparison.Ordinal);
@@ -76,6 +81,9 @@ public sealed class WorkingTreeContextMenuUiContractTests
         return source[start..end];
     }
 
+    private static string Read(string root, params string[] parts) =>
+        File.ReadAllText(Path.Combine([root, .. parts]));
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
@@ -84,6 +92,7 @@ public sealed class WorkingTreeContextMenuUiContractTests
             if (File.Exists(Path.Combine(directory.FullName, "CSharpGit.slnx"))) return directory.FullName;
             directory = directory.Parent;
         }
+
         throw new DirectoryNotFoundException("Could not locate CSharpGit repository root.");
     }
 }
