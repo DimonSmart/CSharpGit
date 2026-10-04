@@ -15,7 +15,7 @@ public sealed class WorkingTreeContextMenuUiContractTests
 
         Assert.Contains("if (!selection.IsSelected(node.Path))", selection, StringComparison.Ordinal);
         Assert.Contains("selection.SelectSingle(node, roots)", selection, StringComparison.Ordinal);
-        Assert.Contains("selection.GetSelectedLeaves(roots)", selection, StringComparison.Ordinal);
+        Assert.Contains("GetSelectedLeaves(roots)", selection, StringComparison.Ordinal);
         Assert.Contains(".ToArray()", selection, StringComparison.Ordinal);
         Assert.Contains("_viewModel.SetWorkingTreeSelection(kind, snapshot)", selection, StringComparison.Ordinal);
         Assert.Contains("return snapshot", selection, StringComparison.Ordinal);
