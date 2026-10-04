@@ -3,17 +3,17 @@ namespace CSharpGit.Desktop.Tests;
 public sealed class RepositoryMaintenanceUiContractTests
 {
     [Fact]
-    public void MainMenuExposesOptimizationBetweenMoreOperationsAndSettings()
+    public void MainMenuExposesOptimizationBeforeSettingsWithoutLegacyOperations()
     {
         var source = ReadSource("src/CSharpGit.Presentation/MainPage.xaml");
 
-        var moreOperations = source.IndexOf("More Git operations…", StringComparison.Ordinal);
         var optimize = source.IndexOf("Optimize repository…", StringComparison.Ordinal);
         var settings = source.IndexOf("Settings…", optimize, StringComparison.Ordinal);
+        var legacyMenu = "More Git " + "operations…";
 
-        Assert.True(moreOperations >= 0);
-        Assert.True(optimize > moreOperations);
+        Assert.True(optimize >= 0);
         Assert.True(settings > optimize);
+        Assert.DoesNotContain(legacyMenu, source, StringComparison.Ordinal);
     }
 
     [Fact]

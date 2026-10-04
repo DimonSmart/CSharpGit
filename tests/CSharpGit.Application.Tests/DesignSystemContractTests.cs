@@ -194,24 +194,10 @@ public sealed class DesignSystemContractTests
     }
 
     [Fact]
-    public void GitOperationsAndSettingsGitToolsUseSharedCompactControlRoles()
+    public void SettingsGitToolsUseSharedCompactControlRoles()
     {
         var root = FindRepositoryRoot();
-        var main = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
         var settings = Read(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml");
-
-        var gitOperations = Slice(main,
-            "<ContentDialog x:Key=\"GitOperationsDialog\"",
-            "</ContentDialog>");
-        Assert.Contains("BodyStrongTextStyle", gitOperations);
-        Assert.True(Count(gitOperations, "CompactButtonStyle") >= 2);
-        Assert.True(Count(gitOperations, "CompactTextBoxStyle") >= 2);
-        Assert.True(Count(gitOperations, "CompactComboBoxStyle") >= 1);
-        Assert.Contains("CompactCheckBoxStyle", gitOperations);
-        Assert.DoesNotContain("InteractiveRebasePlanList", gitOperations);
-        Assert.DoesNotContain("FontWeight=\"SemiBold\"", gitOperations);
-        Assert.DoesNotContain("Spacing=\"12\"", gitOperations);
-        Assert.DoesNotContain("ColumnSpacing=\"8\"", gitOperations);
 
         var gitTools = Slice(settings,
             "<ScrollViewer x:Name=\"GitToolsSettingsPanel\"",

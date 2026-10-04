@@ -13,7 +13,7 @@ public sealed class AboutUpdateUiContractTests
         Assert.Contains("StartScreenOverflowButton", xaml);
         Assert.Contains("ConverterParameter=Invert", xaml);
         Assert.Contains("Settings…", xaml);
-        Assert.Contains("More Git operations…", xaml);
+        Assert.DoesNotContain("More Git " + "operations…", xaml, StringComparison.Ordinal);
 
         var separatorIndex = xaml.IndexOf("<MenuFlyoutSeparator />", StringComparison.Ordinal);
         var settingsIndex = xaml.IndexOf("Text=\"Settings…\"", separatorIndex, StringComparison.Ordinal);
