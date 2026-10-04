@@ -87,7 +87,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         IGitToolsService gitToolsService,
         IAppSettingsService settings,
         IUiDispatcher uiDispatcher,
-        ILogger<OpenRepositoryViewModel> logger)
+        ILogger<OpenRepositoryViewModel> logger,
+        IStashService? stashService = null)
     {
         _selectedScope = Scopes[0];
         _folderPicker = folderPicker;
@@ -98,6 +99,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         _referenceService = referenceService;
         _syncService = syncService;
         _workflowService = workflowService;
+        _stashService = stashService;
         _gitToolsService = gitToolsService;
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
@@ -133,8 +135,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         FetchAllCommand = new AsyncCommand(() => MutateAsync(() => _syncService.FetchAllAsync(Repository!)), CanMutate);
         PullCommand = new AsyncCommand(() => MutateAsync(() => _syncService.PullAsync(Repository!)), CanMutate);
         PushCommand = new AsyncCommand(() => MutateAsync(() => _syncService.PushAsync(Repository!)), CanMutate);
-        ApplyStashCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.ApplyStashAsync(Repository!, SelectedStash!.Name)), () => CanMutate() && SelectedStash is not null);
-        PopStashCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.PopStashAsync(Repository!, SelectedStash!.Name)), () => CanMutate() && SelectedStash is not null);
+        ApplyStashCommand = new AsyncCommand(ApplySelectedStashAsync, () => CanMutateSelectedStash);
+        PopStashCommand = new AsyncCommand(PopSelectedStashAsync, () => CanMutateSelectedStash);
+        DropStashCommand = new AsyncCommand(DropSelectedStashAsync, () => CanMutateSelectedStash);
         MergeCommand = new AsyncCommand(MergeAsync, () => CanMutate() && SelectedMergeBranch is { IsCurrent: false });
         ContinueRebaseCommand = new AsyncCommand(ContinueRebaseAsync, () => CanMutate() && CurrentOperation == RepositoryOperation.Rebase);
         AbortRebaseCommand = new AsyncCommand(() => MutateAsync(() => _workflowService.AbortRebaseAsync(Repository!)), () => CanMutate() && CurrentOperation == RepositoryOperation.Rebase);
@@ -223,6 +226,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public ICommand PushCommand { get; }
     public ICommand ApplyStashCommand { get; }
     public ICommand PopStashCommand { get; }
+    public ICommand DropStashCommand { get; }
     public ICommand MergeCommand { get; }
     public ICommand ContinueRebaseCommand { get; }
     public ICommand AbortRebaseCommand { get; }
@@ -268,6 +272,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             Notify(nameof(HasRepository));
             Notify(nameof(RepositoryKind));
             Notify(nameof(CanCreateStash));
+            Notify(nameof(HasSelectedDetailsObject));
+            Notify(nameof(SelectedObjectCommit));
             Notify(nameof(CanForcePushWithLease));
             Notify(nameof(CanPushTo));
             ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged();
@@ -289,10 +295,17 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         set
         {
             if (ReferenceEquals(_selectedHistoryRow, value)) return;
+            if (value is not null && SelectedStash is not null)
+                ClearSelectedStashSelection();
+
             var previous = _selectedHistoryRow;
             _selectedHistoryRow = value;
             Notify();
             Notify(nameof(HasSelectedCommit));
+            Notify(nameof(HasSelectedDetailsObject));
+            Notify(nameof(SelectedObjectCommit));
+            Notify(nameof(SelectedDetailsTitle));
+            Notify(nameof(SelectedDiffCommitHash));
             OnSelectedHistoryRowChanged(previous);
         }
     }
@@ -351,7 +364,25 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public string? CurrentBranchName => _currentBranchName;
     public string? CurrentHeadCommit => _currentHeadCommit;
     public bool IsDetachedHead => _isDetachedHead;
-    public GitStash? SelectedStash { get => _selectedStash; set { _selectedStash = value; Notify(); RaiseCommands(); } }
+    public GitStash? SelectedStash
+    {
+        get => _selectedStash;
+        set
+        {
+            if (ReferenceEquals(_selectedStash, value)) return;
+            _selectedStash = value;
+            Notify();
+            Notify(nameof(HasSelectedStash));
+            Notify(nameof(HasSelectedDetailsObject));
+            Notify(nameof(SelectedObjectCommit));
+            Notify(nameof(SelectedDetailsTitle));
+            Notify(nameof(SelectedStashDisplay));
+            Notify(nameof(SelectedStashHashDisplay));
+            Notify(nameof(CanMutateSelectedStash));
+            Notify(nameof(SelectedDiffCommitHash));
+            RaiseCommands();
+        }
+    }
     public GitBranch? SelectedMergeBranch { get => _selectedMergeBranch; set { _selectedMergeBranch = value; Notify(); RaiseCommands(); } }
     public string OperationDisplay { get => _operationDisplay; private set { _operationDisplay = value; Notify(); } }
     public string RebaseOnto => _rebaseOnto;
@@ -395,11 +426,11 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     internal Task<bool> RunMutationAsync(Func<Task> mutation, string? errorContext = null, bool includeHistory = true) =>
         MutateAsync(mutation, errorContext, includeHistory: includeHistory);
 
-    public async Task CreateStashAsync(string? message)
-    {
-        if (!CanCreateStash) return;
-        await MutateAsync(() => _workflowService.CreateStashAsync(Repository!, message));
-    }
+    public Task CreateStashAsync(string? message) =>
+        CreateStashAsync(
+            new CreateStashRequest(
+                message,
+                StashScope.AllTrackedChanges));
 
     internal void SetWorkingTreeSelection(WorkingTreeDiffKind kind, IEnumerable<WorkingTreeChange> changes)
     {
@@ -726,10 +757,17 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             Replace(Remotes, state.Refs.Remotes);
             Notify(nameof(CanPushTo));
             Replace(Tags, state.Refs.Tags);
+            var selectedStashCommit = SelectedStash?.Commit;
+            var selectedStashIndex = SelectedStash is null
+                ? -1
+                : Stashes.ToList().FindIndex(stash =>
+                    string.Equals(stash.Commit, SelectedStash.Commit, StringComparison.Ordinal));
             Replace(Stashes, state.Stashes);
+            await RestoreSelectedStashAfterRefreshAsync(
+                selectedStashCommit,
+                selectedStashIndex);
             SelectedLocalBranch = LocalBranches.FirstOrDefault(branch => branch.IsCurrent) ?? LocalBranches.FirstOrDefault();
             SelectedMergeBranch = LocalBranches.FirstOrDefault(branch => !branch.IsCurrent);
-            SelectedStash = Stashes.FirstOrDefault();
             OperationDisplay = state.Operation == RepositoryOperation.None ? "No operation in progress" : $"Operation in progress: {state.Operation}";
             CurrentOperation = state.Operation;
             OperationState = state.CurrentOperation;
@@ -954,7 +992,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     private void RaiseCommands()
     {
-        foreach (var command in new[] { RefreshAllCommand, StageCommand, UnstageCommand, StageSelectedCommand, StageAllCommand, UnstageSelectedCommand, UnstageAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, SwitchBranchCommand, DeleteBranchCommand, CheckoutRemoteCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, ApplyStashCommand, PopStashCommand, MergeCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
+        foreach (var command in new[] { RefreshAllCommand, StageCommand, UnstageCommand, StageSelectedCommand, StageAllCommand, UnstageSelectedCommand, UnstageAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, SwitchBranchCommand, DeleteBranchCommand, CheckoutRemoteCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, ApplyStashCommand, PopStashCommand, DropStashCommand, MergeCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
     }
 
     private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values)
@@ -1024,14 +1062,19 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                     ? History.FirstOrDefault()
                     : History.FirstOrDefault(row => string.Equals(row.Commit.Hash, selectedHash, StringComparison.Ordinal))
                       ?? History.FirstOrDefault();
-                SelectedHistoryRow = restored;
-                if (restored is null)
+                if (SelectedStash is null)
                 {
-                    SelectedFile = null;
-                    SelectedDiff = null;
+                    SelectedHistoryRow = restored;
+                    if (restored is null)
+                    {
+                        SelectedFile = null;
+                        SelectedDiff = null;
+                    }
                 }
             }
-            else if (SelectedHistoryRow is null && History.FirstOrDefault() is { } first)
+            else if (SelectedStash is null
+                     && SelectedHistoryRow is null
+                     && History.FirstOrDefault() is { } first)
             {
                 SelectedHistoryRow = first;
             }

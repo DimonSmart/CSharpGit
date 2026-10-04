@@ -15,6 +15,7 @@ public sealed partial class MainPage
         Image,
         OtherBinary,
         NoTextualPatch,
+        NoNetStashDiff,
         DeltaMissing,
         Unavailable,
         Error
@@ -30,6 +31,7 @@ public sealed partial class MainPage
                 or DiffPresentationState.Image
                 or DiffPresentationState.OtherBinary
                 or DiffPresentationState.NoTextualPatch
+                or DiffPresentationState.NoNetStashDiff
                 or DiffPresentationState.Unavailable
                 or DiffPresentationState.Error
                 ? Visibility.Visible
@@ -45,6 +47,7 @@ public sealed partial class MainPage
             state is DiffPresentationState.NothingSelected
                 or DiffPresentationState.OtherBinary
                 or DiffPresentationState.NoTextualPatch
+                or DiffPresentationState.NoNetStashDiff
                 or DiffPresentationState.Unavailable
                 or DiffPresentationState.Error
                 ? Visibility.Visible
@@ -105,6 +108,11 @@ public sealed partial class MainPage
                     "Git reports this file as changed, but there is no textual patch to display. " +
                     "This may be caused by normalization, Git attributes, filters, metadata-only changes, " +
                     "or another change that is not represented as a normal text hunk.";
+                break;
+            case DiffPresentationState.NoNetStashDiff:
+                infoBar.Title = "No net working-tree diff";
+                infoBar.Message =
+                    "The staged and unstaged changes for this file cancel each other in the combined stash content.";
                 break;
             case DiffPresentationState.Unavailable:
                 infoBar.Title = "Preview unavailable";

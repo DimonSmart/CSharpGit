@@ -148,6 +148,11 @@ public sealed partial class MainPage : Page
         {
             _ = RefreshCommitFilesAsync();
         }
+        else if (eventArgs.PropertyName is nameof(OpenRepositoryViewModel.SelectedStash)
+                 or nameof(OpenRepositoryViewModel.SelectedStashDetails))
+        {
+            UpdateStashPresentation();
+        }
         else if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.SelectedHistoryRow) && _activeReference is not null)
         {
             var selectedHash = _viewModel.SelectedHistoryRow?.Commit.Hash;
@@ -281,7 +286,9 @@ public sealed partial class MainPage : Page
         ChangesTab.Header = files.Count == 0 ? "Changes" : $"Changes ({files.Count})";
 
         foreach (var file in files)
-            _commitFiles.Add(new CommitFileRow(file.Status, file));
+            _commitFiles.Add(new CommitFileRow(
+                _viewModel.GetChangedFileDisplayStatus(file),
+                file));
 
         var selected = _commitFiles.FirstOrDefault(row => ReferenceEquals(row.File, _viewModel.SelectedFile)) ?? _commitFiles.FirstOrDefault();
         CommitFilesList.SelectedItem = selected;
@@ -290,6 +297,7 @@ public sealed partial class MainPage : Page
 
     private async Task NavigateToReferenceAsync(string commitHash)
     {
+        _viewModel.ClearSelectedStashSelection();
         _referenceHistoryCts?.Cancel();
         _activeReference = null;
         ShowReflogToggle.IsEnabled = true;
@@ -369,9 +377,12 @@ public sealed partial class MainPage : Page
                     : _scopedHistory.FirstOrDefault(row => string.Equals(row.Commit.Hash, selectedHash, StringComparison.Ordinal))
                       ?? _scopedHistory.FirstOrDefault();
                 HistoryRenderDiagnostics.CommitLookupCompleted(lookupStartedAt, _scopedHistory.Count);
-                _viewModel.SelectedHistoryRow = restored;
+                if (_viewModel.SelectedStash is null)
+                    _viewModel.SelectedHistoryRow = restored;
             }
-            else if (_viewModel.SelectedHistoryRow is null && _scopedHistory.FirstOrDefault() is { } first)
+            else if (_viewModel.SelectedStash is null
+                     && _viewModel.SelectedHistoryRow is null
+                     && _scopedHistory.FirstOrDefault() is { } first)
             {
                 _viewModel.SelectedHistoryRow = first;
             }
@@ -412,6 +423,7 @@ public sealed partial class MainPage : Page
 
     private void ShowAllHistory()
     {
+        _viewModel.ClearSelectedStashSelection();
         var selectedHash = _viewModel.SelectedHistoryRow?.Commit.Hash;
         _referenceHistoryCts?.Cancel();
         _activeReference = null;
@@ -480,8 +492,8 @@ public sealed partial class MainPage : Page
                 await NavigateToReferenceAsync(tag.TargetCommit);
                 break;
             case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:
-                _viewModel.SelectedStash = stash;
-                await NavigateToReferenceAsync(stash.Commit);
+                await _viewModel.SelectStashAsync(stash);
+                UpdateStashPresentation();
                 break;
             case RepositoryTreeNodeKind.Group:
                 ShowAllHistory();
@@ -566,19 +578,25 @@ public sealed partial class MainPage : Page
 
             case RepositoryTreeNodeKind.Group
                 when string.Equals(node.Key, RepositoryTreeDescriptorBuilder.StashesRootKey, StringComparison.Ordinal):
-                AddMenuItem(flyout, "Create stash…", _viewModel.CanCreateStash, ShowCreateStashDialogAsync);
+                AddMenuItem(flyout, "Stash…", _viewModel.CanCreateStash, ShowCreateStashDialogAsync);
                 break;
 
             case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:
-                AddMenuItem(flyout, "Apply", !_viewModel.IsBusy, async () =>
+                AddMenuItem(flyout, "Apply", _viewModel.CanMutateStash(stash), async () =>
                 {
-                    _viewModel.SelectedStash = stash;
+                    await _viewModel.SelectStashAsync(stash);
                     await ExecuteCommandAsync(_viewModel.ApplyStashCommand);
                 });
-                AddMenuItem(flyout, "Pop", !_viewModel.IsBusy, async () =>
+                AddMenuItem(flyout, "Pop", _viewModel.CanMutateStash(stash), async () =>
                 {
-                    _viewModel.SelectedStash = stash;
+                    await _viewModel.SelectStashAsync(stash);
                     await ExecuteCommandAsync(_viewModel.PopStashCommand);
+                });
+                flyout.Items.Add(new MenuFlyoutSeparator());
+                AddMenuItem(flyout, "Drop…", _viewModel.CanMutateStash(stash), async () =>
+                {
+                    await _viewModel.SelectStashAsync(stash);
+                    await ConfirmDropStashAsync(stash);
                 });
                 break;
         }
@@ -586,6 +604,14 @@ public sealed partial class MainPage : Page
         if (flyout.Items.Count == 0) return;
         flyout.ShowAt(source, args.GetPosition(source));
         args.Handled = true;
+    }
+
+    private void UpdateStashPresentation()
+    {
+        if (_repositoryFilesTab is not null)
+            _repositoryFilesTab.Header = _viewModel.HasSelectedStash
+                ? "Tracked files"
+                : "Files";
     }
 
     private static RepositoryTreeNode? ResolveNode(object? value) => value switch
