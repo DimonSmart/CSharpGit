@@ -72,7 +72,7 @@ public sealed class ImageDiffUiContractTests
 
         Assert.Contains("_commitImageDiffGeneration", lifecycle);
         Assert.Contains("IsCurrentCommitImageDiffRequest", lifecycle);
-        Assert.Contains("SelectedHistoryRow?.Commit.Hash", lifecycle);
+        Assert.Contains("SelectedDiffCommitHash", lifecycle);
         Assert.Contains("SelectedFile?.Path", lifecycle);
         Assert.Contains("_workingTreeDiffGeneration", workingTree);
         Assert.Contains("IsCurrentWorkingTreeDiffRequest", workingTree);
