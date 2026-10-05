@@ -213,6 +213,8 @@
                                 Click="CloseRepository_Click"
                                 IsEnabled="{Binding CanChangeRepository}" />
                 <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Repository settings…"
+                                Click="RepositorySettings_Click" />
                 <MenuFlyoutItem x:Name="OptimizeRepositoryMenuItem"
                                 Text="Optimize repository…"
                                 Click="OptimizeRepository_Click"

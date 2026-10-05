@@ -23,6 +23,12 @@
           </ListViewItem>
           <ListViewItem Style="{StaticResource FormNavigationItemStyle}">
             <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.L}">
+              <FontIcon Glyph="&#xE77B;" FontSize="{StaticResource Icon.Normal}" />
+              <TextBlock Text="Identity" Style="{StaticResource BodyTextStyle}" VerticalAlignment="Center" />
+            </StackPanel>
+          </ListViewItem>
+          <ListViewItem Style="{StaticResource FormNavigationItemStyle}">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.L}">
               <FontIcon Glyph="&#xE943;" FontSize="{StaticResource Icon.Normal}" />
               <TextBlock Text="Git Tools" Style="{StaticResource BodyTextStyle}" VerticalAlignment="Center" />
             </StackPanel>
@@ -169,6 +175,147 @@
                 </DataTemplate>
               </ListView.ItemTemplate>
             </ListView>
+          </StackPanel>
+        </ScrollViewer>
+
+        <ScrollViewer x:Name="IdentitySettingsPanel"
+                      Visibility="Collapsed"
+                      VerticalScrollBarVisibility="Auto">
+          <StackPanel Padding="{StaticResource Padding.Page}"
+                      Spacing="{StaticResource Spacing.XL}"
+                      MaxWidth="760"
+                      HorizontalAlignment="Left">
+            <TextBlock Text="Identity" Style="{StaticResource TitleTextStyle}" />
+
+            <TextBlock Text="Repository"
+                       Style="{StaticResource SectionHeaderTextStyle}"
+                       Margin="{StaticResource Margin.Section}" />
+            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
+              <StackPanel Spacing="{StaticResource Spacing.M}">
+                <TextBlock Text="Open a repository to configure its Git identity."
+                           Style="{StaticResource SecondaryTextStyle}"
+                           Visibility="{Binding HasNoRepository, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <StackPanel Spacing="{StaticResource Spacing.S}"
+                            Visibility="{Binding HasRepository, Converter={StaticResource BooleanToVisibilityConverter}}">
+                  <TextBlock Text="{Binding RepositoryName}" Style="{StaticResource BodyStrongTextStyle}" />
+                  <TextBlock Text="{Binding RepositoryPath}"
+                             Style="{StaticResource TechnicalTextStyle}"
+                             IsTextSelectionEnabled="True"
+                             TextWrapping="Wrap" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <TextBlock Text="Commit identity"
+                       Style="{StaticResource SectionHeaderTextStyle}"
+                       Margin="{StaticResource Margin.Section}" />
+            <TextBlock Text="Base Git identity for commits in this repository."
+                       Style="{StaticResource BodySubduedTextStyle}"
+                       TextWrapping="Wrap"
+                       MaxWidth="680" />
+
+            <Border Style="{StaticResource FormCardStyle}"
+                    MaxWidth="680"
+                    Visibility="{Binding IsStale, Converter={StaticResource BooleanToVisibilityConverter}}">
+              <StackPanel Spacing="{StaticResource Spacing.M}">
+                <TextBlock Text="{Binding StaleWarning}"
+                           Style="{StaticResource SecondaryTextStyle}"
+                           TextWrapping="Wrap" />
+                <Button Content="Discard changes and reload"
+                        Click="IdentityReload_Click"
+                        Style="{StaticResource CompactButtonStyle}"
+                        HorizontalAlignment="Left" />
+              </StackPanel>
+            </Border>
+
+            <TextBlock Text="{Binding RepositoryReloadNotice}"
+                       Style="{StaticResource SecondaryTextStyle}"
+                       TextWrapping="Wrap"
+                       MaxWidth="680"
+                       Visibility="{Binding HasRepositoryReloadNotice, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+            <TextBlock Text="{Binding HigherPriorityWarning}"
+                       Style="{StaticResource SecondaryTextStyle}"
+                       TextWrapping="Wrap"
+                       MaxWidth="680"
+                       Visibility="{Binding HasHigherPriorityWarning, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
+              <StackPanel Spacing="{StaticResource Spacing.M}">
+                <TextBlock Text="Name" Style="{StaticResource BodyStrongTextStyle}" />
+                <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="{StaticResource Spacing.S}">
+                  <TextBlock Text="Effective" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Column="1" Text="{Binding NameEffectiveDisplay}" Style="{StaticResource TechnicalTextStyle}" TextWrapping="Wrap" />
+                  <TextBlock Grid.Row="1" Text="Source" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding NameSourceDisplay}" Style="{StaticResource BodyTextStyle}" />
+                  <TextBlock Grid.Row="2" Text="Origin" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding NameOriginDisplay}" Style="{StaticResource TechnicalTextStyle}" TextWrapping="Wrap" />
+                </Grid>
+                <TextBox Header="Name"
+                         Text="{Binding NameText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         PlaceholderText="{Binding NamePlaceholder}"
+                         IsEnabled="{Binding CanEdit}"
+                         Style="{StaticResource CompactTextBoxStyle}" />
+                <TextBlock Text="{Binding NameValidationMessage}"
+                           Style="{StaticResource SecondaryTextStyle}"
+                           TextWrapping="Wrap"
+                           Visibility="{Binding HasNameValidationError, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.M}">
+                  <TextBlock Text="{Binding NameOverrideDisplay}"
+                             Style="{StaticResource SecondaryTextStyle}"
+                             VerticalAlignment="Center" />
+                  <Button Grid.Column="1"
+                          Content="Remove override"
+                          IsEnabled="{Binding CanRemoveNameOverride}"
+                          Click="IdentityNameRemove_Click"
+                          Style="{StaticResource CompactButtonStyle}" />
+                </Grid>
+              </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
+              <StackPanel Spacing="{StaticResource Spacing.M}">
+                <TextBlock Text="Email" Style="{StaticResource BodyStrongTextStyle}" />
+                <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="{StaticResource Spacing.S}">
+                  <TextBlock Text="Effective" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Column="1" Text="{Binding EmailEffectiveDisplay}" Style="{StaticResource TechnicalTextStyle}" TextWrapping="Wrap" />
+                  <TextBlock Grid.Row="1" Text="Source" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding EmailSourceDisplay}" Style="{StaticResource BodyTextStyle}" />
+                  <TextBlock Grid.Row="2" Text="Origin" Style="{StaticResource SecondaryTextStyle}" />
+                  <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding EmailOriginDisplay}" Style="{StaticResource TechnicalTextStyle}" TextWrapping="Wrap" />
+                </Grid>
+                <TextBox Header="Email"
+                         Text="{Binding EmailText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         PlaceholderText="{Binding EmailPlaceholder}"
+                         IsEnabled="{Binding CanEdit}"
+                         Style="{StaticResource CompactTextBoxStyle}" />
+                <TextBlock Text="{Binding EmailValidationMessage}"
+                           Style="{StaticResource SecondaryTextStyle}"
+                           TextWrapping="Wrap"
+                           Visibility="{Binding HasEmailValidationError, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.M}">
+                  <TextBlock Text="{Binding EmailOverrideDisplay}"
+                             Style="{StaticResource SecondaryTextStyle}"
+                             VerticalAlignment="Center" />
+                  <Button Grid.Column="1"
+                          Content="Remove override"
+                          IsEnabled="{Binding CanRemoveEmailOverride}"
+                          Click="IdentityEmailRemove_Click"
+                          Style="{StaticResource CompactButtonStyle}" />
+                </Grid>
+              </StackPanel>
+            </Border>
+
+            <TextBlock Text="This value is not explicitly configured in Git when Effective shows Not configured."
+                       Style="{StaticResource SecondaryTextStyle}"
+                       TextWrapping="Wrap"
+                       MaxWidth="680" />
+
+            <Button Content="Save for this repository"
+                    IsEnabled="{Binding CanSave}"
+                    Click="IdentitySave_Click"
+                    Style="{StaticResource CompactButtonStyle}"
+                    HorizontalAlignment="Left" />
           </StackPanel>
         </ScrollViewer>
 

@@ -9,6 +9,9 @@ public sealed partial class MainPage
     private void Settings_Click(object sender, RoutedEventArgs e) =>
         OpenSettingsWindow(SettingsSection.General);
 
+    private void RepositorySettings_Click(object sender, RoutedEventArgs e) =>
+        OpenSettingsWindow(SettingsSection.Identity);
+
     private void OpenSettingsWindow(SettingsSection section = SettingsSection.General) =>
         _settingsWindowController.Show(section, () => _viewModel.Repository);
 }
