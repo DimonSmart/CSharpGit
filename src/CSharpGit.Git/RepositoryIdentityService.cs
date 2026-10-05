@@ -37,10 +37,10 @@ internal sealed class RepositoryIdentityService : IRepositoryIdentityService
         ArgumentNullException.ThrowIfNull(edit);
 
         if (edit.UpdateName)
-            await SaveValueAsync(repository, NameKey, NormalizeName(edit.Name), cancellationToken);
+            await SaveValueAsync(repository, NameKey, GitIdentityValidation.NormalizeOptionalName(edit.Name), cancellationToken);
 
         if (edit.UpdateEmail)
-            await SaveValueAsync(repository, EmailKey, NormalizeEmail(edit.Email), cancellationToken);
+            await SaveValueAsync(repository, EmailKey, GitIdentityValidation.NormalizeOptionalEmail(edit.Email), cancellationToken);
     }
 
     public Task RemoveOverrideAsync(
@@ -92,39 +92,4 @@ internal sealed class RepositoryIdentityService : IRepositoryIdentityService
             direct?.Value,
             direct is not null);
 
-    private static string? NormalizeName(string? value)
-    {
-        var normalized = NormalizeOptional(value);
-        if (normalized is null) return null;
-        EnsureSingleLine(normalized, "Name");
-        return normalized;
-    }
-
-    private static string? NormalizeEmail(string? value)
-    {
-        var normalized = NormalizeOptional(value);
-        if (normalized is null) return null;
-        EnsureSingleLine(normalized, "Email");
-
-        if (normalized.Any(char.IsWhiteSpace))
-            throw new ArgumentException("Email cannot contain whitespace.", nameof(value));
-
-        var at = normalized.IndexOf('@');
-        if (at <= 0 || at != normalized.LastIndexOf('@') || at == normalized.Length - 1)
-            throw new ArgumentException("Enter an email with non-empty parts before and after @.", nameof(value));
-
-        return normalized;
-    }
-
-    private static string? NormalizeOptional(string? value)
-    {
-        var normalized = value?.Trim();
-        return string.IsNullOrEmpty(normalized) ? null : normalized;
-    }
-
-    private static void EnsureSingleLine(string value, string field)
-    {
-        if (value.IndexOfAny(['\r', '\n', '\0']) >= 0)
-            throw new ArgumentException($"{field} must be a single-line value.");
-    }
 }
