@@ -7,6 +7,8 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
 {
     internal const string BeginMarker = "# CSharpGit: change-author begin";
     internal const string EndMarker = "# CSharpGit: change-author end";
+    private const string AmendPrefix =
+        "git commit --amend --no-edit --no-verify --no-gpg-sign ";
 
     public InteractiveRebaseAuthorChangeAnalysis Analyze(
         string todoText,
@@ -26,8 +28,6 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var authorName = GitIdentityValidation.NormalizeRequiredAuthorName(request.AuthorName);
-        var authorEmail = GitIdentityValidation.NormalizeRequiredAuthorEmail(request.AuthorEmail);
         var state = Scan(request.TodoText, request.SelectionStart, request.SelectionLength);
 
         var applyAll = request.Scope switch
@@ -54,7 +54,12 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
             changedCount++;
         }
 
-        var command = BuildExecCommand(authorName, authorEmail, request.ResetAuthorDate);
+        var command = request.ResetToCurrentGitIdentity
+            ? BuildResetExecCommand(request.ResetAuthorDate)
+            : BuildExplicitExecCommand(
+                GitIdentityValidation.NormalizeRequiredAuthorName(request.AuthorName),
+                GitIdentityValidation.NormalizeRequiredAuthorEmail(request.AuthorEmail),
+                request.ResetAuthorDate);
         var defaultNewline = state.Lines
             .Select(line => line.Terminator)
             .FirstOrDefault(value => value.Length > 0)
@@ -272,13 +277,23 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
     private static bool IsGeneratedExecLine(string value)
     {
         var trimmed = value.TrimStart();
-        const string longPrefix =
-            "exec git commit --amend --no-edit --no-verify --no-gpg-sign --author ";
-        const string shortPrefix =
-            "x git commit --amend --no-edit --no-verify --no-gpg-sign --author ";
+        return IsGeneratedExecLine(trimmed, "exec ")
+               || IsGeneratedExecLine(trimmed, "x ");
+    }
 
-        return trimmed.StartsWith(longPrefix, StringComparison.Ordinal)
-               || trimmed.StartsWith(shortPrefix, StringComparison.Ordinal);
+    private static bool IsGeneratedExecLine(string value, string todoCommandPrefix)
+    {
+        var prefix = todoCommandPrefix + AmendPrefix;
+        if (!value.StartsWith(prefix, StringComparison.Ordinal))
+            return false;
+
+        var options = value[prefix.Length..];
+        return options.StartsWith("--author ", StringComparison.Ordinal)
+               || string.Equals(options, "--reset-author", StringComparison.Ordinal)
+               || string.Equals(
+                   options,
+                   "--reset-author --date=\"$(git show -s --format=%aI HEAD)\"",
+                   StringComparison.Ordinal);
     }
 
     private static void AppendLineAndGeneratedBlock(
@@ -300,18 +315,27 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
         builder.Append(finalTerminator);
     }
 
-    private static string BuildExecCommand(
+    private static string BuildExplicitExecCommand(
         string authorName,
         string authorEmail,
         bool resetAuthorDate)
     {
         var author = $"{authorName} <{authorEmail}>";
         var command =
-            "exec git commit --amend --no-edit --no-verify --no-gpg-sign --author "
+            "exec " + AmendPrefix + "--author "
             + QuoteRebaseExecArgument(author);
 
         if (resetAuthorDate)
             command += " --date=now";
+
+        return command;
+    }
+
+    private static string BuildResetExecCommand(bool resetAuthorDate)
+    {
+        var command = "exec " + AmendPrefix + "--reset-author";
+        if (!resetAuthorDate)
+            command += " --date=\"$(git show -s --format=%aI HEAD)\"";
 
         return command;
     }
