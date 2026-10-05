@@ -35,8 +35,8 @@ public sealed class InteractiveRebaseAuthorChangeIntegrationTests : IDisposable
             .Select(ReadCommit)
             .ToDictionary(commit => commit.Subject, StringComparer.Ordinal);
         var sentinel = Path.Combine(_root, "author-injection-sentinel");
-        var (repository, workflow) = await CreateServicesAsync();
-        var todo = await workflow.ReadInteractiveRebaseTodoFromCommitAsync(repository, _a);
+        var (repository, rebase) = await CreateServicesAsync();
+        var todo = await rebase.ReadInteractiveRebaseTodoFromCommitAsync(repository, _a);
         var transformer = new InteractiveRebaseAuthorChangeService();
 
         var transformed = transformer.Apply(
@@ -49,7 +49,7 @@ public sealed class InteractiveRebaseAuthorChangeIntegrationTests : IDisposable
                 "o'connor@example.com",
                 false));
 
-        var result = await workflow.StartInteractiveRebaseTodoAsync(
+        var result = await rebase.StartInteractiveRebaseTodoAsync(
             repository,
             todo with { TodoText = transformed.TodoText });
 
@@ -81,8 +81,8 @@ public sealed class InteractiveRebaseAuthorChangeIntegrationTests : IDisposable
         Git("config", "user.name", "Reset User");
         Git("config", "user.email", "reset@example.com");
 
-        var (repository, workflow) = await CreateServicesAsync();
-        var todo = await workflow.ReadInteractiveRebaseTodoFromCommitAsync(repository, _a);
+        var (repository, rebase) = await CreateServicesAsync();
+        var todo = await rebase.ReadInteractiveRebaseTodoFromCommitAsync(repository, _a);
         var transformer = new InteractiveRebaseAuthorChangeService();
 
         var request = new InteractiveRebaseAuthorChangeRequest(
@@ -94,9 +94,10 @@ public sealed class InteractiveRebaseAuthorChangeIntegrationTests : IDisposable
             string.Empty,
             false,
             ResetToCurrentGitIdentity: true);
-        var authorDates = await workflow.ReadCommitAuthorDatesAsync(
-            repository,
-            transformer.GetTargetCommits(request));
+        var authorDates = await GitTestServices.CreateCommitAuthorDateReader()
+            .ReadCommitAuthorDatesAsync(
+                repository,
+                transformer.GetTargetCommits(request));
         var transformed = transformer.Apply(request, authorDates);
 
         Assert.Contains("--reset-author", transformed.TodoText, StringComparison.Ordinal);
@@ -105,7 +106,7 @@ public sealed class InteractiveRebaseAuthorChangeIntegrationTests : IDisposable
         Assert.DoesNotContain("$(", transformed.TodoText, StringComparison.Ordinal);
         Assert.DoesNotContain("git show", transformed.TodoText, StringComparison.Ordinal);
 
-        var result = await workflow.StartInteractiveRebaseTodoAsync(
+        var result = await rebase.StartInteractiveRebaseTodoAsync(
             repository,
             todo with { TodoText = transformed.TodoText });
 
@@ -133,10 +134,10 @@ public sealed class InteractiveRebaseAuthorChangeIntegrationTests : IDisposable
         var executor = GitTestServices.CreateExecutor(
             processStarted: _ => processCount++);
         var repository = await new GitRepositoryService(executor).OpenAsync(_root);
-        var workflow = new GitRepositoryWorkflowService(executor);
+        var reader = GitTestServices.CreateCommitAuthorDateReader(executor);
         processCount = 0;
 
-        var dates = await workflow.ReadCommitAuthorDatesAsync(
+        var dates = await reader.ReadCommitAuthorDatesAsync(
             repository,
             [_b, _c, _d]);
 
@@ -149,11 +150,12 @@ public sealed class InteractiveRebaseAuthorChangeIntegrationTests : IDisposable
     [Fact]
     public async Task AuthorDateReadFailsForMissingCommit()
     {
-        var (repository, workflow) = await CreateServicesAsync();
+        var (repository, _) = await CreateServicesAsync();
+        var reader = GitTestServices.CreateCommitAuthorDateReader();
         var missingCommit = new string('f', 40);
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => workflow.ReadCommitAuthorDatesAsync(
+            () => reader.ReadCommitAuthorDatesAsync(
                 repository,
                 [missingCommit]));
 
@@ -169,8 +171,8 @@ public sealed class InteractiveRebaseAuthorChangeIntegrationTests : IDisposable
         Git("config", "user.name", "Current User");
         Git("config", "user.email", "current@example.com");
 
-        var (repository, workflow) = await CreateServicesAsync();
-        var todo = await workflow.ReadInteractiveRebaseTodoFromCommitAsync(repository, _a);
+        var (repository, rebase) = await CreateServicesAsync();
+        var todo = await rebase.ReadInteractiveRebaseTodoFromCommitAsync(repository, _a);
         var transformer = new InteractiveRebaseAuthorChangeService();
 
         var transformed = transformer.Apply(
@@ -184,7 +186,7 @@ public sealed class InteractiveRebaseAuthorChangeIntegrationTests : IDisposable
                 true,
                 ResetToCurrentGitIdentity: true));
 
-        var result = await workflow.StartInteractiveRebaseTodoAsync(
+        var result = await rebase.StartInteractiveRebaseTodoAsync(
             repository,
             todo with { TodoText = transformed.TodoText });
 
@@ -254,11 +256,11 @@ public sealed class InteractiveRebaseAuthorChangeIntegrationTests : IDisposable
             })
             .ToArray();
 
-    private async Task<(Repository Repository, GitRepositoryWorkflowService Workflow)> CreateServicesAsync()
+    private async Task<(Repository Repository, GitInteractiveRebaseService Rebase)> CreateServicesAsync()
     {
         var executor = GitTestServices.CreateExecutor();
         var repository = await new GitRepositoryService(executor).OpenAsync(_root);
-        return (repository, new GitRepositoryWorkflowService(executor));
+        return (repository, GitTestServices.CreateInteractiveRebaseService(executor));
     }
 
     private void Git(params string[] arguments)

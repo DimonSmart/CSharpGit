@@ -71,7 +71,7 @@ internal sealed partial class GitCommitActionService
             return FailedFixup(
                 "Fixup into previous commit supports linear history only. The previous commit is a merge commit.");
 
-        var plan = await _workflowService.ReadInteractiveRebasePlanFromCommitAsync(
+        var plan = await _interactiveRebaseService.ReadInteractiveRebasePlanFromCommitAsync(
             repository,
             previousCommit,
             cancellationToken);
@@ -110,7 +110,7 @@ internal sealed partial class GitCommitActionService
             })
             .ToArray();
 
-        return await _workflowService.StartInteractiveRebaseAsync(
+        return await _interactiveRebaseService.StartInteractiveRebaseAsync(
             repository,
             plan with { Items = items },
             cancellationToken);

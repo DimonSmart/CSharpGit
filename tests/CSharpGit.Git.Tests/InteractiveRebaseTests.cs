@@ -600,11 +600,11 @@ public sealed class InteractiveRebaseTests : IDisposable
         GitOut("log", "--reverse", "--format=%s", $"{commit}..HEAD")
             .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    private async Task<(Repository Repository, GitRepositoryWorkflowService Service)> CreateServicesAsync()
+    private async Task<(Repository Repository, GitInteractiveRebaseService Service)> CreateServicesAsync()
     {
         var executor = GitTestServices.CreateExecutor();
         var repository = await new GitRepositoryService(executor).OpenAsync(_root);
-        return (repository, new GitRepositoryWorkflowService(executor));
+        return (repository, GitTestServices.CreateInteractiveRebaseService(executor));
     }
 
     private void Git(params string[] arguments)

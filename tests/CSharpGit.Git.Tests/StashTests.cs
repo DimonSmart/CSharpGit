@@ -481,11 +481,11 @@ public sealed class StashTests : IDisposable
         Directory.EnumerateFiles(Path.GetTempPath(), "csharpgit-stash-*.pathspec")
             .ToHashSet(StringComparer.Ordinal);
 
-    private async Task<(Repository Repository, GitRepositoryWorkflowService Service)> CreateServicesAsync()
+    private async Task<(Repository Repository, GitStashMutationService Service)> CreateServicesAsync()
     {
         var executor = GitTestServices.CreateExecutor();
         var repository = await new GitRepositoryService(executor).OpenAsync(_root);
-        return (repository, new GitRepositoryWorkflowService(executor));
+        return (repository, GitTestServices.CreateStashMutationService(executor));
     }
 
     private static void Git(string directory, params string[] arguments)
