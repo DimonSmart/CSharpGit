@@ -197,6 +197,10 @@ public sealed partial class MainPage
         {
             Content = content
         };
+        var rebaseDialog = InteractiveRebaseDialog;
+        var startRebaseWasEnabled = rebaseDialog.IsPrimaryButtonEnabled;
+        flyout.Closed += (_, _) =>
+            rebaseDialog.IsPrimaryButtonEnabled = startRebaseWasEnabled;
 
         void UpdateAuthorMode()
         {
@@ -228,7 +232,9 @@ public sealed partial class MainPage
                 ? analysis.SelectedEligibleCount > 0
                 : allScope.IsChecked == true
                   && analysis.AllEligibleCount > 0;
-            var sourceAvailable = explicitMode.IsChecked == true || resetAvailable;
+            var sourceAvailable = resetMode.IsChecked == true
+                ? resetAvailable
+                : explicitMode.IsChecked == true;
             apply.IsEnabled = scopeAvailable && sourceAvailable;
         }
 
@@ -271,6 +277,7 @@ public sealed partial class MainPage
 
         UpdateAuthorMode();
         UpdateScopeInfo();
+        rebaseDialog.IsPrimaryButtonEnabled = false;
         flyout.ShowAt(target);
     }
 
