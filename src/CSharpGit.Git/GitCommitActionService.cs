@@ -9,14 +9,9 @@ private readonly GitRepositoryCommandRunner _runner;
     private readonly GitRepositoryWorkflowService _workflowService;
 
     internal GitCommitActionService(GitCommandExecutor executor)
-        : this(new GitRepositoryCommandRunner(executor))
-    {
-    }
-
-    internal GitCommitActionService(GitRepositoryCommandRunner runner)
         : this(
-            runner,
-            new GitRepositoryStateService(runner),
+            new GitRepositoryCommandRunner(executor),
+            new GitRepositoryStateService(executor),
             null)
     {
     }

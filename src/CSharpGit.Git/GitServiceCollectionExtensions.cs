@@ -44,14 +44,10 @@ public static class GitServiceCollectionExtensions
 
         services.AddSingleton(provider =>
             new GitRepositoryStateService(
-                provider.GetRequiredService<GitRepositoryCommandRunner>()));
-        services.AddSingleton(provider =>
-            new DefaultBranchRepositoryStateService(
-                provider.GetRequiredService<GitRepositoryStateService>(),
-                provider.GetRequiredService<DefaultBranchResolver>(),
-                provider.GetRequiredService<ITagService>()));
+                provider.GetRequiredService<GitRepositoryCommandRunner>(),
+                provider.GetRequiredService<GitTagService>()));
         services.AddSingleton<IRepositoryStateService>(provider =>
-            provider.GetRequiredService<DefaultBranchRepositoryStateService>());
+            provider.GetRequiredService<GitRepositoryStateService>());
 
         services.AddSingleton(provider =>
             new GitWorkingTreeService(
@@ -73,11 +69,10 @@ public static class GitServiceCollectionExtensions
 
         services.AddSingleton(provider =>
             new GitRepositorySyncService(
-                provider.GetRequiredService<GitRepositoryCommandRunner>()));
-        services.AddSingleton<IRepositorySyncService>(provider =>
-            new DefaultBranchRepositorySyncService(
-                provider.GetRequiredService<GitRepositorySyncService>(),
+                provider.GetRequiredService<GitRepositoryCommandRunner>(),
                 provider.GetRequiredService<DefaultBranchResolver>()));
+        services.AddSingleton<IRepositorySyncService>(provider =>
+            provider.GetRequiredService<GitRepositorySyncService>());
 
         services.AddSingleton(provider =>
             new GitRepositoryWorkflowService(

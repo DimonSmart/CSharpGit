@@ -17,10 +17,7 @@ public sealed class DefaultBranchTests : IDisposable
         var activity = new RecordingActivitySink();
         var executor = new GitCommandExecutor(new GitCliOptions(), activity);
         var repositoryService = new GitRepositoryService(executor);
-        var stateService = new DefaultBranchRepositoryStateService(
-            new GitRepositoryStateService(executor),
-            new DefaultBranchResolver(executor),
-            new GitTagService(executor));
+        var stateService = new GitRepositoryStateService(executor);
         var repository = await repositoryService.OpenAsync(fixture.Work);
 
         var state = await stateService.ReadAsync(repository);
@@ -77,11 +74,7 @@ public sealed class DefaultBranchTests : IDisposable
         var activity = new RecordingActivitySink();
         var executor = new GitCommandExecutor(new GitCliOptions(), activity);
         var repositoryService = new GitRepositoryService(executor);
-        var inner = new GitRepositoryStateService(executor);
-        var stateService = new DefaultBranchRepositoryStateService(
-            inner,
-            new DefaultBranchResolver(executor),
-            new GitTagService(executor));
+        var stateService = new GitRepositoryStateService(executor);
         var repository = await repositoryService.OpenAsync(fixture.Work);
 
         var state = await stateService.ReadLocalOnlyAsync(repository);
@@ -141,12 +134,7 @@ public sealed class DefaultBranchTests : IDisposable
         var repository = new GitRepositoryService(executor);
         var state = new GitRepositoryStateService(executor);
         var sync = new GitRepositorySyncService(executor);
-        var resolver = new DefaultBranchResolver(executor);
-        var tags = new GitTagService(executor);
-        return new Services(
-            repository,
-            new DefaultBranchRepositoryStateService(state, resolver, tags),
-            new DefaultBranchRepositorySyncService(sync, resolver));
+        return new Services(repository, state, sync);
     }
 
     private static void ConfigureIdentity(string workingDirectory)
@@ -204,6 +192,6 @@ public sealed class DefaultBranchTests : IDisposable
     private sealed record Fixture(string Remote, string Seed, string Work);
     private sealed record Services(
         GitRepositoryService Repository,
-        DefaultBranchRepositoryStateService State,
-        DefaultBranchRepositorySyncService Sync);
+        GitRepositoryStateService State,
+        GitRepositorySyncService Sync);
 }

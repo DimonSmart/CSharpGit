@@ -19,6 +19,10 @@ public sealed class GitDependencyInjectionTests
         using var provider = services.BuildServiceProvider();
         Assert.Same(options, provider.GetRequiredService<GitCliOptions>());
         Assert.NotNull(provider.GetRequiredService<GitCommandExecutor>());
+        Assert.IsType<GitRepositoryStateService>(
+            provider.GetRequiredService<IRepositoryStateService>());
+        Assert.IsType<GitRepositorySyncService>(
+            provider.GetRequiredService<IRepositorySyncService>());
 
         Assert.All(
             new object[]
