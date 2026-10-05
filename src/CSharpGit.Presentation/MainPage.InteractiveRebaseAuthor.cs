@@ -50,50 +50,63 @@ public sealed partial class MainPage
 
         var effectiveName = identity?.Name.EffectiveValue?.Trim();
         var effectiveEmail = identity?.Email.EffectiveValue?.Trim();
-        var resetAvailable =
-            !string.IsNullOrWhiteSpace(effectiveName)
-            && !string.IsNullOrWhiteSpace(effectiveEmail);
+        var resources = Application.Current.Resources;
+        var controlHeight = (double)resources["Height.Control"];
+        var bodyFont = (double)resources["Font.Body"];
+        var spacing = (double)resources["Spacing.M"];
+        var compactButtonStyle = (Style)resources["CompactButtonStyle"];
+        var compactTextBoxStyle = (Style)resources["CompactTextBoxStyle"];
+        var compactCheckBoxStyle = (Style)resources["CompactCheckBoxStyle"];
+        var titleTextStyle = (Style)resources["TitleTextStyle"];
+        var bodyStrongTextStyle = (Style)resources["BodyStrongTextStyle"];
+        var bodySubduedTextStyle = (Style)resources["BodySubduedTextStyle"];
+        var secondaryTextStyle = (Style)resources["SecondaryTextStyle"];
 
         var resetMode = new RadioButton
         {
             Content = "Reset to current Git identity",
             GroupName = "ChangeAuthorSource",
-            IsChecked = resetAvailable,
-            IsEnabled = resetAvailable
+            IsChecked = true,
+            MinHeight = controlHeight,
+            FontSize = bodyFont
         };
         var identityText = new TextBlock
         {
-            Text = resetAvailable
-                ? $"{effectiveName} <{effectiveEmail}>"
-                : "Git identity is incomplete. Configure user.name and user.email for this repository or globally before resetting commit authors.",
+            Text = !string.IsNullOrWhiteSpace(effectiveName)
+                   && !string.IsNullOrWhiteSpace(effectiveEmail)
+                ? $"Current: {effectiveName} <{effectiveEmail}>"
+                : identityFailure is null
+                    ? "Git will resolve the current identity when rebase runs."
+                    : "Current identity could not be read; Git will resolve it when rebase runs.",
             TextWrapping = TextWrapping.Wrap,
             IsTextSelectionEnabled = true,
-            Margin = new Thickness(28, 0, 0, 0)
+            Margin = new Thickness(controlHeight, 0, 0, 0),
+            Style = bodySubduedTextStyle
         };
 
         var explicitMode = new RadioButton
         {
             Content = "Set author explicitly",
             GroupName = "ChangeAuthorSource",
-            IsChecked = !resetAvailable
+            MinHeight = controlHeight,
+            FontSize = bodyFont
         };
         var nameBox = new TextBox
         {
             Header = "Name",
-            MinWidth = 360,
-            IsEnabled = !resetAvailable
+            Style = compactTextBoxStyle
         };
         var emailBox = new TextBox
         {
             Header = "Email",
-            MinWidth = 360,
-            IsEnabled = !resetAvailable
+            Style = compactTextBoxStyle
         };
 
         var resetAuthorDate = new CheckBox
         {
             Content = "Reset author date as well",
-            IsChecked = false
+            IsChecked = false,
+            Style = compactCheckBoxStyle
         };
 
         var selectedScope = new RadioButton
@@ -101,38 +114,48 @@ public sealed partial class MainPage
             Content = $"Selected commit lines ({analysis.SelectedEligibleCount})",
             GroupName = "ChangeAuthorScope",
             IsEnabled = analysis.SelectedEligibleCount > 0,
-            IsChecked = analysis.SelectedEligibleCount > 0
+            IsChecked = analysis.SelectedEligibleCount > 0,
+            MinHeight = controlHeight,
+            FontSize = bodyFont
         };
         var allScope = new RadioButton
         {
-            Content = $"All eligible commits in this rebase ({analysis.AllEligibleCount})",
+            Content = $"All eligible commits ({analysis.AllEligibleCount})",
             GroupName = "ChangeAuthorScope",
             IsEnabled = analysis.AllEligibleCount > 0,
-            IsChecked = analysis.SelectedEligibleCount == 0 && analysis.AllEligibleCount > 0
+            IsChecked = analysis.SelectedEligibleCount == 0 && analysis.AllEligibleCount > 0,
+            MinHeight = controlHeight,
+            FontSize = bodyFont
         };
 
         var scopeInfo = new TextBlock
         {
-            TextWrapping = TextWrapping.Wrap
+            TextWrapping = TextWrapping.Wrap,
+            Visibility = Visibility.Collapsed,
+            Style = secondaryTextStyle
         };
         var validationError = new TextBlock
         {
             TextWrapping = TextWrapping.Wrap,
-            Visibility = Visibility.Collapsed
+            Visibility = Visibility.Collapsed,
+            Style = secondaryTextStyle
         };
         var apply = new Button
         {
-            Content = "Apply"
+            Content = "Apply",
+            Style = compactButtonStyle
         };
         var cancel = new Button
         {
-            Content = "Cancel"
+            Content = "Cancel",
+            Style = compactButtonStyle
         };
 
         var authorFields = new StackPanel
         {
-            Spacing = 8,
-            Margin = new Thickness(28, 0, 0, 0)
+            Spacing = spacing,
+            Margin = new Thickness(controlHeight, 0, 0, 0),
+            Visibility = Visibility.Collapsed
         };
         authorFields.Children.Add(nameBox);
         authorFields.Children.Add(emailBox);
@@ -141,56 +164,56 @@ public sealed partial class MainPage
         {
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Right,
-            Spacing = 8
+            Spacing = spacing
         };
         buttons.Children.Add(cancel);
         buttons.Children.Add(apply);
 
+        var body = new StackPanel
+        {
+            Spacing = spacing
+        };
+        body.Children.Add(resetMode);
+        body.Children.Add(identityText);
+        body.Children.Add(explicitMode);
+        body.Children.Add(authorFields);
+        body.Children.Add(resetAuthorDate);
+        body.Children.Add(new TextBlock
+        {
+            Text = "Apply to",
+            Margin = new Thickness(0, spacing, 0, 0),
+            Style = bodyStrongTextStyle
+        });
+        body.Children.Add(selectedScope);
+        body.Children.Add(allScope);
+        body.Children.Add(scopeInfo);
+        body.Children.Add(new TextBlock
+        {
+            Text = "Rewrites Git history; commit hashes may change from the first modified commit onward.",
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, spacing, 0, 0),
+            Style = secondaryTextStyle
+        });
+        body.Children.Add(validationError);
+
         var content = new StackPanel
         {
-            Width = 520,
-            Spacing = 10
+            Width = 400,
+            Spacing = spacing
         };
         content.Children.Add(new TextBlock
         {
             Text = "Change author",
-            FontSize = 20
+            Style = titleTextStyle
         });
-        content.Children.Add(new TextBlock
+        content.Children.Add(new ScrollViewer
         {
-            Text = "Author"
+            Content = body,
+            MaxHeight = 420,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollMode = ScrollMode.Auto,
+            HorizontalScrollMode = ScrollMode.Disabled
         });
-        content.Children.Add(resetMode);
-        content.Children.Add(identityText);
-        if (!string.IsNullOrWhiteSpace(identityFailure))
-        {
-            content.Children.Add(new TextBlock
-            {
-                Text = $"Git identity could not be read: {identityFailure}",
-                TextWrapping = TextWrapping.Wrap
-            });
-        }
-
-        content.Children.Add(explicitMode);
-        content.Children.Add(authorFields);
-        content.Children.Add(resetAuthorDate);
-        content.Children.Add(new TextBlock
-        {
-            Text = "Apply to",
-            Margin = new Thickness(0, 6, 0, 0)
-        });
-        content.Children.Add(selectedScope);
-        content.Children.Add(allScope);
-        content.Children.Add(scopeInfo);
-        content.Children.Add(new TextBlock
-        {
-            Text =
-                "Changing authors rewrites Git history.\n" +
-                "Commit hashes may change from the first modified commit onward.",
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 6, 0, 0)
-        });
-        content.Children.Add(validationError);
         content.Children.Add(buttons);
 
         var flyout = new Flyout
@@ -205,24 +228,26 @@ public sealed partial class MainPage
         void UpdateAuthorMode()
         {
             var explicitAuthor = explicitMode.IsChecked == true;
-            nameBox.IsEnabled = explicitAuthor;
-            emailBox.IsEnabled = explicitAuthor;
+            authorFields.Visibility = explicitAuthor
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            authorFields.IsEnabled = explicitAuthor;
             UpdateApplyState();
         }
 
         void UpdateScopeInfo()
         {
             var selected = selectedScope.IsChecked == true;
-            var eligible = selected
-                ? analysis.SelectedEligibleCount
-                : analysis.AllEligibleCount;
             var unsupported = selected
                 ? analysis.SelectedUnsupportedCount
                 : analysis.AllUnsupportedCount;
 
             scopeInfo.Text = unsupported > 0
-                ? $"{eligible} eligible commits. {unsupported} commit rows in squash/fixup groups will be skipped."
-                : $"{eligible} eligible commits.";
+                ? $"{unsupported} commit rows in squash/fixup groups will be skipped."
+                : string.Empty;
+            scopeInfo.Visibility = unsupported > 0
+                ? Visibility.Visible
+                : Visibility.Collapsed;
             UpdateApplyState();
         }
 
@@ -233,8 +258,7 @@ public sealed partial class MainPage
                 : allScope.IsChecked == true
                   && analysis.AllEligibleCount > 0;
             var sourceAvailable = resetMode.IsChecked == true
-                ? resetAvailable
-                : explicitMode.IsChecked == true;
+                                  || explicitMode.IsChecked == true;
             apply.IsEnabled = scopeAvailable && sourceAvailable;
         }
 
@@ -260,9 +284,10 @@ public sealed partial class MainPage
                         selectionStart,
                         selectionLength,
                         scope,
-                        useCurrentIdentity ? effectiveName! : nameBox.Text,
-                        useCurrentIdentity ? effectiveEmail! : emailBox.Text,
-                        resetAuthorDate.IsChecked == true));
+                        useCurrentIdentity ? string.Empty : nameBox.Text,
+                        useCurrentIdentity ? string.Empty : emailBox.Text,
+                        resetAuthorDate.IsChecked == true,
+                        ResetToCurrentGitIdentity: useCurrentIdentity));
 
                 _viewModel.RebaseTodoText = result.TodoText;
                 editor.Text = result.TodoText;
