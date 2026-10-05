@@ -39,7 +39,7 @@ public sealed class WorkingTreeStatusReaderTests : IDisposable
         var repository = await CreateRepositoryAsync(runner);
         activity.Commands.Clear();
 
-        var service = new GitRepositoryStateService(executor);
+        var service = new GitRepositoryStateService(runner, new GitTagService(executor));
         var read = await service.ReadWithWorkingTreeStatusAsync(repository);
 
         Assert.NotNull(read.WorkingTreeStatus);

@@ -17,7 +17,7 @@ public sealed class RepositoryStartupCommandBudgetTests : IDisposable
         var executor = new GitCommandExecutor(new GitCliOptions(), activity);
         var runner = new GitRepositoryCommandRunner(executor);
         var repositoryService = new GitRepositoryService(runner);
-        var stateService = new GitRepositoryStateService(executor);
+        var stateService = new GitRepositoryStateService(runner, new GitTagService(executor));
         var historyService = new GitFileAwareHistoryService(
             new GitReferenceHistoryService(executor),
             executor);
@@ -69,7 +69,7 @@ public sealed class RepositoryStartupCommandBudgetTests : IDisposable
         var executor = new GitCommandExecutor(new GitCliOptions(), activity);
         var runner = new GitRepositoryCommandRunner(executor);
         var repositoryService = new GitRepositoryService(runner);
-        var stateService = new GitRepositoryStateService(executor);
+        var stateService = new GitRepositoryStateService(runner, new GitTagService(executor));
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var repository = await repositoryService.OpenAsync(_root, timeout.Token);
@@ -92,7 +92,7 @@ public sealed class RepositoryStartupCommandBudgetTests : IDisposable
         var executor = new GitCommandExecutor(new GitCliOptions(), activity);
         var runner = new GitRepositoryCommandRunner(executor);
         var repository = await new GitRepositoryService(runner).OpenAsync(_root);
-        var state = await new GitRepositoryStateService(executor).ReadAsync(repository);
+        var state = await new GitRepositoryStateService(runner, new GitTagService(executor)).ReadAsync(repository);
         Assert.Null(state.HeadCommit);
 
         var history = new GitReferenceHistoryService(executor);

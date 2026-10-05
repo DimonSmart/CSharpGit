@@ -14,7 +14,7 @@ public sealed class ManualRefreshUiContractTests
         var monitor = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "RepositoryChangeMonitor.cs"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var reader = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitWorkingTreeStatusReader.cs"));
-        var session = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "RepositoryStateSession.cs"));
+        var application = Path.Combine(root, "src", "CSharpGit.Application");
         var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
         var intentIndex = File.ReadAllText(Path.Combine(root, ".idd", "intent", "INDEX.md"));
 
@@ -78,8 +78,9 @@ public sealed class ManualRefreshUiContractTests
         Assert.DoesNotContain("hash-object", reader);
         Assert.DoesNotContain("ls-files", reader);
 
-        Assert.DoesNotContain("PeriodicTimer", session);
-        Assert.DoesNotContain("PollInterval", session);
+        Assert.False(File.Exists(Path.Combine(application, "RepositoryStateSession.cs")));
+        Assert.False(File.Exists(Path.Combine(application, "Abstractions", "IRepositoryStateSession.cs")));
+        Assert.DoesNotContain("IRepositoryStateSession", app, StringComparison.Ordinal);
 
         Assert.Contains("ShutdownRepositoryChangeMonitoring();", lifecycle);
         Assert.Contains("IDD-0018", intentIndex);
