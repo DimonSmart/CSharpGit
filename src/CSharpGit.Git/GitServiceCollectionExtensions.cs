@@ -85,6 +85,8 @@ public static class GitServiceCollectionExtensions
                 provider.GetRequiredService<GitRepositoryStateService>()));
         services.AddSingleton<IRepositoryWorkflowService>(provider =>
             provider.GetRequiredService<GitRepositoryWorkflowService>());
+        services.AddSingleton<ICommitAuthorDateReader>(provider =>
+            provider.GetRequiredService<GitRepositoryWorkflowService>());
 
         services.AddSingleton(provider =>
             new GitCommitActionService(
