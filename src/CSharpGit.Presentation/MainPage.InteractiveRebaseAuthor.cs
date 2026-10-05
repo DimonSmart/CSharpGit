@@ -154,13 +154,11 @@ public sealed partial class MainPage
         content.Children.Add(new TextBlock
         {
             Text = "Change author",
-            FontSize = 20,
-            FontWeight = Windows.UI.Text.FontWeights.SemiBold
+            FontSize = 20
         });
         content.Children.Add(new TextBlock
         {
-            Text = "Author",
-            FontWeight = Windows.UI.Text.FontWeights.SemiBold
+            Text = "Author"
         });
         content.Children.Add(resetMode);
         content.Children.Add(identityText);
@@ -179,7 +177,6 @@ public sealed partial class MainPage
         content.Children.Add(new TextBlock
         {
             Text = "Apply to",
-            FontWeight = Windows.UI.Text.FontWeights.SemiBold,
             Margin = new Thickness(0, 6, 0, 0)
         });
         content.Children.Add(selectedScope);
