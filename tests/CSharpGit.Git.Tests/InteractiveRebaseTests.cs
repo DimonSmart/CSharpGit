@@ -453,7 +453,7 @@ public sealed class InteractiveRebaseTests : IDisposable
     }
 
     [Fact]
-    public async Task RawFailedExecReturnsPaused()
+    public async Task RawFailedExecReturnsFailed()
     {
         var (repository, service) = await CreateServicesAsync();
         var todo = await service.ReadInteractiveRebaseTodoFromCommitAsync(repository, _b);
@@ -469,7 +469,10 @@ public sealed class InteractiveRebaseTests : IDisposable
                     $"pick {_e} E{Environment.NewLine}"
             });
 
-        Assert.Equal(RebaseResultKind.Paused, result.Kind);
+        Assert.Equal(RebaseResultKind.Failed, result.Kind);
+        Assert.Contains("command failed", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("definitely-missing-csharpgit-test", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Continue, or Abort", result.Message, StringComparison.Ordinal);
         Assert.Equal(RepositoryOperation.Rebase, GitOperationDetector.Detect(repository));
 
         await service.AbortRebaseAsync(repository);
@@ -491,7 +494,7 @@ public sealed class InteractiveRebaseTests : IDisposable
                     $"pick {_e} E{Environment.NewLine}"
             });
 
-        Assert.Equal(RebaseResultKind.Paused, result.Kind);
+        Assert.Equal(RebaseResultKind.Failed, result.Kind);
         Assert.Contains("invalid", result.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(RepositoryOperation.Rebase, GitOperationDetector.Detect(repository));
 

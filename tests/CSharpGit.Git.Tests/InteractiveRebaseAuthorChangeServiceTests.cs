@@ -128,22 +128,29 @@ public sealed class InteractiveRebaseAuthorChangeServiceTests
     {
         const string todo = "pick aaa First\n";
 
-        var result = _service.Apply(new InteractiveRebaseAuthorChangeRequest(
-            todo,
-            0,
-            0,
-            InteractiveRebaseAuthorChangeScope.SelectedCommitLines,
-            string.Empty,
-            string.Empty,
-            false,
-            ResetToCurrentGitIdentity: true));
+        var result = _service.Apply(
+            new InteractiveRebaseAuthorChangeRequest(
+                todo,
+                0,
+                0,
+                InteractiveRebaseAuthorChangeScope.SelectedCommitLines,
+                string.Empty,
+                string.Empty,
+                false,
+                ResetToCurrentGitIdentity: true),
+            new Dictionary<string, string>
+            {
+                ["aaa"] = "2026-09-15T12:34:56+02:00"
+            });
 
         Assert.Contains("--reset-author", result.TodoText, StringComparison.Ordinal);
         Assert.Contains(
-            "--date=\"$(git show -s --format=%aI HEAD)\"",
+            "--date=2026-09-15T12:34:56+02:00",
             result.TodoText,
             StringComparison.Ordinal);
         Assert.DoesNotContain("--author ", result.TodoText, StringComparison.Ordinal);
+        Assert.DoesNotContain("$(", result.TodoText, StringComparison.Ordinal);
+        Assert.DoesNotContain("git show", result.TodoText, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -166,6 +173,113 @@ public sealed class InteractiveRebaseAuthorChangeServiceTests
     }
 
     [Fact]
+    public void ResetModeUsesEachCommitOwnAuthorDate()
+    {
+        const string todo =
+            "pick aaa First\n" +
+            "pick bbb Second\n" +
+            "pick ccc Third\n";
+
+        var result = _service.Apply(
+            new InteractiveRebaseAuthorChangeRequest(
+                todo,
+                0,
+                0,
+                InteractiveRebaseAuthorChangeScope.AllEligibleCommits,
+                string.Empty,
+                string.Empty,
+                false,
+                ResetToCurrentGitIdentity: true),
+            new Dictionary<string, string>
+            {
+                ["aaa"] = "2020-01-02T10:00:00+00:00",
+                ["bbb"] = "2020-02-03T11:00:00+01:00",
+                ["ccc"] = "2020-03-04T12:00:00+02:00"
+            });
+
+        Assert.Contains("--date=2020-01-02T10:00:00+00:00", result.TodoText, StringComparison.Ordinal);
+        Assert.Contains("--date=2020-02-03T11:00:00+01:00", result.TodoText, StringComparison.Ordinal);
+        Assert.Contains("--date=2020-03-04T12:00:00+02:00", result.TodoText, StringComparison.Ordinal);
+        Assert.DoesNotContain("$(", result.TodoText, StringComparison.Ordinal);
+        Assert.DoesNotContain("git show", result.TodoText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ResetModeFailsWhenTargetMetadataIsMissing()
+    {
+        var request = new InteractiveRebaseAuthorChangeRequest(
+            "pick aaa First\n",
+            0,
+            0,
+            InteractiveRebaseAuthorChangeScope.SelectedCommitLines,
+            string.Empty,
+            string.Empty,
+            false,
+            ResetToCurrentGitIdentity: true);
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            _service.Apply(request, new Dictionary<string, string>()));
+
+        Assert.Contains("aaa", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LegacyResetBlockIsReplacedWithLiteralDate()
+    {
+        const string todo =
+            "pick aaa First\n" +
+            "# CSharpGit: change-author begin\n" +
+            "exec git commit --amend --no-edit --no-verify --no-gpg-sign --reset-author --date=\"$(git show -s --format=%aI HEAD)\"\n" +
+            "# CSharpGit: change-author end\n";
+
+        var result = _service.Apply(
+            new InteractiveRebaseAuthorChangeRequest(
+                todo,
+                0,
+                0,
+                InteractiveRebaseAuthorChangeScope.SelectedCommitLines,
+                string.Empty,
+                string.Empty,
+                false,
+                ResetToCurrentGitIdentity: true),
+            new Dictionary<string, string>
+            {
+                ["aaa"] = "2026-09-15T12:34:56+02:00"
+            });
+
+        Assert.Equal(
+            1,
+            result.TodoText.Split(
+                InteractiveRebaseAuthorChangeService.BeginMarker,
+                StringSplitOptions.None).Length - 1);
+        Assert.Contains("--date=2026-09-15T12:34:56+02:00", result.TodoText, StringComparison.Ordinal);
+        Assert.DoesNotContain("$(", result.TodoText, StringComparison.Ordinal);
+        Assert.DoesNotContain("git show", result.TodoText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TargetCommitDiscoveryUsesCurrentScopeAndEligibility()
+    {
+        const string todo =
+            "pick aaa First\n" +
+            "pick bbb Second\n" +
+            "fixup ccc Third\n" +
+            "pick ddd Fourth\n";
+
+        var commits = _service.GetTargetCommits(new InteractiveRebaseAuthorChangeRequest(
+            todo,
+            0,
+            todo.Length,
+            InteractiveRebaseAuthorChangeScope.AllEligibleCommits,
+            string.Empty,
+            string.Empty,
+            false,
+            ResetToCurrentGitIdentity: true));
+
+        Assert.Equal(["aaa", "ddd"], commits);
+    }
+
+    [Fact]
     public void RepeatedApplyCanReplaceExplicitBlockWithResetBlock()
     {
         const string todo = "pick aaa First\n";
@@ -177,15 +291,20 @@ public sealed class InteractiveRebaseAuthorChangeServiceTests
             "Old User",
             "old@example.com",
             false));
-        var resetResult = _service.Apply(new InteractiveRebaseAuthorChangeRequest(
-            explicitResult.TodoText,
-            0,
-            0,
-            InteractiveRebaseAuthorChangeScope.SelectedCommitLines,
-            string.Empty,
-            string.Empty,
-            false,
-            ResetToCurrentGitIdentity: true));
+        var resetResult = _service.Apply(
+            new InteractiveRebaseAuthorChangeRequest(
+                explicitResult.TodoText,
+                0,
+                0,
+                InteractiveRebaseAuthorChangeScope.SelectedCommitLines,
+                string.Empty,
+                string.Empty,
+                false,
+                ResetToCurrentGitIdentity: true),
+            new Dictionary<string, string>
+            {
+                ["aaa"] = "2026-09-15T12:34:56+02:00"
+            });
 
         Assert.Equal(
             1,

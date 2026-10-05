@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using CSharpGit.Application.Abstractions;
 
@@ -9,6 +10,8 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
     internal const string EndMarker = "# CSharpGit: change-author end";
     private const string AmendPrefix =
         "git commit --amend --no-edit --no-verify --no-gpg-sign ";
+    private static readonly IReadOnlyDictionary<string, string> EmptyAuthorDates =
+        new Dictionary<string, string>(StringComparer.Ordinal);
 
     public InteractiveRebaseAuthorChangeAnalysis Analyze(
         string todoText,
@@ -23,18 +26,119 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
             state.AllUnsupportedCount);
     }
 
-    public InteractiveRebaseAuthorChangeResult Apply(
+    public IReadOnlyList<string> GetTargetCommits(
         InteractiveRebaseAuthorChangeRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
 
         var state = Scan(request.TodoText, request.SelectionStart, request.SelectionLength);
+        var targets = BuildTargetState(state, request.Scope);
+        var commits = new List<string>(targets.ChangedCount);
 
-        var applyAll = request.Scope switch
+        for (var index = 0; index < state.Lines.Count; index++)
+        {
+            if (!targets.Target[index])
+                continue;
+
+            commits.Add(state.CommitTokens[index]
+                ?? throw new ArgumentException(
+                    "A target interactive rebase row does not contain a commit hash.",
+                    nameof(request)));
+        }
+
+        return commits.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
+    public InteractiveRebaseAuthorChangeResult Apply(
+        InteractiveRebaseAuthorChangeRequest request) =>
+        Apply(request, EmptyAuthorDates);
+
+    public InteractiveRebaseAuthorChangeResult Apply(
+        InteractiveRebaseAuthorChangeRequest request,
+        IReadOnlyDictionary<string, string> originalAuthorDates)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(originalAuthorDates);
+
+        var state = Scan(request.TodoText, request.SelectionStart, request.SelectionLength);
+        var targets = BuildTargetState(state, request.Scope);
+        var explicitCommand = request.ResetToCurrentGitIdentity
+            ? null
+            : BuildExplicitExecCommand(
+                GitIdentityValidation.NormalizeRequiredAuthorName(request.AuthorName),
+                GitIdentityValidation.NormalizeRequiredAuthorEmail(request.AuthorEmail),
+                request.ResetAuthorDate);
+        var resetCommand = request.ResetToCurrentGitIdentity && request.ResetAuthorDate
+            ? BuildResetExecCommand(resetAuthorDate: true, originalAuthorDate: null)
+            : null;
+        var defaultNewline = state.Lines
+            .Select(line => line.Terminator)
+            .FirstOrDefault(value => value.Length > 0)
+            ?? Environment.NewLine;
+        var builder = new StringBuilder(
+            request.TodoText.Length + targets.ChangedCount * 256);
+
+        for (var index = 0; index < state.Lines.Count; index++)
+        {
+            var line = state.Lines[index];
+            var existingGeneratedBlock = IsGeneratedBlockAt(state.Lines, index + 1);
+
+            if (targets.Target[index])
+            {
+                var command = explicitCommand
+                    ?? resetCommand
+                    ?? BuildResetExecCommand(
+                        resetAuthorDate: false,
+                        originalAuthorDate: GetRequiredAuthorDate(
+                            state.CommitTokens[index],
+                            originalAuthorDates));
+
+                AppendLineAndGeneratedBlock(
+                    builder,
+                    line,
+                    command,
+                    defaultNewline,
+                    existingGeneratedBlock
+                        ? state.Lines[index + 3].Terminator
+                        : line.Terminator);
+
+                if (existingGeneratedBlock)
+                    index += 3;
+
+                continue;
+            }
+
+            builder.Append(line.Text);
+            builder.Append(line.Terminator);
+
+            if (targets.ScopedCommit[index] && !state.Eligible[index] && existingGeneratedBlock)
+                index += 3;
+        }
+
+        var applyAll = request.Scope == InteractiveRebaseAuthorChangeScope.AllEligibleCommits;
+        var eligibleCount = applyAll
+            ? state.AllEligibleCount
+            : state.SelectedEligibleCount;
+        var unsupportedCount = applyAll
+            ? state.AllUnsupportedCount
+            : state.SelectedUnsupportedCount;
+
+        return new InteractiveRebaseAuthorChangeResult(
+            builder.ToString(),
+            eligibleCount,
+            targets.ChangedCount,
+            unsupportedCount);
+    }
+
+    private static TargetState BuildTargetState(
+        ScanState state,
+        InteractiveRebaseAuthorChangeScope scope)
+    {
+        var applyAll = scope switch
         {
             InteractiveRebaseAuthorChangeScope.SelectedCommitLines => false,
             InteractiveRebaseAuthorChangeScope.AllEligibleCommits => true,
-            _ => throw new ArgumentOutOfRangeException(nameof(request.Scope))
+            _ => throw new ArgumentOutOfRangeException(nameof(scope))
         };
 
         var target = new bool[state.Lines.Count];
@@ -54,60 +158,7 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
             changedCount++;
         }
 
-        var command = request.ResetToCurrentGitIdentity
-            ? BuildResetExecCommand(request.ResetAuthorDate)
-            : BuildExplicitExecCommand(
-                GitIdentityValidation.NormalizeRequiredAuthorName(request.AuthorName),
-                GitIdentityValidation.NormalizeRequiredAuthorEmail(request.AuthorEmail),
-                request.ResetAuthorDate);
-        var defaultNewline = state.Lines
-            .Select(line => line.Terminator)
-            .FirstOrDefault(value => value.Length > 0)
-            ?? Environment.NewLine;
-        var builder = new StringBuilder(
-            request.TodoText.Length + changedCount * (command.Length + 96));
-
-        for (var index = 0; index < state.Lines.Count; index++)
-        {
-            var line = state.Lines[index];
-            var existingGeneratedBlock = IsGeneratedBlockAt(state.Lines, index + 1);
-
-            if (target[index])
-            {
-                AppendLineAndGeneratedBlock(
-                    builder,
-                    line,
-                    command,
-                    defaultNewline,
-                    existingGeneratedBlock
-                        ? state.Lines[index + 3].Terminator
-                        : line.Terminator);
-
-                if (existingGeneratedBlock)
-                    index += 3;
-
-                continue;
-            }
-
-            builder.Append(line.Text);
-            builder.Append(line.Terminator);
-
-            if (scopedCommit[index] && !state.Eligible[index] && existingGeneratedBlock)
-                index += 3;
-        }
-
-        var eligibleCount = applyAll
-            ? state.AllEligibleCount
-            : state.SelectedEligibleCount;
-        var unsupportedCount = applyAll
-            ? state.AllUnsupportedCount
-            : state.SelectedUnsupportedCount;
-
-        return new InteractiveRebaseAuthorChangeResult(
-            builder.ToString(),
-            eligibleCount,
-            changedCount,
-            unsupportedCount);
+        return new TargetState(target, scopedCommit, changedCount);
     }
 
     private static ScanState Scan(
@@ -124,6 +175,9 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
         var lines = ParseLines(todoText);
         var commandKinds = lines
             .Select(line => ParseCommandKind(line.Text))
+            .ToArray();
+        var commitTokens = lines
+            .Select(line => ParseCommitToken(line.Text))
             .ToArray();
         var eligible = new bool[lines.Count];
 
@@ -174,6 +228,7 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
         return new ScanState(
             lines,
             commandKinds,
+            commitTokens,
             eligible,
             selected,
             selectedEligibleCount,
@@ -243,6 +298,32 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
         };
     }
 
+    private static string? ParseCommitToken(string line)
+    {
+        var span = line.AsSpan().TrimStart();
+        if (span.Length == 0 || span[0] == '#')
+            return null;
+
+        var commandEnd = 0;
+        while (commandEnd < span.Length && !char.IsWhiteSpace(span[commandEnd]))
+            commandEnd++;
+
+        var command = span[..commandEnd].ToString();
+        if (command is not ("pick" or "p" or "reword" or "r" or "edit" or "e"
+            or "squash" or "s" or "fixup" or "f"))
+            return null;
+
+        span = span[commandEnd..].TrimStart();
+        if (span.Length == 0)
+            return null;
+
+        var commitEnd = 0;
+        while (commitEnd < span.Length && !char.IsWhiteSpace(span[commitEnd]))
+            commitEnd++;
+
+        return span[..commitEnd].ToString();
+    }
+
     private static bool IntersectsSelection(
         TodoLine line,
         int selectionStart,
@@ -290,10 +371,7 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
         var options = value[prefix.Length..];
         return options.StartsWith("--author ", StringComparison.Ordinal)
                || string.Equals(options, "--reset-author", StringComparison.Ordinal)
-               || string.Equals(
-                   options,
-                   "--reset-author --date=\"$(git show -s --format=%aI HEAD)\"",
-                   StringComparison.Ordinal);
+               || options.StartsWith("--reset-author --date=", StringComparison.Ordinal);
     }
 
     private static void AppendLineAndGeneratedBlock(
@@ -331,13 +409,76 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
         return command;
     }
 
-    private static string BuildResetExecCommand(bool resetAuthorDate)
+    private static string BuildResetExecCommand(
+        bool resetAuthorDate,
+        string? originalAuthorDate)
     {
         var command = "exec " + AmendPrefix + "--reset-author";
-        if (!resetAuthorDate)
-            command += " --date=\"$(git show -s --format=%aI HEAD)\"";
+        if (resetAuthorDate)
+            return command;
 
-        return command;
+        if (string.IsNullOrWhiteSpace(originalAuthorDate)
+            || !IsValidGitStrictIsoDate(originalAuthorDate))
+        {
+            throw new ArgumentException(
+                "Git returned an invalid original author date.",
+                nameof(originalAuthorDate));
+        }
+
+        return command + " --date=" + originalAuthorDate;
+    }
+
+    private static bool IsValidGitStrictIsoDate(string value)
+    {
+        var hasUtcSuffix = value.Length == 20 && value[19] == 'Z';
+        var hasOffset = value.Length == 25
+                        && (value[19] == '+' || value[19] == '-')
+                        && value[22] == ':';
+        if (!hasUtcSuffix && !hasOffset)
+            return false;
+
+        if (value[4] != '-'
+            || value[7] != '-'
+            || value[10] != 'T'
+            || value[13] != ':'
+            || value[16] != ':')
+        {
+            return false;
+        }
+
+        for (var index = 0; index < value.Length; index++)
+        {
+            if (index is 4 or 7 or 10 or 13 or 16 or 19 or 22)
+                continue;
+            if (!char.IsAsciiDigit(value[index]))
+                return false;
+        }
+
+        return DateTimeOffset.TryParse(
+            value,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out _);
+    }
+
+    private static string GetRequiredAuthorDate(
+        string? commit,
+        IReadOnlyDictionary<string, string> originalAuthorDates)
+    {
+        if (string.IsNullOrWhiteSpace(commit)
+            || !originalAuthorDates.TryGetValue(commit, out var authorDate)
+            || string.IsNullOrWhiteSpace(authorDate))
+        {
+            var displayCommit = string.IsNullOrWhiteSpace(commit)
+                ? "<unknown>"
+                : commit.Length <= 8
+                    ? commit
+                    : commit[..8];
+            throw new InvalidOperationException(
+                $"Could not read the original author date for commit {displayCommit}.");
+        }
+
+        return authorDate;
     }
 
     internal static string QuoteRebaseExecArgument(string value)
@@ -362,9 +503,15 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
         int Start,
         int EndExclusive);
 
+    private sealed record TargetState(
+        bool[] Target,
+        bool[] ScopedCommit,
+        int ChangedCount);
+
     private sealed record ScanState(
         IReadOnlyList<TodoLine> Lines,
         TodoCommandKind[] CommandKinds,
+        string?[] CommitTokens,
         bool[] Eligible,
         bool[] Selected,
         int SelectedEligibleCount,

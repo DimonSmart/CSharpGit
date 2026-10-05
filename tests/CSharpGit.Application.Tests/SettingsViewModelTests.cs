@@ -367,6 +367,12 @@ public sealed class SettingsViewModelTests
         public Task RecordRecentRepositoryAsync(string path, string displayName, string? lastBranchName, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
+        public Task UpdateRecentRepositoryBranchAsync(
+            string path,
+            string? lastBranchName,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
         public Task SetRecentRepositoryPinnedAsync(string path, bool pinned, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 

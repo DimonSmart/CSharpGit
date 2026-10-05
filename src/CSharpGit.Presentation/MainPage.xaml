@@ -137,19 +137,19 @@
                     <ListView.ItemContainerStyle>
                       <Style TargetType="ListViewItem"
                              BasedOn="{StaticResource FormNavigationItemStyle}">
-                        <Setter Property="MinHeight" Value="32" />
+                        <Setter Property="MinHeight" Value="{StaticResource Height.Control}" />
                         <Setter Property="Padding" Value="8,2" />
                       </Style>
                     </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
                       <DataTemplate>
                         <Grid ColumnDefinitions="20,*,Auto"
-                              MinHeight="28"
+                              MinHeight="{StaticResource Height.Control}"
                               ToolTipService.ToolTip="{Binding ToolTip}"
                               AutomationProperties.Name="{Binding AccessibleName}">
                           <FontIcon Grid.Column="0"
                                     Glyph="{Binding CurrentGlyph}"
-                                    FontSize="12"
+                                    FontSize="{StaticResource Icon.Small}"
                                     VerticalAlignment="Center" />
                           <controls:MiddleEllipsisTextBlock Grid.Column="1"
                                                             Text="{Binding Path}"
