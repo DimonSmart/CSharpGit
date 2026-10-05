@@ -33,6 +33,9 @@ public sealed partial class InteractiveRebaseTodoEditor : UserControl
         set => SetValue(TextProperty, value ?? string.Empty);
     }
 
+    internal int SelectionStart => Editor.SelectionStart;
+    internal int SelectionLength => Editor.SelectionLength;
+
     internal void FocusEditor()
     {
         Editor.Focus(FocusState.Programmatic);
