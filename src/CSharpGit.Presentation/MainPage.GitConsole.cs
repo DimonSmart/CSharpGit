@@ -63,12 +63,14 @@ public sealed partial class MainPage
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         Grid.SetRow(_gitConsoleSplitter, 3);
+        Grid.SetColumnSpan(_gitConsoleSplitter, RepositoryWorkspace.ColumnDefinitions.Count);
         RepositoryWorkspace.Children.Add(_gitConsoleSplitter);
 
         _gitConsoleView = new GitConsoleView { Visibility = Visibility.Collapsed };
         _gitConsoleView.CloseRequested += (_, _) => CloseGitConsole();
         _gitConsoleView.FilterChanged += (_, _) => RebuildGitConsole();
         Grid.SetRow(_gitConsoleView, 4);
+        Grid.SetColumnSpan(_gitConsoleView, RepositoryWorkspace.ColumnDefinitions.Count);
         RepositoryWorkspace.Children.Add(_gitConsoleView);
 
         if (StatusBar.Child is Grid statusGrid)

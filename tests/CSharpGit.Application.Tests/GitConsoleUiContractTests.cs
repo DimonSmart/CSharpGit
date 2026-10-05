@@ -73,6 +73,16 @@ public sealed class GitConsoleUiContractTests
     }
 
     [Fact]
+    public void GitConsoleSpansEntireRepositoryWorkspace()
+    {
+        var root = FindRepositoryRoot();
+        var integration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.GitConsole.cs"));
+
+        Assert.Contains("Grid.SetColumnSpan(_gitConsoleSplitter, RepositoryWorkspace.ColumnDefinitions.Count);", integration);
+        Assert.Contains("Grid.SetColumnSpan(_gitConsoleView, RepositoryWorkspace.ColumnDefinitions.Count);", integration);
+    }
+
+    [Fact]
     public void GitConsoleRoutesDiagnosticTextThroughPresentationBoundary()
     {
         var root = FindRepositoryRoot();
