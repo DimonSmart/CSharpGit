@@ -149,7 +149,7 @@
                               AutomationProperties.Name="{Binding AccessibleName}">
                           <FontIcon Grid.Column="0"
                                     Glyph="{Binding CurrentGlyph}"
-                                    FontSize="12"
+                                    FontSize="{StaticResource Icon.Small}"
                                     VerticalAlignment="Center" />
                           <controls:MiddleEllipsisTextBlock Grid.Column="1"
                                                             Text="{Binding Path}"
