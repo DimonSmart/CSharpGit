@@ -116,6 +116,7 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
                 index += 3;
         }
 
+        var applyAll = request.Scope == InteractiveRebaseAuthorChangeScope.AllEligibleCommits;
         var eligibleCount = applyAll
             ? state.AllEligibleCount
             : state.SelectedEligibleCount;
