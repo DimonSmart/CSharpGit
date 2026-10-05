@@ -39,6 +39,33 @@ public sealed partial class OpenRepositoryViewModel
         }
     }
 
+    internal async Task<RepositoryIdentitySnapshot?> ReadInteractiveRebaseAuthorIdentityAsync()
+    {
+        var repository = Repository;
+        var service = _repositoryIdentityService;
+        if (repository is null || service is null)
+            return null;
+
+        var snapshot = await service.ReadAsync(repository);
+        return ReferenceEquals(repository, Repository)
+            ? snapshot
+            : null;
+    }
+
+    internal InteractiveRebaseAuthorChangeAnalysis AnalyzeInteractiveRebaseAuthorChange(
+        string todoText,
+        int selectionStart,
+        int selectionLength) =>
+        (_interactiveRebaseAuthorChangeService
+            ?? throw new InvalidOperationException("Interactive rebase author change service is not available."))
+        .Analyze(todoText, selectionStart, selectionLength);
+
+    internal InteractiveRebaseAuthorChangeResult ApplyInteractiveRebaseAuthorChange(
+        InteractiveRebaseAuthorChangeRequest request) =>
+        (_interactiveRebaseAuthorChangeService
+            ?? throw new InvalidOperationException("Interactive rebase author change service is not available."))
+        .Apply(request);
+
     internal async Task StartPreparedInteractiveRebaseAsync(string todoText)
     {
         var repository = Repository;
