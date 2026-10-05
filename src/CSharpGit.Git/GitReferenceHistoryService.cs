@@ -33,6 +33,7 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
             GetHistoryRevisions(query),
             ShouldIncludeReflog(query),
             query.HeadExists,
+            query,
             cancellationToken);
     }
 
@@ -95,7 +96,7 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
     {
         ValidateReference(reference);
         if (skip < 0 || take is < 1 or > 1000) throw new ArgumentOutOfRangeException(nameof(take));
-        return ReadHistoryCoreAsync(repository, filter, skip, take, [reference], false, null, cancellationToken);
+        return ReadHistoryCoreAsync(repository, filter, skip, take, [reference], false, null, null, cancellationToken);
     }
 
     public async Task<CommitDetails> ReadCommitAsync(
@@ -167,6 +168,7 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
         IReadOnlyList<string> revisions,
         bool includeReflog,
         bool? headExists,
+        HistoryQuery? presentationQuery,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(repository);
@@ -187,15 +189,15 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
                 ? await ReadReflogOnlyHashesAsync(repository, cancellationToken)
                 : null;
             var topologyCommits = commits.Take(skip + take).ToList();
-            var reflogPresentations = pageReflogOnlyHashes is not null
-                                      && HasReflogOnlyCommits(topologyCommits, pageReflogOnlyHashes)
-                ? await ReadReflogPresentationsAsync(repository, query, cancellationToken)
+            var pageReflogPresentations = pageReflogOnlyHashes is not null
+                                          && HasReflogOnlyCommits(topologyCommits, pageReflogOnlyHashes)
+                ? await ReadReflogPresentationsAsync(repository, presentationQuery!, cancellationToken)
                 : null;
             var rows = BuildTopology(
                 topologyCommits,
                 pageReflogOnlyHashes,
-                reflogPresentations,
-                BuildReferenceDetails(query));
+                pageReflogPresentations,
+                BuildReferenceDetails(presentationQuery));
             return new HistoryPage(rows.Skip(skip).ToList(), hasMore);
         }
 
@@ -227,15 +229,15 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
         var reflogOnlyHashes = includeReflog
             ? await ReadReflogOnlyHashesAsync(repository, cancellationToken)
             : null;
-        var reflogPresentations = reflogOnlyHashes is not null
-                                  && HasReflogOnlyCommits(commitsThroughPage, reflogOnlyHashes)
-            ? await ReadReflogPresentationsAsync(repository, query, cancellationToken)
+        var filteredReflogPresentations = reflogOnlyHashes is not null
+                                          && HasReflogOnlyCommits(commitsThroughPage, reflogOnlyHashes)
+            ? await ReadReflogPresentationsAsync(repository, presentationQuery!, cancellationToken)
             : null;
         var rowsByHash = BuildTopology(
                 commitsThroughPage,
                 reflogOnlyHashes,
-                reflogPresentations,
-                BuildReferenceDetails(query))
+                filteredReflogPresentations,
+                BuildReferenceDetails(presentationQuery))
             .ToDictionary(row => row.Commit.Hash, StringComparer.Ordinal);
         var requestedRows = requestedHashes
             .Select(hash => rowsByHash.TryGetValue(hash, out var row)
@@ -425,9 +427,12 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
         IReadOnlySet<string> reflogOnlyHashes) =>
         commits.Any(commit => reflogOnlyHashes.Contains(commit.Hash));
 
-    private static IReadOnlyDictionary<string, IReadOnlyList<HistoryReferenceDecoration>> BuildReferenceDetails(
-        HistoryQuery query)
+    private static IReadOnlyDictionary<string, IReadOnlyList<HistoryReferenceDecoration>>? BuildReferenceDetails(
+        HistoryQuery? query)
     {
+        if (query is null)
+            return null;
+
         var result = new Dictionary<string, List<HistoryReferenceDecoration>>(StringComparer.Ordinal);
 
         static void Add(
