@@ -8,7 +8,48 @@ public sealed record HistoryQuery(
     int Skip,
     int Take = 100,
     bool IncludeReflog = false,
-    bool? HeadExists = null);
+    bool? HeadExists = null,
+    GitReferences? RepositoryReferences = null,
+    string? HeadReference = null,
+    string? HeadCommit = null,
+    bool IsDetachedHead = false,
+    long ReflogSessionId = 0);
+
+public enum HistoryReferenceKind
+{
+    CurrentLocalBranch,
+    LocalBranch,
+    RemoteTrackingBranch,
+    Tag,
+    DetachedHead,
+    Other
+}
+
+public sealed record HistoryReferenceDecoration(
+    string DisplayName,
+    HistoryReferenceKind Kind,
+    bool IsDefault = false,
+    string? Upstream = null,
+    int Ahead = 0,
+    int Behind = 0);
+
+public sealed record ReflogPresentation(
+    string? Selector,
+    string? EventKind,
+    string? Subject)
+{
+    public string Display =>
+        string.IsNullOrWhiteSpace(Selector)
+            ? "◌ reflog"
+            : string.IsNullOrWhiteSpace(EventKind)
+                ? $"◌ {Selector}"
+                : $"◌ {Selector} · {EventKind}";
+
+    public string ToolTip =>
+        string.IsNullOrWhiteSpace(Subject)
+            ? "This commit is reachable only through Git reflog."
+            : $"This commit is reachable only through Git reflog.\n{Selector}: {Subject}";
+}
 
 public sealed record CommitHistoryItem(
     string Hash,
@@ -39,7 +80,22 @@ public sealed record CommitTopology(int Lane, IReadOnlyList<TopologyEdge> Edges)
         .Select(index => index == Lane ? "● " : "│ "));
 }
 
-public sealed record HistoryRow(CommitHistoryItem Commit, CommitTopology Topology, bool IsReflogOnly = false);
+public sealed record HistoryRow(
+    CommitHistoryItem Commit,
+    CommitTopology Topology,
+    bool IsReflogOnly = false,
+    ReflogPresentation? Reflog = null,
+    IReadOnlyList<HistoryReferenceDecoration>? SemanticReferences = null)
+{
+    public IReadOnlyList<HistoryReferenceDecoration> ReferenceDetails { get; } =
+        SemanticReferences
+        ?? Commit.References
+            .Select(reference => new HistoryReferenceDecoration(reference, HistoryReferenceKind.Other))
+            .ToArray();
+
+    public string ReflogGhostDisplay => Reflog?.Display ?? "◌ reflog";
+    public string ReflogToolTip => Reflog?.ToolTip ?? "This commit is reachable only through Git reflog.";
+}
 
 public sealed record HistoryPage(IReadOnlyList<HistoryRow> Rows, bool HasMore);
 

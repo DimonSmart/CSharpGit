@@ -36,6 +36,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private readonly SemaphoreSlim _mutationGate = new(1, 1);
     private CancellationTokenSource? _historyLoadCts;
     private long _historyLoadGeneration;
+    private long _reflogSessionId;
     private long _diffLoadGeneration;
     private int _disposed;
     private string _filterText = string.Empty;
@@ -1020,6 +1021,27 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         _historyLoadCts?.Cancel();
     }
 
+    private HistoryQuery CreateHistoryQuery(
+        HistoryScope scope,
+        string? filter,
+        int skip,
+        long reflogSessionId) =>
+        new(
+            scope,
+            filter,
+            skip,
+            IncludeReflog: _showReflog,
+            HeadExists: _headExists,
+            RepositoryReferences: new GitReferences(
+                LocalBranches.ToArray(),
+                RemoteBranches.ToArray(),
+                Remotes.ToArray(),
+                Tags.ToArray()),
+            HeadReference: _currentBranchName,
+            HeadCommit: _currentHeadCommit,
+            IsDetachedHead: _isDetachedHead,
+            ReflogSessionId: reflogSessionId);
+
     private async Task LoadHistoryAsync(bool reset)
     {
         if (Repository is null) return;
@@ -1027,6 +1049,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         var repository = Repository;
         var selectedHash = reset ? SelectedHistoryRow?.Commit.Hash : null;
         var skip = reset ? 0 : History.Count;
+        var reflogSessionId = reset
+            ? Interlocked.Increment(ref _reflogSessionId)
+            : Volatile.Read(ref _reflogSessionId);
         var scope = SelectedScope.Value;
         var filter = FilterText;
         var generation = Interlocked.Increment(ref _historyLoadGeneration);
@@ -1043,12 +1068,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         {
             var page = await _historyService.ReadHistoryAsync(
                 repository,
-                new HistoryQuery(
-                    scope,
-                    filter,
-                    skip,
-                    IncludeReflog: _showReflog,
-                    HeadExists: _headExists),
+                CreateHistoryQuery(scope, filter, skip, reflogSessionId),
                 cancellation.Token);
 
             if (cancellation.IsCancellationRequested

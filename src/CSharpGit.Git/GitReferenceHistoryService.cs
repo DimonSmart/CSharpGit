@@ -5,7 +5,13 @@ namespace CSharpGit.Git;
 
 public sealed class GitReferenceHistoryService : IReferenceHistoryService
 {
+    private const int ReflogMetadataRecordLimit = 4096;
+    private const int MaxCachedReflogSessions = 8;
+
     private readonly GitCommandExecutor _executor;
+    private readonly object _reflogMetadataGate = new();
+    private readonly Dictionary<ReflogMetadataCacheKey, IReadOnlyDictionary<string, ReflogPresentation>> _reflogMetadataCache = [];
+    private readonly Queue<ReflogMetadataCacheKey> _reflogMetadataCacheOrder = new();
 internal GitReferenceHistoryService(GitCommandExecutor executor)
     {
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
@@ -66,7 +72,16 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
         var reflogOnlyHashes = ShouldIncludeReflog(query)
             ? await ReadReflogOnlyHashesAsync(repository, cancellationToken)
             : null;
-        var rows = BuildTopology(commits.Take(requestedCount).ToList(), reflogOnlyHashes);
+        var topologyCommits = commits.Take(requestedCount).ToList();
+        var reflogPresentations = reflogOnlyHashes is not null
+                                  && HasReflogOnlyCommits(topologyCommits, reflogOnlyHashes)
+            ? await ReadReflogPresentationsAsync(repository, query, cancellationToken)
+            : null;
+        var rows = BuildTopology(
+            topologyCommits,
+            reflogOnlyHashes,
+            reflogPresentations,
+            BuildReferenceDetails(query));
         return new HistoryPage(rows, hasMore);
     }
 
@@ -171,7 +186,16 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
             var pageReflogOnlyHashes = includeReflog
                 ? await ReadReflogOnlyHashesAsync(repository, cancellationToken)
                 : null;
-            var rows = BuildTopology(commits.Take(skip + take).ToList(), pageReflogOnlyHashes);
+            var topologyCommits = commits.Take(skip + take).ToList();
+            var reflogPresentations = pageReflogOnlyHashes is not null
+                                      && HasReflogOnlyCommits(topologyCommits, pageReflogOnlyHashes)
+                ? await ReadReflogPresentationsAsync(repository, query, cancellationToken)
+                : null;
+            var rows = BuildTopology(
+                topologyCommits,
+                pageReflogOnlyHashes,
+                reflogPresentations,
+                BuildReferenceDetails(query));
             return new HistoryPage(rows.Skip(skip).ToList(), hasMore);
         }
 
@@ -203,7 +227,15 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
         var reflogOnlyHashes = includeReflog
             ? await ReadReflogOnlyHashesAsync(repository, cancellationToken)
             : null;
-        var rowsByHash = BuildTopology(commitsThroughPage, reflogOnlyHashes)
+        var reflogPresentations = reflogOnlyHashes is not null
+                                  && HasReflogOnlyCommits(commitsThroughPage, reflogOnlyHashes)
+            ? await ReadReflogPresentationsAsync(repository, query, cancellationToken)
+            : null;
+        var rowsByHash = BuildTopology(
+                commitsThroughPage,
+                reflogOnlyHashes,
+                reflogPresentations,
+                BuildReferenceDetails(query))
             .ToDictionary(row => row.Commit.Hash, StringComparer.Ordinal);
         var requestedRows = requestedHashes
             .Select(hash => rowsByHash.TryGetValue(hash, out var row)
@@ -263,6 +295,209 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
         return output
             .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToHashSet(StringComparer.Ordinal);
+    }
+
+    private async Task<IReadOnlyDictionary<string, ReflogPresentation>> ReadReflogPresentationsAsync(
+        Repository repository,
+        HistoryQuery query,
+        CancellationToken cancellationToken)
+    {
+        var cacheKey = new ReflogMetadataCacheKey(
+            repository.WorkingDirectory,
+            query.ReflogSessionId,
+            query.HeadReference);
+
+        if (query.ReflogSessionId != 0 && TryGetCachedReflogPresentations(cacheKey, out var cached))
+            return cached;
+
+        var output = await RunGitAsync(
+            repository.WorkingDirectory,
+            cancellationToken,
+            "reflog",
+            "show",
+            "--all",
+            $"--max-count={ReflogMetadataRecordLimit}",
+            "--format=%H%x00%gD%x00%gd%x00%gs%x1e");
+
+        var parsed = ParseReflogPresentations(output, query.HeadReference);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (query.ReflogSessionId != 0)
+            CacheReflogPresentations(cacheKey, parsed);
+
+        return parsed;
+    }
+
+    private bool TryGetCachedReflogPresentations(
+        ReflogMetadataCacheKey key,
+        out IReadOnlyDictionary<string, ReflogPresentation> presentations)
+    {
+        lock (_reflogMetadataGate)
+            return _reflogMetadataCache.TryGetValue(key, out presentations!);
+    }
+
+    private void CacheReflogPresentations(
+        ReflogMetadataCacheKey key,
+        IReadOnlyDictionary<string, ReflogPresentation> presentations)
+    {
+        lock (_reflogMetadataGate)
+        {
+            if (_reflogMetadataCache.ContainsKey(key))
+            {
+                _reflogMetadataCache[key] = presentations;
+                return;
+            }
+
+            _reflogMetadataCache[key] = presentations;
+            _reflogMetadataCacheOrder.Enqueue(key);
+            while (_reflogMetadataCacheOrder.Count > MaxCachedReflogSessions)
+            {
+                var expired = _reflogMetadataCacheOrder.Dequeue();
+                _reflogMetadataCache.Remove(expired);
+            }
+        }
+    }
+
+    private static IReadOnlyDictionary<string, ReflogPresentation> ParseReflogPresentations(
+        string output,
+        string? currentBranch)
+    {
+        var candidates = new Dictionary<string, ReflogCandidate>(StringComparer.Ordinal);
+        var sequence = 0;
+
+        foreach (var record in output.Split('\x1e', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var fields = record.TrimStart('\r', '\n').Split('\0', 4);
+            if (fields.Length != 4 || string.IsNullOrWhiteSpace(fields[0]))
+                continue;
+
+            var fullSelector = fields[1].Trim();
+            var shortSelector = fields[2].Trim();
+            var subject = fields[3].Trim();
+            var candidate = new ReflogCandidate(
+                new ReflogPresentation(
+                    string.IsNullOrWhiteSpace(shortSelector) ? null : shortSelector,
+                    CompactReflogEventKind(subject),
+                    string.IsNullOrWhiteSpace(subject) ? null : subject),
+                ReflogPriority(fullSelector, currentBranch),
+                sequence++);
+
+            if (!candidates.TryGetValue(fields[0], out var existing)
+                || candidate.Priority < existing.Priority
+                || candidate.Priority == existing.Priority && candidate.Sequence < existing.Sequence)
+            {
+                candidates[fields[0]] = candidate;
+            }
+        }
+
+        return candidates.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value.Presentation,
+            StringComparer.Ordinal);
+    }
+
+    private static int ReflogPriority(string fullSelector, string? currentBranch)
+    {
+        if (!string.IsNullOrWhiteSpace(currentBranch)
+            && fullSelector.StartsWith($"refs/heads/{currentBranch}@{{", StringComparison.Ordinal))
+            return 0;
+        if (fullSelector.StartsWith("refs/heads/", StringComparison.Ordinal))
+            return 1;
+        if (fullSelector.StartsWith("HEAD@{", StringComparison.Ordinal))
+            return 2;
+        return 3;
+    }
+
+    private static string? CompactReflogEventKind(string subject)
+    {
+        if (string.IsNullOrWhiteSpace(subject))
+            return null;
+
+        var separator = subject.IndexOf(':');
+        var value = (separator > 0 ? subject[..separator] : subject).Trim();
+        if (value.Length <= 36)
+            return value;
+        return value[..33] + "...";
+    }
+
+    private static bool HasReflogOnlyCommits(
+        IEnumerable<CommitHistoryItem> commits,
+        IReadOnlySet<string> reflogOnlyHashes) =>
+        commits.Any(commit => reflogOnlyHashes.Contains(commit.Hash));
+
+    private static IReadOnlyDictionary<string, IReadOnlyList<HistoryReferenceDecoration>> BuildReferenceDetails(
+        HistoryQuery query)
+    {
+        var result = new Dictionary<string, List<HistoryReferenceDecoration>>(StringComparer.Ordinal);
+
+        static void Add(
+            Dictionary<string, List<HistoryReferenceDecoration>> target,
+            string commit,
+            HistoryReferenceDecoration reference)
+        {
+            if (string.IsNullOrWhiteSpace(commit))
+                return;
+            if (!target.TryGetValue(commit, out var values))
+            {
+                values = [];
+                target[commit] = values;
+            }
+            values.Add(reference);
+        }
+
+        if (query.RepositoryReferences is { } references)
+        {
+            foreach (var branch in references.LocalBranches)
+            {
+                var isCurrent = branch.IsCurrent
+                    || (!query.IsDetachedHead
+                        && string.Equals(branch.Name, query.HeadReference, StringComparison.Ordinal));
+                Add(
+                    result,
+                    branch.Commit,
+                    new HistoryReferenceDecoration(
+                        branch.Name,
+                        isCurrent ? HistoryReferenceKind.CurrentLocalBranch : HistoryReferenceKind.LocalBranch,
+                        branch.IsDefault,
+                        branch.Upstream,
+                        branch.Ahead,
+                        branch.Behind));
+            }
+
+            foreach (var branch in references.RemoteBranches)
+            {
+                Add(
+                    result,
+                    branch.Commit,
+                    new HistoryReferenceDecoration(
+                        branch.Name,
+                        HistoryReferenceKind.RemoteTrackingBranch,
+                        branch.IsDefault));
+            }
+
+            foreach (var tag in references.Tags)
+            {
+                Add(
+                    result,
+                    tag.TargetCommit,
+                    new HistoryReferenceDecoration(
+                        $"tag: {tag.Name}",
+                        HistoryReferenceKind.Tag));
+            }
+        }
+
+        if (query.IsDetachedHead && !string.IsNullOrWhiteSpace(query.HeadCommit))
+        {
+            Add(
+                result,
+                query.HeadCommit,
+                new HistoryReferenceDecoration("HEAD", HistoryReferenceKind.DetachedHead));
+        }
+
+        return result.ToDictionary(
+            pair => pair.Key,
+            pair => (IReadOnlyList<HistoryReferenceDecoration>)pair.Value,
+            StringComparer.Ordinal);
     }
 
     private async Task<int> FindCommitIndexAsync(
@@ -380,7 +615,9 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
 
     internal static IReadOnlyList<HistoryRow> BuildTopology(
         IReadOnlyList<CommitHistoryItem> commits,
-        IReadOnlySet<string>? reflogOnlyHashes = null)
+        IReadOnlySet<string>? reflogOnlyHashes = null,
+        IReadOnlyDictionary<string, ReflogPresentation>? reflogPresentations = null,
+        IReadOnlyDictionary<string, IReadOnlyList<HistoryReferenceDecoration>>? referenceDetailsByCommit = null)
     {
         var lanes = new List<LaneState>();
         var rows = new List<HistoryRow>(commits.Count);
@@ -432,6 +669,12 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
                     outgoing.Add(new TopologyEdge(lane, parentLane, lanes[parentLane].TrackId));
             }
 
+            var isReflogOnly = reflogOnlyHashes?.Contains(commit.Hash) == true;
+            ReflogPresentation? reflogPresentation = null;
+            if (isReflogOnly)
+                reflogPresentations?.TryGetValue(commit.Hash, out reflogPresentation);
+
+            var references = BuildRowReferenceDetails(commit, referenceDetailsByCommit);
             rows.Add(new HistoryRow(
                 commit,
                 new CommitTopology(lane, outgoing)
@@ -441,9 +684,32 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
                     IncomingEdges = incoming,
                     HasExactGraphTopology = true
                 },
-                reflogOnlyHashes?.Contains(commit.Hash) == true));
+                isReflogOnly,
+                reflogPresentation,
+                references));
         }
         return rows;
+    }
+
+    private static IReadOnlyList<HistoryReferenceDecoration> BuildRowReferenceDetails(
+        CommitHistoryItem commit,
+        IReadOnlyDictionary<string, IReadOnlyList<HistoryReferenceDecoration>>? referenceDetailsByCommit)
+    {
+        var result = new List<HistoryReferenceDecoration>();
+        if (referenceDetailsByCommit is not null
+            && referenceDetailsByCommit.TryGetValue(commit.Hash, out var semanticReferences))
+        {
+            result.AddRange(semanticReferences);
+        }
+
+        foreach (var reference in commit.References)
+        {
+            if (result.Any(item => string.Equals(item.DisplayName, reference, StringComparison.Ordinal)))
+                continue;
+            result.Add(new HistoryReferenceDecoration(reference, HistoryReferenceKind.Other));
+        }
+
+        return result;
     }
 
     private static IReadOnlyList<string> ParseRefs(string value) =>
@@ -471,6 +737,16 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
         if (string.IsNullOrWhiteSpace(path) || path.Contains('\0') || Path.IsPathRooted(path))
             throw new ArgumentException("Invalid Git file path.", nameof(path));
     }
+
+    private readonly record struct ReflogMetadataCacheKey(
+        string WorkingDirectory,
+        long SessionId,
+        string? CurrentBranch);
+
+    private sealed record ReflogCandidate(
+        ReflogPresentation Presentation,
+        int Priority,
+        int Sequence);
 
     private sealed record LaneState(string Commit, int TrackId);
 }

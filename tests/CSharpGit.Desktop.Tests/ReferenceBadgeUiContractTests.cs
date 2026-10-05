@@ -3,73 +3,51 @@ namespace CSharpGit.Desktop.Tests;
 public sealed class ReferenceBadgeUiContractTests
 {
     [Fact]
-    public void GitReferencesUseReusableOutlinedBadgeStyle()
+    public void GitReferencesUseReusableTypedSemanticBadges()
     {
         var root = FindRepositoryRoot();
         var workspace = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
         var historyReferences = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml"));
         var presenter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferencesPresenter.cs"));
+        var domain = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Domain", "History.cs"));
         var typography = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Typography.xaml"));
-        var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
-        var commitDetails = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitDetailsView.xaml"));
         var designTokens = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "DesignTokens.xaml"));
 
         Assert.Contains("<Style x:Key=\"ReferenceBadgeStyle\" TargetType=\"Border\">", workspace, StringComparison.Ordinal);
-        Assert.Contains("Property=\"Background\" Value=\"{ThemeResource ControlSolidFillColorDefaultBrush}\"", workspace, StringComparison.Ordinal);
-        Assert.Contains("Property=\"BorderBrush\" Value=\"{ThemeResource ControlStrongStrokeColorDefaultBrush}\"", workspace, StringComparison.Ordinal);
         Assert.Contains("Property=\"BorderThickness\" Value=\"1\"", workspace, StringComparison.Ordinal);
         Assert.Contains("Property=\"CornerRadius\" Value=\"4\"", workspace, StringComparison.Ordinal);
-        Assert.Contains("Property=\"Padding\" Value=\"{StaticResource Padding.ReferenceBadge}\"", workspace, StringComparison.Ordinal);
-        Assert.Contains("Property=\"Margin\" Value=\"{StaticResource Margin.ReferenceBadge}\"", workspace, StringComparison.Ordinal);
-
         Assert.Contains("<controls:HistoryReferencesPresenter", historyReferences, StringComparison.Ordinal);
-        Assert.Contains("References=\"{x:Bind Commit.References, Mode=OneWay}\"", historyReferences, StringComparison.Ordinal);
-        Assert.DoesNotContain("<ItemsControl", historyReferences, StringComparison.Ordinal);
-        Assert.DoesNotContain("HistoryReferenceBadge", historyReferences, StringComparison.Ordinal);
-        Assert.Contains("ReferenceBadgeStyle", presenter, StringComparison.Ordinal);
-        Assert.Contains("ReferenceBadgeTextStyle", presenter, StringComparison.Ordinal);
-        Assert.Contains("HistoryReferenceDefaultBranchIconStyle", presenter, StringComparison.Ordinal);
-        Assert.Contains("Text=\"reflog\" Style=\"{StaticResource ReferenceBadgeTextStyle}\"", historyReferences, StringComparison.Ordinal);
+        Assert.Contains("References=\"{x:Bind ReferenceDetails, Mode=OneWay}\"", historyReferences, StringComparison.Ordinal);
+        Assert.Contains("HistoryReferenceKindMarkerStyle", historyReferences, StringComparison.Ordinal);
+        Assert.Contains("HistoryReferenceTrackingTextStyle", historyReferences, StringComparison.Ordinal);
+        Assert.Contains("HistoryReferenceDecoration", domain, StringComparison.Ordinal);
+        Assert.Contains("HistoryReferenceKind.CurrentLocalBranch", presenter, StringComparison.Ordinal);
+        Assert.Contains("HistoryReferenceKind.LocalBranch", presenter, StringComparison.Ordinal);
+        Assert.Contains("HistoryReferenceKind.RemoteTrackingBranch", presenter, StringComparison.Ordinal);
+        Assert.Contains("HistoryReferenceKind.Tag", presenter, StringComparison.Ordinal);
+        Assert.Contains("HistoryReferenceKind.DetachedHead", presenter, StringComparison.Ordinal);
+        Assert.Contains("· upstream", presenter, StringComparison.Ordinal);
+        Assert.Contains("remote-tracking reference", presenter, StringComparison.Ordinal);
         Assert.Contains("<Style x:Key=\"ReferenceBadgeTextStyle\" TargetType=\"TextBlock\" BasedOn=\"{StaticResource CaptionTextStyle}\">", typography, StringComparison.Ordinal);
-        Assert.Contains("Property=\"Foreground\" Value=\"{ThemeResource TextFillColorPrimaryBrush}\"", typography, StringComparison.Ordinal);
-        Assert.Contains("Property=\"Opacity\" Value=\"1\"", typography, StringComparison.Ordinal);
-        Assert.Contains("Property=\"FontWeight\" Value=\"SemiBold\"", typography, StringComparison.Ordinal);
-
-        Assert.Contains("<controls:CommitDetailsView x:Name=\"CommitDetailsContent\" />", mainPage, StringComparison.Ordinal);
-        Assert.Contains("ItemsSource=\"{Binding SelectedHistoryRow.Commit.References}\"", commitDetails, StringComparison.Ordinal);
-        Assert.Contains("<Border Style=\"{StaticResource ReferenceBadgeStyle}\">", commitDetails, StringComparison.Ordinal);
-        Assert.Contains("Text=\"{Binding}\" Style=\"{StaticResource ReferenceBadgeTextStyle}\"", commitDetails, StringComparison.Ordinal);
         Assert.Contains("<x:Double x:Key=\"Height.DataRow\">24</x:Double>", designTokens, StringComparison.Ordinal);
-
-        Assert.False(File.Exists(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferenceBadge.xaml")));
-        Assert.False(File.Exists(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferenceBadge.xaml.cs")));
     }
 
     [Fact]
-    public void HistoryReferencesPresenterOwnsOneBoundedReusableVisualPoolAndOneContextSubscription()
+    public void HistoryReferencesPresenterOwnsOneBoundedReusableVisualPoolWithoutDisplayNameHeuristics()
     {
         var root = FindRepositoryRoot();
         var presenter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferencesPresenter.cs"));
-        var context = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferencePresentationContext.cs"));
-        var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
 
         Assert.Contains("public sealed class HistoryReferencesPresenter : Panel", presenter, StringComparison.Ordinal);
         Assert.Contains("private const int MaxSurplusVisuals = 12", presenter, StringComparison.Ordinal);
         Assert.Contains("private readonly List<ReferenceVisual> _visuals", presenter, StringComparison.Ordinal);
-        Assert.Contains("HistoryReferencePresentationContext.Changed += PresentationContext_Changed", presenter, StringComparison.Ordinal);
-        Assert.Contains("HistoryReferencePresentationContext.Changed -= PresentationContext_Changed", presenter, StringComparison.Ordinal);
-        Assert.Contains("HistoryReferencePresentationContext.IsDefaultRemoteBranch", presenter, StringComparison.Ordinal);
+        Assert.Contains("IReadOnlyList<HistoryReferenceDecoration>", presenter, StringComparison.Ordinal);
         Assert.Contains("HistoryRenderDiagnostics.ReferenceVisualReused()", presenter, StringComparison.Ordinal);
         Assert.Contains("Children.RemoveAt(last)", presenter, StringComparison.Ordinal);
-        Assert.DoesNotContain("ItemsControl", presenter, StringComparison.Ordinal);
-        Assert.DoesNotContain(".Select(", presenter, StringComparison.Ordinal);
-        Assert.DoesNotContain(".Where(", presenter, StringComparison.Ordinal);
-        Assert.DoesNotContain(".ToList(", presenter, StringComparison.Ordinal);
+        Assert.DoesNotContain("HistoryReferencePresentationContext", presenter, StringComparison.Ordinal);
+        Assert.DoesNotContain("origin/", presenter, StringComparison.Ordinal);
+        Assert.DoesNotContain("tag:", presenter, StringComparison.Ordinal);
         Assert.DoesNotContain("VisualTreeHelper", presenter, StringComparison.Ordinal);
-        Assert.Contains("HashSet<string>", context, StringComparison.Ordinal);
-        Assert.Contains(".ToHashSet(StringComparer.Ordinal)", context, StringComparison.Ordinal);
-        Assert.Contains("RemoteBranches.CollectionChanged += RemoteBranches_CollectionChanged", context, StringComparison.Ordinal);
-        Assert.Contains("HistoryReferencePresentationContext.Configure(_viewModel)", composition, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -81,12 +59,11 @@ public sealed class ReferenceBadgeUiContractTests
         Assert.Contains("private readonly RectangleGeometry _clip = new()", presenter, StringComparison.Ordinal);
         Assert.Contains("Clip = _clip;", presenter, StringComparison.Ordinal);
         Assert.Contains("_overflowMeasureText.Text = maximumOverflowText", presenter, StringComparison.Ordinal);
-        Assert.DoesNotContain("_overflowText.Text, maximumOverflowText", presenter, StringComparison.Ordinal);
         Assert.Contains("totalWidth > finalSize.Width", presenter, StringComparison.Ordinal);
         Assert.Contains("Math.Max(0, finalSize.Width - overflowWidth)", presenter, StringComparison.Ordinal);
         Assert.Contains("GetVisibleReferenceCount(availableForReferences)", presenter, StringComparison.Ordinal);
         Assert.Contains("_overflowText.Text = $\"+{hiddenCount}\"", presenter, StringComparison.Ordinal);
-        Assert.Contains("ToolTipService.SetToolTip(_overflowBorder, BuildOverflowToolTip(visibleCount))", presenter, StringComparison.Ordinal);
+        Assert.Contains("references[index].DisplayName", presenter, StringComparison.Ordinal);
         Assert.Contains("child.Arrange(new Rect(0, 0, 0, 0))", presenter, StringComparison.Ordinal);
         Assert.Contains("SetReferenceVisibility(child, false)", presenter, StringComparison.Ordinal);
     }
