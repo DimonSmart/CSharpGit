@@ -125,6 +125,7 @@ public static class GitServiceCollectionExtensions
         services.AddSingleton<IRepositoryIdentityService>(provider =>
             new RepositoryIdentityService(
                 provider.GetRequiredService<GitConfigService>()));
+        services.AddSingleton<IInteractiveRebaseAuthorChangeService, InteractiveRebaseAuthorChangeService>();
         services.AddSingleton<IGitToolsService>(provider =>
             new GitToolsService(
                 provider.GetRequiredService<GitCommandExecutor>(),
