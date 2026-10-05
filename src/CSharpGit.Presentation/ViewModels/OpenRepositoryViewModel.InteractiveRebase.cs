@@ -61,11 +61,30 @@ public sealed partial class OpenRepositoryViewModel
             ?? throw new InvalidOperationException("Interactive rebase author change service is not available."))
         .Analyze(todoText, selectionStart, selectionLength);
 
-    internal InteractiveRebaseAuthorChangeResult ApplyInteractiveRebaseAuthorChange(
-        InteractiveRebaseAuthorChangeRequest request) =>
-        (_interactiveRebaseAuthorChangeService
-            ?? throw new InvalidOperationException("Interactive rebase author change service is not available."))
-        .Apply(request);
+    internal async Task<InteractiveRebaseAuthorChangeResult> ApplyInteractiveRebaseAuthorChangeAsync(
+        InteractiveRebaseAuthorChangeRequest request)
+    {
+        var service = _interactiveRebaseAuthorChangeService
+            ?? throw new InvalidOperationException("Interactive rebase author change service is not available.");
+
+        if (!request.ResetToCurrentGitIdentity || request.ResetAuthorDate)
+            return service.Apply(request);
+
+        var repository = Repository
+            ?? throw new InvalidOperationException("No repository is open.");
+        var commits = service.GetTargetCommits(request);
+        var authorDateReader = _commitAuthorDateReader
+            ?? throw new InvalidOperationException("Commit author date reader is not available.");
+        var authorDates = await authorDateReader.ReadCommitAuthorDatesAsync(
+            repository,
+            commits);
+
+        if (!ReferenceEquals(repository, Repository))
+            throw new InvalidOperationException(
+                "The open repository changed while commit metadata was being read.");
+
+        return service.Apply(request, authorDates);
+    }
 
     internal async Task StartPreparedInteractiveRebaseAsync(string todoText)
     {

@@ -80,7 +80,7 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("repository.LastBranchName", switching);
         Assert.Contains("_viewModel.CurrentBranchName", switching);
         Assert.Contains("_desktopShellService.OpenFolderDescription", switching);
-        Assert.Contains("Copy repository path", switching);
+        Assert.Contains("Content=\"Copy repository path\"", xaml);
         Assert.Contains("OpenFolderInDesktopShellAsync", switching);
         Assert.Contains("ShowCreateRepositoryAsync", switching);
         Assert.Contains("ShowUnavailableRepositoryAsync", switching);

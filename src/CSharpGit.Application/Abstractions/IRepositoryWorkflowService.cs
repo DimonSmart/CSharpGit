@@ -42,3 +42,11 @@ public interface IRepositoryWorkflowService
     Task AbortOperationAsync(Repository repository, CancellationToken cancellationToken = default);
     Task SkipOperationAsync(Repository repository, CancellationToken cancellationToken = default);
 }
+
+public interface ICommitAuthorDateReader
+{
+    Task<IReadOnlyDictionary<string, string>> ReadCommitAuthorDatesAsync(
+        Repository repository,
+        IReadOnlyList<string> commits,
+        CancellationToken cancellationToken = default);
+}

@@ -266,7 +266,7 @@ public sealed partial class MainPage
         selectedScope.Checked += (_, _) => UpdateScopeInfo();
         allScope.Checked += (_, _) => UpdateScopeInfo();
         cancel.Click += (_, _) => flyout.Hide();
-        apply.Click += (_, _) =>
+        apply.Click += async (_, _) =>
         {
             validationError.Visibility = Visibility.Collapsed;
             validationError.Text = string.Empty;
@@ -277,7 +277,8 @@ public sealed partial class MainPage
                 var scope = selectedScope.IsChecked == true
                     ? InteractiveRebaseAuthorChangeScope.SelectedCommitLines
                     : InteractiveRebaseAuthorChangeScope.AllEligibleCommits;
-                var result = _viewModel.ApplyInteractiveRebaseAuthorChange(
+                apply.IsEnabled = false;
+                var result = await _viewModel.ApplyInteractiveRebaseAuthorChangeAsync(
                     new InteractiveRebaseAuthorChangeRequest(
                         todoText,
                         selectionStart,
@@ -292,10 +293,11 @@ public sealed partial class MainPage
                 editor.Text = result.TodoText;
                 flyout.Hide();
             }
-            catch (ArgumentException exception)
+            catch (Exception exception) when (exception is not OperationCanceledException)
             {
                 validationError.Text = exception.Message;
                 validationError.Visibility = Visibility.Visible;
+                UpdateApplyState();
             }
         };
 

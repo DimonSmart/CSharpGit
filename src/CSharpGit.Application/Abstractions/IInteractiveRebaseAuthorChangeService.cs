@@ -35,6 +35,13 @@ public interface IInteractiveRebaseAuthorChangeService
         int selectionStart,
         int selectionLength);
 
+    IReadOnlyList<string> GetTargetCommits(
+        InteractiveRebaseAuthorChangeRequest request);
+
     InteractiveRebaseAuthorChangeResult Apply(
         InteractiveRebaseAuthorChangeRequest request);
+
+    InteractiveRebaseAuthorChangeResult Apply(
+        InteractiveRebaseAuthorChangeRequest request,
+        IReadOnlyDictionary<string, string> originalAuthorDates);
 }
