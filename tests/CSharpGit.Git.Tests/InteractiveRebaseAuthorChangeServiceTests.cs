@@ -124,6 +124,79 @@ public sealed class InteractiveRebaseAuthorChangeServiceTests
     }
 
     [Fact]
+    public void ResetModeUsesNativeResetAuthorAndPreservesAuthorDate()
+    {
+        const string todo = "pick aaa First\n";
+
+        var result = _service.Apply(new InteractiveRebaseAuthorChangeRequest(
+            todo,
+            0,
+            0,
+            InteractiveRebaseAuthorChangeScope.SelectedCommitLines,
+            string.Empty,
+            string.Empty,
+            false,
+            ResetToCurrentGitIdentity: true));
+
+        Assert.Contains("--reset-author", result.TodoText, StringComparison.Ordinal);
+        Assert.Contains(
+            "--date=\"$(git show -s --format=%aI HEAD)\"",
+            result.TodoText,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("--author ", result.TodoText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ResetModeCanRenewAuthorDate()
+    {
+        const string todo = "pick aaa First\n";
+
+        var result = _service.Apply(new InteractiveRebaseAuthorChangeRequest(
+            todo,
+            0,
+            0,
+            InteractiveRebaseAuthorChangeScope.SelectedCommitLines,
+            string.Empty,
+            string.Empty,
+            true,
+            ResetToCurrentGitIdentity: true));
+
+        Assert.Contains("--reset-author", result.TodoText, StringComparison.Ordinal);
+        Assert.DoesNotContain("--date=", result.TodoText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RepeatedApplyCanReplaceExplicitBlockWithResetBlock()
+    {
+        const string todo = "pick aaa First\n";
+        var explicitResult = _service.Apply(new InteractiveRebaseAuthorChangeRequest(
+            todo,
+            0,
+            0,
+            InteractiveRebaseAuthorChangeScope.SelectedCommitLines,
+            "Old User",
+            "old@example.com",
+            false));
+        var resetResult = _service.Apply(new InteractiveRebaseAuthorChangeRequest(
+            explicitResult.TodoText,
+            0,
+            0,
+            InteractiveRebaseAuthorChangeScope.SelectedCommitLines,
+            string.Empty,
+            string.Empty,
+            false,
+            ResetToCurrentGitIdentity: true));
+
+        Assert.Equal(
+            1,
+            resetResult.TodoText.Split(
+                InteractiveRebaseAuthorChangeService.BeginMarker,
+                StringSplitOptions.None).Length - 1);
+        Assert.DoesNotContain("Old User", resetResult.TodoText, StringComparison.Ordinal);
+        Assert.Contains("--reset-author", resetResult.TodoText, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MalformedMarkerBlockIsNotRewritten()
     {
         const string todo =
