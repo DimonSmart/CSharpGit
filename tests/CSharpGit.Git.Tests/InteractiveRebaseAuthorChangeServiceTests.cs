@@ -51,6 +51,20 @@ public sealed class InteractiveRebaseAuthorChangeServiceTests
     }
 
     [Fact]
+    public void ShortPickRewordAndEditAliasesAreEligible()
+    {
+        const string todo =
+            "p aaa First\n" +
+            "r bbb Second\n" +
+            "e ccc Third\n";
+
+        var analysis = _service.Analyze(todo, 0, todo.Length);
+
+        Assert.Equal(3, analysis.AllEligibleCount);
+        Assert.Equal(3, analysis.SelectedEligibleCount);
+    }
+
+    [Fact]
     public void ApplyInsertsGeneratedBlockBeforeExistingUserExec()
     {
         const string todo =
@@ -115,7 +129,7 @@ public sealed class InteractiveRebaseAuthorChangeServiceTests
         const string todo =
             "pick aaa First\n" +
             "# CSharpGit: change-author begin\n" +
-            "noop\n" +
+            "exec echo user-owned-command\n" +
             "# CSharpGit: change-author end\n";
 
         var result = _service.Apply(new InteractiveRebaseAuthorChangeRequest(
@@ -128,7 +142,7 @@ public sealed class InteractiveRebaseAuthorChangeServiceTests
             false));
 
         Assert.Contains(
-            "# CSharpGit: change-author begin\nnoop\n# CSharpGit: change-author end",
+            "# CSharpGit: change-author begin\nexec echo user-owned-command\n# CSharpGit: change-author end",
             result.TodoText,
             StringComparison.Ordinal);
         Assert.Equal(
@@ -204,6 +218,7 @@ public sealed class InteractiveRebaseAuthorChangeServiceTests
     [InlineData("Bad\nName")]
     [InlineData("Bad<Name")]
     [InlineData("Bad>Name")]
+    [InlineData("Bad\0Name")]
     public void InvalidAuthorNameIsRejected(string name)
     {
         Assert.Throws<ArgumentException>(() =>
@@ -225,6 +240,9 @@ public sealed class InteractiveRebaseAuthorChangeServiceTests
     [InlineData("two@@example.com")]
     [InlineData("white space@example.com")]
     [InlineData("bad<user@example.com")]
+    [InlineData("bad>user@example.com")]
+    [InlineData("bad\nuser@example.com")]
+    [InlineData("bad\0user@example.com")]
     public void InvalidAuthorEmailIsRejected(string email)
     {
         Assert.Throws<ArgumentException>(() =>
