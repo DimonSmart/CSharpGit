@@ -15,12 +15,9 @@ internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService,
     private readonly GitRepositoryStateService _stateService;
 
     internal GitRepositoryWorkflowService(GitCommandExecutor executor)
-        : this(new GitRepositoryCommandRunner(executor))
-    {
-    }
-
-    internal GitRepositoryWorkflowService(GitRepositoryCommandRunner runner)
-        : this(runner, new GitRepositoryStateService(runner))
+        : this(
+            new GitRepositoryCommandRunner(executor),
+            new GitRepositoryStateService(executor))
     {
     }
 

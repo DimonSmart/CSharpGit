@@ -100,6 +100,29 @@ public sealed class GitArchitectureGuardrailTests
     }
 
     [Fact]
+    public void RepositoryStateAndSyncCapabilitiesDoNotUseLegacyWrappers()
+    {
+        var gitProject = Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Git");
+
+        Assert.False(File.Exists(Path.Combine(gitProject, "DefaultBranchRepositoryStateService.cs")));
+        Assert.False(File.Exists(Path.Combine(gitProject, "DefaultBranchRepositorySyncService.cs")));
+    }
+
+    [Fact]
+    public void RepositoryStateSessionLayerIsNotRestored()
+    {
+        var applicationProject = Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Application");
+
+        Assert.False(File.Exists(Path.Combine(
+            applicationProject,
+            "Abstractions",
+            "IRepositoryStateSession.cs")));
+        Assert.False(File.Exists(Path.Combine(
+            applicationProject,
+            "RepositoryStateSession.cs")));
+    }
+
+    [Fact]
     public void GitServicesRequireExplicitExecutorConstruction()
     {
         var serviceTypes = new[]

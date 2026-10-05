@@ -7,41 +7,57 @@ internal sealed partial class GitRepositorySyncService : IRepositorySyncService
 {
     private readonly GitRepositoryCommandRunner _runner;
     private readonly GitPushExecutor _pushExecutor;
+    private readonly DefaultBranchResolver _defaultBranchResolver;
 
     internal GitRepositorySyncService(GitCommandExecutor executor)
-        : this(new GitRepositoryCommandRunner(executor))
+        : this(
+            new GitRepositoryCommandRunner(executor),
+            new DefaultBranchResolver(executor))
     {
     }
 
-    internal GitRepositorySyncService(GitRepositoryCommandRunner runner)
+    internal GitRepositorySyncService(
+        GitRepositoryCommandRunner runner,
+        DefaultBranchResolver defaultBranchResolver)
     {
         _runner = runner ?? throw new ArgumentNullException(nameof(runner));
         _pushExecutor = new GitPushExecutor(_runner);
+        _defaultBranchResolver = defaultBranchResolver
+            ?? throw new ArgumentNullException(nameof(defaultBranchResolver));
     }
 
-    public Task FetchAsync(
+    public async Task FetchAsync(
         Repository repository,
         string remote,
         CancellationToken cancellationToken = default)
     {
         GitRefValidator.Validate(remote, nameof(remote));
-        return _runner.RunMutationAsync(
+        await _runner.RunMutationAsync(
             repository,
             cancellationToken,
             "fetch",
             "--prune",
             remote);
+        await _defaultBranchResolver.RefreshRemoteHeadAsync(
+            repository,
+            remote,
+            cancellationToken);
     }
 
-    public Task FetchAllAsync(
+    public async Task FetchAllAsync(
         Repository repository,
-        CancellationToken cancellationToken = default) =>
-        _runner.RunMutationAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await _runner.RunMutationAsync(
             repository,
             cancellationToken,
             "fetch",
             "--all",
             "--prune");
+        await _defaultBranchResolver.RefreshAllRemoteHeadsAsync(
+            repository,
+            cancellationToken);
+    }
 
     public async Task DeleteRemoteBranchAsync(
         Repository repository,

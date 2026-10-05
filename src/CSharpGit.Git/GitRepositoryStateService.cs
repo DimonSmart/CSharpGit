@@ -18,16 +18,22 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
         };
 
     private readonly GitRepositoryCommandRunner _runner;
+    private readonly GitTagService _tagService;
     internal GitRepositoryCommandRunner Runner => _runner;
 
     internal GitRepositoryStateService(GitCommandExecutor executor)
-        : this(new GitRepositoryCommandRunner(executor))
+        : this(
+            new GitRepositoryCommandRunner(executor),
+            new GitTagService(executor))
     {
     }
 
-    internal GitRepositoryStateService(GitRepositoryCommandRunner runner)
+    internal GitRepositoryStateService(
+        GitRepositoryCommandRunner runner,
+        GitTagService tagService)
     {
         _runner = runner ?? throw new ArgumentNullException(nameof(runner));
+        _tagService = tagService ?? throw new ArgumentNullException(nameof(tagService));
     }
 
     public async Task<RepositoryState> ReadLocalOnlyAsync(
@@ -111,6 +117,31 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
             referenceRead.RemoteHeads,
             remotes,
             references.RemoteBranches);
+        var tags = await _tagService.ReadTagsAsync(
+            repository,
+            configuration.EffectiveTagSort,
+            ReadOnlyEnvironment,
+            cancellationToken);
+        var localBranches = references.LocalBranches
+            .Select(branch => branch with
+            {
+                IsDefault = localDefaultRemoteBranch is not null
+                            && string.Equals(branch.Upstream, localDefaultRemoteBranch, StringComparison.Ordinal)
+            })
+            .ToArray();
+        var remoteBranches = references.RemoteBranches
+            .Select(branch => branch with
+            {
+                IsDefault = localDefaultRemoteBranch is not null
+                            && string.Equals(branch.Name, localDefaultRemoteBranch, StringComparison.Ordinal)
+            })
+            .ToArray();
+        var enrichedReferences = references with
+        {
+            LocalBranches = localBranches,
+            RemoteBranches = remoteBranches,
+            Tags = tags
+        };
 
         var state = new RepositoryState(
             repository,
@@ -122,7 +153,7 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
             configuration.Global,
             configuration.Local,
             DateTimeOffset.UtcNow,
-            references,
+            enrichedReferences,
             stashes,
             operationState);
 
