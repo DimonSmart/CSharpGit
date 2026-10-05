@@ -24,6 +24,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private readonly IRepositorySyncService _syncService;
     private readonly IRepositoryWorkflowService _workflowService;
     private readonly IGitToolsService _gitToolsService;
+    private readonly IRepositoryIdentityService? _repositoryIdentityService;
+    private readonly IInteractiveRebaseAuthorChangeService? _interactiveRebaseAuthorChangeService;
     private readonly IAppSettingsService _settings;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly AsyncCommand _openRepositoryCommand;
@@ -89,7 +91,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         IAppSettingsService settings,
         IUiDispatcher uiDispatcher,
         ILogger<OpenRepositoryViewModel> logger,
-        IStashService? stashService = null)
+        IStashService? stashService = null,
+        IRepositoryIdentityService? repositoryIdentityService = null,
+        IInteractiveRebaseAuthorChangeService? interactiveRebaseAuthorChangeService = null)
     {
         _selectedScope = Scopes[0];
         _folderPicker = folderPicker;
@@ -102,6 +106,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         _workflowService = workflowService;
         _stashService = stashService;
         _gitToolsService = gitToolsService;
+        _repositoryIdentityService = repositoryIdentityService;
+        _interactiveRebaseAuthorChangeService = interactiveRebaseAuthorChangeService;
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
         _showReflog = _settings.ShowReflog;
