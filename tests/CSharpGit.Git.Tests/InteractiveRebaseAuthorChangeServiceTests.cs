@@ -207,8 +207,8 @@ public sealed class InteractiveRebaseAuthorChangeServiceTests
         var quoted = InteractiveRebaseAuthorChangeService.QuoteRebaseExecArgument(
             "A \"quoted\" $ & (test) O'Connor \\ <o'connor@example.com>");
 
-        Assert.True(quoted.StartsWith("'", StringComparison.Ordinal));
-        Assert.True(quoted.EndsWith("'", StringComparison.Ordinal));
+        Assert.StartsWith("'", quoted, StringComparison.Ordinal);
+        Assert.EndsWith("'", quoted, StringComparison.Ordinal);
         Assert.Contains("O'\\''Connor", quoted, StringComparison.Ordinal);
         Assert.Contains("o'\\''connor@example.com", quoted, StringComparison.Ordinal);
     }
