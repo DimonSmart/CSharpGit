@@ -137,6 +137,7 @@ public sealed partial class MainPage : Page
             ResetReferenceHistoryForRepositorySwitch();
             UpdateStatusBar();
             UpdateRepositorySelectorPresentation();
+            _settingsWindowController.RepositoryChanged();
         }
         else if (eventArgs.PropertyName is nameof(OpenRepositoryViewModel.HeadDisplay)
                  or nameof(OpenRepositoryViewModel.CurrentBranchName)

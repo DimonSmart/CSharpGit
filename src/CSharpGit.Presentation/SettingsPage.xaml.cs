@@ -9,14 +9,24 @@ namespace CSharpGit.Presentation;
 
 internal enum SettingsSection
 {
-    General = 0,
-    GitTools = 1,
-    Diagnostics = 2
+    General,
+    Identity,
+    GitTools,
+    Diagnostics
 }
 
 public sealed partial class SettingsPage : Page
 {
+    private static readonly SettingsSection[] NavigationOrder =
+    [
+        SettingsSection.General,
+        SettingsSection.Identity,
+        SettingsSection.GitTools,
+        SettingsSection.Diagnostics
+    ];
+
     private readonly SettingsViewModel _viewModel;
+    private readonly RepositoryIdentitySettingsViewModel _identityViewModel;
     private readonly GitToolsSettingsViewModel _gitToolsViewModel;
     private readonly IDesktopShellService _desktopShellService;
     private readonly IFolderPicker _folderPicker;
@@ -28,6 +38,7 @@ public sealed partial class SettingsPage : Page
 
     internal SettingsPage(
         SettingsViewModel viewModel,
+        RepositoryIdentitySettingsViewModel identityViewModel,
         GitToolsSettingsViewModel gitToolsViewModel,
         IDesktopShellService desktopShellService,
         IFolderPicker folderPicker,
@@ -36,6 +47,7 @@ public sealed partial class SettingsPage : Page
         SettingsSection initialSection)
     {
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+        _identityViewModel = identityViewModel ?? throw new ArgumentNullException(nameof(identityViewModel));
         _gitToolsViewModel = gitToolsViewModel ?? throw new ArgumentNullException(nameof(gitToolsViewModel));
         _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
         _folderPicker = folderPicker ?? throw new ArgumentNullException(nameof(folderPicker));
@@ -47,34 +59,81 @@ public sealed partial class SettingsPage : Page
         InitializeComponent();
         LogFilePathText.Text = _logFilePath;
         DataContext = _viewModel;
+        IdentitySettingsPanel.DataContext = _identityViewModel;
         GitToolsSettingsPanel.DataContext = _gitToolsViewModel;
 
-        SettingsNavigation.SelectedIndex = (int)initialSection;
+        SettingsNavigation.SelectedIndex = IndexOfSection(initialSection);
         Loaded += async (_, _) =>
         {
             _selectionReady = true;
             LogLevelComboBox.IsEnabled = LoggingToggle.IsOn;
-            if (SettingsNavigation.SelectedIndex == (int)SettingsSection.GitTools)
-                await RefreshGitToolsAsync(force: true);
+            await ActivateSectionAsync(SelectedSection(), force: true);
         };
     }
 
     internal void SelectSection(SettingsSection section)
     {
-        SettingsNavigation.SelectedIndex = (int)section;
+        SettingsNavigation.SelectedIndex = IndexOfSection(section);
+        if (_selectionReady)
+            _ = ActivateSectionAsync(section, force: true);
+    }
+
+    internal void RepositoryChanged()
+    {
+        if (_selectionReady && SelectedSection() == SettingsSection.Identity)
+            _ = RefreshIdentityAsync(force: false);
     }
 
     private async void SettingsNavigation_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (GeneralSettingsPanel is null || GitToolsSettingsPanel is null || DiagnosticsSettingsPanel is null) return;
+        if (GeneralSettingsPanel is null
+            || IdentitySettingsPanel is null
+            || GitToolsSettingsPanel is null
+            || DiagnosticsSettingsPanel is null)
+            return;
 
-        var section = (SettingsSection)Math.Clamp(SettingsNavigation.SelectedIndex, 0, 2);
+        var section = SelectedSection();
         GeneralSettingsPanel.Visibility = section == SettingsSection.General ? Visibility.Visible : Visibility.Collapsed;
+        IdentitySettingsPanel.Visibility = section == SettingsSection.Identity ? Visibility.Visible : Visibility.Collapsed;
         GitToolsSettingsPanel.Visibility = section == SettingsSection.GitTools ? Visibility.Visible : Visibility.Collapsed;
         DiagnosticsSettingsPanel.Visibility = section == SettingsSection.Diagnostics ? Visibility.Visible : Visibility.Collapsed;
 
-        if (_selectionReady && section == SettingsSection.GitTools)
-            await RefreshGitToolsAsync(force: false);
+        if (_selectionReady)
+            await ActivateSectionAsync(section, force: false);
+    }
+
+    private Task ActivateSectionAsync(SettingsSection section, bool force) => section switch
+    {
+        SettingsSection.Identity => RefreshIdentityAsync(force),
+        SettingsSection.GitTools => RefreshGitToolsAsync(force),
+        _ => Task.CompletedTask
+    };
+
+    private static int IndexOfSection(SettingsSection section)
+    {
+        var index = Array.IndexOf(NavigationOrder, section);
+        return index >= 0 ? index : 0;
+    }
+
+    private SettingsSection SelectedSection()
+    {
+        var index = SettingsNavigation.SelectedIndex;
+        return index >= 0 && index < NavigationOrder.Length
+            ? NavigationOrder[index]
+            : SettingsSection.General;
+    }
+
+    private async Task RefreshIdentityAsync(bool force)
+    {
+        SettingsMessage.IsOpen = false;
+        try
+        {
+            await _identityViewModel.RefreshAsync(force);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            ShowSettingsError(exception);
+        }
     }
 
     private async Task RefreshGitToolsAsync(bool force)
@@ -93,6 +152,56 @@ public sealed partial class SettingsPage : Page
         {
             await _gitToolsViewModel.RefreshAsync(_repositoryAccessor());
             _gitToolsLoaded = true;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            ShowSettingsError(exception);
+        }
+    }
+
+    private async void IdentitySave_Click(object sender, RoutedEventArgs e)
+    {
+        SettingsMessage.IsOpen = false;
+        try
+        {
+            await _identityViewModel.SaveAsync();
+            ShowSettingsSuccess("Identity", "Repository identity saved.");
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            ShowSettingsError(exception);
+        }
+    }
+
+    private async void IdentityNameRemove_Click(object sender, RoutedEventArgs e) =>
+        await RemoveIdentityOverrideAsync(RepositoryIdentityField.Name);
+
+    private async void IdentityEmailRemove_Click(object sender, RoutedEventArgs e) =>
+        await RemoveIdentityOverrideAsync(RepositoryIdentityField.Email);
+
+    private async void IdentityReload_Click(object sender, RoutedEventArgs e)
+    {
+        SettingsMessage.IsOpen = false;
+        try
+        {
+            await _identityViewModel.DiscardChangesAndReloadAsync();
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            ShowSettingsError(exception);
+        }
+    }
+
+    private async Task RemoveIdentityOverrideAsync(RepositoryIdentityField field)
+    {
+        SettingsMessage.IsOpen = false;
+        try
+        {
+            if (field == RepositoryIdentityField.Name)
+                await _identityViewModel.RemoveNameOverrideAsync();
+            else
+                await _identityViewModel.RemoveEmailOverrideAsync();
+            ShowSettingsSuccess("Identity", $"{field} repository override removed.");
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -134,7 +243,7 @@ public sealed partial class SettingsPage : Page
         try
         {
             await _gitToolsViewModel.SaveAsync(_repositoryAccessor(), section);
-            ShowSettingsSuccess(successMessage);
+            ShowSettingsSuccess("Git Tools", successMessage);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -149,7 +258,7 @@ public sealed partial class SettingsPage : Page
         try
         {
             await _gitToolsViewModel.RemoveOverrideAsync(_repositoryAccessor(), section);
-            ShowSettingsSuccess("Override removed. Effective Git configuration was re-read.");
+            ShowSettingsSuccess("Git Tools", "Override removed. Effective Git configuration was re-read.");
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -164,7 +273,7 @@ public sealed partial class SettingsPage : Page
         try
         {
             await _gitToolsViewModel.TestAsync(_repositoryAccessor(), section);
-            ShowSettingsSuccess(successMessage);
+            ShowSettingsSuccess("Git Tools", successMessage);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -393,9 +502,9 @@ public sealed partial class SettingsPage : Page
         }
     }
 
-    private void ShowSettingsSuccess(string message)
+    private void ShowSettingsSuccess(string title, string message)
     {
-        SettingsMessage.Title = "Git Tools";
+        SettingsMessage.Title = title;
         SettingsMessage.Message = message;
         SettingsMessage.Severity = InfoBarSeverity.Success;
         SettingsMessage.IsOpen = true;

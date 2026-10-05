@@ -12,6 +12,7 @@ public sealed class SettingsWindowController : IDisposable
     private readonly ApplicationThemeManager _themeManager;
     private readonly IAppSettingsService _settings;
     private readonly IGitToolsService _gitToolsService;
+    private readonly IRepositoryIdentityService _repositoryIdentityService;
     private readonly IDesktopShellService _desktopShellService;
     private readonly IFolderPicker _folderPicker;
     private readonly IUiDispatcher _uiDispatcher;
@@ -24,6 +25,7 @@ public sealed class SettingsWindowController : IDisposable
         ApplicationThemeManager themeManager,
         IAppSettingsService settings,
         IGitToolsService gitToolsService,
+        IRepositoryIdentityService repositoryIdentityService,
         IDesktopShellService desktopShellService,
         IFolderPicker folderPicker,
         IUiDispatcher uiDispatcher)
@@ -31,6 +33,7 @@ public sealed class SettingsWindowController : IDisposable
         _themeManager = themeManager ?? throw new ArgumentNullException(nameof(themeManager));
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _gitToolsService = gitToolsService ?? throw new ArgumentNullException(nameof(gitToolsService));
+        _repositoryIdentityService = repositoryIdentityService ?? throw new ArgumentNullException(nameof(repositoryIdentityService));
         _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
         _folderPicker = folderPicker ?? throw new ArgumentNullException(nameof(folderPicker));
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
@@ -53,6 +56,7 @@ public sealed class SettingsWindowController : IDisposable
 
         var page = new SettingsPage(
             new SettingsViewModel(_settings, _uiDispatcher),
+            new RepositoryIdentitySettingsViewModel(_repositoryIdentityService, repositoryAccessor),
             new GitToolsSettingsViewModel(_gitToolsService),
             _desktopShellService,
             _folderPicker,
@@ -73,6 +77,8 @@ public sealed class SettingsWindowController : IDisposable
         _themeRegistration = themeRegistration;
         window.Activate();
     }
+
+    internal void RepositoryChanged() => _page?.RepositoryChanged();
 
     internal void CloseCurrent()
     {
