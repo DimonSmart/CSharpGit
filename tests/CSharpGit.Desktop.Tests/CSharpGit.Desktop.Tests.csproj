@@ -28,6 +28,7 @@
     <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphGeometryCache.cs" Link="CommitGraph/CommitGraphGeometryCache.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphLayoutState.cs" Link="CommitGraph/CommitGraphLayoutState.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphGeometryBuilder.cs" Link="CommitGraph/CommitGraphGeometryBuilder.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphTrackPresentation.cs" Link="CommitGraph/CommitGraphTrackPresentation.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeGuideLayout.cs" Link="RepositoryTree/RepositoryTreeGuideLayout.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/TreeHierarchyGuideBuilder.cs" Link="RepositoryTree/TreeHierarchyGuideBuilder.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeNodeKind.cs" Link="RepositoryTree/RepositoryTreeNodeKind.cs" />

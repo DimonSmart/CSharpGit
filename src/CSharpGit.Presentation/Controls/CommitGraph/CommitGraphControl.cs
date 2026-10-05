@@ -33,6 +33,9 @@ public sealed class CommitGraphControl : SKCanvasElement
         Color(0xD7, 0xD0, 0x6B),
     ];
 
+    private static readonly SKColor LightReflogColor = Color(0x7A, 0x7A, 0x7A);
+    private static readonly SKColor DarkReflogColor = Color(0x9A, 0x9A, 0x9A);
+
     private CommitGraphGeometry? _geometry;
     private CommitGraphGeometryCache _geometryCache =
         CommitGraphPresentationContext.Current.GeometryCache;
@@ -52,6 +55,18 @@ public sealed class CommitGraphControl : SKCanvasElement
     {
         get => (CommitGraphRowVisual?)GetValue(GraphProperty);
         set => SetValue(GraphProperty, value);
+    }
+
+    public static readonly DependencyProperty IsReflogOnlyProperty = DependencyProperty.Register(
+        nameof(IsReflogOnly),
+        typeof(bool),
+        typeof(CommitGraphControl),
+        new PropertyMetadata(false, OnIsReflogOnlyChanged));
+
+    public bool IsReflogOnly
+    {
+        get => (bool)GetValue(IsReflogOnlyProperty);
+        set => SetValue(IsReflogOnlyProperty, value);
     }
 
     public CommitGraphMetrics Metrics
@@ -237,6 +252,14 @@ public sealed class CommitGraphControl : SKCanvasElement
         control.UpdateGeometry(HistoryGeometryUpdateReason.GraphChanged);
     }
 
+    private static void OnIsReflogOnlyChanged(
+        DependencyObject dependencyObject,
+        DependencyPropertyChangedEventArgs args)
+    {
+        if (dependencyObject is CommitGraphControl control)
+            control.Invalidate();
+    }
+
     private void UpdateGeometry(
         HistoryGeometryUpdateReason reason = HistoryGeometryUpdateReason.Unknown)
     {
@@ -414,7 +437,22 @@ public sealed class CommitGraphControl : SKCanvasElement
             && IsValidHeight(ActualHeight);
     }
 
-    private SKColor GetTrackColor(int trackId) => GetPalette()[PaletteIndex(trackId)];
+    private SKColor GetTrackColor(int trackId)
+    {
+        var graph = Graph;
+        if (graph is not null
+            && CommitGraphTrackPresentation.ShouldUseMutedStyle(
+                IsReflogOnly,
+                graph.NodeTrackId,
+                trackId))
+        {
+            return ActualTheme == ElementTheme.Dark
+                ? DarkReflogColor
+                : LightReflogColor;
+        }
+
+        return GetPalette()[PaletteIndex(trackId)];
+    }
 
     private SKColor[] GetPalette() =>
         ActualTheme == ElementTheme.Dark ? DarkPalette : LightPalette;

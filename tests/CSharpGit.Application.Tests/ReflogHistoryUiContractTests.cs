@@ -38,6 +38,71 @@ public sealed class ReflogHistoryUiContractTests
         Assert.DoesNotContain("git log -g", git, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void ReflogGraphStylingIsRowLocalPresentationOnly()
+    {
+        var root = FindRepositoryRoot();
+        var historyReferences = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml"));
+        var graphControl = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphControl.cs"));
+        var trackPresentation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphTrackPresentation.cs"));
+        var graphVisual = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphRowVisual.cs"));
+        var geometryKey = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphGeometryKey.cs"));
+        var converter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitTopologyToGraphVisualConverter.cs"));
+        var domain = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Domain", "History.cs"));
+
+        var graphTemplateCount = CountOccurrences(historyReferences, "<controls:CommitGraphControl ");
+        var reflogBindingCount = CountOccurrences(
+            historyReferences,
+            "IsReflogOnly=\"{x:Bind IsReflogOnly, Mode=OneWay}\"");
+
+        Assert.Equal(3, graphTemplateCount);
+        Assert.Equal(graphTemplateCount, reflogBindingCount);
+        Assert.Contains("public static readonly DependencyProperty IsReflogOnlyProperty", graphControl);
+        Assert.Contains("LightReflogColor", graphControl);
+        Assert.Contains("DarkReflogColor", graphControl);
+        Assert.Contains("CommitGraphTrackPresentation.ShouldUseMutedStyle", graphControl);
+        Assert.Contains("isReflogOnly && trackId == nodeTrackId", trackPresentation);
+
+        var callback = Slice(
+            graphControl,
+            "private static void OnIsReflogOnlyChanged(",
+            "private void UpdateGeometry(");
+        Assert.Contains("control.Invalidate();", callback);
+        Assert.DoesNotContain("UpdateGeometry(", callback);
+
+        Assert.DoesNotContain("IsReflogOnly", graphVisual);
+        Assert.DoesNotContain("IsReflogOnly", geometryKey);
+        Assert.DoesNotContain("IsReflogOnly", converter);
+
+        var topology = Slice(
+            domain,
+            "public sealed record CommitTopology",
+            "public sealed record HistoryRow");
+        Assert.DoesNotContain("IsReflogOnly", topology);
+    }
+
+    private static string Slice(string value, string startMarker, string endMarker)
+    {
+        var start = value.IndexOf(startMarker, StringComparison.Ordinal);
+        Assert.True(start >= 0, $"Missing marker: {startMarker}");
+        var end = value.IndexOf(endMarker, start, StringComparison.Ordinal);
+        Assert.True(end >= start, $"Missing marker: {endMarker}");
+        return value[start..end];
+    }
+
+    private static int CountOccurrences(string value, string marker)
+    {
+        var count = 0;
+        var offset = 0;
+        while ((offset = value.IndexOf(marker, offset, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            offset += marker.Length;
+        }
+
+        return count;
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
