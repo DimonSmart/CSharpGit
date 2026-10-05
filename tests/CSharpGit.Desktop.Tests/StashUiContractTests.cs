@@ -82,7 +82,7 @@ public sealed class StashUiContractTests
         Assert.Contains("await _viewModel.SelectStashAsync(stash)", stashSelection, StringComparison.Ordinal);
         Assert.Contains("await NavigateToReferenceAsync(stash.Commit, preserveSelectedStash: true)", stashSelection, StringComparison.Ordinal);
         Assert.Contains("!string.Equals(value.Commit.Hash, selectedStash.Commit, StringComparison.Ordinal)", viewModel, StringComparison.Ordinal);
-        Assert.Contains("string.Equals(current.Commit.Hash, stash.Commit, StringComparison.Ordinal)", commitChanges, StringComparison.Ordinal);
+        Assert.Contains("string.Equals(selectedHistoryRow.Commit.Hash, stash.Commit, StringComparison.Ordinal)", commitChanges, StringComparison.Ordinal);
 
         Assert.Contains("Visibility=\"{Binding HasSelectedDetailsObject", xaml, StringComparison.Ordinal);
         Assert.Contains("Header=\"{Binding SelectedDetailsTitle}\"", xaml, StringComparison.Ordinal);
