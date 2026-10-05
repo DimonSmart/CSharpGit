@@ -19,7 +19,8 @@ public sealed class RepositoryIdentityUiContractTests
         Assert.Contains("Text=\"Name\"", xaml);
         Assert.Contains("Text=\"Email\"", xaml);
         Assert.Contains("Save for this repository", xaml);
-        Assert.Equal(2, CountOccurrences(xaml, "Content=\"Remove override\""));
+        Assert.Equal(1, CountOccurrences(xaml, "Click=\"IdentityNameRemove_Click\""));
+        Assert.Equal(1, CountOccurrences(xaml, "Click=\"IdentityEmailRemove_Click\""));
         Assert.Contains("Open a repository to configure its Git identity.", xaml);
         Assert.Contains("Base Git identity for commits in this repository.", xaml);
         Assert.Contains("Effective", xaml);
