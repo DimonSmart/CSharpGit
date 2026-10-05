@@ -56,6 +56,9 @@ public sealed partial class MainPage
             HandleHistoryPerformanceRepositoryChanged();
         }
 
+        if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.CurrentBranchName))
+            await UpdateRecentRepositoryBranchMetadataAsync();
+
         if (eventArgs.PropertyName != nameof(OpenRepositoryViewModel.IsBusy)) return;
 
         var becameIdle = _recentRepositoryWasBusy && !_viewModel.IsBusy;
@@ -152,6 +155,24 @@ public sealed partial class MainPage
 
         if (path is not null)
             await TrySwitchRepositoryAsync(path);
+    }
+
+    private async Task UpdateRecentRepositoryBranchMetadataAsync()
+    {
+        if (_recentRepositoriesShutdown || _viewModel.Repository is not { } repository) return;
+
+        var branchName = _viewModel.IsDetachedHead ? null : _viewModel.CurrentBranchName;
+        try
+        {
+            await _recentRepositorySettings.UpdateRecentRepositoryBranchAsync(
+                repository.WorkingDirectory,
+                branchName);
+        }
+        catch (Exception exception)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"Could not persist recent repository branch metadata: {exception}");
+        }
     }
 
     private async Task RecordOpenedRepositoryAsync()

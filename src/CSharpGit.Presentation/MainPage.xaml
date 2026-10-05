@@ -123,8 +123,93 @@
                        TextWrapping="NoWrap"
                        TextTrimming="CharacterEllipsis" />
             <DropDownButton.Flyout>
-              <MenuFlyout x:Name="RepositorySelectorFlyout"
-                          Opening="RepositorySelectorFlyout_Opening" />
+              <Flyout x:Name="RepositorySelectorFlyout"
+                      Opening="RepositorySelectorFlyout_Opening"
+                      Placement="BottomEdgeAlignedLeft">
+                <StackPanel Width="520" Spacing="2">
+                  <ListView x:Name="RepositorySelectorList"
+                            MaxHeight="320"
+                            IsItemClickEnabled="True"
+                            ItemClick="RepositorySelectorList_ItemClick"
+                            SelectionMode="None"
+                            ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                            ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListView.ItemContainerStyle>
+                      <Style TargetType="ListViewItem"
+                             BasedOn="{StaticResource FormNavigationItemStyle}">
+                        <Setter Property="MinHeight" Value="32" />
+                        <Setter Property="Padding" Value="8,2" />
+                      </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                      <DataTemplate>
+                        <Grid ColumnDefinitions="20,*,Auto"
+                              MinHeight="28"
+                              ToolTipService.ToolTip="{Binding ToolTip}"
+                              AutomationProperties.Name="{Binding AccessibleName}">
+                          <FontIcon Grid.Column="0"
+                                    Glyph="{Binding CurrentGlyph}"
+                                    FontSize="12"
+                                    VerticalAlignment="Center" />
+                          <controls:MiddleEllipsisTextBlock Grid.Column="1"
+                                                            Text="{Binding Path}"
+                                                            UseMiddleEllipsis="True"
+                                                            TextStyle="{StaticResource BodyTextStyle}" />
+                          <TextBlock Grid.Column="2"
+                                     Text="{Binding Branch}"
+                                     Margin="16,0,4,0"
+                                     MaxWidth="160"
+                                     Style="{StaticResource CaptionTextStyle}"
+                                     TextTrimming="CharacterEllipsis"
+                                     VerticalAlignment="Center" />
+                        </Grid>
+                      </DataTemplate>
+                    </ListView.ItemTemplate>
+                  </ListView>
+
+                  <Border Height="1"
+                          Margin="0,4"
+                          Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                  <Button x:Name="RepositorySelectorOpenFolderButton"
+                          Style="{StaticResource RepositorySelectorActionButtonStyle}"
+                          Click="RepositorySelectorOpenFolder_Click" />
+                  <Button x:Name="RepositorySelectorCopyPathButton"
+                          Content="Copy repository path"
+                          Style="{StaticResource RepositorySelectorActionButtonStyle}"
+                          Click="RepositorySelectorCopyPath_Click" />
+
+                  <Border Height="1"
+                          Margin="0,4"
+                          Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                  <Button x:Name="RepositorySelectorOpenButton"
+                          Content="Open repository…"
+                          Style="{StaticResource RepositorySelectorActionButtonStyle}"
+                          Click="RepositorySelectorOpenRepository_Click" />
+                  <Button x:Name="RepositorySelectorCloneButton"
+                          Content="Clone repository…"
+                          Style="{StaticResource RepositorySelectorActionButtonStyle}"
+                          Click="RepositorySelectorCloneRepository_Click" />
+                  <Button x:Name="RepositorySelectorCreateButton"
+                          Content="Create repository…"
+                          Style="{StaticResource RepositorySelectorActionButtonStyle}"
+                          Click="RepositorySelectorCreateRepository_Click" />
+                  <Button x:Name="RepositorySelectorRepositoriesButton"
+                          Content="Repositories…"
+                          Style="{StaticResource RepositorySelectorActionButtonStyle}"
+                          Click="RepositorySelectorRepositories_Click" />
+
+                  <Border Height="1"
+                          Margin="0,4"
+                          Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                  <Button x:Name="RepositorySelectorCloseButton"
+                          Content="Close repository"
+                          Style="{StaticResource RepositorySelectorActionButtonStyle}"
+                          Click="RepositorySelectorCloseRepository_Click" />
+                </StackPanel>
+              </Flyout>
             </DropDownButton.Flyout>
           </DropDownButton>
         </StackPanel>

@@ -225,6 +225,40 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             cancellationToken);
     }
 
+    public Task UpdateRecentRepositoryBranchAsync(
+        string path,
+        string? lastBranchName,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        var normalizedPath = NormalizePath(path);
+        var normalizedBranchName = string.IsNullOrWhiteSpace(lastBranchName)
+            ? null
+            : lastBranchName.Trim();
+
+        return UpdateAsync(
+            current =>
+            {
+                var existing = current.RecentRepositories.FirstOrDefault(
+                    candidate => PathComparer.Equals(candidate.Path, normalizedPath));
+                if (existing is null
+                    || string.Equals(
+                        existing.LastBranchName,
+                        normalizedBranchName,
+                        StringComparison.Ordinal))
+                    return current;
+
+                var updated = current.RecentRepositories
+                    .Select(candidate => PathComparer.Equals(candidate.Path, normalizedPath)
+                        ? candidate with { LastBranchName = normalizedBranchName }
+                        : candidate)
+                    .ToArray();
+                return current with { RecentRepositories = updated };
+            },
+            cancellationToken);
+    }
+
     public Task SetRecentRepositoryPinnedAsync(
         string path,
         bool pinned,
