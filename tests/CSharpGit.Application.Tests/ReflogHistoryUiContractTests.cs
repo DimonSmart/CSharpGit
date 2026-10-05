@@ -60,8 +60,9 @@ public sealed class ReflogHistoryUiContractTests
         Assert.Contains("public static readonly DependencyProperty IsReflogOnlyProperty", graphControl);
         Assert.Contains("LightReflogColor", graphControl);
         Assert.Contains("DarkReflogColor", graphControl);
-        Assert.Contains("CommitGraphTrackPresentation.ShouldUseMutedStyle", graphControl);
-        Assert.Contains("isReflogOnly && trackId == nodeTrackId", trackPresentation);
+        Assert.Contains("CommitGraphTrackPresentation.ShouldUseMutedPrimitiveStyle", graphControl);
+        Assert.Contains("start == nodeCenter", trackPresentation);
+        Assert.Contains("end == nodeCenter", trackPresentation);
 
         var callback = Slice(
             graphControl,

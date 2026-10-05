@@ -359,9 +359,14 @@ public sealed class CommitGraphControl : SKCanvasElement
             StrokeWidth = (float)Metrics.LineThickness,
         };
         using var path = new SKPath();
+        var nodeCenter = geometry.Node?.Center;
         foreach (var curve in geometry.Beziers)
         {
-            paint.Color = GetTrackColor(curve.TrackId);
+            paint.Color = GetPrimitiveColor(
+                curve.TrackId,
+                curve.Start,
+                curve.End,
+                nodeCenter);
             path.Rewind();
             path.MoveTo((float)curve.Start.X, (float)curve.Start.Y);
             path.CubicTo((float)curve.Control1.X, (float)curve.Control1.Y,
@@ -371,7 +376,11 @@ public sealed class CommitGraphControl : SKCanvasElement
         }
         foreach (var line in geometry.Lines)
         {
-            paint.Color = GetTrackColor(line.TrackId);
+            paint.Color = GetPrimitiveColor(
+                line.TrackId,
+                line.Start,
+                line.End,
+                nodeCenter);
             canvas.DrawLine((float)line.Start.X, (float)line.Start.Y,
                 (float)line.End.X, (float)line.End.Y, paint);
         }
@@ -441,18 +450,44 @@ public sealed class CommitGraphControl : SKCanvasElement
     {
         var graph = Graph;
         if (graph is not null
-            && CommitGraphTrackPresentation.ShouldUseMutedStyle(
+            && CommitGraphTrackPresentation.ShouldUseMutedNodeStyle(
                 IsReflogOnly,
                 graph.NodeTrackId,
                 trackId))
         {
-            return ActualTheme == ElementTheme.Dark
-                ? DarkReflogColor
-                : LightReflogColor;
+            return GetReflogColor();
         }
 
         return GetPalette()[PaletteIndex(trackId)];
     }
+
+    private SKColor GetPrimitiveColor(
+        int trackId,
+        GraphPoint start,
+        GraphPoint end,
+        GraphPoint? nodeCenter)
+    {
+        var graph = Graph;
+        if (graph is not null
+            && nodeCenter is { } center
+            && CommitGraphTrackPresentation.ShouldUseMutedPrimitiveStyle(
+                IsReflogOnly,
+                graph.NodeTrackId,
+                trackId,
+                start,
+                end,
+                center))
+        {
+            return GetReflogColor();
+        }
+
+        return GetPalette()[PaletteIndex(trackId)];
+    }
+
+    private SKColor GetReflogColor() =>
+        ActualTheme == ElementTheme.Dark
+            ? DarkReflogColor
+            : LightReflogColor;
 
     private SKColor[] GetPalette() =>
         ActualTheme == ElementTheme.Dark ? DarkPalette : LightPalette;
