@@ -60,3 +60,4 @@ opened.
 | IDD-0038 | Spec | Image diff preview | Exact Original/Changed image comparison, shared bounded metadata and explicit text/image/binary presentation | — |
 | IDD-0039 | Spec | Repository switching | Single-workspace switch/close lifecycle, quick selector, draft protection and stale-result safety | — |
 | IDD-0040 | Spec | Repository cloning | Native Git clone, default local target, cancellation and common repository switch lifecycle | — |
+| IDD-0041 | Spec | Repository Git identity | Git-owned repository-local user.name/user.email with effective-source display and repository-switch safety | — |
