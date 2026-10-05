@@ -57,7 +57,12 @@ public sealed class ArchitectureTests
                      "IReferenceService",
                      "IRepositorySyncService",
                      "ICommitActionService",
-                     "IRepositoryWorkflowService"
+                     "IStashMutationService",
+                     "IMergeService",
+                     "IConflictResolutionService",
+                     "IInteractiveRebaseService",
+                     "IRepositoryOperationService",
+                     "ICommitAuthorDateReader"
                  })
             Assert.DoesNotContain($"interface {declaration}", stateSource, StringComparison.Ordinal);
 
@@ -69,9 +74,18 @@ public sealed class ArchitectureTests
                      "IReferenceService.cs",
                      "IRepositorySyncService.cs",
                      "ICommitActionService.cs",
-                     "IRepositoryWorkflowService.cs"
+                     "IStashMutationService.cs",
+                     "IMergeService.cs",
+                     "IConflictResolutionService.cs",
+                     "IInteractiveRebaseService.cs",
+                     "IRepositoryOperationService.cs",
+                     "ICommitAuthorDateReader.cs"
                  })
             Assert.True(File.Exists(Path.Combine(abstractions, file)), $"Missing application contract file: {file}");
+
+        Assert.False(
+            File.Exists(Path.Combine(abstractions, "IRepositoryWorkflowService.cs")),
+            "Legacy repository workflow aggregate contract should be removed.");
 
         Assert.False(
             File.Exists(Path.Combine(abstractions, "IRepositoryStateSession.cs")),
