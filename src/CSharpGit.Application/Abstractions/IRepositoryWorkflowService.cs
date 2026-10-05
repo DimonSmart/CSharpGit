@@ -32,6 +32,11 @@ public interface IRepositoryWorkflowService
     Task<RebaseResult> StartInteractiveRebaseAsync(Repository repository, InteractiveRebasePlan plan, CancellationToken cancellationToken = default);
     Task<InteractiveRebaseTodo> ReadInteractiveRebaseTodoAsync(Repository repository, string onto, CancellationToken cancellationToken = default);
     Task<InteractiveRebaseTodo> ReadInteractiveRebaseTodoFromCommitAsync(Repository repository, string firstCommit, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<string, string>> ReadCommitAuthorDatesAsync(
+        Repository repository,
+        IReadOnlyList<string> commits,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Reading commit author dates is not supported by this workflow service.");
     Task<RebaseResult> StartInteractiveRebaseTodoAsync(Repository repository, InteractiveRebaseTodo todo, CancellationToken cancellationToken = default);
     Task<RebaseResult> ContinueRebaseAsync(Repository repository, CancellationToken cancellationToken = default);
     Task AbortRebaseAsync(Repository repository, CancellationToken cancellationToken = default);
