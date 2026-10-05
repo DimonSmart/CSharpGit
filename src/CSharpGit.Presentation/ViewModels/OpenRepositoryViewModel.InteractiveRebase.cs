@@ -73,7 +73,9 @@ public sealed partial class OpenRepositoryViewModel
         var repository = Repository
             ?? throw new InvalidOperationException("No repository is open.");
         var commits = service.GetTargetCommits(request);
-        var authorDates = await _workflowService.ReadCommitAuthorDatesAsync(
+        var authorDateReader = _commitAuthorDateReader
+            ?? throw new InvalidOperationException("Commit author date reader is not available.");
+        var authorDates = await authorDateReader.ReadCommitAuthorDatesAsync(
             repository,
             commits);
 
