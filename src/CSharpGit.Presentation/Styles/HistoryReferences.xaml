@@ -49,7 +49,7 @@
               Opacity="0.06"
               Visibility="{x:Bind IsReflogOnly, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
               IsHitTestVisible="False" />
-      <controls:CommitGraphControl Graph="{x:Bind Topology, Mode=OneWay, Converter={StaticResource CommitTopologyToGraphVisualConverter}}"
+      <controls:CommitGraphControl Graph="{x:Bind Topology, Mode=OneWay, Converter={StaticResource CommitTopologyToGraphVisualConverter}}" IsReflogOnly="{x:Bind IsReflogOnly, Mode=OneWay}"
                                    VerticalAlignment="Stretch" />
       <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,Auto,*" MinWidth="120">
         <TextBlock Text="{x:Bind Commit.Subject, Mode=OneWay}"
@@ -138,7 +138,7 @@
         <ColumnDefinition Width="150" />
         <ColumnDefinition Width="90" />
       </Grid.ColumnDefinitions>
-      <controls:CommitGraphControl Graph="{x:Bind Topology, Mode=OneWay, Converter={StaticResource CommitTopologyToGraphVisualConverter}}" VerticalAlignment="Stretch" />
+      <controls:CommitGraphControl Graph="{x:Bind Topology, Mode=OneWay, Converter={StaticResource CommitTopologyToGraphVisualConverter}}" IsReflogOnly="{x:Bind IsReflogOnly, Mode=OneWay}" VerticalAlignment="Stretch" />
       <TextBlock Grid.Column="1" Text="{x:Bind Commit.Subject, Mode=OneWay}" Style="{StaticResource BodyStrongTextStyle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
       <TextBlock Grid.Column="2" Text="{x:Bind Commit.Author, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
       <TextBlock Grid.Column="3" Text="{Binding Commit.AuthoredAt}" Style="{StaticResource SecondaryTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
@@ -158,7 +158,7 @@
       </Grid.ColumnDefinitions>
       <Border Grid.ColumnSpan="5" Background="{ThemeResource AccentFillColorDefaultBrush}" Opacity="0.06"
               Visibility="{x:Bind IsReflogOnly, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" IsHitTestVisible="False" />
-      <controls:CommitGraphControl Graph="{x:Bind Topology, Mode=OneWay, Converter={StaticResource CommitTopologyToGraphVisualConverter}}" VerticalAlignment="Stretch" />
+      <controls:CommitGraphControl Graph="{x:Bind Topology, Mode=OneWay, Converter={StaticResource CommitTopologyToGraphVisualConverter}}" IsReflogOnly="{x:Bind IsReflogOnly, Mode=OneWay}" VerticalAlignment="Stretch" />
       <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,*" MinWidth="120">
         <TextBlock Text="{x:Bind Commit.Subject, Mode=OneWay}" Style="{StaticResource BodyStrongTextStyle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
         <Border Grid.Column="1" Style="{StaticResource ReferenceBadgeStyle}" Margin="{StaticResource Margin.ReferenceList}"
