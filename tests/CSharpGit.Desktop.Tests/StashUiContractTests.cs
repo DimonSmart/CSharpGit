@@ -117,9 +117,9 @@ public sealed class StashUiContractTests
         Assert.Contains("PrimaryButtonText = \"Drop stash\"", stashPage, StringComparison.Ordinal);
         Assert.Contains("DefaultButton = ContentDialogButton.Close", stashPage, StringComparison.Ordinal);
 
-        Assert.Contains("_workflowService.ApplyStashAsync", stashViewModel, StringComparison.Ordinal);
-        Assert.Contains("_workflowService.PopStashAsync", stashViewModel, StringComparison.Ordinal);
-        Assert.Contains("_workflowService.DropStashAsync", stashViewModel, StringComparison.Ordinal);
+        Assert.Contains("_stashMutationService.ApplyStashAsync", stashViewModel, StringComparison.Ordinal);
+        Assert.Contains("_stashMutationService.PopStashAsync", stashViewModel, StringComparison.Ordinal);
+        Assert.Contains("_stashMutationService.DropStashAsync", stashViewModel, StringComparison.Ordinal);
     }
 
     [Fact]
