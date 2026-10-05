@@ -141,9 +141,9 @@ public sealed class InteractiveRebaseAuthorChangeIntegrationTests : IDisposable
             [_b, _c, _d]);
 
         Assert.Equal(1, processCount);
-        Assert.Equal("2020-01-02T10:00:00+00:00", dates[_b]);
-        Assert.Equal("2020-02-03T11:00:00+01:00", dates[_c]);
-        Assert.Equal("2020-03-04T12:00:00+02:00", dates[_d]);
+        Assert.Equal(ReadCommit(_b).AuthorDate, dates[_b]);
+        Assert.Equal(ReadCommit(_c).AuthorDate, dates[_c]);
+        Assert.Equal(ReadCommit(_d).AuthorDate, dates[_d]);
     }
 
     [Fact]
