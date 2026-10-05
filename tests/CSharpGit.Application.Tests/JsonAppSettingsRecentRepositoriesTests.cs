@@ -106,6 +106,26 @@ public sealed class JsonAppSettingsRecentRepositoriesTests
     }
 
     [Fact]
+    public async Task UpdatingRecentBranchPreservesRecencyAndPinnedOrder()
+    {
+        using var fixture = new SettingsFixture();
+        var service = fixture.CreateService();
+        var path = fixture.RepositoryPath("repo");
+        await service.RecordRecentRepositoryAsync(path, "repo", "main");
+        await service.SetRecentRepositoryPinnedAsync(path, true);
+        var before = service.RecentRepositories.Single();
+
+        await service.UpdateRecentRepositoryBranchAsync(path, " feature/repository-switcher ");
+
+        var after = service.RecentRepositories.Single();
+        Assert.Equal("feature/repository-switcher", after.LastBranchName);
+        Assert.Equal(before.LastOpenedUtc, after.LastOpenedUtc);
+        Assert.Equal(before.IsPinned, after.IsPinned);
+        Assert.Equal(before.PinnedOrder, after.PinnedOrder);
+        Assert.Equal(before.DisplayName, after.DisplayName);
+    }
+
+    [Fact]
     public async Task MovePinnedRepositoryPersistsOrder()
     {
         using var fixture = new SettingsFixture();

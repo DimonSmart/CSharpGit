@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
@@ -5,12 +6,32 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace CSharpGit.Presentation;
 
+internal sealed record RepositorySelectorEntry(
+    string Path,
+    string Branch,
+    bool IsCurrent)
+{
+    public string CurrentGlyph => IsCurrent ? "\uE73E" : string.Empty;
+
+    public string ToolTip => $"{Path}\nBranch: {Branch}";
+
+    public string AccessibleName =>
+        IsCurrent
+            ? $"Current repository {Path}, branch {Branch}"
+            : $"{Path}, branch {Branch}";
+}
+
 public sealed partial class MainPage
 {
     private const int QuickRepositoryLimit = 8;
+    private readonly ObservableCollection<RepositorySelectorEntry> _repositorySelectorItems = [];
 
-    private void InitializeRepositorySwitching() =>
+    private void InitializeRepositorySwitching()
+    {
+        RepositorySelectorList.ItemsSource = _repositorySelectorItems;
+        RepositorySelectorOpenFolderButton.Content = _desktopShellService.OpenFolderDescription;
         UpdateRepositorySelectorPresentation();
+    }
 
     private void UpdateRepositorySelectorPresentation()
     {
@@ -29,39 +50,18 @@ public sealed partial class MainPage
 
     private void RepositorySelectorFlyout_Opening(object sender, object args)
     {
-        RepositorySelectorFlyout.Items.Clear();
+        _repositorySelectorItems.Clear();
 
         var currentPath = _viewModel.Repository?.WorkingDirectory;
-        RepositorySelectorFlyout.Items.Add(new MenuFlyoutItem
-        {
-            Text = "Current repository",
-            IsEnabled = false
-        });
-
         if (currentPath is not null)
         {
-            var current = new MenuFlyoutItem
-            {
-                Text = RepositoryDisplayName(currentPath),
-                IsEnabled = false,
-                Icon = new FontIcon { Glyph = "\uE73E" }
-            };
-            ToolTipService.SetToolTip(current, currentPath);
-            RepositorySelectorFlyout.Items.Add(current);
-
-            var openFolder = new MenuFlyoutItem
-            {
-                Text = _desktopShellService.OpenFolderDescription,
-                IsEnabled = Directory.Exists(currentPath)
-            };
-            openFolder.Click += async (_, _) =>
-                await OpenFolderInDesktopShellAsync(currentPath, "Could not open repository folder");
-            RepositorySelectorFlyout.Items.Add(openFolder);
-
-            var copyPath = new MenuFlyoutItem { Text = "Copy repository path" };
-            copyPath.Click += async (_, _) => await CopyTextAsync(currentPath);
-            RepositorySelectorFlyout.Items.Add(copyPath);
-            RepositorySelectorFlyout.Items.Add(new MenuFlyoutSeparator());
+            var currentBranch = _viewModel.IsDetachedHead
+                ? "detached HEAD"
+                : RepositoryBranchDisplay(_viewModel.CurrentBranchName);
+            _repositorySelectorItems.Add(new RepositorySelectorEntry(
+                currentPath,
+                currentBranch,
+                true));
         }
 
         var quickRepositories = RecentRepositoriesProjectionBuilder.BuildQuickList(
@@ -71,46 +71,78 @@ public sealed partial class MainPage
 
         foreach (var repository in quickRepositories)
         {
-            var item = new MenuFlyoutItem
-            {
-                Text = repository.DisplayName,
-                IsEnabled = _viewModel.CanChangeRepository
-            };
-            ToolTipService.SetToolTip(item, repository.Path);
-            item.Click += async (_, _) => await TrySwitchRepositoryAsync(repository.Path);
-            RepositorySelectorFlyout.Items.Add(item);
+            _repositorySelectorItems.Add(new RepositorySelectorEntry(
+                repository.Path,
+                RepositoryBranchDisplay(repository.LastBranchName),
+                false));
         }
 
-        RepositorySelectorFlyout.Items.Add(new MenuFlyoutSeparator());
-        RepositorySelectorFlyout.Items.Add(CreateRepositoryActionItem(
-            "Open repository…",
-            async () => await OpenRepositoryPickerAsync()));
-        RepositorySelectorFlyout.Items.Add(CreateRepositoryActionItem(
-            "Clone repository…",
-            ShowCloneRepositoryAsync));
-        RepositorySelectorFlyout.Items.Add(CreateRepositoryActionItem(
-            "Create repository…",
-            ShowCreateRepositoryAsync));
-        RepositorySelectorFlyout.Items.Add(CreateRepositoryActionItem(
-            "Repositories…",
-            async () => await TryCloseRepositoryAsync()));
-        RepositorySelectorFlyout.Items.Add(new MenuFlyoutSeparator());
-        RepositorySelectorFlyout.Items.Add(CreateRepositoryActionItem(
-            "Close repository",
-            async () => await TryCloseRepositoryAsync()));
+        var canChangeRepository = _viewModel.CanChangeRepository;
+        RepositorySelectorList.IsEnabled = canChangeRepository;
+        RepositorySelectorOpenFolderButton.IsEnabled =
+            currentPath is not null && Directory.Exists(currentPath);
+        RepositorySelectorCopyPathButton.IsEnabled = currentPath is not null;
+        RepositorySelectorOpenButton.IsEnabled = canChangeRepository;
+        RepositorySelectorCloneButton.IsEnabled = canChangeRepository;
+        RepositorySelectorCreateButton.IsEnabled = canChangeRepository;
+        RepositorySelectorRepositoriesButton.IsEnabled = canChangeRepository;
+        RepositorySelectorCloseButton.IsEnabled = canChangeRepository;
     }
 
-    private MenuFlyoutItem CreateRepositoryActionItem(
-        string text,
-        Func<Task> action)
+    private async void RepositorySelectorList_ItemClick(object sender, ItemClickEventArgs args)
     {
-        var item = new MenuFlyoutItem
-        {
-            Text = text,
-            IsEnabled = _viewModel.CanChangeRepository
-        };
-        item.Click += async (_, _) => await action();
-        return item;
+        if (args.ClickedItem is not RepositorySelectorEntry entry) return;
+
+        RepositorySelectorFlyout.Hide();
+        if (entry.IsCurrent) return;
+
+        await TrySwitchRepositoryAsync(entry.Path);
+    }
+
+    private async void RepositorySelectorOpenFolder_Click(object sender, RoutedEventArgs args)
+    {
+        var path = _viewModel.Repository?.WorkingDirectory;
+        RepositorySelectorFlyout.Hide();
+        if (path is not null && Directory.Exists(path))
+            await OpenFolderInDesktopShellAsync(path, "Could not open repository folder");
+    }
+
+    private async void RepositorySelectorCopyPath_Click(object sender, RoutedEventArgs args)
+    {
+        var path = _viewModel.Repository?.WorkingDirectory;
+        RepositorySelectorFlyout.Hide();
+        if (path is not null)
+            await CopyTextAsync(path);
+    }
+
+    private async void RepositorySelectorOpenRepository_Click(object sender, RoutedEventArgs args)
+    {
+        RepositorySelectorFlyout.Hide();
+        await OpenRepositoryPickerAsync();
+    }
+
+    private async void RepositorySelectorCloneRepository_Click(object sender, RoutedEventArgs args)
+    {
+        RepositorySelectorFlyout.Hide();
+        await ShowCloneRepositoryAsync();
+    }
+
+    private async void RepositorySelectorCreateRepository_Click(object sender, RoutedEventArgs args)
+    {
+        RepositorySelectorFlyout.Hide();
+        await ShowCreateRepositoryAsync();
+    }
+
+    private async void RepositorySelectorRepositories_Click(object sender, RoutedEventArgs args)
+    {
+        RepositorySelectorFlyout.Hide();
+        await TryCloseRepositoryAsync();
+    }
+
+    private async void RepositorySelectorCloseRepository_Click(object sender, RoutedEventArgs args)
+    {
+        RepositorySelectorFlyout.Hide();
+        await TryCloseRepositoryAsync();
     }
 
     private async void OpenRepository_Click(object sender, RoutedEventArgs args) =>
@@ -245,6 +277,9 @@ public sealed partial class MainPage
         };
         await dialog.ShowAsync();
     }
+
+    private static string RepositoryBranchDisplay(string? branchName) =>
+        string.IsNullOrWhiteSpace(branchName) ? "—" : branchName;
 
     private static string RepositoryDisplayName(string path)
     {

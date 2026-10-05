@@ -116,6 +116,11 @@ public interface IAppSettingsService
         string? lastBranchName,
         CancellationToken cancellationToken = default);
 
+    Task UpdateRecentRepositoryBranchAsync(
+        string path,
+        string? lastBranchName,
+        CancellationToken cancellationToken = default);
+
     Task SetRecentRepositoryPinnedAsync(
         string path,
         bool pinned,

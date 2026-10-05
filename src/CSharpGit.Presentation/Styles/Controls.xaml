@@ -37,6 +37,18 @@
     <Setter Property="UseSystemFocusVisuals" Value="True" />
   </Style>
 
+  <Style x:Key="RepositorySelectorActionButtonStyle"
+         TargetType="Button"
+         BasedOn="{StaticResource CompactButtonStyle}">
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Padding" Value="12,4" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+  </Style>
+
   <Style TargetType="SelectorBar" BasedOn="{StaticResource DefaultSelectorBarStyle}">
     <Setter Property="Padding" Value="0" />
     <Setter Property="VerticalAlignment" Value="Center" />

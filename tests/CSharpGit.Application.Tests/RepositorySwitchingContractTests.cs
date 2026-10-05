@@ -63,6 +63,11 @@ public sealed class RepositorySwitchingContractTests
 
         Assert.Contains("x:Name=\"RepositorySelectorButton\"", xaml);
         Assert.Contains("Opening=\"RepositorySelectorFlyout_Opening\"", xaml);
+        Assert.Contains("x:Name=\"RepositorySelectorList\"", xaml);
+        Assert.Contains("ItemClick=\"RepositorySelectorList_ItemClick\"", xaml);
+        Assert.Contains("UseMiddleEllipsis=\"True\"", xaml);
+        Assert.Contains("Text=\"{Binding Branch}\"", xaml);
+        Assert.Contains("AutomationProperties.Name=\"Current repository\"", xaml);
         Assert.Contains("Text=\"Open repository…\"", xaml);
         Assert.Contains("Text=\"Repositories…\"", xaml);
         Assert.Contains("Text=\"Close repository\"", xaml);
@@ -70,11 +75,14 @@ public sealed class RepositorySwitchingContractTests
 
         Assert.Contains("QuickRepositoryLimit = 8", switching);
         Assert.Contains("BuildQuickList(", switching);
-        Assert.Contains("Current repository", switching);
+        Assert.Contains("RepositorySelectorEntry", switching);
+        Assert.Contains("repository.Path,", switching);
+        Assert.Contains("repository.LastBranchName", switching);
+        Assert.Contains("_viewModel.CurrentBranchName", switching);
         Assert.Contains("_desktopShellService.OpenFolderDescription", switching);
         Assert.Contains("Copy repository path", switching);
         Assert.Contains("OpenFolderInDesktopShellAsync", switching);
-        Assert.Contains("Create repository…", switching);
+        Assert.Contains("ShowCreateRepositoryAsync", switching);
         Assert.Contains("ShowUnavailableRepositoryAsync", switching);
 
         Assert.Contains("e.Key == VirtualKey.O", page);
