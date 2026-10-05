@@ -5,7 +5,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
 
-internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService
+internal sealed class GitRepositoryWorkflowService : IRepositoryWorkflowService, ICommitAuthorDateReader
 {
     private const string ManagedRebaseMode = "managed";
     private const string RawRebaseMode = "raw";
