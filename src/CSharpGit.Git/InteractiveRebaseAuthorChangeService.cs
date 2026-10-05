@@ -10,7 +10,6 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
     internal const string EndMarker = "# CSharpGit: change-author end";
     private const string AmendPrefix =
         "git commit --amend --no-edit --no-verify --no-gpg-sign ";
-    private const string GitStrictIsoDateFormat = "yyyy-MM-dd'T'HH:mm:sszzz";
     private static readonly IReadOnlyDictionary<string, string> EmptyAuthorDates =
         new Dictionary<string, string>(StringComparer.Ordinal);
 
@@ -419,12 +418,7 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
             return command;
 
         if (string.IsNullOrWhiteSpace(originalAuthorDate)
-            || !DateTimeOffset.TryParseExact(
-                originalAuthorDate,
-                GitStrictIsoDateFormat,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.None,
-                out _))
+            || !IsValidGitStrictIsoDate(originalAuthorDate))
         {
             throw new ArgumentException(
                 "Git returned an invalid original author date.",
@@ -432,6 +426,39 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
         }
 
         return command + " --date=" + originalAuthorDate;
+    }
+
+    private static bool IsValidGitStrictIsoDate(string value)
+    {
+        var hasUtcSuffix = value.Length == 20 && value[19] == 'Z';
+        var hasOffset = value.Length == 25
+                        && (value[19] == '+' || value[19] == '-')
+                        && value[22] == ':';
+        if (!hasUtcSuffix && !hasOffset)
+            return false;
+
+        if (value[4] != '-'
+            || value[7] != '-'
+            || value[10] != 'T'
+            || value[13] != ':'
+            || value[16] != ':')
+        {
+            return false;
+        }
+
+        for (var index = 0; index < value.Length; index++)
+        {
+            if (index is 4 or 7 or 10 or 13 or 16 or 19 or 22)
+                continue;
+            if (!char.IsAsciiDigit(value[index]))
+                return false;
+        }
+
+        return DateTimeOffset.TryParse(
+            value,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out _);
     }
 
     private static string GetRequiredAuthorDate(
