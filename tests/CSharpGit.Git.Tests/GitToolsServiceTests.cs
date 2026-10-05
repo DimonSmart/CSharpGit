@@ -48,6 +48,7 @@ public sealed class GitToolsServiceTests : IDisposable
         var executor = GitTestServices.CreateExecutor();
         _service = new GitToolsService(
             executor,
+            new GitConfigService(executor),
             new ThrowingFileVersionService(),
             new TestRepositoryPathService(),
             new TestExternalProcessService());
@@ -275,8 +276,9 @@ public sealed class GitToolsServiceTests : IDisposable
     {
         var root = FindRepositoryRoot();
         var source = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitToolsService.cs"));
+        var configSource = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitConfigService.cs"));
 
-        Assert.Contains("\"system\" => GitToolConfigurationSource.System", source);
+        Assert.Contains("\"system\" => GitConfigSource.System", configSource);
         Assert.Contains("\"difftool.trustExitCode\"", source);
         Assert.Contains("\"--gui\", \"--no-prompt\"", source);
         Assert.DoesNotContain("difftool.prompt", source);

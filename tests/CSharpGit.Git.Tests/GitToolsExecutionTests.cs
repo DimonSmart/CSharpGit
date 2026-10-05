@@ -45,6 +45,7 @@ public sealed class GitToolsExecutionTests : IDisposable
         _executor = GitTestServices.CreateExecutor();
         _service = new GitToolsService(
             _executor,
+            new GitConfigService(_executor),
             new GitRepositoryFileVersionService(_executor),
             new TestRepositoryPathService(),
             _externalProcess);
