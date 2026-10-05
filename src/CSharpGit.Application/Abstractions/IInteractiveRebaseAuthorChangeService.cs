@@ -19,7 +19,8 @@ public sealed record InteractiveRebaseAuthorChangeRequest(
     InteractiveRebaseAuthorChangeScope Scope,
     string AuthorName,
     string AuthorEmail,
-    bool ResetAuthorDate);
+    bool ResetAuthorDate,
+    bool ResetToCurrentGitIdentity = false);
 
 public sealed record InteractiveRebaseAuthorChangeResult(
     string TodoText,
