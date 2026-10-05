@@ -3,43 +3,39 @@ namespace CSharpGit.Application.Tests;
 public sealed class ReflogHistoryUiContractTests
 {
     [Fact]
-    public void ReflogUsesUnifiedHistorySelectorSemanticBadgeAndExistingReferenceNavigation()
+    public void ReflogUsesTypedReferenceDecorationsAndBoundedGhostMetadata()
     {
         var root = FindRepositoryRoot();
-        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var historyReferences = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml"));
+        var presenter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferencesPresenter.cs"));
+        var domain = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Domain", "History.cs"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
-        var reflogState = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.Reflog.cs"));
-        var selector = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.HistoryDisplayMode.cs"));
-        var navigation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.ReferenceNavigation.cs"));
-        var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var git = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitReferenceHistoryService.cs"));
 
-        Assert.Contains("<SelectorBar x:Name=\"ScopeCombo\"", xaml);
-        Assert.Contains("x:Name=\"CurrentScopeItem\"", xaml);
-        Assert.Contains("Text=\"Current\"", xaml);
-        Assert.Contains("x:Name=\"AllScopeItem\"", xaml);
-        Assert.Contains("Text=\"All\"", xaml);
-        Assert.Contains("x:Name=\"ShowReflogToggle\"", xaml);
-        Assert.Contains("Text=\"+ Reflog\"", xaml);
-        Assert.Contains("SelectionChanged=\"HistoryDisplayModeSelector_SelectionChanged\"", xaml);
-        Assert.DoesNotContain("<ToggleSwitch x:Name=\"ShowReflogToggle\"", xaml);
-        Assert.Contains("SetHistoryDisplayMode", reflogState);
-        Assert.Contains("HistoryDisplayMode.AllReferencesWithReflog", reflogState);
-        Assert.Contains("_viewModel.SetHistoryDisplayMode(mode)", selector);
-        Assert.Contains("IncludeReflog: _showReflog", viewModel);
-        Assert.Contains("HeadExists: _headExists", viewModel);
-        Assert.Contains("DisableReflogForScopedHistoryAsync", page);
-        Assert.Contains("IncludeReflog: ShowReflog", navigation);
+        Assert.Contains("HistoryReferenceDecoration", domain);
+        Assert.Contains("HistoryReferenceKind", domain);
+        Assert.Contains("ReflogPresentation", domain);
+        Assert.Contains("ReferenceDetails", domain);
 
+        Assert.Contains("References=\"{x:Bind ReferenceDetails, Mode=OneWay}\"", historyReferences);
         Assert.Contains("Text=\"reflog\"", historyReferences);
-        Assert.Contains("x:Bind IsReflogOnly", historyReferences);
-        Assert.Contains("This commit is not reachable from normal repository refs", historyReferences);
-        Assert.Contains("AccentFillColorDefaultBrush", historyReferences);
+        Assert.Contains("ReflogGhostDisplay", historyReferences);
+        Assert.Contains("ReflogToolTip", historyReferences);
+        Assert.Contains("HistoryReflogGhostTextStyle", historyReferences);
+        Assert.Contains("IReadOnlyList<HistoryReferenceDecoration>", presenter);
+        Assert.DoesNotContain("startsWith(\"origin/\"", presenter, StringComparison.OrdinalIgnoreCase);
 
-        Assert.Contains("[\"--all\", \"--reflog\"]", git);
-        Assert.Contains("\"rev-list\", \"--reflog\", \"--not\", \"--all\"", git);
+        Assert.Contains("ReflogSessionId", viewModel);
+        Assert.Contains("RepositoryReferences: new GitReferences(", viewModel);
+        Assert.Contains("BuildReferenceDetails(query)", git);
+        Assert.Contains("ReflogMetadataRecordLimit", git);
+        Assert.Contains("\"reflog\"", git);
+        Assert.Contains("\"show\"", git);
+        Assert.Contains("\"--all\"", git);
+        Assert.Contains("%gD%x00%gd%x00%gs%x1e", git);
+        Assert.Contains("MaxCachedReflogSessions", git);
         Assert.DoesNotContain(".git/logs", git);
+        Assert.DoesNotContain("git log -g", git, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string FindRepositoryRoot()

@@ -44,11 +44,12 @@ public sealed partial class OpenRepositoryViewModel
 
         EnterBusy();
         ErrorMessage = null;
+        var reflogSessionId = Interlocked.Increment(ref _reflogSessionId);
         try
         {
             var page = await _historyService.ReadHistoryThroughCommitAsync(
                 repository,
-                new HistoryQuery(HistoryScope.AllReferences, null, 0, IncludeReflog: ShowReflog),
+                CreateHistoryQuery(HistoryScope.AllReferences, null, 0, reflogSessionId),
                 hash,
                 trailingCount,
                 cancellation.Token);

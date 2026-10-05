@@ -27,12 +27,28 @@ public sealed class ReflogHistoryTests : IDisposable
             new HistoryQuery(HistoryScope.AllReferences, null, 0, 20));
         Assert.DoesNotContain(normal.Rows, row => row.Commit.Hash == lostHash);
 
+        var state = await GitTestServices.CreateRepositoryStateService().ReadAsync(repository);
         var expanded = await service.ReadHistoryAsync(
             repository,
-            new HistoryQuery(HistoryScope.AllReferences, null, 0, 20, IncludeReflog: true));
+            new HistoryQuery(
+                HistoryScope.AllReferences,
+                null,
+                0,
+                20,
+                IncludeReflog: true,
+                RepositoryReferences: state.Refs,
+                HeadReference: state.HeadReference,
+                HeadCommit: state.HeadCommit,
+                IsDetachedHead: state.IsDetached,
+                ReflogSessionId: 1));
         var recovered = Assert.Single(expanded.Rows, row => row.Commit.Hash == lostHash);
         Assert.True(recovered.IsReflogOnly);
         Assert.DoesNotContain("reflog", recovered.Commit.References);
+        Assert.NotNull(recovered.Reflog);
+        Assert.StartsWith("main@{", recovered.Reflog!.Selector, StringComparison.Ordinal);
+        Assert.Equal("commit", recovered.Reflog.EventKind);
+        Assert.Contains("commit: C", recovered.Reflog.Subject, StringComparison.Ordinal);
+        Assert.StartsWith("◌ main@{", recovered.ReflogGhostDisplay, StringComparison.Ordinal);
         Assert.Contains(expanded.Rows, row => row.Commit.Subject == "B");
         Assert.Equal(expanded.Rows.Count, expanded.Rows.Select(row => row.Commit.Hash).Distinct().Count());
 
@@ -98,6 +114,79 @@ public sealed class ReflogHistoryTests : IDisposable
             new HistoryQuery(HistoryScope.CurrentBranch, null, 0, 20, IncludeReflog: true));
         Assert.DoesNotContain(currentBranch.Rows, row => row.Commit.Hash == lostHash);
         Assert.All(currentBranch.Rows, row => Assert.False(row.IsReflogOnly));
+    }
+
+    [Fact]
+    public async Task ReferenceDecorationsPreserveSemanticIdentityWhenDisplayNamesCollide()
+    {
+        InitializeRepository();
+        Commit("base");
+        var hash = RunGit("rev-parse", "HEAD");
+        RunGit("branch", "origin/main", hash);
+        RunGit("update-ref", "refs/remotes/origin/main", hash);
+
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
+        var state = await GitTestServices.CreateRepositoryStateService().ReadAsync(repository);
+        var service = GitTestServices.CreateReferenceHistoryService();
+
+        var history = await service.ReadHistoryAsync(
+            repository,
+            new HistoryQuery(
+                HistoryScope.AllReferences,
+                null,
+                0,
+                20,
+                RepositoryReferences: state.Refs,
+                HeadReference: state.HeadReference,
+                HeadCommit: state.HeadCommit,
+                IsDetachedHead: state.IsDetached));
+
+        var row = Assert.Single(history.Rows, candidate => candidate.Commit.Hash == hash);
+        Assert.Contains(
+            row.ReferenceDetails,
+            reference => reference.DisplayName == "main"
+                         && reference.Kind == HistoryReferenceKind.CurrentLocalBranch);
+
+        var colliding = row.ReferenceDetails
+            .Where(reference => reference.DisplayName == "origin/main")
+            .ToList();
+        Assert.Equal(2, colliding.Count);
+        Assert.Contains(colliding, reference => reference.Kind == HistoryReferenceKind.LocalBranch);
+        Assert.Contains(colliding, reference => reference.Kind == HistoryReferenceKind.RemoteTrackingBranch);
+    }
+
+    [Fact]
+    public async Task DetachedHeadGetsDedicatedSemanticMarkerWithoutUpstreamCounters()
+    {
+        InitializeRepository();
+        Commit("base");
+        var hash = RunGit("rev-parse", "HEAD");
+        RunGit("checkout", "--detach", hash);
+
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
+        var state = await GitTestServices.CreateRepositoryStateService().ReadAsync(repository);
+        var service = GitTestServices.CreateReferenceHistoryService();
+
+        var history = await service.ReadHistoryAsync(
+            repository,
+            new HistoryQuery(
+                HistoryScope.AllReferences,
+                null,
+                0,
+                20,
+                RepositoryReferences: state.Refs,
+                HeadReference: state.HeadReference,
+                HeadCommit: state.HeadCommit,
+                IsDetachedHead: state.IsDetached));
+
+        var row = Assert.Single(history.Rows, candidate => candidate.Commit.Hash == hash);
+        var detached = Assert.Single(
+            row.ReferenceDetails,
+            reference => reference.Kind == HistoryReferenceKind.DetachedHead);
+        Assert.Equal("HEAD", detached.DisplayName);
+        Assert.Null(detached.Upstream);
+        Assert.Equal(0, detached.Ahead);
+        Assert.Equal(0, detached.Behind);
     }
 
     private void InitializeRepository()

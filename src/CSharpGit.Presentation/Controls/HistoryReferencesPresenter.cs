@@ -1,3 +1,4 @@
+using CSharpGit.Domain;
 using Windows.Foundation;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -16,11 +17,10 @@ public sealed class HistoryReferencesPresenter : Panel
     private readonly TextBlock _overflowMeasureText;
     private int _activeCount;
     private int _overflowVisibleCount = -1;
-    private bool _presentationContextSubscribed;
 
     public static readonly DependencyProperty ReferencesProperty = DependencyProperty.Register(
         nameof(References),
-        typeof(IReadOnlyList<string>),
+        typeof(IReadOnlyList<HistoryReferenceDecoration>),
         typeof(HistoryReferencesPresenter),
         new PropertyMetadata(null, OnReferencesChanged));
 
@@ -30,14 +30,11 @@ public sealed class HistoryReferencesPresenter : Panel
         (_overflowMeasureBorder, _overflowMeasureText) = CreateOverflowVisual();
         Children.Add(_overflowBorder);
         Clip = _clip;
-
-        Loaded += HistoryReferencesPresenter_Loaded;
-        Unloaded += HistoryReferencesPresenter_Unloaded;
     }
 
-    public IReadOnlyList<string>? References
+    public IReadOnlyList<HistoryReferenceDecoration>? References
     {
-        get => GetValue(ReferencesProperty) as IReadOnlyList<string>;
+        get => GetValue(ReferencesProperty) as IReadOnlyList<HistoryReferenceDecoration>;
         set => SetValue(ReferencesProperty, value);
     }
 
@@ -172,7 +169,7 @@ public sealed class HistoryReferencesPresenter : Panel
         {
             if (tooltip.Length > 0)
                 tooltip.AppendLine();
-            tooltip.Append(references[index]);
+            tooltip.Append(references[index].DisplayName);
         }
 
         return tooltip.ToString();
@@ -196,32 +193,6 @@ public sealed class HistoryReferencesPresenter : Panel
         DependencyPropertyChangedEventArgs args) =>
         ((HistoryReferencesPresenter)dependencyObject).UpdateReferences();
 
-    private void HistoryReferencesPresenter_Loaded(object sender, RoutedEventArgs args)
-    {
-        if (!_presentationContextSubscribed)
-        {
-            HistoryReferencePresentationContext.Changed += PresentationContext_Changed;
-            _presentationContextSubscribed = true;
-        }
-
-        RefreshMarkers();
-    }
-
-    private void HistoryReferencesPresenter_Unloaded(object sender, RoutedEventArgs args)
-    {
-        if (!_presentationContextSubscribed)
-            return;
-
-        HistoryReferencePresentationContext.Changed -= PresentationContext_Changed;
-        _presentationContextSubscribed = false;
-    }
-
-    private void PresentationContext_Changed(object? sender, EventArgs args)
-    {
-        HistoryRenderDiagnostics.ReferencePresentationContextUpdated();
-        RefreshMarkers();
-    }
-
     private void UpdateReferences()
     {
         HistoryRenderDiagnostics.ReferencesPresenterUpdated();
@@ -244,11 +215,11 @@ public sealed class HistoryReferencesPresenter : Panel
                 HistoryRenderDiagnostics.ReferenceVisualCreated();
             }
 
-            var referenceName = references![index] ?? string.Empty;
-            if (!string.Equals(visual.Text.Text, referenceName, StringComparison.Ordinal))
-                visual.Text.Text = referenceName;
+            var reference = references![index];
+            if (!string.Equals(visual.Text.Text, reference.DisplayName, StringComparison.Ordinal))
+                visual.Text.Text = reference.DisplayName;
 
-            UpdateMarker(visual, referenceName);
+            UpdatePresentation(visual, reference);
             SetReferenceVisibility(visual.Border, true);
             if (visual.Border.Visibility != Visibility.Visible)
                 visual.Border.Visibility = Visibility.Visible;
@@ -269,34 +240,94 @@ public sealed class HistoryReferencesPresenter : Panel
         InvalidateMeasure();
     }
 
-    private void RefreshMarkers()
+    private static void UpdatePresentation(
+        ReferenceVisual visual,
+        HistoryReferenceDecoration reference)
     {
-        for (var index = 0; index < _activeCount; index++)
+        var marker = reference.Kind switch
         {
-            var visual = _visuals[index];
-            UpdateMarker(visual, visual.Text.Text);
-        }
-    }
+            HistoryReferenceKind.CurrentLocalBranch => "●",
+            HistoryReferenceKind.LocalBranch => "○",
+            HistoryReferenceKind.RemoteTrackingBranch => "↗",
+            HistoryReferenceKind.Tag => "#",
+            HistoryReferenceKind.DetachedHead => "◇",
+            _ => "•"
+        };
+        if (!string.Equals(visual.KindMarker.Text, marker, StringComparison.Ordinal))
+            visual.KindMarker.Text = marker;
 
-    private static void UpdateMarker(ReferenceVisual visual, string referenceName)
-    {
-        var visibility = HistoryReferencePresentationContext.IsDefaultRemoteBranch(referenceName)
+        visual.DefaultBranchIcon.Visibility = reference.IsDefault
             ? Visibility.Visible
             : Visibility.Collapsed;
-        if (visual.DefaultBranchIcon.Visibility != visibility)
-            visual.DefaultBranchIcon.Visibility = visibility;
+
+        var tracking = BuildTrackingAnnotation(reference);
+        if (!string.Equals(visual.TrackingText.Text, tracking, StringComparison.Ordinal))
+            visual.TrackingText.Text = tracking;
+        visual.TrackingText.Visibility = string.IsNullOrEmpty(tracking)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+
+        visual.Border.BorderThickness = reference.Kind is HistoryReferenceKind.CurrentLocalBranch
+            or HistoryReferenceKind.DetachedHead
+            ? new Thickness(2)
+            : new Thickness(1);
+
+        ToolTipService.SetToolTip(visual.Border, BuildToolTip(reference));
     }
+
+    private static string BuildTrackingAnnotation(HistoryReferenceDecoration reference)
+    {
+        if (reference.Kind != HistoryReferenceKind.CurrentLocalBranch
+            || string.IsNullOrWhiteSpace(reference.Upstream))
+            return string.Empty;
+
+        var counters = reference.Ahead > 0 && reference.Behind > 0
+            ? $"↑{reference.Ahead} ↓{reference.Behind} "
+            : reference.Ahead > 0
+                ? $"↑{reference.Ahead} "
+                : reference.Behind > 0
+                    ? $"↓{reference.Behind} "
+                    : string.Empty;
+
+        return $"{counters}· upstream {reference.Upstream}";
+    }
+
+    private static string BuildToolTip(HistoryReferenceDecoration reference) =>
+        reference.Kind switch
+        {
+            HistoryReferenceKind.CurrentLocalBranch =>
+                string.IsNullOrWhiteSpace(reference.Upstream)
+                    ? $"{reference.DisplayName} is the current local branch."
+                    : $"{reference.DisplayName} is the current local branch.\nUpstream: {reference.Upstream}\nAhead: {reference.Ahead}, behind: {reference.Behind}.",
+            HistoryReferenceKind.LocalBranch =>
+                $"{reference.DisplayName} is a local branch.",
+            HistoryReferenceKind.RemoteTrackingBranch =>
+                $"{reference.DisplayName} is a local remote-tracking reference.\nIt represents the remote state known after the latest fetch-like operation and may differ from the current state on the server.",
+            HistoryReferenceKind.Tag =>
+                $"{reference.DisplayName} is a Git tag.",
+            HistoryReferenceKind.DetachedHead =>
+                "HEAD is detached at this commit.",
+            _ => reference.DisplayName
+        };
 
     private static ReferenceVisual CreateVisual()
     {
-        var icon = new FontIcon();
+        var kindMarker = new TextBlock();
+        if (Microsoft.UI.Xaml.Application.Current.Resources["HistoryReferenceKindMarkerStyle"] is Style markerStyle)
+            kindMarker.Style = markerStyle;
+
+        var defaultBranchIcon = new FontIcon();
         if (Microsoft.UI.Xaml.Application.Current.Resources["HistoryReferenceDefaultBranchIconStyle"] is Style iconStyle)
-            icon.Style = iconStyle;
+            defaultBranchIcon.Style = iconStyle;
 
         var text = new TextBlock();
         if (Microsoft.UI.Xaml.Application.Current.Resources["ReferenceBadgeTextStyle"] is Style textStyle)
             text.Style = textStyle;
         text.VerticalAlignment = VerticalAlignment.Center;
+
+        var trackingText = new TextBlock();
+        if (Microsoft.UI.Xaml.Application.Current.Resources["HistoryReferenceTrackingTextStyle"] is Style trackingStyle)
+            trackingText.Style = trackingStyle;
 
         var content = new Grid
         {
@@ -305,15 +336,25 @@ public sealed class HistoryReferencesPresenter : Panel
         };
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        content.Children.Add(icon);
-        Grid.SetColumn(text, 1);
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        content.Children.Add(kindMarker);
+
+        Grid.SetColumn(defaultBranchIcon, 1);
+        content.Children.Add(defaultBranchIcon);
+
+        Grid.SetColumn(text, 2);
         content.Children.Add(text);
+
+        Grid.SetColumn(trackingText, 3);
+        content.Children.Add(trackingText);
 
         var border = new Border { Child = content };
         if (Microsoft.UI.Xaml.Application.Current.Resources["ReferenceBadgeStyle"] is Style borderStyle)
             border.Style = borderStyle;
 
-        return new ReferenceVisual(border, icon, text);
+        return new ReferenceVisual(border, kindMarker, defaultBranchIcon, text, trackingText);
     }
 
     private static (Border Border, TextBlock Text) CreateOverflowVisual()
@@ -337,6 +378,8 @@ public sealed class HistoryReferencesPresenter : Panel
 
     private sealed record ReferenceVisual(
         Border Border,
+        TextBlock KindMarker,
         FontIcon DefaultBranchIcon,
-        TextBlock Text);
+        TextBlock Text,
+        TextBlock TrackingText);
 }

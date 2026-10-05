@@ -14,6 +14,25 @@
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
+  <Style x:Key="HistoryReferenceKindMarkerStyle" TargetType="TextBlock" BasedOn="{StaticResource CaptionTextStyle}">
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Width" Value="10" />
+    <Setter Property="TextAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <Style x:Key="HistoryReferenceTrackingTextStyle" TargetType="TextBlock" BasedOn="{StaticResource CaptionTextStyle}">
+    <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Visibility" Value="Collapsed" />
+  </Style>
+
+  <Style x:Key="HistoryReflogGhostTextStyle" TargetType="TextBlock" BasedOn="{StaticResource CaptionTextStyle}">
+    <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+    <Setter Property="Opacity" Value="0.8" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
   <DataTemplate x:Key="HistoryItemTemplate" x:DataType="domain:HistoryRow">
     <Grid x:Name="HistoryRowRoot"
           MinHeight="{StaticResource Height.DataRow}"
@@ -32,7 +51,7 @@
               IsHitTestVisible="False" />
       <controls:CommitGraphControl Graph="{x:Bind Topology, Mode=OneWay, Converter={StaticResource CommitTopologyToGraphVisualConverter}}"
                                    VerticalAlignment="Stretch" />
-      <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,*" MinWidth="120">
+      <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,Auto,*" MinWidth="120">
         <TextBlock Text="{x:Bind Commit.Subject, Mode=OneWay}"
                    Style="{StaticResource BodyStrongTextStyle}"
                    TextTrimming="CharacterEllipsis"
@@ -44,8 +63,14 @@
                 ToolTipService.ToolTip="This commit is not reachable from normal repository refs and is currently reachable through Git reflog.">
           <TextBlock Text="reflog" Style="{StaticResource ReferenceBadgeTextStyle}" />
         </Border>
-        <controls:HistoryReferencesPresenter Grid.Column="2"
-                                             References="{x:Bind Commit.References, Mode=OneWay}"
+        <TextBlock Grid.Column="2"
+                   Text="{x:Bind ReflogGhostDisplay, Mode=OneWay}"
+                   Style="{StaticResource HistoryReflogGhostTextStyle}"
+                   Margin="{StaticResource Margin.ReferenceList}"
+                   Visibility="{x:Bind IsReflogOnly, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
+                   ToolTipService.ToolTip="{x:Bind ReflogToolTip, Mode=OneWay}" />
+        <controls:HistoryReferencesPresenter Grid.Column="3"
+                                             References="{x:Bind ReferenceDetails, Mode=OneWay}"
                                              Margin="{StaticResource Margin.ReferenceList}"
                                              VerticalAlignment="Center" />
       </Grid>
