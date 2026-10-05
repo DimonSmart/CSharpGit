@@ -36,14 +36,12 @@ public interface IInteractiveRebaseAuthorChangeService
         int selectionLength);
 
     IReadOnlyList<string> GetTargetCommits(
-        InteractiveRebaseAuthorChangeRequest request) =>
-        throw new NotSupportedException("Target commit discovery is not supported by this implementation.");
+        InteractiveRebaseAuthorChangeRequest request);
 
     InteractiveRebaseAuthorChangeResult Apply(
         InteractiveRebaseAuthorChangeRequest request);
 
     InteractiveRebaseAuthorChangeResult Apply(
         InteractiveRebaseAuthorChangeRequest request,
-        IReadOnlyDictionary<string, string> originalAuthorDates) =>
-        Apply(request);
+        IReadOnlyDictionary<string, string> originalAuthorDates);
 }
