@@ -29,19 +29,33 @@ public sealed class InteractiveRebaseAuthorChangeUiContractTests
     }
 
     [Fact]
-    public void ResetModeReadsEffectiveRepositoryIdentityAndPreservesAuthorDateByDefault()
+    public void ResetModeUsesNativeGitResetAndPreservesAuthorDateByDefault()
     {
         var source = ReadSource("src/CSharpGit.Presentation/MainPage.InteractiveRebaseAuthor.cs");
-        var viewModel = ReadSource("src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.InteractiveRebase.cs");
 
         Assert.Contains("ReadInteractiveRebaseAuthorIdentityAsync", source, StringComparison.Ordinal);
-        Assert.Contains("identity?.Name.EffectiveValue", source, StringComparison.Ordinal);
-        Assert.Contains("identity?.Email.EffectiveValue", source, StringComparison.Ordinal);
-        Assert.Contains("IRepositoryIdentityService", ReadSource("src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.cs"), StringComparison.Ordinal);
-        Assert.Contains("service.ReadAsync(repository)", viewModel, StringComparison.Ordinal);
+        Assert.Contains("ResetToCurrentGitIdentity: useCurrentIdentity", source, StringComparison.Ordinal);
+        Assert.Contains("useCurrentIdentity ? string.Empty : nameBox.Text", source, StringComparison.Ordinal);
+        Assert.Contains("useCurrentIdentity ? string.Empty : emailBox.Text", source, StringComparison.Ordinal);
+        Assert.Contains("Git will resolve", source, StringComparison.Ordinal);
         Assert.Contains("Reset author date as well", source, StringComparison.Ordinal);
         Assert.Contains("IsChecked = false", source, StringComparison.Ordinal);
-        Assert.Contains("Git identity is incomplete.", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ChangeAuthorFlyoutUsesCompactDesignSystemAndCollapsesExplicitFields()
+    {
+        var source = ReadSource("src/CSharpGit.Presentation/MainPage.InteractiveRebaseAuthor.cs");
+
+        Assert.Contains("Width = 400", source, StringComparison.Ordinal);
+        Assert.Contains("Spacing.M", source, StringComparison.Ordinal);
+        Assert.Contains("CompactButtonStyle", source, StringComparison.Ordinal);
+        Assert.Contains("CompactTextBoxStyle", source, StringComparison.Ordinal);
+        Assert.Contains("CompactCheckBoxStyle", source, StringComparison.Ordinal);
+        Assert.Contains("authorFields.Visibility = explicitAuthor", source, StringComparison.Ordinal);
+        Assert.Contains("MaxHeight = 420", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Width = 520", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("MinWidth = 360", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -50,10 +64,9 @@ public sealed class InteractiveRebaseAuthorChangeUiContractTests
         var source = ReadSource("src/CSharpGit.Presentation/MainPage.InteractiveRebaseAuthor.cs");
 
         Assert.Contains("Selected commit lines", source, StringComparison.Ordinal);
-        Assert.Contains("All eligible commits in this rebase", source, StringComparison.Ordinal);
+        Assert.Contains("All eligible commits", source, StringComparison.Ordinal);
         Assert.Contains("commit rows in squash/fixup groups will be skipped", source, StringComparison.Ordinal);
-        Assert.Contains("Changing authors rewrites Git history.", source, StringComparison.Ordinal);
-        Assert.Contains("Commit hashes may change from the first modified commit onward.", source, StringComparison.Ordinal);
+        Assert.Contains("Rewrites Git history; commit hashes may change from the first modified commit onward.", source, StringComparison.Ordinal);
     }
 
     private static string ReadSource(string relativePath) =>
