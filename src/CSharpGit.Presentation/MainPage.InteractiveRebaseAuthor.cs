@@ -50,7 +50,7 @@ public sealed partial class MainPage
 
         var effectiveName = identity?.Name.EffectiveValue?.Trim();
         var effectiveEmail = identity?.Email.EffectiveValue?.Trim();
-        var resources = Application.Current.Resources;
+        var resources = Microsoft.UI.Xaml.Application.Current.Resources;
         var controlHeight = (double)resources["Height.Control"];
         var bodyFont = (double)resources["Font.Body"];
         var spacing = (double)resources["Spacing.M"];
@@ -231,7 +231,6 @@ public sealed partial class MainPage
             authorFields.Visibility = explicitAuthor
                 ? Visibility.Visible
                 : Visibility.Collapsed;
-            authorFields.IsEnabled = explicitAuthor;
             UpdateApplyState();
         }
 
