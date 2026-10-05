@@ -265,15 +265,20 @@ internal sealed class InteractiveRebaseAuthorChangeService : IInteractiveRebaseA
             return false;
 
         return string.Equals(lines[index].Text, BeginMarker, StringComparison.Ordinal)
-               && IsExecLine(lines[index + 1].Text)
+               && IsGeneratedExecLine(lines[index + 1].Text)
                && string.Equals(lines[index + 2].Text, EndMarker, StringComparison.Ordinal);
     }
 
-    private static bool IsExecLine(string value)
+    private static bool IsGeneratedExecLine(string value)
     {
         var trimmed = value.TrimStart();
-        return trimmed.StartsWith("exec ", StringComparison.Ordinal)
-               || trimmed.StartsWith("x ", StringComparison.Ordinal);
+        const string longPrefix =
+            "exec git commit --amend --no-edit --no-verify --no-gpg-sign --author ";
+        const string shortPrefix =
+            "x git commit --amend --no-edit --no-verify --no-gpg-sign --author ";
+
+        return trimmed.StartsWith(longPrefix, StringComparison.Ordinal)
+               || trimmed.StartsWith(shortPrefix, StringComparison.Ordinal);
     }
 
     private static void AppendLineAndGeneratedBlock(
