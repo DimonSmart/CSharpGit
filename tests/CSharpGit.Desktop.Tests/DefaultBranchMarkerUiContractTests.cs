@@ -29,14 +29,14 @@ public sealed class DefaultBranchMarkerUiContractTests
         var presenter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferencesPresenter.cs"));
         var historyStyles = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml"));
         var historyService = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitReferenceHistoryService.cs"));
-        var defaultBranchState = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "DefaultBranchRepositoryStateService.cs"));
+        var repositoryState = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitRepositoryStateService.cs"));
 
         Assert.Contains("reference.IsDefault", presenter, StringComparison.Ordinal);
         Assert.Contains("HistoryReferenceKind.RemoteTrackingBranch", presenter, StringComparison.Ordinal);
         Assert.Contains("branch.IsDefault", historyService, StringComparison.Ordinal);
         Assert.DoesNotContain("HistoryReferencePresentationContext.IsDefaultRemoteBranch", presenter, StringComparison.Ordinal);
         Assert.DoesNotContain("origin/main", presenter, StringComparison.Ordinal);
-        Assert.Contains("IsDefault = defaultRemoteBranch is not null", defaultBranchState, StringComparison.Ordinal);
+        Assert.Contains("IsDefault = localDefaultRemoteBranch is not null", repositoryState, StringComparison.Ordinal);
         Assert.Contains("<Style x:Key=\"HistoryReferenceDefaultBranchIconStyle\" TargetType=\"FontIcon\">", historyStyles, StringComparison.Ordinal);
         Assert.Contains("<Setter Property=\"Glyph\" Value=\"&#xE80F;\" />", historyStyles, StringComparison.Ordinal);
         Assert.Contains("HistoryReferenceDefaultBranchIconStyle", presenter, StringComparison.Ordinal);
