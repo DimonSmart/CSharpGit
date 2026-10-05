@@ -20,6 +20,9 @@ public static class GitServiceCollectionExtensions
         services.AddSingleton(provider =>
             new GitRepositoryCommandRunner(
                 provider.GetRequiredService<GitCommandExecutor>()));
+        services.AddSingleton(provider =>
+            new GitConfigService(
+                provider.GetRequiredService<GitCommandExecutor>()));
 
         services.AddSingleton(provider =>
             new GitRepositoryService(
@@ -119,9 +122,13 @@ public static class GitServiceCollectionExtensions
         services.AddSingleton<IRepositoryMaintenanceService>(provider =>
             new GitRepositoryMaintenanceService(
                 provider.GetRequiredService<GitCommandExecutor>()));
+        services.AddSingleton<IRepositoryIdentityService>(provider =>
+            new RepositoryIdentityService(
+                provider.GetRequiredService<GitConfigService>()));
         services.AddSingleton<IGitToolsService>(provider =>
             new GitToolsService(
                 provider.GetRequiredService<GitCommandExecutor>(),
+                provider.GetRequiredService<GitConfigService>(),
                 provider.GetRequiredService<IRepositoryFileVersionService>(),
                 provider.GetRequiredService<IRepositoryPathService>(),
                 provider.GetRequiredService<IExternalToolProcessService>()));

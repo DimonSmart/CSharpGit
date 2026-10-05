@@ -7,17 +7,20 @@ namespace CSharpGit.Git;
 internal sealed class GitToolsService : IGitToolsService
 {
     private readonly GitCommandExecutor _executor;
+    private readonly GitConfigService _configService;
     private readonly IRepositoryFileVersionService _fileVersionService;
     private readonly IRepositoryPathService _pathService;
     private readonly IExternalToolProcessService _externalProcess;
 
     internal GitToolsService(
         GitCommandExecutor executor,
+        GitConfigService configService,
         IRepositoryFileVersionService fileVersionService,
         IRepositoryPathService pathService,
         IExternalToolProcessService externalProcess)
     {
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
+        _configService = configService ?? throw new ArgumentNullException(nameof(configService));
         _fileVersionService = fileVersionService ?? throw new ArgumentNullException(nameof(fileVersionService));
         _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
         _externalProcess = externalProcess ?? throw new ArgumentNullException(nameof(externalProcess));
@@ -569,27 +572,19 @@ internal sealed class GitToolsService : IGitToolsService
         string key,
         CancellationToken cancellationToken)
     {
-        var result = await RunGitResultAsync(
-            WorkingDirectory(repository),
-            "GitToolsRead",
-            GitCommandKind.Internal,
-            cancellationToken,
-            ["config", "--includes", "--show-scope", "--show-origin", "--get", key]);
-        if (result.ExitCode == 1) return null;
-        if (result.ExitCode != 0) throw GitFailure("Could not read Git configuration", result);
-        return ParseEffectiveConfig(key, result.StandardOutput);
+        var value = await _configService.ReadEffectiveAsync(repository, key, cancellationToken);
+        return value is null ? null : ToToolConfigValue(value);
     }
 
-    private Task<ConfigValue?> ReadScopedConfigValueAsync(
+    private async Task<ConfigValue?> ReadScopedConfigValueAsync(
         Repository? repository,
         string key,
         GitToolWriteScope scope,
         CancellationToken cancellationToken)
     {
-        if (scope == GitToolWriteScope.Repository && repository is null) return Task.FromResult<ConfigValue?>(null);
-        var argument = scope == GitToolWriteScope.Global ? "--global" : "--local";
-        var source = scope == GitToolWriteScope.Global ? GitToolConfigurationSource.Global : GitToolConfigurationSource.Repository;
-        return ReadConfigAtArgumentScopeAsync(repository, key, argument, source, cancellationToken);
+        if (scope == GitToolWriteScope.Repository && repository is null) return null;
+        var value = await _configService.ReadScopeAsync(repository, key, ToConfigScope(scope), cancellationToken);
+        return value is null ? null : ToToolConfigValue(value);
     }
 
     private async Task<ConfigValue?> ReadConfigAtArgumentScopeAsync(
@@ -599,15 +594,12 @@ internal sealed class GitToolsService : IGitToolsService
         GitToolConfigurationSource source,
         CancellationToken cancellationToken)
     {
-        var result = await RunGitResultAsync(
-            WorkingDirectory(repository),
-            "GitToolsReadScope",
-            GitCommandKind.Internal,
-            cancellationToken,
-            ["config", "--includes", scopeArgument, "--show-origin", "--get", key]);
-        if (result.ExitCode is 1 or 5 or 128) return null;
-        if (result.ExitCode != 0) throw GitFailure("Could not read Git configuration", result);
-        return ParseScopedConfig(key, result.StandardOutput, source);
+        var value = await _configService.ReadScopeAsync(
+            repository,
+            key,
+            ParseConfigScopeArgument(scopeArgument),
+            cancellationToken);
+        return value is null ? null : new ConfigValue(key, value.Value, source, value.Origin);
     }
 
     private async Task<IReadOnlyList<string>> ReadSupportedToolsAsync(
@@ -645,14 +637,7 @@ internal sealed class GitToolsService : IGitToolsService
     {
         var existing = await ReadScopedConfigValueAsync(repository, key, scope, cancellationToken);
         if (string.Equals(existing?.Value, value, StringComparison.Ordinal)) return;
-
-        var result = await RunGitResultAsync(
-            WorkingDirectory(repository),
-            "GitToolsWrite",
-            GitCommandKind.User,
-            cancellationToken,
-            ["config", ScopeArgument(scope), key, value]);
-        if (result.ExitCode != 0) throw GitFailure($"Could not save {key}", result);
+        await _configService.SetValueAsync(repository, ToConfigScope(scope), key, value, replaceAll: false, cancellationToken);
     }
 
     private async Task WriteOrUnsetIfChangedAsync(
@@ -673,22 +658,12 @@ internal sealed class GitToolsService : IGitToolsService
         await WriteIfChangedAsync(repository, scope, key, value, cancellationToken);
     }
 
-    private async Task UnsetIfPresentAsync(
+    private Task UnsetIfPresentAsync(
         Repository? repository,
         GitToolWriteScope scope,
         string key,
-        CancellationToken cancellationToken)
-    {
-        if (await ReadScopedConfigValueAsync(repository, key, scope, cancellationToken) is null) return;
-        var result = await RunGitResultAsync(
-            WorkingDirectory(repository),
-            "GitToolsUnset",
-            GitCommandKind.User,
-            cancellationToken,
-            ["config", ScopeArgument(scope), "--unset-all", key]);
-        if (result.ExitCode is 0 or 1 or 5) return;
-        throw GitFailure($"Could not remove {key}", result);
-    }
+        CancellationToken cancellationToken) =>
+        _configService.UnsetAllAsync(repository, ToConfigScope(scope), key, cancellationToken);
 
     private async Task<string> PrepareDiffSideAsync(
         Repository repository,
@@ -976,44 +951,31 @@ internal sealed class GitToolsService : IGitToolsService
         return presets;
     }
 
-    private static ConfigValue? ParseEffectiveConfig(string key, string output)
-    {
-        var line = LastOutputLine(output);
-        if (line is null) return null;
-        var parts = line.Split('\t');
-        if (parts.Length >= 3)
-            return new ConfigValue(key, string.Join('\t', parts.Skip(2)), ParseSource(parts[0]), parts[1]);
-        if (parts.Length == 2)
+    private static ConfigValue ToToolConfigValue(GitConfigValue value) =>
+        new(value.Key, value.Value, value.Source switch
         {
-            var prefix = parts[0].Trim();
-            var separator = prefix.IndexOfAny([' ', '\t']);
-            if (separator > 0)
-                return new ConfigValue(key, parts[1], ParseSource(prefix[..separator]), prefix[(separator + 1)..].Trim());
-        }
-        return new ConfigValue(key, line, GitToolConfigurationSource.NotConfigured, null);
-    }
+            GitConfigSource.Command => GitToolConfigurationSource.Environment,
+            GitConfigSource.Worktree => GitToolConfigurationSource.Worktree,
+            GitConfigSource.Repository => GitToolConfigurationSource.Repository,
+            GitConfigSource.Global => GitToolConfigurationSource.Global,
+            GitConfigSource.System => GitToolConfigurationSource.System,
+            _ => GitToolConfigurationSource.NotConfigured
+        }, value.Origin);
 
-    private static ConfigValue? ParseScopedConfig(string key, string output, GitToolConfigurationSource source)
+    private static GitConfigScope ToConfigScope(GitToolWriteScope scope) => scope switch
     {
-        var line = LastOutputLine(output);
-        if (line is null) return null;
-        var separator = line.IndexOf('\t');
-        return separator < 0
-            ? new ConfigValue(key, line, source, null)
-            : new ConfigValue(key, line[(separator + 1)..], source, line[..separator].Trim());
-    }
+        GitToolWriteScope.Global => GitConfigScope.Global,
+        GitToolWriteScope.Repository => GitConfigScope.Repository,
+        _ => throw new ArgumentOutOfRangeException(nameof(scope))
+    };
 
-    private static string? LastOutputLine(string output) =>
-        output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
-
-    private static GitToolConfigurationSource ParseSource(string value) => value.Trim().ToLowerInvariant() switch
+    private static GitConfigScope ParseConfigScopeArgument(string argument) => argument switch
     {
-        "worktree" => GitToolConfigurationSource.Worktree,
-        "local" => GitToolConfigurationSource.Repository,
-        "global" => GitToolConfigurationSource.Global,
-        "system" => GitToolConfigurationSource.System,
-        "command" => GitToolConfigurationSource.Environment,
-        _ => GitToolConfigurationSource.NotConfigured
+        "--global" => GitConfigScope.Global,
+        "--local" => GitConfigScope.Repository,
+        "--worktree" => GitConfigScope.Worktree,
+        "--system" => GitConfigScope.System,
+        _ => throw new ArgumentOutOfRangeException(nameof(argument), argument, "Unsupported Git config scope.")
     };
 
     private static bool? ParseGitBoolean(string? value)
@@ -1036,8 +998,6 @@ internal sealed class GitToolsService : IGitToolsService
 
     private static GitToolScopeConfiguration EmptyScope(GitToolConfigurationSource source) =>
         new(source, null, null, null);
-
-    private static string ScopeArgument(GitToolWriteScope scope) => scope == GitToolWriteScope.Global ? "--global" : "--local";
 
     private static string WorkingDirectory(Repository? repository) => repository?.WorkingDirectory ?? Environment.CurrentDirectory;
 
