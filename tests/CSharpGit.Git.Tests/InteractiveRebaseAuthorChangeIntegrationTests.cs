@@ -24,8 +24,8 @@ public sealed class InteractiveRebaseAuthorChangeIntegrationTests : IDisposable
 
         _a = Commit("A", "2020-01-01T10:00:00+00:00");
         _b = Commit("B", "2020-01-02T10:00:00+00:00");
-        _c = Commit("C", "2020-01-03T10:00:00+00:00");
-        _d = Commit("D", "2020-01-04T10:00:00+00:00");
+        _c = Commit("C", "2020-02-03T11:00:00+01:00");
+        _d = Commit("D", "2020-03-04T12:00:00+02:00");
     }
 
     [Fact]
@@ -85,20 +85,25 @@ public sealed class InteractiveRebaseAuthorChangeIntegrationTests : IDisposable
         var todo = await workflow.ReadInteractiveRebaseTodoFromCommitAsync(repository, _a);
         var transformer = new InteractiveRebaseAuthorChangeService();
 
-        var transformed = transformer.Apply(
-            new InteractiveRebaseAuthorChangeRequest(
-                todo.TodoText,
-                0,
-                0,
-                InteractiveRebaseAuthorChangeScope.AllEligibleCommits,
-                string.Empty,
-                string.Empty,
-                false,
-                ResetToCurrentGitIdentity: true));
+        var request = new InteractiveRebaseAuthorChangeRequest(
+            todo.TodoText,
+            0,
+            0,
+            InteractiveRebaseAuthorChangeScope.AllEligibleCommits,
+            string.Empty,
+            string.Empty,
+            false,
+            ResetToCurrentGitIdentity: true);
+        var authorDates = await workflow.ReadCommitAuthorDatesAsync(
+            repository,
+            transformer.GetTargetCommits(request));
+        var transformed = transformer.Apply(request, authorDates);
 
         Assert.Contains("--reset-author", transformed.TodoText, StringComparison.Ordinal);
         Assert.DoesNotContain("--author ", transformed.TodoText, StringComparison.Ordinal);
         Assert.DoesNotContain("reset@example.com", transformed.TodoText, StringComparison.Ordinal);
+        Assert.DoesNotContain("$(", transformed.TodoText, StringComparison.Ordinal);
+        Assert.DoesNotContain("git show", transformed.TodoText, StringComparison.Ordinal);
 
         var result = await workflow.StartInteractiveRebaseTodoAsync(
             repository,
@@ -106,12 +111,56 @@ public sealed class InteractiveRebaseAuthorChangeIntegrationTests : IDisposable
 
         Assert.Equal(RebaseResultKind.Completed, result.Kind);
 
-        foreach (var commit in ReadRange(_a))
+        var after = ReadRange(_a);
+        Assert.Equal(["B", "C", "D"], after.Select(commit => commit.Subject).ToArray());
+        Assert.Equal("refs/heads/main", GitOut("symbolic-ref", "HEAD"));
+
+        foreach (var commit in after)
         {
+            var original = before[commit.Subject];
             Assert.Equal("Reset User", commit.AuthorName);
             Assert.Equal("reset@example.com", commit.AuthorEmail);
-            Assert.Equal(before[commit.Subject].AuthorDate, commit.AuthorDate);
+            Assert.Equal(original.AuthorDate, commit.AuthorDate);
+            Assert.Equal(original.Tree, commit.Tree);
+            Assert.NotEqual(original.Hash, commit.Hash);
         }
+    }
+
+    [Fact]
+    public async Task AuthorDatesAreReadInOneGitProcess()
+    {
+        var processCount = 0;
+        var executor = GitTestServices.CreateExecutor(
+            processStarted: _ => processCount++);
+        var repository = await new GitRepositoryService(executor).OpenAsync(_root);
+        var workflow = new GitRepositoryWorkflowService(executor);
+        processCount = 0;
+
+        var dates = await workflow.ReadCommitAuthorDatesAsync(
+            repository,
+            [_b, _c, _d]);
+
+        Assert.Equal(1, processCount);
+        Assert.Equal("2020-01-02T10:00:00+00:00", dates[_b]);
+        Assert.Equal("2020-02-03T11:00:00+01:00", dates[_c]);
+        Assert.Equal("2020-03-04T12:00:00+02:00", dates[_d]);
+    }
+
+    [Fact]
+    public async Task AuthorDateReadFailsForMissingCommit()
+    {
+        var (repository, workflow) = await CreateServicesAsync();
+        var missingCommit = new string('f', 40);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => workflow.ReadCommitAuthorDatesAsync(
+                repository,
+                [missingCommit]));
+
+        Assert.Contains(
+            "Could not read the original author date",
+            exception.Message,
+            StringComparison.Ordinal);
     }
 
     [Fact]
