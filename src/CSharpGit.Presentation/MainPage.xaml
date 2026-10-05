@@ -13,10 +13,17 @@
             RowSpacing="{StaticResource Spacing.L}"
             MaxWidth="1200"
             HorizontalAlignment="Stretch">
-        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
-          <TextBlock Text="onto:" Style="{StaticResource BodySubduedTextStyle}" />
-          <TextBlock Text="{Binding RebaseOnto}" Style="{StaticResource BodyStrongTextStyle}" IsTextSelectionEnabled="True" />
-        </StackPanel>
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+            <TextBlock Text="onto:" Style="{StaticResource BodySubduedTextStyle}" />
+            <TextBlock Text="{Binding RebaseOnto}" Style="{StaticResource BodyStrongTextStyle}" IsTextSelectionEnabled="True" />
+          </StackPanel>
+          <Button x:Name="ChangeInteractiveRebaseAuthorButton"
+                  Grid.Column="1"
+                  Content="Change author…"
+                  Click="ChangeInteractiveRebaseAuthor_Click"
+                  Style="{StaticResource CompactButtonStyle}" />
+        </Grid>
         <controls:InteractiveRebaseTodoEditor x:Name="InteractiveRebaseTodoEditor"
                                               Grid.Row="1"
                                               Text="{Binding RebaseTodoText, Mode=TwoWay}"
