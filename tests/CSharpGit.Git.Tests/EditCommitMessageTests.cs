@@ -184,7 +184,7 @@ public sealed class EditCommitMessageTests : IDisposable
 
         Assert.Equal(EditCommitMessageResultKind.Failed, result.Kind);
         Assert.Contains("current Git operation", result.Message, StringComparison.Ordinal);
-        await GitTestServices.CreateRepositoryWorkflowService().AbortOperationAsync(repository);
+        await GitTestServices.CreateRepositoryOperationService().AbortOperationAsync(repository);
     }
 
     [Fact]

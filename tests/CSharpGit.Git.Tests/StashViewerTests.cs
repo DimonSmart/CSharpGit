@@ -32,8 +32,8 @@ public sealed class StashViewerTests : IDisposable
         Git("add", "file-c.txt");
         File.WriteAllText(Path.Combine(_root, "file-c.txt"), "working\n");
 
-        var (repository, workflow, reader, _) = await CreateServicesAsync();
-        await workflow.CreateStashAsync(repository);
+        var (repository, mutations, reader, _) = await CreateServicesAsync();
+        await mutations.CreateStashAsync(repository);
         var details = await reader.ReadAsync(repository, CurrentStash());
 
         var byPath = details.Changes.ToDictionary(change => change.File.Path, StringComparer.Ordinal);
@@ -52,8 +52,8 @@ public sealed class StashViewerTests : IDisposable
         Git("add", "file-a.txt");
         File.WriteAllText(Path.Combine(_root, "file-a.txt"), "A\n");
 
-        var (repository, workflow, reader, _) = await CreateServicesAsync();
-        await workflow.CreateStashAsync(repository);
+        var (repository, mutations, reader, _) = await CreateServicesAsync();
+        await mutations.CreateStashAsync(repository);
         var details = await reader.ReadAsync(repository, CurrentStash());
 
         var change = Assert.Single(details.Changes, item =>
@@ -70,8 +70,8 @@ public sealed class StashViewerTests : IDisposable
         File.WriteAllText(Path.Combine(_root, "file-a.txt"), "changed\n");
         File.WriteAllText(Path.Combine(_root, "notes.txt"), "notes\n");
 
-        var (repository, workflow, reader, history) = await CreateServicesAsync();
-        await workflow.CreateStashAsync(
+        var (repository, mutations, reader, history) = await CreateServicesAsync();
+        await mutations.CreateStashAsync(
             repository,
             new CreateStashRequest(
                 null,
@@ -100,8 +100,8 @@ public sealed class StashViewerTests : IDisposable
         File.WriteAllText(Path.Combine(_root, "file-a.txt"), "changed\n");
         File.WriteAllBytes(Path.Combine(_root, "image.bin"), [0, 1, 2, 0, 3, 4]);
 
-        var (repository, workflow, reader, _) = await CreateServicesAsync();
-        await workflow.CreateStashAsync(
+        var (repository, mutations, reader, _) = await CreateServicesAsync();
+        await mutations.CreateStashAsync(
             repository,
             new CreateStashRequest(
                 null,
@@ -121,8 +121,8 @@ public sealed class StashViewerTests : IDisposable
         File.WriteAllText(Path.Combine(_root, "file-a.txt"), "changed\n");
         File.WriteAllText(Path.Combine(_root, "notes.txt"), "notes\n");
 
-        var (repository, workflow, reader, _) = await CreateServicesAsync();
-        await workflow.CreateStashAsync(
+        var (repository, mutations, reader, _) = await CreateServicesAsync();
+        await mutations.CreateStashAsync(
             repository,
             new CreateStashRequest(
                 null,
@@ -146,8 +146,8 @@ public sealed class StashViewerTests : IDisposable
     {
         Git("mv", "file-a.txt", "renamed-a.txt");
 
-        var (repository, workflow, reader, _) = await CreateServicesAsync();
-        await workflow.CreateStashAsync(repository);
+        var (repository, mutations, reader, _) = await CreateServicesAsync();
+        await mutations.CreateStashAsync(repository);
         var details = await reader.ReadAsync(repository, CurrentStash());
 
         var renamed = Assert.Single(details.Changes, change =>
@@ -157,7 +157,7 @@ public sealed class StashViewerTests : IDisposable
         Assert.Equal(StashChangeState.Staged, renamed.State);
     }
 
-    private async Task<(Repository Repository, GitRepositoryWorkflowService Workflow, IStashService Reader, IHistoryService History)> CreateServicesAsync()
+    private async Task<(Repository Repository, GitStashMutationService Mutations, IStashService Reader, IHistoryService History)> CreateServicesAsync()
     {
         var executor = GitTestServices.CreateExecutor();
         var repository = await new GitRepositoryService(executor).OpenAsync(_root);
@@ -166,7 +166,7 @@ public sealed class StashViewerTests : IDisposable
             executor);
         return (
             repository,
-            new GitRepositoryWorkflowService(executor),
+            GitTestServices.CreateStashMutationService(executor),
             new GitStashService(history),
             history);
     }

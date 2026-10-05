@@ -4,9 +4,9 @@ namespace CSharpGit.Git;
 
 internal sealed partial class GitCommitActionService : ICommitActionService
 {
-private readonly GitRepositoryCommandRunner _runner;
+    private readonly GitRepositoryCommandRunner _runner;
     private readonly GitRepositoryStateService _stateService;
-    private readonly GitRepositoryWorkflowService _workflowService;
+    private readonly IInteractiveRebaseService _interactiveRebaseService;
 
     internal GitCommitActionService(GitCommandExecutor executor)
         : this(
@@ -19,11 +19,11 @@ private readonly GitRepositoryCommandRunner _runner;
     internal GitCommitActionService(
         GitRepositoryCommandRunner runner,
         GitRepositoryStateService stateService,
-        GitRepositoryWorkflowService? workflowService)
+        IInteractiveRebaseService? interactiveRebaseService)
     {
         _runner = runner ?? throw new ArgumentNullException(nameof(runner));
         _stateService = stateService ?? throw new ArgumentNullException(nameof(stateService));
-        _workflowService = workflowService
-            ?? new GitRepositoryWorkflowService(runner, stateService);
+        _interactiveRebaseService = interactiveRebaseService
+            ?? new GitInteractiveRebaseService(runner, stateService);
     }
 }

@@ -18,7 +18,7 @@ public sealed partial class OpenRepositoryViewModel
         InvalidatePreparedInteractiveRebaseTodo();
         try
         {
-            var todo = await _workflowService.ReadInteractiveRebaseTodoFromCommitAsync(
+            var todo = await _interactiveRebaseService.ReadInteractiveRebaseTodoFromCommitAsync(
                 repository,
                 fullSha);
 
@@ -99,7 +99,7 @@ public sealed partial class OpenRepositoryViewModel
         {
             await MutateAsync(
                 async () =>
-                    result = await _workflowService.StartInteractiveRebaseTodoAsync(
+                    result = await _interactiveRebaseService.StartInteractiveRebaseTodoAsync(
                         repository,
                         prepared with { TodoText = RebaseTodoText }));
 
