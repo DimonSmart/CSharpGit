@@ -73,8 +73,14 @@ public sealed class InteractiveRebaseAuthorChangeIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task ResetAuthorDateUsesCurrentRewriteTime()
+    public async Task NativeResetAuthorUsesCurrentGitIdentityAndPreservesAuthorDates()
     {
+        var before = new[] { _b, _c, _d }
+            .Select(ReadCommit)
+            .ToDictionary(commit => commit.Subject, StringComparer.Ordinal);
+        Git("config", "user.name", "Reset User");
+        Git("config", "user.email", "reset@example.com");
+
         var (repository, workflow) = await CreateServicesAsync();
         var todo = await workflow.ReadInteractiveRebaseTodoFromCommitAsync(repository, _a);
         var transformer = new InteractiveRebaseAuthorChangeService();
@@ -85,9 +91,49 @@ public sealed class InteractiveRebaseAuthorChangeIntegrationTests : IDisposable
                 0,
                 0,
                 InteractiveRebaseAuthorChangeScope.AllEligibleCommits,
-                "Current User",
-                "current@example.com",
-                true));
+                string.Empty,
+                string.Empty,
+                false,
+                ResetToCurrentGitIdentity: true));
+
+        Assert.Contains("--reset-author", transformed.TodoText, StringComparison.Ordinal);
+        Assert.DoesNotContain("--author ", transformed.TodoText, StringComparison.Ordinal);
+        Assert.DoesNotContain("reset@example.com", transformed.TodoText, StringComparison.Ordinal);
+
+        var result = await workflow.StartInteractiveRebaseTodoAsync(
+            repository,
+            todo with { TodoText = transformed.TodoText });
+
+        Assert.Equal(RebaseResultKind.Completed, result.Kind);
+
+        foreach (var commit in ReadRange(_a))
+        {
+            Assert.Equal("Reset User", commit.AuthorName);
+            Assert.Equal("reset@example.com", commit.AuthorEmail);
+            Assert.Equal(before[commit.Subject].AuthorDate, commit.AuthorDate);
+        }
+    }
+
+    [Fact]
+    public async Task NativeResetAuthorCanRenewAuthorDate()
+    {
+        Git("config", "user.name", "Current User");
+        Git("config", "user.email", "current@example.com");
+
+        var (repository, workflow) = await CreateServicesAsync();
+        var todo = await workflow.ReadInteractiveRebaseTodoFromCommitAsync(repository, _a);
+        var transformer = new InteractiveRebaseAuthorChangeService();
+
+        var transformed = transformer.Apply(
+            new InteractiveRebaseAuthorChangeRequest(
+                todo.TodoText,
+                0,
+                0,
+                InteractiveRebaseAuthorChangeScope.AllEligibleCommits,
+                string.Empty,
+                string.Empty,
+                true,
+                ResetToCurrentGitIdentity: true));
 
         var result = await workflow.StartInteractiveRebaseTodoAsync(
             repository,
@@ -96,7 +142,12 @@ public sealed class InteractiveRebaseAuthorChangeIntegrationTests : IDisposable
         Assert.Equal(RebaseResultKind.Completed, result.Kind);
         Assert.All(
             ReadRange(_a),
-            commit => Assert.False(commit.AuthorDate.StartsWith("2020-", StringComparison.Ordinal)));
+            commit =>
+            {
+                Assert.Equal("Current User", commit.AuthorName);
+                Assert.Equal("current@example.com", commit.AuthorEmail);
+                Assert.False(commit.AuthorDate.StartsWith("2020-", StringComparison.Ordinal));
+            });
     }
 
     private string Commit(string subject, string date)
