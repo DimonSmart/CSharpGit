@@ -117,7 +117,8 @@ public sealed partial class MainPage
 
     private async Task ShowCreateTagDialogAsync(string targetCommit, bool selectedCommit)
     {
-        if (_viewModel.Repository is null || !CanMutateTags()) return;
+        var repository = _viewModel.Repository;
+        if (repository is null || !CanMutateTags()) return;
 
         var name = new TextBox { Header = "Tag name", PlaceholderText = "v1.2.0" };
         var target = new TextBox
@@ -174,6 +175,7 @@ public sealed partial class MainPage
         }
 
         await _tagsViewModel.CreateTagAsync(
+            repository,
             new CreateTagRequest(
                 name.Text.Trim(),
                 target.Text.Trim(),
@@ -220,7 +222,8 @@ public sealed partial class MainPage
 
     private async Task DeleteTagFromUiAsync(GitTag tag)
     {
-        if (_viewModel.Repository is null || !CanMutateTags()) return;
+        var repository = _viewModel.Repository;
+        if (repository is null || !CanMutateTags()) return;
 
         var hasRemotes = _viewModel.Remotes.Count > 0;
         var deleteRemote = new CheckBox
@@ -281,7 +284,7 @@ public sealed partial class MainPage
             : null;
         if (deleteRemote.IsChecked == true && selectedRemote is null) return;
 
-        var result = await _tagsViewModel.DeleteTagAsync(tag, selectedRemote);
+        var result = await _tagsViewModel.DeleteTagAsync(repository, tag, selectedRemote);
         if (result.Succeeded && result.RemoteWasMissing && result.RemoteName is { } remoteName)
             await ShowInformationAsync(
                 "Tag deleted",
@@ -290,16 +293,17 @@ public sealed partial class MainPage
 
     private async Task PushTagFromUiAsync(GitTag tag)
     {
-        if (_viewModel.Repository is null) return;
+        var repository = _viewModel.Repository;
+        if (repository is null) return;
         var remote = await SelectTagRemoteAsync("Push tag", $"Push '{tag.Name}' to remote");
         if (remote is null) return;
 
-        var result = await _tagsViewModel.PushTagAsync(tag, remote);
+        var result = await _tagsViewModel.PushTagAsync(repository, tag, remote);
         if (result is null) return;
 
         if (result.Kind == PushTagResultKind.Conflict && result.Conflict is { } conflict)
         {
-            await ConfirmForceUpdateRemoteTagAsync(conflict);
+            await ConfirmForceUpdateRemoteTagAsync(repository, conflict);
             return;
         }
 
@@ -308,9 +312,11 @@ public sealed partial class MainPage
             result.Message);
     }
 
-    private async Task ConfirmForceUpdateRemoteTagAsync(RemoteTagConflictSnapshot snapshot)
+    private async Task ConfirmForceUpdateRemoteTagAsync(
+        Repository repository,
+        RemoteTagConflictSnapshot snapshot)
     {
-        if (_viewModel.Repository is null) return;
+        if (!ReferenceEquals(_viewModel.Repository, repository)) return;
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
@@ -327,16 +333,17 @@ public sealed partial class MainPage
         };
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
 
-        await _tagsViewModel.ForceUpdateRemoteTagAsync(snapshot);
+        await _tagsViewModel.ForceUpdateRemoteTagAsync(repository, snapshot);
     }
 
     private async Task DeleteRemoteTagFromUiAsync(GitTag tag)
     {
-        if (_viewModel.Repository is null || !CanMutateTags()) return;
+        var repository = _viewModel.Repository;
+        if (repository is null || !CanMutateTags()) return;
         var remote = await SelectTagRemoteAsync("Delete remote tag", $"Delete '{tag.Name}' from remote");
         if (remote is null) return;
 
-        var lookup = await _tagsViewModel.ReadRemoteTagAsync(remote, tag.Name);
+        var lookup = await _tagsViewModel.ReadRemoteTagAsync(repository, remote, tag.Name);
         if (!lookup.Succeeded)
         {
             await ShowErrorAsync("Could not read remote tag", lookup.ErrorMessage ?? "Unknown error.");
@@ -366,12 +373,13 @@ public sealed partial class MainPage
         };
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
 
-        await _tagsViewModel.DeleteRemoteTagAsync(remoteTag);
+        await _tagsViewModel.DeleteRemoteTagAsync(repository, remoteTag);
     }
 
     private async Task ShowRemoteTagsAsync()
     {
-        if (_viewModel.Repository is null) return;
+        var repository = _viewModel.Repository;
+        if (repository is null) return;
         if (_viewModel.Remotes.Count == 0)
         {
             await ShowInformationAsync("Remote tags", "This repository has no configured remotes.");
@@ -438,7 +446,7 @@ public sealed partial class MainPage
                 status.Text = "Loading remote tags…";
                 try
                 {
-                    var query = await _tagsViewModel.ReadRemoteTagsAsync(remote);
+                    var query = await _tagsViewModel.ReadRemoteTagsAsync(repository, remote);
                     if (!query.Succeeded)
                     {
                         remoteTags = [];
@@ -490,24 +498,26 @@ public sealed partial class MainPage
             };
             if (await confirmation.ShowAsync() != ContentDialogResult.Primary) continue;
 
-            await _tagsViewModel.DeleteRemoteTagAsync(selectedTag);
+            await _tagsViewModel.DeleteRemoteTagAsync(repository, selectedTag);
         }
     }
 
     private async Task FetchTagsFromUiAsync()
     {
-        if (_viewModel.Repository is null) return;
+        var repository = _viewModel.Repository;
+        if (repository is null) return;
         var remote = await SelectTagRemoteAsync("Fetch tags", "Fetch tags from remote");
         if (remote is null) return;
-        await _tagsViewModel.FetchTagsAsync(remote);
+        await _tagsViewModel.FetchTagsAsync(repository, remote);
     }
 
     private async Task PushAllTagsFromUiAsync()
     {
-        if (_viewModel.Repository is null) return;
+        var repository = _viewModel.Repository;
+        if (repository is null) return;
         var remote = await SelectTagRemoteAsync("Push all tags", "Push all local tags to remote");
         if (remote is null) return;
-        await _tagsViewModel.PushAllTagsAsync(remote);
+        await _tagsViewModel.PushAllTagsAsync(repository, remote);
     }
 
     private GitRemote? GetPreferredTagRemote() => _tagsViewModel.PreferredRemote;
