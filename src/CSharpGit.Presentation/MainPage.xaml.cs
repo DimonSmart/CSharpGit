@@ -27,7 +27,7 @@ public sealed partial class MainPage : Page
     private readonly IReferenceService _referenceService;
     private readonly IRepositorySyncService _repositorySyncService;
     private readonly ICommitActionService _commitActionService;
-    private readonly ITagService _tagService;
+    private readonly TagsViewModel _tagsViewModel;
     private readonly ObservableCollection<RepositoryTreeNode> _repositoryTreeRoots = [];
     private readonly ObservableCollection<HistoryRow> _scopedHistory = [];
     private readonly BulkObservableCollection<WorkingTreeChange> _unstagedChanges = [];
@@ -56,7 +56,7 @@ public sealed partial class MainPage : Page
         IReferenceService referenceService,
         IRepositorySyncService repositorySyncService,
         ICommitActionService commitActionService,
-        ITagService tagService,
+        TagsViewModel tagsViewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
         IWorkingTreeDiffService workingTreeDiffService)
     {
@@ -66,7 +66,8 @@ public sealed partial class MainPage : Page
         _referenceService = referenceService;
         _repositorySyncService = repositorySyncService ?? throw new ArgumentNullException(nameof(repositorySyncService));
         _commitActionService = commitActionService ?? throw new ArgumentNullException(nameof(commitActionService));
-        _tagService = tagService ?? throw new ArgumentNullException(nameof(tagService));
+        _tagsViewModel = tagsViewModel ?? throw new ArgumentNullException(nameof(tagsViewModel));
+        _tagsViewModel.Attach(_viewModel);
         _workingTreeStatusReader = workingTreeStatusReader ?? throw new ArgumentNullException(nameof(workingTreeStatusReader));
         _workingTreeDiffService = workingTreeDiffService ?? throw new ArgumentNullException(nameof(workingTreeDiffService));
         InitializeBusyStatusPresentation();
