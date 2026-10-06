@@ -168,16 +168,14 @@ public static class GitServiceCollectionExtensions
                 provider.GetRequiredService<IExternalToolProcessService>()));
 
         services.AddSingleton(provider =>
-            new GitReferenceHistoryService(
+            new GitCommitHistoryReader(
                 provider.GetRequiredService<GitCommandExecutor>()));
         services.AddSingleton(provider =>
-            new GitFileAwareHistoryService(
-                provider.GetRequiredService<GitReferenceHistoryService>(),
+            new GitHistoryService(
+                provider.GetRequiredService<GitCommitHistoryReader>(),
                 provider.GetRequiredService<GitCommandExecutor>()));
         services.AddSingleton<IHistoryService>(provider =>
-            provider.GetRequiredService<GitFileAwareHistoryService>());
-        services.AddSingleton<IReferenceHistoryService>(provider =>
-            provider.GetRequiredService<GitFileAwareHistoryService>());
+            provider.GetRequiredService<GitHistoryService>());
 
         services.AddSingleton<IStashService>(provider =>
             new GitStashService(

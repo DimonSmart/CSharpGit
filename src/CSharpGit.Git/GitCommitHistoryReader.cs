@@ -3,7 +3,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
 
-public sealed class GitReferenceHistoryService : IReferenceHistoryService
+internal sealed class GitCommitHistoryReader
 {
     private const int ReflogMetadataRecordLimit = 4096;
     private const int MaxCachedReflogSessions = 8;
@@ -12,7 +12,7 @@ public sealed class GitReferenceHistoryService : IReferenceHistoryService
     private readonly object _reflogMetadataGate = new();
     private readonly Dictionary<ReflogMetadataCacheKey, IReadOnlyDictionary<string, ReflogPresentation>> _reflogMetadataCache = [];
     private readonly Queue<ReflogMetadataCacheKey> _reflogMetadataCacheOrder = new();
-internal GitReferenceHistoryService(GitCommandExecutor executor)
+internal GitCommitHistoryReader(GitCommandExecutor executor)
     {
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
     }
@@ -278,10 +278,18 @@ internal GitReferenceHistoryService(GitCommandExecutor executor)
     }
 
     private static bool ShouldIncludeReflog(HistoryQuery query) =>
-        query.Scope == HistoryScope.AllReferences && query.IncludeReflog;
+        query.Reference is null
+        && query.Scope == HistoryScope.AllReferences
+        && query.IncludeReflog;
 
     private static IReadOnlyList<string> GetHistoryRevisions(HistoryQuery query)
     {
+        if (query.Reference is { Length: > 0 } reference)
+        {
+            ValidateReference(reference);
+            return [reference];
+        }
+
         if (query.Scope != HistoryScope.AllReferences) return ["HEAD"];
         return query.IncludeReflog ? ["--all", "--reflog"] : ["--all"];
     }

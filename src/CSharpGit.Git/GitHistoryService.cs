@@ -3,12 +3,12 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
 
-public sealed class GitFileAwareHistoryService : IHistoryService, IReferenceHistoryService, IHistoryDiffLoadService
+public sealed class GitHistoryService : IHistoryService
 {
-    private readonly GitReferenceHistoryService _history;
+    private readonly GitCommitHistoryReader _history;
     private readonly GitCommandExecutor _executor;
-internal GitFileAwareHistoryService(
-        GitReferenceHistoryService history,
+internal GitHistoryService(
+        GitCommitHistoryReader history,
         GitCommandExecutor executor)
     {
         _history = history ?? throw new ArgumentNullException(nameof(history));

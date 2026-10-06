@@ -13,7 +13,8 @@ public sealed record HistoryQuery(
     string? HeadReference = null,
     string? HeadCommit = null,
     bool IsDetachedHead = false,
-    long ReflogSessionId = 0);
+    long ReflogSessionId = 0,
+    string? Reference = null);
 
 public enum HistoryReferenceKind
 {

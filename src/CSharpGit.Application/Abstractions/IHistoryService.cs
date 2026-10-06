@@ -31,20 +31,11 @@ public interface IHistoryService
         string? parentHash,
         ChangedFile file,
         CancellationToken cancellationToken = default);
-}
-
-public interface IReferenceHistoryService
-{
-    Task<HistoryPage> ReadHistoryAsync(
-        Repository repository,
-        string reference,
-        string? filter,
-        int skip,
-        int take = 100,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyDictionary<string, string>> ReadFileStatusesAsync(
+    Task<FileDiff> ReadDiffAsync(
         Repository repository,
         string commitHash,
+        string? parentHash,
+        ChangedFile file,
+        DiffLoadMode mode,
         CancellationToken cancellationToken = default);
 }
