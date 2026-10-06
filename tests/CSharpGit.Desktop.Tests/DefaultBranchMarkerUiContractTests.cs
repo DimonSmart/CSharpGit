@@ -28,7 +28,7 @@ public sealed class DefaultBranchMarkerUiContractTests
         var root = FindRepositoryRoot();
         var presenter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferencesPresenter.cs"));
         var historyStyles = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml"));
-        var historyService = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitReferenceHistoryService.cs"));
+        var historyService = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCommitHistoryReader.cs"));
         var repositoryState = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitRepositoryStateService.cs"));
 
         Assert.Contains("reference.IsDefault", presenter, StringComparison.Ordinal);

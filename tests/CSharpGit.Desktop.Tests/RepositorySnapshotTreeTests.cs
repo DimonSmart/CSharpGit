@@ -34,7 +34,7 @@ public sealed class RepositorySnapshotTreeTests
         var entries = new[]
         {
             Entry("src/CSharpGit.Application/Abstractions/IHistoryService.cs"),
-            Entry("src/CSharpGit.Git/GitReferenceHistoryService.cs"),
+            Entry("src/CSharpGit.Git/GitHistoryService.cs"),
             Entry("tests/OtherTests.cs")
         };
 
