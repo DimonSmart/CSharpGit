@@ -1,7 +1,5 @@
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
-using CSharpGit.Domain;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -12,10 +10,7 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private const int RepositoryContentResultLimit = 500;
-    private const int RepositoryFilesStateLimit = 12;
-
-    private readonly IRepositorySnapshotService _repositorySnapshotService = null!;
+    private readonly RepositoryFilesViewModel _repositoryFilesViewModel = null!;
     private PivotItem? _repositoryFilesTab;
     private PivotItem? _changesTab;
     private TextBox? _repositoryFilesSearch;
@@ -24,26 +19,7 @@ public sealed partial class MainPage
     private ListView? _repositoryContentResults;
     private ProgressRing? _repositoryFilesProgress;
     private TextBlock? _repositoryFilesStatus;
-    private readonly RepositorySnapshotCache _repositorySnapshotCache = new();
-    private readonly Dictionary<string, RepositoryFilesPresentationState> _repositoryFilesStates = new(StringComparer.Ordinal);
-    private readonly LinkedList<string> _repositoryFilesStateLru = [];
-    private readonly Dictionary<string, LinkedListNode<string>> _repositoryFilesStateLruNodes = new(StringComparer.Ordinal);
-    private CancellationTokenSource? _repositorySnapshotCts;
-    private CancellationTokenSource? _repositoryContentSearchCts;
-    private IReadOnlyList<RepositorySnapshotEntry> _repositorySnapshot = [];
-    private readonly ObservableCollection<RepositorySnapshotTreeNode> _repositoryFilesTreeRoots = [];
-    private IReadOnlyList<RepositoryContentSearchMatch> _repositoryContentMatches = [];
-    private Repository? _repositorySnapshotRepository;
-    private string? _repositorySnapshotCommit;
-    private bool _repositorySnapshotLoadedSuccessfully;
-    private string? _repositoryContentCommit;
-    private string? _repositoryFilesLastSelectedPath;
-    private long _repositorySnapshotGeneration;
-    private long _repositoryContentSearchGeneration;
-    private string _repositoryFilesNameQuery = string.Empty;
-    private string _repositoryFilesSearchModeName = "Name";
     private bool _repositoryFilesBuildingTree;
-    private bool _repositoryFilesTreeSearchActive;
     private bool _repositoryFilesRestoringPresentationState;
 
     private MainPage(
@@ -59,7 +35,7 @@ public sealed partial class MainPage
         IDesktopShellService desktopShellService,
         IRepositoryPathService repositoryPathService,
         IExternalGitToolService externalGitToolService,
-        IRepositorySnapshotService repositorySnapshotService)
+        RepositoryFilesViewModel repositoryFilesViewModel)
         : this(
             viewModel,
             historyService,
@@ -74,7 +50,9 @@ public sealed partial class MainPage
             repositoryPathService,
             externalGitToolService)
     {
-        _repositorySnapshotService = repositorySnapshotService ?? throw new ArgumentNullException(nameof(repositorySnapshotService));
+        _repositoryFilesViewModel = repositoryFilesViewModel
+            ?? throw new ArgumentNullException(nameof(repositoryFilesViewModel));
+        _repositoryFilesViewModel.Attach(_viewModel);
         InitializeRepositoryFiles();
     }
 
@@ -91,7 +69,12 @@ public sealed partial class MainPage
         CommitFilesList.DoubleTapped += RepositoryChangedFiles_DoubleTapped;
         CommitFilesList.KeyDown += RepositoryChangedFiles_KeyDown;
 
-        _viewModel.PropertyChanged += RepositoryFilesViewModel_PropertyChanged;
+        _repositoryFilesViewModel.PropertyChanged += RepositoryFilesViewModel_PropertyChanged;
+        SynchronizeRepositoryFilesSearchControls();
+        UpdateRepositoryFilesModeSurface();
+        SetRepositoryFilesStatus(
+            _repositoryFilesViewModel.StatusText,
+            _repositoryFilesViewModel.IsLoading);
     }
 
     private UIElement BuildRepositoryFilesSurface()
@@ -120,7 +103,11 @@ public sealed partial class MainPage
         _repositoryFilesSearchMode = new ComboBox
         {
             MinWidth = 110,
-            ItemsSource = new[] { "Name", "Content" },
+            ItemsSource = new[]
+            {
+                RepositoryFilesViewModel.NameSearchMode,
+                RepositoryFilesViewModel.ContentSearchMode
+            },
             SelectedIndex = 0
         };
         _repositoryFilesSearchMode.SelectionChanged += RepositoryFilesSearchMode_SelectionChanged;
@@ -138,7 +125,7 @@ public sealed partial class MainPage
             Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["DenseTreeViewStyle"],
             ItemContainerStyle = (Style)Microsoft.UI.Xaml.Application.Current.Resources["DenseTreeItemStyle"],
             ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["RepositoryFilesTreeItemTemplate"],
-            ItemsSource = _repositoryFilesTreeRoots
+            ItemsSource = _repositoryFilesViewModel.TreeRoots
         };
         _repositoryFilesTree.SelectionChanged += RepositoryFilesTree_SelectionChanged;
         _repositoryFilesTree.DoubleTapped += RepositoryFilesTree_DoubleTapped;
@@ -193,187 +180,83 @@ public sealed partial class MainPage
 
     private void RepositoryFilesViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
-        if (args.PropertyName == nameof(OpenRepositoryViewModel.Repository))
+        switch (args.PropertyName)
         {
-            CancelRepositoryFilesRequests();
-            ClearRepositoryFileSelection();
-            _repositorySnapshotCache.Clear();
-            _repositoryFilesStates.Clear();
-            _repositoryFilesStateLru.Clear();
-            _repositoryFilesStateLruNodes.Clear();
-            _repositorySnapshot = [];
-            _repositorySnapshotRepository = null;
-            _repositorySnapshotCommit = null;
-            _repositorySnapshotLoadedSuccessfully = false;
-            _repositoryContentMatches = [];
-            _repositoryContentCommit = null;
-            _repositoryFilesLastSelectedPath = null;
-            ClearRepositoryFilesTree();
-            if (IsRepositoryFilesActive) _ = LoadRepositorySnapshotAsync();
-        }
-        else if (args.PropertyName is nameof(OpenRepositoryViewModel.SelectedHistoryRow)
-                 or nameof(OpenRepositoryViewModel.SelectedStash))
-        {
-            if (_repositoryFilesTab is not null)
-                _repositoryFilesTab.Header = _viewModel.HasSelectedStash ? "Tracked files" : "Files";
-            if (IsRepositoryFilesActive)
-                _ = LoadRepositorySnapshotAsync();
+            case nameof(RepositoryFilesViewModel.StatusText):
+            case nameof(RepositoryFilesViewModel.IsLoading):
+                SetRepositoryFilesStatus(
+                    _repositoryFilesViewModel.StatusText,
+                    _repositoryFilesViewModel.IsLoading);
+                break;
+
+            case nameof(RepositoryFilesViewModel.NameQuery):
+            case nameof(RepositoryFilesViewModel.SearchMode):
+                SynchronizeRepositoryFilesSearchControls();
+                UpdateRepositoryFilesModeSurface();
+                break;
+
+            case nameof(RepositoryFilesViewModel.ContentResults):
+            case nameof(RepositoryFilesViewModel.IsContentSearchMode):
+                UpdateRepositoryFilesModeSurface();
+                break;
+
+            case nameof(RepositoryFilesViewModel.TreeRevision):
+                SynchronizeRepositoryFilesTreeSelection();
+                break;
+
+            case nameof(RepositoryFilesViewModel.SelectionRevision):
+                SynchronizeRepositoryFilesTreeSelection();
+                ApplyRepositoryFileSelectionFromViewModel();
+                break;
         }
     }
 
     private bool IsRepositoryFilesActive =>
         _repositoryFilesTab is not null && ReferenceEquals(DetailsTabs.SelectedItem, _repositoryFilesTab);
 
-    private bool RepositoryFilesSnapshotMatchesSelection =>
-        ReferenceEquals(_repositorySnapshotRepository, _viewModel.Repository)
-        && string.Equals(_repositorySnapshotCommit, _viewModel.SelectedObjectCommit, StringComparison.Ordinal);
-
     private void UpdateRepositoryFilesViewActivity()
     {
-        if (IsRepositoryFilesActive)
-        {
-            _ = LoadRepositorySnapshotAsync();
-            return;
-        }
-
-        SaveRepositoryFilesPresentationState();
-        CancelRepositoryFilesRequests();
+        if (!IsRepositoryFilesActive)
+            CancelRepositoryFilePreview();
+        _ = _repositoryFilesViewModel.SetActiveAsync(IsRepositoryFilesActive);
     }
 
-    private async Task LoadRepositorySnapshotAsync()
+    private void SynchronizeRepositoryFilesSearchControls()
     {
-        if (!IsRepositoryFilesActive) return;
-        var repository = _viewModel.Repository;
-        var commitHash = _viewModel.SelectedObjectCommit;
-        if (repository is null || string.IsNullOrWhiteSpace(commitHash))
-        {
-            ClearRepositoryFileSelection();
-            SetRepositoryFilesStatus("Select a commit or stash.", loading: false);
-            ClearRepositoryFilesTree();
-            return;
-        }
-
-        var contextChanged = !ReferenceEquals(repository, _repositorySnapshotRepository)
-                             || !string.Equals(commitHash, _repositorySnapshotCommit, StringComparison.Ordinal);
-        if (contextChanged) ClearRepositoryFileSelection();
-
-        if (!contextChanged && _repositorySnapshotLoadedSuccessfully)
-        {
-            PublishRepositorySnapshot(repository, commitHash, _repositorySnapshot);
-            return;
-        }
-
-        SaveRepositoryFilesPresentationState();
-        CancelRepositorySnapshotRequest();
-        CancelRepositoryContentSearch();
-        var generation = Interlocked.Increment(ref _repositorySnapshotGeneration);
-        _repositorySnapshotCts = new CancellationTokenSource();
-        var token = _repositorySnapshotCts.Token;
-        var repositoryIdentity = RepositoryIdentity(repository);
-        _repositoryContentMatches = [];
-        _repositoryContentCommit = null;
-        UpdateRepositoryFilesModeSurface();
-
-        if (_repositorySnapshotCache.TryGet(repositoryIdentity, commitHash, out var cached))
-        {
-            if (CanPublishRepositoryFiles(repository, commitHash, generation))
-                PublishRepositorySnapshot(repository, commitHash, cached);
-            return;
-        }
-
-        SetRepositoryFilesStatus("Loading repository files...", loading: true);
+        _repositoryFilesRestoringPresentationState = true;
         try
         {
-            var snapshot = await _repositorySnapshotService.ReadTreeAsync(repository, commitHash, token);
-            if (!CanPublishRepositoryFiles(repository, commitHash, generation)) return;
-            _repositorySnapshotCache.Set(repositoryIdentity, commitHash, snapshot);
-            PublishRepositorySnapshot(repository, commitHash, snapshot);
+            if (_repositoryFilesSearch is not null
+                && !string.Equals(
+                    _repositoryFilesSearch.Text,
+                    _repositoryFilesViewModel.NameQuery,
+                    StringComparison.Ordinal))
+            {
+                _repositoryFilesSearch.Text = _repositoryFilesViewModel.NameQuery;
+            }
+
+            if (_repositoryFilesSearchMode is not null
+                && !string.Equals(
+                    _repositoryFilesSearchMode.SelectedItem as string,
+                    _repositoryFilesViewModel.SearchMode,
+                    StringComparison.Ordinal))
+            {
+                _repositoryFilesSearchMode.SelectedItem = _repositoryFilesViewModel.SearchMode;
+            }
         }
-        catch (OperationCanceledException)
+        finally
         {
-        }
-        catch (Exception exception)
-        {
-            if (!CanPublishRepositoryFiles(repository, commitHash, generation)) return;
-            _repositorySnapshot = [];
-            _repositorySnapshotRepository = repository;
-            _repositorySnapshotCommit = commitHash;
-            _repositorySnapshotLoadedSuccessfully = false;
-            ClearRepositoryFilesTree();
-            ClearRepositoryFileSelection();
-            SetRepositoryFilesStatus($"Could not load repository files: {exception.Message}", loading: false);
+            _repositoryFilesRestoringPresentationState = false;
         }
     }
 
-    private bool CanPublishRepositoryFiles(Repository repository, string commitHash, long generation) =>
-        !(_repositorySnapshotCts?.IsCancellationRequested ?? true)
-        && generation == Volatile.Read(ref _repositorySnapshotGeneration)
-        && IsRepositoryFilesActive
-        && ReferenceEquals(repository, _viewModel.Repository)
-        && string.Equals(commitHash, _viewModel.SelectedObjectCommit, StringComparison.Ordinal);
-
-    private void PublishRepositorySnapshot(
-        Repository repository,
-        string commitHash,
-        IReadOnlyList<RepositorySnapshotEntry> snapshot)
-    {
-        var restoreSavedExpansionState = _repositoryFilesStates.ContainsKey(StateKey(repository, commitHash));
-        _repositorySnapshotRepository = repository;
-        _repositorySnapshotCommit = commitHash;
-        _repositorySnapshot = snapshot;
-        _repositorySnapshotLoadedSuccessfully = true;
-        RestoreRepositoryFilesPresentationState(repository, commitHash);
-        RebuildRepositoryFilesTree(restoreSavedExpansionState);
-        UpdateRepositoryFilesModeSurface();
-        if (_repositoryFilesSearchModeName == "Name" && string.IsNullOrWhiteSpace(_repositoryFilesNameQuery))
-            SetRepositoryFilesStatus(RepositoryFilesReadyStatus(snapshot.Count), loading: false);
-    }
-
-    private string RepositoryFilesReadyStatus(int entryCount)
-    {
-        if (_viewModel.HasSelectedStash)
-        {
-            return entryCount == 0
-                ? "The tracked repository snapshot saved in this stash is empty. Untracked stash files are shown in Changes."
-                : "Tracked repository snapshot saved in this stash. Untracked stash files are shown in Changes.";
-        }
-
-        return entryCount == 0 ? "This commit has an empty tree." : string.Empty;
-    }
-
-    private void RebuildRepositoryFilesTree(bool restoreNormalExpansionState = false)
+    private void SynchronizeRepositoryFilesTreeSelection()
     {
         if (_repositoryFilesTree is null) return;
         _repositoryFilesBuildingTree = true;
         try
         {
-            var wasSearchActive = _repositoryFilesTreeSearchActive;
-            var query = _repositoryFilesSearchModeName == "Name" ? _repositoryFilesNameQuery : null;
-            RepositorySnapshotTreeSynchronizer.Reconcile(_repositoryFilesTreeRoots, _repositorySnapshot, query);
-            var searchActive = !string.IsNullOrWhiteSpace(query);
-            var state = CurrentRepositoryFilesState(create: true);
-            if (searchActive || restoreNormalExpansionState || wasSearchActive)
-            {
-                foreach (var root in _repositoryFilesTreeRoots)
-                    RestoreRepositoryFilesExpansion(root, searchActive, state);
-            }
-            if (!searchActive && state is not null)
-                CaptureRepositoryFilesExpansionState(_repositoryFilesTreeRoots, state);
-            _repositoryFilesTreeSearchActive = searchActive;
-
-            var selected = state?.SelectedPath is { } selectedPath
-                ? FindRepositoryFilesPath(_repositoryFilesTreeRoots, selectedPath)
-                : null;
-            _repositoryFilesTree.SelectedItem = selected;
-            if (selected is not null)
-                ApplyRepositoryFileSelection(selected.Path, null, selected.Entry);
-            else
-                ClearRepositoryFileSelection();
-
-            if (searchActive && _repositoryFilesTreeRoots.Count == 0 && _repositorySnapshot.Count > 0)
-                SetRepositoryFilesStatus("No matches", loading: false);
-            else if (_repositorySnapshot.Count > 0 && _repositoryFilesSearchModeName == "Name")
-                SetRepositoryFilesStatus(RepositoryFilesReadyStatus(_repositorySnapshot.Count), loading: false);
+            _repositoryFilesTree.SelectedItem = _repositoryFilesViewModel.SelectedTreeNode;
         }
         finally
         {
@@ -381,288 +264,202 @@ public sealed partial class MainPage
         }
     }
 
-    private static void RestoreRepositoryFilesExpansion(
-        RepositorySnapshotTreeNode node,
-        bool searchActive,
-        RepositoryFilesPresentationState? state)
+    private void ApplyRepositoryFileSelectionFromViewModel()
     {
-        node.IsExpanded = node.IsDirectory && (searchActive || state?.ExpandedPaths.Contains(node.Path) == true);
-        foreach (var child in node.Children)
-            RestoreRepositoryFilesExpansion(child, searchActive, state);
-    }
-
-    private static void CaptureRepositoryFilesExpansionState(
-        IEnumerable<RepositorySnapshotTreeNode> nodes,
-        RepositoryFilesPresentationState state)
-    {
-        state.ExpandedPaths.Clear();
-        CaptureExpandedPaths(nodes, state.ExpandedPaths);
-    }
-
-    private static void CaptureExpandedPaths(
-        IEnumerable<RepositorySnapshotTreeNode> nodes,
-        ISet<string> expandedPaths)
-    {
-        foreach (var node in nodes)
-        {
-            if (node.IsDirectory && node.IsExpanded) expandedPaths.Add(node.Path);
-            CaptureExpandedPaths(node.Children, expandedPaths);
-        }
-    }
-
-    private static RepositorySnapshotTreeNode? FindRepositoryFilesPath(
-        IEnumerable<RepositorySnapshotTreeNode> nodes,
-        string path)
-    {
-        foreach (var node in nodes)
-        {
-            if (string.Equals(node.Path, path, StringComparison.Ordinal)) return node;
-            if (FindRepositoryFilesPath(node.Children, path) is { } match) return match;
-        }
-        return null;
-    }
-
-    private void RepositoryFilesSearch_TextChanged(object sender, TextChangedEventArgs args)
-    {
-        if (_repositoryFilesRestoringPresentationState
-            || _repositoryFilesSearch is null
-            || _repositoryFilesSearchModeName != "Name") return;
-        _repositoryFilesNameQuery = _repositoryFilesSearch.Text;
-        if (_repositorySnapshotCommit is not null) RebuildRepositoryFilesTree();
-    }
-
-    private async void RepositoryFilesSearch_KeyDown(object sender, KeyRoutedEventArgs args)
-    {
-        if (args.Key != VirtualKey.Enter || _repositoryFilesSearchModeName != "Content") return;
-        args.Handled = true;
-        await SearchRepositoryContentAsync();
-    }
-
-    private void RepositoryFilesSearchMode_SelectionChanged(object sender, SelectionChangedEventArgs args)
-    {
-        if (_repositoryFilesRestoringPresentationState
-            || _repositoryFilesSearchMode?.SelectedItem is not string mode) return;
-        _repositoryFilesSearchModeName = mode;
-        if (mode == "Name")
-        {
-            _repositoryFilesNameQuery = _repositoryFilesSearch?.Text ?? string.Empty;
-            CancelRepositoryContentSearch();
-            RebuildRepositoryFilesTree();
-        }
-        else
-        {
-            CancelRepositoryContentSearch();
-            _repositoryContentMatches = [];
-            _repositoryContentCommit = null;
-            SetRepositoryFilesStatus("Press Enter to search file contents.", loading: false);
-        }
-        UpdateRepositoryFilesModeSurface();
-    }
-
-    private void UpdateRepositoryFilesModeSurface()
-    {
-        if (_repositoryFilesTree is null || _repositoryContentResults is null) return;
-        var content = _repositoryFilesSearchModeName == "Content";
-        _repositoryFilesTree.Visibility = content ? Visibility.Collapsed : Visibility.Visible;
-        _repositoryContentResults.Visibility = content ? Visibility.Visible : Visibility.Collapsed;
-        _repositoryContentResults.ItemsSource = content
-            ? _repositoryContentMatches.Take(RepositoryContentResultLimit).Select(match => new RepositoryContentSearchRow(match)).ToList()
-            : null;
-    }
-
-    private async Task SearchRepositoryContentAsync()
-    {
-        if (_repositoryFilesSearch is null || _repositoryFilesSearchModeName != "Content") return;
-        var query = _repositoryFilesSearch.Text;
-        if (string.IsNullOrWhiteSpace(query))
-        {
-            _repositoryContentMatches = [];
-            _repositoryContentCommit = null;
-            UpdateRepositoryFilesModeSurface();
-            SetRepositoryFilesStatus("Enter text and press Enter to search file contents.", loading: false);
-            return;
-        }
-
-        var repository = _viewModel.Repository;
-        var commitHash = _viewModel.SelectedObjectCommit;
-        if (repository is null || string.IsNullOrWhiteSpace(commitHash)) return;
-
-        CancelRepositoryContentSearch();
-        var generation = Interlocked.Increment(ref _repositoryContentSearchGeneration);
-        _repositoryContentSearchCts = new CancellationTokenSource();
-        var token = _repositoryContentSearchCts.Token;
-        _repositoryContentMatches = [];
-        _repositoryContentCommit = null;
-        UpdateRepositoryFilesModeSurface();
-        SetRepositoryFilesStatus("Searching file contents...", loading: true);
-        try
-        {
-            var rawMatches = await _repositorySnapshotService.SearchContentAsync(repository, commitHash, query, token);
-            if (!CanPublishRepositoryContent(repository, commitHash, generation)) return;
-            var regularPaths = _repositorySnapshot
-                .Where(entry => entry.Kind == RepositorySnapshotEntryKind.File)
-                .Select(entry => entry.Path)
-                .ToHashSet(StringComparer.Ordinal);
-            var matches = rawMatches.Where(match => regularPaths.Contains(match.Path)).ToList();
-            _repositoryContentMatches = matches;
-            _repositoryContentCommit = commitHash;
-            UpdateRepositoryFilesModeSurface();
-            SetRepositoryFilesStatus(matches.Count switch
-            {
-                0 => "No matches",
-                > RepositoryContentResultLimit => $"Showing first {RepositoryContentResultLimit} of {matches.Count} matches.",
-                _ => string.Empty
-            }, loading: false);
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception exception)
-        {
-            if (!CanPublishRepositoryContent(repository, commitHash, generation)) return;
-            _repositoryContentMatches = [];
-            _repositoryContentCommit = commitHash;
-            UpdateRepositoryFilesModeSurface();
-            SetRepositoryFilesStatus($"Content search failed: {exception.Message}", loading: false);
-        }
-    }
-
-    private bool CanPublishRepositoryContent(Repository repository, string commitHash, long generation) =>
-        !(_repositoryContentSearchCts?.IsCancellationRequested ?? true)
-        && generation == Volatile.Read(ref _repositoryContentSearchGeneration)
-        && IsRepositoryFilesActive
-        && _repositoryFilesSearchModeName == "Content"
-        && ReferenceEquals(repository, _viewModel.Repository)
-        && string.Equals(commitHash, _viewModel.SelectedObjectCommit, StringComparison.Ordinal);
-
-    private void RepositoryFilesTree_SelectionChanged(TreeView sender, TreeViewSelectionChangedEventArgs args)
-    {
-        if (_repositoryFilesBuildingTree || !RepositoryFilesSnapshotMatchesSelection) return;
-        if (sender.SelectedItem is not RepositorySnapshotTreeNode model)
+        if (_repositoryFilesViewModel.SelectedPath is not { } path)
         {
             ClearRepositoryFileSelection();
             return;
         }
 
-        if (CurrentRepositoryFilesState(create: true) is { } state) state.SelectedPath = model.Path;
-        _repositoryFilesLastSelectedPath = model.Entry is null ? null : model.Path;
-        ApplyRepositoryFileSelection(model.Path, null, model.Entry);
+        ApplyRepositoryFileSelection(
+            path,
+            _repositoryFilesViewModel.SelectedLineNumber,
+            _repositoryFilesViewModel.SelectedEntry);
+    }
+
+    private void RepositoryFilesSearch_TextChanged(object sender, TextChangedEventArgs args)
+    {
+        if (_repositoryFilesRestoringPresentationState || _repositoryFilesSearch is null)
+            return;
+        _repositoryFilesViewModel.SetNameQuery(_repositoryFilesSearch.Text);
+    }
+
+    private async void RepositoryFilesSearch_KeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (args.Key != VirtualKey.Enter
+            || !_repositoryFilesViewModel.IsContentSearchMode
+            || _repositoryFilesSearch is null)
+        {
+            return;
+        }
+
+        args.Handled = true;
+        await _repositoryFilesViewModel.SearchContentAsync(_repositoryFilesSearch.Text);
+    }
+
+    private void RepositoryFilesSearchMode_SelectionChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (_repositoryFilesRestoringPresentationState
+            || _repositoryFilesSearchMode?.SelectedItem is not string mode)
+        {
+            return;
+        }
+
+        _repositoryFilesViewModel.SetSearchMode(
+            mode,
+            _repositoryFilesSearch?.Text ?? string.Empty);
+    }
+
+    private void UpdateRepositoryFilesModeSurface()
+    {
+        if (_repositoryFilesTree is null || _repositoryContentResults is null) return;
+
+        var content = _repositoryFilesViewModel.IsContentSearchMode;
+        _repositoryFilesTree.Visibility = content ? Visibility.Collapsed : Visibility.Visible;
+        _repositoryContentResults.Visibility = content ? Visibility.Visible : Visibility.Collapsed;
+        _repositoryContentResults.ItemsSource = content
+            ? _repositoryFilesViewModel.ContentResults
+            : null;
+    }
+
+    private void RepositoryFilesTree_SelectionChanged(TreeView sender, TreeViewSelectionChangedEventArgs args)
+    {
+        if (_repositoryFilesBuildingTree || _repositoryFilesViewModel.IsRebuildingTree)
+            return;
+        _repositoryFilesViewModel.SelectTreeNode(sender.SelectedItem as RepositorySnapshotTreeNode);
     }
 
     private async void RepositoryFilesTree_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
     {
-        if (SelectedRepositorySnapshotEntry() is not { Kind: RepositorySnapshotEntryKind.File } entry) return;
+        if (SelectedRepositorySnapshotEntry() is not { Kind: RepositorySnapshotEntryKind.File } entry)
+            return;
+
         await OpenRepositorySnapshotFileAsync(entry, openInEditor: false);
         args.Handled = true;
     }
 
     private void RepositoryFilesTree_RightTapped(object sender, RightTappedRoutedEventArgs args)
     {
-        if (args.OriginalSource is not FrameworkElement source || SelectedRepositorySnapshotEntry() is not { } entry) return;
+        if (args.OriginalSource is not FrameworkElement source
+            || SelectedRepositorySnapshotEntry() is not { } entry)
+        {
+            return;
+        }
+
         ShowRepositorySnapshotFileMenu(source, entry);
         args.Handled = true;
     }
 
     private void RepositoryFilesTree_Expanding(TreeView sender, TreeViewExpandingEventArgs args)
     {
-        if (args.Item is not RepositorySnapshotTreeNode model) return;
-        model.IsExpanded = true;
-        if (_repositoryFilesBuildingTree || !string.IsNullOrWhiteSpace(_repositoryFilesNameQuery) || !model.IsDirectory) return;
-        if (CurrentRepositoryFilesState(create: true) is { } state) state.ExpandedPaths.Add(model.Path);
+        if (args.Item is RepositorySnapshotTreeNode model)
+            _repositoryFilesViewModel.SetExpanded(model, expanded: true);
     }
 
     private void RepositoryFilesTree_Collapsed(TreeView sender, TreeViewCollapsedEventArgs args)
     {
-        if (args.Item is not RepositorySnapshotTreeNode model) return;
-        model.IsExpanded = false;
-        if (_repositoryFilesBuildingTree || !string.IsNullOrWhiteSpace(_repositoryFilesNameQuery) || !model.IsDirectory) return;
-        if (CurrentRepositoryFilesState(create: true) is { } state) state.ExpandedPaths.Remove(model.Path);
+        if (args.Item is RepositorySnapshotTreeNode model)
+            _repositoryFilesViewModel.SetExpanded(model, expanded: false);
     }
 
-    private RepositorySnapshotEntry? SelectedRepositorySnapshotEntry()
-    {
-        if (!RepositoryFilesSnapshotMatchesSelection
-            || _repositoryFilesTree?.SelectedItem is not RepositorySnapshotTreeNode model)
-            return null;
-        if (CurrentRepositoryFilesState(create: true) is { } state) state.SelectedPath = model.Path;
-        _repositoryFilesLastSelectedPath = model.Entry is null ? null : model.Path;
-        return model.Entry;
-    }
+    private RepositorySnapshotEntry? SelectedRepositorySnapshotEntry() =>
+        _repositoryFilesViewModel.SnapshotMatchesSelection
+            ? _repositoryFilesViewModel.SelectedEntry
+            : null;
 
     private void RepositoryContentResults_SelectionChanged(object sender, SelectionChangedEventArgs args)
     {
-        if (_repositoryContentResults?.SelectedItem is not RepositoryContentSearchRow row) return;
-        if (!string.Equals(_repositoryContentCommit, _viewModel.SelectedObjectCommit, StringComparison.Ordinal)) return;
-        var entry = _repositorySnapshot.FirstOrDefault(candidate =>
-            string.Equals(candidate.Path, row.Match.Path, StringComparison.Ordinal));
-        if (entry is not { Kind: RepositorySnapshotEntryKind.File }) return;
-
-        if (CurrentRepositoryFilesState(create: true) is { } state) state.SelectedPath = entry.Path;
-        _repositoryFilesLastSelectedPath = entry.Path;
-        ApplyRepositoryFileSelection(entry.Path, row.Match.LineNumber, entry);
+        _repositoryFilesViewModel.SelectContentResult(
+            _repositoryContentResults?.SelectedItem as RepositoryContentSearchRow);
     }
 
     private async void RepositoryContentResults_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
     {
-        if (_repositoryContentResults?.SelectedItem is not RepositoryContentSearchRow row) return;
-        await OpenRepositoryContentMatchAsync(row.Match, openInEditor: false);
+        if (_repositoryContentResults?.SelectedItem is not RepositoryContentSearchRow row)
+            return;
+
+        await OpenRepositoryContentMatchAsync(row, openInEditor: false);
         args.Handled = true;
     }
 
     private async void RepositoryContentResults_KeyDown(object sender, KeyRoutedEventArgs args)
     {
-        if (args.Key != VirtualKey.Enter || _repositoryContentResults?.SelectedItem is not RepositoryContentSearchRow row) return;
+        if (args.Key != VirtualKey.Enter
+            || _repositoryContentResults?.SelectedItem is not RepositoryContentSearchRow row)
+        {
+            return;
+        }
+
         args.Handled = true;
-        await OpenRepositoryContentMatchAsync(row.Match, openInEditor: false);
+        await OpenRepositoryContentMatchAsync(row, openInEditor: false);
     }
 
     private void RepositoryContentResults_RightTapped(object sender, RightTappedRoutedEventArgs args)
     {
-        if (args.OriginalSource is not FrameworkElement source || _repositoryContentResults?.SelectedItem is not RepositoryContentSearchRow row) return;
-        var entry = _repositorySnapshot.FirstOrDefault(candidate =>
-            string.Equals(candidate.Path, row.Match.Path, StringComparison.Ordinal));
+        if (args.OriginalSource is not FrameworkElement source
+            || _repositoryContentResults?.SelectedItem is not RepositoryContentSearchRow row)
+        {
+            return;
+        }
+
+        var entry = _repositoryFilesViewModel.FindEntry(row.Match.Path);
         if (entry is null) return;
+
         ShowRepositorySnapshotFileMenu(source, entry);
         args.Handled = true;
     }
 
-    private async Task OpenRepositoryContentMatchAsync(RepositoryContentSearchMatch match, bool openInEditor)
+    private async Task OpenRepositoryContentMatchAsync(
+        RepositoryContentSearchRow row,
+        bool openInEditor)
     {
-        if (!string.Equals(_repositoryContentCommit, _viewModel.SelectedObjectCommit, StringComparison.Ordinal)) return;
-        var entry = _repositorySnapshot.FirstOrDefault(candidate =>
-            string.Equals(candidate.Path, match.Path, StringComparison.Ordinal));
+        var entry = _repositoryFilesViewModel.SelectContentResult(row);
         if (entry is not { Kind: RepositorySnapshotEntryKind.File }) return;
         await OpenRepositorySnapshotFileAsync(entry, openInEditor);
     }
 
-    private void ShowRepositorySnapshotFileMenu(FrameworkElement target, RepositorySnapshotEntry entry)
+    private void ShowRepositorySnapshotFileMenu(
+        FrameworkElement target,
+        RepositorySnapshotEntry entry)
     {
         var flyout = new MenuFlyout();
         if (entry.Kind == RepositorySnapshotEntryKind.File)
         {
-            AddMenuItem(flyout, "Open", true, () => OpenRepositorySnapshotFileAsync(entry, openInEditor: false));
-            AddMenuItem(flyout, "Open in editor", true, () => OpenRepositorySnapshotFileAsync(entry, openInEditor: true));
+            AddMenuItem(
+                flyout,
+                "Open",
+                true,
+                () => OpenRepositorySnapshotFileAsync(entry, openInEditor: false));
+            AddMenuItem(
+                flyout,
+                "Open in editor",
+                true,
+                () => OpenRepositorySnapshotFileAsync(entry, openInEditor: true));
             flyout.Items.Add(new MenuFlyoutSeparator());
         }
+
         AddMenuItem(flyout, "Copy path", true, () => CopyTextAsync(entry.Path));
         flyout.ShowAt(target);
     }
 
-    private async Task OpenRepositorySnapshotFileAsync(RepositorySnapshotEntry entry, bool openInEditor)
+    private async Task OpenRepositorySnapshotFileAsync(
+        RepositorySnapshotEntry entry,
+        bool openInEditor)
     {
-        var repository = _viewModel.Repository;
-        var commitHash = _repositorySnapshotCommit;
-        if (repository is null || string.IsNullOrWhiteSpace(commitHash))
-            return;
-        if (!ReferenceEquals(repository, _repositorySnapshotRepository)
-            || !string.Equals(commitHash, _viewModel.SelectedObjectCommit, StringComparison.Ordinal))
+        var repository = _repositoryFilesViewModel.CurrentRepository;
+        if (repository is null || !_repositoryFilesViewModel.SnapshotMatchesSelection)
             return;
 
         try
         {
-            var version = await _repositorySnapshotService.ResolveFileVersionAsync(repository, commitHash, entry.Path);
+            var version = await _repositoryFilesViewModel.ResolveFileVersionAsync(entry);
+            if (version is null) return;
             if (!version.CanOpen)
-                throw new NotSupportedException(version.UnavailableReason ?? "This historical entry cannot be opened.");
+            {
+                throw new NotSupportedException(
+                    version.UnavailableReason ?? "This historical entry cannot be opened.");
+            }
 
             if (!openInEditor)
             {
@@ -670,19 +467,28 @@ public sealed partial class MainPage
                 return;
             }
 
-            var materialized = await _fileVersionService.MaterializeAsync(repository, version, DiffFileSide.Changed);
+            var materialized = await _fileVersionService.MaterializeAsync(
+                repository,
+                version,
+                DiffFileSide.Changed);
             await _externalGitToolService.OpenEditorAsync(repository, materialized.Path);
         }
         catch (OperationCanceledException)
         {
         }
-        catch (InvalidOperationException exception) when (openInEditor && exception.Message.Contains("editor", StringComparison.OrdinalIgnoreCase))
+        catch (InvalidOperationException exception)
+            when (openInEditor
+                  && exception.Message.Contains("editor", StringComparison.OrdinalIgnoreCase))
         {
             await ShowGitEditorUnavailableAsync(exception.Message);
         }
         catch (Exception exception)
         {
-            await ShowErrorAsync(openInEditor ? "Could not open historical file in editor" : "Could not open historical file", UserFacingFileError(exception));
+            await ShowErrorAsync(
+                openInEditor
+                    ? "Could not open historical file in editor"
+                    : "Could not open historical file",
+                UserFacingFileError(exception));
         }
     }
 
@@ -710,157 +516,24 @@ public sealed partial class MainPage
 
     private void RepositoryChangedFiles_KeyDown(object sender, KeyRoutedEventArgs args)
     {
-        if (args.Key != VirtualKey.Enter || CommitFilesList.SelectedItem is null || _changesTab is null) return;
+        if (args.Key != VirtualKey.Enter || CommitFilesList.SelectedItem is null || _changesTab is null)
+            return;
+
         DetailsTabs.SelectedItem = _changesTab;
         args.Handled = true;
     }
 
     private void SetRepositoryFilesStatus(string text, bool loading)
     {
-        if (_repositoryFilesStatus is not null) _repositoryFilesStatus.Text = text;
+        if (_repositoryFilesStatus is not null)
+            _repositoryFilesStatus.Text = text;
+
         if (_repositoryFilesProgress is not null)
         {
             _repositoryFilesProgress.IsActive = loading;
-            _repositoryFilesProgress.Visibility = loading ? Visibility.Visible : Visibility.Collapsed;
+            _repositoryFilesProgress.Visibility = loading
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         }
-    }
-
-    private void ClearRepositoryFilesTree()
-    {
-        if (_repositoryFilesTree is not null)
-        {
-            _repositoryFilesBuildingTree = true;
-            try
-            {
-                _repositoryFilesTree.SelectedItem = null;
-                _repositoryFilesTreeRoots.Clear();
-                _repositoryFilesTreeSearchActive = false;
-            }
-            finally
-            {
-                _repositoryFilesBuildingTree = false;
-            }
-        }
-        else
-        {
-            _repositoryFilesTreeRoots.Clear();
-            _repositoryFilesTreeSearchActive = false;
-        }
-    }
-
-    private void CancelRepositoryFilesRequests()
-    {
-        CancelRepositorySnapshotRequest();
-        CancelRepositoryContentSearch();
-        CancelRepositoryFilePreview();
-    }
-
-    private void CancelRepositorySnapshotRequest()
-    {
-        Interlocked.Increment(ref _repositorySnapshotGeneration);
-        _repositorySnapshotCts?.Cancel();
-        _repositorySnapshotCts?.Dispose();
-        _repositorySnapshotCts = null;
-    }
-
-    private void CancelRepositoryContentSearch()
-    {
-        Interlocked.Increment(ref _repositoryContentSearchGeneration);
-        _repositoryContentSearchCts?.Cancel();
-        _repositoryContentSearchCts?.Dispose();
-        _repositoryContentSearchCts = null;
-    }
-
-    private void SaveRepositoryFilesPresentationState()
-    {
-        if (_repositorySnapshotRepository is null || _repositorySnapshotCommit is null) return;
-        var state = CurrentRepositoryFilesState(create: true);
-        if (state is null) return;
-        state.NameQuery = _repositoryFilesNameQuery;
-        state.SearchMode = _repositoryFilesSearchModeName;
-        _repositoryFilesLastSelectedPath = state.SelectedPath;
-        TouchRepositoryFilesState(StateKey(_repositorySnapshotRepository, _repositorySnapshotCommit));
-    }
-
-    private void RestoreRepositoryFilesPresentationState(Repository repository, string commitHash)
-    {
-        var key = StateKey(repository, commitHash);
-        if (!_repositoryFilesStates.TryGetValue(key, out var state))
-        {
-            var selectedPath = _repositoryFilesLastSelectedPath is { } previousPath
-                && _repositorySnapshot.Any(entry => string.Equals(entry.Path, previousPath, StringComparison.Ordinal))
-                    ? previousPath
-                    : null;
-            state = new RepositoryFilesPresentationState
-            {
-                NameQuery = _repositoryFilesNameQuery,
-                SearchMode = _repositoryFilesSearchModeName,
-                SelectedPath = selectedPath
-            };
-            _repositoryFilesStates[key] = state;
-        }
-        TouchRepositoryFilesState(key);
-
-        _repositoryFilesNameQuery = state.NameQuery;
-        _repositoryFilesSearchModeName = state.SearchMode;
-        _repositoryFilesRestoringPresentationState = true;
-        try
-        {
-            if (_repositoryFilesSearch is not null) _repositoryFilesSearch.Text = state.NameQuery;
-            if (_repositoryFilesSearchMode is not null) _repositoryFilesSearchMode.SelectedItem = state.SearchMode;
-        }
-        finally
-        {
-            _repositoryFilesRestoringPresentationState = false;
-        }
-    }
-
-    private RepositoryFilesPresentationState? CurrentRepositoryFilesState(bool create)
-    {
-        if (_repositorySnapshotRepository is null || _repositorySnapshotCommit is null) return null;
-        var key = StateKey(_repositorySnapshotRepository, _repositorySnapshotCommit);
-        if (!_repositoryFilesStates.TryGetValue(key, out var state) && create)
-        {
-            state = new RepositoryFilesPresentationState
-            {
-                NameQuery = _repositoryFilesNameQuery,
-                SearchMode = _repositoryFilesSearchModeName,
-                SelectedPath = _repositoryFilesLastSelectedPath
-            };
-            _repositoryFilesStates[key] = state;
-        }
-        if (state is not null) TouchRepositoryFilesState(key);
-        return state;
-    }
-
-    private void TouchRepositoryFilesState(string key)
-    {
-        if (_repositoryFilesStateLruNodes.Remove(key, out var existing))
-            _repositoryFilesStateLru.Remove(existing);
-        var node = _repositoryFilesStateLru.AddFirst(key);
-        _repositoryFilesStateLruNodes[key] = node;
-
-        while (_repositoryFilesStates.Count > RepositoryFilesStateLimit && _repositoryFilesStateLru.Last is { } oldest)
-        {
-            _repositoryFilesStateLru.RemoveLast();
-            _repositoryFilesStateLruNodes.Remove(oldest.Value);
-            _repositoryFilesStates.Remove(oldest.Value);
-        }
-    }
-
-    private static string RepositoryIdentity(Repository repository) => Path.GetFullPath(repository.GitDirectory);
-    private static string StateKey(Repository repository, string commitHash) => RepositoryIdentity(repository) + "\n" + commitHash;
-
-    private sealed class RepositoryFilesPresentationState
-    {
-        public HashSet<string> ExpandedPaths { get; } = new(StringComparer.Ordinal);
-        public string? SelectedPath { get; set; }
-        public string NameQuery { get; set; } = string.Empty;
-        public string SearchMode { get; set; } = "Name";
-    }
-
-    private sealed record RepositoryContentSearchRow(RepositoryContentSearchMatch Match)
-    {
-        public override string ToString() => $"{Match.Path}\n  {Match.LineNumber}  {Match.Snippet}";
     }
 }

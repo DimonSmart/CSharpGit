@@ -33,7 +33,7 @@ public sealed partial class MainPage
         IDesktopShellService desktopShellService,
         IRepositoryPathService repositoryPathService,
         IExternalGitToolService externalGitToolService,
-        IRepositorySnapshotService repositorySnapshotService,
+        RepositoryFilesViewModel repositoryFilesViewModel,
         IRepositoryHistoryRewriteService repositoryHistoryRewriteService,
         IRepositoryMaintenanceService repositoryMaintenanceService,
         IAppSettingsService appSettings,
@@ -60,7 +60,7 @@ public sealed partial class MainPage
             desktopShellService,
             repositoryPathService,
             externalGitToolService,
-            repositorySnapshotService,
+            repositoryFilesViewModel,
             repositoryHistoryRewriteService)
     {
         _createRepositoryViewModel = createRepositoryViewModel

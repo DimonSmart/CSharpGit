@@ -134,6 +134,27 @@ public sealed class PresentationArchitectureGuardrailTests
     }
 
     [Fact]
+    public void MainPageDoesNotOwnRepositoryFilesApplicationService()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var mainPageSources = Directory
+            .GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+            .Select(File.ReadAllText)
+            .ToArray();
+        var combined = string.Join(Environment.NewLine, mainPageSources);
+        var repositoryFilesViewModel = File.ReadAllText(
+            Path.Combine(presentation, "ViewModels", "RepositoryFilesViewModel.cs"));
+
+        Assert.DoesNotContain("IRepositorySnapshotService", combined, StringComparison.Ordinal);
+        Assert.DoesNotContain("_repositorySnapshotService", combined, StringComparison.Ordinal);
+        Assert.Contains("public sealed class RepositoryFilesViewModel", repositoryFilesViewModel, StringComparison.Ordinal);
+        Assert.Contains("IRepositorySnapshotService", repositoryFilesViewModel, StringComparison.Ordinal);
+        Assert.Contains("CancellationTokenSource", repositoryFilesViewModel, StringComparison.Ordinal);
+        Assert.Contains("CanPublishSnapshot", repositoryFilesViewModel, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void WindowTitleUsesPresentationStateAndShellOwnedWindow()
     {
         var root = FindRepositoryRoot();

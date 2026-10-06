@@ -27,7 +27,7 @@ public sealed partial class MainPage
         IDesktopShellService desktopShellService,
         IRepositoryPathService repositoryPathService,
         IExternalGitToolService externalGitToolService,
-        IRepositorySnapshotService repositorySnapshotService,
+        RepositoryFilesViewModel repositoryFilesViewModel,
         IRepositoryHistoryRewriteService repositoryHistoryRewriteService)
         : this(
             viewModel,
@@ -42,7 +42,7 @@ public sealed partial class MainPage
             desktopShellService,
             repositoryPathService,
             externalGitToolService,
-            repositorySnapshotService)
+            repositoryFilesViewModel)
     {
         _repositoryHistoryRewriteService = repositoryHistoryRewriteService
             ?? throw new ArgumentNullException(nameof(repositoryHistoryRewriteService));
@@ -84,8 +84,7 @@ public sealed partial class MainPage
             return;
         }
 
-        var entry = _repositorySnapshot.FirstOrDefault(candidate =>
-            string.Equals(candidate.Path, row.Match.Path, StringComparison.Ordinal));
+        var entry = _repositoryFilesViewModel.FindEntry(row.Match.Path);
         if (entry is null) return;
 
         ShowRepositorySnapshotFileMenuWithHistoryRewrite(source, entry);
@@ -213,23 +212,11 @@ public sealed partial class MainPage
 
     private void InvalidateHistoryRewritePresentation()
     {
-        CancelRepositoryFilesRequests();
+        _repositoryFilesViewModel.Invalidate(
+            "Rewriting repository history…",
+            loading: true);
         ClearRepositoryFileSelection();
-
-        _repositorySnapshotCache.Clear();
-        _repositoryFilesStates.Clear();
-        _repositoryFilesStateLru.Clear();
-        _repositoryFilesStateLruNodes.Clear();
-        _repositorySnapshot = [];
-        _repositorySnapshotRepository = null;
-        _repositorySnapshotCommit = null;
-        _repositorySnapshotLoadedSuccessfully = false;
-        _repositoryContentMatches = [];
-        _repositoryContentCommit = null;
-        _repositoryFilesLastSelectedPath = null;
-        ClearRepositoryFilesTree();
         UpdateRepositoryFilesModeSurface();
-        SetRepositoryFilesStatus("Rewriting repository history…", loading: true);
 
         _referenceHistoryCts?.Cancel();
         _activeReference = null;
