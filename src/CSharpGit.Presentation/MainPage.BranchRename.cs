@@ -13,10 +13,7 @@ public sealed partial class MainPage
         RepositoryTree.KeyDown += RepositoryTree_KeyDown;
     }
 
-    private bool CanRenameBranch() =>
-        !_viewModel.IsBusy
-        && _viewModel.Repository is not null
-        && _viewModel.CurrentOperation == RepositoryOperation.None;
+    private bool CanRenameBranch() => _viewModel.Branches.CanRename;
 
     private async void RepositoryTree_KeyDown(object sender, KeyRoutedEventArgs e)
     {
@@ -80,21 +77,21 @@ public sealed partial class MainPage
         var oldName = branch.Name;
         if (string.Equals(oldName, newName, StringComparison.Ordinal)) return;
 
-        var succeeded = await _viewModel.RunMutationAsync(
-            async () =>
-            {
-                await _referenceService.RenameBranchAsync(
-                    _viewModel.Repository!,
-                    oldName,
-                    newName);
+        var repository = _viewModel.Repository;
+        if (repository is null) return;
 
+        var succeeded = await _viewModel.Branches.RenameBranchAsync(
+            repository,
+            branch,
+            newName,
+            () =>
+            {
                 if (string.Equals(_activeReference, oldName, StringComparison.Ordinal))
                 {
                     _activeReference = newName;
                     ActiveReferenceText.Text = $"Branch: {newName}";
                 }
-            },
-            "Could not rename local branch");
+            });
 
         if (succeeded)
             await _worktreesViewModel.RefreshAsync();

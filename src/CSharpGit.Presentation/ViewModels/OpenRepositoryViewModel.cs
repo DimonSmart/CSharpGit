@@ -55,11 +55,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private bool _hasMore;
     private string _commitMessage = string.Empty;
     private bool _isEmptyIndexChoiceOpen;
-    private GitBranch? _selectedLocalBranch;
-    private GitBranch? _selectedRemoteBranch;
     private GitRemote? _selectedRemote;
     private GitTag? _selectedTag;
-    private string _newBranchName = string.Empty;
     private string _headDisplay = string.Empty;
     private string? _currentBranchName;
     private string? _currentHeadCommit;
@@ -85,6 +82,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         IRepositoryStateService stateService,
         IWorkingTreeService workingTreeService,
         WorkingTreeViewModel workingTreeViewModel,
+        BranchesViewModel branchesViewModel,
         IReferenceService referenceService,
         IRepositorySyncService syncService,
         IStashMutationService stashMutationService,
@@ -109,6 +107,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         _workingTreeService = workingTreeService;
         WorkingTree = workingTreeViewModel ?? throw new ArgumentNullException(nameof(workingTreeViewModel));
         WorkingTree.Attach(this);
+        Branches = branchesViewModel ?? throw new ArgumentNullException(nameof(branchesViewModel));
+        Branches.Attach(this);
         _referenceService = referenceService;
         _syncService = syncService;
         _stashMutationService = stashMutationService;
@@ -141,9 +141,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             ErrorMessage = null;
             return Task.CompletedTask;
         }, () => true);
-        SwitchBranchCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.SwitchBranchAsync(Repository!, SelectedLocalBranch!.Name)), () => CanMutate() && SelectedLocalBranch is not null);
-        DeleteBranchCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.DeleteBranchAsync(Repository!, SelectedLocalBranch!.Name)), () => CanMutate() && SelectedLocalBranch is { IsCurrent: false });
-        CheckoutRemoteCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.CheckoutRemoteBranchAsync(Repository!, SelectedRemoteBranch!.Name, NewBranchName)), () => CanMutate() && SelectedRemoteBranch is not null && !string.IsNullOrWhiteSpace(NewBranchName));
         CheckoutTagCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.CheckoutAsync(Repository!, SelectedTag!.Name)), () => CanMutate() && SelectedTag is not null);
         FetchCommand = new AsyncCommand(() => MutateAsync(() => _syncService.FetchAsync(Repository!, SelectedRemote!.Name)), () => CanMutate() && SelectedRemote is not null);
         FetchAllCommand = new AsyncCommand(() => MutateAsync(() => _syncService.FetchAllAsync(Repository!)), CanMutate);
@@ -177,6 +174,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         historyCancellation?.Dispose();
         ResetCommitChangesSession();
         _settings.Changed -= AppSettings_Changed;
+        Branches.Dispose();
         WorkingTree.Dispose();
     }
 
@@ -225,9 +223,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public ICommand ConfirmEmptyCommitCommand { get; }
     public ICommand CancelCommitCommand { get; }
     public ICommand DismissErrorCommand { get; }
-    public ICommand SwitchBranchCommand { get; }
-    public ICommand DeleteBranchCommand { get; }
-    public ICommand CheckoutRemoteCommand { get; }
     public ICommand CheckoutTagCommand { get; }
     public ICommand FetchCommand { get; }
     public ICommand FetchAllCommand { get; }
@@ -251,8 +246,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public ICommand SkipOperationCommand { get; }
     public ObservableCollection<HistoryRow> History { get; } = [];
     public WorkingTreeViewModel WorkingTree { get; }
-    public ObservableCollection<GitBranch> LocalBranches { get; } = new BulkObservableCollection<GitBranch>();
-    public ObservableCollection<GitBranch> RemoteBranches { get; } = new BulkObservableCollection<GitBranch>();
+    public BranchesViewModel Branches { get; }
     public ObservableCollection<GitRemote> Remotes { get; } = new BulkObservableCollection<GitRemote>();
     public ObservableCollection<GitTag> Tags { get; } = new BulkObservableCollection<GitTag>();
     public ObservableCollection<GitStash> Stashes { get; } = new BulkObservableCollection<GitStash>();
@@ -331,11 +325,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public string CommitMessage { get => _commitMessage; set { _commitMessage = value; Notify(); RaiseCommands(); } }
     public bool HasUnappliedCommitMessage => CommitMessage.Length > 0;
     public bool IsEmptyIndexChoiceOpen { get => _isEmptyIndexChoiceOpen; private set { _isEmptyIndexChoiceOpen = value; Notify(); RaiseCommands(); } }
-    public GitBranch? SelectedLocalBranch { get => _selectedLocalBranch; set { _selectedLocalBranch = value; Notify(); RaiseCommands(); } }
-    public GitBranch? SelectedRemoteBranch { get => _selectedRemoteBranch; set { _selectedRemoteBranch = value; Notify(); RaiseCommands(); } }
     public GitRemote? SelectedRemote { get => _selectedRemote; set { _selectedRemote = value; Notify(); RaiseCommands(); } }
     public GitTag? SelectedTag { get => _selectedTag; set { _selectedTag = value; Notify(); RaiseCommands(); } }
-    public string NewBranchName { get => _newBranchName; set { _newBranchName = value; Notify(); RaiseCommands(); } }
     public string HeadDisplay => _headDisplay;
     public string? CurrentBranchName => _currentBranchName;
     public string? CurrentHeadCommit => _currentHeadCommit;
@@ -385,12 +376,12 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public bool CanForcePushWithLease => Repository is not null
         && !IsBusy
         && CurrentOperation == RepositoryOperation.None
-        && LocalBranches.Any(branch => branch.IsCurrent);
+        && Branches.LocalBranches.Any(branch => branch.IsCurrent);
 
     public bool CanPushTo => Repository is not null
         && !IsBusy
         && CurrentOperation == RepositoryOperation.None
-        && LocalBranches.Any(branch => branch.IsCurrent)
+        && Branches.LocalBranches.Any(branch => branch.IsCurrent)
         && Remotes.Count > 0;
 
     public Task RefreshWhenActivatedAsync() => Repository is null ? Task.CompletedTask : RefreshAllAsync();
@@ -563,8 +554,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     {
         History.Clear();
         WorkingTree.ClearRepositoryState();
-        LocalBranches.Clear();
-        RemoteBranches.Clear();
+        Branches.ClearRepositoryState();
         Remotes.Clear();
         Tags.Clear();
         Stashes.Clear();
@@ -573,8 +563,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         SelectedHistoryRow = null;
         SelectedFile = null;
         SelectedDiff = null;
-        SelectedLocalBranch = null;
-        SelectedRemoteBranch = null;
         SelectedRemote = null;
         SelectedTag = null;
         SelectedStash = null;
@@ -674,9 +662,10 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                 state.IsDetached,
                 state.IsDetached ? $"Detached HEAD: {shortHead}" : $"Current branch: {state.HeadReference}");
             WorkingTree.ApplyRepositoryState(repository, state.Changes);
-            Replace(LocalBranches, state.Refs.LocalBranches);
+            Branches.ApplyRepositoryState(
+                state.Refs.LocalBranches,
+                state.Refs.RemoteBranches);
             Notify(nameof(CanForcePushWithLease));
-            Replace(RemoteBranches, state.Refs.RemoteBranches);
             Replace(Remotes, state.Refs.Remotes);
             Notify(nameof(CanPushTo));
             Replace(Tags, state.Refs.Tags);
@@ -689,8 +678,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             await RestoreSelectedStashAfterRefreshAsync(
                 selectedStashCommit,
                 selectedStashIndex);
-            SelectedLocalBranch = LocalBranches.FirstOrDefault(branch => branch.IsCurrent) ?? LocalBranches.FirstOrDefault();
-            SelectedMergeBranch = LocalBranches.FirstOrDefault(branch => !branch.IsCurrent);
+            SelectedMergeBranch = Branches.LocalBranches.FirstOrDefault(branch => !branch.IsCurrent);
             OperationDisplay = state.Operation == RepositoryOperation.None ? "No operation in progress" : $"Operation in progress: {state.Operation}";
             CurrentOperation = state.Operation;
             OperationState = state.CurrentOperation;
@@ -847,7 +835,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     private void RaiseCommands()
     {
-        foreach (var command in new[] { RefreshAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, SwitchBranchCommand, DeleteBranchCommand, CheckoutRemoteCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, ApplyStashCommand, PopStashCommand, DropStashCommand, MergeCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
+        foreach (var command in new[] { RefreshAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, ApplyStashCommand, PopStashCommand, DropStashCommand, MergeCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
+        Branches.RefreshAvailability();
         WorkingTree.RefreshAvailability();
     }
 
@@ -884,8 +873,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             IncludeReflog: _showReflog,
             HeadExists: _headExists,
             RepositoryReferences: new GitReferences(
-                LocalBranches.ToArray(),
-                RemoteBranches.ToArray(),
+                Branches.LocalBranches.ToArray(),
+                Branches.RemoteBranches.ToArray(),
                 Remotes.ToArray(),
                 Tags.ToArray()),
             HeadReference: _currentBranchName,

@@ -98,7 +98,7 @@ public sealed partial class MainPage
         var startPoint = new TextBox
         {
             Header = "Start from",
-            Text = _viewModel.LocalBranches.FirstOrDefault(item => item.IsCurrent)?.Name ?? "HEAD"
+            Text = _viewModel.Branches.LocalBranches.FirstOrDefault(item => item.IsCurrent)?.Name ?? "HEAD"
         };
         var directory = new TextBox
         {

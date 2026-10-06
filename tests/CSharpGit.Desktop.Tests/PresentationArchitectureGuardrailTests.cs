@@ -80,8 +80,8 @@ public sealed class PresentationArchitectureGuardrailTests
         var subscriptions = new[]
         {
             ("WorkingTree.Changes", "RepositoryPresentationChanges_CollectionChanged"),
-            ("LocalBranches", "RepositoryPresentationLocalBranches_CollectionChanged"),
-            ("RemoteBranches", "RepositoryPresentationRemoteBranches_CollectionChanged"),
+            ("Branches.LocalBranches", "RepositoryPresentationLocalBranches_CollectionChanged"),
+            ("Branches.RemoteBranches", "RepositoryPresentationRemoteBranches_CollectionChanged"),
             ("Remotes", "RepositoryPresentationRemotes_CollectionChanged"),
             ("Tags", "RepositoryPresentationTags_CollectionChanged"),
             ("Stashes", "RepositoryPresentationStashes_CollectionChanged")
@@ -178,6 +178,57 @@ public sealed class PresentationArchitectureGuardrailTests
         Assert.Contains("CanPublishDiff", workingTreeViewModel, StringComparison.Ordinal);
         Assert.False(File.Exists(
             Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.Discard.cs")));
+    }
+
+    [Fact]
+    public void BranchMutationOrchestrationBelongsToBranchesViewModel()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var mainPageSources = Directory
+            .GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+            .Select(File.ReadAllText)
+            .ToArray();
+        var combined = string.Join(Environment.NewLine, mainPageSources);
+        var branchesViewModel = File.ReadAllText(
+            Path.Combine(presentation, "ViewModels", "BranchesViewModel.cs"));
+        var openRepositoryViewModel = File.ReadAllText(
+            Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.cs"));
+
+        var forbiddenMainPageCalls = new[]
+        {
+            "_referenceService.CreateBranchAsync(",
+            "_referenceService.SwitchBranchAsync(",
+            "_referenceService.RenameBranchAsync(",
+            "_referenceService.DeleteBranchAsync(",
+            "_referenceService.CheckoutRemoteBranchAsync(",
+            "_repositorySyncService.DeleteRemoteBranchAsync(",
+            "_repositorySyncService.PreparePublishBranchAsync(",
+            "_repositorySyncService.PublishBranchAsync("
+        };
+
+        foreach (var call in forbiddenMainPageCalls)
+            Assert.DoesNotContain(call, combined, StringComparison.Ordinal);
+
+        Assert.Contains("public sealed class BranchesViewModel", branchesViewModel, StringComparison.Ordinal);
+        Assert.Contains("IReferenceService", branchesViewModel, StringComparison.Ordinal);
+        Assert.Contains("IRepositorySyncService", branchesViewModel, StringComparison.Ordinal);
+        Assert.Contains("_referenceService.CreateBranchAsync(", branchesViewModel, StringComparison.Ordinal);
+        Assert.Contains("_referenceService.SwitchBranchAsync(", branchesViewModel, StringComparison.Ordinal);
+        Assert.Contains("_referenceService.RenameBranchAsync(", branchesViewModel, StringComparison.Ordinal);
+        Assert.Contains("_referenceService.DeleteBranchAsync(", branchesViewModel, StringComparison.Ordinal);
+        Assert.Contains("_referenceService.CheckoutRemoteBranchAsync(", branchesViewModel, StringComparison.Ordinal);
+        Assert.Contains("_syncService.DeleteRemoteBranchAsync(", branchesViewModel, StringComparison.Ordinal);
+        Assert.Contains("_syncService.PreparePublishBranchAsync(", branchesViewModel, StringComparison.Ordinal);
+        Assert.Contains("_syncService.PublishBranchAsync(", branchesViewModel, StringComparison.Ordinal);
+
+        Assert.Contains("public BranchesViewModel Branches { get; }", openRepositoryViewModel, StringComparison.Ordinal);
+        Assert.DoesNotContain("public ObservableCollection<GitBranch> LocalBranches", openRepositoryViewModel, StringComparison.Ordinal);
+        Assert.DoesNotContain("public ObservableCollection<GitBranch> RemoteBranches", openRepositoryViewModel, StringComparison.Ordinal);
+        Assert.DoesNotContain("public GitBranch? SelectedLocalBranch", openRepositoryViewModel, StringComparison.Ordinal);
+        Assert.DoesNotContain("public GitBranch? SelectedRemoteBranch", openRepositoryViewModel, StringComparison.Ordinal);
+        Assert.DoesNotContain("public ICommand SwitchBranchCommand", openRepositoryViewModel, StringComparison.Ordinal);
+        Assert.DoesNotContain("public ICommand CheckoutRemoteCommand", openRepositoryViewModel, StringComparison.Ordinal);
     }
 
     [Fact]

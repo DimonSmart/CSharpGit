@@ -185,7 +185,7 @@ public sealed partial class MainPage
         _lastRecordedRecentRepositoryPath = repository.WorkingDirectory;
         var displayName = Path.GetFileName(Path.TrimEndingDirectorySeparator(repository.WorkingDirectory));
         if (string.IsNullOrWhiteSpace(displayName)) displayName = repository.WorkingDirectory;
-        var branchName = _viewModel.LocalBranches.FirstOrDefault(branch => branch.IsCurrent)?.Name;
+        var branchName = _viewModel.Branches.LocalBranches.FirstOrDefault(branch => branch.IsCurrent)?.Name;
 
         try
         {

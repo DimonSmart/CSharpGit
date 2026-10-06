@@ -12,7 +12,7 @@ public sealed partial class MainPage
     {
         if (_viewModel.Repository is null || _viewModel.IsBusy) return;
 
-        var currentBranch = _viewModel.LocalBranches.FirstOrDefault(branch => branch.IsCurrent);
+        var currentBranch = _viewModel.Branches.LocalBranches.FirstOrDefault(branch => branch.IsCurrent);
         if (currentBranch is null)
         {
             await ShowErrorAsync(
@@ -121,7 +121,7 @@ public sealed partial class MainPage
             return;
         }
 
-        var currentBranch = _viewModel.LocalBranches.FirstOrDefault(branch => branch.IsCurrent);
+        var currentBranch = _viewModel.Branches.LocalBranches.FirstOrDefault(branch => branch.IsCurrent);
         if (currentBranch is null)
         {
             await ShowErrorAsync("Push to unavailable", "HEAD is detached. Push to requires a current local branch.");
@@ -150,14 +150,12 @@ public sealed partial class MainPage
         Repository repository,
         PushTargetDialogOptions options)
     {
-        PublishBranchPreparation preparation;
-        try
+        var preparationResult = await _viewModel.Branches.PreparePublishBranchAsync(repository);
+        if (!preparationResult.Succeeded || preparationResult.Value is not { } preparation)
         {
-            preparation = await _repositorySyncService.PreparePublishBranchAsync(repository);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            await ShowErrorAsync($"{options.Title} unavailable", exception.Message);
+            await ShowErrorAsync(
+                $"{options.Title} unavailable",
+                preparationResult.ErrorMessage ?? "Could not prepare the publish target.");
             return null;
         }
 
@@ -244,27 +242,24 @@ public sealed partial class MainPage
             || _viewModel.CurrentOperation != RepositoryOperation.None)
             return;
 
-        try
+        var result = await _viewModel.Branches.PublishBranchAsync(
+            repository,
+            new PublishBranchRequest(
+                target.Remote,
+                target.RemoteBranch,
+                target.SetUpstream));
+
+        RefreshPresentationCollections();
+        if (result.Succeeded) return;
+
+        if (result.NonFastForwardRejected)
         {
-            await _repositorySyncService.PublishBranchAsync(
-                repository,
-                new PublishBranchRequest(
-                    target.Remote,
-                    target.RemoteBranch,
-                    target.SetUpstream));
-            await RefreshAfterRemoteOperationAsync();
-        }
-        catch (PushRejectedException exception)
-            when (exception.ResultKind == PushResultKind.NonFastForwardRejected)
-        {
-            await RefreshAfterRemoteOperationAsync();
             await ShowNonFastForwardDialogAsync(repository);
+            return;
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            await RefreshAfterRemoteOperationAsync();
-            await ShowErrorAsync(failureTitle, exception.Message);
-        }
+
+        if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
+            await ShowErrorAsync(failureTitle, result.ErrorMessage);
     }
 
     private sealed record PushTargetDialogOptions(
@@ -321,7 +316,7 @@ public sealed partial class MainPage
         catch (ForcePushWithLeasePreparationException exception)
             when (exception.Failure == ForcePushPreparationFailure.MissingUpstream)
         {
-            var currentBranch = _viewModel.LocalBranches.FirstOrDefault(branch => branch.IsCurrent);
+            var currentBranch = _viewModel.Branches.LocalBranches.FirstOrDefault(branch => branch.IsCurrent);
             if (currentBranch is null)
             {
                 await ShowErrorAsync(

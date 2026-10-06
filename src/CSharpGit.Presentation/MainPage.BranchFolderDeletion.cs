@@ -29,7 +29,7 @@ public sealed partial class MainPage
         BranchFolderInfo folderInfo)
     {
         var snapshot = CollectBranchFolderCandidates(folderNode, RepositoryTreeNodeKind.LocalBranch);
-        var plan = BranchFolderDeletionPlanner.CreateLocal(snapshot);
+        var plan = _viewModel.Branches.CreateLocalFolderDeletionPlan(snapshot);
         if (plan.Attempted == 0)
         {
             await ShowNoEligibleLocalBranchesAsync(folderInfo, plan);
@@ -89,28 +89,23 @@ public sealed partial class MainPage
         var deletionMode = forceDeleteCheckBox.IsChecked == true
             ? BranchDeletionMode.Force
             : BranchDeletionMode.Safe;
-        BranchFolderDeletionExecutionResult? executionResult = null;
+        var repository = _viewModel.Repository;
+        if (repository is null) return;
 
-        var mutationSucceeded = await _viewModel.RunMutationAsync(
-            async () =>
+        var executionResult = await _viewModel.Branches.DeleteLocalFolderAsync(
+            repository,
+            plan,
+            deletionMode,
+            successfulBranches =>
             {
-                executionResult = await BranchFolderDeletionExecutor.ExecuteAsync(
-                    plan.EligibleBranches,
-                    candidate => candidate.Branch.Name,
-                    candidate => _referenceService.DeleteBranchAsync(
-                        _viewModel.Repository!,
-                        candidate.Branch.Name,
-                        deletionMode));
-
                 if (_activeReference is not null
-                    && executionResult.SuccessfulBranches.Contains(_activeReference, StringComparer.Ordinal))
+                    && successfulBranches.Contains(_activeReference, StringComparer.Ordinal))
                 {
                     ShowAllHistory();
                 }
-            },
-            "Could not delete branches in folder");
+            });
 
-        if (!mutationSucceeded || executionResult is null || executionResult.Failures.Count == 0)
+        if (executionResult is null || executionResult.Failures.Count == 0)
             return;
 
         await ShowBranchFolderDeletionFailuresAsync(
@@ -129,7 +124,7 @@ public sealed partial class MainPage
         IReadOnlyList<RemoteBranchFolderDeletionTarget> targets;
         try
         {
-            targets = BranchFolderDeletionPlanner.CreateRemoteTargets(folderInfo, snapshot);
+            targets = _viewModel.Branches.CreateRemoteFolderDeletionTargets(folderInfo, snapshot);
         }
         catch (InvalidOperationException exception)
         {
@@ -172,29 +167,23 @@ public sealed partial class MainPage
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
             return;
 
-        BranchFolderDeletionExecutionResult? executionResult = null;
-        var mutationSucceeded = await _viewModel.RunMutationAsync(
-            async () =>
-            {
-                var result = await BranchFolderDeletionExecutor.ExecuteAsync(
-                    targets,
-                    target => target.BranchName,
-                    target => _repositorySyncService.DeleteRemoteBranchAsync(
-                        _viewModel.Repository!,
-                        folderInfo.RemoteName!,
-                        target.RelativeBranchName));
-                executionResult = result;
+        var repository = _viewModel.Repository;
+        if (repository is null) return;
 
+        var completedResult = await _viewModel.Branches.DeleteRemoteFolderAsync(
+            repository,
+            folderInfo.RemoteName!,
+            targets,
+            successfulBranches =>
+            {
                 if (_activeReference is not null
-                    && result.SuccessfulBranches.Contains(_activeReference, StringComparer.Ordinal))
+                    && successfulBranches.Contains(_activeReference, StringComparer.Ordinal))
                 {
                     ShowAllHistory();
                 }
-            },
-            "Could not delete remote branches in folder");
+            });
 
-        var completedResult = executionResult;
-        if (!mutationSucceeded || completedResult is null || completedResult.Failures.Count == 0)
+        if (completedResult is null || completedResult.Failures.Count == 0)
             return;
 
         await ShowBranchFolderDeletionFailuresAsync(

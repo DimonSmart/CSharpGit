@@ -28,7 +28,7 @@ public sealed partial class MainPage
             MaxHeight = 420
         };
 
-        var isHead = _viewModel.LocalBranches.Any(branch =>
+        var isHead = _viewModel.Branches.LocalBranches.Any(branch =>
             branch.IsCurrent &&
             string.Equals(branch.Commit, commit.Hash, StringComparison.Ordinal));
         var warning = new TextBlock

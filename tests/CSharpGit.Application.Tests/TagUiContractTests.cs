@@ -82,7 +82,7 @@ public sealed class TagUiContractTests
         Assert.Contains("CreateBranchFromReferenceAsync($\"refs/tags/{tag.Name}\", tag.TargetCommit)", tags);
         Assert.Contains("CreateBranchFromReferenceAsync(commit.Hash, commit.Hash)", commitActions);
         Assert.Contains("_commitActionsFlyout.Items.Add(_checkoutCommitItem);", commitActions);
-        Assert.Contains("_referenceService.CreateBranchAsync(repository, branchName.Text.Trim(), startPoint, switched)", commitActions);
+        Assert.Contains("_viewModel.Branches.CreateBranchAsync(", commitActions);
 
         Assert.Contains("public interface IReferenceService", references);
         Assert.DoesNotContain(": ITagService", references, StringComparison.Ordinal);

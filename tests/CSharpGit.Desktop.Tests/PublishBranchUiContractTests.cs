@@ -22,8 +22,8 @@ public sealed class PublishBranchUiContractTests
         Assert.Contains("ShowPublishBranchDialogAsync", workflow, StringComparison.Ordinal);
         Assert.Contains("ShowPushToDialogAsync", workflow, StringComparison.Ordinal);
         Assert.Contains("ShowPushTargetDialogAsync", workflow, StringComparison.Ordinal);
-        Assert.Contains("PreparePublishBranchAsync", workflow, StringComparison.Ordinal);
-        Assert.Contains("PublishBranchAsync", workflow, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.Branches.PreparePublishBranchAsync", workflow, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.Branches.PublishBranchAsync", workflow, StringComparison.Ordinal);
         Assert.Contains("new PushTargetDialogOptions(", workflow, StringComparison.Ordinal);
         Assert.Contains("\"Publish branch\"", workflow, StringComparison.Ordinal);
         Assert.Contains("\"Push to\"", workflow, StringComparison.Ordinal);
@@ -51,6 +51,8 @@ public sealed class PublishBranchUiContractTests
         Assert.Contains("push.autoSetupRemote", settings, StringComparison.Ordinal);
         Assert.Contains("RefreshAfterRemoteOperationAsync", workflow, StringComparison.Ordinal);
         Assert.Contains("ShowNonFastForwardDialogAsync(repository)", workflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("_repositorySyncService.PreparePublishBranchAsync", workflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("_repositorySyncService.PublishBranchAsync", workflow, StringComparison.Ordinal);
         Assert.Contains("if (!string.IsNullOrWhiteSpace(currentBranch.Upstream))", workflow, StringComparison.Ordinal);
     }
 
