@@ -18,8 +18,8 @@ public sealed class RepositoryStartupCommandBudgetTests : IDisposable
         var runner = new GitRepositoryCommandRunner(executor);
         var repositoryService = new GitRepositoryService(runner);
         var stateService = new GitRepositoryStateService(runner, new GitTagService(executor));
-        var historyService = new GitFileAwareHistoryService(
-            new GitReferenceHistoryService(executor),
+        var historyService = new GitHistoryService(
+            new GitCommitHistoryReader(executor),
             executor);
 
         var repository = await repositoryService.OpenAsync(work);
@@ -95,7 +95,9 @@ public sealed class RepositoryStartupCommandBudgetTests : IDisposable
         var state = await new GitRepositoryStateService(runner, new GitTagService(executor)).ReadAsync(repository);
         Assert.Null(state.HeadCommit);
 
-        var history = new GitReferenceHistoryService(executor);
+        var history = new GitHistoryService(
+            new GitCommitHistoryReader(executor),
+            executor);
         var commandCountBeforeHistory = activity.Commands.Count;
         var page = await history.ReadHistoryAsync(
             repository,

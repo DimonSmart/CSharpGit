@@ -7,7 +7,7 @@ public sealed class CommitTopologyLaneCountTests
     [Fact]
     public void TopologyProducerPersistsLaneCountCoveringEveryUsedLane()
     {
-        var rows = GitReferenceHistoryService.BuildTopology(
+        var rows = GitCommitHistoryReader.BuildTopology(
         [
             Commit("M", "A", "B", "C", "D"),
             Commit("A", "A1"),
