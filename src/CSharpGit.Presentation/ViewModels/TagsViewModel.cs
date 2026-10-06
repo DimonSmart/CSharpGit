@@ -12,6 +12,7 @@ internal interface ITagsRepositoryContext
     IReadOnlyList<GitBranch> LocalBranches { get; }
 
     Task<bool> RunTagMutationAsync(
+        Repository expectedRepository,
         Func<Task> mutation,
         string errorContext,
         bool includeHistory);
@@ -71,30 +72,37 @@ public sealed class TagsViewModel
         }
     }
 
-    public async Task<bool> CreateTagAsync(CreateTagRequest request)
+    public async Task<bool> CreateTagAsync(
+        Repository repository,
+        CreateTagRequest request)
     {
+        ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(request);
         var context = _context;
-        var repository = context?.Repository;
-        if (context is null || repository is null || !CanMutate) return false;
+        if (!CanRunMutation(context, repository)) return false;
 
-        return await context.RunTagMutationAsync(
+        return await context!.RunTagMutationAsync(
+            repository,
             () => _tagService.CreateTagAsync(repository, request),
             "Could not create tag",
             includeHistory: true);
     }
 
-    public async Task<DeleteTagResult> DeleteTagAsync(GitTag tag, GitRemote? remote)
+    public async Task<DeleteTagResult> DeleteTagAsync(
+        Repository repository,
+        GitTag tag,
+        GitRemote? remote)
     {
+        ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(tag);
         var context = _context;
-        var repository = context?.Repository;
-        if (context is null || repository is null || !CanMutate)
+        if (!CanRunMutation(context, repository))
             return new DeleteTagResult(false, false, remote?.Name);
 
         if (remote is null)
         {
-            var localSucceeded = await context.RunTagMutationAsync(
+            var localSucceeded = await context!.RunTagMutationAsync(
+                repository,
                 () => _tagService.DeleteTagAsync(repository, tag.Name),
                 "Could not delete tag",
                 includeHistory: true);
@@ -102,7 +110,8 @@ public sealed class TagsViewModel
         }
 
         var remoteWasMissing = false;
-        var succeeded = await context.RunTagMutationAsync(
+        var succeeded = await context!.RunTagMutationAsync(
+            repository,
             async () =>
             {
                 var remoteTag = await _tagService.ReadRemoteTagAsync(repository, remote.Name, tag.Name);
@@ -128,49 +137,60 @@ public sealed class TagsViewModel
         return new DeleteTagResult(succeeded, succeeded && remoteWasMissing, remote.Name);
     }
 
-    public async Task<PushTagResult?> PushTagAsync(GitTag tag, GitRemote remote)
+    public async Task<PushTagResult?> PushTagAsync(
+        Repository repository,
+        GitTag tag,
+        GitRemote remote)
     {
+        ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(tag);
         ArgumentNullException.ThrowIfNull(remote);
         var context = _context;
-        var repository = context?.Repository;
-        if (context is null || repository is null || !CanMutate) return null;
+        if (!CanRunMutation(context, repository)) return null;
 
         PushTagResult? result = null;
-        var succeeded = await context.RunTagMutationAsync(
+        var succeeded = await context!.RunTagMutationAsync(
+            repository,
             async () => result = await _tagService.PushTagAsync(repository, remote.Name, tag.Name),
             "Could not push tag",
             includeHistory: false);
         return succeeded ? result : null;
     }
 
-    public async Task<bool> ForceUpdateRemoteTagAsync(RemoteTagConflictSnapshot snapshot)
+    public async Task<bool> ForceUpdateRemoteTagAsync(
+        Repository repository,
+        RemoteTagConflictSnapshot snapshot)
     {
+        ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(snapshot);
         var context = _context;
-        var repository = context?.Repository;
-        if (context is null || repository is null || !CanMutate) return false;
+        if (!CanRunMutation(context, repository)) return false;
 
-        return await context.RunTagMutationAsync(
+        return await context!.RunTagMutationAsync(
+            repository,
             () => _tagService.ForceUpdateRemoteTagAsync(repository, snapshot),
             "Could not force update remote tag",
             includeHistory: false);
     }
 
     public async Task<TagQueryResult<RemoteTagInfo?>> ReadRemoteTagAsync(
+        Repository repository,
         GitRemote remote,
         string tagName)
     {
+        ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(remote);
         ArgumentException.ThrowIfNullOrWhiteSpace(tagName);
-        var repository = _context?.Repository;
-        if (repository is null)
-            return new TagQueryResult<RemoteTagInfo?>(null, "No repository is open.");
+        var context = _context;
+        if (!IsCurrentRepository(context, repository))
+            return new TagQueryResult<RemoteTagInfo?>(null, "The repository changed while the tag dialog was open.");
 
         try
         {
             var tag = await _tagService.ReadRemoteTagAsync(repository, remote.Name, tagName);
-            return new TagQueryResult<RemoteTagInfo?>(tag, null);
+            return IsCurrentRepository(context, repository)
+                ? new TagQueryResult<RemoteTagInfo?>(tag, null)
+                : new TagQueryResult<RemoteTagInfo?>(null, "The repository changed while reading remote tags.");
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -179,17 +199,21 @@ public sealed class TagsViewModel
     }
 
     public async Task<TagQueryResult<IReadOnlyList<RemoteTagInfo>>> ReadRemoteTagsAsync(
+        Repository repository,
         GitRemote remote)
     {
+        ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(remote);
-        var repository = _context?.Repository;
-        if (repository is null)
-            return new TagQueryResult<IReadOnlyList<RemoteTagInfo>>([], "No repository is open.");
+        var context = _context;
+        if (!IsCurrentRepository(context, repository))
+            return new TagQueryResult<IReadOnlyList<RemoteTagInfo>>([], "The repository changed while the tag dialog was open.");
 
         try
         {
             var tags = await _tagService.ReadRemoteTagsAsync(repository, remote.Name);
-            return new TagQueryResult<IReadOnlyList<RemoteTagInfo>>(tags, null);
+            return IsCurrentRepository(context, repository)
+                ? new TagQueryResult<IReadOnlyList<RemoteTagInfo>>(tags, null)
+                : new TagQueryResult<IReadOnlyList<RemoteTagInfo>>([], "The repository changed while reading remote tags.");
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -197,42 +221,61 @@ public sealed class TagsViewModel
         }
     }
 
-    public async Task<bool> DeleteRemoteTagAsync(RemoteTagInfo remoteTag)
+    public async Task<bool> DeleteRemoteTagAsync(
+        Repository repository,
+        RemoteTagInfo remoteTag)
     {
+        ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(remoteTag);
         var context = _context;
-        var repository = context?.Repository;
-        if (context is null || repository is null || !CanMutate) return false;
+        if (!CanRunMutation(context, repository)) return false;
 
-        return await context.RunTagMutationAsync(
+        return await context!.RunTagMutationAsync(
+            repository,
             () => _tagService.DeleteRemoteTagAsync(repository, remoteTag),
             "Could not delete remote tag",
             includeHistory: false);
     }
 
-    public async Task<bool> FetchTagsAsync(GitRemote remote)
+    public async Task<bool> FetchTagsAsync(
+        Repository repository,
+        GitRemote remote)
     {
+        ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(remote);
         var context = _context;
-        var repository = context?.Repository;
-        if (context is null || repository is null || !CanMutate) return false;
+        if (!CanRunMutation(context, repository)) return false;
 
-        return await context.RunTagMutationAsync(
+        return await context!.RunTagMutationAsync(
+            repository,
             () => _tagService.FetchTagsAsync(repository, remote.Name),
             "Could not fetch tags",
             includeHistory: true);
     }
 
-    public async Task<bool> PushAllTagsAsync(GitRemote remote)
+    public async Task<bool> PushAllTagsAsync(
+        Repository repository,
+        GitRemote remote)
     {
+        ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(remote);
         var context = _context;
-        var repository = context?.Repository;
-        if (context is null || repository is null || !CanMutate) return false;
+        if (!CanRunMutation(context, repository)) return false;
 
-        return await context.RunTagMutationAsync(
+        return await context!.RunTagMutationAsync(
+            repository,
             () => _tagService.PushAllTagsAsync(repository, remote.Name),
             "Could not push all tags",
             includeHistory: false);
     }
+
+    private bool CanRunMutation(
+        ITagsRepositoryContext? context,
+        Repository expectedRepository) =>
+        CanMutate && IsCurrentRepository(context, expectedRepository);
+
+    private static bool IsCurrentRepository(
+        ITagsRepositoryContext? context,
+        Repository expectedRepository) =>
+        context is not null && ReferenceEquals(context.Repository, expectedRepository);
 }
