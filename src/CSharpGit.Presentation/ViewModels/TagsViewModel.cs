@@ -3,7 +3,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Presentation.ViewModels;
 
-internal interface ITagsRepositoryContext
+public interface ITagsRepositoryContext
 {
     Repository? Repository { get; }
     bool IsBusy { get; }
