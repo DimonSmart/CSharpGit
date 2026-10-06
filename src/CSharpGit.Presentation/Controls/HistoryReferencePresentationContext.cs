@@ -21,10 +21,10 @@ internal static class HistoryReferencePresentationContext
         }
 
         if (_viewModel is not null)
-            _viewModel.RemoteBranches.CollectionChanged -= RemoteBranches_CollectionChanged;
+            _viewModel.Branches.RemoteBranches.CollectionChanged -= RemoteBranches_CollectionChanged;
 
         _viewModel = viewModel;
-        _viewModel.RemoteBranches.CollectionChanged += RemoteBranches_CollectionChanged;
+        _viewModel.Branches.RemoteBranches.CollectionChanged += RemoteBranches_CollectionChanged;
         RebuildDefaultRemoteBranches();
     }
 
@@ -41,7 +41,7 @@ internal static class HistoryReferencePresentationContext
         var viewModel = _viewModel;
         var next = viewModel is null
             ? new HashSet<string>(StringComparer.Ordinal)
-            : viewModel.RemoteBranches
+            : viewModel.Branches.RemoteBranches
                 .Where(branch => branch.IsDefault)
                 .Select(branch => branch.Name)
                 .ToHashSet(StringComparer.Ordinal);
