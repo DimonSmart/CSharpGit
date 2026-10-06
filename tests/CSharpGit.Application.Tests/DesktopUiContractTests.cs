@@ -181,7 +181,7 @@ public sealed class DesktopUiContractTests
         Assert.Contains("CloseButtonText = \"Cancel\"", dialogs);
         Assert.Contains("DefaultButton = ContentDialogButton.Close", dialogs);
         Assert.All(new[] { "StageAllAndCommitCommand", "ConfirmEmptyCommitCommand", "CancelCommitCommand" }, command => Assert.Contains(command, dialogs));
-        Assert.Contains("!Changes.Any(change => change.IsStaged)", viewModel);
+        Assert.Contains("!WorkingTree.Changes.Any(change => change.IsStaged)", viewModel);
         Assert.Contains("StageAllAsync", viewModel);
         Assert.Contains("HasUnappliedCommitMessage", page);
         Assert.Contains("Keep editing", page);

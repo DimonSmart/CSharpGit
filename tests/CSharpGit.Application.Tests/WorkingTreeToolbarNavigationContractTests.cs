@@ -16,7 +16,7 @@ public sealed class WorkingTreeToolbarNavigationContractTests
         Assert.DoesNotContain("Content=\"Back to history\"", xaml);
         Assert.DoesNotContain("ShowHistory_Click", xaml + page);
 
-        Assert.Contains("$\"Commit ({_viewModel.Changes.Count})\"", page);
+        Assert.Contains("$\"Commit ({_viewModel.WorkingTree.Changes.Count})\"", page);
         Assert.Contains("\"Back to history\"", page);
         Assert.DoesNotContain("RepositoryTreeNodeKind.WorkingTree", page);
         Assert.DoesNotContain("WorkingTree,", treeNode);

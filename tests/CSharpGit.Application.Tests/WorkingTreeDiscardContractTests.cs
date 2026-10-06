@@ -221,11 +221,11 @@ public sealed class WorkingTreeDiscardContractTests
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ConfirmationDialogs.cs"));
-        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.Discard.cs"));
+        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
 
-        Assert.Contains("Command=\"{Binding RequestDiscardSelectedCommand}\"", xaml);
+        Assert.Contains("Command=\"{Binding WorkingTree.RequestDiscardSelectedCommand}\"", xaml);
         Assert.Contains("ToolTipService.ToolTip=\"Discard selected\"", xaml);
-        Assert.Contains("Command=\"{Binding RequestDiscardAllCommand}\"", xaml);
+        Assert.Contains("Command=\"{Binding WorkingTree.RequestDiscardAllCommand}\"", xaml);
         Assert.Contains("ToolTipService.ToolTip=\"Discard all…\"", xaml);
         Assert.Contains("Foreground=\"{ThemeResource SystemFillColorCriticalBrush}\"", xaml);
         Assert.DoesNotContain("BatchDiscardConfirmationVisibility", xaml);
@@ -236,15 +236,15 @@ public sealed class WorkingTreeDiscardContractTests
         Assert.Contains("PrimaryButtonText = \"Discard\"", dialogs);
         Assert.Contains("CloseButtonText = \"Cancel\"", dialogs);
         Assert.Contains("DefaultButton = ContentDialogButton.Close", dialogs);
-        Assert.Contains("_viewModel.ConfirmBatchDiscardCommand", dialogs);
-        Assert.Contains("_viewModel.CancelBatchDiscardCommand", dialogs);
+        Assert.Contains("_viewModel.WorkingTree.ConfirmBatchDiscardCommand", dialogs);
+        Assert.Contains("_viewModel.WorkingTree.CancelBatchDiscardCommand", dialogs);
         Assert.Contains("BatchDiscardConfirmationMessage", dialogs);
 
         Assert.Contains("WorkingTreeDiscard.CreateSelected(_selectedUnstagedChanges)", discardViewModel);
         Assert.Contains("WorkingTreeDiscard.CreateAll(Changes)", discardViewModel);
         Assert.Contains("WorkingTreeDiscard.ExecuteAsync", discardViewModel);
-        Assert.Contains("DiscardTrackedFilesAsync(repository, changes, cancellationToken)", discardViewModel);
-        Assert.Contains("DiscardFileAsync(repository, change, cancellationToken)", discardViewModel);
+        Assert.Contains("DiscardTrackedFilesAsync(repository, changes, token)", discardViewModel);
+        Assert.Contains("DiscardFileAsync(repository, change, token)", discardViewModel);
         Assert.Contains("WorkingTreeDiscard.FormatFailures(results)", discardViewModel);
         Assert.DoesNotContain("BatchDiscardConfirmationVisibility", discardViewModel);
     }
@@ -253,7 +253,7 @@ public sealed class WorkingTreeDiscardContractTests
     public void CancelConfirmationDoesNotRunDiscardMutation()
     {
         var root = FindRepositoryRoot();
-        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.Discard.cs"));
+        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
         var method = ExtractMethod(discardViewModel, "private Task CancelBatchDiscardAsync()", "private async Task ConfirmBatchDiscardAsync()");
 
         Assert.Contains("SetPendingBatchDiscard(null)", method);
@@ -267,13 +267,13 @@ public sealed class WorkingTreeDiscardContractTests
     {
         var root = FindRepositoryRoot();
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
-        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.Discard.cs"));
+        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
 
         var confirm = ExtractMethod(discardViewModel, "private async Task ConfirmBatchDiscardAsync()", "private void SetPendingBatchDiscard");
-        Assert.Contains("await MutateAsync", confirm);
+        Assert.Contains("RunMutationCoreAsync", confirm);
         Assert.Contains("WorkingTreeDiscard.ExecuteAsync", confirm);
         Assert.Contains("WorkingTreeDiscard.FormatFailures(results)", confirm);
-        Assert.Contains("includeHistory: false", confirm);
+        Assert.Contains("beforeMutation: ClearPresentationSelection", confirm);
 
         var mutate = ExtractMethod(viewModel, "private async Task<bool> MutateAsync", "private async Task RunConflictActionAsync");
         Assert.Contains("await mutation()", mutate);

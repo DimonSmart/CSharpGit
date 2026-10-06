@@ -7,18 +7,19 @@ public sealed class SelectedCommitActionsContractTests
     {
         var root = FindRepositoryRoot();
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
+        var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
+        var contextBridge = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.WorkingTree.cs"));
 
         Assert.DoesNotContain("_repositoryService.OpenAsync(Repository.WorkingDirectory)", viewModel);
         Assert.Contains("RefreshStateAsync(bool includeHistory)", viewModel);
         Assert.Contains("if (includeHistory)", viewModel);
-        Assert.Contains("includeHistory: false", ExtractMethod(viewModel, "StageActiveAsync"));
-        Assert.Contains("includeHistory: false", ExtractMethod(viewModel, "UnstageActiveAsync"));
-        Assert.Contains("StageChangesAsync", ExtractMethod(viewModel, "StageSelectedAsync"));
-        Assert.Contains("includeHistory: false", ExtractMethod(viewModel, "StageChangesAsync"));
-        Assert.Contains("UnstageChangesAsync", ExtractMethod(viewModel, "UnstageSelectedAsync"));
-        Assert.Contains("includeHistory: false", ExtractMethod(viewModel, "UnstageChangesAsync"));
-        Assert.DoesNotContain("ClearWorkingTreePresentationSelection", ExtractMethod(viewModel, "StageActiveAsync"));
-        Assert.DoesNotContain("ClearWorkingTreePresentationSelection", ExtractMethod(viewModel, "UnstageActiveAsync"));
+        Assert.Contains("StageFileAsync", ExtractMethod(workingTree, "StageActiveAsync"));
+        Assert.Contains("UnstageFileAsync", ExtractMethod(workingTree, "UnstageActiveAsync"));
+        Assert.Contains("StageChangesAsync", ExtractMethod(workingTree, "StageSelectedAsync"));
+        Assert.Contains("UnstageChangesAsync", ExtractMethod(workingTree, "UnstageSelectedAsync"));
+        Assert.Contains("includeHistory: false", contextBridge);
+        Assert.DoesNotContain("ClearPresentationSelection", ExtractMethod(workingTree, "StageActiveAsync"));
+        Assert.DoesNotContain("ClearPresentationSelection", ExtractMethod(workingTree, "UnstageActiveAsync"));
     }
 
     [Fact]
@@ -30,8 +31,9 @@ public sealed class SelectedCommitActionsContractTests
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var coalescing = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryRefresh.cs"));
 
-        Assert.Contains("Replace(Changes, state.Changes)", viewModel);
-        Assert.Contains("bulk.ReplaceAll(snapshot)", viewModel);
+        var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
+        Assert.Contains("WorkingTree.ApplyRepositoryState(repository, state.Changes)", viewModel);
+        Assert.Contains("ReplaceAll(snapshot)", workingTree);
         Assert.Contains("NotifyCollectionChangedAction.Reset", bulk);
         Assert.Contains("QueueRepositoryPresentationRefresh(workingTreeChanged: true)", page);
         Assert.Contains("DispatcherQueue.TryEnqueue(FlushRepositoryPresentationRefresh)", coalescing);
