@@ -53,6 +53,7 @@
     <Compile Include="../../src/CSharpGit.Presentation/Controls/DiffViewportResetGate.cs" Link="Changes/DiffViewportResetGate.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/DiffPresentationResolver.cs" Link="Changes/DiffPresentationResolver.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositorySnapshotTreeNode.cs" Link="RepositoryFiles/RepositorySnapshotTreeNode.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryFilesViewModel.cs" Link="RepositoryFiles/RepositoryFilesViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Previewing/FilePreviewModels.cs" Link="RepositoryFiles/Previewing/FilePreviewModels.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Previewing/ImageMetadataReader.cs" Link="RepositoryFiles/Previewing/ImageMetadataReader.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Previewing/ImageDiffPreviewModels.cs" Link="RepositoryFiles/Previewing/ImageDiffPreviewModels.cs" />
