@@ -156,10 +156,19 @@ public sealed class GitArchitectureGuardrailTests
     [Fact]
     public void HistoryCapabilityHasSingleProductionImplementation()
     {
-        Assert.True(typeof(IHistoryService).IsAssignableFrom(typeof(GitHistoryService)));
+        var implementations = typeof(GitHistoryService).Assembly
+            .GetTypes()
+            .Where(type => type.IsClass
+                           && !type.IsAbstract
+                           && typeof(IHistoryService).IsAssignableFrom(type))
+            .ToArray();
+
+        Assert.Equal([typeof(GitHistoryService)], implementations);
         Assert.False(typeof(IHistoryService).IsAssignableFrom(typeof(GitCommitHistoryReader)));
         Assert.Null(typeof(IHistoryService).Assembly.GetType(
             "CSharpGit.Application.Abstractions.IReferenceHistoryService"));
+        Assert.Null(typeof(IHistoryService).Assembly.GetType(
+            "CSharpGit.Application.Abstractions.IHistoryDiffLoadService"));
         Assert.Null(typeof(GitHistoryService).Assembly.GetType(
             "CSharpGit.Git.GitReferenceHistoryService"));
         Assert.Null(typeof(GitHistoryService).Assembly.GetType(
