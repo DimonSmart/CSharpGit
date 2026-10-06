@@ -21,7 +21,6 @@ public sealed partial class MainPage
         Error
     }
 
-    private string? _workingTreeDiffErrorMessage;
 
     private void SetCommitDiffPresentationState(DiffPresentationState state)
     {
@@ -65,8 +64,8 @@ public sealed partial class MainPage
         WorkingTreeDiffViewer.Visibility = state == DiffPresentationState.Text ? Visibility.Visible : Visibility.Collapsed;
         WorkingTreeDiffLoading.Visibility = state == DiffPresentationState.LoadingDiff ? Visibility.Visible : Visibility.Collapsed;
         WorkingTreeLargeDiffInfo.Visibility = state == DiffPresentationState.LargeDiff ? Visibility.Visible : Visibility.Collapsed;
-        WorkingTreeLargeDiffMessage.Text = _workingTreeDiffDeferredMessage ?? string.Empty;
-        WorkingTreeLargeDiffButton.Content = _workingTreeDiffDeferredActionText;
+        WorkingTreeLargeDiffMessage.Text = _viewModel.WorkingTree.DiffPreviewDeferredMessage ?? string.Empty;
+        WorkingTreeLargeDiffButton.Content = _viewModel.WorkingTree.DiffPreviewActionText;
         WorkingTreeImageLoading.Visibility = state == DiffPresentationState.LoadingImage ? Visibility.Visible : Visibility.Collapsed;
         WorkingTreeImageDiffHost.Visibility = state == DiffPresentationState.Image ? Visibility.Visible : Visibility.Collapsed;
         WorkingTreeBinaryInfo.Visibility =
@@ -81,7 +80,7 @@ public sealed partial class MainPage
             ? Visibility.Visible
             : Visibility.Collapsed;
 
-        ConfigureInfoBar(WorkingTreeBinaryInfo, state, _workingTreeDiffErrorMessage);
+        ConfigureInfoBar(WorkingTreeBinaryInfo, state, _viewModel.WorkingTree.DiffLoadErrorMessage);
 
         if (state != DiffPresentationState.Image)
             WorkingTreeImageDiffHost.Clear();

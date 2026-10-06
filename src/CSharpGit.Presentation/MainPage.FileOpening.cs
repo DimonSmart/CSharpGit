@@ -39,11 +39,10 @@ public sealed partial class MainPage
         ICommitActionService commitActionService,
         TagsViewModel tagsViewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
-        IWorkingTreeDiffService workingTreeDiffService,
         IRepositoryFileVersionService fileVersionService,
         IDesktopShellService desktopShellService,
         IRepositoryPathService repositoryPathService)
-        : this(viewModel, historyService, referenceService, syncService, commitActionService, tagsViewModel, workingTreeStatusReader, workingTreeDiffService)
+        : this(viewModel, historyService, referenceService, syncService, commitActionService, tagsViewModel, workingTreeStatusReader)
     {
         _fileVersionService = fileVersionService ?? throw new ArgumentNullException(nameof(fileVersionService));
         _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
@@ -60,12 +59,11 @@ public sealed partial class MainPage
         ICommitActionService commitActionService,
         TagsViewModel tagsViewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
-        IWorkingTreeDiffService workingTreeDiffService,
         IRepositoryFileVersionService fileVersionService,
         IDesktopShellService desktopShellService,
         IRepositoryPathService repositoryPathService,
         IExternalGitToolService externalGitToolService)
-        : this(viewModel, historyService, referenceService, syncService, commitActionService, tagsViewModel, workingTreeStatusReader, workingTreeDiffService, fileVersionService, desktopShellService, repositoryPathService)
+        : this(viewModel, historyService, referenceService, syncService, commitActionService, tagsViewModel, workingTreeStatusReader, fileVersionService, desktopShellService, repositoryPathService)
     {
         _externalGitToolService = externalGitToolService ?? throw new ArgumentNullException(nameof(externalGitToolService));
         UpdateCommitButtons();
@@ -85,6 +83,7 @@ public sealed partial class MainPage
         UnstagedChangesList.DoubleTapped += WorkingTreeChanges_DoubleTapped;
         StagedChangesList.DoubleTapped += WorkingTreeChanges_DoubleTapped;
         _viewModel.PropertyChanged += FileOpeningViewModel_PropertyChanged;
+        _viewModel.WorkingTree.PropertyChanged += WorkingTreeFileOpening_PropertyChanged;
 
         _ = RefreshCommitFileActionStateAsync();
         _ = RefreshWorkingTreeFileActionStateAsync();
@@ -141,14 +140,14 @@ public sealed partial class MainPage
         if (FindWorkingTreeHeaderActions(UnstagedHeader) is { } unstagedActions)
         {
             unstagedActions.Children.Clear();
-            unstagedActions.Children.Add(CreateWorkingTreeActionButton("Stage all", "\uE710", _viewModel.StageAllCommand));
-            unstagedActions.Children.Add(CreateWorkingTreeActionButton("Discard all", "\uE74D", _viewModel.RequestDiscardAllCommand, destructive: true));
+            unstagedActions.Children.Add(CreateWorkingTreeActionButton("Stage all", "\uE710", _viewModel.WorkingTree.StageAllCommand));
+            unstagedActions.Children.Add(CreateWorkingTreeActionButton("Discard all", "\uE74D", _viewModel.WorkingTree.RequestDiscardAllCommand, destructive: true));
         }
 
         if (FindWorkingTreeHeaderActions(StagedHeader) is { } stagedActions)
         {
             stagedActions.Children.Clear();
-            stagedActions.Children.Add(CreateWorkingTreeActionButton("Unstage all", "\uE738", _viewModel.UnstageAllCommand));
+            stagedActions.Children.Add(CreateWorkingTreeActionButton("Unstage all", "\uE738", _viewModel.WorkingTree.UnstageAllCommand));
         }
     }
 
@@ -201,9 +200,14 @@ public sealed partial class MainPage
             or nameof(OpenRepositoryViewModel.Repository))
             _ = RefreshCommitFileActionStateAsync();
 
-        if (args.PropertyName is nameof(OpenRepositoryViewModel.ActiveWorkingTreeChange)
-            or nameof(OpenRepositoryViewModel.ActiveWorkingTreeDiffKind)
-            or nameof(OpenRepositoryViewModel.Repository))
+        if (args.PropertyName == nameof(OpenRepositoryViewModel.Repository))
+            _ = RefreshWorkingTreeFileActionStateAsync();
+    }
+
+    private void WorkingTreeFileOpening_PropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is nameof(WorkingTreeViewModel.SelectedChange)
+            or nameof(WorkingTreeViewModel.SelectedDiffKind))
             _ = RefreshWorkingTreeFileActionStateAsync();
     }
 
@@ -230,8 +234,8 @@ public sealed partial class MainPage
         UpdateWorkingTreeButtons();
 
         var repository = _viewModel.Repository;
-        var change = _viewModel.ActiveWorkingTreeChange;
-        var kind = _viewModel.ActiveWorkingTreeDiffKind;
+        var change = _viewModel.WorkingTree.SelectedChange;
+        var kind = _viewModel.WorkingTree.SelectedDiffKind;
         if (repository is null || change is null || kind is null)
             return;
 
@@ -240,8 +244,8 @@ public sealed partial class MainPage
             var pair = await _fileVersionService.ResolveWorkingTreeAsync(repository, change, kind.Value);
             if (generation != Volatile.Read(ref _workingTreeFileActionGeneration)
                 || !ReferenceEquals(repository, _viewModel.Repository)
-                || _viewModel.ActiveWorkingTreeDiffKind != kind
-                || _viewModel.ActiveWorkingTreeChange is not { } current
+                || _viewModel.WorkingTree.SelectedDiffKind != kind
+                || _viewModel.WorkingTree.SelectedChange is not { } current
                 || !SameWorkingTreeChange(current, change))
                 return;
 
@@ -387,8 +391,8 @@ public sealed partial class MainPage
     private async Task OpenSelectedWorkingTreeVersionAsync(DiffFileSide side)
     {
         var repository = _viewModel.Repository;
-        var change = _viewModel.ActiveWorkingTreeChange;
-        var kind = _viewModel.ActiveWorkingTreeDiffKind;
+        var change = _viewModel.WorkingTree.SelectedChange;
+        var kind = _viewModel.WorkingTree.SelectedDiffKind;
         if (repository is null || change is null || kind is null)
             return;
 
@@ -439,8 +443,8 @@ public sealed partial class MainPage
     private async Task OpenSelectedWorkingTreeExternalDiffAsync()
     {
         var repository = _viewModel.Repository;
-        var change = _viewModel.ActiveWorkingTreeChange;
-        var kind = _viewModel.ActiveWorkingTreeDiffKind;
+        var change = _viewModel.WorkingTree.SelectedChange;
+        var kind = _viewModel.WorkingTree.SelectedDiffKind;
         if (repository is null || change is null || kind is null) return;
         try
         {
@@ -510,8 +514,8 @@ public sealed partial class MainPage
     private async Task RevealSelectedWorkingTreeFileAsync()
     {
         var repository = _viewModel.Repository;
-        var change = _viewModel.ActiveWorkingTreeChange;
-        var kind = _viewModel.ActiveWorkingTreeDiffKind;
+        var change = _viewModel.WorkingTree.SelectedChange;
+        var kind = _viewModel.WorkingTree.SelectedDiffKind;
         if (repository is null || change is null || kind is null)
             return;
         try
@@ -632,7 +636,7 @@ public sealed partial class MainPage
             _workingTreeSelectionSync = false;
         }
 
-        _viewModel.SetWorkingTreeSelection(kind, [change]);
+        _viewModel.WorkingTree.SetSelection(kind, [change]);
         SelectWorkingTreeChange(change, kind);
     }
 
@@ -650,12 +654,12 @@ public sealed partial class MainPage
         flyout.Items.Insert(0, new MenuFlyoutSeparator());
         if (kind == WorkingTreeDiffKind.Unstaged)
         {
-            flyout.Items.Insert(0, CreateWorkingTreeCommandMenuItem("Discard file", "\uE74D", _viewModel.RequestDiscardSelectedCommand, destructive: true));
-            flyout.Items.Insert(0, CreateWorkingTreeCommandMenuItem("Stage file", "\uE710", _viewModel.StageCommand));
+            flyout.Items.Insert(0, CreateWorkingTreeCommandMenuItem("Discard file", "\uE74D", _viewModel.WorkingTree.RequestDiscardSelectedCommand, destructive: true));
+            flyout.Items.Insert(0, CreateWorkingTreeCommandMenuItem("Stage file", "\uE710", _viewModel.WorkingTree.StageCommand));
         }
         else
         {
-            flyout.Items.Insert(0, CreateWorkingTreeCommandMenuItem("Unstage file", "\uE738", _viewModel.UnstageCommand));
+            flyout.Items.Insert(0, CreateWorkingTreeCommandMenuItem("Unstage file", "\uE738", _viewModel.WorkingTree.UnstageCommand));
         }
 
         return flyout;

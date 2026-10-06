@@ -57,8 +57,7 @@ public sealed partial class MainPage : Page
         IRepositorySyncService repositorySyncService,
         ICommitActionService commitActionService,
         TagsViewModel tagsViewModel,
-        IWorkingTreeStatusReader workingTreeStatusReader,
-        IWorkingTreeDiffService workingTreeDiffService)
+        IWorkingTreeStatusReader workingTreeStatusReader)
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
@@ -69,7 +68,6 @@ public sealed partial class MainPage : Page
         _tagsViewModel = tagsViewModel ?? throw new ArgumentNullException(nameof(tagsViewModel));
         _tagsViewModel.Attach(_viewModel);
         _workingTreeStatusReader = workingTreeStatusReader ?? throw new ArgumentNullException(nameof(workingTreeStatusReader));
-        _workingTreeDiffService = workingTreeDiffService ?? throw new ArgumentNullException(nameof(workingTreeDiffService));
         InitializeBusyStatusPresentation();
 
         RepositoryTree.ItemsSource = _repositoryTreeRoots;
@@ -79,7 +77,7 @@ public sealed partial class MainPage : Page
         CommitFilesList.ItemsSource = _commitFiles;
 
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
-        _viewModel.Changes.CollectionChanged += RepositoryPresentationChanges_CollectionChanged;
+        _viewModel.WorkingTree.Changes.CollectionChanged += RepositoryPresentationChanges_CollectionChanged;
         _viewModel.LocalBranches.CollectionChanged += RepositoryPresentationLocalBranches_CollectionChanged;
         _viewModel.RemoteBranches.CollectionChanged += RepositoryPresentationRemoteBranches_CollectionChanged;
         _viewModel.Remotes.CollectionChanged += RepositoryPresentationRemotes_CollectionChanged;
@@ -189,7 +187,7 @@ public sealed partial class MainPage : Page
     {
         var unstaged = new List<WorkingTreeChange>();
         var staged = new List<WorkingTreeChange>();
-        foreach (var change in _viewModel.Changes)
+        foreach (var change in _viewModel.WorkingTree.Changes)
         {
             if (change.IsUnstaged) unstaged.Add(change);
             if (change.IsStaged) staged.Add(change);
@@ -273,7 +271,7 @@ public sealed partial class MainPage : Page
                      ?? (_viewModel.Repository is null ? string.Empty : "detached HEAD");
         StatusBranchText.Text = branch;
         StatusTrackingText.Text = current is null ? string.Empty : $"↑{current.Ahead} ↓{current.Behind}";
-        StatusChangesText.Text = $"{_viewModel.Changes.Count} changes";
+        StatusChangesText.Text = $"{_viewModel.WorkingTree.Changes.Count} changes";
         StatusOperationText.Text = _viewModel.IsBusy
             ? "Working…"
             : _viewModel.CurrentOperation == RepositoryOperation.None ? "Ready" : _viewModel.CurrentOperation.ToString();
@@ -463,19 +461,19 @@ public sealed partial class MainPage : Page
         if (_unstagedChanges.FirstOrDefault() is { } unstaged)
         {
             UnstagedChangesList.SelectedItem = unstaged;
-            _viewModel.SelectedChange = unstaged;
+            SelectWorkingTreeChange(unstaged, WorkingTreeDiffKind.Unstaged);
         }
         else if (_stagedChanges.FirstOrDefault() is { } staged)
         {
             StagedChangesList.SelectedItem = staged;
-            _viewModel.SelectedChange = staged;
+            SelectWorkingTreeChange(staged, WorkingTreeDiffKind.Staged);
         }
     }
 
     private void UpdateCommitNavigationText() =>
         CommitNavigationText.Text = WorkingTreePane.Visibility == Visibility.Visible
             ? "Back to history"
-            : $"Commit ({_viewModel.Changes.Count})";
+            : $"Commit ({_viewModel.WorkingTree.Changes.Count})";
 
     private async void RepositoryTree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
     {
@@ -734,12 +732,12 @@ public sealed partial class MainPage : Page
 
     private void UnstagedChangesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (UnstagedChangesList.SelectedItem is WorkingTreeChange change) _viewModel.SelectedChange = change;
+        if (UnstagedChangesList.SelectedItem is WorkingTreeChange change) SelectWorkingTreeChange(change, WorkingTreeDiffKind.Unstaged);
     }
 
     private void StagedChangesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (StagedChangesList.SelectedItem is WorkingTreeChange change) _viewModel.SelectedChange = change;
+        if (StagedChangesList.SelectedItem is WorkingTreeChange change) SelectWorkingTreeChange(change, WorkingTreeDiffKind.Staged);
     }
 
     private void CommitFilesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -815,13 +813,13 @@ public sealed partial class MainPage : Page
             RefreshPresentationCollections();
             Check(_viewModel.Repository is not null, $"repository did not open: {_viewModel.ErrorMessage}", failures);
             for (var attempt = 0; attempt < 3 && _viewModel.Repository is not null &&
-                 (_viewModel.Changes.Count == 0 || _viewModel.History.Count == 0); attempt++)
+                 (_viewModel.WorkingTree.Changes.Count == 0 || _viewModel.History.Count == 0); attempt++)
             {
                 await Task.Delay(100 * (attempt + 1));
                 await _viewModel.RefreshAsyncForDesktopCheck();
                 RefreshPresentationCollections();
             }
-            Check(_viewModel.Changes.Count > 0, $"working tree changes were not loaded: {_viewModel.ErrorMessage}", failures);
+            Check(_viewModel.WorkingTree.Changes.Count > 0, $"working tree changes were not loaded: {_viewModel.ErrorMessage}", failures);
             Check(_viewModel.History.Count > 0, $"history was not loaded: {_viewModel.ErrorMessage}", failures);
             await WaitUntilAsync(
                 () => RepositoryWorkspace.ActualWidth > 0 && RepositoryWorkspace.ActualHeight > 0 && HistoryList.ActualWidth > 0 && HistoryList.ActualHeight > 0,
@@ -918,13 +916,13 @@ public sealed partial class MainPage : Page
             splitter?.ResizeForCheck(24);
             Check(splitterGrid is not null && splitterGrid.ColumnDefinitions[0].Width.IsAbsolute && Math.Abs(splitterGrid.ColumnDefinitions[0].Width.Value - oldWidth) > 1, "splitter did not resize its pane", failures);
 
-            Check(CommitNavigationText.Text == $"Commit ({_viewModel.Changes.Count})", "commit toolbar count is incorrect", failures);
+            Check(CommitNavigationText.Text == $"Commit ({_viewModel.WorkingTree.Changes.Count})", "commit toolbar count is incorrect", failures);
             ShowWorkingTree();
             Check(WorkingTreePane.Visibility == Visibility.Visible && HistoryPane.Visibility == Visibility.Collapsed, "working tree mode did not open", failures);
             Check(CommitNavigationText.Text == "Back to history", "commit toolbar did not become the history navigation action", failures);
-            Check(_unstagedChanges.Count + _stagedChanges.Count >= _viewModel.Changes.Count, "working tree staged/unstaged views lost changes", failures);
+            Check(_unstagedChanges.Count + _stagedChanges.Count >= _viewModel.WorkingTree.Changes.Count, "working tree staged/unstaged views lost changes", failures);
             ShowAllHistory();
-            Check(CommitNavigationText.Text == $"Commit ({_viewModel.Changes.Count})", "commit toolbar did not restore the change count", failures);
+            Check(CommitNavigationText.Text == $"Commit ({_viewModel.WorkingTree.Changes.Count})", "commit toolbar did not restore the change count", failures);
 
             if (_viewModel.History.FirstOrDefault() is { } selectedBeforeRefresh)
             {
@@ -945,13 +943,15 @@ public sealed partial class MainPage : Page
 
             _viewModel.CommitMessage = "draft retained by close guard";
             Check(_viewModel.HasUnappliedCommitMessage, "commit draft close guard is inactive", failures);
-            _viewModel.SelectedChange = _viewModel.Changes.FirstOrDefault(change => change.IsUnstaged);
-            Check(_viewModel.StageCommand.CanExecute(null), "Stage must be enabled for an unstaged selection", failures);
-            Check(!_viewModel.UnstageCommand.CanExecute(null), "Unstage must be disabled for an unstaged selection", failures);
-            var selectedChange = _viewModel.SelectedChange;
-            _viewModel.SelectedChange = null;
-            Check(!_viewModel.StageCommand.CanExecute(null) && !_viewModel.UnstageCommand.CanExecute(null), "file commands must be disabled without a selection", failures);
-            _viewModel.SelectedChange = selectedChange;
+            if (_viewModel.WorkingTree.Changes.FirstOrDefault(change => change.IsUnstaged) is { } workingTreeCheckChange)
+                await _viewModel.WorkingTree.SelectChangeAsync(workingTreeCheckChange, WorkingTreeDiffKind.Unstaged);
+            Check(_viewModel.WorkingTree.StageCommand.CanExecute(null), "Stage must be enabled for an unstaged selection", failures);
+            Check(!_viewModel.WorkingTree.UnstageCommand.CanExecute(null), "Unstage must be disabled for an unstaged selection", failures);
+            var selectedChange = _viewModel.WorkingTree.SelectedChange;
+            _viewModel.WorkingTree.ClearActiveSelection();
+            Check(!_viewModel.WorkingTree.StageCommand.CanExecute(null) && !_viewModel.WorkingTree.UnstageCommand.CanExecute(null), "file commands must be disabled without a selection", failures);
+            if (selectedChange is not null)
+                await _viewModel.WorkingTree.SelectChangeAsync(selectedChange, WorkingTreeDiffKind.Unstaged);
             Check(_viewModel.CommitCommand.CanExecute(null), "Commit must be enabled for a non-empty draft", failures);
             _viewModel.CommitCommand.Execute(null);
             await WaitUntilAsync(() => !_viewModel.IsBusy, TimeSpan.FromSeconds(20));

@@ -27,7 +27,7 @@ public sealed partial class MainPage
         StopHistoryPerformanceCaptureOnShutdown();
         _cloneRepositoryViewModel.Cancel();
         Loaded -= RunDesktopCheckWhenRequested;
-        _viewModel.Changes.CollectionChanged -= RepositoryPresentationChanges_CollectionChanged;
+        _viewModel.WorkingTree.Changes.CollectionChanged -= RepositoryPresentationChanges_CollectionChanged;
         _viewModel.LocalBranches.CollectionChanged -= RepositoryPresentationLocalBranches_CollectionChanged;
         _viewModel.RemoteBranches.CollectionChanged -= RepositoryPresentationRemoteBranches_CollectionChanged;
         _viewModel.Remotes.CollectionChanged -= RepositoryPresentationRemotes_CollectionChanged;
@@ -44,11 +44,13 @@ public sealed partial class MainPage
         _viewModel.PropertyChanged -= ChangesViewModel_PropertyChanged;
         _viewModel.PropertyChanged -= ConfirmationDialogs_PropertyChanged;
         _viewModel.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
+        _viewModel.WorkingTree.PropertyChanged -= WorkingTreeViewModel_PropertyChanged;
+        _viewModel.WorkingTree.PropertyChanged -= WorkingTreeFileOpening_PropertyChanged;
+        _viewModel.WorkingTree.PropertyChanged -= WorkingTreeConfirmation_PropertyChanged;
         _repositoryFilesViewModel.PropertyChanged -= RepositoryFilesViewModel_PropertyChanged;
         _repositoryFilesViewModel.Dispose();
         _viewModel.PropertyChanged -= RepositoryMaintenanceViewModel_PropertyChanged;
         _viewModel.History.CollectionChanged -= MainHistory_CollectionChanged;
-        _viewModel.Changes.CollectionChanged -= WorkingTreeChangesCollectionChanged;
 
         _referenceHistoryCts?.Cancel();
         _referenceHistoryCts?.Dispose();

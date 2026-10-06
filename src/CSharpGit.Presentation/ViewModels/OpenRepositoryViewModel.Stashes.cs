@@ -96,10 +96,10 @@ public sealed partial class OpenRepositoryViewModel
         return scope switch
         {
             StashScope.AllTrackedChanges =>
-                Changes.Any(change => change.Kind != FileChangeKind.Untracked)
-                || includeUntracked && Changes.Any(change => change.Kind == FileChangeKind.Untracked),
+                WorkingTree.Changes.Any(change => change.Kind != FileChangeKind.Untracked)
+                || includeUntracked && WorkingTree.Changes.Any(change => change.Kind == FileChangeKind.Untracked),
             StashScope.StagedChangesOnly =>
-                !includeUntracked && Changes.Any(change => change.IsStaged),
+                !includeUntracked && WorkingTree.Changes.Any(change => change.IsStaged),
             _ => false
         };
     }

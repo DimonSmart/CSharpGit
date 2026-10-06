@@ -53,11 +53,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private FileDiff? _selectedDiff;
     private bool _isDiffLoading;
     private bool _hasMore;
-    private WorkingTreeChange? _selectedChange;
-    private WorkingTreeDiffKind? _selectedWorkingTreeDiffKind;
-    private FileDiff? _selectedWorkingTreeDiff;
-    private readonly ObservableCollection<WorkingTreeChange> _selectedUnstagedChanges = [];
-    private readonly ObservableCollection<WorkingTreeChange> _selectedStagedChanges = [];
     private string _commitMessage = string.Empty;
     private bool _isEmptyIndexChoiceOpen;
     private GitBranch? _selectedLocalBranch;
@@ -89,6 +84,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         IHistoryService historyService,
         IRepositoryStateService stateService,
         IWorkingTreeService workingTreeService,
+        WorkingTreeViewModel workingTreeViewModel,
         IReferenceService referenceService,
         IRepositorySyncService syncService,
         IStashMutationService stashMutationService,
@@ -111,6 +107,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         _historyService = historyService;
         _stateService = stateService;
         _workingTreeService = workingTreeService;
+        WorkingTree = workingTreeViewModel ?? throw new ArgumentNullException(nameof(workingTreeViewModel));
+        WorkingTree.Attach(this);
         _referenceService = referenceService;
         _syncService = syncService;
         _stashMutationService = stashMutationService;
@@ -132,12 +130,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         RefreshHistoryCommand = new AsyncCommand(() => LoadHistoryAsync(true), () => Repository is not null);
         LoadMoreCommand = new AsyncCommand(() => LoadHistoryAsync(false), () => Repository is not null && HasMore);
         RefreshAllCommand = new AsyncCommand(RefreshAllAsync, () => Repository is not null);
-        StageCommand = new AsyncCommand(StageActiveAsync, () => CanBulkMutate() && SelectedWorkingTreeDiffKind == WorkingTreeDiffKind.Unstaged && SelectedChange is { IsUnstaged: true });
-        UnstageCommand = new AsyncCommand(UnstageActiveAsync, () => CanBulkMutate() && SelectedWorkingTreeDiffKind == WorkingTreeDiffKind.Staged && SelectedChange is { IsStaged: true });
-        StageSelectedCommand = new AsyncCommand(StageSelectedAsync, () => CanBulkMutate() && _selectedUnstagedChanges.Count > 0);
-        StageAllCommand = new AsyncCommand(StageAllWorkingTreeAsync, () => CanBulkMutate() && Changes.Any(change => change.IsUnstaged));
-        UnstageSelectedCommand = new AsyncCommand(UnstageSelectedAsync, () => CanBulkMutate() && _selectedStagedChanges.Count > 0);
-        UnstageAllCommand = new AsyncCommand(UnstageAllWorkingTreeAsync, () => CanBulkMutate() && Changes.Any(change => change.IsStaged));
         CommitCommand = new AsyncCommand(RequestCommitAsync, () => CanMutate() && !string.IsNullOrWhiteSpace(CommitMessage));
         EmptyCommitCommand = new AsyncCommand(() => CommitAsync(false, true), () => CanMutate() && !string.IsNullOrWhiteSpace(CommitMessage));
         AmendCommand = new AsyncCommand(() => CommitAsync(true, false), () => CanMutate() && !string.IsNullOrWhiteSpace(CommitMessage));
@@ -185,6 +177,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         historyCancellation?.Dispose();
         ResetCommitChangesSession();
         _settings.Changed -= AppSettings_Changed;
+        WorkingTree.Dispose();
     }
 
     private void AppSettings_Changed(object? sender, EventArgs e)
@@ -225,12 +218,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public ICommand RefreshHistoryCommand { get; }
     public ICommand LoadMoreCommand { get; }
     public ICommand RefreshAllCommand { get; }
-    public ICommand StageCommand { get; }
-    public ICommand UnstageCommand { get; }
-    public ICommand StageSelectedCommand { get; }
-    public ICommand StageAllCommand { get; }
-    public ICommand UnstageSelectedCommand { get; }
-    public ICommand UnstageAllCommand { get; }
     public ICommand CommitCommand { get; }
     public ICommand EmptyCommitCommand { get; }
     public ICommand AmendCommand { get; }
@@ -263,9 +250,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public ICommand AbortOperationCommand { get; }
     public ICommand SkipOperationCommand { get; }
     public ObservableCollection<HistoryRow> History { get; } = [];
-    public ObservableCollection<WorkingTreeChange> Changes { get; } = new BulkObservableCollection<WorkingTreeChange>();
-    public IReadOnlyCollection<WorkingTreeChange> SelectedUnstagedChanges => _selectedUnstagedChanges;
-    public IReadOnlyCollection<WorkingTreeChange> SelectedStagedChanges => _selectedStagedChanges;
+    public WorkingTreeViewModel WorkingTree { get; }
     public ObservableCollection<GitBranch> LocalBranches { get; } = new BulkObservableCollection<GitBranch>();
     public ObservableCollection<GitBranch> RemoteBranches { get; } = new BulkObservableCollection<GitBranch>();
     public ObservableCollection<GitRemote> Remotes { get; } = new BulkObservableCollection<GitRemote>();
@@ -287,6 +272,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             ResetCommitChangesSession();
             SetHeadPresentationState(null, null, false, string.Empty);
             _repository = value;
+            WorkingTree.OnRepositoryChanged(value);
             _headExists = null;
             _displayedWorkingTreeBaseline.Clear();
             Notify();
@@ -342,42 +328,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public bool HasSelectedCommit => SelectedHistoryRow is not null;
     public bool HasTextDiff => SelectedDiff is { IsBinary: false };
     public bool HasBinaryDiff => SelectedDiff?.IsBinary == true;
-    public WorkingTreeChange? SelectedChange
-    {
-        get => _selectedChange;
-        set
-        {
-            if (ReferenceEquals(_selectedChange, value)) return;
-            _selectedChange = value;
-            Notify();
-            Notify(nameof(ActiveWorkingTreeChange));
-            RaiseCommands();
-        }
-    }
-    public WorkingTreeChange? ActiveWorkingTreeChange { get => SelectedChange; set => SelectedChange = value; }
-    public WorkingTreeDiffKind? SelectedWorkingTreeDiffKind
-    {
-        get => _selectedWorkingTreeDiffKind;
-        set
-        {
-            if (_selectedWorkingTreeDiffKind == value) return;
-            _selectedWorkingTreeDiffKind = value;
-            Notify();
-            Notify(nameof(ActiveWorkingTreeDiffKind));
-            RaiseCommands();
-        }
-    }
-    public WorkingTreeDiffKind? ActiveWorkingTreeDiffKind { get => SelectedWorkingTreeDiffKind; set => SelectedWorkingTreeDiffKind = value; }
-    public FileDiff? SelectedWorkingTreeDiff
-    {
-        get => _selectedWorkingTreeDiff;
-        set
-        {
-            if (ReferenceEquals(_selectedWorkingTreeDiff, value)) return;
-            _selectedWorkingTreeDiff = value;
-            Notify();
-        }
-    }
     public string CommitMessage { get => _commitMessage; set { _commitMessage = value; Notify(); RaiseCommands(); } }
     public bool HasUnappliedCommitMessage => CommitMessage.Length > 0;
     public bool IsEmptyIndexChoiceOpen { get => _isEmptyIndexChoiceOpen; private set { _isEmptyIndexChoiceOpen = value; Notify(); RaiseCommands(); } }
@@ -457,56 +407,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             new CreateStashRequest(
                 message,
                 StashScope.AllTrackedChanges));
-
-    internal void SetWorkingTreeSelection(WorkingTreeDiffKind kind, IEnumerable<WorkingTreeChange> changes)
-    {
-        var selected = changes.ToArray();
-        var target = kind == WorkingTreeDiffKind.Unstaged ? _selectedUnstagedChanges : _selectedStagedChanges;
-        target.Clear();
-        foreach (var change in selected) target.Add(change);
-        Notify(kind == WorkingTreeDiffKind.Unstaged ? nameof(SelectedUnstagedChanges) : nameof(SelectedStagedChanges));
-        RaiseCommands();
-    }
-
-    internal bool CanStageChanges(IReadOnlyCollection<WorkingTreeChange> changes)
-    {
-        ArgumentNullException.ThrowIfNull(changes);
-        return CanBulkMutate() && changes.Count > 0;
-    }
-
-    internal bool CanUnstageChanges(IReadOnlyCollection<WorkingTreeChange> changes)
-    {
-        ArgumentNullException.ThrowIfNull(changes);
-        return CanBulkMutate() && changes.Count > 0;
-    }
-
-    internal async Task StageChangesAsync(
-        IReadOnlyCollection<WorkingTreeChange> changes,
-        string errorContext)
-    {
-        ArgumentNullException.ThrowIfNull(changes);
-        if (!CanStageChanges(changes)) return;
-
-        var snapshot = changes.ToArray();
-        await MutateAsync(
-            () => _workingTreeService.StageFilesAsync(Repository!, snapshot),
-            errorContext,
-            includeHistory: false);
-    }
-
-    internal async Task UnstageChangesAsync(
-        IReadOnlyCollection<WorkingTreeChange> changes,
-        string errorContext)
-    {
-        ArgumentNullException.ThrowIfNull(changes);
-        if (!CanUnstageChanges(changes)) return;
-
-        var snapshot = changes.ToArray();
-        await MutateAsync(
-            () => _workingTreeService.UnstageFilesAsync(Repository!, snapshot),
-            errorContext,
-            includeHistory: false);
-    }
 
     private async Task OpenRepositoryAsync()
     {
@@ -662,7 +562,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private void ClearRepositoryPresentation()
     {
         History.Clear();
-        Changes.Clear();
+        WorkingTree.ClearRepositoryState();
         LocalBranches.Clear();
         RemoteBranches.Clear();
         Remotes.Clear();
@@ -673,9 +573,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         SelectedHistoryRow = null;
         SelectedFile = null;
         SelectedDiff = null;
-        SelectedChange = null;
-        SelectedWorkingTreeDiffKind = null;
-        SelectedWorkingTreeDiff = null;
         SelectedLocalBranch = null;
         SelectedRemoteBranch = null;
         SelectedRemote = null;
@@ -776,7 +673,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                 state.HeadCommit,
                 state.IsDetached,
                 state.IsDetached ? $"Detached HEAD: {shortHead}" : $"Current branch: {state.HeadReference}");
-            Replace(Changes, state.Changes);
+            WorkingTree.ApplyRepositoryState(repository, state.Changes);
             Replace(LocalBranches, state.Refs.LocalBranches);
             Notify(nameof(CanForcePushWithLease));
             Replace(RemoteBranches, state.Refs.RemoteBranches);
@@ -906,88 +803,13 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     private Task RequestCommitAsync()
     {
-        if (!Changes.Any(change => change.IsStaged) && Changes.Any(change => change.IsUnstaged))
+        if (!WorkingTree.Changes.Any(change => change.IsStaged) && WorkingTree.Changes.Any(change => change.IsUnstaged))
         {
             IsEmptyIndexChoiceOpen = true;
             return Task.CompletedTask;
         }
 
         return CommitAsync(false, false);
-    }
-
-    private async Task StageActiveAsync()
-    {
-        var change = SelectedChange;
-        if (change is null) return;
-        await MutateAsync(
-            () => _workingTreeService.StageFileAsync(Repository!, change),
-            "Could not stage file",
-            includeHistory: false);
-    }
-
-    private async Task UnstageActiveAsync()
-    {
-        var change = SelectedChange;
-        if (change is null) return;
-        await MutateAsync(
-            () => _workingTreeService.UnstageFileAsync(Repository!, change),
-            "Could not unstage file",
-            includeHistory: false);
-    }
-
-    private async Task StageSelectedAsync()
-    {
-        var changes = _selectedUnstagedChanges.ToArray();
-        await StageChangesAsync(changes, "Could not stage selected files");
-    }
-
-    private async Task StageAllWorkingTreeAsync()
-    {
-        await MutateAsync(
-            () => _workingTreeService.StageAllAsync(Repository!),
-            "Could not stage all files",
-            includeHistory: false);
-    }
-
-    private async Task UnstageSelectedAsync()
-    {
-        var changes = _selectedStagedChanges.ToArray();
-        await UnstageChangesAsync(changes, "Could not unstage selected files");
-    }
-
-    private async Task UnstageAllWorkingTreeAsync()
-    {
-        await MutateAsync(
-            () => _workingTreeService.UnstageAllAsync(Repository!),
-            "Could not unstage all files",
-            includeHistory: false);
-    }
-
-    private void ClearWorkingTreePresentationSelection()
-    {
-        _selectedUnstagedChanges.Clear();
-        _selectedStagedChanges.Clear();
-        Notify(nameof(SelectedUnstagedChanges));
-        Notify(nameof(SelectedStagedChanges));
-        SelectedChange = null;
-        SelectedWorkingTreeDiffKind = null;
-        SelectedWorkingTreeDiff = null;
-        RaiseCommands();
-    }
-
-    private void ClearCommittedWorkingTreePresentationSelection()
-    {
-        _selectedStagedChanges.Clear();
-        Notify(nameof(SelectedStagedChanges));
-
-        if (SelectedWorkingTreeDiffKind == WorkingTreeDiffKind.Staged)
-        {
-            SelectedChange = null;
-            SelectedWorkingTreeDiffKind = null;
-            SelectedWorkingTreeDiff = null;
-        }
-
-        RaiseCommands();
     }
 
     private async Task StageAllAndCommitAsync()
@@ -998,7 +820,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         {
             await _workingTreeService.StageAllAsync(Repository!);
             await _workingTreeService.CommitAsync(Repository!, message);
-        }, "Could not stage all files and commit", ClearWorkingTreePresentationSelection) && CommitMessage == message) CommitMessage = string.Empty;
+        }, "Could not stage all files and commit", WorkingTree.ClearPresentationSelection) && CommitMessage == message) CommitMessage = string.Empty;
     }
 
     private Task ConfirmEmptyCommitAsync()
@@ -1018,14 +840,15 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         var message = CommitMessage;
         if (await MutateAsync(
                 () => _workingTreeService.CommitAsync(Repository!, message, amend, empty),
-                afterSuccessfulMutation: ClearCommittedWorkingTreePresentationSelection) &&
+                afterSuccessfulMutation: WorkingTree.ClearCommittedPresentationSelection) &&
             CommitMessage == message)
             CommitMessage = string.Empty;
     }
 
     private void RaiseCommands()
     {
-        foreach (var command in new[] { RefreshAllCommand, StageCommand, UnstageCommand, StageSelectedCommand, StageAllCommand, UnstageSelectedCommand, UnstageAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, SwitchBranchCommand, DeleteBranchCommand, CheckoutRemoteCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, ApplyStashCommand, PopStashCommand, DropStashCommand, MergeCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
+        foreach (var command in new[] { RefreshAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, SwitchBranchCommand, DeleteBranchCommand, CheckoutRemoteCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, ApplyStashCommand, PopStashCommand, DropStashCommand, MergeCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
+        WorkingTree.RefreshAvailability();
     }
 
     private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values)

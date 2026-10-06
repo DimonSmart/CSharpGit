@@ -17,7 +17,7 @@ public sealed class WorkingTreeContextMenuUiContractTests
         Assert.Contains("selection.SelectSingle(node, roots)", selection, StringComparison.Ordinal);
         Assert.Contains("GetSelectedLeaves(roots)", selection, StringComparison.Ordinal);
         Assert.Contains(".ToArray()", selection, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.SetWorkingTreeSelection(kind, snapshot)", selection, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.WorkingTree.SetSelection(kind, snapshot)", selection, StringComparison.Ordinal);
         Assert.Contains("return snapshot", selection, StringComparison.Ordinal);
     }
 
@@ -52,8 +52,8 @@ public sealed class WorkingTreeContextMenuUiContractTests
             "private void AddWorkingTreeFolderContextMenuItems",
             "private IReadOnlyList<WorkingTreeChange> SelectWorkingTreeContextTarget");
 
-        Assert.Contains("_viewModel.CanStageChanges(changes)", folderMenu, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.CanUnstageChanges(changes)", folderMenu, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.WorkingTree.CanStageChanges(changes)", folderMenu, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.WorkingTree.CanUnstageChanges(changes)", folderMenu, StringComparison.Ordinal);
         Assert.DoesNotContain("Stash", folderMenu, StringComparison.Ordinal);
         Assert.DoesNotContain("Discard changes…", folderMenu, StringComparison.Ordinal);
     }
@@ -63,7 +63,7 @@ public sealed class WorkingTreeContextMenuUiContractTests
     {
         var root = FindRepositoryRoot();
         var contextMenu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
-        var viewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.Discard.cs");
+        var viewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs");
 
         Assert.Contains("if (count == 1)", contextMenu, StringComparison.Ordinal);
         Assert.Contains("ConfirmDiscardStagedFileAsync", contextMenu, StringComparison.Ordinal);

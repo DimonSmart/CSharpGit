@@ -79,7 +79,7 @@ public sealed class PresentationArchitectureGuardrailTests
 
         var subscriptions = new[]
         {
-            ("Changes", "RepositoryPresentationChanges_CollectionChanged"),
+            ("WorkingTree.Changes", "RepositoryPresentationChanges_CollectionChanged"),
             ("LocalBranches", "RepositoryPresentationLocalBranches_CollectionChanged"),
             ("RemoteBranches", "RepositoryPresentationRemoteBranches_CollectionChanged"),
             ("Remotes", "RepositoryPresentationRemotes_CollectionChanged"),
@@ -152,6 +152,32 @@ public sealed class PresentationArchitectureGuardrailTests
         Assert.Contains("IRepositorySnapshotService", repositoryFilesViewModel, StringComparison.Ordinal);
         Assert.Contains("CancellationTokenSource", repositoryFilesViewModel, StringComparison.Ordinal);
         Assert.Contains("CanPublishSnapshot", repositoryFilesViewModel, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MainPageDoesNotOwnWorkingTreeApplicationServices()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var mainPageSources = Directory
+            .GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+            .Select(File.ReadAllText)
+            .ToArray();
+        var combined = string.Join(Environment.NewLine, mainPageSources);
+        var workingTreeViewModel = File.ReadAllText(
+            Path.Combine(presentation, "ViewModels", "WorkingTreeViewModel.cs"));
+
+        Assert.DoesNotContain("IWorkingTreeService", combined, StringComparison.Ordinal);
+        Assert.DoesNotContain("_workingTreeService", combined, StringComparison.Ordinal);
+        Assert.DoesNotContain("IWorkingTreeDiffService", combined, StringComparison.Ordinal);
+        Assert.DoesNotContain("_workingTreeDiffService", combined, StringComparison.Ordinal);
+        Assert.Contains("public sealed class WorkingTreeViewModel", workingTreeViewModel, StringComparison.Ordinal);
+        Assert.Contains("IWorkingTreeService", workingTreeViewModel, StringComparison.Ordinal);
+        Assert.Contains("IWorkingTreeDiffService", workingTreeViewModel, StringComparison.Ordinal);
+        Assert.Contains("CancellationTokenSource", workingTreeViewModel, StringComparison.Ordinal);
+        Assert.Contains("CanPublishDiff", workingTreeViewModel, StringComparison.Ordinal);
+        Assert.False(File.Exists(
+            Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.Discard.cs")));
     }
 
     [Fact]
