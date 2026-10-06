@@ -58,7 +58,7 @@ public sealed partial class MainPage
         IRepositoryFileVersionService fileVersionService,
         IDesktopShellService desktopShellService,
         IRepositoryPathService repositoryPathService,
-        IGitToolsService gitToolsService,
+        IExternalGitToolService externalGitToolService,
         IRepositorySnapshotService repositorySnapshotService)
         : this(
             viewModel,
@@ -72,7 +72,7 @@ public sealed partial class MainPage
             fileVersionService,
             desktopShellService,
             repositoryPathService,
-            gitToolsService)
+            externalGitToolService)
     {
         _repositorySnapshotService = repositorySnapshotService ?? throw new ArgumentNullException(nameof(repositorySnapshotService));
         InitializeRepositoryFiles();
@@ -671,7 +671,7 @@ public sealed partial class MainPage
             }
 
             var materialized = await _fileVersionService.MaterializeAsync(repository, version, DiffFileSide.Changed);
-            await _gitToolsService.OpenEditorAsync(repository, materialized.Path);
+            await _externalGitToolService.OpenEditorAsync(repository, materialized.Path);
         }
         catch (OperationCanceledException)
         {

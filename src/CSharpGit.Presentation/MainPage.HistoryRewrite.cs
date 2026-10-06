@@ -26,7 +26,7 @@ public sealed partial class MainPage
         IRepositoryFileVersionService fileVersionService,
         IDesktopShellService desktopShellService,
         IRepositoryPathService repositoryPathService,
-        IGitToolsService gitToolsService,
+        IExternalGitToolService externalGitToolService,
         IRepositorySnapshotService repositorySnapshotService,
         IRepositoryHistoryRewriteService repositoryHistoryRewriteService)
         : this(
@@ -41,7 +41,7 @@ public sealed partial class MainPage
             fileVersionService,
             desktopShellService,
             repositoryPathService,
-            gitToolsService,
+            externalGitToolService,
             repositorySnapshotService)
     {
         _repositoryHistoryRewriteService = repositoryHistoryRewriteService
