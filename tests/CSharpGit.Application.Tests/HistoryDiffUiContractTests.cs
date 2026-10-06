@@ -133,7 +133,7 @@ public sealed class HistoryDiffUiContractTests
     public void GitHotPathUsesOneCombinedChangedFilesProcessAndNoHardCopySearch()
     {
         var root = FindRepositoryRoot();
-        var service = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitFileAwareHistoryService.cs"));
+        var service = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitHistoryService.cs"));
         var executor = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCommandExecutor.cs"));
 
         Assert.Contains("\"--raw\", \"--numstat\"", service);

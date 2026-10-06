@@ -20,7 +20,7 @@ public sealed class ReflogHistoryTests : IDisposable
         RunGit("reset", "--hard", "HEAD~1");
 
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
-        var service = GitTestServices.CreateReferenceHistoryService();
+        var service = GitTestServices.CreateHistoryService();
 
         var normal = await service.ReadHistoryAsync(
             repository,
@@ -76,7 +76,7 @@ public sealed class ReflogHistoryTests : IDisposable
         Assert.DoesNotContain(tagOnlyHash, reflogHashes);
 
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
-        var service = GitTestServices.CreateReferenceHistoryService();
+        var service = GitTestServices.CreateHistoryService();
 
         var normal = await service.ReadHistoryAsync(
             repository,
@@ -100,7 +100,7 @@ public sealed class ReflogHistoryTests : IDisposable
         RunGit("reset", "--hard", "HEAD~1");
 
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
-        var service = GitTestServices.CreateReferenceHistoryService();
+        var service = GitTestServices.CreateHistoryService();
 
         var filtered = await service.ReadHistoryAsync(
             repository,
@@ -127,7 +127,7 @@ public sealed class ReflogHistoryTests : IDisposable
 
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
         var state = await GitTestServices.CreateRepositoryStateService().ReadAsync(repository);
-        var service = GitTestServices.CreateReferenceHistoryService();
+        var service = GitTestServices.CreateHistoryService();
 
         var history = await service.ReadHistoryAsync(
             repository,
@@ -165,7 +165,7 @@ public sealed class ReflogHistoryTests : IDisposable
 
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
         var state = await GitTestServices.CreateRepositoryStateService().ReadAsync(repository);
-        var service = GitTestServices.CreateReferenceHistoryService();
+        var service = GitTestServices.CreateHistoryService();
 
         var history = await service.ReadHistoryAsync(
             repository,

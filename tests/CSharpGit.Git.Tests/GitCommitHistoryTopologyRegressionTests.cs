@@ -3,14 +3,14 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git.Tests;
 
-public sealed class GitReferenceHistoryTopologyRegressionTests : IDisposable
+public sealed class GitCommitHistoryTopologyRegressionTests : IDisposable
 {
     private readonly string _temporaryDirectory = Path.Combine(Path.GetTempPath(), $"csharpgit-topology-{Guid.NewGuid():N}");
 
     [Fact]
     public void ResolvesParentLaneAfterAllParentInsertions()
     {
-        var rows = GitReferenceHistoryService.BuildTopology(
+        var rows = GitCommitHistoryReader.BuildTopology(
         [
             Commit("M", "X", "L", "Q"),
             Commit("X", "Q", "N")
@@ -33,7 +33,7 @@ public sealed class GitReferenceHistoryTopologyRegressionTests : IDisposable
     [Fact]
     public void PreservesTrackIdentityAcrossThreeParallelLanes()
     {
-        var rows = GitReferenceHistoryService.BuildTopology(
+        var rows = GitCommitHistoryReader.BuildTopology(
         [
             Commit("M", "A", "B", "C"),
             Commit("A", "A1"),
@@ -55,7 +55,7 @@ public sealed class GitReferenceHistoryTopologyRegressionTests : IDisposable
     [Fact]
     public void BuildsAllEdgesForOctopusMerge()
     {
-        var row = Assert.Single(GitReferenceHistoryService.BuildTopology(
+        var row = Assert.Single(GitCommitHistoryReader.BuildTopology(
         [
             Commit("M", "A", "B", "C", "D")
         ]));
@@ -71,7 +71,7 @@ public sealed class GitReferenceHistoryTopologyRegressionTests : IDisposable
     {
         InitializeMergeRepository();
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
-        var service = GitTestServices.CreateReferenceHistoryService();
+        var service = GitTestServices.CreateCommitHistoryReader();
         var full = await service.ReadHistoryAsync(repository, "main", null, 0, 100);
         var filtered = await service.ReadHistoryAsync(repository, "main", "visible", 0, 100);
 
@@ -89,7 +89,7 @@ public sealed class GitReferenceHistoryTopologyRegressionTests : IDisposable
     {
         InitializeMergeRepository();
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
-        var service = GitTestServices.CreateReferenceHistoryService();
+        var service = GitTestServices.CreateCommitHistoryReader();
         var full = await service.ReadHistoryAsync(repository, "main", null, 0, 100);
         var page1 = await service.ReadHistoryAsync(repository, "main", null, 0, 2);
         var page2 = await service.ReadHistoryAsync(repository, "main", null, 2, 2);
@@ -105,7 +105,7 @@ public sealed class GitReferenceHistoryTopologyRegressionTests : IDisposable
     {
         InitializeMergeRepository();
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
-        var service = GitTestServices.CreateReferenceHistoryService();
+        var service = GitTestServices.CreateCommitHistoryReader();
         var full = await service.ReadHistoryAsync(repository, "main", null, 0, 100);
         var page1 = await service.ReadHistoryAsync(repository, "main", "visible", 0, 1);
         var page2 = await service.ReadHistoryAsync(repository, "main", "visible", 1, 1);
