@@ -26,9 +26,9 @@ public sealed class GitArchitectureGuardrailTests
             if (relative == "GitServiceCollectionExtensions.cs") continue;
 
             Assert.DoesNotContain("new GitCommandExecutor", source, StringComparison.Ordinal);
-            Assert.DoesNotContain("new GitReferenceHistoryService", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("new GitCommitHistoryReader", source, StringComparison.Ordinal);
             Assert.DoesNotContain("new GitCliRepositoryService", source, StringComparison.Ordinal);
-            Assert.DoesNotContain("new GitFileAwareHistoryService", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("new GitHistoryService", source, StringComparison.Ordinal);
             Assert.DoesNotContain("new GitRepositoryFileVersionService", source, StringComparison.Ordinal);
         }
     }
@@ -154,6 +154,19 @@ public sealed class GitArchitectureGuardrailTests
     }
 
     [Fact]
+    public void HistoryCapabilityHasSingleProductionImplementation()
+    {
+        Assert.True(typeof(IHistoryService).IsAssignableFrom(typeof(GitHistoryService)));
+        Assert.False(typeof(IHistoryService).IsAssignableFrom(typeof(GitCommitHistoryReader)));
+        Assert.Null(typeof(IHistoryService).Assembly.GetType(
+            "CSharpGit.Application.Abstractions.IReferenceHistoryService"));
+        Assert.Null(typeof(GitHistoryService).Assembly.GetType(
+            "CSharpGit.Git.GitReferenceHistoryService"));
+        Assert.Null(typeof(GitHistoryService).Assembly.GetType(
+            "CSharpGit.Git.GitFileAwareHistoryService"));
+    }
+
+    [Fact]
     public void GitServicesRequireExplicitExecutorConstruction()
     {
         var serviceTypes = new[]
@@ -172,8 +185,8 @@ public sealed class GitArchitectureGuardrailTests
             typeof(GitRepositoryOperationService),
             typeof(GitCommitAuthorDateReader),
             typeof(GitCommitActionService),
-            typeof(GitReferenceHistoryService),
-            typeof(GitFileAwareHistoryService),
+            typeof(GitCommitHistoryReader),
+            typeof(GitHistoryService),
             typeof(GitTagService),
             typeof(GitRepositoryFileVersionService),
             typeof(GitRepositorySnapshotService),

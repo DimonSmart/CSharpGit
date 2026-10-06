@@ -96,15 +96,16 @@ internal static class GitTestServices
     internal static GitCommitActionService CreateCommitActionService() =>
         new(CreateExecutor());
 
-    internal static GitReferenceHistoryService CreateReferenceHistoryService(
+    internal static GitCommitHistoryReader CreateCommitHistoryReader(
         Action<int>? processStarted = null) =>
         new(CreateExecutor(processStarted: processStarted));
 
-    internal static GitFileAwareHistoryService CreateFileAwareHistoryService()
+    internal static GitHistoryService CreateHistoryService(
+        Action<int>? processStarted = null)
     {
-        var executor = CreateExecutor();
-        return new GitFileAwareHistoryService(
-            new GitReferenceHistoryService(executor),
+        var executor = CreateExecutor(processStarted: processStarted);
+        return new GitHistoryService(
+            new GitCommitHistoryReader(executor),
             executor);
     }
 

@@ -26,6 +26,8 @@ public sealed class GitDependencyInjectionTests
             provider.GetRequiredService<IRepositoryStateService>());
         Assert.IsType<GitRepositorySyncService>(
             provider.GetRequiredService<IRepositorySyncService>());
+        Assert.IsType<GitHistoryService>(
+            provider.GetRequiredService<IHistoryService>());
 
         Assert.All(
             new object[]
@@ -54,8 +56,7 @@ public sealed class GitDependencyInjectionTests
                 provider.GetRequiredService<IRepositoryIdentityService>(),
                 provider.GetRequiredService<IInteractiveRebaseAuthorChangeService>(),
                 provider.GetRequiredService<IStashService>(),
-                provider.GetRequiredService<IHistoryService>(),
-                provider.GetRequiredService<IReferenceHistoryService>()
+                provider.GetRequiredService<IHistoryService>()
             },
             service => Assert.NotNull(service));
     }

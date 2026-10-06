@@ -10,7 +10,7 @@ public sealed class ReflogHistoryUiContractTests
         var presenter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferencesPresenter.cs"));
         var domain = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Domain", "History.cs"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
-        var git = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitReferenceHistoryService.cs"));
+        var git = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCommitHistoryReader.cs"));
 
         Assert.Contains("HistoryReferenceDecoration", domain);
         Assert.Contains("HistoryReferenceKind", domain);

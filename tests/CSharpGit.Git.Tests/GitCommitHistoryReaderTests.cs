@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace CSharpGit.Git.Tests;
 
-public sealed class GitReferenceHistoryServiceTests : IDisposable
+public sealed class GitCommitHistoryReaderTests : IDisposable
 {
     private readonly string _temporaryDirectory = Path.Combine(Path.GetTempPath(), $"csharpgit-ref-history-{Guid.NewGuid():N}");
 
@@ -17,7 +17,7 @@ public sealed class GitReferenceHistoryServiceTests : IDisposable
 
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
         var processCount = 0;
-        var service = GitTestServices.CreateReferenceHistoryService(_ => Interlocked.Increment(ref processCount));
+        var service = GitTestServices.CreateCommitHistoryReader(_ => Interlocked.Increment(ref processCount));
 
         await service.ReadHistoryAsync(repository, "main", null, 0, 20);
         Assert.Equal(1, processCount);
@@ -42,7 +42,7 @@ public sealed class GitReferenceHistoryServiceTests : IDisposable
         var hash = RunGit("rev-parse", "HEAD");
 
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
-        var service = GitTestServices.CreateReferenceHistoryService();
+        var service = GitTestServices.CreateCommitHistoryReader();
 
         var page = await service.ReadHistoryAsync(repository, "main", null, 0, 20);
         var details = await service.ReadCommitAsync(repository, hash);
@@ -69,7 +69,7 @@ public sealed class GitReferenceHistoryServiceTests : IDisposable
         RunGit("commit", "-am", "main commit");
 
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
-        var page = await GitTestServices.CreateReferenceHistoryService().ReadHistoryAsync(repository, "feature/demo", null, 0, 20);
+        var page = await GitTestServices.CreateCommitHistoryReader().ReadHistoryAsync(repository, "feature/demo", null, 0, 20);
 
         Assert.Equal("feature commit", page.Rows[0].Commit.Subject);
         Assert.Contains(page.Rows, row => row.Commit.Subject == "initial");
@@ -88,7 +88,7 @@ public sealed class GitReferenceHistoryServiceTests : IDisposable
         RunGit("commit", "-am", "latest");
 
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
-        var page = await GitTestServices.CreateReferenceHistoryService().ReadHistoryAsync(repository, "main", null, 0, 20);
+        var page = await GitTestServices.CreateCommitHistoryReader().ReadHistoryAsync(repository, "main", null, 0, 20);
 
         var tip = page.Rows[0];
         Assert.Equal("latest", tip.Commit.Subject);
@@ -119,7 +119,7 @@ public sealed class GitReferenceHistoryServiceTests : IDisposable
         RunGit("merge", "--no-ff", "feature/demo", "-m", "merge feature");
 
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
-        var page = await GitTestServices.CreateReferenceHistoryService().ReadHistoryAsync(repository, "main", null, 0, 20);
+        var page = await GitTestServices.CreateCommitHistoryReader().ReadHistoryAsync(repository, "main", null, 0, 20);
 
         var merge = Assert.Single(page.Rows, row => row.Commit.Subject == "merge feature");
         var parentEdges = merge.Topology.Edges.Where(edge => edge.FromLane == merge.Topology.Lane).ToList();
@@ -145,7 +145,7 @@ public sealed class GitReferenceHistoryServiceTests : IDisposable
         var hash = RunGit("rev-parse", "HEAD");
 
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
-        var statuses = await GitTestServices.CreateReferenceHistoryService().ReadFileStatusesAsync(repository, hash);
+        var statuses = await GitTestServices.CreateCommitHistoryReader().ReadFileStatusesAsync(repository, hash);
 
         Assert.Equal("M", statuses["file.txt"]);
     }

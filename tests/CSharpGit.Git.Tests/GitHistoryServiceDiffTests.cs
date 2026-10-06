@@ -5,7 +5,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Git.Tests;
 
-public sealed class GitFileAwareHistoryServiceDiffTests
+public sealed class GitHistoryServiceDiffTests
 {
     [Fact]
     public async Task ModifiedFileDiffDoesNotRepeatRenameOrCopyDetection()
@@ -122,11 +122,11 @@ public sealed class GitFileAwareHistoryServiceDiffTests
         }
     }
 
-    private static GitFileAwareHistoryService CreateService(GitCommandActivityHistory activity)
+    private static GitHistoryService CreateService(GitCommandActivityHistory activity)
     {
         var executor = new GitCommandExecutor(new GitCliOptions(), activity);
-        return new GitFileAwareHistoryService(
-            new GitReferenceHistoryService(executor),
+        return new GitHistoryService(
+            new GitCommitHistoryReader(executor),
             executor);
     }
 
