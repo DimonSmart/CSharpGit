@@ -38,12 +38,12 @@ public sealed class TagUiContractTests
         Assert.Contains("if (remote is null)", combined, StringComparison.Ordinal);
 
         Assert.Contains("\"Delete from remote…\"", tags, StringComparison.Ordinal);
-        Assert.Contains("var lookup = await _tagsViewModel.ReadRemoteTagAsync(remote, tag.Name)", tags, StringComparison.Ordinal);
-        Assert.Contains("_tagsViewModel.DeleteRemoteTagAsync(remoteTag)", tags, StringComparison.Ordinal);
+        Assert.Contains("var lookup = await _tagsViewModel.ReadRemoteTagAsync(repository, remote, tag.Name)", tags, StringComparison.Ordinal);
+        Assert.Contains("_tagsViewModel.DeleteRemoteTagAsync(repository, remoteTag)", tags, StringComparison.Ordinal);
 
         Assert.Contains("\"Remote tags…\"", tags, StringComparison.Ordinal);
-        Assert.Contains("_tagsViewModel.ReadRemoteTagsAsync(remote)", tags, StringComparison.Ordinal);
-        Assert.Contains("_tagsViewModel.DeleteRemoteTagAsync(selectedTag)", tags, StringComparison.Ordinal);
+        Assert.Contains("_tagsViewModel.ReadRemoteTagsAsync(repository, remote)", tags, StringComparison.Ordinal);
+        Assert.Contains("_tagsViewModel.DeleteRemoteTagAsync(repository, selectedTag)", tags, StringComparison.Ordinal);
         Assert.DoesNotContain("_tagService", tags, StringComparison.Ordinal);
 
         Assert.Contains("Task DeleteRemoteTagAsync(", contract, StringComparison.Ordinal);
