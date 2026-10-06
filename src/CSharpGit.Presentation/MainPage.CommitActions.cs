@@ -84,7 +84,7 @@ public sealed partial class MainPage
         if (current is ListViewItem { Content: HistoryRow row })
         {
             HistoryList.SelectedItem = row;
-            _viewModel.SelectedHistoryRow = row;
+            _viewModel.History.SelectedRow = row;
         }
 
         UpdateCommitActionAvailability();
@@ -92,7 +92,7 @@ public sealed partial class MainPage
 
     private void UpdateCommitActionAvailability()
     {
-        var hasCommit = _viewModel.SelectedHistoryRow is not null;
+        var hasCommit = _viewModel.History.SelectedRow is not null;
         var canMutate = hasCommit &&
                         _viewModel.Repository is not null &&
                         !_viewModel.IsBusy &&
@@ -109,14 +109,14 @@ public sealed partial class MainPage
             _fixupIntoPreviousCommitItem.IsEnabled =
                 canMutate &&
                 hasLocalBranch &&
-                _viewModel.SelectedHistoryRow?.Commit.Parents.Count == 1;
+                _viewModel.History.SelectedRow?.Commit.Parents.Count == 1;
         if (_interactiveRebaseFromHereItem is not null) _interactiveRebaseFromHereItem.IsEnabled = canMutate && hasLocalBranch;
         if (_resetItem is not null) _resetItem.IsEnabled = canMutate && hasLocalBranch;
     }
 
     private void CopyCommitHash_Click(object sender, RoutedEventArgs e)
     {
-        if (_viewModel.SelectedHistoryRow?.Commit.Hash is not { } hash) return;
+        if (_viewModel.History.SelectedRow?.Commit.Hash is not { } hash) return;
         var package = new DataPackage();
         package.SetText(hash);
         Clipboard.SetContent(package);
@@ -300,7 +300,7 @@ public sealed partial class MainPage
     private bool TryGetCommitActionContext(out Repository repository, out CommitHistoryItem commit)
     {
         repository = _viewModel.Repository!;
-        commit = _viewModel.SelectedHistoryRow?.Commit!;
+        commit = _viewModel.History.SelectedRow?.Commit!;
         return repository is not null &&
                commit is not null &&
                !_viewModel.IsBusy &&
@@ -340,14 +340,11 @@ public sealed partial class MainPage
     {
         if (string.IsNullOrWhiteSpace(hash)) return false;
 
-        if (_activeReference is not null)
-            await LoadScopedHistoryAsync(true);
-
-        var rows = _activeReference is null ? _viewModel.History : _scopedHistory;
+        var rows = _viewModel.History.Rows;
         var row = rows.FirstOrDefault(candidate => string.Equals(candidate.Commit.Hash, hash, StringComparison.Ordinal));
         if (row is null) return false;
 
-        _viewModel.SelectedHistoryRow = row;
+        _viewModel.History.SelectedRow = row;
         HistoryList.SelectedItem = row;
         HistoryList.ScrollIntoView(row);
         return true;

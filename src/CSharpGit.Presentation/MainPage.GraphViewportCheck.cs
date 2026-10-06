@@ -12,7 +12,7 @@ public sealed partial class MainPage
 {
     private async Task RunCommitGraphViewportLifecycleCheckAsync(List<string> failures)
     {
-        ShowAllHistory();
+        await ShowAllHistoryAsync();
         await WaitUntilAsync(
             () => HistoryList.ActualHeight > 0 && HistoryList.ActualWidth > 0,
             TimeSpan.FromSeconds(10));
@@ -22,15 +22,15 @@ public sealed partial class MainPage
         try
         {
             HistoryList.ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["HistoryTextGraphItemTemplate"];
-            while (_viewModel.History.Count < 300 && _viewModel.HasMore)
+            while (_viewModel.History.Rows.Count < 300 && _viewModel.History.HasMore)
             {
-                if (_viewModel.LoadMoreCommand is not AsyncCommand preload)
+                if (_viewModel.History.LoadMoreCommand is not AsyncCommand preload)
                     break;
                 await preload.ExecuteAsync();
             }
 
-            Check(_viewModel.History.Count >= 300,
-                $"graph viewport fixture loaded only {_viewModel.History.Count} rows; expected at least 300",
+            Check(_viewModel.History.Rows.Count >= 300,
+                $"graph viewport fixture loaded only {_viewModel.History.Rows.Count} rows; expected at least 300",
                 failures);
             await RunHistoryPerformanceCaptureCheckAsync(failures);
             HistoryRenderDiagnostics.EnableForCheck();
@@ -47,16 +47,16 @@ public sealed partial class MainPage
                 var indexes = new[]
                 {
                     0,
-                    Math.Min(_viewModel.History.Count - 1, 75),
-                    Math.Min(_viewModel.History.Count - 1, 160),
-                    Math.Min(_viewModel.History.Count - 1, 260),
-                    Math.Min(_viewModel.History.Count - 1, 20),
+                    Math.Min(_viewModel.History.Rows.Count - 1, 75),
+                    Math.Min(_viewModel.History.Rows.Count - 1, 160),
+                    Math.Min(_viewModel.History.Rows.Count - 1, 260),
+                    Math.Min(_viewModel.History.Rows.Count - 1, 20),
                 };
 
                 foreach (var index in indexes)
                 {
-                    if (index < 0 || index >= _viewModel.History.Count) continue;
-                    var row = _viewModel.History[index];
+                    if (index < 0 || index >= _viewModel.History.Rows.Count) continue;
+                    var row = _viewModel.History.Rows[index];
                     HistoryList.ScrollIntoView(row);
                     await Task.Delay(80);
 
@@ -86,21 +86,21 @@ public sealed partial class MainPage
                 }
             }
 
-            if (_viewModel.HasMore)
+            if (_viewModel.History.HasMore)
             {
-                var beforeLoadMore = _viewModel.History.Count;
+                var beforeLoadMore = _viewModel.History.Rows.Count;
                 var beforeGraphWidth = _historyGraphLayout.GraphWidth;
                 var beforeLaneWidth = _historyGraphLayout.LaneWidth;
-                if (_viewModel.LoadMoreCommand is AsyncCommand loadMore)
+                if (_viewModel.History.LoadMoreCommand is AsyncCommand loadMore)
                     await loadMore.ExecuteAsync();
-                Check(_viewModel.History.Count > beforeLoadMore, "Load more did not append history during graph viewport check", failures);
+                Check(_viewModel.History.Rows.Count > beforeLoadMore, "Load more did not append history during graph viewport check", failures);
                 Check(_historyGraphLayout.GraphWidth + 0.001 >= beforeGraphWidth,
                     "Load more decreased the session graph width", failures);
                 Check(_historyGraphLayout.LaneWidth <= beforeLaneWidth + 0.001,
                     "Load more increased the session lane width", failures);
             }
 
-            if (_viewModel.History.FirstOrDefault() is { } first)
+            if (_viewModel.History.Rows.FirstOrDefault() is { } first)
             {
                 HistoryList.ScrollIntoView(first);
                 await Task.Delay(80);
@@ -147,13 +147,13 @@ public sealed partial class MainPage
         var layout = ActiveCommitGraphLayout;
         var context = new HistoryPerformanceStartContext(
             "main",
-            _viewModel.History.Count,
-            _viewModel.History.Count,
+            _viewModel.History.Rows.Count,
+            _viewModel.History.Rows.Count,
             100,
             "topo-order",
-            _viewModel.HasMore,
-            _recentRepositorySettings.ShowReflog,
-            !string.IsNullOrWhiteSpace(_viewModel.FilterText),
+            _viewModel.History.HasMore,
+            _viewModel.History.ShowReflog,
+            !string.IsNullOrWhiteSpace(_viewModel.History.FilterText),
             _viewModel.Branches.LocalBranches.Count,
             _viewModel.Branches.RemoteBranches.Count,
             _viewModel.Tags.Count,
@@ -178,14 +178,14 @@ public sealed partial class MainPage
             var indexes = new[]
             {
                 0,
-                Math.Min(_viewModel.History.Count - 1, 90),
-                Math.Min(_viewModel.History.Count - 1, 180),
-                Math.Min(_viewModel.History.Count - 1, 30)
+                Math.Min(_viewModel.History.Rows.Count - 1, 90),
+                Math.Min(_viewModel.History.Rows.Count - 1, 180),
+                Math.Min(_viewModel.History.Rows.Count - 1, 30)
             };
             foreach (var index in indexes)
             {
                 if (index < 0) continue;
-                HistoryList.ScrollIntoView(_viewModel.History[index]);
+                HistoryList.ScrollIntoView(_viewModel.History.Rows[index]);
                 await Task.Delay(90);
             }
         }
@@ -258,12 +258,12 @@ public sealed partial class MainPage
         const double tolerance = 0.25;
         var checkedPair = false;
         var firstIndex = Math.Max(0, anchorIndex - 2);
-        var lastIndex = Math.Min(_viewModel.History.Count - 2, anchorIndex + 2);
+        var lastIndex = Math.Min(_viewModel.History.Rows.Count - 2, anchorIndex + 2);
 
         for (var index = firstIndex; index <= lastIndex; index++)
         {
-            var firstRow = _viewModel.History[index];
-            var secondRow = _viewModel.History[index + 1];
+            var firstRow = _viewModel.History.Rows[index];
+            var secondRow = _viewModel.History.Rows[index + 1];
             if (HistoryList.ContainerFromItem(firstRow) is not ListViewItem firstContainer
                 || HistoryList.ContainerFromItem(secondRow) is not ListViewItem secondContainer)
             {
@@ -320,8 +320,8 @@ public sealed partial class MainPage
 
     private async Task RunDesktopDensityCheckAsync(List<string> failures)
     {
-        ShowAllHistory();
-        if (_viewModel.History.FirstOrDefault() is { } firstHistory)
+        await ShowAllHistoryAsync();
+        if (_viewModel.History.Rows.FirstOrDefault() is { } firstHistory)
         {
             HistoryList.ScrollIntoView(firstHistory);
             await WaitUntilAsync(
@@ -438,7 +438,7 @@ public sealed partial class MainPage
             if (WorkingTreeTreeSelection.GetLeaves(_unstagedTreeRoots).FirstOrDefault() is { } restoredUnstaged)
                 WorkingTreeNodeInvoked(restoredUnstaged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Unstaged);
 
-            ShowAllHistory();
+            await ShowAllHistoryAsync();
         }
     }
 

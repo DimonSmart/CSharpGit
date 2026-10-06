@@ -216,14 +216,7 @@ public sealed partial class MainPage
         ClearRepositoryFileSelection();
         UpdateRepositoryFilesModeSurface();
 
-        _referenceHistoryCts?.Cancel();
-        _activeReference = null;
-        _scopedHistory.Clear();
-        _scopedHasMore = false;
-        HistoryList.ItemsSource = _viewModel.History;
-        ShowReflogToggle.IsEnabled = true;
-        ScopeCombo.Visibility = Visibility.Visible;
-        ReferenceScopePanel.Visibility = Visibility.Collapsed;
+        UpdateHistoryScopePresentation();
     }
 
     private async Task<bool> ConfirmPathHistoryRemovalAsync(PathRemovalAnalysis analysis)
