@@ -243,8 +243,8 @@ public sealed class RepositoryFilesViewModel : INotifyPropertyChanged, IDisposab
         if (string.Equals(mode, NameSearchMode, StringComparison.Ordinal))
         {
             _nameQuery = currentSearchText;
-            if (CurrentState(create: true) is { } state)
-                state.NameQuery = currentSearchText;
+            if (CurrentState(create: true) is { } nameState)
+                nameState.NameQuery = currentSearchText;
             Notify(nameof(NameQuery));
             CancelContentSearch();
             RebuildTree();
