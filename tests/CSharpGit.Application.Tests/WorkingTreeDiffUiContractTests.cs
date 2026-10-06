@@ -154,7 +154,7 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("DiffPresentationState.NoTextualPatch", workingTree);
         Assert.Contains("DiffPresentationState.DeltaMissing", workingTree);
         Assert.Contains("HasCurrentDelta", workingTreeViewModel);
-        Assert.Contains("_viewModel.WorkingTree.HasCurrentDelta", workingTree);
+        Assert.Contains("workingTree.HasCurrentDelta", workingTree);
         Assert.Contains("WorkingTreeDiffViewer.SetLines(compactLines, diff.Diagnostics)", workingTree);
         Assert.DoesNotContain("foreach (var change in _viewModel.WorkingTree.Changes)", workingTree);
 
