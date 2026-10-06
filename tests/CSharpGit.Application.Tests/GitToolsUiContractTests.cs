@@ -11,7 +11,8 @@ public sealed class GitToolsUiContractTests
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml.cs"));
         var controller = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsWindowController.cs"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "GitToolsSettingsViewModel.cs"));
-        var contract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IGitToolsService.cs"));
+        var configurationContract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IGitToolConfigurationService.cs"));
+        var executionContract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IExternalGitToolService.cs"));
         var appSettings = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IAppSettingsService.cs"));
 
         Assert.Contains("Git Tools", xaml);
@@ -35,14 +36,15 @@ public sealed class GitToolsUiContractTests
         Assert.DoesNotContain("Merge tool settings", mainXaml, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("ConfigureMergeToolCommand", mainXaml);
         Assert.Contains("GitToolsSettingsViewModel gitToolsViewModel", page);
-        Assert.Contains("IGitToolsService _gitToolsService", controller);
-        Assert.Contains("ReadAsync", contract);
-        Assert.Contains("RemoveOverrideAsync", contract);
-        Assert.Contains("RunExternalDiffAsync", contract);
-        Assert.Contains("RunMergeToolForFileAsync", contract);
-        Assert.Contains("RunMergeToolWorkflowAsync", contract);
-        Assert.Contains("OpenConflictInEditorAsync", contract);
-        Assert.Contains("TestAsync", contract);
+        Assert.Contains("IGitToolConfigurationService _gitToolConfigurationService", controller);
+        Assert.Contains("IExternalGitToolService _externalGitToolService", controller);
+        Assert.Contains("ReadAsync", configurationContract);
+        Assert.Contains("RemoveOverrideAsync", configurationContract);
+        Assert.Contains("RunExternalDiffAsync", executionContract);
+        Assert.Contains("RunMergeToolForFileAsync", executionContract);
+        Assert.Contains("RunMergeToolWorkflowAsync", executionContract);
+        Assert.Contains("OpenConflictInEditorAsync", executionContract);
+        Assert.Contains("TestAsync", executionContract);
         Assert.Contains("GitToolWriteScope.Global", viewModel);
         Assert.Contains("GitToolWriteScope.Repository", viewModel);
         Assert.Contains("SystemDisplay", viewModel);
@@ -59,14 +61,14 @@ public sealed class GitToolsUiContractTests
         var root = FindRepositoryRoot();
         var fileOpening = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
-        var gitTools = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitToolsService.cs"));
+        var gitTools = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "ExternalGitToolService.cs"));
 
         Assert.Contains("Open in Diff Tool", fileOpening);
         Assert.Contains("RunExternalDiffAsync(repository, pair)", fileOpening);
         Assert.Contains("SettingsSection.GitTools", fileOpening);
-        Assert.Contains("_gitToolsService.RunMergeToolForFileAsync", viewModel);
-        Assert.Contains("_gitToolsService.RunMergeToolWorkflowAsync", viewModel);
-        Assert.Contains("_gitToolsService.OpenConflictInEditorAsync", viewModel);
+        Assert.Contains("_externalGitToolService.RunMergeToolForFileAsync", viewModel);
+        Assert.Contains("_externalGitToolService.RunMergeToolWorkflowAsync", viewModel);
+        Assert.Contains("_externalGitToolService.OpenConflictInEditorAsync", viewModel);
         Assert.Contains("\"difftool\", \"--gui\", \"--no-prompt\", \"--no-index\"", gitTools);
         Assert.Contains("\"mergetool\", \"--gui\", \"--no-prompt\"", gitTools);
         Assert.DoesNotContain("difftool.prompt", gitTools);

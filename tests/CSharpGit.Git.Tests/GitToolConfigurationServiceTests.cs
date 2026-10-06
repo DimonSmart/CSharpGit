@@ -12,16 +12,16 @@ public sealed class GitToolsEnvironmentCollection
 }
 
 [Collection(GitToolsEnvironmentCollection.CollectionName)]
-public sealed class GitToolsServiceTests : IDisposable
+public sealed class GitToolConfigurationServiceTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"csharpgit-git-tools-{Guid.NewGuid():N}");
     private readonly string _home;
     private readonly string _repositoryPath;
     private readonly Dictionary<string, string?> _originalEnvironment = new(StringComparer.Ordinal);
-    private readonly GitToolsService _service;
+    private readonly GitToolConfigurationService _service;
     private readonly Repository _repository;
 
-    public GitToolsServiceTests()
+    public GitToolConfigurationServiceTests()
     {
         _home = Path.Combine(_root, "home");
         _repositoryPath = Path.Combine(_root, "repo");
@@ -46,11 +46,9 @@ public sealed class GitToolsServiceTests : IDisposable
             false);
 
         var executor = GitTestServices.CreateExecutor();
-        _service = new GitToolsService(
+        _service = new GitToolConfigurationService(
             executor,
             new GitConfigService(executor),
-            new ThrowingFileVersionService(),
-            new TestRepositoryPathService(),
             new TestExternalProcessService());
     }
 
@@ -275,14 +273,15 @@ public sealed class GitToolsServiceTests : IDisposable
     public void SourceParserContainsSystemScopeAndGuiLaunchesNeverPersistPromptKeys()
     {
         var root = FindRepositoryRoot();
-        var source = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitToolsService.cs"));
+        var toolConfiguration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitToolConfigurationService.cs"));
+        var execution = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "ExternalGitToolService.cs"));
         var configSource = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitConfigService.cs"));
 
         Assert.Contains("\"system\" => GitConfigSource.System", configSource);
-        Assert.Contains("\"difftool.trustExitCode\"", source);
-        Assert.Contains("\"--gui\", \"--no-prompt\"", source);
-        Assert.DoesNotContain("difftool.prompt", source);
-        Assert.DoesNotContain("mergetool.prompt", source);
+        Assert.Contains("\"difftool.trustExitCode\"", toolConfiguration);
+        Assert.Contains("\"--gui\", \"--no-prompt\"", execution);
+        Assert.DoesNotContain("difftool.prompt", execution);
+        Assert.DoesNotContain("mergetool.prompt", execution);
     }
 
     public void Dispose()

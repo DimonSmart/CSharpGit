@@ -11,7 +11,7 @@ public sealed class GitEditorValidationTests : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"csharpgit-editor-validation-{Guid.NewGuid():N}");
     private readonly string _home;
     private readonly Dictionary<string, string?> _originalEnvironment = new(StringComparer.Ordinal);
-    private readonly GitToolsService _service;
+    private readonly GitToolConfigurationService _service;
 
     public GitEditorValidationTests()
     {
@@ -28,11 +28,9 @@ public sealed class GitEditorValidationTests : IDisposable
         File.WriteAllText(Path.Combine(_home, ".gitconfig"), string.Empty);
 
         var executor = GitTestServices.CreateExecutor();
-        _service = new GitToolsService(
+        _service = new GitToolConfigurationService(
             executor,
             new GitConfigService(executor),
-            new ThrowingFileVersionService(),
-            new ThrowingRepositoryPathService(),
             new UnresolvedExternalProcessService());
     }
 

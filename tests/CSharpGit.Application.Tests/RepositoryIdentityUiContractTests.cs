@@ -92,7 +92,7 @@ public sealed class RepositoryIdentityUiContractTests
     public void GitToolsAndIdentityShareGenericGitConfigLayer()
     {
         var root = FindRepositoryRoot();
-        var gitTools = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitToolsService.cs"));
+        var gitTools = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitToolConfigurationService.cs"));
         var identity = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "RepositoryIdentityService.cs"));
         var config = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitConfigService.cs"));
 

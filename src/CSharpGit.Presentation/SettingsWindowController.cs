@@ -11,7 +11,8 @@ public sealed class SettingsWindowController : IDisposable
 {
     private readonly ApplicationThemeManager _themeManager;
     private readonly IAppSettingsService _settings;
-    private readonly IGitToolsService _gitToolsService;
+    private readonly IGitToolConfigurationService _gitToolConfigurationService;
+    private readonly IExternalGitToolService _externalGitToolService;
     private readonly IRepositoryIdentityService _repositoryIdentityService;
     private readonly IDesktopShellService _desktopShellService;
     private readonly IFolderPicker _folderPicker;
@@ -24,7 +25,8 @@ public sealed class SettingsWindowController : IDisposable
     public SettingsWindowController(
         ApplicationThemeManager themeManager,
         IAppSettingsService settings,
-        IGitToolsService gitToolsService,
+        IGitToolConfigurationService gitToolConfigurationService,
+        IExternalGitToolService externalGitToolService,
         IRepositoryIdentityService repositoryIdentityService,
         IDesktopShellService desktopShellService,
         IFolderPicker folderPicker,
@@ -32,7 +34,8 @@ public sealed class SettingsWindowController : IDisposable
     {
         _themeManager = themeManager ?? throw new ArgumentNullException(nameof(themeManager));
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-        _gitToolsService = gitToolsService ?? throw new ArgumentNullException(nameof(gitToolsService));
+        _gitToolConfigurationService = gitToolConfigurationService ?? throw new ArgumentNullException(nameof(gitToolConfigurationService));
+        _externalGitToolService = externalGitToolService ?? throw new ArgumentNullException(nameof(externalGitToolService));
         _repositoryIdentityService = repositoryIdentityService ?? throw new ArgumentNullException(nameof(repositoryIdentityService));
         _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
         _folderPicker = folderPicker ?? throw new ArgumentNullException(nameof(folderPicker));
@@ -57,7 +60,7 @@ public sealed class SettingsWindowController : IDisposable
         var page = new SettingsPage(
             new SettingsViewModel(_settings, _uiDispatcher),
             new RepositoryIdentitySettingsViewModel(_repositoryIdentityService, repositoryAccessor),
-            new GitToolsSettingsViewModel(_gitToolsService),
+            new GitToolsSettingsViewModel(_gitToolConfigurationService, _externalGitToolService),
             _desktopShellService,
             _folderPicker,
             SessionFileLoggerProvider.CurrentLogPath,

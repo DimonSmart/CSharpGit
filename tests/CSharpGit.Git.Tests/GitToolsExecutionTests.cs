@@ -14,7 +14,7 @@ public sealed class GitToolsExecutionTests : IDisposable
     private readonly Dictionary<string, string?> _originalEnvironment = new(StringComparer.Ordinal);
     private readonly RecordingExternalProcessService _externalProcess = new();
     private readonly GitCommandExecutor _executor;
-    private readonly GitToolsService _service;
+    private readonly ExternalGitToolService _service;
     private readonly Repository _repository;
 
     public GitToolsExecutionTests()
@@ -43,9 +43,13 @@ public sealed class GitToolsExecutionTests : IDisposable
             Path.GetFullPath(Path.Combine(_repositoryPath, ".git")),
             false);
         _executor = GitTestServices.CreateExecutor();
-        _service = new GitToolsService(
+        var configurationService = new GitToolConfigurationService(
             _executor,
             new GitConfigService(_executor),
+            _externalProcess);
+        _service = new ExternalGitToolService(
+            _executor,
+            configurationService,
             new GitRepositoryFileVersionService(_executor),
             new TestRepositoryPathService(),
             _externalProcess);

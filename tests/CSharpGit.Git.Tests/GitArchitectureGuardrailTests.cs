@@ -178,7 +178,9 @@ public sealed class GitArchitectureGuardrailTests
             typeof(GitRepositoryFileVersionService),
             typeof(GitRepositorySnapshotService),
             typeof(GitRepositoryHistoryRewriteService),
-            typeof(GitRepositoryMaintenanceService)
+            typeof(GitRepositoryMaintenanceService),
+            typeof(GitToolConfigurationService),
+            typeof(ExternalGitToolService)
         };
 
         foreach (var serviceType in serviceTypes)
@@ -199,6 +201,28 @@ public sealed class GitArchitectureGuardrailTests
 
         Assert.DoesNotContain("static GitCommandExecutor Default", executor, StringComparison.Ordinal);
         Assert.DoesNotContain("GitCommandActivitySession", activity, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GitToolsConfigurationAndExecutionCapabilitiesRemainSeparated()
+    {
+        Assert.Null(typeof(IGitToolConfigurationService).Assembly.GetType(
+            "CSharpGit.Application.Abstractions.IGitToolsService"));
+        Assert.Null(typeof(GitToolConfigurationService).Assembly.GetType(
+            "CSharpGit.Git.GitToolsService"));
+
+        var root = FindRepositoryRoot();
+        var gitProject = Path.Combine(root, "src", "CSharpGit.Git");
+        Assert.False(File.Exists(Path.Combine(gitProject, "GitToolsService.cs")));
+
+        var configuration = File.ReadAllText(Path.Combine(gitProject, "GitToolConfigurationService.cs"));
+        Assert.DoesNotContain("RunShellCommandAsync", configuration, StringComparison.Ordinal);
+        Assert.DoesNotContain("IRepositoryFileVersionService", configuration, StringComparison.Ordinal);
+        Assert.DoesNotContain("IRepositoryPathService", configuration, StringComparison.Ordinal);
+
+        var execution = File.ReadAllText(Path.Combine(gitProject, "ExternalGitToolService.cs"));
+        Assert.Contains("IGitToolConfigurationService _configurationService", execution, StringComparison.Ordinal);
+        Assert.DoesNotContain("GitConfigService", execution, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()

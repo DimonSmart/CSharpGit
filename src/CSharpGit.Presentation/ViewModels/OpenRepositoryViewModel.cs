@@ -27,7 +27,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private readonly IInteractiveRebaseService _interactiveRebaseService;
     private readonly IConflictResolutionService _conflictResolutionService;
     private readonly IRepositoryOperationService _repositoryOperationService;
-    private readonly IGitToolsService _gitToolsService;
+    private readonly IExternalGitToolService _externalGitToolService;
     private readonly IRepositoryIdentityService? _repositoryIdentityService;
     private readonly IInteractiveRebaseAuthorChangeService? _interactiveRebaseAuthorChangeService;
     private readonly ICommitAuthorDateReader? _commitAuthorDateReader;
@@ -96,7 +96,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         IInteractiveRebaseService interactiveRebaseService,
         IConflictResolutionService conflictResolutionService,
         IRepositoryOperationService repositoryOperationService,
-        IGitToolsService gitToolsService,
+        IExternalGitToolService externalGitToolService,
         IAppSettingsService settings,
         IUiDispatcher uiDispatcher,
         ILogger<OpenRepositoryViewModel> logger,
@@ -119,7 +119,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         _conflictResolutionService = conflictResolutionService;
         _repositoryOperationService = repositoryOperationService;
         _stashService = stashService;
-        _gitToolsService = gitToolsService;
+        _externalGitToolService = externalGitToolService;
         _repositoryIdentityService = repositoryIdentityService;
         _interactiveRebaseAuthorChangeService = interactiveRebaseAuthorChangeService;
         _commitAuthorDateReader = commitAuthorDateReader;
@@ -163,13 +163,13 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         MergeCommand = new AsyncCommand(MergeAsync, () => CanMutate() && SelectedMergeBranch is { IsCurrent: false });
         ContinueRebaseCommand = new AsyncCommand(ContinueRebaseAsync, () => CanMutate() && CurrentOperation == RepositoryOperation.Rebase);
         AbortRebaseCommand = new AsyncCommand(() => MutateAsync(() => _interactiveRebaseService.AbortRebaseAsync(Repository!)), () => CanMutate() && CurrentOperation == RepositoryOperation.Rebase);
-        OpenConflictCommand = new AsyncCommand(() => RunConflictActionAsync(() => _gitToolsService.OpenConflictInEditorAsync(Repository!, SelectedConflict!)), () => CanMutate() && SelectedConflict?.CanOpenManually == true);
+        OpenConflictCommand = new AsyncCommand(() => RunConflictActionAsync(() => _externalGitToolService.OpenConflictInEditorAsync(Repository!, SelectedConflict!)), () => CanMutate() && SelectedConflict?.CanOpenManually == true);
         ChooseCurrentCommand = new AsyncCommand(() => MutateAsync(() => _conflictResolutionService.ChooseConflictSideAsync(Repository!, SelectedConflict!, ConflictResolutionSide.CurrentLocal)), () => CanMutate() && SelectedConflict?.CanChooseCurrentLocal == true);
         ChooseIncomingCommand = new AsyncCommand(() => MutateAsync(() => _conflictResolutionService.ChooseConflictSideAsync(Repository!, SelectedConflict!, ConflictResolutionSide.IncomingRemote)), () => CanMutate() && SelectedConflict?.CanChooseIncomingRemote == true);
         KeepDeletionCommand = new AsyncCommand(() => MutateAsync(() => _conflictResolutionService.KeepConflictDeletionAsync(Repository!, SelectedConflict!)), () => CanMutate() && SelectedConflict?.CanKeepDeletion == true);
         StageConflictCommand = new AsyncCommand(() => MutateAsync(() => _conflictResolutionService.StageResolvedConflictAsync(Repository!, SelectedConflict!)), () => CanMutate() && SelectedConflict?.CanStage == true);
-        MergeToolCommand = new AsyncCommand(() => MutateAsync(() => _gitToolsService.RunMergeToolForFileAsync(Repository!, SelectedConflict!)), () => CanMutate() && SelectedConflict?.CanRunMergeTool == true);
-        MergeToolWorkflowCommand = new AsyncCommand(() => MutateAsync(() => _gitToolsService.RunMergeToolWorkflowAsync(Repository!)), () => CanMutate() && Conflicts.Any(conflict => !conflict.IsResolved));
+        MergeToolCommand = new AsyncCommand(() => MutateAsync(() => _externalGitToolService.RunMergeToolForFileAsync(Repository!, SelectedConflict!)), () => CanMutate() && SelectedConflict?.CanRunMergeTool == true);
+        MergeToolWorkflowCommand = new AsyncCommand(() => MutateAsync(() => _externalGitToolService.RunMergeToolWorkflowAsync(Repository!)), () => CanMutate() && Conflicts.Any(conflict => !conflict.IsResolved));
         ContinueOperationCommand = new AsyncCommand(() => MutateAsync(() => _repositoryOperationService.ContinueOperationAsync(Repository!)), () => CanMutate() && OperationState.CanContinue);
         AbortOperationCommand = new AsyncCommand(() => MutateAsync(() => _repositoryOperationService.AbortOperationAsync(Repository!)), () => CanMutate() && OperationState.CanAbort);
         SkipOperationCommand = new AsyncCommand(() => MutateAsync(() => _repositoryOperationService.SkipOperationAsync(Repository!)), () => CanMutate() && OperationState.CanSkip);

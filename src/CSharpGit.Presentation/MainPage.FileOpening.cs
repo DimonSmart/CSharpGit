@@ -15,7 +15,7 @@ public sealed partial class MainPage
     private readonly IDesktopShellService _desktopShellService = null!;
     private readonly IRepositoryPathService _repositoryPathService = null!;
     private readonly DiffFileVersionPathResolver _diffFileVersionPathResolver = null!;
-    private readonly IGitToolsService _gitToolsService = null!;
+    private readonly IExternalGitToolService _externalGitToolService = null!;
     private DiffFileVersionPair? _commitFileVersions;
     private DiffFileVersionPair? _workingTreeFileVersions;
     private string? _commitRevealPath;
@@ -64,10 +64,10 @@ public sealed partial class MainPage
         IRepositoryFileVersionService fileVersionService,
         IDesktopShellService desktopShellService,
         IRepositoryPathService repositoryPathService,
-        IGitToolsService gitToolsService)
+        IExternalGitToolService externalGitToolService)
         : this(viewModel, referenceHistoryService, referenceService, syncService, commitActionService, tagService, workingTreeStatusReader, workingTreeDiffService, fileVersionService, desktopShellService, repositoryPathService)
     {
-        _gitToolsService = gitToolsService ?? throw new ArgumentNullException(nameof(gitToolsService));
+        _externalGitToolService = externalGitToolService ?? throw new ArgumentNullException(nameof(externalGitToolService));
         UpdateCommitButtons();
         UpdateWorkingTreeButtons();
     }
@@ -419,7 +419,7 @@ public sealed partial class MainPage
         {
             var pair = await _fileVersionService.ResolveCommitAsync(repository, commit.Hash, file.Path);
             if (!CanExternalDiff(pair)) throw new NotSupportedException(ExternalDiffUnavailableReason(pair));
-            await _gitToolsService.RunExternalDiffAsync(repository, pair);
+            await _externalGitToolService.RunExternalDiffAsync(repository, pair);
             _commitFileVersions = pair;
             UpdateCommitButtons();
         }
@@ -446,7 +446,7 @@ public sealed partial class MainPage
         {
             var pair = await _fileVersionService.ResolveWorkingTreeAsync(repository, change, kind.Value);
             if (!CanExternalDiff(pair)) throw new NotSupportedException(ExternalDiffUnavailableReason(pair));
-            await _gitToolsService.RunExternalDiffAsync(repository, pair);
+            await _externalGitToolService.RunExternalDiffAsync(repository, pair);
             _workingTreeFileVersions = pair;
             UpdateWorkingTreeButtons();
         }
