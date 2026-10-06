@@ -37,15 +37,6 @@ internal GitHistoryService(
         CancellationToken cancellationToken = default) =>
         _history.ReadHistoryThroughCommitAsync(repository, query, targetHash, trailingCount, cancellationToken);
 
-    public Task<HistoryPage> ReadHistoryAsync(
-        Repository repository,
-        string reference,
-        string? filter,
-        int skip,
-        int take = 100,
-        CancellationToken cancellationToken = default) =>
-        _history.ReadHistoryAsync(repository, reference, filter, skip, take, cancellationToken);
-
     public async Task<CommitDetails> ReadCommitAsync(
         Repository repository,
         string hash,
@@ -192,15 +183,6 @@ internal GitHistoryService(
         {
             Diagnostics = parsed.Diagnostics
         };
-    }
-
-    public async Task<IReadOnlyDictionary<string, string>> ReadFileStatusesAsync(
-        Repository repository,
-        string commitHash,
-        CancellationToken cancellationToken = default)
-    {
-        var details = await ReadCommitAsync(repository, commitHash, cancellationToken);
-        return details.Files.ToDictionary(file => file.Path, file => file.Status, StringComparer.Ordinal);
     }
 
     private static IEnumerable<RawDiffEntry> ParseRawDiff(string output)
