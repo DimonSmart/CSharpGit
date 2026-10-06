@@ -102,6 +102,7 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
     {
         var source = Read("src", "CSharpGit.Presentation", "Diagnostics", "HistoryPerformanceDiagnostics.cs");
         var page = Read("src", "CSharpGit.Presentation", "MainPage.xaml.cs");
+        var history = Read("src", "CSharpGit.Presentation", "ViewModels", "HistoryViewModel.cs");
 
         Assert.Contains("HistoryGlobalScan", source, StringComparison.Ordinal);
         Assert.Contains("HistoryIndexLookup", source, StringComparison.Ordinal);
@@ -109,7 +110,9 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
         Assert.Contains("ParentLookup", source, StringComparison.Ordinal);
         Assert.Contains("RefLookup", source, StringComparison.Ordinal);
         Assert.Contains("ItemsExamined", source, StringComparison.Ordinal);
-        Assert.Contains("CommitLookupCompleted", page, StringComparison.Ordinal);
+        Assert.Contains("Rows.FirstOrDefault(row =>", history, StringComparison.Ordinal);
+        Assert.Contains("string.Equals(row.Commit.Hash", history, StringComparison.Ordinal);
+        Assert.DoesNotContain("_scopedHistory", page, StringComparison.Ordinal);
     }
 
     [Fact]

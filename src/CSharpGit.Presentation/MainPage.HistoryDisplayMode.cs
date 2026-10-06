@@ -24,7 +24,7 @@ public sealed partial class MainPage
             SyncHistoryDisplayModeSelector();
     }
 
-    private void HistoryDisplayModeSelector_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs e)
+    private async void HistoryDisplayModeSelector_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs e)
     {
         if (_syncingHistoryDisplayMode || sender.SelectedItem is null) return;
 
@@ -34,7 +34,7 @@ public sealed partial class MainPage
                 ? HistoryDisplayMode.AllReferencesWithReflog
                 : HistoryDisplayMode.AllReferences;
 
-        _viewModel.History.SetHistoryDisplayMode(mode);
+        await _viewModel.History.SetHistoryDisplayModeAsync(mode);
     }
 
     private void SyncHistoryDisplayModeSelector()

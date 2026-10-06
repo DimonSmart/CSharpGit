@@ -13,7 +13,7 @@ public sealed partial class OpenRepositoryViewModel
 
     internal void InvalidateForHistoryRewrite()
     {
-        History.Invalidate(clearRows: true, exitReferenceScope: true);
+        History.ResetForRepositoryMutation(clearRows: true);
         ResetCommitChangesSession();
     }
 

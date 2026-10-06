@@ -502,7 +502,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     private void ClearRepositoryPresentation()
     {
-        History.ClearRepositoryState();
         WorkingTree.ClearRepositoryState();
         Branches.ClearRepositoryState();
         Remotes.Clear();
