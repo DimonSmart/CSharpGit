@@ -23,7 +23,7 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage : Page
 {
     private readonly OpenRepositoryViewModel _viewModel;
-    private readonly IReferenceHistoryService _referenceHistoryService;
+    private readonly IReferenceHistoryService _historyService;
     private readonly IReferenceService _referenceService;
     private readonly IRepositorySyncService _repositorySyncService;
     private readonly ICommitActionService _commitActionService;
@@ -52,7 +52,7 @@ public sealed partial class MainPage : Page
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
-        IReferenceHistoryService referenceHistoryService,
+        IHistoryService historyService,
         IReferenceService referenceService,
         IRepositorySyncService repositorySyncService,
         ICommitActionService commitActionService,
@@ -62,7 +62,7 @@ public sealed partial class MainPage : Page
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
-        _referenceHistoryService = referenceHistoryService;
+        _historyService = historyService;
         _referenceService = referenceService;
         _repositorySyncService = repositorySyncService ?? throw new ArgumentNullException(nameof(repositorySyncService));
         _commitActionService = commitActionService ?? throw new ArgumentNullException(nameof(commitActionService));
@@ -356,12 +356,14 @@ public sealed partial class MainPage : Page
         LoadMoreHistoryButton.IsEnabled = false;
         try
         {
-            var page = await _referenceHistoryService.ReadHistoryAsync(
+            var page = await _historyService.ReadHistoryAsync(
                 repository,
-                reference,
-                _viewModel.FilterText,
-                skip,
-                100,
+                new HistoryQuery(
+                    HistoryScope.CurrentBranch,
+                    _viewModel.FilterText,
+                    skip,
+                    100,
+                    Reference: reference),
                 token);
             if (token.IsCancellationRequested
                 || !ReferenceEquals(repository, _viewModel.Repository)
