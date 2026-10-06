@@ -161,8 +161,8 @@ public sealed class StashViewerTests : IDisposable
     {
         var executor = GitTestServices.CreateExecutor();
         var repository = await new GitRepositoryService(executor).OpenAsync(_root);
-        var history = new GitFileAwareHistoryService(
-            new GitReferenceHistoryService(executor),
+        var history = new GitHistoryService(
+            new GitCommitHistoryReader(executor),
             executor);
         return (
             repository,
