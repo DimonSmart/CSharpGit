@@ -23,6 +23,7 @@
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/TagsViewModel.cs" Link="Presentation/TagsViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/AsyncCommand.cs" Link="Presentation/AsyncCommand.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BulkObservableCollection.cs" Link="Presentation/BulkObservableCollection.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BranchFolderInfo.cs" Link="Presentation/BranchFolderInfo.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BranchFolderDeletionPlanning.cs" Link="Presentation/BranchFolderDeletionPlanning.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BranchesViewModel.cs" Link="Presentation/BranchesViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorktreesViewModel.cs" Link="Presentation/WorktreesViewModel.cs" />
