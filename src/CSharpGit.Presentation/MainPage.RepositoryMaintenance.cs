@@ -38,7 +38,7 @@ public sealed partial class MainPage
         IRepositoryMaintenanceService repositoryMaintenanceService,
         IAppSettingsService appSettings,
         IGitCommandActivitySource gitCommandActivitySource,
-        IWorktreeService worktreeService,
+        WorktreesViewModel worktreesViewModel,
         IRepositoryImageService repositoryImageService,
         IAuthorAvatarService authorAvatarService,
         RecentRepositoryFolderPicker recentRepositoryFolderPicker,
@@ -72,7 +72,7 @@ public sealed partial class MainPage
         _recentRepositorySettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
         _gitConsoleSettings = appSettings;
         _gitCommandActivitySource = gitCommandActivitySource ?? throw new ArgumentNullException(nameof(gitCommandActivitySource));
-        _worktreeService = worktreeService ?? throw new ArgumentNullException(nameof(worktreeService));
+        _worktreesViewModel = worktreesViewModel ?? throw new ArgumentNullException(nameof(worktreesViewModel));
         _repositoryImageService = repositoryImageService ?? throw new ArgumentNullException(nameof(repositoryImageService));
         _authorAvatarService = authorAvatarService ?? throw new ArgumentNullException(nameof(authorAvatarService));
         _authorAvatarSettings = appSettings;
@@ -217,7 +217,7 @@ public sealed partial class MainPage
                         }
                     },
                     includeHistory: _viewModel.ShowReflog,
-                    additionalRefresh: () => RefreshWorktreePresentationAsync(throwOnError: true));
+                    additionalRefresh: () => _worktreesViewModel.RefreshAsync(throwOnError: true));
 
                 _repositoryMaintenanceInProgress = false;
                 UpdateOptimizeRepositoryAvailability();

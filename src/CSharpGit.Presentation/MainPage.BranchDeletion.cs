@@ -27,8 +27,8 @@ public sealed partial class MainPage
                 var branchWorktree = FindWorktreeForBranch(branch.Name);
                 if (branchWorktree is { IsCurrent: false })
                 {
-                    AddMenuItem(flyout, "Open Worktree", !_viewModel.IsBusy, () => OpenWorktreeAsync(branchWorktree));
-                    AddMenuItem(flyout, "Open Worktree Folder", !_viewModel.IsBusy, () => OpenWorktreeFolderAsync(branchWorktree));
+                    AddMenuItem(flyout, "Open Worktree", !_worktreesViewModel.IsBusy, () => OpenWorktreeAsync(branchWorktree));
+                    AddMenuItem(flyout, "Open Worktree Folder", !_worktreesViewModel.IsBusy, () => OpenWorktreeFolderAsync(branchWorktree));
                 }
                 else
                 {
@@ -38,7 +38,7 @@ public sealed partial class MainPage
                         await ExecuteCommandAsync(_viewModel.SwitchBranchCommand);
                     });
                     if (branchWorktree is null)
-                        AddMenuItem(flyout, "Open in New Worktree…", !_viewModel.IsBusy, () => CreateWorktreeFromBranchAsync(branch));
+                        AddMenuItem(flyout, "Open in New Worktree…", _worktreesViewModel.CanMutate, () => CreateWorktreeFromBranchAsync(branch));
                 }
 
                 AddMenuItem(flyout, "Create branch from here…", !_viewModel.IsBusy, () => CreateBranchFromAsync(branch.Name));
@@ -75,9 +75,9 @@ public sealed partial class MainPage
                 break;
 
             case RepositoryTreeNodeKind.Group when node.Name == "Worktrees":
-                AddMenuItem(flyout, "New Worktree…", !_viewModel.IsBusy, CreateNewWorktreeAsync);
+                AddMenuItem(flyout, "New Worktree…", _worktreesViewModel.CanMutate, CreateNewWorktreeAsync);
                 flyout.Items.Add(new MenuFlyoutSeparator());
-                AddMenuItem(flyout, "Prune Worktrees", !_viewModel.IsBusy, PruneWorktreesAsync);
+                AddMenuItem(flyout, "Prune Worktrees", _worktreesViewModel.CanMutate, PruneWorktreesAsync);
                 break;
 
             case RepositoryTreeNodeKind.RemoteBranch when node.Value is GitBranch remoteBranch:
