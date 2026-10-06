@@ -54,7 +54,7 @@ public sealed class BranchRenameUiContractTests
         Assert.Contains("string.Equals(_activeReference, oldName, StringComparison.Ordinal)", workflow, StringComparison.Ordinal);
         Assert.Contains("_activeReference = newName;", workflow, StringComparison.Ordinal);
         Assert.Contains("ActiveReferenceText.Text = $\"Branch: {newName}\";", workflow, StringComparison.Ordinal);
-        Assert.Contains("QueueWorktreeRefresh();", workflow, StringComparison.Ordinal);
+        Assert.Contains("await _worktreesViewModel.RefreshAsync();", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("git branch", workflow, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(".git/refs", workflow, StringComparison.OrdinalIgnoreCase);
     }
