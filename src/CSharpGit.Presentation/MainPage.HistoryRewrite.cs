@@ -16,7 +16,7 @@ public sealed partial class MainPage
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
-        IReferenceHistoryService referenceHistoryService,
+        IHistoryService historyService,
         IReferenceService referenceService,
         IRepositorySyncService repositorySyncService,
         ICommitActionService commitActionService,
@@ -31,7 +31,7 @@ public sealed partial class MainPage
         IRepositoryHistoryRewriteService repositoryHistoryRewriteService)
         : this(
             viewModel,
-            referenceHistoryService,
+            historyService,
             referenceService,
             repositorySyncService,
             commitActionService,
