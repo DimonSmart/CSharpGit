@@ -23,7 +23,7 @@ public sealed class GitReferenceNavigationTests : IDisposable
         }
 
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
-        var service = GitTestServices.CreateReferenceHistoryService();
+        var service = GitTestServices.CreateHistoryService();
         var firstPage = await service.ReadHistoryAsync(
             repository,
             new HistoryQuery(HistoryScope.AllReferences, null, 0, 100));

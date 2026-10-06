@@ -69,7 +69,7 @@ public sealed class GitRepositoryServiceTests : IDisposable
 
         var repositoryService = GitTestServices.CreateRepositoryService();
         var stateService = GitTestServices.CreateRepositoryStateService();
-        var historyService = GitTestServices.CreateReferenceHistoryService();
+        var historyService = GitTestServices.CreateHistoryService();
         var repository = await repositoryService.OpenAsync(_temporaryDirectory);
         var history = await historyService.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.CurrentBranch, null, 0, 20));
 
@@ -132,7 +132,7 @@ public sealed class GitRepositoryServiceTests : IDisposable
         RunGit(_temporaryDirectory, "commit", "-m", "Main");
 
         var repositoryService = GitTestServices.CreateRepositoryService();
-        var historyService = GitTestServices.CreateReferenceHistoryService();
+        var historyService = GitTestServices.CreateHistoryService();
         var repository = await repositoryService.OpenAsync(_temporaryDirectory);
         var history = await historyService.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.AllReferences, null, 0, 20));
 
@@ -155,7 +155,7 @@ public sealed class GitRepositoryServiceTests : IDisposable
         RunGit(_temporaryDirectory, "commit", "-m", "Changed");
 
         var repositoryService = GitTestServices.CreateRepositoryService();
-        var historyService = GitTestServices.CreateReferenceHistoryService();
+        var historyService = GitTestServices.CreateHistoryService();
         var repository = await repositoryService.OpenAsync(_temporaryDirectory);
         var history = await historyService.ReadHistoryAsync(repository, new HistoryQuery(HistoryScope.CurrentBranch, null, 0, 20));
         var changed = history.Rows.First(row => row.Commit.Subject == "Changed").Commit;
