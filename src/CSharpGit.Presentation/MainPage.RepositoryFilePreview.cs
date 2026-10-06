@@ -12,7 +12,6 @@ public sealed partial class MainPage
     private readonly FilePreviewService _repositoryFilePreviewService = new();
     private readonly PreviewPublicationGate<RepositoryPreviewContext> _repositoryPreviewGate = new();
     private FilePreviewHost? _repositoryFilePreviewHost;
-    private RepositoryFileSelection? _repositoryFileSelection;
 
     private Grid BuildRepositoryFilesSplitBody(Grid leftPane)
     {
@@ -55,7 +54,6 @@ public sealed partial class MainPage
         int? lineNumber,
         RepositorySnapshotEntry? entry)
     {
-        _repositoryFileSelection = new RepositoryFileSelection(path, lineNumber, entry);
         if (_repositoryFilePreviewHost is null) return;
 
         if (entry is null)
@@ -68,7 +66,8 @@ public sealed partial class MainPage
         switch (entry.Kind)
         {
             case RepositorySnapshotEntryKind.File:
-                _ = LoadRepositoryFilePreviewAsync(_repositoryFileSelection);
+                _ = LoadRepositoryFilePreviewAsync(
+                    new RepositoryFileSelection(path, lineNumber, entry));
                 break;
             case RepositorySnapshotEntryKind.Symlink:
                 _repositoryPreviewGate.Cancel();
@@ -87,7 +86,6 @@ public sealed partial class MainPage
 
     private void ClearRepositoryFileSelection()
     {
-        _repositoryFileSelection = null;
         _repositoryPreviewGate.Cancel();
         _repositoryFilePreviewHost?.ShowNothingSelected();
     }
@@ -96,15 +94,13 @@ public sealed partial class MainPage
 
     private async Task LoadRepositoryFilePreviewAsync(RepositoryFileSelection selection)
     {
-        var repository = _viewModel.Repository;
-        var commitHash = _repositorySnapshotCommit;
+        var repository = _repositoryFilesViewModel.CurrentRepository;
+        var commitHash = _repositoryFilesViewModel.CurrentCommit;
         if (repository is null
             || string.IsNullOrWhiteSpace(commitHash)
             || selection.Entry is not { Kind: RepositorySnapshotEntryKind.File } entry
-            || _repositorySnapshotService is null
             || _fileVersionService is null
-            || !ReferenceEquals(repository, _repositorySnapshotRepository)
-            || !string.Equals(commitHash, _viewModel.SelectedHistoryRow?.Commit.Hash, StringComparison.Ordinal))
+            || !_repositoryFilesViewModel.SnapshotMatchesSelection)
         {
             return;
         }
@@ -119,12 +115,10 @@ public sealed partial class MainPage
 
         try
         {
-            var version = await _repositorySnapshotService.ResolveFileVersionAsync(
-                repository,
-                commitHash,
-                entry.Path,
+            var version = await _repositoryFilesViewModel.ResolveFileVersionAsync(
+                entry,
                 lease.CancellationToken);
-            if (!CanPublishRepositoryPreview(lease)) return;
+            if (version is null || !CanPublishRepositoryPreview(lease)) return;
             if (!version.CanOpen)
             {
                 _repositoryFilePreviewHost?.ShowUnsupported(
@@ -158,18 +152,31 @@ public sealed partial class MainPage
 
     private bool CanPublishRepositoryPreview(PreviewLease<RepositoryPreviewContext> lease)
     {
-        if (!IsRepositoryFilesActive || _repositoryFileSelection is not { } selection) return false;
-        var repository = _viewModel.Repository;
-        var commitHash = _viewModel.SelectedHistoryRow?.Commit.Hash;
-        if (repository is null || string.IsNullOrWhiteSpace(commitHash)) return false;
+        if (!IsRepositoryFilesActive
+            || _repositoryFilesViewModel.SelectedPath is not { } path)
+        {
+            return false;
+        }
+
+        var repository = _repositoryFilesViewModel.CurrentRepository;
+        var commitHash = _repositoryFilesViewModel.CurrentCommit;
+        if (repository is null
+            || string.IsNullOrWhiteSpace(commitHash)
+            || !_repositoryFilesViewModel.SnapshotMatchesSelection)
+        {
+            return false;
+        }
 
         var current = new RepositoryPreviewContext(
             RepositoryIdentity(repository),
             commitHash,
-            selection.Path,
-            selection.LineNumber);
+            path,
+            _repositoryFilesViewModel.SelectedLineNumber);
         return _repositoryPreviewGate.CanPublish(lease, current);
     }
+
+    private static string RepositoryIdentity(Repository repository) =>
+        Path.GetFullPath(repository.GitDirectory);
 
     private sealed record RepositoryFileSelection(
         string Path,
