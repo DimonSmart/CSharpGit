@@ -90,7 +90,7 @@ public sealed class GitCommitHistoryTopologyRegressionTests : IDisposable
         InitializeMergeRepository();
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
         var service = GitTestServices.CreateCommitHistoryReader();
-        var full = await service.ReadHistoryAsync(repository, "main", null, 0, 100);
+        var full = await service.ReadHistoryAsync(repository, MainQuery(null, 0, 100));
         var page1 = await service.ReadHistoryAsync(repository, MainQuery(null, 0, 2));
         var page2 = await service.ReadHistoryAsync(repository, MainQuery(null, 2, 2));
         var combined = page1.Rows.Concat(page2.Rows).ToArray();
@@ -106,7 +106,7 @@ public sealed class GitCommitHistoryTopologyRegressionTests : IDisposable
         InitializeMergeRepository();
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
         var service = GitTestServices.CreateCommitHistoryReader();
-        var full = await service.ReadHistoryAsync(repository, "main", null, 0, 100);
+        var full = await service.ReadHistoryAsync(repository, MainQuery(null, 0, 100));
         var page1 = await service.ReadHistoryAsync(repository, MainQuery("visible", 0, 1));
         var page2 = await service.ReadHistoryAsync(repository, MainQuery("visible", 1, 1));
         var combined = page1.Rows.Concat(page2.Rows).ToArray();
