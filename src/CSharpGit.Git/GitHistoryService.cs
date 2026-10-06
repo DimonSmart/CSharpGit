@@ -45,10 +45,10 @@ public sealed class GitHistoryService : IHistoryService
     {
         ArgumentNullException.ThrowIfNull(repository);
         ValidateObjectName(hash);
-        var metadata = await _history.ReadCommitAsync(repository, hash, cancellationToken);
-        var parentHash = metadata.Commit.Parents.FirstOrDefault();
+        var commit = await _history.ReadCommitMetadataAsync(repository, hash, cancellationToken);
+        var parentHash = commit.Parents.FirstOrDefault();
         var files = await ReadChangedFilesAsync(repository, hash, parentHash, cancellationToken);
-        return new CommitDetails(metadata.Commit, files);
+        return new CommitDetails(commit, files);
     }
 
     public async Task<IReadOnlyList<ChangedFile>> ReadChangedFilesAsync(
@@ -110,8 +110,8 @@ public sealed class GitHistoryService : IHistoryService
         ArgumentNullException.ThrowIfNull(repository);
         ValidateObjectName(hash);
         ValidateGitPath(path);
-        var metadata = await _history.ReadCommitAsync(repository, hash, cancellationToken);
-        var parentHash = metadata.Commit.Parents.FirstOrDefault();
+        var commit = await _history.ReadCommitMetadataAsync(repository, hash, cancellationToken);
+        var parentHash = commit.Parents.FirstOrDefault();
         var files = await ReadChangedFilesAsync(repository, hash, parentHash, cancellationToken);
         var file = files.FirstOrDefault(candidate =>
             string.Equals(candidate.Path, path, StringComparison.Ordinal) ||

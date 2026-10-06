@@ -24,8 +24,8 @@ public sealed class GitCommitHistoryReaderTests : IDisposable
         Assert.Equal(1, processCount);
 
         processCount = 0;
-        await service.ReadCommitAsync(repository, hash);
-        Assert.Equal(2, processCount);
+        await service.ReadCommitMetadataAsync(repository, hash);
+        Assert.Equal(1, processCount);
     }
 
     [Theory]
@@ -46,13 +46,13 @@ public sealed class GitCommitHistoryReaderTests : IDisposable
         var service = GitTestServices.CreateCommitHistoryReader();
 
         var page = await service.ReadHistoryAsync(repository, "main", null, 0, 20);
-        var details = await service.ReadCommitAsync(repository, hash);
+        var details = await service.ReadCommitMetadataAsync(repository, hash);
 
         var historyCommit = Assert.Single(page.Rows).Commit;
         Assert.Equal(authorName, historyCommit.Author);
         Assert.Equal(authorEmail, historyCommit.AuthorEmail);
-        Assert.Equal(authorName, details.Commit.Author);
-        Assert.Equal(authorEmail, details.Commit.AuthorEmail);
+        Assert.Equal(authorName, details.Author);
+        Assert.Equal(authorEmail, details.AuthorEmail);
     }
 
     [Fact]
@@ -141,22 +141,6 @@ public sealed class GitCommitHistoryReaderTests : IDisposable
         Assert.Contains(rowAfterMerge.Topology.IncomingEdges, edge => edge.TrackId == parentEdges[1].TrackId);
     }
 
-    [Fact]
-    public async Task ReadsCompactFileStatusForCommit()
-    {
-        InitializeRepository();
-        File.WriteAllText(Path.Combine(_temporaryDirectory, "file.txt"), "initial\n");
-        RunGit("add", "file.txt");
-        RunGit("commit", "-m", "initial");
-        File.AppendAllText(Path.Combine(_temporaryDirectory, "file.txt"), "changed\n");
-        RunGit("commit", "-am", "change");
-        var hash = RunGit("rev-parse", "HEAD");
-
-        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
-        var statuses = await GitTestServices.CreateCommitHistoryReader().ReadFileStatusesAsync(repository, hash);
-
-        Assert.Equal("M", statuses["file.txt"]);
-    }
 
     private void InitializeRepository()
     {
