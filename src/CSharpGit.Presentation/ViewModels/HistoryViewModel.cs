@@ -393,6 +393,9 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
 
     private async Task SetShowReflogAsync(bool value, bool persist, bool refresh)
     {
+        if (IsReferenceScoped && value)
+            value = false;
+
         var changed = ApplyShowReflogDirect(value);
         if (value && !IsReferenceScoped)
             changed |= SetScopeDirect(Scopes[0]);

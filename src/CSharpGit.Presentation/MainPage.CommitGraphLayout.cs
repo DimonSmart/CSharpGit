@@ -60,9 +60,14 @@ public sealed partial class MainPage
             HistoryRenderDiagnostics.GeometrySharedCacheStateChanged(
                 state.GeometryCache.Count,
                 evicted: false);
+            foreach (var row in _viewModel.History.Rows)
+            {
+                newRowsExamined++;
+                layoutChanged |= state.ObserveLaneCount(row.Topology.LaneCount);
+            }
         }
 
-        if (args.NewItems is not null)
+        if (!reset && args.NewItems is not null)
         {
             foreach (var item in args.NewItems)
             {

@@ -346,7 +346,7 @@ public sealed partial class MainPage
         var pivotHeader = FindDescendant<PivotHeaderItem>(DetailsTabs);
         CheckActualHeight(pivotHeader, 0, 28, "details tab header", failures);
 
-        var fullyVisibleHistoryRows = CountFullyVisibleListRows(HistoryList, _viewModel.History.Cast<object>());
+        var fullyVisibleHistoryRows = CountFullyVisibleListRows(HistoryList, _viewModel.History.Rows.Cast<object>());
         Check(fullyVisibleHistoryRows >= 20,
             $"history viewport shows only {fullyVisibleHistoryRows} fully visible rows; expected at least 20",
             failures);

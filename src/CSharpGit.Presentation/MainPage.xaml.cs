@@ -705,7 +705,7 @@ public sealed partial class MainPage : Page
                 TimeSpan.FromSeconds(10));
             Check(_viewModel.Repository is not null, "repository did not open", failures);
             Check(_viewModel.Repository?.IsWorktree == (Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_WORKTREE") == "1"), "repository kind is incorrect", failures);
-            Check(_viewModel.Scopes.All(scope => scope.Label is "All references" or "Current branch"), "English history scopes are missing", failures);
+            Check(_viewModel.History.Scopes.All(scope => scope.Label is "All references" or "Current branch"), "English history scopes are missing", failures);
 
             if (Environment.GetEnvironmentVariable("CSHARPGIT_GRAPH_VIEWPORT_CHECK") == "1")
             {
