@@ -48,23 +48,16 @@ public sealed partial class MainPage
             return;
 
         HistoryRenderDiagnostics.LoadMoreThresholdReached();
-        if (_activeReference is not null)
-        {
-            if (!_scopedHasMore || _isScopedHistoryLoading) return;
-        }
-        else if (!_viewModel.HasMore || _viewModel.IsBusy)
-        {
+        if (!_viewModel.History.HasMore
+            || _viewModel.History.IsLoading
+            || _viewModel.IsBusy)
             return;
-        }
 
         _isInfiniteHistoryLoading = true;
         HistoryRenderDiagnostics.PageLoadStarted();
         try
         {
-            if (_activeReference is not null)
-                await LoadScopedHistoryAsync(false);
-            else
-                await ExecuteCommandAsync(_viewModel.LoadMoreCommand);
+            await ExecuteCommandAsync(_viewModel.History.LoadMoreCommand);
         }
         finally
         {

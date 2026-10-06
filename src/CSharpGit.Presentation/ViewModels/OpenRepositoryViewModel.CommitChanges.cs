@@ -119,7 +119,7 @@ public sealed partial class OpenRepositoryViewModel
     private void OnSelectedHistoryRowChanged(HistoryRow? previous)
     {
         if (SelectedStash is { } stash
-            && SelectedHistoryRow is { } selectedHistoryRow
+            && History.SelectedRow is { } selectedHistoryRow
             && string.Equals(selectedHistoryRow.Commit.Hash, stash.Commit, StringComparison.Ordinal))
         {
             return;
@@ -127,7 +127,7 @@ public sealed partial class OpenRepositoryViewModel
 
         _selectedChangedFileRestoreKey =
             previous is not null &&
-            SelectedHistoryRow is { } current &&
+            History.SelectedRow is { } current &&
             string.Equals(previous.Commit.Hash, current.Commit.Hash, StringComparison.Ordinal) &&
             SelectedFile is { } selected
                 ? new ChangedFileSelectionKey(selected.Path, selected.OriginalPath)
@@ -193,7 +193,7 @@ public sealed partial class OpenRepositoryViewModel
     private async Task EnsureChangedFilesLoadedAsync(bool debounce)
     {
         var repository = Repository;
-        var row = SelectedHistoryRow;
+        var row = History.SelectedRow;
         if (!_isChangesViewActive || repository is null) return;
         if (SelectedStash is not null)
         {
@@ -258,7 +258,7 @@ public sealed partial class OpenRepositoryViewModel
 
     private void PublishChangedFiles(Repository repository, HistoryRow row, IReadOnlyList<ChangedFile> files)
     {
-        if (!_isChangesViewActive || !ReferenceEquals(repository, Repository) || !ReferenceEquals(row, SelectedHistoryRow)) return;
+        if (!_isChangesViewActive || !ReferenceEquals(repository, Repository) || !ReferenceEquals(row, History.SelectedRow)) return;
         var restored = _selectedChangedFileRestoreKey is { } restoreKey
             ? files.FirstOrDefault(restoreKey.Matches)
             : null;
@@ -274,7 +274,7 @@ public sealed partial class OpenRepositoryViewModel
     private async Task LoadSelectedDiffAsync(DiffLoadMode mode)
     {
         var repository = Repository;
-        var row = SelectedHistoryRow;
+        var row = History.SelectedRow;
         var stash = SelectedStash;
         var file = SelectedFile;
         if (!_isChangesViewActive
@@ -321,7 +321,7 @@ public sealed partial class OpenRepositoryViewModel
         if (_diffCache.TryGet(cacheKey, out var cached))
         {
             _logger.LogDebug("LoadDiff commit={Commit} path={Path} duration={Duration}ms cache={Cache}", commitHash, file.Path, 0, "hit");
-            if (_isChangesViewActive && ReferenceEquals(repository, Repository) && ReferenceEquals(row, SelectedHistoryRow) && ReferenceEquals(file, SelectedFile))
+            if (_isChangesViewActive && ReferenceEquals(repository, Repository) && ReferenceEquals(row, History.SelectedRow) && ReferenceEquals(file, SelectedFile))
                 SelectedDiff = cached;
             return;
         }
@@ -422,7 +422,7 @@ public sealed partial class OpenRepositoryViewModel
         generation == Volatile.Read(ref _changedFilesLoadGeneration) &&
         _isChangesViewActive &&
         ReferenceEquals(repository, Repository) &&
-        ReferenceEquals(row, SelectedHistoryRow);
+        ReferenceEquals(row, History.SelectedRow);
 
     private bool IsCurrentDiffRequest(
         long generation,

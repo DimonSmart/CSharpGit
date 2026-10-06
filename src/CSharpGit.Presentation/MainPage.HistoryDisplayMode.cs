@@ -11,20 +11,20 @@ public sealed partial class MainPage
 
     private void HistoryDisplayModeSelector_Loaded(object sender, RoutedEventArgs e)
     {
-        _viewModel.PropertyChanged += HistoryDisplayModeViewModel_PropertyChanged;
+        _viewModel.History.PropertyChanged += HistoryDisplayModeViewModel_PropertyChanged;
         SyncHistoryDisplayModeSelector();
     }
 
     private void HistoryDisplayModeSelector_Unloaded(object sender, RoutedEventArgs e) =>
-        _viewModel.PropertyChanged -= HistoryDisplayModeViewModel_PropertyChanged;
+        _viewModel.History.PropertyChanged -= HistoryDisplayModeViewModel_PropertyChanged;
 
     private void HistoryDisplayModeViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(OpenRepositoryViewModel.SelectedScope) or nameof(OpenRepositoryViewModel.ShowReflog))
+        if (e.PropertyName is nameof(HistoryViewModel.SelectedScope) or nameof(HistoryViewModel.ShowReflog))
             SyncHistoryDisplayModeSelector();
     }
 
-    private void HistoryDisplayModeSelector_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs e)
+    private async void HistoryDisplayModeSelector_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs e)
     {
         if (_syncingHistoryDisplayMode || sender.SelectedItem is null) return;
 
@@ -34,12 +34,12 @@ public sealed partial class MainPage
                 ? HistoryDisplayMode.AllReferencesWithReflog
                 : HistoryDisplayMode.AllReferences;
 
-        _viewModel.SetHistoryDisplayMode(mode);
+        await _viewModel.History.SetHistoryDisplayModeAsync(mode);
     }
 
     private void SyncHistoryDisplayModeSelector()
     {
-        var item = _viewModel.HistoryDisplayMode switch
+        var item = _viewModel.History.HistoryDisplayMode switch
         {
             HistoryDisplayMode.CurrentBranch => CurrentScopeItem,
             HistoryDisplayMode.AllReferencesWithReflog => ShowReflogToggle,

@@ -232,6 +232,49 @@ public sealed class PresentationArchitectureGuardrailTests
     }
 
     [Fact]
+    public void HistoryPresentationLifecycleBelongsToHistoryViewModel()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var mainPageSources = Directory
+            .GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+            .Select(File.ReadAllText)
+            .ToArray();
+        var combinedMainPage = string.Join(Environment.NewLine, mainPageSources);
+        var historyViewModel = File.ReadAllText(
+            Path.Combine(presentation, "ViewModels", "HistoryViewModel.cs"));
+        var openRepositoryViewModel = File.ReadAllText(
+            Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.cs"));
+
+        Assert.Contains("public sealed class HistoryViewModel", historyViewModel, StringComparison.Ordinal);
+        Assert.Contains("IHistoryService", historyViewModel, StringComparison.Ordinal);
+        Assert.Contains("public HistoryViewModel History { get; }", openRepositoryViewModel, StringComparison.Ordinal);
+        Assert.Contains("History = historyViewModel", openRepositoryViewModel, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("IHistoryService", combinedMainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("_historyService", combinedMainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("_scopedHistory", combinedMainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("_referenceHistoryCts", combinedMainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("_scopedHasMore", combinedMainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("_isScopedHistoryLoading", combinedMainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("LoadScopedHistoryAsync", combinedMainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("new HistoryQuery(", combinedMainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("HistoryList.ItemsSource =", combinedMainPage, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("public ObservableCollection<HistoryRow> History", openRepositoryViewModel, StringComparison.Ordinal);
+        Assert.DoesNotContain("LoadHistoryAsync", openRepositoryViewModel, StringComparison.Ordinal);
+        Assert.DoesNotContain("EnsureHistoryCommitVisibleAsync", openRepositoryViewModel, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(
+            presentation,
+            "ViewModels",
+            "OpenRepositoryViewModel.ReferenceNavigation.cs")));
+        Assert.False(File.Exists(Path.Combine(
+            presentation,
+            "ViewModels",
+            "OpenRepositoryViewModel.Reflog.cs")));
+    }
+
+    [Fact]
     public void WindowTitleUsesPresentationStateAndShellOwnedWindow()
     {
         var root = FindRepositoryRoot();

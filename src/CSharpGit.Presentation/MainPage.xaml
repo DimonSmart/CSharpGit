@@ -360,7 +360,7 @@
             <Border x:Name="HistoryFilterToolbar" Grid.Row="0" Style="{StaticResource ToolbarSurfaceStyle}">
               <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{StaticResource Spacing.M}">
                 <TextBox x:Name="HistoryFilter"
-                         Text="{Binding FilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Text="{Binding History.FilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          PlaceholderText="Filter commits…"
                          Style="{StaticResource CompactTextBoxStyle}"
                          KeyDown="HistoryFilter_KeyDown" />
@@ -451,7 +451,8 @@
               </Border>
               <ListView x:Name="HistoryList"
                         Grid.Row="1"
-                        SelectedItem="{Binding SelectedHistoryRow, Mode=TwoWay}"
+                        ItemsSource="{Binding History.Rows}"
+                        SelectedItem="{Binding History.SelectedRow, Mode=TwoWay}"
                         IsItemClickEnabled="False"
                         ItemContainerStyle="{StaticResource HistoryRowStyle}"
                         ItemTemplate="{StaticResource HistoryItemTemplate}" />
