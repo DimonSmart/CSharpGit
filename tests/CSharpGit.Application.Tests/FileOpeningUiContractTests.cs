@@ -38,7 +38,7 @@ public sealed class FileOpeningUiContractTests
         Assert.Contains("AddSingleton<IInteractiveRebaseService>", gitComposition);
         Assert.Contains("AddSingleton<IRepositoryOperationService>", gitComposition);
         Assert.Contains("AddSingleton<IHistoryService>", gitComposition);
-        Assert.Contains("GetRequiredService<GitFileAwareHistoryService>()", gitComposition);
+        Assert.Contains("GetRequiredService<GitHistoryService>()", gitComposition);
     }
 
     [Fact]
