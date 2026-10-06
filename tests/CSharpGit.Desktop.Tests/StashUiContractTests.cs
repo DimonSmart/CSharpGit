@@ -74,7 +74,7 @@ public sealed class StashUiContractTests
         var root = FindRepositoryRoot();
         var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
         var xaml = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
-        var repositoryFiles = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs");
+        var repositoryFiles = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryFilesViewModel.cs");
         var viewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs");
         var commitChanges = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.CommitChanges.cs");
 
@@ -93,8 +93,8 @@ public sealed class StashUiContractTests
         Assert.Contains("Command=\"{Binding PopStashCommand}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"DropSelectedStash_Click\"", xaml, StringComparison.Ordinal);
 
-        Assert.Contains("_viewModel.SelectedObjectCommit", repositoryFiles, StringComparison.Ordinal);
-        Assert.Contains("\"Tracked files\"", repositoryFiles, StringComparison.Ordinal);
+        Assert.Contains("context?.SelectedObjectCommit", repositoryFiles, StringComparison.Ordinal);
+        Assert.Contains("\"Tracked files\"", page, StringComparison.Ordinal);
         Assert.Contains("Untracked stash files are shown in Changes.", repositoryFiles, StringComparison.Ordinal);
     }
 
