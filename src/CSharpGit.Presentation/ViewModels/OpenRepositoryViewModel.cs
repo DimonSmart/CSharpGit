@@ -824,7 +824,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         Action? beforeMutation = null,
         bool includeHistory = true,
         bool localOnlyRefresh = false,
-        Action? afterSuccessfulMutation = null)
+        Action? afterSuccessfulMutation = null,
+        Repository? expectedRepository = null)
     {
         var succeeded = false;
         if (Volatile.Read(ref _repositoryChangeInProgress) != 0
@@ -832,6 +833,12 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             return false;
 
         if (Volatile.Read(ref _repositoryChangeInProgress) != 0)
+        {
+            _mutationGate.Release();
+            return false;
+        }
+
+        if (expectedRepository is not null && !ReferenceEquals(expectedRepository, Repository))
         {
             _mutationGate.Release();
             return false;
