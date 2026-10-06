@@ -7,22 +7,37 @@ namespace CSharpGit.Application.Tests;
 public sealed class TagsViewModelTests
 {
     [Fact]
-    public async Task CreateTagUsesCurrentRepositoryAndExistingMutationLifecycle()
+    public async Task CreateTagUsesExpectedCurrentRepositoryAndRejectsStaleRepository()
     {
         var service = new FakeTagService();
-        var context = new FakeTagsRepositoryContext { Repository = Repository("first") };
+        var firstRepository = Repository("first");
+        var secondRepository = Repository("second");
+        var context = new FakeTagsRepositoryContext { Repository = firstRepository };
         var viewModel = CreateViewModel(service, context);
-        context.Repository = Repository("second");
         var request = new CreateTagRequest("v1.0", "abc", GitTagKind.Annotated, "release");
 
-        var succeeded = await viewModel.CreateTagAsync(request);
+        var firstSucceeded = await viewModel.CreateTagAsync(firstRepository, request);
 
-        Assert.True(succeeded);
-        Assert.Same(context.Repository, service.LastRepository);
+        Assert.True(firstSucceeded);
+        Assert.Same(firstRepository, service.LastRepository);
         Assert.Equal(request, service.LastCreateRequest);
         Assert.Equal(1, context.MutationLifecycleCalls);
         Assert.Equal("Could not create tag", context.LastErrorContext);
         Assert.True(context.LastIncludeHistory);
+
+        context.Repository = secondRepository;
+
+        var staleSucceeded = await viewModel.CreateTagAsync(firstRepository, request);
+
+        Assert.False(staleSucceeded);
+        Assert.Equal(1, context.MutationLifecycleCalls);
+        Assert.Same(firstRepository, service.LastRepository);
+
+        var secondSucceeded = await viewModel.CreateTagAsync(secondRepository, request);
+
+        Assert.True(secondSucceeded);
+        Assert.Equal(2, context.MutationLifecycleCalls);
+        Assert.Same(secondRepository, service.LastRepository);
     }
 
     [Fact]
@@ -33,6 +48,7 @@ public sealed class TagsViewModelTests
         var viewModel = CreateViewModel(service, context);
 
         var succeeded = await viewModel.CreateTagAsync(
+            context.Repository!,
             new CreateTagRequest("v1", "abc", GitTagKind.Lightweight));
 
         Assert.False(succeeded);
@@ -48,7 +64,9 @@ public sealed class TagsViewModelTests
         var viewModel = CreateViewModel(service, context);
 
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            viewModel.CreateTagAsync(new CreateTagRequest("v1", "abc", GitTagKind.Lightweight)));
+            viewModel.CreateTagAsync(
+                context.Repository!,
+                new CreateTagRequest("v1", "abc", GitTagKind.Lightweight)));
         Assert.Equal(1, context.MutationLifecycleCalls);
     }
 
@@ -64,7 +82,7 @@ public sealed class TagsViewModelTests
         var tag = new GitTag("v1", "abc", GitTagKind.Annotated, "tag-object");
         var remote = Remote("origin");
 
-        var result = await viewModel.DeleteTagAsync(tag, remote);
+        var result = await viewModel.DeleteTagAsync(context.Repository!, tag, remote);
 
         Assert.True(result.Succeeded);
         Assert.False(result.RemoteWasMissing);
@@ -85,7 +103,7 @@ public sealed class TagsViewModelTests
         var viewModel = CreateViewModel(service, context);
         var tag = new GitTag("v1", "abc", GitTagKind.Annotated, "local-object");
 
-        var result = await viewModel.DeleteTagAsync(tag, Remote("origin"));
+        var result = await viewModel.DeleteTagAsync(context.Repository!, tag, Remote("origin"));
 
         Assert.False(result.Succeeded);
         Assert.Equal(["read-remote:origin:v1"], service.Calls);
@@ -100,6 +118,7 @@ public sealed class TagsViewModelTests
         var viewModel = CreateViewModel(service, context);
 
         var result = await viewModel.DeleteTagAsync(
+            context.Repository!,
             new GitTag("v1", "abc"),
             Remote("origin"));
 
@@ -117,7 +136,10 @@ public sealed class TagsViewModelTests
         var context = new FakeTagsRepositoryContext { Repository = Repository("repo") };
         var viewModel = CreateViewModel(service, context);
 
-        var result = await viewModel.PushTagAsync(new GitTag("v1", "abc"), Remote("origin"));
+        var result = await viewModel.PushTagAsync(
+            context.Repository!,
+            new GitTag("v1", "abc"),
+            Remote("origin"));
 
         Assert.Equal(expected, result);
         Assert.Equal("Could not push tag", context.LastErrorContext);
@@ -166,7 +188,7 @@ public sealed class TagsViewModelTests
         var context = new FakeTagsRepositoryContext { Repository = Repository("repo") };
         var viewModel = CreateViewModel(service, context);
 
-        var result = await viewModel.ReadRemoteTagsAsync(Remote("origin"));
+        var result = await viewModel.ReadRemoteTagsAsync(context.Repository!, Remote("origin"));
 
         Assert.False(result.Succeeded);
         Assert.Empty(result.Value);
@@ -201,10 +223,13 @@ public sealed class TagsViewModelTests
         public Exception? LastFailure { get; private set; }
 
         public async Task<bool> RunTagMutationAsync(
+            Repository expectedRepository,
             Func<Task> mutation,
             string errorContext,
             bool includeHistory)
         {
+            if (!ReferenceEquals(Repository, expectedRepository)) return false;
+
             MutationLifecycleCalls++;
             LastErrorContext = errorContext;
             LastIncludeHistory = includeHistory;
