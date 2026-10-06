@@ -39,6 +39,7 @@ public sealed class BranchRenameUiContractTests
     {
         var root = FindRepositoryRoot();
         var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchRename.cs"));
+        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "BranchesViewModel.cs"));
 
         Assert.Contains("Title = \"Rename branch\"", workflow, StringComparison.Ordinal);
         Assert.Contains("Header = \"Name\"", workflow, StringComparison.Ordinal);
@@ -47,7 +48,7 @@ public sealed class BranchRenameUiContractTests
         Assert.Contains("nameBox.Text.Trim()", workflow, StringComparison.Ordinal);
         Assert.Contains("_viewModel.Branches.RenameBranchAsync(", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("_referenceService.RenameBranchAsync(", workflow, StringComparison.Ordinal);
-        Assert.Contains("\"Could not rename local branch\"", workflow, StringComparison.Ordinal);
+        Assert.Contains("\"Could not rename local branch\"", feature, StringComparison.Ordinal);
         Assert.Contains("string.Equals(_activeReference, oldName, StringComparison.Ordinal)", workflow, StringComparison.Ordinal);
         Assert.Contains("_activeReference = newName;", workflow, StringComparison.Ordinal);
         Assert.Contains("ActiveReferenceText.Text = $\"Branch: {newName}\";", workflow, StringComparison.Ordinal);
