@@ -16,6 +16,9 @@ public sealed class GitDependencyInjectionTests
 
         services.AddCSharpGitGit(options);
 
+        Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(IGitToolConfigurationService));
+        Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(IExternalGitToolService));
+
         using var provider = services.BuildServiceProvider();
         Assert.Same(options, provider.GetRequiredService<GitCliOptions>());
         Assert.NotNull(provider.GetRequiredService<GitCommandExecutor>());
@@ -50,8 +53,6 @@ public sealed class GitDependencyInjectionTests
                 provider.GetRequiredService<IRepositoryMaintenanceService>(),
                 provider.GetRequiredService<IRepositoryIdentityService>(),
                 provider.GetRequiredService<IInteractiveRebaseAuthorChangeService>(),
-                provider.GetRequiredService<IGitToolConfigurationService>(),
-                provider.GetRequiredService<IExternalGitToolService>(),
                 provider.GetRequiredService<IStashService>(),
                 provider.GetRequiredService<IHistoryService>(),
                 provider.GetRequiredService<IReferenceHistoryService>()
