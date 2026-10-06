@@ -28,19 +28,17 @@ public sealed partial class MainPage
             return;
 
         var layout = ActiveCommitGraphLayout;
-        var activeRows = ReferenceEquals(HistoryList.ItemsSource, _scopedHistory)
-            ? _scopedHistory.Count
-            : _viewModel.History.Count;
-        var hasMore = _activeReference is not null ? _scopedHasMore : _viewModel.HasMore;
+        var activeRows = _viewModel.History.Rows.Count;
+        var hasMore = _viewModel.History.HasMore;
         var context = new HistoryPerformanceStartContext(
-            _activeReference is null ? "main" : "scopedReference",
+            _viewModel.History.IsReferenceScoped ? "scopedReference" : "main",
             activeRows,
             activeRows,
             100,
             "topo-order",
             hasMore,
-            _recentRepositorySettings.ShowReflog,
-            !string.IsNullOrWhiteSpace(_viewModel.FilterText),
+            _viewModel.History.ShowReflog,
+            !string.IsNullOrWhiteSpace(_viewModel.History.FilterText),
             _viewModel.Branches.LocalBranches.Count,
             _viewModel.Branches.RemoteBranches.Count,
             _viewModel.Tags.Count,

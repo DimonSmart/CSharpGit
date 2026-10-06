@@ -41,6 +41,7 @@ public sealed partial class MainPage
         _settingsWindowController.Shutdown();
 
         _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        _viewModel.History.PropertyChanged -= HistoryViewModel_PropertyChanged;
         _viewModel.PropertyChanged -= ChangesViewModel_PropertyChanged;
         _viewModel.PropertyChanged -= ConfirmationDialogs_PropertyChanged;
         _viewModel.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
@@ -50,11 +51,7 @@ public sealed partial class MainPage
         _repositoryFilesViewModel.PropertyChanged -= RepositoryFilesViewModel_PropertyChanged;
         _repositoryFilesViewModel.Dispose();
         _viewModel.PropertyChanged -= RepositoryMaintenanceViewModel_PropertyChanged;
-        _viewModel.History.CollectionChanged -= MainHistory_CollectionChanged;
-
-        _referenceHistoryCts?.Cancel();
-        _referenceHistoryCts?.Dispose();
-        _referenceHistoryCts = null;
+        _viewModel.History.Rows.CollectionChanged -= MainHistory_CollectionChanged;
         _viewModel.Dispose();
     }
 }
