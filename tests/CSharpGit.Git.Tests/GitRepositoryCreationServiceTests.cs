@@ -262,7 +262,7 @@ public sealed class GitRepositoryCreationServiceTests : IDisposable
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(target);
         var state = await GitTestServices.CreateRepositoryStateService().ReadAsync(repository);
         var refresh = await GitTestServices.CreateWorkingTreeStatusReader().ReadAsync(repository);
-        var history = GitTestServices.CreateReferenceHistoryService();
+        var history = GitTestServices.CreateHistoryService();
 
         var all = await history.ReadHistoryAsync(
             repository,
@@ -300,7 +300,7 @@ public sealed class GitRepositoryCreationServiceTests : IDisposable
         await workingTree.CommitAsync(repository, "First commit");
 
         var after = await stateService.ReadAsync(repository);
-        var history = await GitTestServices.CreateReferenceHistoryService().ReadHistoryAsync(
+        var history = await GitTestServices.CreateHistoryService().ReadHistoryAsync(
             repository,
             new HistoryQuery(HistoryScope.CurrentBranch, null, 0, 100));
 
