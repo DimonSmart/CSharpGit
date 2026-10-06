@@ -110,6 +110,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 services.AddSingleton<IRepositoryPathService, RepositoryPathService>();
                 services.AddSingleton<IDesktopShellService, DesktopShellService>();
 
+                services.AddTransient<TagsViewModel>();
                 services.AddTransient<OpenRepositoryViewModel>();
                 services.AddTransient<CreateRepositoryViewModel>();
                 services.AddTransient<CloneRepositoryViewModel>();
