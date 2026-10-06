@@ -37,13 +37,13 @@ public sealed partial class MainPage
         IReferenceService referenceService,
         IRepositorySyncService syncService,
         ICommitActionService commitActionService,
-        ITagService tagService,
+        TagsViewModel tagsViewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
         IWorkingTreeDiffService workingTreeDiffService,
         IRepositoryFileVersionService fileVersionService,
         IDesktopShellService desktopShellService,
         IRepositoryPathService repositoryPathService)
-        : this(viewModel, historyService, referenceService, syncService, commitActionService, tagService, workingTreeStatusReader, workingTreeDiffService)
+        : this(viewModel, historyService, referenceService, syncService, commitActionService, tagsViewModel, workingTreeStatusReader, workingTreeDiffService)
     {
         _fileVersionService = fileVersionService ?? throw new ArgumentNullException(nameof(fileVersionService));
         _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
@@ -58,14 +58,14 @@ public sealed partial class MainPage
         IReferenceService referenceService,
         IRepositorySyncService syncService,
         ICommitActionService commitActionService,
-        ITagService tagService,
+        TagsViewModel tagsViewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
         IWorkingTreeDiffService workingTreeDiffService,
         IRepositoryFileVersionService fileVersionService,
         IDesktopShellService desktopShellService,
         IRepositoryPathService repositoryPathService,
         IExternalGitToolService externalGitToolService)
-        : this(viewModel, historyService, referenceService, syncService, commitActionService, tagService, workingTreeStatusReader, workingTreeDiffService, fileVersionService, desktopShellService, repositoryPathService)
+        : this(viewModel, historyService, referenceService, syncService, commitActionService, tagsViewModel, workingTreeStatusReader, workingTreeDiffService, fileVersionService, desktopShellService, repositoryPathService)
     {
         _externalGitToolService = externalGitToolService ?? throw new ArgumentNullException(nameof(externalGitToolService));
         UpdateCommitButtons();
