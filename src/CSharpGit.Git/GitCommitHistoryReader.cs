@@ -99,7 +99,7 @@ internal GitCommitHistoryReader(GitCommandExecutor executor)
         return ReadHistoryCoreAsync(repository, filter, skip, take, [reference], false, null, null, cancellationToken);
     }
 
-    public async Task<CommitDetails> ReadCommitAsync(
+    public async Task<CommitHistoryItem> ReadCommitMetadataAsync(
         Repository repository,
         string hash,
         CancellationToken cancellationToken = default)
@@ -110,54 +110,7 @@ internal GitCommitHistoryReader(GitCommandExecutor executor)
             repository.WorkingDirectory,
             cancellationToken,
             "show", "-s", "--date=iso-strict", "--format=%H%x00%P%x00%an%x00%ae%x00%aI%x00%D%x00%B%x1e", hash);
-        var commit = ParseHistory(metadata).Single();
-        var stats = await RunGitAsync(
-            repository.WorkingDirectory,
-            cancellationToken,
-            "diff-tree", "--root", "-m", "--no-commit-id", "--numstat", "-r", "-z", hash);
-        return new CommitDetails(commit, ParseChangedFiles(stats));
-    }
-
-    public async Task<FileDiff> ReadDiffAsync(
-        Repository repository,
-        string hash,
-        string path,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(repository);
-        ValidateCommitHash(hash);
-        ValidateGitPath(path);
-        var output = await RunGitAsync(
-            repository.WorkingDirectory,
-            cancellationToken,
-            "show", "--format=", "--no-ext-diff", "--find-renames", hash, "--", path);
-        var binary = GitDiffParser.IsBinary(output);
-        return new FileDiff(path, binary, binary ? [] : GitDiffParser.ParseLines(output));
-    }
-
-    public async Task<IReadOnlyDictionary<string, string>> ReadFileStatusesAsync(
-        Repository repository,
-        string commitHash,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(repository);
-        ValidateCommitHash(commitHash);
-
-        var output = await RunGitAsync(
-            repository.WorkingDirectory,
-            cancellationToken,
-            "diff-tree", "--root", "-m", "--no-commit-id", "--name-status", "-r", commitHash);
-
-        var result = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var line in output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
-        {
-            var fields = line.Split('\t');
-            if (fields.Length < 2) continue;
-            var status = fields[0];
-            var path = fields[^1];
-            if (status.Length > 0 && path.Length > 0) result[path] = status[0].ToString();
-        }
-        return result;
+        return ParseHistory(metadata).Single();
     }
 
     private async Task<HistoryPage> ReadHistoryCoreAsync(
@@ -608,24 +561,6 @@ internal GitCommitHistoryReader(GitCommandExecutor executor)
         }
     }
 
-    private static IReadOnlyList<ChangedFile> ParseChangedFiles(string output)
-    {
-        var files = new List<ChangedFile>();
-        foreach (var entry in output.Split('\0', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var fields = entry.TrimStart('\r', '\n').Split('\t', 3);
-            if (fields.Length != 3) continue;
-            var binary = fields[0] == "-" || fields[1] == "-";
-            var file = new ChangedFile(
-                fields[2],
-                int.TryParse(fields[0], out var added) ? added : null,
-                int.TryParse(fields[1], out var removed) ? removed : null,
-                binary);
-            if (!files.Contains(file)) files.Add(file);
-        }
-        return files;
-    }
-
     internal static IReadOnlyList<HistoryRow> BuildTopology(
         IReadOnlyList<CommitHistoryItem> commits,
         IReadOnlySet<string>? reflogOnlyHashes = null,
@@ -743,12 +678,6 @@ internal GitCommitHistoryReader(GitCommandExecutor executor)
     {
         if (string.IsNullOrWhiteSpace(hash) || hash.Any(character => !Uri.IsHexDigit(character)))
             throw new ArgumentException("Invalid commit hash.", nameof(hash));
-    }
-
-    private static void ValidateGitPath(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path) || path.Contains('\0') || Path.IsPathRooted(path))
-            throw new ArgumentException("Invalid Git file path.", nameof(path));
     }
 
     private readonly record struct ReflogMetadataCacheKey(
