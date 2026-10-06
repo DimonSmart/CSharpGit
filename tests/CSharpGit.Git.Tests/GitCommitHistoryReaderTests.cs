@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using CSharpGit.Domain;
 
 namespace CSharpGit.Git.Tests;
 
@@ -69,7 +70,14 @@ public sealed class GitCommitHistoryReaderTests : IDisposable
         RunGit("commit", "-am", "main commit");
 
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
-        var page = await GitTestServices.CreateCommitHistoryReader().ReadHistoryAsync(repository, "feature/demo", null, 0, 20);
+        var page = await GitTestServices.CreateHistoryService().ReadHistoryAsync(
+            repository,
+            new HistoryQuery(
+                HistoryScope.CurrentBranch,
+                null,
+                0,
+                20,
+                Reference: "feature/demo"));
 
         Assert.Equal("feature commit", page.Rows[0].Commit.Subject);
         Assert.Contains(page.Rows, row => row.Commit.Subject == "initial");

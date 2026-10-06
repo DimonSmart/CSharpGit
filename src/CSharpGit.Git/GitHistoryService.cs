@@ -7,7 +7,8 @@ public sealed class GitHistoryService : IHistoryService
 {
     private readonly GitCommitHistoryReader _history;
     private readonly GitCommandExecutor _executor;
-internal GitHistoryService(
+
+    internal GitHistoryService(
         GitCommitHistoryReader history,
         GitCommandExecutor executor)
     {
