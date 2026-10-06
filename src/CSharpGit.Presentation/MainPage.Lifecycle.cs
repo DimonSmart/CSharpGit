@@ -28,8 +28,8 @@ public sealed partial class MainPage
         _cloneRepositoryViewModel.Cancel();
         Loaded -= RunDesktopCheckWhenRequested;
         _viewModel.WorkingTree.Changes.CollectionChanged -= RepositoryPresentationChanges_CollectionChanged;
-        _viewModel.LocalBranches.CollectionChanged -= RepositoryPresentationLocalBranches_CollectionChanged;
-        _viewModel.RemoteBranches.CollectionChanged -= RepositoryPresentationRemoteBranches_CollectionChanged;
+        _viewModel.Branches.LocalBranches.CollectionChanged -= RepositoryPresentationLocalBranches_CollectionChanged;
+        _viewModel.Branches.RemoteBranches.CollectionChanged -= RepositoryPresentationRemoteBranches_CollectionChanged;
         _viewModel.Remotes.CollectionChanged -= RepositoryPresentationRemotes_CollectionChanged;
         _viewModel.Tags.CollectionChanged -= RepositoryPresentationTags_CollectionChanged;
         _viewModel.Stashes.CollectionChanged -= RepositoryPresentationStashes_CollectionChanged;

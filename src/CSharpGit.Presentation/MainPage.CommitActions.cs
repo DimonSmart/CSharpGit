@@ -156,9 +156,11 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         if (repository is null) return;
         var switched = switchToBranch.IsChecked == true;
-        if (await _viewModel.RunMutationAsync(
-                () => _referenceService.CreateBranchAsync(repository, branchName.Text.Trim(), startPoint, switched),
-                "Could not create branch") &&
+        if (await _viewModel.Branches.CreateBranchAsync(
+                repository,
+                branchName.Text.Trim(),
+                startPoint,
+                switched) &&
             !string.IsNullOrWhiteSpace(restoreSelectionCommit))
             await RestoreCommitActionSelectionAsync(restoreSelectionCommit);
     }

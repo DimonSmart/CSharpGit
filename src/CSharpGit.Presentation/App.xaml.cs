@@ -111,6 +111,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 services.AddSingleton<IDesktopShellService, DesktopShellService>();
 
                 services.AddTransient<TagsViewModel>();
+                services.AddTransient<BranchesViewModel>();
                 services.AddTransient<WorktreesViewModel>();
                 services.AddTransient<RepositoryFilesViewModel>();
                 services.AddTransient<WorkingTreeViewModel>();

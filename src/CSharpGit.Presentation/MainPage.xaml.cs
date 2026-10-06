@@ -78,8 +78,8 @@ public sealed partial class MainPage : Page
 
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
         _viewModel.WorkingTree.Changes.CollectionChanged += RepositoryPresentationChanges_CollectionChanged;
-        _viewModel.LocalBranches.CollectionChanged += RepositoryPresentationLocalBranches_CollectionChanged;
-        _viewModel.RemoteBranches.CollectionChanged += RepositoryPresentationRemoteBranches_CollectionChanged;
+        _viewModel.Branches.LocalBranches.CollectionChanged += RepositoryPresentationLocalBranches_CollectionChanged;
+        _viewModel.Branches.RemoteBranches.CollectionChanged += RepositoryPresentationRemoteBranches_CollectionChanged;
         _viewModel.Remotes.CollectionChanged += RepositoryPresentationRemotes_CollectionChanged;
         _viewModel.Tags.CollectionChanged += RepositoryPresentationTags_CollectionChanged;
         _viewModel.Stashes.CollectionChanged += RepositoryPresentationStashes_CollectionChanged;
@@ -265,7 +265,7 @@ public sealed partial class MainPage : Page
 
     private void UpdateStatusBar()
     {
-        var current = _viewModel.LocalBranches.FirstOrDefault(branch => branch.IsCurrent);
+        var current = _viewModel.Branches.LocalBranches.FirstOrDefault(branch => branch.IsCurrent);
         var branch = current?.Name
                      ?? _viewModel.CurrentBranchName
                      ?? (_viewModel.Repository is null ? string.Empty : "detached HEAD");
@@ -485,11 +485,11 @@ public sealed partial class MainPage : Page
         switch (node.Kind)
         {
             case RepositoryTreeNodeKind.LocalBranch when node.Value is GitBranch local:
-                _viewModel.SelectedLocalBranch = local;
+                _viewModel.Branches.SelectedLocalBranch = local;
                 await NavigateToReferenceAsync(local.Commit);
                 break;
             case RepositoryTreeNodeKind.RemoteBranch when node.Value is GitBranch remoteBranch:
-                _viewModel.SelectedRemoteBranch = remoteBranch;
+                _viewModel.Branches.SelectedRemoteBranch = remoteBranch;
                 await NavigateToReferenceAsync(remoteBranch.Commit);
                 break;
             case RepositoryTreeNodeKind.Tag when node.Value is GitTag tag:
@@ -511,8 +511,8 @@ public sealed partial class MainPage : Page
     {
         var node = ResolveNode((args.OriginalSource as FrameworkElement)?.DataContext);
         if (node?.Kind != RepositoryTreeNodeKind.LocalBranch || node.Value is not GitBranch branch) return;
-        _viewModel.SelectedLocalBranch = branch;
-        await ExecuteCommandAsync(_viewModel.SwitchBranchCommand);
+        _viewModel.Branches.SelectedLocalBranch = branch;
+        await ExecuteCommandAsync(_viewModel.Branches.SwitchBranchCommand);
         args.Handled = true;
     }
 
@@ -528,8 +528,8 @@ public sealed partial class MainPage : Page
             case RepositoryTreeNodeKind.LocalBranch when node.Value is GitBranch branch:
                 AddMenuItem(flyout, "Switch / Checkout", !branch.IsCurrent && !_viewModel.IsBusy, async () =>
                 {
-                    _viewModel.SelectedLocalBranch = branch;
-                    await ExecuteCommandAsync(_viewModel.SwitchBranchCommand);
+                    _viewModel.Branches.SelectedLocalBranch = branch;
+                    await ExecuteCommandAsync(_viewModel.Branches.SwitchBranchCommand);
                 });
                 AddMenuItem(flyout, "Create branch from here…", !_viewModel.IsBusy, () => CreateBranchFromAsync(branch.Name));
                 AddMenuItem(flyout, "Merge into current branch", !branch.IsCurrent && !_viewModel.IsBusy, async () =>
@@ -537,11 +537,11 @@ public sealed partial class MainPage : Page
                     _viewModel.SelectedMergeBranch = branch;
                     await ExecuteCommandAsync(_viewModel.MergeCommand);
                 });
-                AddMenuItem(flyout, "Delete", !branch.IsCurrent && !_viewModel.IsBusy, async () =>
-                {
-                    _viewModel.SelectedLocalBranch = branch;
-                    await ExecuteCommandAsync(_viewModel.DeleteBranchCommand);
-                });
+                AddMenuItem(
+                    flyout,
+                    "Delete",
+                    !branch.IsCurrent && !_viewModel.IsBusy,
+                    () => ConfirmDeleteLocalBranchAsync(branch));
                 flyout.Items.Add(new MenuFlyoutSeparator());
                 AddMenuItem(flyout, "Show branch history only", !_viewModel.IsBusy,
                     () => ShowReferenceHistoryAsync(branch.Name, $"Branch: {branch.Name}"));
@@ -563,10 +563,10 @@ public sealed partial class MainPage : Page
             case RepositoryTreeNodeKind.RemoteBranch when node.Value is GitBranch remoteBranch:
                 AddMenuItem(flyout, "Checkout as tracking branch", !_viewModel.IsBusy, async () =>
                 {
-                    _viewModel.SelectedRemoteBranch = remoteBranch;
+                    _viewModel.Branches.SelectedRemoteBranch = remoteBranch;
                     var slash = remoteBranch.Name.IndexOf('/');
-                    _viewModel.NewBranchName = slash >= 0 ? remoteBranch.Name[(slash + 1)..] : remoteBranch.Name;
-                    await ExecuteCommandAsync(_viewModel.CheckoutRemoteCommand);
+                    _viewModel.Branches.NewBranchName = slash >= 0 ? remoteBranch.Name[(slash + 1)..] : remoteBranch.Name;
+                    await ExecuteCommandAsync(_viewModel.Branches.CheckoutRemoteCommand);
                 });
                 AddMenuItem(flyout, "Show branch history only", !_viewModel.IsBusy,
                     () => ShowReferenceHistoryAsync(remoteBranch.Name, $"Remote: {remoteBranch.Name}"));
@@ -656,14 +656,17 @@ public sealed partial class MainPage : Page
             DefaultButton = ContentDialogButton.Primary
         };
         if (await dialog.ShowAsync() != ContentDialogResult.Primary || string.IsNullOrWhiteSpace(input.Text)) return;
-        try
+        var repository = _viewModel.Repository;
+        if (repository is null) return;
+
+        if (!await _viewModel.Branches.CreateBranchAsync(
+                repository,
+                input.Text.Trim(),
+                startPoint,
+                switchToBranch: true)
+            && !string.IsNullOrWhiteSpace(_viewModel.ErrorMessage))
         {
-            await _referenceService.CreateBranchAsync(_viewModel.Repository, input.Text.Trim(), startPoint, true);
-            await _viewModel.RefreshAsyncForDesktopCheck();
-        }
-        catch (Exception exception)
-        {
-            await ShowErrorAsync("Could not create branch", exception.Message);
+            await ShowErrorAsync("Could not create branch", _viewModel.ErrorMessage);
         }
     }
 
@@ -933,7 +936,7 @@ public sealed partial class MainPage : Page
                 Check(_viewModel.History.Any(row => ReferenceEquals(row, _viewModel.SelectedHistoryRow)), "history refresh kept a stale selected row instance", failures);
             }
 
-            if (_viewModel.LocalBranches.FirstOrDefault(branch => branch.IsCurrent) is { } currentBranch)
+            if (_viewModel.Branches.LocalBranches.FirstOrDefault(branch => branch.IsCurrent) is { } currentBranch)
             {
                 await ShowReferenceHistoryAsync(currentBranch.Name, $"Branch: {currentBranch.Name}");
                 Check(_scopedHistory.Any(row => ReferenceEquals(row, _viewModel.SelectedHistoryRow)), "scoped history selection is not part of the current ItemsSource", failures);

@@ -38,7 +38,7 @@ public sealed class ForcePushUiContractTests
         Assert.Contains("Repository is not null", property, StringComparison.Ordinal);
         Assert.Contains("!IsBusy", property, StringComparison.Ordinal);
         Assert.Contains("CurrentOperation == RepositoryOperation.None", property, StringComparison.Ordinal);
-        Assert.Contains("LocalBranches.Any(branch => branch.IsCurrent)", property, StringComparison.Ordinal);
+        Assert.Contains("Branches.LocalBranches.Any(branch => branch.IsCurrent)", property, StringComparison.Ordinal);
         Assert.DoesNotContain("Upstream", property, StringComparison.Ordinal);
     }
 
@@ -122,7 +122,7 @@ public sealed class ForcePushUiContractTests
         Assert.Contains("Repository is not null", property, StringComparison.Ordinal);
         Assert.Contains("!IsBusy", property, StringComparison.Ordinal);
         Assert.Contains("CurrentOperation == RepositoryOperation.None", property, StringComparison.Ordinal);
-        Assert.Contains("LocalBranches.Any(branch => branch.IsCurrent)", property, StringComparison.Ordinal);
+        Assert.Contains("Branches.LocalBranches.Any(branch => branch.IsCurrent)", property, StringComparison.Ordinal);
         Assert.Contains("Remotes.Count > 0", property, StringComparison.Ordinal);
     }
 

@@ -11,10 +11,7 @@ public sealed class BranchRenameUiContractTests
 
         Assert.Contains("AddMenuItem(flyout, \"Rename…\", CanRenameBranch(), () => RenameBranchAsync(branch));", menu, StringComparison.Ordinal);
         Assert.Equal(1, CountOccurrences(menu, "\"Rename…\""));
-        Assert.Contains("private bool CanRenameBranch() =>", workflow, StringComparison.Ordinal);
-        Assert.Contains("!_viewModel.IsBusy", workflow, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.Repository is not null", workflow, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.CurrentOperation == RepositoryOperation.None", workflow, StringComparison.Ordinal);
+        Assert.Contains("private bool CanRenameBranch() => _viewModel.Branches.CanRename;", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("branch.IsCurrent", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("FindWorktreeForBranch", workflow, StringComparison.Ordinal);
     }
@@ -48,8 +45,8 @@ public sealed class BranchRenameUiContractTests
         Assert.Contains("Text = oldName", workflow, StringComparison.Ordinal);
         Assert.Contains("dialog.IsPrimaryButtonEnabled", workflow, StringComparison.Ordinal);
         Assert.Contains("nameBox.Text.Trim()", workflow, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.RunMutationAsync(", workflow, StringComparison.Ordinal);
-        Assert.Contains("_referenceService.RenameBranchAsync(", workflow, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.Branches.RenameBranchAsync(", workflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("_referenceService.RenameBranchAsync(", workflow, StringComparison.Ordinal);
         Assert.Contains("\"Could not rename local branch\"", workflow, StringComparison.Ordinal);
         Assert.Contains("string.Equals(_activeReference, oldName, StringComparison.Ordinal)", workflow, StringComparison.Ordinal);
         Assert.Contains("_activeReference = newName;", workflow, StringComparison.Ordinal);

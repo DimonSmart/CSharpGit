@@ -79,8 +79,8 @@ public sealed partial class MainPage
         try
         {
             RepositoryTreeSynchronizer.ReconcileRepository(
-                _viewModel.LocalBranches,
-                _viewModel.RemoteBranches,
+                _viewModel.Branches.LocalBranches,
+                _viewModel.Branches.RemoteBranches,
                 _viewModel.Remotes,
                 _viewModel.Tags,
                 _viewModel.Stashes,
@@ -113,8 +113,8 @@ public sealed partial class MainPage
         _repositoryTreeRoots.Clear();
         RepositoryTreeSynchronizer.ResetSession();
         RepositoryTreeSynchronizer.ReconcileRepository(
-            _viewModel.LocalBranches,
-            _viewModel.RemoteBranches,
+            _viewModel.Branches.LocalBranches,
+            _viewModel.Branches.RemoteBranches,
             _viewModel.Remotes,
             _viewModel.Tags,
             _viewModel.Stashes,

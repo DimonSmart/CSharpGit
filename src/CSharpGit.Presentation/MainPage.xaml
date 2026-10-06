@@ -240,19 +240,19 @@
             <Button Click="Pull_Click" Style="{StaticResource ToolbarButtonStyle}">
               <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                 <FontIcon Glyph="&#xE896;" FontSize="{StaticResource Icon.Small}" />
-                <TextBlock Text="{Binding SelectedLocalBranch, Converter={StaticResource BranchTrackingActionTextConverter}, ConverterParameter=Pull}"
+                <TextBlock Text="{Binding Branches.SelectedLocalBranch, Converter={StaticResource BranchTrackingActionTextConverter}, ConverterParameter=Pull}"
                            Style="{StaticResource BodyTextStyle}" />
               </StackPanel>
             </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}">
               <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                 <FontIcon Glyph="&#xE898;" FontSize="{StaticResource Icon.Small}" />
-                <TextBlock Text="{Binding SelectedLocalBranch, Converter={StaticResource BranchTrackingActionTextConverter}, ConverterParameter=Push}"
+                <TextBlock Text="{Binding Branches.SelectedLocalBranch, Converter={StaticResource BranchTrackingActionTextConverter}, ConverterParameter=Push}"
                            Style="{StaticResource BodyTextStyle}" />
               </StackPanel>
               <Button.Flyout>
                 <MenuFlyout>
-                  <MenuFlyoutItem Text="{Binding SelectedLocalBranch, Converter={StaticResource BranchTrackingActionTextConverter}, ConverterParameter=PushMenu}" Click="Push_Click" />
+                  <MenuFlyoutItem Text="{Binding Branches.SelectedLocalBranch, Converter={StaticResource BranchTrackingActionTextConverter}, ConverterParameter=PushMenu}" Click="Push_Click" />
                   <MenuFlyoutItem Text="Push to…" Click="PushTo_Click" IsEnabled="{Binding CanPushTo}" />
                   <MenuFlyoutSeparator />
                   <MenuFlyoutItem Text="Force push with lease…" Click="ForcePushWithLease_Click" IsEnabled="{Binding CanForcePushWithLease}" />
