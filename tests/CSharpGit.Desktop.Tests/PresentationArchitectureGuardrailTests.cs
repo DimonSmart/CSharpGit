@@ -96,6 +96,25 @@ public sealed class PresentationArchitectureGuardrailTests
     }
 
     [Fact]
+    public void MainPageDoesNotOwnTagApplicationService()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var mainPageSources = Directory
+            .GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+            .Select(File.ReadAllText)
+            .ToArray();
+        var combined = string.Join(Environment.NewLine, mainPageSources);
+        var tagsViewModel = File.ReadAllText(
+            Path.Combine(presentation, "ViewModels", "TagsViewModel.cs"));
+
+        Assert.DoesNotContain("ITagService", combined, StringComparison.Ordinal);
+        Assert.DoesNotContain("_tagService", combined, StringComparison.Ordinal);
+        Assert.Contains("public sealed class TagsViewModel", tagsViewModel, StringComparison.Ordinal);
+        Assert.Contains("ITagService", tagsViewModel, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void WindowTitleUsesPresentationStateAndShellOwnedWindow()
     {
         var root = FindRepositoryRoot();
