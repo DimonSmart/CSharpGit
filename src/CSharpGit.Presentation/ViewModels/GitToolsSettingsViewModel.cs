@@ -9,11 +9,15 @@ public sealed record GitToolScopeOption(GitToolWriteScope Scope, string Label);
 
 public sealed class GitToolsSettingsViewModel
 {
-    private readonly IGitToolsService _service;
+    private readonly IGitToolConfigurationService _configurationService;
+    private readonly IExternalGitToolService _externalToolService;
 
-    public GitToolsSettingsViewModel(IGitToolsService service)
+    public GitToolsSettingsViewModel(
+        IGitToolConfigurationService configurationService,
+        IExternalGitToolService externalToolService)
     {
-        _service = service ?? throw new ArgumentNullException(nameof(service));
+        _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
+        _externalToolService = externalToolService ?? throw new ArgumentNullException(nameof(externalToolService));
         Editor = new GitToolSectionViewModel(GitToolKind.Editor, "Editor");
         Diff = new GitToolSectionViewModel(GitToolKind.Diff, "Diff Tool");
         Merge = new GitToolSectionViewModel(GitToolKind.Merge, "Merge Tool");
@@ -25,9 +29,9 @@ public sealed class GitToolsSettingsViewModel
 
     public async Task RefreshAsync(Repository? repository, CancellationToken cancellationToken = default)
     {
-        var editor = await _service.ReadAsync(repository, GitToolKind.Editor, cancellationToken);
-        var diff = await _service.ReadAsync(repository, GitToolKind.Diff, cancellationToken);
-        var merge = await _service.ReadAsync(repository, GitToolKind.Merge, cancellationToken);
+        var editor = await _configurationService.ReadAsync(repository, GitToolKind.Editor, cancellationToken);
+        var diff = await _configurationService.ReadAsync(repository, GitToolKind.Diff, cancellationToken);
+        var merge = await _configurationService.ReadAsync(repository, GitToolKind.Merge, cancellationToken);
         Editor.Load(editor, repository is not null);
         Diff.Load(diff, repository is not null);
         Merge.Load(merge, repository is not null);
@@ -39,8 +43,8 @@ public sealed class GitToolsSettingsViewModel
         if (section.SelectedScope is null) throw new InvalidOperationException("Select a Git configuration scope.");
         if (!section.IsDirty) return;
         var edit = section.CreateEdit();
-        await _service.SaveAsync(repository, edit, cancellationToken);
-        var refreshed = await _service.ReadAsync(repository, section.Kind, cancellationToken);
+        await _configurationService.SaveAsync(repository, edit, cancellationToken);
+        var refreshed = await _configurationService.ReadAsync(repository, section.Kind, cancellationToken);
         section.Load(refreshed, repository is not null, edit.Scope);
     }
 
@@ -49,8 +53,8 @@ public sealed class GitToolsSettingsViewModel
         ArgumentNullException.ThrowIfNull(section);
         if (section.SelectedScope is null) throw new InvalidOperationException("Select a Git configuration scope.");
         var scope = section.SelectedScope.Scope;
-        await _service.RemoveOverrideAsync(repository, section.Kind, scope, cancellationToken);
-        var refreshed = await _service.ReadAsync(repository, section.Kind, cancellationToken);
+        await _configurationService.RemoveOverrideAsync(repository, section.Kind, scope, cancellationToken);
+        var refreshed = await _configurationService.ReadAsync(repository, section.Kind, cancellationToken);
         section.Load(refreshed, repository is not null, scope);
     }
 
@@ -58,7 +62,7 @@ public sealed class GitToolsSettingsViewModel
     {
         ArgumentNullException.ThrowIfNull(section);
         if (section.IsDirty) throw new InvalidOperationException("Save Git Tools changes before running the test.");
-        await _service.TestAsync(repository, section.Kind, cancellationToken);
+        await _externalToolService.TestAsync(repository, section.Kind, cancellationToken);
     }
 }
 

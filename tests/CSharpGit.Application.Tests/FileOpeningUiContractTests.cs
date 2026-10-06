@@ -67,14 +67,14 @@ public sealed class FileOpeningUiContractTests
     public void ExistingConflictOpenUsesConfiguredGitEditor()
     {
         var root = FindRepositoryRoot();
-        var gitTools = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitToolsService.cs"));
+        var gitTools = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "ExternalGitToolService.cs"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
 
         Assert.Contains("IRepositoryPathService", gitTools);
         Assert.Contains("ResolveExistingWorkingTreeFile", gitTools);
         Assert.Contains("OpenConflictInEditorAsync", gitTools);
         Assert.Contains("OpenEditorAsync", gitTools);
-        Assert.Contains("_gitToolsService.OpenConflictInEditorAsync", viewModel);
+        Assert.Contains("_externalGitToolService.OpenConflictInEditorAsync", viewModel);
         Assert.DoesNotContain("Process.Start", gitTools);
     }
 

@@ -154,10 +154,15 @@ public static class GitServiceCollectionExtensions
             new RepositoryIdentityService(
                 provider.GetRequiredService<GitConfigService>()));
         services.AddSingleton<IInteractiveRebaseAuthorChangeService, InteractiveRebaseAuthorChangeService>();
-        services.AddSingleton<IGitToolsService>(provider =>
-            new GitToolsService(
+        services.AddSingleton<IGitToolConfigurationService>(provider =>
+            new GitToolConfigurationService(
                 provider.GetRequiredService<GitCommandExecutor>(),
                 provider.GetRequiredService<GitConfigService>(),
+                provider.GetRequiredService<IExternalToolProcessService>()));
+        services.AddSingleton<IExternalGitToolService>(provider =>
+            new ExternalGitToolService(
+                provider.GetRequiredService<GitCommandExecutor>(),
+                provider.GetRequiredService<IGitToolConfigurationService>(),
                 provider.GetRequiredService<IRepositoryFileVersionService>(),
                 provider.GetRequiredService<IRepositoryPathService>(),
                 provider.GetRequiredService<IExternalToolProcessService>()));
