@@ -24,7 +24,7 @@ public sealed class WorkingTreeViewModelTests
         fixture.ViewModel.ApplyRepositoryState(fixture.Repository, changes);
 
         Assert.Equal(changes, fixture.ViewModel.Changes);
-        Assert.Single(fixture.ViewModel.Changes.Where(change => change.Path == "both.cs"));
+        Assert.Single(fixture.ViewModel.Changes, change => change.Path == "both.cs");
     }
 
     [Fact]
