@@ -402,7 +402,7 @@ public sealed partial class MainPage
                 if (WorkingTreeTreeSelection.GetLeaves(_stagedTreeRoots).Count == 0)
                 {
                     await Task.Delay(20);
-                    await ExecuteCommandAsync(_viewModel.StageSelectedCommand);
+                    await ExecuteCommandAsync(_viewModel.WorkingTree.StageSelectedCommand);
                     await WaitUntilAsync(() => !_viewModel.IsBusy, TimeSpan.FromSeconds(20));
                     RefreshPresentationCollections();
                     RebuildWorkingTreeTrees();
@@ -429,7 +429,7 @@ public sealed partial class MainPage
             {
                 WorkingTreeNodeInvoked(staged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Staged);
                 await Task.Delay(20);
-                await ExecuteCommandAsync(_viewModel.UnstageSelectedCommand);
+                await ExecuteCommandAsync(_viewModel.WorkingTree.UnstageSelectedCommand);
                 await WaitUntilAsync(() => !_viewModel.IsBusy, TimeSpan.FromSeconds(20));
                 RefreshPresentationCollections();
                 RebuildWorkingTreeTrees();

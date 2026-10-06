@@ -671,13 +671,13 @@
                                Style="{StaticResource BodyStrongTextStyle}"
                                VerticalAlignment="Center" />
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Spacing.XS}">
-                      <Button Command="{Binding StageSelectedCommand}"
+                      <Button Command="{Binding WorkingTree.StageSelectedCommand}"
                               Style="{StaticResource IconButtonStyle}"
                               ToolTipService.ToolTip="Stage selected"
                               AutomationProperties.Name="Stage selected">
                         <FontIcon Glyph="&#xE710;" FontSize="{StaticResource Icon.Small}" />
                       </Button>
-                      <Button Command="{Binding StageAllCommand}"
+                      <Button Command="{Binding WorkingTree.StageAllCommand}"
                               Style="{StaticResource IconButtonStyle}"
                               ToolTipService.ToolTip="Stage all"
                               AutomationProperties.Name="Stage all">
@@ -688,14 +688,14 @@
                               Margin="3,0"
                               Background="{ThemeResource DividerStrokeColorDefaultBrush}"
                               VerticalAlignment="Center" />
-                      <Button Command="{Binding RequestDiscardSelectedCommand}"
+                      <Button Command="{Binding WorkingTree.RequestDiscardSelectedCommand}"
                               Style="{StaticResource IconButtonStyle}"
                               Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                               ToolTipService.ToolTip="Discard selected"
                               AutomationProperties.Name="Discard selected">
                         <FontIcon Glyph="&#xE74D;" FontSize="{StaticResource Icon.Small}" />
                       </Button>
-                      <Button Command="{Binding RequestDiscardAllCommand}"
+                      <Button Command="{Binding WorkingTree.RequestDiscardAllCommand}"
                               Style="{StaticResource IconButtonStyle}"
                               Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                               ToolTipService.ToolTip="Discard all…"
@@ -730,13 +730,13 @@
                                Style="{StaticResource BodyStrongTextStyle}"
                                VerticalAlignment="Center" />
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Spacing.XS}">
-                      <Button Command="{Binding UnstageSelectedCommand}"
+                      <Button Command="{Binding WorkingTree.UnstageSelectedCommand}"
                               Style="{StaticResource IconButtonStyle}"
                               ToolTipService.ToolTip="Unstage selected"
                               AutomationProperties.Name="Unstage selected">
                         <TextBlock Text="−" Style="{StaticResource BodyStrongTextStyle}" />
                       </Button>
-                      <Button Command="{Binding UnstageAllCommand}"
+                      <Button Command="{Binding WorkingTree.UnstageAllCommand}"
                               Style="{StaticResource IconButtonStyle}"
                               ToolTipService.ToolTip="Unstage all"
                               AutomationProperties.Name="Unstage all">

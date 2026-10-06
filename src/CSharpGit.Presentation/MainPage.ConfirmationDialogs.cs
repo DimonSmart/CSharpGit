@@ -17,26 +17,31 @@ public sealed partial class MainPage
         if (_confirmationDialogsInitialized) return;
         _confirmationDialogsInitialized = true;
         _viewModel.PropertyChanged += ConfirmationDialogs_PropertyChanged;
+        _viewModel.WorkingTree.PropertyChanged += WorkingTreeConfirmation_PropertyChanged;
     }
 
     private void ConfirmationDialogs_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
-        if (args.PropertyName == nameof(OpenRepositoryViewModel.BatchDiscardConfirmationMessage) &&
-            !string.IsNullOrWhiteSpace(_viewModel.BatchDiscardConfirmationMessage))
-        {
-            _ = ShowDiscardConfirmationAsync();
-        }
-        else if (args.PropertyName == nameof(OpenRepositoryViewModel.IsEmptyIndexChoiceOpen) &&
-                 _viewModel.IsEmptyIndexChoiceOpen)
+        if (args.PropertyName == nameof(OpenRepositoryViewModel.IsEmptyIndexChoiceOpen) &&
+            _viewModel.IsEmptyIndexChoiceOpen)
         {
             _ = ShowEmptyIndexChoiceAsync();
+        }
+    }
+
+    private void WorkingTreeConfirmation_PropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(WorkingTreeViewModel.BatchDiscardConfirmationMessage) &&
+            !string.IsNullOrWhiteSpace(_viewModel.WorkingTree.BatchDiscardConfirmationMessage))
+        {
+            _ = ShowDiscardConfirmationAsync();
         }
     }
 
     private async Task ShowDiscardConfirmationAsync()
     {
         if (_discardConfirmationOpen) return;
-        var message = _viewModel.BatchDiscardConfirmationMessage;
+        var message = _viewModel.WorkingTree.BatchDiscardConfirmationMessage;
         if (string.IsNullOrWhiteSpace(message)) return;
 
         _discardConfirmationOpen = true;
@@ -71,14 +76,14 @@ public sealed partial class MainPage
 
             var result = await dialog.ShowAsync();
             await ExecuteCommandAsync(result == ContentDialogResult.Primary
-                ? _viewModel.ConfirmBatchDiscardCommand
-                : _viewModel.CancelBatchDiscardCommand);
+                ? _viewModel.WorkingTree.ConfirmBatchDiscardCommand
+                : _viewModel.WorkingTree.CancelBatchDiscardCommand);
         }
         finally
         {
             _discardConfirmationOpen = false;
-            if (!string.IsNullOrWhiteSpace(_viewModel.BatchDiscardConfirmationMessage))
-                await ExecuteCommandAsync(_viewModel.CancelBatchDiscardCommand);
+            if (!string.IsNullOrWhiteSpace(_viewModel.WorkingTree.BatchDiscardConfirmationMessage))
+                await ExecuteCommandAsync(_viewModel.WorkingTree.CancelBatchDiscardCommand);
         }
     }
 

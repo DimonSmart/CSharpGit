@@ -55,8 +55,8 @@ public sealed partial class MainPage
             AddMenuItem(
                 flyout,
                 count == 1 ? "Stage" : $"Stage {count} files",
-                _viewModel.StageSelectedCommand.CanExecute(null),
-                () => ExecuteCommandAsync(_viewModel.StageSelectedCommand));
+                _viewModel.WorkingTree.StageSelectedCommand.CanExecute(null),
+                () => ExecuteCommandAsync(_viewModel.WorkingTree.StageSelectedCommand));
             AddMenuItem(
                 flyout,
                 count == 1 ? "Stash selected…" : $"Stash {count} files…",
@@ -66,16 +66,16 @@ public sealed partial class MainPage
             AddMenuItem(
                 flyout,
                 count == 1 ? "Discard changes…" : $"Discard {count} files…",
-                _viewModel.RequestDiscardSelectedCommand.CanExecute(null),
-                () => ExecuteCommandAsync(_viewModel.RequestDiscardSelectedCommand));
+                _viewModel.WorkingTree.RequestDiscardSelectedCommand.CanExecute(null),
+                () => ExecuteCommandAsync(_viewModel.WorkingTree.RequestDiscardSelectedCommand));
         }
         else
         {
             AddMenuItem(
                 flyout,
                 count == 1 ? "Unstage" : $"Unstage {count} files",
-                _viewModel.UnstageSelectedCommand.CanExecute(null),
-                () => ExecuteCommandAsync(_viewModel.UnstageSelectedCommand));
+                _viewModel.WorkingTree.UnstageSelectedCommand.CanExecute(null),
+                () => ExecuteCommandAsync(_viewModel.WorkingTree.UnstageSelectedCommand));
             AddMenuItem(
                 flyout,
                 count == 1 ? "Stash selected…" : $"Stash {count} files…",
@@ -105,16 +105,16 @@ public sealed partial class MainPage
             AddMenuItem(
                 flyout,
                 "Stage",
-                _viewModel.CanStageChanges(changes),
-                () => _viewModel.StageChangesAsync(changes, "Could not stage folder"));
+                _viewModel.WorkingTree.CanStageChanges(changes),
+                () => _viewModel.WorkingTree.StageChangesAsync(changes, "Could not stage folder"));
         }
         else
         {
             AddMenuItem(
                 flyout,
                 "Unstage",
-                _viewModel.CanUnstageChanges(changes),
-                () => _viewModel.UnstageChangesAsync(changes, "Could not unstage folder"));
+                _viewModel.WorkingTree.CanUnstageChanges(changes),
+                () => _viewModel.WorkingTree.UnstageChangesAsync(changes, "Could not unstage folder"));
         }
     }
 
@@ -133,16 +133,13 @@ public sealed partial class MainPage
             .Select(selected => selected.Change!)
             .ToArray();
 
-        _viewModel.SetWorkingTreeSelection(kind, snapshot);
+        _viewModel.WorkingTree.SetSelection(kind, snapshot);
         SelectWorkingTreeChange(node.Change!, kind);
         return snapshot;
     }
 
     private bool CanDiscardStagedFile(WorkingTreeChange change) =>
-        _viewModel.Repository is not null &&
-        !_viewModel.IsBusy &&
-        change.IsStaged &&
-        !change.IsConflicted;
+        _viewModel.WorkingTree.CanDiscardAllFileChanges(change);
 
     private async Task ConfirmDiscardStagedFileAsync(WorkingTreeChange change)
     {
@@ -191,6 +188,6 @@ public sealed partial class MainPage
         };
 
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
-        await _viewModel.DiscardAllFileChangesAsync(change);
+        await _viewModel.WorkingTree.DiscardAllFileChangesAsync(change);
     }
 }
