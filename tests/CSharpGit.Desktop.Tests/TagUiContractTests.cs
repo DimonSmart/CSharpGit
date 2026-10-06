@@ -7,6 +7,7 @@ public sealed class TagUiContractTests
     {
         var root = FindRepositoryRoot();
         var tags = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Tags.cs"));
+        var tagFeature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "TagsViewModel.cs"));
         var tagService = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitTagService.cs"));
         var contract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "ITagService.cs"));
 
@@ -22,36 +23,28 @@ public sealed class TagUiContractTests
         Assert.Contains("DefaultButton = ContentDialogButton.Close", tags, StringComparison.Ordinal);
 
         Assert.Contains("GetPreferredTagRemote()", tags, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.Remotes.Count == 1", tags, StringComparison.Ordinal);
-        Assert.Contains("branch.IsCurrent)?.Upstream", tags, StringComparison.Ordinal);
+        Assert.Contains("context.Remotes.Count == 1", tagFeature, StringComparison.Ordinal);
+        Assert.Contains("branch.IsCurrent)?.Upstream", tagFeature, StringComparison.Ordinal);
 
-        Assert.Contains("_tagService.ReadRemoteTagAsync(repository, remote.Name, tag.Name)", tags, StringComparison.Ordinal);
-        Assert.Contains("remoteTag.ObjectId, tag.ObjectId", tags, StringComparison.Ordinal);
-        var combinedStart = tags.IndexOf("private async Task DeleteTagFromUiAsync", StringComparison.Ordinal);
-        var combinedEnd = tags.IndexOf("private async Task PushTagFromUiAsync", combinedStart, StringComparison.Ordinal);
+        Assert.Contains("_tagService.ReadRemoteTagAsync(repository, remote.Name, tag.Name)", tagFeature, StringComparison.Ordinal);
+        Assert.Contains("remoteTag.ObjectId, tag.ObjectId", tagFeature, StringComparison.Ordinal);
+        var combinedStart = tagFeature.IndexOf("public async Task<DeleteTagResult> DeleteTagAsync", StringComparison.Ordinal);
+        var combinedEnd = tagFeature.IndexOf("public async Task<PushTagResult?> PushTagAsync", combinedStart, StringComparison.Ordinal);
         Assert.True(combinedStart >= 0 && combinedEnd > combinedStart);
-        var combined = tags[combinedStart..combinedEnd];
+        var combined = tagFeature[combinedStart..combinedEnd];
         Assert.True(
             combined.IndexOf("_tagService.DeleteRemoteTagAsync(repository, remoteTag)", StringComparison.Ordinal) <
             combined.LastIndexOf("_tagService.DeleteTagAsync(repository, tag.Name)", StringComparison.Ordinal));
-        Assert.Contains("if (deleteRemote.IsChecked != true)", combined, StringComparison.Ordinal);
-        var localOnlyStart = combined.IndexOf("if (deleteRemote.IsChecked != true)", StringComparison.Ordinal);
-        var localOnlyEnd = combined.IndexOf("if (remoteSelector.SelectedItem is not GitRemote remote)", localOnlyStart, StringComparison.Ordinal);
-        Assert.True(localOnlyStart >= 0 && localOnlyEnd > localOnlyStart);
-        Assert.DoesNotContain("ReadRemoteTagAsync", combined[localOnlyStart..localOnlyEnd], StringComparison.Ordinal);
+        Assert.Contains("if (remote is null)", combined, StringComparison.Ordinal);
 
         Assert.Contains("\"Delete from remote…\"", tags, StringComparison.Ordinal);
-        Assert.Contains("RemoteTagInfo? remoteTag", tags, StringComparison.Ordinal);
-        Assert.Contains("_tagService.DeleteRemoteTagAsync(repository, remoteTag)", tags, StringComparison.Ordinal);
+        Assert.Contains("var lookup = await _tagsViewModel.ReadRemoteTagAsync(remote, tag.Name)", tags, StringComparison.Ordinal);
+        Assert.Contains("_tagsViewModel.DeleteRemoteTagAsync(remoteTag)", tags, StringComparison.Ordinal);
 
         Assert.Contains("\"Remote tags…\"", tags, StringComparison.Ordinal);
-        Assert.Contains("_tagService.ReadRemoteTagsAsync(repository, remote.Name)", tags, StringComparison.Ordinal);
-        var remoteDialogStart = tags.IndexOf("private async Task ShowRemoteTagsAsync", StringComparison.Ordinal);
-        var remoteDialogEnd = tags.IndexOf("private async Task FetchTagsFromUiAsync", remoteDialogStart, StringComparison.Ordinal);
-        Assert.True(remoteDialogStart >= 0 && remoteDialogEnd > remoteDialogStart);
-        var remoteDialog = tags[remoteDialogStart..remoteDialogEnd];
-        Assert.DoesNotContain("_viewModel.Tags", remoteDialog, StringComparison.Ordinal);
-        Assert.Contains("_tagService.DeleteRemoteTagAsync(repository, selectedTag)", remoteDialog, StringComparison.Ordinal);
+        Assert.Contains("_tagsViewModel.ReadRemoteTagsAsync(remote)", tags, StringComparison.Ordinal);
+        Assert.Contains("_tagsViewModel.DeleteRemoteTagAsync(selectedTag)", tags, StringComparison.Ordinal);
+        Assert.DoesNotContain("_tagService", tags, StringComparison.Ordinal);
 
         Assert.Contains("Task DeleteRemoteTagAsync(", contract, StringComparison.Ordinal);
         Assert.Contains("RemoteTagInfo expectedTag", contract, StringComparison.Ordinal);
