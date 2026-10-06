@@ -12,6 +12,7 @@ public sealed class PrimaryWorktreeUiContractTests
         var node = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryTreeNode.cs"));
         var repositoryTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "RepositoryTree.xaml"));
         var worktreesPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Worktrees.cs"));
+        var worktreesFeature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorktreesViewModel.cs"));
 
         Assert.Contains("public bool IsPrimary { get; init; }", worktreeInfo, StringComparison.Ordinal);
         Assert.Contains("IsPrimary = result.Count == 0", parser, StringComparison.Ordinal);
@@ -29,7 +30,7 @@ public sealed class PrimaryWorktreeUiContractTests
         Assert.DoesNotContain("Text=\"CURRENT\"", repositoryTree, StringComparison.OrdinalIgnoreCase);
 
         Assert.Contains("!worktree.IsPrimary && !worktree.IsCurrent && !worktree.IsLocked", worktreesPage, StringComparison.Ordinal);
-        Assert.Contains("worktree.IsPrimary || worktree.IsCurrent", worktreesPage, StringComparison.Ordinal);
+        Assert.Contains("worktree.IsPrimary || worktree.IsCurrent", worktreesFeature, StringComparison.Ordinal);
         Assert.Contains("_desktopShellService.OpenFolderDescription", worktreesPage, StringComparison.Ordinal);
         Assert.Contains("Copy worktree path", worktreesPage, StringComparison.Ordinal);
         Assert.Contains("OpenFolderInDesktopShellAsync(worktree.Path", worktreesPage, StringComparison.Ordinal);

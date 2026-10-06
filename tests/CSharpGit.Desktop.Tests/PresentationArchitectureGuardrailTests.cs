@@ -115,6 +115,25 @@ public sealed class PresentationArchitectureGuardrailTests
     }
 
     [Fact]
+    public void MainPageDoesNotOwnWorktreeApplicationService()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var mainPageSources = Directory
+            .GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+            .Select(File.ReadAllText)
+            .ToArray();
+        var combined = string.Join(Environment.NewLine, mainPageSources);
+        var worktreesViewModel = File.ReadAllText(
+            Path.Combine(presentation, "ViewModels", "WorktreesViewModel.cs"));
+
+        Assert.DoesNotContain("IWorktreeService", combined, StringComparison.Ordinal);
+        Assert.DoesNotContain("_worktreeService", combined, StringComparison.Ordinal);
+        Assert.Contains("public sealed class WorktreesViewModel", worktreesViewModel, StringComparison.Ordinal);
+        Assert.Contains("IWorktreeService", worktreesViewModel, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void WindowTitleUsesPresentationStateAndShellOwnedWindow()
     {
         var root = FindRepositoryRoot();

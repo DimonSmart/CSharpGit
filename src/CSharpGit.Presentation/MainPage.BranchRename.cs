@@ -97,6 +97,6 @@ public sealed partial class MainPage
             "Could not rename local branch");
 
         if (succeeded)
-            QueueWorktreeRefresh();
+            await _worktreesViewModel.RefreshAsync();
     }
 }

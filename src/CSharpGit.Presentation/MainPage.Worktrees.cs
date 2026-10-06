@@ -1,98 +1,49 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
-using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.ViewModels;
-using Microsoft.UI.Dispatching;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private IWorktreeService _worktreeService = null!;
+    private WorktreesViewModel _worktreesViewModel = null!;
     private bool _worktreeShutdown;
-    private IReadOnlyList<WorktreeInfo> _worktrees = [];
-    private bool _worktreeRefreshQueued;
 
     private void InitializeWorktreeSupport()
     {
         _worktreeShutdown = false;
-        _viewModel.PropertyChanged += WorktreeViewModel_PropertyChanged;
-        QueueWorktreeRefresh();
+        _worktreesViewModel.PropertyChanged += WorktreesViewModel_PropertyChanged;
+        _worktreesViewModel.Attach(_viewModel);
     }
 
     private void ShutdownWorktreeSupport()
     {
         if (_worktreeShutdown) return;
         _worktreeShutdown = true;
-        _viewModel.PropertyChanged -= WorktreeViewModel_PropertyChanged;
-        _worktreeRefreshQueued = false;
+        _worktreesViewModel.PropertyChanged -= WorktreesViewModel_PropertyChanged;
+        _worktreesViewModel.Dispose();
     }
 
     internal Task OpenInitialRepositoryAsync() => _viewModel.OpenRepositoryAsyncForDesktopCheck();
 
-    private void WorktreeViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
-    {
-        if (args.PropertyName is nameof(OpenRepositoryViewModel.Repository)
-            or nameof(OpenRepositoryViewModel.HeadDisplay))
-            QueueWorktreeRefresh();
-    }
-
-    private void QueueWorktreeRefresh()
-    {
-        if (_worktreeShutdown || _worktreeRefreshQueued) return;
-        _worktreeRefreshQueued = true;
-        DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, async () =>
-        {
-            _worktreeRefreshQueued = false;
-            await RefreshWorktreePresentationAsync();
-        });
-    }
-
-    private async Task RefreshWorktreePresentationAsync(bool throwOnError = false)
+    private void WorktreesViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (_worktreeShutdown) return;
-        var repository = _viewModel.Repository;
-        if (repository is null)
-        {
-            _worktrees = [];
-            return;
-        }
-
-        try
-        {
-            var worktrees = await _worktreeService.ListAsync(repository);
-            if (_worktreeShutdown || !ReferenceEquals(repository, _viewModel.Repository)) return;
-            _worktrees = worktrees;
+        if (args.PropertyName == nameof(WorktreesViewModel.Worktrees))
             SynchronizeWorktreePresentation();
-        }
-        catch (OperationCanceledException) when (!throwOnError)
-        {
-        }
-        catch (Exception exception) when (!throwOnError)
-        {
-            Debug.WriteLine($"Could not refresh worktrees: {exception}");
-        }
     }
 
-
-
-
-
-
-
-
-
     private WorktreeInfo? FindWorktreeForBranch(string branch) =>
-        _worktrees.FirstOrDefault(worktree =>
-            string.Equals(worktree.Branch, branch, StringComparison.Ordinal));
+        _worktreesViewModel.FindWorktreeForBranch(branch);
 
     private async Task CreateWorktreeFromBranchAsync(GitBranch branch)
     {
-        if (_worktreeService is null || _viewModel.Repository is null || _viewModel.IsBusy) return;
+        var repository = _viewModel.Repository;
+        if (repository is null || !_worktreesViewModel.CanMutate) return;
+
         if (FindWorktreeForBranch(branch.Name) is { } existing)
         {
             await ShowErrorAsync(
@@ -104,7 +55,7 @@ public sealed partial class MainPage
         var directory = new TextBox
         {
             Header = "Directory",
-            Text = SuggestWorktreePath(_viewModel.Repository, branch.Name),
+            Text = SuggestWorktreePath(repository, branch.Name),
             MinWidth = 520
         };
         var content = new StackPanel { Spacing = 8 };
@@ -124,24 +75,25 @@ public sealed partial class MainPage
         var result = await dialog.ShowAsync();
         if (result is not ContentDialogResult.Primary and not ContentDialogResult.Secondary) return;
 
-        try
+        var operation = await _worktreesViewModel.CreateFromBranchAsync(
+            repository,
+            directory.Text,
+            branch);
+        if (!operation.Succeeded)
         {
-            var path = NormalizeRequestedWorktreePath(_viewModel.Repository, directory.Text);
-            await _worktreeService.AddAsync(_viewModel.Repository, path, branch.Name);
-            await RefreshAfterWorktreeMutationAsync();
-            if (result == ContentDialogResult.Primary) OpenWorktreeInNewInstance(path);
+            await ShowWorktreeOperationErrorAsync(operation, "Could not create worktree");
+            return;
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            await ShowErrorAsync("Could not create worktree", FormatWorktreeError(exception));
-        }
+
+        if (result == ContentDialogResult.Primary && operation.WorktreePath is { } path)
+            OpenWorktreeInNewInstance(path);
     }
 
     private async Task CreateNewWorktreeAsync()
     {
-        if (_worktreeService is null || _viewModel.Repository is null || _viewModel.IsBusy) return;
-
         var repository = _viewModel.Repository;
+        if (repository is null || !_worktreesViewModel.CanMutate) return;
+
         var branch = new TextBox { Header = "New branch", PlaceholderText = "feature/new-api", MinWidth = 520 };
         var startPoint = new TextBox
         {
@@ -184,52 +136,57 @@ public sealed partial class MainPage
         };
         var result = await dialog.ShowAsync();
         if (result is not ContentDialogResult.Primary and not ContentDialogResult.Secondary) return;
-        if (string.IsNullOrWhiteSpace(branch.Text) || string.IsNullOrWhiteSpace(startPoint.Text))
+
+        var operation = await _worktreesViewModel.CreateNewBranchAsync(
+            repository,
+            directory.Text,
+            branch.Text,
+            startPoint.Text);
+        if (!operation.Succeeded)
         {
-            await ShowErrorAsync("Could not create worktree", "New branch and start point are required.");
+            await ShowWorktreeOperationErrorAsync(operation, "Could not create worktree");
             return;
         }
 
-        try
-        {
-            var path = NormalizeRequestedWorktreePath(repository, directory.Text);
-            await _worktreeService.AddNewBranchAsync(
-                repository,
-                path,
-                branch.Text.Trim(),
-                startPoint.Text.Trim());
-            await RefreshAfterWorktreeMutationAsync();
-            if (result == ContentDialogResult.Primary) OpenWorktreeInNewInstance(path);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            await ShowErrorAsync("Could not create worktree", FormatWorktreeError(exception));
-        }
+        if (result == ContentDialogResult.Primary && operation.WorktreePath is { } path)
+            OpenWorktreeInNewInstance(path);
     }
 
     private void PopulateWorktreeMenu(MenuFlyout flyout, WorktreeInfo worktree)
     {
         if (!worktree.IsCurrent)
-            AddMenuItem(flyout, "Open", !_viewModel.IsBusy, () => OpenWorktreeAsync(worktree));
-        AddMenuItem(flyout, _desktopShellService.OpenFolderDescription, !_viewModel.IsBusy, () => OpenWorktreeFolderAsync(worktree));
-        AddMenuItem(flyout, "Copy worktree path", true, () => CopyTextAsync(WorktreePresentation.GetPathForCopy(worktree)));
+            AddMenuItem(flyout, "Open", !_worktreesViewModel.IsBusy, () => OpenWorktreeAsync(worktree));
+        AddMenuItem(
+            flyout,
+            _desktopShellService.OpenFolderDescription,
+            !_worktreesViewModel.IsBusy,
+            () => OpenWorktreeFolderAsync(worktree));
+        AddMenuItem(
+            flyout,
+            "Copy worktree path",
+            true,
+            () => CopyTextAsync(WorktreePresentation.GetPathForCopy(worktree)));
         if (WorktreePresentation.GetBranchNameForCopy(worktree) is { } branch)
             AddMenuItem(flyout, "Copy branch name", true, () => CopyTextAsync(branch));
         flyout.Items.Add(new MenuFlyoutSeparator());
 
         if (worktree.IsLocked)
-            AddMenuItem(flyout, "Unlock", !_viewModel.IsBusy, () => UnlockWorktreeAsync(worktree));
+            AddMenuItem(flyout, "Unlock", _worktreesViewModel.CanUnlock(worktree), () => UnlockWorktreeAsync(worktree));
         else
-            AddMenuItem(flyout, "Lock…", !_viewModel.IsBusy, () => LockWorktreeAsync(worktree));
+            AddMenuItem(flyout, "Lock…", _worktreesViewModel.CanLock(worktree), () => LockWorktreeAsync(worktree));
 
         if (!worktree.IsPrimary && !worktree.IsCurrent && !worktree.IsLocked)
         {
             flyout.Items.Add(new MenuFlyoutSeparator());
-            AddMenuItem(flyout, "Remove Worktree", !_viewModel.IsBusy, () => RemoveWorktreeAsync(worktree));
+            AddMenuItem(
+                flyout,
+                "Remove Worktree",
+                _worktreesViewModel.CanRemove(worktree),
+                () => RemoveWorktreeAsync(worktree));
         }
 
         flyout.Items.Add(new MenuFlyoutSeparator());
-        AddMenuItem(flyout, "Prune Worktrees", !_viewModel.IsBusy, PruneWorktreesAsync);
+        AddMenuItem(flyout, "Prune Worktrees", _worktreesViewModel.CanMutate, PruneWorktreesAsync);
     }
 
     private Task OpenWorktreeAsync(WorktreeInfo worktree)
@@ -243,7 +200,9 @@ public sealed partial class MainPage
 
     private async Task LockWorktreeAsync(WorktreeInfo worktree)
     {
-        if (_worktreeService is null || _viewModel.Repository is null) return;
+        var repository = _viewModel.Repository;
+        if (repository is null || !_worktreesViewModel.CanLock(worktree)) return;
+
         var reason = new TextBox { Header = "Reason (optional)", MinWidth = 420 };
         var dialog = new ContentDialog
         {
@@ -255,37 +214,25 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Primary
         };
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
-        try
-        {
-            await _worktreeService.LockAsync(
-                _viewModel.Repository,
-                worktree,
-                string.IsNullOrWhiteSpace(reason.Text) ? null : reason.Text.Trim());
-            await RefreshAfterWorktreeMutationAsync();
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            await ShowErrorAsync("Could not lock worktree", FormatWorktreeError(exception));
-        }
+
+        var operation = await _worktreesViewModel.LockAsync(repository, worktree, reason.Text);
+        await ShowWorktreeOperationErrorAsync(operation, "Could not lock worktree");
     }
 
     private async Task UnlockWorktreeAsync(WorktreeInfo worktree)
     {
-        if (_worktreeService is null || _viewModel.Repository is null) return;
-        try
-        {
-            await _worktreeService.UnlockAsync(_viewModel.Repository, worktree);
-            await RefreshAfterWorktreeMutationAsync();
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            await ShowErrorAsync("Could not unlock worktree", FormatWorktreeError(exception));
-        }
+        var repository = _viewModel.Repository;
+        if (repository is null || !_worktreesViewModel.CanUnlock(worktree)) return;
+
+        var operation = await _worktreesViewModel.UnlockAsync(repository, worktree);
+        await ShowWorktreeOperationErrorAsync(operation, "Could not unlock worktree");
     }
 
     private async Task RemoveWorktreeAsync(WorktreeInfo worktree)
     {
-        if (_worktreeService is null || _viewModel.Repository is null || worktree.IsPrimary || worktree.IsCurrent) return;
+        var repository = _viewModel.Repository;
+        if (repository is null || !_worktreesViewModel.CanRemove(worktree)) return;
+
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
@@ -297,40 +244,29 @@ public sealed partial class MainPage
         };
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
 
-        try
-        {
-            await _worktreeService.RemoveAsync(_viewModel.Repository, worktree);
-            await RefreshAfterWorktreeMutationAsync();
-            return;
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            var forceDialog = new ContentDialog
-            {
-                XamlRoot = XamlRoot,
-                Title = "Worktree could not be removed",
-                Content = $"{FormatWorktreeError(exception)}\n\nForce removal can discard changes in that worktree.",
-                PrimaryButtonText = "Force Remove",
-                CloseButtonText = "Cancel",
-                DefaultButton = ContentDialogButton.Close
-            };
-            if (await forceDialog.ShowAsync() != ContentDialogResult.Primary) return;
-        }
+        var operation = await _worktreesViewModel.RemoveAsync(repository, worktree);
+        if (operation.Succeeded || operation.Canceled) return;
 
-        try
+        var forceDialog = new ContentDialog
         {
-            await _worktreeService.RemoveAsync(_viewModel.Repository, worktree, force: true);
-            await RefreshAfterWorktreeMutationAsync();
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            await ShowErrorAsync("Could not force remove worktree", FormatWorktreeError(exception));
-        }
+            XamlRoot = XamlRoot,
+            Title = "Worktree could not be removed",
+            Content = $"{operation.ErrorMessage}\n\nForce removal can discard changes in that worktree.",
+            PrimaryButtonText = "Force Remove",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close
+        };
+        if (await forceDialog.ShowAsync() != ContentDialogResult.Primary) return;
+
+        var forced = await _worktreesViewModel.RemoveAsync(repository, worktree, force: true);
+        await ShowWorktreeOperationErrorAsync(forced, "Could not force remove worktree");
     }
 
     private async Task PruneWorktreesAsync()
     {
-        if (_worktreeService is null || _viewModel.Repository is null) return;
+        var repository = _viewModel.Repository;
+        if (repository is null || !_worktreesViewModel.CanMutate) return;
+
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
@@ -341,29 +277,21 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Close
         };
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
-        try
-        {
-            await _worktreeService.PruneAsync(_viewModel.Repository);
-            await RefreshAfterWorktreeMutationAsync();
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            await ShowErrorAsync("Could not prune worktrees", FormatWorktreeError(exception));
-        }
+
+        var operation = await _worktreesViewModel.PruneAsync(repository);
+        await ShowWorktreeOperationErrorAsync(operation, "Could not prune worktrees");
     }
 
-    private async Task RefreshAfterWorktreeMutationAsync()
+    private Task ShowWorktreeOperationErrorAsync(
+        WorktreeOperationResult operation,
+        string fallbackTitle)
     {
-        await _viewModel.RefreshAsyncForDesktopCheck();
-        await RefreshWorktreePresentationAsync();
-    }
+        if (!operation.Failed || string.IsNullOrWhiteSpace(operation.ErrorMessage))
+            return Task.CompletedTask;
 
-    private static string NormalizeRequestedWorktreePath(Repository repository, string path)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        return Path.IsPathRooted(path)
-            ? Path.GetFullPath(path)
-            : Path.GetFullPath(path, repository.WorkingDirectory);
+        return ShowErrorAsync(
+            operation.ErrorTitle ?? fallbackTitle,
+            operation.ErrorMessage);
     }
 
     private static string SuggestWorktreePath(Repository repository, string branch)
@@ -394,9 +322,6 @@ public sealed partial class MainPage
         return result.Length == 0 ? "worktree" : result;
     }
 
-    private static string ShortHead(string head) =>
-        string.IsNullOrWhiteSpace(head) ? "unknown" : head[..Math.Min(8, head.Length)];
-
     private static void OpenWorktreeInNewInstance(string path)
     {
         var fullPath = Path.GetFullPath(path);
@@ -417,26 +342,5 @@ public sealed partial class MainPage
         };
         foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
         Process.Start(startInfo);
-    }
-
-    private static string FormatWorktreeError(Exception exception)
-    {
-        var message = exception.Message;
-        var lower = message.ToLowerInvariant();
-        if (lower.Contains("already checked out", StringComparison.Ordinal))
-            return "The branch is already checked out in another worktree.\n\n" + message;
-        if (lower.Contains("already exists", StringComparison.Ordinal) || lower.Contains("destination", StringComparison.Ordinal) && lower.Contains("exists", StringComparison.Ordinal))
-            return "The destination already exists. Choose another directory.\n\n" + message;
-        if (lower.Contains("contains modified or untracked", StringComparison.Ordinal) || lower.Contains("is dirty", StringComparison.Ordinal))
-            return "The worktree contains modified or untracked files. Use Force Remove only if those changes may be discarded.\n\n" + message;
-        if (lower.Contains("locked", StringComparison.Ordinal))
-            return "The worktree is locked. Unlock it before removing it, or use an explicit force operation.\n\n" + message;
-        if (lower.Contains("not a valid object name", StringComparison.Ordinal) || lower.Contains("unknown revision", StringComparison.Ordinal))
-            return "The branch or start point does not exist.\n\n" + message;
-        if (lower.Contains("not a working tree", StringComparison.Ordinal) || lower.Contains("no such file", StringComparison.Ordinal))
-            return "The worktree path no longer exists.\n\n" + message;
-        if (lower.Contains("not a git command", StringComparison.Ordinal) || lower.Contains("unknown subcommand", StringComparison.Ordinal))
-            return "The installed Git version does not support the required worktree operation.\n\n" + message;
-        return message;
     }
 }

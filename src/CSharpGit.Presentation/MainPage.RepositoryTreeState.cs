@@ -69,7 +69,6 @@ public sealed partial class MainPage
     {
         _repositoryTreeRoots.Clear();
         RepositoryTreeSynchronizer.ResetSession();
-        _worktrees = [];
         RepositoryTree.SelectedItem = null;
         if (_viewModel.Repository is not null) SynchronizeRepositoryTree();
     }
@@ -85,7 +84,7 @@ public sealed partial class MainPage
                 _viewModel.Remotes,
                 _viewModel.Tags,
                 _viewModel.Stashes,
-                _worktrees);
+                _worktreesViewModel.Worktrees);
         }
         catch (InvalidOperationException exception)
         {
@@ -99,7 +98,7 @@ public sealed partial class MainPage
         var selection = CaptureRepositoryTreeSelection();
         try
         {
-            RepositoryTreeSynchronizer.ReconcileWorktrees(_worktrees);
+            RepositoryTreeSynchronizer.ReconcileWorktrees(_worktreesViewModel.Worktrees);
         }
         catch (InvalidOperationException exception)
         {
@@ -119,7 +118,7 @@ public sealed partial class MainPage
             _viewModel.Remotes,
             _viewModel.Tags,
             _viewModel.Stashes,
-            _worktrees);
+            _worktreesViewModel.Worktrees);
     }
 
     private RepositoryTreeSelectionAnchor<RepositoryTreeNode>? CaptureRepositoryTreeSelection() =>
