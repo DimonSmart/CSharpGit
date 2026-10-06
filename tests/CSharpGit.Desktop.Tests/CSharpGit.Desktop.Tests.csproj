@@ -49,6 +49,8 @@
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorkingTreeTreeSelection.cs" Link="WorkingTree/WorkingTreeTreeSelection.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BulkObservableCollection.cs" Link="WorkingTree/BulkObservableCollection.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/AsyncCommand.cs" Link="WorkingTree/AsyncCommand.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/Threading/IUiDispatcher.cs" Link="History/IUiDispatcher.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/HistoryViewModel.cs" Link="History/HistoryViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorkingTreeViewModel.cs" Link="WorkingTree/WorkingTreeViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CompactDiffLine.cs" Link="Changes/CompactDiffLine.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/DiffLogicalText.cs" Link="Changes/DiffLogicalText.cs" />

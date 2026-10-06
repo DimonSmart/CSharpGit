@@ -101,7 +101,7 @@ public sealed partial class MainPage
                 if (_viewModel.History.ActiveReference is not null
                     && successfulBranches.Contains(_viewModel.History.ActiveReference, StringComparer.Ordinal))
                 {
-                    ShowAllHistory();
+                    _viewModel.History.ResetForRepositoryMutation();
                 }
             });
 
@@ -179,7 +179,7 @@ public sealed partial class MainPage
                 if (_viewModel.History.ActiveReference is not null
                     && successfulBranches.Contains(_viewModel.History.ActiveReference, StringComparer.Ordinal))
                 {
-                    ShowAllHistory();
+                    _viewModel.History.ResetForRepositoryMutation();
                 }
             });
 

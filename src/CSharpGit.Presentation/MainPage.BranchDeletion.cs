@@ -201,7 +201,7 @@ public sealed partial class MainPage
             reference =>
             {
                 if (string.Equals(_viewModel.History.ActiveReference, reference, StringComparison.Ordinal))
-                    ShowAllHistory();
+                    _viewModel.History.ResetForRepositoryMutation();
             });
 
         if (result.LocalDeleted
@@ -319,7 +319,7 @@ public sealed partial class MainPage
             reference =>
             {
                 if (string.Equals(_viewModel.History.ActiveReference, reference, StringComparison.Ordinal))
-                    ShowAllHistory();
+                    _viewModel.History.ResetForRepositoryMutation();
             });
 
         if (result.RemoteDeleted

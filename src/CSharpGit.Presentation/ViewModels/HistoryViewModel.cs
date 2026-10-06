@@ -206,6 +206,20 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
         RefreshAvailability();
     }
 
+    internal void ResetForRepositoryMutation(bool clearRows = false)
+    {
+        InvalidateCurrentRequest();
+        ClearReferenceState();
+        SetScopeDirect(Scopes[0]);
+        if (clearRows)
+        {
+            ReplaceRows([]);
+            HasMore = false;
+            SelectedRow = null;
+        }
+        RefreshAvailability();
+    }
+
     internal void RetargetReference(string oldReference, string newReference, string label)
     {
         if (!string.Equals(_activeReference, oldReference, StringComparison.Ordinal)) return;
@@ -218,8 +232,8 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
         InvalidateCurrentRequest();
     }
 
-    internal void SetHistoryDisplayMode(HistoryDisplayMode mode) =>
-        _ = ApplyHistoryDisplayModeAsync(mode);
+    internal Task SetHistoryDisplayModeAsync(HistoryDisplayMode mode) =>
+        ApplyHistoryDisplayModeAsync(mode);
 
     public Task RefreshAsync() => LoadAsync(reset: true);
 
@@ -578,6 +592,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
     {
         Interlocked.Increment(ref _loadGeneration);
         var cancellation = Interlocked.Exchange(ref _loadCts, null);
+        IsLoading = false;
         if (cancellation is null) return;
         cancellation.Cancel();
         cancellation.Dispose();
@@ -663,10 +678,16 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
     private void ApplySettingsChangeOnUiThread()
     {
         var showReflog = _settings.ShowReflog;
+        if (IsReferenceScoped && showReflog)
+        {
+            _ = PersistShowReflogAsync(false);
+            return;
+        }
+
         if (_showReflog == showReflog) return;
 
         ApplyShowReflogDirect(showReflog);
-        if (showReflog && !IsReferenceScoped)
+        if (showReflog)
             SetScopeDirect(Scopes[0]);
         _ = LoadAsync(reset: true);
     }

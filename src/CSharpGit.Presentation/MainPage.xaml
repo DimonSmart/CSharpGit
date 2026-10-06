@@ -458,7 +458,6 @@
                         ItemTemplate="{StaticResource HistoryItemTemplate}" />
               <Button x:Name="LoadMoreHistoryButton"
                       Grid.Row="1"
-                      IsEnabled="{Binding History.HasMore}"
                       Content="↓"
                       Click="LoadMoreHistory_Click"
                       Style="{StaticResource IconButtonStyle}"
