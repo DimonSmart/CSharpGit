@@ -8,7 +8,7 @@ public sealed class WorkingTreeDiffUiContractTests
         var root = FindRepositoryRoot();
         var contract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IWorkingTreeDiffService.cs"));
         var mutationContract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IWorkingTreeService.cs"));
-        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
+        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
 
         Assert.Contains("enum WorkingTreeDiffKind", contract);
         Assert.Contains("Unstaged", contract);
@@ -18,9 +18,9 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.DoesNotContain("ReadDiffAsync", ExtractInterface(mutationContract, "IWorkingTreeService"));
         Assert.Contains("SelectedUnstagedChanges", viewModel);
         Assert.Contains("SelectedStagedChanges", viewModel);
-        Assert.Contains("ActiveWorkingTreeChange", viewModel);
-        Assert.Contains("ActiveWorkingTreeDiffKind", viewModel);
-        Assert.Contains("SelectedWorkingTreeDiff", viewModel);
+        Assert.Contains("SelectedChange", viewModel);
+        Assert.Contains("SelectedDiffKind", viewModel);
+        Assert.Contains("SelectedDiff", viewModel);
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.DoesNotContain("StagedWorkingTreeItemTemplate", workspace);
 
         Assert.Contains("WorkingTreeNodeInvoked", workingTree);
-        Assert.Contains("SetWorkingTreeSelection", workingTree);
+        Assert.Contains("SetSelection", workingTree);
         Assert.Contains("selected.Change!", workingTree);
         Assert.Contains("if (node?.Change is null) return", workingTree);
         Assert.Contains("WorkingTreeTreeSelection", workingTree);
@@ -61,10 +61,10 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("EnumerateVisibleLeaves", selection);
         Assert.Contains("node.Change is not null", selection);
 
-        Assert.Contains("Command=\"{Binding StageSelectedCommand}\"", xaml);
-        Assert.Contains("Command=\"{Binding StageAllCommand}\"", xaml);
-        Assert.Contains("Command=\"{Binding UnstageSelectedCommand}\"", xaml);
-        Assert.Contains("Command=\"{Binding UnstageAllCommand}\"", xaml);
+        Assert.Contains("Command=\"{Binding WorkingTree.StageSelectedCommand}\"", xaml);
+        Assert.Contains("Command=\"{Binding WorkingTree.StageAllCommand}\"", xaml);
+        Assert.Contains("Command=\"{Binding WorkingTree.UnstageSelectedCommand}\"", xaml);
+        Assert.Contains("Command=\"{Binding WorkingTree.UnstageAllCommand}\"", xaml);
         Assert.Contains("BatchDiscardConfirmationMessage", confirmations);
         Assert.Contains("ShowDiscardConfirmationAsync", confirmations);
         Assert.DoesNotContain("BatchDiscardConfirmationVisibility", xaml);
@@ -109,7 +109,9 @@ public sealed class WorkingTreeDiffUiContractTests
         var root = FindRepositoryRoot();
         var contract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IWorkingTreeService.cs"));
         var staging = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitWorkingTreeService.Staging.cs"));
-        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
+        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
+        var repositoryViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
+        var contextBridge = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.WorkingTree.cs"));
 
         foreach (var member in new[] { "StageFilesAsync", "UnstageFilesAsync", "UnstageAllAsync" })
             Assert.Contains(member, ExtractInterface(contract, "IWorkingTreeService"));
@@ -122,11 +124,12 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("\"reset\", \"--mixed\"", staging);
         Assert.DoesNotContain("foreach (var change in changes)\n            await", staging);
 
-        Assert.Contains("_selectedUnstagedChanges.ToArray()", viewModel);
-        Assert.Contains("_selectedStagedChanges.ToArray()", viewModel);
-        Assert.Contains("WaitAsync(0)", viewModel);
-        Assert.Contains("Conflicts.Any(conflict => !conflict.IsResolved)", viewModel);
-        Assert.Contains("ClearWorkingTreePresentationSelection", viewModel);
+        Assert.Contains("var snapshot = changes.ToArray()", viewModel);
+        Assert.Contains("StageChangesAsync(_selectedUnstagedChanges", viewModel);
+        Assert.Contains("UnstageChangesAsync(_selectedStagedChanges", viewModel);
+        Assert.Contains("WaitAsync(0)", repositoryViewModel);
+        Assert.Contains("Conflicts.Any(conflict => !conflict.IsResolved)", repositoryViewModel);
+        Assert.Contains("includeHistory: false", contextBridge);
         Assert.Contains("Could not stage selected files", viewModel);
         Assert.Contains("Could not unstage selected files", viewModel);
     }
@@ -138,20 +141,22 @@ public sealed class WorkingTreeDiffUiContractTests
         var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs"));
         var git = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitWorkingTreeService.cs"));
         var gitDiff = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitWorkingTreeDiffService.cs"));
-        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.Discard.cs"));
+        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
+        var workingTreeViewModel = discardViewModel;
 
-        Assert.Contains("CancellationTokenSource", workingTree);
-        Assert.Contains("_workingTreeDiffGeneration", workingTree);
-        Assert.Contains("IsCurrentWorkingTreeDiffRequest", workingTree);
-        Assert.Contains("OperationCanceledException", workingTree);
-        Assert.Contains("ReadDiffAsync(repository, change, kind", workingTree);
+        Assert.Contains("CancellationTokenSource", workingTreeViewModel);
+        Assert.Contains("_diffGeneration", workingTreeViewModel);
+        Assert.Contains("CanPublishDiff", workingTreeViewModel);
+        Assert.Contains("OperationCanceledException", workingTreeViewModel);
+        Assert.Contains("ReadDiffAsync(repository, change, kind", workingTreeViewModel);
+        Assert.Contains("IsDiffLoading", workingTreeViewModel);
         Assert.Contains("DiffPresentationState.LoadingDiff", workingTree);
         Assert.Contains("DiffPresentationState.NoTextualPatch", workingTree);
         Assert.Contains("DiffPresentationState.DeltaMissing", workingTree);
-        Assert.Contains("HasCurrentWorkingTreeDelta", workingTree);
-        Assert.Contains("_viewModel.Changes.Any", workingTree);
+        Assert.Contains("HasCurrentDelta", workingTreeViewModel);
+        Assert.Contains("_viewModel.WorkingTree.HasCurrentDelta", workingTree);
         Assert.Contains("WorkingTreeDiffViewer.SetLines(compactLines, diff.Diagnostics)", workingTree);
-        Assert.DoesNotContain("foreach (var change in _viewModel.Changes)", workingTree);
+        Assert.DoesNotContain("foreach (var change in _viewModel.WorkingTree.Changes)", workingTree);
 
         var discardStart = git.IndexOf("public async Task DiscardFileAsync", StringComparison.Ordinal);
         var discardEnd = git.IndexOf("public async Task DiscardAllFileChangesAsync", discardStart, StringComparison.Ordinal);
@@ -183,10 +188,10 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("_runner.RunForResultPreservingOutputEndingsAsync", gitDiff);
         Assert.Contains("GitDiffParser.Parse(output)", gitDiff);
         Assert.Contains("RunAsyncPreservingOutputEndings", gitDiff);
-        Assert.Contains("TryDeferLargeWorkingTreeDiff", workingTree);
-        Assert.Contains("DiffPreviewPolicy.LargeFileBytes", workingTree);
-        Assert.Contains("DiffLoadMode.Full", workingTree);
-        Assert.Contains("DiffPreviewTooLargeException", workingTree);
+        Assert.Contains("TryGetWorkingTreeFileSize", workingTreeViewModel);
+        Assert.Contains("DiffPreviewPolicy.LargeFileBytes", workingTreeViewModel);
+        Assert.Contains("DiffLoadMode.Full", workingTreeViewModel);
+        Assert.Contains("DiffPreviewTooLargeException", workingTreeViewModel);
         Assert.Contains("DiffPreviewPolicy.AutomaticOutputBytes", gitDiff);
     }
 
@@ -196,11 +201,12 @@ public sealed class WorkingTreeDiffUiContractTests
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
+        var workingTreeViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
 
         Assert.Contains("Text=\"{Binding CommitMessage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", xaml);
-        Assert.Contains("ClearCommittedWorkingTreePresentationSelection", viewModel);
-        Assert.Contains("afterSuccessfulMutation: ClearCommittedWorkingTreePresentationSelection", viewModel);
-        Assert.Contains("SelectedWorkingTreeDiffKind == WorkingTreeDiffKind.Staged", viewModel);
+        Assert.Contains("WorkingTree.ClearCommittedPresentationSelection", viewModel);
+        Assert.Contains("afterSuccessfulMutation: WorkingTree.ClearCommittedPresentationSelection", viewModel);
+        Assert.Contains("SelectedDiffKind == WorkingTreeDiffKind.Staged", workingTreeViewModel);
 
         var mutationStart = viewModel.IndexOf("private async Task<bool> MutateAsync", StringComparison.Ordinal);
         var mutationEnd = viewModel.IndexOf("private async Task RunConflictActionAsync", mutationStart, StringComparison.Ordinal);

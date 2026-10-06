@@ -8,7 +8,7 @@ public sealed class ConfirmationStateCleanupContractTests
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
-        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.Discard.cs"));
+        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
 
         Assert.DoesNotContain("EmptyIndexChoiceVisibility", xaml);
         Assert.DoesNotContain("EmptyIndexChoiceVisibility", viewModel);
