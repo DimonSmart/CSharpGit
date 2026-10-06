@@ -75,19 +75,50 @@ public static class GitServiceCollectionExtensions
             provider.GetRequiredService<GitRepositorySyncService>());
 
         services.AddSingleton(provider =>
-            new GitRepositoryWorkflowService(
+            new GitStashMutationService(
+                provider.GetRequiredService<GitRepositoryCommandRunner>()));
+        services.AddSingleton<IStashMutationService>(provider =>
+            provider.GetRequiredService<GitStashMutationService>());
+
+        services.AddSingleton(provider =>
+            new GitMergeService(
                 provider.GetRequiredService<GitRepositoryCommandRunner>(),
                 provider.GetRequiredService<GitRepositoryStateService>()));
-        services.AddSingleton<IRepositoryWorkflowService>(provider =>
-            provider.GetRequiredService<GitRepositoryWorkflowService>());
+        services.AddSingleton<IMergeService>(provider =>
+            provider.GetRequiredService<GitMergeService>());
+
+        services.AddSingleton(provider =>
+            new GitConflictResolutionService(
+                provider.GetRequiredService<GitRepositoryCommandRunner>()));
+        services.AddSingleton<IConflictResolutionService>(provider =>
+            provider.GetRequiredService<GitConflictResolutionService>());
+
+        services.AddSingleton(provider =>
+            new GitInteractiveRebaseService(
+                provider.GetRequiredService<GitRepositoryCommandRunner>(),
+                provider.GetRequiredService<GitRepositoryStateService>()));
+        services.AddSingleton<IInteractiveRebaseService>(provider =>
+            provider.GetRequiredService<GitInteractiveRebaseService>());
+
+        services.AddSingleton(provider =>
+            new GitRepositoryOperationService(
+                provider.GetRequiredService<GitRepositoryCommandRunner>(),
+                provider.GetRequiredService<GitRepositoryStateService>(),
+                provider.GetRequiredService<IInteractiveRebaseService>()));
+        services.AddSingleton<IRepositoryOperationService>(provider =>
+            provider.GetRequiredService<GitRepositoryOperationService>());
+
+        services.AddSingleton(provider =>
+            new GitCommitAuthorDateReader(
+                provider.GetRequiredService<GitRepositoryCommandRunner>()));
         services.AddSingleton<ICommitAuthorDateReader>(provider =>
-            provider.GetRequiredService<GitRepositoryWorkflowService>());
+            provider.GetRequiredService<GitCommitAuthorDateReader>());
 
         services.AddSingleton(provider =>
             new GitCommitActionService(
                 provider.GetRequiredService<GitRepositoryCommandRunner>(),
                 provider.GetRequiredService<GitRepositoryStateService>(),
-                provider.GetRequiredService<GitRepositoryWorkflowService>()));
+                provider.GetRequiredService<IInteractiveRebaseService>()));
         services.AddSingleton<ICommitActionService>(provider =>
             provider.GetRequiredService<GitCommitActionService>());
 

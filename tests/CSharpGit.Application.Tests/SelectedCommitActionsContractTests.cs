@@ -68,8 +68,8 @@ public sealed class SelectedCommitActionsContractTests
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var rebaseViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.InteractiveRebase.cs"));
-        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryWorkflowService.cs"));
-        var workflowImplementation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitRepositoryWorkflowService.cs"));
+        var rebase = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IInteractiveRebaseService.cs"));
+        var rebaseImplementation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitInteractiveRebaseService.cs"));
         var todoHelp = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "InteractiveRebaseTodoHelp.cs"));
         var editorXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "InteractiveRebaseTodoEditor.xaml"));
         var editorCode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "InteractiveRebaseTodoEditor.xaml.cs"));
@@ -82,9 +82,9 @@ public sealed class SelectedCommitActionsContractTests
         Assert.DoesNotContain("_workflowService", ExtractMethod(actions, "InteractiveRebaseFromHere_Click"));
         Assert.DoesNotContain("^", ExtractMethod(actions, "InteractiveRebaseFromHere_Click"));
 
-        Assert.Contains("ReadInteractiveRebaseTodoAsync", workflow);
-        Assert.Contains("ReadInteractiveRebaseTodoFromCommitAsync", workflow);
-        Assert.Contains("StartInteractiveRebaseTodoAsync", workflow);
+        Assert.Contains("ReadInteractiveRebaseTodoAsync", rebase);
+        Assert.Contains("ReadInteractiveRebaseTodoFromCommitAsync", rebase);
+        Assert.Contains("StartInteractiveRebaseTodoAsync", rebase);
         Assert.Contains("ReadInteractiveRebaseTodoFromCommitAsync", rebaseViewModel);
         Assert.Contains("StartInteractiveRebaseTodoAsync", rebaseViewModel);
         Assert.DoesNotContain("ReadInteractiveRebasePlan", rebaseViewModel);
@@ -122,7 +122,7 @@ public sealed class SelectedCommitActionsContractTests
 
         foreach (var command in new[] { "# p, pick", "# r, reword", "# e, edit", "# s, squash", "# f, fixup", "# x, exec", "# b, break", "# d, drop" })
             Assert.Contains(command, todoHelp);
-        Assert.Contains("InteractiveRebaseTodoHelp.Text", workflowImplementation);
+        Assert.Contains("InteractiveRebaseTodoHelp.Text", rebaseImplementation);
 
         Assert.Contains("<x:Double x:Key=\"ContentDialogMaxWidth\">1200</x:Double>", appXaml);
         Assert.Contains("<x:Double x:Key=\"SimpleContentDialogMaxWidth\">1200</x:Double>", appXaml);

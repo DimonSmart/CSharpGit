@@ -67,7 +67,12 @@ public sealed class GitArchitectureGuardrailTests
         Assert.True(typeof(IWorkingTreeDiffService).IsAssignableFrom(typeof(GitWorkingTreeDiffService)));
         Assert.True(typeof(IReferenceService).IsAssignableFrom(typeof(GitReferenceService)));
         Assert.True(typeof(IRepositorySyncService).IsAssignableFrom(typeof(GitRepositorySyncService)));
-        Assert.True(typeof(IRepositoryWorkflowService).IsAssignableFrom(typeof(GitRepositoryWorkflowService)));
+        Assert.True(typeof(IStashMutationService).IsAssignableFrom(typeof(GitStashMutationService)));
+        Assert.True(typeof(IMergeService).IsAssignableFrom(typeof(GitMergeService)));
+        Assert.True(typeof(IConflictResolutionService).IsAssignableFrom(typeof(GitConflictResolutionService)));
+        Assert.True(typeof(IInteractiveRebaseService).IsAssignableFrom(typeof(GitInteractiveRebaseService)));
+        Assert.True(typeof(IRepositoryOperationService).IsAssignableFrom(typeof(GitRepositoryOperationService)));
+        Assert.True(typeof(ICommitAuthorDateReader).IsAssignableFrom(typeof(GitCommitAuthorDateReader)));
         Assert.True(typeof(ICommitActionService).IsAssignableFrom(typeof(GitCommitActionService)));
 
         var implementations = new[]
@@ -79,11 +84,37 @@ public sealed class GitArchitectureGuardrailTests
             typeof(GitWorkingTreeDiffService),
             typeof(GitReferenceService),
             typeof(GitRepositorySyncService),
-            typeof(GitRepositoryWorkflowService),
+            typeof(GitStashMutationService),
+            typeof(GitMergeService),
+            typeof(GitConflictResolutionService),
+            typeof(GitInteractiveRebaseService),
+            typeof(GitRepositoryOperationService),
+            typeof(GitCommitAuthorDateReader),
             typeof(GitCommitActionService)
         };
 
         Assert.Equal(implementations.Length, implementations.Distinct().Count());
+    }
+
+    [Fact]
+    public void LegacyRepositoryWorkflowTypesAreRemoved()
+    {
+        Assert.Null(typeof(IRepositoryService).Assembly.GetType(
+            "CSharpGit.Application.Abstractions.IRepositoryWorkflowService"));
+        Assert.Null(typeof(GitRepositoryService).Assembly.GetType(
+            "CSharpGit.Git.GitRepositoryWorkflowService"));
+    }
+
+    [Fact]
+    public void WorkflowCapabilitiesRemainIndependent()
+    {
+        Assert.False(typeof(IInteractiveRebaseService).IsAssignableFrom(typeof(GitMergeService)));
+        Assert.False(typeof(IMergeService).IsAssignableFrom(typeof(GitInteractiveRebaseService)));
+        Assert.False(typeof(IInteractiveRebaseService).IsAssignableFrom(typeof(GitConflictResolutionService)));
+        Assert.False(typeof(IMergeService).IsAssignableFrom(typeof(GitConflictResolutionService)));
+        Assert.False(typeof(IInteractiveRebaseService).IsAssignableFrom(typeof(GitRepositoryOperationService)));
+        Assert.False(typeof(IMergeService).IsAssignableFrom(typeof(GitRepositoryOperationService)));
+        Assert.False(typeof(IConflictResolutionService).IsAssignableFrom(typeof(GitRepositoryOperationService)));
     }
 
     [Fact]
@@ -134,7 +165,12 @@ public sealed class GitArchitectureGuardrailTests
             typeof(GitWorkingTreeDiffService),
             typeof(GitReferenceService),
             typeof(GitRepositorySyncService),
-            typeof(GitRepositoryWorkflowService),
+            typeof(GitStashMutationService),
+            typeof(GitMergeService),
+            typeof(GitConflictResolutionService),
+            typeof(GitInteractiveRebaseService),
+            typeof(GitRepositoryOperationService),
+            typeof(GitCommitAuthorDateReader),
             typeof(GitCommitActionService),
             typeof(GitReferenceHistoryService),
             typeof(GitFileAwareHistoryService),

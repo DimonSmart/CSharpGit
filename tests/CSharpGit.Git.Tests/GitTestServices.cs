@@ -38,8 +38,60 @@ internal static class GitTestServices
     internal static GitRepositorySyncService CreateRepositorySyncService() =>
         new(CreateExecutor());
 
-    internal static GitRepositoryWorkflowService CreateRepositoryWorkflowService() =>
-        new(CreateExecutor());
+    internal static GitStashMutationService CreateStashMutationService(
+        GitCommandExecutor? executor = null)
+    {
+        executor ??= CreateExecutor();
+        return new GitStashMutationService(
+            new GitRepositoryCommandRunner(executor));
+    }
+
+    internal static GitMergeService CreateMergeService(
+        GitCommandExecutor? executor = null)
+    {
+        executor ??= CreateExecutor();
+        return new GitMergeService(
+            new GitRepositoryCommandRunner(executor),
+            new GitRepositoryStateService(executor));
+    }
+
+    internal static GitConflictResolutionService CreateConflictResolutionService(
+        GitCommandExecutor? executor = null)
+    {
+        executor ??= CreateExecutor();
+        return new GitConflictResolutionService(
+            new GitRepositoryCommandRunner(executor));
+    }
+
+    internal static GitInteractiveRebaseService CreateInteractiveRebaseService(
+        GitCommandExecutor? executor = null)
+    {
+        executor ??= CreateExecutor();
+        return new GitInteractiveRebaseService(
+            new GitRepositoryCommandRunner(executor),
+            new GitRepositoryStateService(executor));
+    }
+
+    internal static GitRepositoryOperationService CreateRepositoryOperationService(
+        GitCommandExecutor? executor = null)
+    {
+        executor ??= CreateExecutor();
+        var runner = new GitRepositoryCommandRunner(executor);
+        var stateService = new GitRepositoryStateService(executor);
+        var rebaseService = new GitInteractiveRebaseService(runner, stateService);
+        return new GitRepositoryOperationService(
+            runner,
+            stateService,
+            rebaseService);
+    }
+
+    internal static GitCommitAuthorDateReader CreateCommitAuthorDateReader(
+        GitCommandExecutor? executor = null)
+    {
+        executor ??= CreateExecutor();
+        return new GitCommitAuthorDateReader(
+            new GitRepositoryCommandRunner(executor));
+    }
 
     internal static GitCommitActionService CreateCommitActionService() =>
         new(CreateExecutor());
