@@ -99,7 +99,7 @@ internal sealed partial class GitCommitActionService
                 "Use Interactive Rebase for advanced history editing.",
                 resolvedCommit);
 
-        var existingPlan = await _workflowService.ReadInteractiveRebasePlanAsync(repository, parent, cancellationToken);
+        var existingPlan = await _interactiveRebaseService.ReadInteractiveRebasePlanAsync(repository, parent, cancellationToken);
         var targetIndex = -1;
         for (var index = 0; index < existingPlan.Items.Count; index++)
         {
@@ -126,7 +126,7 @@ internal sealed partial class GitCommitActionService
                 oldHeadReference) is { } mutationFailure)
             return mutationFailure;
 
-        var rebaseResult = await _workflowService.StartInteractiveRebaseAsync(
+        var rebaseResult = await _interactiveRebaseService.StartInteractiveRebaseAsync(
             repository,
             existingPlan with { Items = items },
             cancellationToken);

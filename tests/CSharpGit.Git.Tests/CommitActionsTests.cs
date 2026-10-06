@@ -17,7 +17,7 @@ public sealed class CommitActionsTests : IDisposable
         var repositoryService = GitTestServices.CreateRepositoryService();
         var stateService = GitTestServices.CreateRepositoryStateService();
         var referenceService = GitTestServices.CreateReferenceService();
-        var workflowService = GitTestServices.CreateRepositoryWorkflowService();
+        var operationService = GitTestServices.CreateRepositoryOperationService();
         var commitActionService = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
 
@@ -50,7 +50,7 @@ public sealed class CommitActionsTests : IDisposable
         var repositoryService = GitTestServices.CreateRepositoryService();
         var stateService = GitTestServices.CreateRepositoryStateService();
         var referenceService = GitTestServices.CreateReferenceService();
-        var workflowService = GitTestServices.CreateRepositoryWorkflowService();
+        var operationService = GitTestServices.CreateRepositoryOperationService();
         var commitActionService = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
         var success = await commitActionService.CherryPickAsync(repository, picked);
@@ -76,7 +76,7 @@ public sealed class CommitActionsTests : IDisposable
         Assert.True(state.CurrentOperation.CanAbort);
         Assert.True(state.CurrentOperation.CanSkip);
 
-        await workflowService.AbortOperationAsync(repository);
+        await operationService.AbortOperationAsync(repository);
         Assert.Equal(before, Git("rev-parse", "HEAD"));
         Assert.Equal(RepositoryOperation.None, (await stateService.ReadAsync(repository)).Operation);
 
@@ -84,7 +84,7 @@ public sealed class CommitActionsTests : IDisposable
         Assert.Equal(ApplyCommitResultKind.Conflicts, conflict.Kind);
         File.WriteAllText(Path.Combine(_root, "tracked.txt"), "resolved\n");
         Run("add", "tracked.txt");
-        await workflowService.ContinueOperationAsync(repository);
+        await operationService.ContinueOperationAsync(repository);
         Assert.Equal(RepositoryOperation.None, (await stateService.ReadAsync(repository)).Operation);
     }
 
@@ -104,7 +104,7 @@ public sealed class CommitActionsTests : IDisposable
         var repositoryService = GitTestServices.CreateRepositoryService();
         var stateService = GitTestServices.CreateRepositoryStateService();
         var referenceService = GitTestServices.CreateReferenceService();
-        var workflowService = GitTestServices.CreateRepositoryWorkflowService();
+        var operationService = GitTestServices.CreateRepositoryOperationService();
         var commitActionService = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
 
@@ -127,7 +127,7 @@ public sealed class CommitActionsTests : IDisposable
         var repositoryService = GitTestServices.CreateRepositoryService();
         var stateService = GitTestServices.CreateRepositoryStateService();
         var referenceService = GitTestServices.CreateReferenceService();
-        var workflowService = GitTestServices.CreateRepositoryWorkflowService();
+        var operationService = GitTestServices.CreateRepositoryOperationService();
         var commitActionService = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
         var success = await commitActionService.RevertAsync(repository, target);
@@ -141,14 +141,14 @@ public sealed class CommitActionsTests : IDisposable
         var conflict = await commitActionService.RevertAsync(repository, target);
         Assert.Equal(ApplyCommitResultKind.Conflicts, conflict.Kind);
         Assert.Equal(RepositoryOperation.Revert, (await stateService.ReadAsync(repository)).Operation);
-        await workflowService.AbortOperationAsync(repository);
+        await operationService.AbortOperationAsync(repository);
         Assert.Equal(before, Git("rev-parse", "HEAD"));
 
         conflict = await commitActionService.RevertAsync(repository, target);
         Assert.Equal(ApplyCommitResultKind.Conflicts, conflict.Kind);
         File.WriteAllText(Path.Combine(_root, "tracked.txt"), "resolved revert\n");
         Run("add", "tracked.txt");
-        await workflowService.ContinueOperationAsync(repository);
+        await operationService.ContinueOperationAsync(repository);
         Assert.Equal(RepositoryOperation.None, (await stateService.ReadAsync(repository)).Operation);
     }
 
@@ -167,7 +167,7 @@ public sealed class CommitActionsTests : IDisposable
         var repositoryService = GitTestServices.CreateRepositoryService();
         var stateService = GitTestServices.CreateRepositoryStateService();
         var referenceService = GitTestServices.CreateReferenceService();
-        var workflowService = GitTestServices.CreateRepositoryWorkflowService();
+        var operationService = GitTestServices.CreateRepositoryOperationService();
         var commitActionService = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
         var result = await commitActionService.RevertAsync(repository, merge, 1);
@@ -245,7 +245,7 @@ public sealed class CommitActionsTests : IDisposable
         var repositoryService = GitTestServices.CreateRepositoryService();
         var stateService = GitTestServices.CreateRepositoryStateService();
         var referenceService = GitTestServices.CreateReferenceService();
-        var workflowService = GitTestServices.CreateRepositoryWorkflowService();
+        var operationService = GitTestServices.CreateRepositoryOperationService();
         var commitActionService = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
 
@@ -284,7 +284,7 @@ public sealed class CommitActionsTests : IDisposable
         var repositoryService = GitTestServices.CreateRepositoryService();
         var stateService = GitTestServices.CreateRepositoryStateService();
         var referenceService = GitTestServices.CreateReferenceService();
-        var workflowService = GitTestServices.CreateRepositoryWorkflowService();
+        var operationService = GitTestServices.CreateRepositoryOperationService();
         var commitActionService = GitTestServices.CreateCommitActionService();
         var repository = await repositoryService.OpenAsync(_root);
         await referenceService.CheckoutAsync(repository, target);

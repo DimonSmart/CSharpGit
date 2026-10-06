@@ -117,7 +117,7 @@ public sealed partial class OpenRepositoryViewModel
         if (!CanCreateStash) return;
 
         await MutateAsync(
-            () => _workflowService.CreateStashAsync(
+            () => _stashMutationService.CreateStashAsync(
                 Repository!,
                 request),
             "Could not create stash");
@@ -199,7 +199,7 @@ public sealed partial class OpenRepositoryViewModel
         if (stash is null || !CanMutateSelectedStash) return;
 
         await MutateAsync(
-            () => _workflowService.ApplyStashAsync(
+            () => _stashMutationService.ApplyStashAsync(
                 Repository!,
                 stash),
             "Could not apply stash");
@@ -211,7 +211,7 @@ public sealed partial class OpenRepositoryViewModel
         if (stash is null || !CanMutateSelectedStash) return;
 
         await MutateAsync(
-            () => _workflowService.PopStashAsync(
+            () => _stashMutationService.PopStashAsync(
                 Repository!,
                 stash),
             "Could not pop stash");
@@ -223,7 +223,7 @@ public sealed partial class OpenRepositoryViewModel
         if (stash is null || !CanMutateSelectedStash) return;
 
         await MutateAsync(
-            () => _workflowService.DropStashAsync(
+            () => _stashMutationService.DropStashAsync(
                 Repository!,
                 stash),
             "Could not drop stash");
