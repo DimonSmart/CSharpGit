@@ -98,11 +98,11 @@ public sealed class CommitChangesServiceTests : IDisposable
         Assert.Contains(diff.Lines, line => line.Text.Contains("+feature", StringComparison.Ordinal));
     }
 
-    private static GitFileAwareHistoryService CreateService(out GitCommandActivityHistory activity)
+    private static GitHistoryService CreateService(out GitCommandActivityHistory activity)
     {
         activity = new GitCommandActivityHistory();
         var executor = new GitCommandExecutor(new GitCliOptions(), activity);
-        return new GitFileAwareHistoryService(new GitReferenceHistoryService(executor), executor);
+        return new GitHistoryService(new GitCommitHistoryReader(executor), executor);
     }
 
     private static int InvocationCount(GitCommandActivityHistory activity) =>
