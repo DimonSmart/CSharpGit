@@ -64,7 +64,7 @@ public sealed class BranchDragDropUiContractTests
         Assert.Contains("_viewModel.RunMutationAsync(", rename, StringComparison.Ordinal);
         Assert.Contains("_referenceService.RenameBranchAsync(", rename, StringComparison.Ordinal);
         Assert.Contains("_activeReference = newName;", rename, StringComparison.Ordinal);
-        Assert.Contains("QueueWorktreeRefresh();", rename, StringComparison.Ordinal);
+        Assert.Contains("await _worktreesViewModel.RefreshAsync();", rename, StringComparison.Ordinal);
     }
 
     [Fact]
