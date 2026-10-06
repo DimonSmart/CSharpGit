@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using CSharpGit.Domain;
 
 namespace CSharpGit.Git.Tests;
 
@@ -12,7 +13,9 @@ public sealed class GitCommitHistoryMultipleMergeRegressionTests : IDisposable
         InitializeRepository();
 
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
-        var page = await GitTestServices.CreateCommitHistoryReader().ReadHistoryAsync(repository, "main", null, 0, 100);
+        var page = await GitTestServices.CreateCommitHistoryReader().ReadHistoryAsync(
+            repository,
+            new HistoryQuery(HistoryScope.CurrentBranch, null, 0, 100, Reference: "main"));
 
         var merges = page.Rows.Where(row => row.Commit.Parents.Count > 1).ToArray();
         Assert.Equal(new[] { "merge two", "merge one" }, merges.Select(row => row.Commit.Subject).ToArray());

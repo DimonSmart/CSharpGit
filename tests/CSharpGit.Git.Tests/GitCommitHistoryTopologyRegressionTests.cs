@@ -72,8 +72,8 @@ public sealed class GitCommitHistoryTopologyRegressionTests : IDisposable
         InitializeMergeRepository();
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
         var service = GitTestServices.CreateCommitHistoryReader();
-        var full = await service.ReadHistoryAsync(repository, "main", null, 0, 100);
-        var filtered = await service.ReadHistoryAsync(repository, "main", "visible", 0, 100);
+        var full = await service.ReadHistoryAsync(repository, MainQuery(null, 0, 100));
+        var filtered = await service.ReadHistoryAsync(repository, MainQuery("visible", 0, 100));
 
         Assert.Equal(new[] { "visible tip", "visible root" }, filtered.Rows.Select(row => row.Commit.Subject).ToArray());
         Assert.All(filtered.Rows, row => Assert.True(row.Topology.HasExactGraphTopology));
@@ -91,8 +91,8 @@ public sealed class GitCommitHistoryTopologyRegressionTests : IDisposable
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
         var service = GitTestServices.CreateCommitHistoryReader();
         var full = await service.ReadHistoryAsync(repository, "main", null, 0, 100);
-        var page1 = await service.ReadHistoryAsync(repository, "main", null, 0, 2);
-        var page2 = await service.ReadHistoryAsync(repository, "main", null, 2, 2);
+        var page1 = await service.ReadHistoryAsync(repository, MainQuery(null, 0, 2));
+        var page2 = await service.ReadHistoryAsync(repository, MainQuery(null, 2, 2));
         var combined = page1.Rows.Concat(page2.Rows).ToArray();
 
         Assert.Equal(full.Rows.Take(4).Select(row => row.Commit.Hash), combined.Select(row => row.Commit.Hash));
@@ -107,8 +107,8 @@ public sealed class GitCommitHistoryTopologyRegressionTests : IDisposable
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
         var service = GitTestServices.CreateCommitHistoryReader();
         var full = await service.ReadHistoryAsync(repository, "main", null, 0, 100);
-        var page1 = await service.ReadHistoryAsync(repository, "main", "visible", 0, 1);
-        var page2 = await service.ReadHistoryAsync(repository, "main", "visible", 1, 1);
+        var page1 = await service.ReadHistoryAsync(repository, MainQuery("visible", 0, 1));
+        var page2 = await service.ReadHistoryAsync(repository, MainQuery("visible", 1, 1));
         var combined = page1.Rows.Concat(page2.Rows).ToArray();
 
         Assert.True(page1.HasMore);
@@ -120,6 +120,9 @@ public sealed class GitCommitHistoryTopologyRegressionTests : IDisposable
             AssertTopologyEqual(expected.Topology, actual.Topology);
         }
     }
+
+    private static HistoryQuery MainQuery(string? filter, int skip, int take) =>
+        new(HistoryScope.CurrentBranch, filter, skip, take, Reference: "main");
 
     private static CommitHistoryItem Commit(string hash, params string[] parents) =>
         new(hash, parents, hash, hash, "tests", DateTimeOffset.UnixEpoch, []);

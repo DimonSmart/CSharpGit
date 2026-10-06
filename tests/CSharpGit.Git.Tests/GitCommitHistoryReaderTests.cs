@@ -20,7 +20,7 @@ public sealed class GitCommitHistoryReaderTests : IDisposable
         var processCount = 0;
         var service = GitTestServices.CreateCommitHistoryReader(_ => Interlocked.Increment(ref processCount));
 
-        await service.ReadHistoryAsync(repository, "main", null, 0, 20);
+        await service.ReadHistoryAsync(repository, MainQuery(take: 20));
         Assert.Equal(1, processCount);
 
         processCount = 0;
@@ -45,7 +45,7 @@ public sealed class GitCommitHistoryReaderTests : IDisposable
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
         var service = GitTestServices.CreateCommitHistoryReader();
 
-        var page = await service.ReadHistoryAsync(repository, "main", null, 0, 20);
+        var page = await service.ReadHistoryAsync(repository, MainQuery(take: 20));
         var details = await service.ReadCommitMetadataAsync(repository, hash);
 
         var historyCommit = Assert.Single(page.Rows).Commit;
@@ -96,7 +96,7 @@ public sealed class GitCommitHistoryReaderTests : IDisposable
         RunGit("commit", "-am", "latest");
 
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
-        var page = await GitTestServices.CreateCommitHistoryReader().ReadHistoryAsync(repository, "main", null, 0, 20);
+        var page = await GitTestServices.CreateCommitHistoryReader().ReadHistoryAsync(repository, MainQuery(take: 20));
 
         var tip = page.Rows[0];
         Assert.Equal("latest", tip.Commit.Subject);
@@ -127,7 +127,7 @@ public sealed class GitCommitHistoryReaderTests : IDisposable
         RunGit("merge", "--no-ff", "feature/demo", "-m", "merge feature");
 
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
-        var page = await GitTestServices.CreateCommitHistoryReader().ReadHistoryAsync(repository, "main", null, 0, 20);
+        var page = await GitTestServices.CreateCommitHistoryReader().ReadHistoryAsync(repository, MainQuery(take: 20));
 
         var merge = Assert.Single(page.Rows, row => row.Commit.Subject == "merge feature");
         var parentEdges = merge.Topology.Edges.Where(edge => edge.FromLane == merge.Topology.Lane).ToList();
@@ -141,6 +141,9 @@ public sealed class GitCommitHistoryReaderTests : IDisposable
         Assert.Contains(rowAfterMerge.Topology.IncomingEdges, edge => edge.TrackId == parentEdges[1].TrackId);
     }
 
+
+    private static HistoryQuery MainQuery(string? filter = null, int skip = 0, int take = 100) =>
+        new(HistoryScope.CurrentBranch, filter, skip, take, Reference: "main");
 
     private void InitializeRepository()
     {

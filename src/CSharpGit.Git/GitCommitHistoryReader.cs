@@ -86,19 +86,6 @@ internal GitCommitHistoryReader(GitCommandExecutor executor)
         return new HistoryPage(rows, hasMore);
     }
 
-    public Task<HistoryPage> ReadHistoryAsync(
-        Repository repository,
-        string reference,
-        string? filter,
-        int skip,
-        int take = 100,
-        CancellationToken cancellationToken = default)
-    {
-        ValidateReference(reference);
-        if (skip < 0 || take is < 1 or > 1000) throw new ArgumentOutOfRangeException(nameof(take));
-        return ReadHistoryCoreAsync(repository, filter, skip, take, [reference], false, null, null, cancellationToken);
-    }
-
     public async Task<CommitHistoryItem> ReadCommitMetadataAsync(
         Repository repository,
         string hash,
