@@ -124,7 +124,7 @@ public sealed partial class MainPage
         if (repository is null
             || entry.Kind != RepositorySnapshotEntryKind.File
             || _historyRewriteInProgress
-            || !RepositoryFilesSnapshotMatchesSelection)
+            || !_repositoryFilesViewModel.SnapshotMatchesSelection)
         {
             return;
         }

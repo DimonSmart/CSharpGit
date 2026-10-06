@@ -3,7 +3,7 @@ using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.ViewModels;
 
-namespace CSharpGit.Application.Tests;
+namespace CSharpGit.Desktop.Tests;
 
 public sealed class RepositoryFilesViewModelTests
 {
