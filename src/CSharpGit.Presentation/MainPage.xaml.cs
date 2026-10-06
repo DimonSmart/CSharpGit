@@ -23,7 +23,7 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage : Page
 {
     private readonly OpenRepositoryViewModel _viewModel;
-    private readonly IReferenceHistoryService _historyService;
+    private readonly IHistoryService _historyService;
     private readonly IReferenceService _referenceService;
     private readonly IRepositorySyncService _repositorySyncService;
     private readonly ICommitActionService _commitActionService;
