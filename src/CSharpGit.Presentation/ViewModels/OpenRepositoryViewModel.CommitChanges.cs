@@ -116,7 +116,7 @@ public sealed partial class OpenRepositoryViewModel
             : EnsureSelectedStashDetailsLoadedAsync();
     }
 
-    private void OnHistory.SelectedRowChanged(HistoryRow? previous)
+    private void OnSelectedHistoryRowChanged(HistoryRow? previous)
     {
         if (SelectedStash is { } stash
             && History.SelectedRow is { } selectedHistoryRow
