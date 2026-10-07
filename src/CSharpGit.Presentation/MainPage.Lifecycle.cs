@@ -45,6 +45,7 @@ public sealed partial class MainPage
         _viewModel.PropertyChanged -= ChangesViewModel_PropertyChanged;
         _viewModel.PropertyChanged -= ConfirmationDialogs_PropertyChanged;
         _viewModel.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
+        _viewModel.History.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
         _viewModel.WorkingTree.PropertyChanged -= WorkingTreeViewModel_PropertyChanged;
         _viewModel.WorkingTree.PropertyChanged -= WorkingTreeFileOpening_PropertyChanged;
         _viewModel.WorkingTree.PropertyChanged -= WorkingTreeConfirmation_PropertyChanged;
