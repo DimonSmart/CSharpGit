@@ -151,13 +151,14 @@ public sealed class SelectedCommitActionsContractTests
     public void CancelCommitRemainsPresentationOnly()
     {
         var root = FindRepositoryRoot();
-        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
+        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "CommitCreationViewModel.cs"));
         var method = ExtractMethod(viewModel, "CancelCommitAsync");
+        var closeChoice = ExtractMethod(viewModel, "CloseEmptyIndexChoice");
 
-        Assert.Contains("IsEmptyIndexChoiceOpen = false", method);
-        Assert.DoesNotContain("Refresh", method);
+        Assert.Contains("CloseEmptyIndexChoice();", method);
+        Assert.Contains("IsEmptyIndexChoiceOpen = false", closeChoice);
         Assert.DoesNotContain("_workingTreeService", method);
-        Assert.DoesNotContain("_repositoryService", method);
+        Assert.DoesNotContain("RunCommitMutationAsync", method);
         Assert.DoesNotContain("CommitMessage =", method);
     }
 

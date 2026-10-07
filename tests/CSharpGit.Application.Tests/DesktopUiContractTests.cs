@@ -168,6 +168,7 @@ public sealed class DesktopUiContractTests
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ConfirmationDialogs.cs"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
+        var commitCreation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "CommitCreationViewModel.cs"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
         var app = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
@@ -182,8 +183,8 @@ public sealed class DesktopUiContractTests
         Assert.Contains("CloseButtonText = \"Cancel\"", dialogs);
         Assert.Contains("DefaultButton = ContentDialogButton.Close", dialogs);
         Assert.All(new[] { "StageAllAndCommitCommand", "ConfirmEmptyCommitCommand", "CancelCommitCommand" }, command => Assert.Contains(command, dialogs));
-        Assert.Contains("!WorkingTree.Changes.Any(change => change.IsStaged)", viewModel);
-        Assert.Contains("StageAllAsync", viewModel);
+        Assert.Contains("!context.HasStagedChanges && context.HasUnstagedChanges", commitCreation);
+        Assert.Contains("_workingTreeService.StageAllAsync", commitCreation);
         Assert.Contains("HasUnappliedCommitMessage", page);
         Assert.Contains("Keep editing", page);
         Assert.Contains("RequiresCloseConfirmation", lifecycle);

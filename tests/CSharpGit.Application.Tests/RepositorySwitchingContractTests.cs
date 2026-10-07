@@ -37,7 +37,7 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("TryCloseRepositoryAsync", switching);
         Assert.Contains("ConfirmDiscardCommitMessageAsync", switching);
         Assert.Contains("if (!opened) return false;", switching);
-        Assert.Contains("_viewModel.CommitMessage = string.Empty;", switching);
+        Assert.Contains("_viewModel.CommitCreation.CommitMessage = string.Empty;", switching);
 
         Assert.Contains("await TrySwitchRepositoryAsync(item.Path);", recent);
         Assert.Contains("await _recentRepositoryFolderPicker.PickFolderAsync()", recent);
