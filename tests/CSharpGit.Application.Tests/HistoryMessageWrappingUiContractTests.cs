@@ -49,7 +49,7 @@ public sealed class HistoryMessageWrappingUiContractTests
         Assert.DoesNotContain("TextWrapping=", subject);
 
         Assert.Contains("<Grid ColumnDefinitions=\"*,Auto\"", detailsXaml);
-        var message = ExtractElement(detailsXaml, "<TextBlock Text=\"{Binding SelectedHistoryRow.Commit.Message}\"");
+        var message = ExtractElement(detailsXaml, "<TextBlock Text=\"{Binding History.SelectedRow.Commit.Message}\"");
         Assert.Contains("TextWrapping=\"Wrap\"", message);
         Assert.Contains("Grid.Column=\"1\"", detailsXaml);
         Assert.Contains("ToolTipService.ToolTip=\"Copy commit message\"", detailsXaml);
@@ -62,7 +62,7 @@ public sealed class HistoryMessageWrappingUiContractTests
         Assert.Contains("HorizontalAlignment=\"Left\"", detailsScroller);
         Assert.Contains("<controls:CommitDetailsView x:Name=\"CommitDetailsContent\" />", mainPageXaml);
         Assert.Equal(1, CountOccurrences(mainPageXaml, "<controls:CommitDetailsView"));
-        Assert.DoesNotContain("Text=\"{Binding SelectedHistoryRow.Commit.Message}\"", mainPageXaml);
+        Assert.DoesNotContain("Text=\"{Binding History.SelectedRow.Commit.Message}\"", mainPageXaml);
         Assert.Contains("Loaded=\"MainPage_Loaded\"", mainPageXaml);
 
         Assert.DoesNotContain("new CommitDetailsView", detailsHost);
