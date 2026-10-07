@@ -212,7 +212,7 @@ public sealed partial class MainPage
                             afterStatisticsFailure = exception;
                         }
                     },
-                    includeHistory: _viewModel.ShowReflog,
+                    includeHistory: _viewModel.History.ShowReflog,
                     additionalRefresh: () => _worktreesViewModel.RefreshAsync(throwOnError: true));
 
                 _repositoryMaintenanceInProgress = false;
