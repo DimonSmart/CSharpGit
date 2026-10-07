@@ -98,10 +98,10 @@ public sealed partial class MainPage
             deletionMode,
             successfulBranches =>
             {
-                if (_activeReference is not null
-                    && successfulBranches.Contains(_activeReference, StringComparer.Ordinal))
+                if (_viewModel.History.ActiveReference is { } activeReference
+                    && successfulBranches.Contains(activeReference, StringComparer.Ordinal))
                 {
-                    ShowAllHistory();
+                    _viewModel.History.HandleReferenceDeleted(activeReference);
                 }
             });
 
@@ -176,10 +176,10 @@ public sealed partial class MainPage
             targets,
             successfulBranches =>
             {
-                if (_activeReference is not null
-                    && successfulBranches.Contains(_activeReference, StringComparer.Ordinal))
+                if (_viewModel.History.ActiveReference is { } activeReference
+                    && successfulBranches.Contains(activeReference, StringComparer.Ordinal))
                 {
-                    ShowAllHistory();
+                    _viewModel.History.HandleReferenceDeleted(activeReference);
                 }
             });
 
