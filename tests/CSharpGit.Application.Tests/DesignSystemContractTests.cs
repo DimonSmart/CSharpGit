@@ -180,13 +180,13 @@ public sealed class DesignSystemContractTests
         var details = Read(root, "src", "CSharpGit.Presentation", "Controls", "CommitDetailsView.xaml");
 
         var bodyMessage = new Regex(
-            "Text=\"\\{Binding SelectedHistoryRow\\.Commit\\.Message\\}\"\\s+Style=\"\\{StaticResource SelectableBodyTextStyle\\}\"",
+            "Text=\"\\{Binding History\\.SelectedRow\\.Commit\\.Message\\}\"\\s+Style=\"\\{StaticResource SelectableBodyTextStyle\\}\"",
             RegexOptions.CultureInvariant);
 
         Assert.Contains("<controls:CommitDetailsView x:Name=\"CommitDetailsContent\" />", main);
         Assert.Matches(bodyMessage, details);
         Assert.DoesNotMatch(
-            new Regex("SelectedHistoryRow\\.Commit\\.Message[\\s\\S]{0,120}SectionHeaderTextStyle", RegexOptions.CultureInvariant),
+            new Regex("History\\.SelectedRow\\.Commit\\.Message[\\s\\S]{0,120}SectionHeaderTextStyle", RegexOptions.CultureInvariant),
             details);
 
         Assert.Contains("Style=\"{StaticResource SelectableTechnicalTextStyle}\"", details);
