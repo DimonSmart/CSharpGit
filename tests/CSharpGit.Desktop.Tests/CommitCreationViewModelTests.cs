@@ -221,6 +221,60 @@ public sealed class CommitCreationViewModelTests
     }
 
     [Fact]
+    public async Task FailedOrdinaryCommitPreservesMessageAndCommittedSelection()
+    {
+        var fixture = new Fixture
+        {
+            HasStagedChanges = true
+        };
+        fixture.Service.CommitFailure = new InvalidOperationException("commit failed");
+        fixture.ViewModel.CommitMessage = "A";
+
+        await ExecuteAsync(fixture.ViewModel.CommitCommand);
+
+        Assert.Single(fixture.Service.CommitCalls);
+        Assert.Equal(1, fixture.Context.RefreshCalls);
+        Assert.Equal(0, fixture.Context.ClearCommittedSelectionCalls);
+        Assert.Equal("A", fixture.ViewModel.CommitMessage);
+    }
+
+    [Fact]
+    public async Task ConfirmEmptyChoiceCommitsEmptyAndClosesPendingState()
+    {
+        var fixture = new Fixture
+        {
+            HasUnstagedChanges = true
+        };
+        fixture.ViewModel.CommitMessage = "A";
+
+        await ExecuteAsync(fixture.ViewModel.CommitCommand);
+        await ExecuteAsync(fixture.ViewModel.ConfirmEmptyCommitCommand);
+
+        var call = Assert.Single(fixture.Service.CommitCalls);
+        Assert.False(fixture.ViewModel.IsEmptyIndexChoiceOpen);
+        Assert.False(call.Amend);
+        Assert.True(call.IntentionalEmpty);
+    }
+
+    [Fact]
+    public async Task CancelChoiceClosesPendingStateWithoutMutation()
+    {
+        var fixture = new Fixture
+        {
+            HasUnstagedChanges = true
+        };
+        fixture.ViewModel.CommitMessage = "A";
+
+        await ExecuteAsync(fixture.ViewModel.CommitCommand);
+        await ExecuteAsync(fixture.ViewModel.CancelCommitCommand);
+
+        Assert.False(fixture.ViewModel.IsEmptyIndexChoiceOpen);
+        Assert.Empty(fixture.Service.CommitCalls);
+        Assert.Equal(0, fixture.Context.MutationCalls);
+        Assert.Equal("A", fixture.ViewModel.CommitMessage);
+    }
+
+    [Fact]
     public async Task PendingChoiceDoesNotMutateNewRepositoryAfterSwitch()
     {
         var fixture = new Fixture
