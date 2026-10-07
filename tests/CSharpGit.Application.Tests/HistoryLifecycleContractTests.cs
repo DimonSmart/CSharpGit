@@ -8,7 +8,7 @@ public sealed class HistoryLifecycleContractTests
         var root = FindRepositoryRoot();
         var history = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "HistoryViewModel.cs"));
         var adapter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.History.cs"));
-        var lazyChanges = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.CommitChanges.cs"));
+        var lazyChanges = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "CommitDetailsViewModel.cs"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
 
@@ -19,11 +19,11 @@ public sealed class HistoryLifecycleContractTests
         Assert.Contains("ReferenceEquals(request.Repository, _context?.Repository)", history);
         Assert.Contains("public void Invalidate()", history);
         Assert.Contains("SelectedRowChanged?.Invoke(previous);", history);
-        Assert.Contains("OnSelectedHistoryRowChanged(previous);", adapter);
+        Assert.Contains("CommitDetails.ShowCommit(selected);", adapter);
 
         Assert.Contains("_changedFilesLoadGeneration", lazyChanges);
         Assert.Contains("_diffLoadGeneration", lazyChanges);
-        Assert.Contains("ReferenceEquals(row, History.SelectedRow)", lazyChanges);
+        Assert.Contains("ReferenceEquals(row, _selectedHistoryRow)", lazyChanges);
         Assert.Contains("ReferenceEquals(file, SelectedFile)", lazyChanges);
         Assert.Contains("InvalidateChangedFilesLoad", lazyChanges);
         Assert.Contains("InvalidateDiffLoad", lazyChanges);

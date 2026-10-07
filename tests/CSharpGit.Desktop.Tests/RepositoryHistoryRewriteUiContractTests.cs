@@ -29,7 +29,8 @@ public sealed class RepositoryHistoryRewriteUiContractTests
         Assert.Contains("_snapshotCache.Clear()", repositoryFiles, StringComparison.Ordinal);
         Assert.DoesNotContain("_scopedHistory", source, StringComparison.Ordinal);
         Assert.Contains("History.ResetForRepositoryMutation()", viewModel, StringComparison.Ordinal);
-        Assert.Contains("ResetCommitChangesSession()", viewModel, StringComparison.Ordinal);
+        Assert.Contains("CommitDetails.Invalidate()", viewModel, StringComparison.Ordinal);
+        Assert.Contains("Stashes.ClearSelection()", viewModel, StringComparison.Ordinal);
     }
 
     [Fact]
