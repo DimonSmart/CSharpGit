@@ -42,12 +42,12 @@ public sealed class HistoryDiffUiContractTests
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
 
         Assert.Contains("<controls:CommitDetailsView x:Name=\"CommitDetailsContent\" />", xaml);
-        Assert.Contains("SelectedHistoryRow.Commit.Message", details);
-        Assert.Contains("SelectedHistoryRow.Commit.References", details);
-        Assert.Contains("SelectedHistoryRow.Commit.Author", details);
-        Assert.Contains("SelectedHistoryRow.Commit.AuthoredAt", details);
-        Assert.Contains("SelectedHistoryRow.Commit.Hash", details);
-        Assert.Contains("SelectedHistoryRow.Commit.ParentsDisplay", details);
+        Assert.Contains("History.SelectedRow.Commit.Message", details);
+        Assert.Contains("History.SelectedRow.Commit.References", details);
+        Assert.Contains("History.SelectedRow.Commit.Author", details);
+        Assert.Contains("History.SelectedRow.Commit.AuthoredAt", details);
+        Assert.Contains("History.SelectedRow.Commit.Hash", details);
+        Assert.Contains("History.SelectedRow.Commit.ParentsDisplay", details);
         Assert.DoesNotContain("SelectedCommit.Commit", details);
         Assert.DoesNotContain("LoadCommitAsync", viewModel);
         Assert.DoesNotContain("_historyService.ReadCommitAsync", viewModel);
@@ -168,7 +168,7 @@ public sealed class HistoryDiffUiContractTests
         Assert.Contains("RunExternalDiffAsync(repository, pair)", action);
         Assert.DoesNotContain("Parents", action);
         Assert.DoesNotContain("HEAD", action);
-        Assert.Contains("SelectedHistoryRow", source);
+        Assert.Contains("History.SelectedRow", source);
         Assert.DoesNotContain("_viewModel.SelectedCommit", source);
     }
 
