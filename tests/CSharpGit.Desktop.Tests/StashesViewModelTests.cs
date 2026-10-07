@@ -23,7 +23,8 @@ public sealed class StashesViewModelTests
         var replacement = Stash("stash@{1}", "b");
         viewModel.ApplyRepositoryState([first, replacement, third]);
 
-        Assert.Same(replacement, viewModel.SelectedStash);
+        Assert.Equal(replacement.Commit, viewModel.SelectedStash?.Commit);
+        Assert.Same(viewModel.Items.Single(stash => stash.Commit == replacement.Commit), viewModel.SelectedStash);
 
         viewModel.ApplyRepositoryState([first, third]);
 
