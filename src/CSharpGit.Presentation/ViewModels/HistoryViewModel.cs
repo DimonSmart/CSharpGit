@@ -5,7 +5,6 @@ using System.Windows.Input;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.Threading;
-using Microsoft.Extensions.Logging;
 
 namespace CSharpGit.Presentation.ViewModels;
 
@@ -39,7 +38,6 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
     private readonly IHistoryService _historyService;
     private readonly IAppSettingsService _settings;
     private readonly IUiDispatcher _uiDispatcher;
-    private readonly ILogger<HistoryViewModel> _logger;
     private readonly BulkObservableCollection<HistoryRow> _rows = [];
     private IHistoryRepositoryContext? _context;
     private CancellationTokenSource? _loadCts;
@@ -58,13 +56,11 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
     public HistoryViewModel(
         IHistoryService historyService,
         IAppSettingsService settings,
-        IUiDispatcher uiDispatcher,
-        ILogger<HistoryViewModel> logger)
+        IUiDispatcher uiDispatcher)
     {
         _historyService = historyService ?? throw new ArgumentNullException(nameof(historyService));
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _selectedScope = Scopes[0];
         _showReflog = _settings.ShowReflog;
         _settings.Changed += AppSettings_Changed;
@@ -362,10 +358,6 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
             if (CanReport(request))
             {
                 _context.ReportHistoryError($"Could not navigate to commit: {exception.Message}");
-                _logger.LogWarning(
-                    exception,
-                    "History reference navigation failed for {CommitHash}",
-                    commitHash);
             }
 
             return null;
@@ -502,7 +494,6 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
                     ? "Could not read the selected reference history"
                     : "Could not read history";
                 _context.ReportHistoryError($"{prefix}: {exception.Message}");
-                _logger.LogWarning(exception, "History loading failed");
             }
         }
         finally
@@ -622,7 +613,6 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             _context?.ReportHistoryError($"Could not save Show reflog setting: {exception.Message}");
-            _logger.LogWarning(exception, "Show reflog setting persistence failed");
         }
     }
 
