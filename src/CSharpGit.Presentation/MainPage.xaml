@@ -878,7 +878,7 @@
                   <Button Content="Amend" Command="{Binding AmendCommand}" Style="{StaticResource CompactButtonStyle}" />
                   <Button Content="Stash…"
                           Click="CreateStash_Click"
-                          IsEnabled="{Binding CanCreateStash}"
+                          IsEnabled="{Binding Stashes.CanCreateStash}"
                           Style="{StaticResource CompactButtonStyle}" />
                 </StackPanel>
               </StackPanel>
