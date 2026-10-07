@@ -82,7 +82,7 @@ public sealed class PresentationArchitectureGuardrailTests
             ("WorkingTree.Changes", "RepositoryPresentationChanges_CollectionChanged"),
             ("Branches.LocalBranches", "RepositoryPresentationLocalBranches_CollectionChanged"),
             ("Branches.RemoteBranches", "RepositoryPresentationRemoteBranches_CollectionChanged"),
-            ("Remotes", "RepositoryPresentationRemotes_CollectionChanged"),
+            ("RepositorySync.Remotes", "RepositoryPresentationRemotes_CollectionChanged"),
             ("Tags", "RepositoryPresentationTags_CollectionChanged"),
             ("Stashes.Items", "RepositoryPresentationStashes_CollectionChanged")
         };
@@ -181,54 +181,56 @@ public sealed class PresentationArchitectureGuardrailTests
     }
 
     [Fact]
-    public void BranchMutationOrchestrationBelongsToBranchesViewModel()
+    public void BranchAndRepositorySyncOrchestrationHaveSeparateOwners()
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var mainPageSources = Directory
-            .GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
-            .Select(File.ReadAllText)
-            .ToArray();
-        var combined = string.Join(Environment.NewLine, mainPageSources);
-        var branchesViewModel = File.ReadAllText(
-            Path.Combine(presentation, "ViewModels", "BranchesViewModel.cs"));
-        var openRepositoryViewModel = File.ReadAllText(
-            Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.cs"));
-
-        var forbiddenMainPageCalls = new[]
-        {
-            "_referenceService.CreateBranchAsync(",
-            "_referenceService.SwitchBranchAsync(",
-            "_referenceService.RenameBranchAsync(",
-            "_referenceService.DeleteBranchAsync(",
-            "_referenceService.CheckoutRemoteBranchAsync(",
-            "_repositorySyncService.DeleteRemoteBranchAsync(",
-            "_repositorySyncService.PreparePublishBranchAsync(",
-            "_repositorySyncService.PublishBranchAsync("
-        };
-
-        foreach (var call in forbiddenMainPageCalls)
-            Assert.DoesNotContain(call, combined, StringComparison.Ordinal);
+        var viewModels = Path.Combine(presentation, "ViewModels");
+        var mainPage = string.Join(
+            Environment.NewLine,
+            Directory.GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+                .Select(File.ReadAllText));
+        var branchesViewModel = File.ReadAllText(Path.Combine(viewModels, "BranchesViewModel.cs"));
+        var repositorySync = File.ReadAllText(Path.Combine(viewModels, "RepositorySyncViewModel.cs"));
+        var openRepository = File.ReadAllText(Path.Combine(viewModels, "OpenRepositoryViewModel.cs"));
+        var syncContext = File.ReadAllText(Path.Combine(viewModels, "OpenRepositoryViewModel.RepositorySync.cs"));
+        var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
 
         Assert.Contains("public sealed class BranchesViewModel", branchesViewModel, StringComparison.Ordinal);
         Assert.Contains("IReferenceService", branchesViewModel, StringComparison.Ordinal);
         Assert.Contains("IRepositorySyncService", branchesViewModel, StringComparison.Ordinal);
-        Assert.Contains("_referenceService.CreateBranchAsync(", branchesViewModel, StringComparison.Ordinal);
-        Assert.Contains("_referenceService.SwitchBranchAsync(", branchesViewModel, StringComparison.Ordinal);
-        Assert.Contains("_referenceService.RenameBranchAsync(", branchesViewModel, StringComparison.Ordinal);
-        Assert.Contains("_referenceService.DeleteBranchAsync(", branchesViewModel, StringComparison.Ordinal);
-        Assert.Contains("_referenceService.CheckoutRemoteBranchAsync(", branchesViewModel, StringComparison.Ordinal);
         Assert.Contains("_syncService.DeleteRemoteBranchAsync(", branchesViewModel, StringComparison.Ordinal);
-        Assert.Contains("_syncService.PreparePublishBranchAsync(", branchesViewModel, StringComparison.Ordinal);
-        Assert.Contains("_syncService.PublishBranchAsync(", branchesViewModel, StringComparison.Ordinal);
+        Assert.DoesNotContain("_syncService.PreparePublishBranchAsync(", branchesViewModel, StringComparison.Ordinal);
+        Assert.DoesNotContain("_syncService.PublishBranchAsync(", branchesViewModel, StringComparison.Ordinal);
 
-        Assert.Contains("public BranchesViewModel Branches { get; }", openRepositoryViewModel, StringComparison.Ordinal);
-        Assert.DoesNotContain("public ObservableCollection<GitBranch> LocalBranches", openRepositoryViewModel, StringComparison.Ordinal);
-        Assert.DoesNotContain("public ObservableCollection<GitBranch> RemoteBranches", openRepositoryViewModel, StringComparison.Ordinal);
-        Assert.DoesNotContain("public GitBranch? SelectedLocalBranch", openRepositoryViewModel, StringComparison.Ordinal);
-        Assert.DoesNotContain("public GitBranch? SelectedRemoteBranch", openRepositoryViewModel, StringComparison.Ordinal);
-        Assert.DoesNotContain("public ICommand SwitchBranchCommand", openRepositoryViewModel, StringComparison.Ordinal);
-        Assert.DoesNotContain("public ICommand CheckoutRemoteCommand", openRepositoryViewModel, StringComparison.Ordinal);
+        Assert.Contains("public sealed class RepositorySyncViewModel", repositorySync, StringComparison.Ordinal);
+        Assert.Contains("IRepositorySyncService", repositorySync, StringComparison.Ordinal);
+        Assert.Contains("IAppSettingsService", repositorySync, StringComparison.Ordinal);
+        Assert.Contains("_syncService.FetchAsync(", repositorySync, StringComparison.Ordinal);
+        Assert.Contains("_syncService.PullAsync(", repositorySync, StringComparison.Ordinal);
+        Assert.Contains("_syncService.PushAsync(", repositorySync, StringComparison.Ordinal);
+        Assert.Contains("_syncService.PreparePublishBranchAsync(", repositorySync, StringComparison.Ordinal);
+        Assert.Contains("_syncService.PublishBranchAsync(", repositorySync, StringComparison.Ordinal);
+        Assert.Contains("_syncService.PrepareForcePushWithLeaseAsync(", repositorySync, StringComparison.Ordinal);
+        Assert.Contains("_syncService.ForcePushWithLeaseAsync(repository, snapshot)", repositorySync, StringComparison.Ordinal);
+
+        Assert.Contains("public RepositorySyncViewModel RepositorySync { get; }", openRepository, StringComparison.Ordinal);
+        Assert.Contains("IRepositorySyncContext", syncContext, StringComparison.Ordinal);
+        Assert.Contains("RepositorySync.Remotes", File.ReadAllText(Path.Combine(viewModels, "OpenRepositoryViewModel.Branches.cs")), StringComparison.Ordinal);
+        Assert.DoesNotContain("IRepositorySyncService", openRepository, StringComparison.Ordinal);
+        Assert.DoesNotContain("public ObservableCollection<GitRemote> Remotes", openRepository, StringComparison.Ordinal);
+        Assert.DoesNotContain("public GitRemote? SelectedRemote", openRepository, StringComparison.Ordinal);
+        Assert.DoesNotContain("public ICommand FetchCommand", openRepository, StringComparison.Ordinal);
+        Assert.DoesNotContain("public ICommand FetchAllCommand", openRepository, StringComparison.Ordinal);
+        Assert.DoesNotContain("public ICommand PullCommand", openRepository, StringComparison.Ordinal);
+        Assert.DoesNotContain("public ICommand PushCommand", openRepository, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("IRepositorySyncService", mainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("_repositorySyncService", mainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("PushRejectedException", mainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("ForcePushWithLeasePreparationException", mainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("ForcePushWithLeaseCancelledException", mainPage, StringComparison.Ordinal);
+        Assert.Contains("services.AddTransient<RepositorySyncViewModel>();", app, StringComparison.Ordinal);
     }
 
     [Fact]
