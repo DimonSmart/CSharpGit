@@ -23,9 +23,7 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage : Page
 {
     private readonly OpenRepositoryViewModel _viewModel;
-    private readonly IReferenceService _referenceService;
     private readonly IRepositorySyncService _repositorySyncService;
-    private readonly ICommitActionService _commitActionService;
     private readonly TagsViewModel _tagsViewModel;
     private readonly ObservableCollection<RepositoryTreeNode> _repositoryTreeRoots = [];
     private readonly BulkObservableCollection<WorkingTreeChange> _unstagedChanges = [];
@@ -46,17 +44,13 @@ public sealed partial class MainPage : Page
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
-        IReferenceService referenceService,
         IRepositorySyncService repositorySyncService,
-        ICommitActionService commitActionService,
         TagsViewModel tagsViewModel,
         IWorkingTreeStatusReader workingTreeStatusReader)
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
-        _referenceService = referenceService;
         _repositorySyncService = repositorySyncService ?? throw new ArgumentNullException(nameof(repositorySyncService));
-        _commitActionService = commitActionService ?? throw new ArgumentNullException(nameof(commitActionService));
         _tagsViewModel = tagsViewModel ?? throw new ArgumentNullException(nameof(tagsViewModel));
         _tagsViewModel.Attach(_viewModel);
         _workingTreeStatusReader = workingTreeStatusReader ?? throw new ArgumentNullException(nameof(workingTreeStatusReader));

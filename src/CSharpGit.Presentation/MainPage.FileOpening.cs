@@ -33,15 +33,13 @@ public sealed partial class MainPage
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
-        IReferenceService referenceService,
         IRepositorySyncService syncService,
-        ICommitActionService commitActionService,
         TagsViewModel tagsViewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
         IRepositoryFileVersionService fileVersionService,
         IDesktopShellService desktopShellService,
         IRepositoryPathService repositoryPathService)
-        : this(viewModel, referenceService, syncService, commitActionService, tagsViewModel, workingTreeStatusReader)
+        : this(viewModel, syncService, tagsViewModel, workingTreeStatusReader)
     {
         _fileVersionService = fileVersionService ?? throw new ArgumentNullException(nameof(fileVersionService));
         _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
@@ -52,16 +50,14 @@ public sealed partial class MainPage
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
-        IReferenceService referenceService,
         IRepositorySyncService syncService,
-        ICommitActionService commitActionService,
         TagsViewModel tagsViewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
         IRepositoryFileVersionService fileVersionService,
         IDesktopShellService desktopShellService,
         IRepositoryPathService repositoryPathService,
         IExternalGitToolService externalGitToolService)
-        : this(viewModel, referenceService, syncService, commitActionService, tagsViewModel, workingTreeStatusReader, fileVersionService, desktopShellService, repositoryPathService)
+        : this(viewModel, syncService, tagsViewModel, workingTreeStatusReader, fileVersionService, desktopShellService, repositoryPathService)
     {
         _externalGitToolService = externalGitToolService ?? throw new ArgumentNullException(nameof(externalGitToolService));
         UpdateCommitButtons();

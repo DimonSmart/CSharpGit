@@ -16,9 +16,7 @@ public sealed partial class MainPage
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
-        IReferenceService referenceService,
         IRepositorySyncService repositorySyncService,
-        ICommitActionService commitActionService,
         TagsViewModel tagsViewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
         IRepositoryFileVersionService fileVersionService,
@@ -29,9 +27,7 @@ public sealed partial class MainPage
         IRepositoryHistoryRewriteService repositoryHistoryRewriteService)
         : this(
             viewModel,
-            referenceService,
             repositorySyncService,
-            commitActionService,
             tagsViewModel,
             workingTreeStatusReader,
             fileVersionService,
