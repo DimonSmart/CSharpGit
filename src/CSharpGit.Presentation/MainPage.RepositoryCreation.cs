@@ -34,7 +34,7 @@ public sealed partial class MainPage
             var discardDraft = false;
             if (opensWorkspace
                 && _viewModel.Repository is not null
-                && _viewModel.HasUnappliedCommitMessage)
+                && _viewModel.CommitCreation.HasUnappliedCommitMessage)
             {
                 discardDraft =
                     await ConfirmDiscardCommitMessageAsync(closing: false);

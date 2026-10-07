@@ -56,6 +56,7 @@
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/StashesViewModel.cs" Link="Stashes/StashesViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CommitDetailsViewModel.cs" Link="Changes/CommitDetailsViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorkingTreeViewModel.cs" Link="WorkingTree/WorkingTreeViewModel.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CommitCreationViewModel.cs" Link="CommitCreation/CommitCreationViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CompactDiffLine.cs" Link="Changes/CompactDiffLine.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/DiffLogicalText.cs" Link="Changes/DiffLogicalText.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Controls/DiffViewportResetGate.cs" Link="Changes/DiffViewportResetGate.cs" />
