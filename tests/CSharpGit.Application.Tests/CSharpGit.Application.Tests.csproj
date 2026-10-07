@@ -26,6 +26,7 @@
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BranchFolderInfo.cs" Link="Presentation/BranchFolderInfo.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BranchFolderDeletionPlanning.cs" Link="Presentation/BranchFolderDeletionPlanning.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BranchesViewModel.cs" Link="Presentation/BranchesViewModel.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositorySyncViewModel.cs" Link="Presentation/RepositorySyncViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CommitActionsViewModel.cs" Link="Presentation/CommitActionsViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryOperationsViewModel.cs" Link="Presentation/RepositoryOperationsViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/InteractiveRebaseViewModel.cs" Link="Presentation/InteractiveRebaseViewModel.cs" />

@@ -133,6 +133,7 @@ public sealed class DesktopUiContractTests
         var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
         var surface = xaml + operationBanner + page + confirmationDialogs + forcePushPage + commitActions;
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
+        var repositorySync = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositorySyncViewModel.cs"));
         var repositoryOperations = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryOperationsViewModel.cs"));
         foreach (var command in new[]
         {
@@ -145,15 +146,15 @@ public sealed class DesktopUiContractTests
         }) Assert.Contains(command, surface);
 
         Assert.Contains("Push_Click", surface);
-        Assert.Contains("_repositorySyncService.PushAsync", forcePushPage);
+        Assert.Contains("_viewModel.RepositorySync.PushAsync", forcePushPage);
         Assert.Contains("Force push with lease…", surface);
         Assert.Contains("ForcePushWithLeaseAsync(repository, snapshot)", forcePushPage);
-        Assert.Equal(1, Count(xaml, "IsEnabled=\"{Binding CanForcePushWithLease}\""));
-        Assert.Contains("CanForcePushWithLease => Repository is not null", viewModel);
-        Assert.Contains("&& !IsBusy", viewModel);
-        Assert.DoesNotContain("!string.IsNullOrWhiteSpace(branch.Upstream)", viewModel);
-        Assert.Contains("RepositoryOperations.CurrentOperation == RepositoryOperation.None", viewModel);
-        Assert.Contains("Branches.LocalBranches.Any(branch => branch.IsCurrent)", viewModel);
+        Assert.Equal(1, Count(xaml, "IsEnabled=\"{Binding RepositorySync.CanForcePushWithLease}\""));
+        Assert.Contains("public bool CanForcePushWithLease =>", repositorySync);
+        Assert.Contains("Repository: not null", repositorySync);
+        Assert.Contains("_context.CurrentOperation == RepositoryOperation.None", repositorySync);
+        Assert.Contains("_context.CurrentLocalBranch is not null", repositorySync);
+        Assert.DoesNotContain("public bool CanForcePushWithLease", viewModel);
 
         Assert.Contains("OperationState.CanContinue", repositoryOperations);
         Assert.Contains("OperationState.CanSkip", repositoryOperations);
