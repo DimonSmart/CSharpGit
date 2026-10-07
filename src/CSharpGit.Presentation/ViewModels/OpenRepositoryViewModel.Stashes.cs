@@ -28,8 +28,8 @@ public sealed partial class OpenRepositoryViewModel
     }
 
     public bool HasSelectedStash => SelectedStash is not null;
-    public bool HasSelectedDetailsObject => SelectedStash is not null || SelectedHistoryRow is not null;
-    public string? SelectedObjectCommit => SelectedStash?.Commit ?? SelectedHistoryRow?.Commit.Hash;
+    public bool HasSelectedDetailsObject => SelectedStash is not null || History.SelectedRow is not null;
+    public string? SelectedObjectCommit => SelectedStash?.Commit ?? History.SelectedRow?.Commit.Hash;
     public string SelectedDetailsTitle => SelectedStash is null ? "Commit" : "Stash";
     public bool CanMutateSelectedStash => SelectedStash is not null && CanMutate();
 
@@ -75,7 +75,7 @@ public sealed partial class OpenRepositoryViewModel
         get
         {
             if (SelectedStash is null)
-                return SelectedHistoryRow?.Commit.Hash;
+                return History.SelectedRow?.Commit.Hash;
 
             if (SelectedStashDetails is null || SelectedFile is null)
                 return SelectedStash.Commit;
@@ -168,7 +168,7 @@ public sealed partial class OpenRepositoryViewModel
             SelectedStashDetails = null;
         }
 
-        SelectedHistoryRow = null;
+        History.SelectedRow = null;
         SelectedStash = stash;
 
         if (sameIdentity && SelectedStashDetails is { } current)
