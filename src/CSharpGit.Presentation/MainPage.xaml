@@ -480,11 +480,11 @@
                    Grid.Row="3"
                    HeaderTemplate="{StaticResource PivotHeaderTemplate}"
                    SelectionChanged="DetailsTabs_SelectionChanged"
-                   Visibility="{Binding HasSelectedDetailsObject, Converter={StaticResource BooleanToVisibilityConverter}}">
+                   Visibility="{Binding CommitDetails.HasSelectedDetailsObject, Converter={StaticResource BooleanToVisibilityConverter}}">
               <Pivot.Resources>
                 <Style TargetType="primitives:PivotHeaderItem" BasedOn="{StaticResource CompactPivotHeaderItemStyle}" />
               </Pivot.Resources>
-              <PivotItem x:Name="SummaryTab" Header="{Binding SelectedDetailsTitle}">
+              <PivotItem x:Name="SummaryTab" Header="{Binding CommitDetails.SelectedDetailsTitle}">
                 <Grid>
                   <ScrollViewer x:Name="DetailsScroller"
                                 Visibility="{Binding HasSelectedCommit, Converter={StaticResource BooleanToVisibilityConverter}}"
@@ -497,35 +497,35 @@
                     <controls:CommitDetailsView x:Name="CommitDetailsContent" />
                   </ScrollViewer>
 
-                  <ScrollViewer Visibility="{Binding HasSelectedStash, Converter={StaticResource BooleanToVisibilityConverter}}"
+                  <ScrollViewer Visibility="{Binding Stashes.HasSelectedStash, Converter={StaticResource BooleanToVisibilityConverter}}"
                                 HorizontalScrollMode="Disabled"
                                 HorizontalScrollBarVisibility="Disabled"
                                 VerticalScrollMode="Auto"
                                 VerticalScrollBarVisibility="Auto"
                                 MinHeight="120">
                     <StackPanel Margin="12" Spacing="8">
-                      <TextBlock Text="{Binding SelectedStashDisplay}"
+                      <TextBlock Text="{Binding CommitDetails.SelectedStashDisplay}"
                                  Style="{StaticResource BodyStrongTextStyle}"
                                  TextWrapping="Wrap" />
-                      <TextBlock Text="{Binding SelectedStashBaseDisplay}"
+                      <TextBlock Text="{Binding CommitDetails.SelectedStashBaseDisplay}"
                                  Style="{StaticResource SecondaryTextStyle}" />
-                      <TextBlock Text="{Binding SelectedStashHashDisplay}"
+                      <TextBlock Text="{Binding CommitDetails.SelectedStashHashDisplay}"
                                  Style="{StaticResource SecondaryTextStyle}" />
-                      <TextBlock Text="{Binding SelectedStashStatsDisplay}"
+                      <TextBlock Text="{Binding CommitDetails.SelectedStashStatsDisplay}"
                                  Style="{StaticResource SecondaryTextStyle}" />
-                      <TextBlock Text="{Binding SelectedStashDetailsStatus}"
+                      <TextBlock Text="{Binding CommitDetails.SelectedStashDetailsStatus}"
                                  Style="{StaticResource SecondaryTextStyle}"
                                  TextWrapping="Wrap" />
                       <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                         <Button Content="Apply"
-                                Command="{Binding ApplyStashCommand}"
+                                Command="{Binding Stashes.ApplyCommand}"
                                 Style="{StaticResource CompactButtonStyle}" />
                         <Button Content="Pop"
-                                Command="{Binding PopStashCommand}"
+                                Command="{Binding Stashes.PopCommand}"
                                 Style="{StaticResource CompactButtonStyle}" />
                         <Button Content="Drop…"
                                 Click="DropSelectedStash_Click"
-                                IsEnabled="{Binding CanMutateSelectedStash}"
+                                IsEnabled="{Binding Stashes.CanMutateSelectedStash}"
                                 Style="{StaticResource CompactButtonStyle}" />
                       </StackPanel>
                     </StackPanel>

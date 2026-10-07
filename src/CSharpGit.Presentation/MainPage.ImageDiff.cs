@@ -19,9 +19,9 @@ public sealed partial class MainPage
     private async Task LoadCommitImageDiffAsync()
     {
         var repository = _viewModel.Repository;
-        var commitHash = _viewModel.SelectedDiffCommitHash;
-        var file = _viewModel.SelectedFile;
-        if (repository is null || string.IsNullOrWhiteSpace(commitHash) || file is null || _viewModel.SelectedDiff?.IsBinary != true)
+        var commitHash = _viewModel.CommitDetails.SelectedDiffCommitHash;
+        var file = _viewModel.CommitDetails.SelectedFile;
+        if (repository is null || string.IsNullOrWhiteSpace(commitHash) || file is null || _viewModel.CommitDetails.SelectedDiff?.IsBinary != true)
         {
             SetCommitDiffPresentationState(DiffPresentationState.None);
             return;
@@ -83,11 +83,11 @@ public sealed partial class MainPage
         CancellationTokenSource cancellation) =>
         !cancellation.IsCancellationRequested
         && generation == Volatile.Read(ref _commitImageDiffGeneration)
-        && _viewModel.IsChangesViewActive
+        && _viewModel.CommitDetails.IsChangesViewActive
         && ReferenceEquals(repository, _viewModel.Repository)
-        && string.Equals(commitHash, _viewModel.SelectedDiffCommitHash, StringComparison.Ordinal)
-        && string.Equals(path, _viewModel.SelectedFile?.Path, StringComparison.Ordinal)
-        && _viewModel.SelectedDiff?.IsBinary == true;
+        && string.Equals(commitHash, _viewModel.CommitDetails.SelectedDiffCommitHash, StringComparison.Ordinal)
+        && string.Equals(path, _viewModel.CommitDetails.SelectedFile?.Path, StringComparison.Ordinal)
+        && _viewModel.CommitDetails.SelectedDiff?.IsBinary == true;
 
     private void CancelCommitImageDiff(bool clearSurface)
     {

@@ -60,7 +60,7 @@ public sealed partial class MainPage
             AddMenuItem(
                 flyout,
                 count == 1 ? "Stash selected…" : $"Stash {count} files…",
-                _viewModel.CanCreateSelectedStash(changes),
+                _viewModel.Stashes.CanCreateSelectedStash(changes),
                 () => ShowCreateSelectedStashDialogAsync(changes));
             flyout.Items.Add(new MenuFlyoutSeparator());
             AddMenuItem(
@@ -79,7 +79,7 @@ public sealed partial class MainPage
             AddMenuItem(
                 flyout,
                 count == 1 ? "Stash selected…" : $"Stash {count} files…",
-                _viewModel.CanCreateSelectedStash(changes),
+                _viewModel.Stashes.CanCreateSelectedStash(changes),
                 () => ShowCreateSelectedStashDialogAsync(changes));
 
             if (count == 1)

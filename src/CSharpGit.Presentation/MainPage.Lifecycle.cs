@@ -32,7 +32,7 @@ public sealed partial class MainPage
         _viewModel.Branches.RemoteBranches.CollectionChanged -= RepositoryPresentationRemoteBranches_CollectionChanged;
         _viewModel.Remotes.CollectionChanged -= RepositoryPresentationRemotes_CollectionChanged;
         _viewModel.Tags.CollectionChanged -= RepositoryPresentationTags_CollectionChanged;
-        _viewModel.Stashes.CollectionChanged -= RepositoryPresentationStashes_CollectionChanged;
+        _viewModel.Stashes.Items.CollectionChanged -= RepositoryPresentationStashes_CollectionChanged;
         DetachRepositoryTreeStateTracking();
         ShutdownGitConsole();
         ShutdownRecentRepositories();
@@ -41,11 +41,14 @@ public sealed partial class MainPage
         _settingsWindowController.Shutdown();
 
         _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        _viewModel.Stashes.PropertyChanged -= StashesViewModel_PropertyChanged;
+        _viewModel.CommitDetails.PropertyChanged -= CommitDetailsViewModel_PropertyChanged;
         _viewModel.History.PropertyChanged -= HistoryViewModel_PropertyChanged;
         _viewModel.History.CommitLookupCompleted -= History_CommitLookupCompleted;
-        _viewModel.PropertyChanged -= ChangesViewModel_PropertyChanged;
+        _viewModel.CommitDetails.PropertyChanged -= ChangesViewModel_PropertyChanged;
         _viewModel.PropertyChanged -= ConfirmationDialogs_PropertyChanged;
         _viewModel.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
+        _viewModel.CommitDetails.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
         _viewModel.History.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
         _viewModel.WorkingTree.PropertyChanged -= WorkingTreeViewModel_PropertyChanged;
         _viewModel.WorkingTree.PropertyChanged -= WorkingTreeFileOpening_PropertyChanged;

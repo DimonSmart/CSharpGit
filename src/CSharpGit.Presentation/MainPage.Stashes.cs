@@ -12,7 +12,7 @@ public sealed partial class MainPage
 
     private async Task ShowCreateStashDialogAsync()
     {
-        if (!_viewModel.CanCreateStash) return;
+        if (!_viewModel.Stashes.CanCreateStash) return;
 
         var message = new TextBox
         {
@@ -67,7 +67,7 @@ public sealed partial class MainPage
             var scope = staged
                 ? StashScope.StagedChangesOnly
                 : StashScope.AllTrackedChanges;
-            dialog.IsPrimaryButtonEnabled = _viewModel.CanCreateStashRequest(
+            dialog.IsPrimaryButtonEnabled = _viewModel.Stashes.CanCreateStashRequest(
                 scope,
                 includeUntracked.IsChecked == true);
         }
@@ -83,7 +83,7 @@ public sealed partial class MainPage
         var selectedScope = stagedOnly.IsChecked == true
             ? StashScope.StagedChangesOnly
             : StashScope.AllTrackedChanges;
-        await _viewModel.CreateStashAsync(
+        await _viewModel.Stashes.CreateStashAsync(
             new CreateStashRequest(
                 message.Text,
                 selectedScope,
@@ -94,7 +94,7 @@ public sealed partial class MainPage
         IReadOnlyCollection<WorkingTreeChange> changes)
     {
         var snapshot = changes.ToArray();
-        if (!_viewModel.CanCreateSelectedStash(snapshot)) return;
+        if (!_viewModel.Stashes.CanCreateSelectedStash(snapshot)) return;
 
         var message = new TextBox
         {
@@ -135,18 +135,18 @@ public sealed partial class MainPage
         };
 
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
-        await _viewModel.CreateSelectedStashAsync(snapshot, message.Text);
+        await _viewModel.Stashes.CreateSelectedStashAsync(snapshot, message.Text);
     }
 
     private async void DropSelectedStash_Click(object sender, RoutedEventArgs args)
     {
-        if (_viewModel.SelectedStash is { } stash)
+        if (_viewModel.Stashes.SelectedStash is { } stash)
             await ConfirmDropStashAsync(stash);
     }
 
     private async Task ConfirmDropStashAsync(GitStash stash)
     {
-        if (!_viewModel.DropStashCommand.CanExecute(null)) return;
+        if (!_viewModel.Stashes.DropCommand.CanExecute(null)) return;
 
         var content = new StackPanel { Spacing = 8 };
         content.Children.Add(new TextBlock
@@ -176,6 +176,6 @@ public sealed partial class MainPage
         };
 
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
-        await ExecuteCommandAsync(_viewModel.DropStashCommand);
+        await ExecuteCommandAsync(_viewModel.Stashes.DropCommand);
     }
 }
