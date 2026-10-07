@@ -25,7 +25,7 @@ public sealed class StashUiContractTests
         var xaml = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
         var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
         var stashPage = Read(root, "src", "CSharpGit.Presentation", "MainPage.Stashes.cs");
-        var stashViewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.Stashes.cs");
+        var stashViewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "StashesViewModel.cs");
 
         Assert.Contains("Content=\"Stash…\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"CreateStash_Click\"", xaml, StringComparison.Ordinal);
@@ -53,7 +53,7 @@ public sealed class StashUiContractTests
         var root = FindRepositoryRoot();
         var menu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
         var stashPage = Read(root, "src", "CSharpGit.Presentation", "MainPage.Stashes.cs");
-        var stashViewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.Stashes.cs");
+        var stashViewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "StashesViewModel.cs");
 
         Assert.Contains("\"Stash selected…\"", menu, StringComparison.Ordinal);
         Assert.Contains("$\"Stash {count} files…\"", menu, StringComparison.Ordinal);
@@ -76,13 +76,13 @@ public sealed class StashUiContractTests
         var xaml = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
         var repositoryFiles = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryFilesViewModel.cs");
         var historyAdapter = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.History.cs");
-        var commitChanges = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.CommitChanges.cs");
+        var commitChanges = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.DetailsComposition.cs");
 
         var stashSelection = SliceFirstCase(page, "case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:");
-        Assert.Contains("await _viewModel.SelectStashAsync(stash)", stashSelection, StringComparison.Ordinal);
+        Assert.Contains("await _viewModel.Stashes.SelectStashAsync(stash)", stashSelection, StringComparison.Ordinal);
         Assert.Contains("await NavigateToReferenceAsync(stash.Commit, preserveSelectedStash: true)", stashSelection, StringComparison.Ordinal);
-        Assert.Contains("!string.Equals(selected.Commit.Hash, selectedStash.Commit, StringComparison.Ordinal)", historyAdapter, StringComparison.Ordinal);
-        Assert.Contains("string.Equals(selectedHistoryRow.Commit.Hash, stash.Commit, StringComparison.Ordinal)", commitChanges, StringComparison.Ordinal);
+        Assert.Contains("!string.Equals(selectedRow.Commit.Hash, selectedStash.Commit, StringComparison.Ordinal)", historyAdapter, StringComparison.Ordinal);
+        Assert.Contains("string.Equals(historyRow.Commit.Hash, stash.Commit, StringComparison.Ordinal)", commitChanges, StringComparison.Ordinal);
 
         Assert.Contains("Visibility=\"{Binding HasSelectedDetailsObject", xaml, StringComparison.Ordinal);
         Assert.Contains("Header=\"{Binding SelectedDetailsTitle}\"", xaml, StringComparison.Ordinal);
@@ -104,7 +104,7 @@ public sealed class StashUiContractTests
         var root = FindRepositoryRoot();
         var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
         var stashPage = Read(root, "src", "CSharpGit.Presentation", "MainPage.Stashes.cs");
-        var stashViewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.Stashes.cs");
+        var stashViewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "StashesViewModel.cs");
 
         var stashMenu = SliceCase(page, "case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:");
         Assert.Contains("\"Apply\"", stashMenu, StringComparison.Ordinal);
@@ -129,10 +129,10 @@ public sealed class StashUiContractTests
         var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
         var changes = Read(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs");
         var presentation = Read(root, "src", "CSharpGit.Presentation", "MainPage.DiffPresentation.cs");
-        var stashViewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.Stashes.cs");
+        var detailsViewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "CommitDetailsViewModel.cs");
 
         Assert.Contains("GetChangedFileDisplayStatus(file)", page, StringComparison.Ordinal);
-        Assert.Contains("StateLabel", stashViewModel, StringComparison.Ordinal);
+        Assert.Contains("StateLabel", detailsViewModel, StringComparison.Ordinal);
         Assert.Contains("IsNoNetStashDiff", changes, StringComparison.Ordinal);
         Assert.Contains("NoNetStashDiff", presentation, StringComparison.Ordinal);
         Assert.Contains("No net working-tree diff", presentation, StringComparison.Ordinal);
