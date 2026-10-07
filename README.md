@@ -94,4 +94,10 @@ dotnet run --project src/CSharpGit.Presentation -f net10.0-desktop
 
 Один процесс открывает один репозиторий или worktree. Для другого репозитория запустите ещё один процесс.
 
+### Presentation architecture
+
+`OpenRepositoryViewModel` собирает feature-level presentation owners: `HistoryViewModel`, `CommitDetailsViewModel`, `CommitActionsViewModel`, `StashesViewModel`, `BranchesViewModel`, `WorkingTreeViewModel` и остальные узкие features.
+
+`HistoryViewModel` владеет canonical selection исторического commit. `CommitDetailsViewModel` показывает его содержимое. `CommitActionsViewModel` владеет orchestration прямых repository mutations над выбранным historical commit; dialogs, clipboard и scrolling остаются responsibility View.
+
 Конфигурация читается из `appsettings.json` и переменных окружения с префиксом `CSHARPGIT_`. Журнал пишется локально в консоль; telemetry и пользовательская аналитика не подключены.

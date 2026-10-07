@@ -313,6 +313,49 @@ public sealed class PresentationArchitectureGuardrailTests
     }
 
     [Fact]
+    public void CommitMutationOrchestrationBelongsToCommitActionsViewModel()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var viewModels = Path.Combine(presentation, "ViewModels");
+        var mainPage = string.Join(
+            Environment.NewLine,
+            Directory.GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+                .Select(File.ReadAllText));
+        var commitActions = File.ReadAllText(Path.Combine(viewModels, "CommitActionsViewModel.cs"));
+        var openRepository = File.ReadAllText(Path.Combine(viewModels, "OpenRepositoryViewModel.cs"));
+        var contextAdapter = File.ReadAllText(Path.Combine(viewModels, "OpenRepositoryViewModel.CommitActions.cs"));
+        var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
+
+        Assert.Contains("public sealed class CommitActionsViewModel", commitActions, StringComparison.Ordinal);
+        Assert.Contains("ICommitActionService", commitActions, StringComparison.Ordinal);
+        Assert.Contains("IReferenceService", commitActions, StringComparison.Ordinal);
+        Assert.Contains("public CommitActionsViewModel CommitActions { get; }", openRepository, StringComparison.Ordinal);
+        Assert.Contains("ICommitActionsRepositoryContext", contextAdapter, StringComparison.Ordinal);
+        Assert.Contains("services.AddTransient<CommitActionsViewModel>();", app, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("ICommitActionService", mainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("IReferenceService", mainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("_commitActionService.", mainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("_referenceService.CheckoutAsync(", mainPage, StringComparison.Ordinal);
+
+        foreach (var directCall in new[]
+                 {
+                     "_commitActionService.CherryPickAsync",
+                     "_commitActionService.RevertAsync",
+                     "_commitActionService.ResetAsync",
+                     "_commitActionService.FixupIntoPreviousCommitAsync"
+                 })
+        {
+            Assert.DoesNotContain(directCall, mainPage, StringComparison.Ordinal);
+        }
+
+        Assert.DoesNotContain("Microsoft.UI.Xaml", commitActions, StringComparison.Ordinal);
+        Assert.DoesNotContain("ContentDialog", commitActions, StringComparison.Ordinal);
+        Assert.DoesNotContain("HistoryViewModel", commitActions, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void WindowTitleUsesPresentationStateAndShellOwnedWindow()
     {
         var root = FindRepositoryRoot();
