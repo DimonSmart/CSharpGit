@@ -38,8 +38,8 @@ public sealed partial class MainPage
         CommitTextDiffHeader.Visibility = state == DiffPresentationState.Text ? Visibility.Visible : Visibility.Collapsed;
         CompactDiffViewer.Visibility = state == DiffPresentationState.Text ? Visibility.Visible : Visibility.Collapsed;
         CommitLargeDiffInfo.Visibility = state == DiffPresentationState.LargeDiff ? Visibility.Visible : Visibility.Collapsed;
-        CommitLargeDiffMessage.Text = _viewModel.DiffPreviewDeferredMessage ?? string.Empty;
-        CommitLargeDiffButton.Content = _viewModel.DiffPreviewActionText;
+        CommitLargeDiffMessage.Text = _viewModel.CommitDetails.DiffPreviewDeferredMessage ?? string.Empty;
+        CommitLargeDiffButton.Content = _viewModel.CommitDetails.DiffPreviewActionText;
         CommitImageLoading.Visibility = state == DiffPresentationState.LoadingImage ? Visibility.Visible : Visibility.Collapsed;
         CommitImageDiffHost.Visibility = state == DiffPresentationState.Image ? Visibility.Visible : Visibility.Collapsed;
         CommitBinaryInfo.Visibility =
@@ -52,7 +52,7 @@ public sealed partial class MainPage
                 ? Visibility.Visible
                 : Visibility.Collapsed;
 
-        ConfigureInfoBar(CommitBinaryInfo, state, _viewModel.DiffLoadErrorMessage);
+        ConfigureInfoBar(CommitBinaryInfo, state, _viewModel.CommitDetails.DiffLoadErrorMessage);
 
         if (state != DiffPresentationState.Image)
             CommitImageDiffHost.Clear();
