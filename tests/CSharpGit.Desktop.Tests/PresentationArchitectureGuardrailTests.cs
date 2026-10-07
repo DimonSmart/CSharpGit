@@ -232,6 +232,42 @@ public sealed class PresentationArchitectureGuardrailTests
     }
 
     [Fact]
+    public void HistoryLoadingBelongsToHistoryViewModel()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var mainPageSources = Directory
+            .GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+            .Select(File.ReadAllText)
+            .ToArray();
+        var combined = string.Join(Environment.NewLine, mainPageSources);
+        var history = File.ReadAllText(
+            Path.Combine(presentation, "ViewModels", "HistoryViewModel.cs"));
+        var openRepository = File.ReadAllText(
+            Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.cs"));
+
+        Assert.Contains("public sealed class HistoryViewModel", history, StringComparison.Ordinal);
+        Assert.Contains("IHistoryService", history, StringComparison.Ordinal);
+        Assert.Contains("public HistoryViewModel History { get; }", openRepository, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("IHistoryService", combined, StringComparison.Ordinal);
+        Assert.DoesNotContain("_historyService", combined, StringComparison.Ordinal);
+        Assert.DoesNotContain("_scopedHistory", combined, StringComparison.Ordinal);
+        Assert.DoesNotContain("_referenceHistoryCts", combined, StringComparison.Ordinal);
+        Assert.DoesNotContain("_scopedHasMore", combined, StringComparison.Ordinal);
+        Assert.DoesNotContain("_isScopedHistoryLoading", combined, StringComparison.Ordinal);
+        Assert.DoesNotContain("LoadScopedHistoryAsync", combined, StringComparison.Ordinal);
+        Assert.DoesNotContain("new HistoryQuery(", combined, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("public ObservableCollection<HistoryRow> History", openRepository, StringComparison.Ordinal);
+        Assert.DoesNotContain("public HistoryRow? SelectedHistoryRow", openRepository, StringComparison.Ordinal);
+        Assert.False(File.Exists(
+            Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.ReferenceNavigation.cs")));
+        Assert.False(File.Exists(
+            Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.Reflog.cs")));
+    }
+
+    [Fact]
     public void WindowTitleUsesPresentationStateAndShellOwnedWindow()
     {
         var root = FindRepositoryRoot();
