@@ -33,7 +33,6 @@ public sealed partial class MainPage
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
-        IHistoryService historyService,
         IReferenceService referenceService,
         IRepositorySyncService syncService,
         ICommitActionService commitActionService,
@@ -42,7 +41,7 @@ public sealed partial class MainPage
         IRepositoryFileVersionService fileVersionService,
         IDesktopShellService desktopShellService,
         IRepositoryPathService repositoryPathService)
-        : this(viewModel, historyService, referenceService, syncService, commitActionService, tagsViewModel, workingTreeStatusReader)
+        : this(viewModel, referenceService, syncService, commitActionService, tagsViewModel, workingTreeStatusReader)
     {
         _fileVersionService = fileVersionService ?? throw new ArgumentNullException(nameof(fileVersionService));
         _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
@@ -53,7 +52,6 @@ public sealed partial class MainPage
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
-        IHistoryService historyService,
         IReferenceService referenceService,
         IRepositorySyncService syncService,
         ICommitActionService commitActionService,
@@ -63,7 +61,7 @@ public sealed partial class MainPage
         IDesktopShellService desktopShellService,
         IRepositoryPathService repositoryPathService,
         IExternalGitToolService externalGitToolService)
-        : this(viewModel, historyService, referenceService, syncService, commitActionService, tagsViewModel, workingTreeStatusReader, fileVersionService, desktopShellService, repositoryPathService)
+        : this(viewModel, referenceService, syncService, commitActionService, tagsViewModel, workingTreeStatusReader, fileVersionService, desktopShellService, repositoryPathService)
     {
         _externalGitToolService = externalGitToolService ?? throw new ArgumentNullException(nameof(externalGitToolService));
         UpdateCommitButtons();
