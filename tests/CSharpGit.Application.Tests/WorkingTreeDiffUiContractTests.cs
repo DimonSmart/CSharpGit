@@ -209,7 +209,7 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("SelectedDiffKind == WorkingTreeDiffKind.Staged", workingTreeViewModel);
 
         var mutationStart = viewModel.IndexOf("private async Task<bool> MutateAsync", StringComparison.Ordinal);
-        var mutationEnd = viewModel.IndexOf("private async Task RunConflictActionAsync", mutationStart, StringComparison.Ordinal);
+        var mutationEnd = viewModel.IndexOf("private Task RequestCommitAsync()", mutationStart, StringComparison.Ordinal);
         var mutation = viewModel[mutationStart..mutationEnd];
         var executeIndex = mutation.IndexOf("await mutation();", StringComparison.Ordinal);
         var callbackIndex = mutation.IndexOf("afterSuccessfulMutation?.Invoke();", StringComparison.Ordinal);
