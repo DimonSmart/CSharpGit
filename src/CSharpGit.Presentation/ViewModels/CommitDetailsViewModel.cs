@@ -242,7 +242,7 @@ public sealed class CommitDetailsViewModel :
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 
         var previous = _selectedHistoryRow;
-        var restoreKey =
+        ChangedFileSelectionKey? restoreKey =
             _selectedStash is null
             && previous is not null
             && row is not null
@@ -280,7 +280,7 @@ public sealed class CommitDetailsViewModel :
             if (_selectedStashDetails is { } current)
             {
                 if (!ReferenceEquals(current.Stash, stash))
-                    SetSelectedStashDetails(current with { Stash = stash });
+                    SetSelectedStashDetails(current with { Stash = stash! });
                 if (_isChangesViewActive)
                     PublishSelectedStashChanges(_selectedStashDetails!);
                 return;
@@ -870,6 +870,9 @@ public sealed class CommitDetailsViewModel :
         size += diff.Diagnostics.Count * 32L;
         return (int)Math.Min(size, int.MaxValue);
     }
+
+    private void Notify([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
     private readonly record struct ChangedFileSelectionKey(string Path, string? OriginalPath)
     {

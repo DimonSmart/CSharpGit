@@ -26,7 +26,7 @@ public sealed partial class MainPage
         _diffLoadingOverlay = CreateLoadingOverlay("Loading diff…", out _diffLoadingRing);
         diffViewer.Children.Add(_diffLoadingOverlay);
 
-        _viewModel.PropertyChanged += LoadingOverlayViewModel_PropertyChanged;
+        _viewModel.CommitDetails.PropertyChanged += LoadingOverlayViewModel_PropertyChanged;
         _loadingOverlaysInitialized = true;
         UpdateLoadingOverlays();
     }
@@ -64,8 +64,8 @@ public sealed partial class MainPage
 
     private void LoadingOverlayViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(OpenRepositoryViewModel.IsChangedFilesLoading)
-            or nameof(OpenRepositoryViewModel.IsDiffLoading))
+        if (e.PropertyName is nameof(CommitDetailsViewModel.IsChangedFilesLoading)
+            or nameof(CommitDetailsViewModel.IsDiffLoading))
             UpdateLoadingOverlays();
     }
 
@@ -73,15 +73,15 @@ public sealed partial class MainPage
     {
         if (!_loadingOverlaysInitialized) return;
 
-        _changesLoadingOverlay!.Visibility = _viewModel.IsChangedFilesLoading ? Visibility.Visible : Visibility.Collapsed;
-        _changesLoadingRing!.IsActive = _viewModel.IsChangedFilesLoading;
-        _diffLoadingOverlay!.Visibility = _viewModel.IsDiffLoading ? Visibility.Visible : Visibility.Collapsed;
-        _diffLoadingRing!.IsActive = _viewModel.IsDiffLoading;
+        _changesLoadingOverlay!.Visibility = _viewModel.CommitDetails.IsChangedFilesLoading ? Visibility.Visible : Visibility.Collapsed;
+        _changesLoadingRing!.IsActive = _viewModel.CommitDetails.IsChangedFilesLoading;
+        _diffLoadingOverlay!.Visibility = _viewModel.CommitDetails.IsDiffLoading ? Visibility.Visible : Visibility.Collapsed;
+        _diffLoadingRing!.IsActive = _viewModel.CommitDetails.IsDiffLoading;
     }
 
     private void DetachLoadingOverlays()
     {
         if (!_loadingOverlaysInitialized) return;
-        _viewModel.PropertyChanged -= LoadingOverlayViewModel_PropertyChanged;
+        _viewModel.CommitDetails.PropertyChanged -= LoadingOverlayViewModel_PropertyChanged;
     }
 }
