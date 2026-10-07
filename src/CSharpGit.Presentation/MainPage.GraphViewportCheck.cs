@@ -12,7 +12,7 @@ public sealed partial class MainPage
 {
     private async Task RunCommitGraphViewportLifecycleCheckAsync(List<string> failures)
     {
-        ShowAllHistory();
+        await ShowAllHistoryAsync();
         await WaitUntilAsync(
             () => HistoryList.ActualHeight > 0 && HistoryList.ActualWidth > 0,
             TimeSpan.FromSeconds(10));
@@ -320,7 +320,7 @@ public sealed partial class MainPage
 
     private async Task RunDesktopDensityCheckAsync(List<string> failures)
     {
-        ShowAllHistory();
+        await ShowAllHistoryAsync();
         if (_viewModel.History.Rows.FirstOrDefault() is { } firstHistory)
         {
             HistoryList.ScrollIntoView(firstHistory);
@@ -438,7 +438,7 @@ public sealed partial class MainPage
             if (WorkingTreeTreeSelection.GetLeaves(_unstagedTreeRoots).FirstOrDefault() is { } restoredUnstaged)
                 WorkingTreeNodeInvoked(restoredUnstaged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Unstaged);
 
-            ShowAllHistory();
+            await ShowAllHistoryAsync();
         }
     }
 
