@@ -21,7 +21,7 @@ public sealed partial class MainPage
         _createTagHereItem = new MenuFlyoutItem { Text = "Create tag here…" };
         _createTagHereItem.Click += async (_, _) =>
         {
-            if (_viewModel.SelectedHistoryRow?.Commit.Hash is { } hash)
+            if (_viewModel.History.SelectedRow?.Commit.Hash is { } hash)
                 await ShowCreateTagDialogAsync(hash, selectedCommit: true);
         };
         _commitActionsFlyout.Items.Insert(3, _createTagHereItem);
@@ -33,7 +33,7 @@ public sealed partial class MainPage
         _commitActionsFlyout.Opening += (_, _) =>
         {
             if (_createTagHereItem is not null)
-                _createTagHereItem.IsEnabled = CanMutateTags() && _viewModel.SelectedHistoryRow is not null;
+                _createTagHereItem.IsEnabled = CanMutateTags() && _viewModel.History.SelectedRow is not null;
             UpdateDeleteTagSubmenu();
         };
     }
@@ -44,7 +44,7 @@ public sealed partial class MainPage
 
         _deleteTagSubItem.Items.Clear();
 
-        var selectedCommitHash = _viewModel.SelectedHistoryRow?.Commit.Hash;
+        var selectedCommitHash = _viewModel.History.SelectedRow?.Commit.Hash;
         if (string.IsNullOrWhiteSpace(selectedCommitHash))
         {
             _deleteTagSubItem.IsEnabled = false;
