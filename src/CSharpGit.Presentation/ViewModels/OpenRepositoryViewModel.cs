@@ -41,18 +41,11 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private bool _isMutating;
     private int _repositoryChangeInProgress;
     private readonly SemaphoreSlim _mutationGate = new(1, 1);
-    private CancellationTokenSource? _historyLoadCts;
-    private long _historyLoadGeneration;
-    private long _reflogSessionId;
     private long _diffLoadGeneration;
     private int _disposed;
-    private string _filterText = string.Empty;
-    private UiChoice<HistoryScope> _selectedScope;
-    private HistoryRow? _selectedHistoryRow;
     private ChangedFile? _selectedFile;
     private FileDiff? _selectedDiff;
     private bool _isDiffLoading;
-    private bool _hasMore;
     private string _commitMessage = string.Empty;
     private bool _isEmptyIndexChoiceOpen;
     private GitRemote? _selectedRemote;
@@ -83,6 +76,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         IWorkingTreeService workingTreeService,
         WorkingTreeViewModel workingTreeViewModel,
         BranchesViewModel branchesViewModel,
+        HistoryViewModel historyViewModel,
         IReferenceService referenceService,
         IRepositorySyncService syncService,
         IStashMutationService stashMutationService,
@@ -99,7 +93,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         IInteractiveRebaseAuthorChangeService? interactiveRebaseAuthorChangeService = null,
         ICommitAuthorDateReader? commitAuthorDateReader = null)
     {
-        _selectedScope = Scopes[0];
         _folderPicker = folderPicker;
         _repositoryService = repositoryService;
         _historyService = historyService;
@@ -109,6 +102,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         WorkingTree.Attach(this);
         Branches = branchesViewModel ?? throw new ArgumentNullException(nameof(branchesViewModel));
         Branches.Attach(this);
+        History = historyViewModel ?? throw new ArgumentNullException(nameof(historyViewModel));
+        History.Attach(this);
+        History.SelectedRowChanged += History_SelectedRowChanged;
         _referenceService = referenceService;
         _syncService = syncService;
         _stashMutationService = stashMutationService;
@@ -123,12 +119,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         _commitAuthorDateReader = commitAuthorDateReader;
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
-        _showReflog = _settings.ShowReflog;
         _settings.Changed += AppSettings_Changed;
         _logger = logger;
         _openRepositoryCommand = new AsyncCommand(OpenRepositoryAsync, () => !IsBusy && Repository is null);
-        RefreshHistoryCommand = new AsyncCommand(() => LoadHistoryAsync(true), () => Repository is not null);
-        LoadMoreCommand = new AsyncCommand(() => LoadHistoryAsync(false), () => Repository is not null && HasMore);
         RefreshAllCommand = new AsyncCommand(RefreshAllAsync, () => Repository is not null);
         CommitCommand = new AsyncCommand(RequestCommitAsync, () => CanMutate() && !string.IsNullOrWhiteSpace(CommitMessage));
         EmptyCommitCommand = new AsyncCommand(() => CommitAsync(false, true), () => CanMutate() && !string.IsNullOrWhiteSpace(CommitMessage));
@@ -168,12 +161,10 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
 
-        Interlocked.Increment(ref _historyLoadGeneration);
-        var historyCancellation = Interlocked.Exchange(ref _historyLoadCts, null);
-        historyCancellation?.Cancel();
-        historyCancellation?.Dispose();
         ResetCommitChangesSession();
         _settings.Changed -= AppSettings_Changed;
+        History.SelectedRowChanged -= History_SelectedRowChanged;
+        History.Dispose();
         Branches.Dispose();
         WorkingTree.Dispose();
     }
@@ -200,12 +191,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         if (Volatile.Read(ref _disposed) != 0) return;
 
         Notify(nameof(CommitTimeDisplayMode));
-
-        var showReflog = _settings.ShowReflog;
-        if (_showReflog == showReflog) return;
-        _showReflog = showReflog;
-        Notify(nameof(ShowReflog));
-        _ = LoadHistoryAsync(true);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -213,8 +198,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public CommitTimeDisplayMode CommitTimeDisplayMode => _settings.CommitTimeDisplayMode;
 
     public ICommand OpenRepositoryCommand => _openRepositoryCommand;
-    public ICommand RefreshHistoryCommand { get; }
-    public ICommand LoadMoreCommand { get; }
     public ICommand RefreshAllCommand { get; }
     public ICommand CommitCommand { get; }
     public ICommand EmptyCommitCommand { get; }
@@ -244,18 +227,13 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public ICommand ContinueOperationCommand { get; }
     public ICommand AbortOperationCommand { get; }
     public ICommand SkipOperationCommand { get; }
-    public ObservableCollection<HistoryRow> History { get; } = [];
+    public HistoryViewModel History { get; }
     public WorkingTreeViewModel WorkingTree { get; }
     public BranchesViewModel Branches { get; }
     public ObservableCollection<GitRemote> Remotes { get; } = new BulkObservableCollection<GitRemote>();
     public ObservableCollection<GitTag> Tags { get; } = new BulkObservableCollection<GitTag>();
     public ObservableCollection<GitStash> Stashes { get; } = new BulkObservableCollection<GitStash>();
     public ObservableCollection<ConflictFile> Conflicts { get; } = new BulkObservableCollection<ConflictFile>();
-    public IReadOnlyList<UiChoice<HistoryScope>> Scopes { get; } =
-    [
-        new("All references", HistoryScope.AllReferences),
-        new("Current branch", HistoryScope.CurrentBranch)
-    ];
     public Repository? Repository
     {
         get => _repository;
@@ -266,6 +244,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             ResetCommitChangesSession();
             SetHeadPresentationState(null, null, false, string.Empty);
             _repository = value;
+            History.OnRepositoryChanged(value);
             WorkingTree.OnRepositoryChanged(value);
             _headExists = null;
             _displayedWorkingTreeBaseline.Clear();
@@ -278,48 +257,21 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             Notify(nameof(SelectedObjectCommit));
             Notify(nameof(CanForcePushWithLease));
             Notify(nameof(CanPushTo));
-            ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged();
         }
     }
     public WorkingTreeStatusSnapshot? DisplayedWorkingTreeStatusSnapshot => _displayedWorkingTreeBaseline.Snapshot;
     public long DisplayedRefreshBaselineRevision => _displayedWorkingTreeBaseline.Revision;
     public string? ErrorMessage { get => _errorMessage; private set { _errorMessage = value; Notify(); Notify(nameof(HasError)); } }
-    public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); Notify(nameof(CanForcePushWithLease)); Notify(nameof(CanPushTo)); _openRepositoryCommand.RaiseCanExecuteChanged(); ((AsyncCommand)RefreshHistoryCommand).RaiseCanExecuteChanged(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
+    public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); Notify(nameof(CanForcePushWithLease)); Notify(nameof(CanPushTo)); _openRepositoryCommand.RaiseCanExecuteChanged(); } }
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
     public bool HasRepository => Repository is not null;
     public bool CanChangeRepository => !_isMutating && Volatile.Read(ref _repositoryChangeInProgress) == 0;
     public string RepositoryKind => Repository?.IsWorktree == true ? "Git worktree" : "Git repository";
-    public string FilterText { get => _filterText; set { _filterText = value; Notify(); } }
-    public UiChoice<HistoryScope> SelectedScope { get => _selectedScope; set { if (_selectedScope == value) return; _selectedScope = value; Notify(); if (value.Value != HistoryScope.AllReferences) DisableReflogForScopeChange(); _ = LoadHistoryAsync(true); } }
-    public HistoryRow? SelectedHistoryRow
-    {
-        get => _selectedHistoryRow;
-        set
-        {
-            if (ReferenceEquals(_selectedHistoryRow, value)) return;
-            if (value is not null
-                && SelectedStash is { } selectedStash
-                && !string.Equals(value.Commit.Hash, selectedStash.Commit, StringComparison.Ordinal))
-            {
-                ClearSelectedStashSelection();
-            }
-
-            var previous = _selectedHistoryRow;
-            _selectedHistoryRow = value;
-            Notify();
-            Notify(nameof(HasSelectedCommit));
-            Notify(nameof(HasSelectedDetailsObject));
-            Notify(nameof(SelectedObjectCommit));
-            Notify(nameof(SelectedDetailsTitle));
-            Notify(nameof(SelectedDiffCommitHash));
-            OnSelectedHistoryRowChanged(previous);
-        }
-    }
+    public bool HasSelectedCommit => History.SelectedRow is not null;
     public ChangedFile? SelectedFile { get => _selectedFile; set { if (_selectedFile == value) return; _selectedFile = value; Notify(); OnSelectedFileChanged(); } }
     public FileDiff? SelectedDiff { get => _selectedDiff; private set { _selectedDiff = value; Notify(); Notify(nameof(HasTextDiff)); Notify(nameof(HasBinaryDiff)); } }
     public bool IsDiffLoading { get => _isDiffLoading; private set { if (_isDiffLoading == value) return; _isDiffLoading = value; Notify(); } }
     public bool HasMore { get => _hasMore; private set { _hasMore = value; Notify(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
-    public bool HasSelectedCommit => SelectedHistoryRow is not null;
     public bool HasTextDiff => SelectedDiff is { IsBinary: false };
     public bool HasBinaryDiff => SelectedDiff?.IsBinary == true;
     public string CommitMessage { get => _commitMessage; set { _commitMessage = value; Notify(); RaiseCommands(); } }
@@ -454,7 +406,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                 path,
                 cancellationToken);
 
-            InvalidateHistoryLoad();
+            History.Invalidate();
             Repository = openedRepository;
             try
             {
@@ -462,7 +414,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             }
             catch
             {
-                InvalidateHistoryLoad();
+                History.Invalidate();
                 Repository = previousRepository;
                 if (previousRepository is null)
                     ClearRepositoryPresentation();
@@ -534,7 +486,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
         try
         {
-            InvalidateHistoryLoad();
+            History.Invalidate();
             Repository = null;
             ClearRepositoryPresentation();
             ErrorMessage = null;
@@ -552,7 +504,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     private void ClearRepositoryPresentation()
     {
-        History.Clear();
         WorkingTree.ClearRepositoryState();
         Branches.ClearRepositoryState();
         Remotes.Clear();
@@ -560,7 +511,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         Stashes.Clear();
         InvalidatePreparedInteractiveRebaseTodo();
         Conflicts.Clear();
-        SelectedHistoryRow = null;
         SelectedFile = null;
         SelectedDiff = null;
         SelectedRemote = null;
@@ -569,7 +519,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         SelectedMergeBranch = null;
         SelectedConflict = null;
         SetHeadPresentationState(null, null, false, string.Empty);
-        HasMore = false;
         CurrentOperation = RepositoryOperation.None;
         OperationState = RepositoryOperationState.None;
         OperationDisplay = string.Empty;
@@ -691,7 +640,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                   ?? Remotes.FirstOrDefault();
 
             if (includeHistory)
-                await LoadHistoryAsync(true);
+                await History.RefreshAsync();
 
             if (ReferenceEquals(repository, Repository))
                 PublishDisplayedWorkingTreeBaseline(workingTreeStatus);
@@ -838,6 +787,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         foreach (var command in new[] { RefreshAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, ApplyStashCommand, PopStashCommand, DropStashCommand, MergeCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
         Branches.RefreshAvailability();
         WorkingTree.RefreshAvailability();
+        History.RefreshAvailability();
     }
 
     private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values)
@@ -853,106 +803,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
         target.Clear();
         foreach (var value in snapshot) target.Add(value);
-    }
-
-    internal void InvalidateHistoryLoad()
-    {
-        Interlocked.Increment(ref _historyLoadGeneration);
-        _historyLoadCts?.Cancel();
-    }
-
-    private HistoryQuery CreateHistoryQuery(
-        HistoryScope scope,
-        string? filter,
-        int skip,
-        long reflogSessionId) =>
-        new(
-            scope,
-            filter,
-            skip,
-            IncludeReflog: _showReflog,
-            HeadExists: _headExists,
-            RepositoryReferences: new GitReferences(
-                Branches.LocalBranches.ToArray(),
-                Branches.RemoteBranches.ToArray(),
-                Remotes.ToArray(),
-                Tags.ToArray()),
-            HeadReference: _currentBranchName,
-            HeadCommit: _currentHeadCommit,
-            IsDetachedHead: _isDetachedHead,
-            ReflogSessionId: reflogSessionId);
-
-    private async Task LoadHistoryAsync(bool reset)
-    {
-        if (Repository is null) return;
-
-        var repository = Repository;
-        var selectedHash = reset ? SelectedHistoryRow?.Commit.Hash : null;
-        var skip = reset ? 0 : History.Count;
-        var reflogSessionId = reset
-            ? Interlocked.Increment(ref _reflogSessionId)
-            : Volatile.Read(ref _reflogSessionId);
-        var scope = SelectedScope.Value;
-        var filter = FilterText;
-        var generation = Interlocked.Increment(ref _historyLoadGeneration);
-        var cancellation = new CancellationTokenSource();
-        var previousCancellation = Interlocked.Exchange(ref _historyLoadCts, cancellation);
-        if (previousCancellation is not null)
-        {
-            previousCancellation.Cancel();
-            previousCancellation.Dispose();
-        }
-
-        EnterBusy();
-        try
-        {
-            var page = await _historyService.ReadHistoryAsync(
-                repository,
-                CreateHistoryQuery(scope, filter, skip, reflogSessionId),
-                cancellation.Token);
-
-            if (cancellation.IsCancellationRequested
-                || generation != Volatile.Read(ref _historyLoadGeneration)
-                || !ReferenceEquals(repository, Repository))
-                return;
-
-            if (reset) History.Clear();
-            foreach (var row in page.Rows) History.Add(row);
-            HasMore = page.HasMore;
-
-            if (reset)
-            {
-                var restored = selectedHash is null
-                    ? History.FirstOrDefault()
-                    : History.FirstOrDefault(row => string.Equals(row.Commit.Hash, selectedHash, StringComparison.Ordinal))
-                      ?? History.FirstOrDefault();
-                if (SelectedStash is null)
-                {
-                    SelectedHistoryRow = restored;
-                    if (restored is null)
-                    {
-                        SelectedFile = null;
-                        SelectedDiff = null;
-                    }
-                }
-            }
-            else if (SelectedStash is null
-                     && SelectedHistoryRow is null
-                     && History.FirstOrDefault() is { } first)
-            {
-                SelectedHistoryRow = first;
-            }
-        }
-        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
-        {
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            if (generation != Volatile.Read(ref _historyLoadGeneration)) return;
-            ErrorMessage = $"Could not read history: {exception.Message}";
-            _logger.LogWarning(exception, "History loading failed");
-        }
-        finally { ExitBusy(); }
     }
 
     private void Notify([CallerMemberName] string? propertyName = null) =>
