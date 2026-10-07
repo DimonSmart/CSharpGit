@@ -395,6 +395,32 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
         SelectedRow = null;
     }
 
+    internal void HandleReferenceDeleted(string reference)
+    {
+        if (!string.Equals(_activeReference, reference, StringComparison.Ordinal))
+            return;
+
+        Invalidate();
+        SetReferenceScope(null, null);
+        if (_selectedScope != Scopes[0])
+        {
+            _selectedScope = Scopes[0];
+            Notify(nameof(SelectedScope));
+        }
+    }
+
+    internal void HandleReferenceRenamed(
+        string oldReference,
+        string newReference,
+        string label)
+    {
+        if (!string.Equals(_activeReference, oldReference, StringComparison.Ordinal))
+            return;
+
+        Invalidate();
+        SetReferenceScope(newReference, label);
+    }
+
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
