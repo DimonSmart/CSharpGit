@@ -17,6 +17,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private readonly ILogger<OpenRepositoryViewModel> _logger;
     private readonly IRepositoryStateService _stateService;
     private readonly IWorkingTreeService _workingTreeService;
+    private readonly ICommitActionService _commitActionService;
     private readonly IReferenceService _referenceService;
     private readonly IRepositorySyncService _syncService;
     private readonly IMergeService _mergeService;
@@ -69,6 +70,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         HistoryViewModel historyViewModel,
         StashesViewModel stashesViewModel,
         CommitDetailsViewModel commitDetailsViewModel,
+        CommitActionsViewModel commitActionsViewModel,
+        ICommitActionService commitActionService,
         IReferenceService referenceService,
         IRepositorySyncService syncService,
         IMergeService mergeService,
@@ -99,6 +102,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         Stashes.SelectedStashChanged += Stashes_SelectedStashChanged;
         CommitDetails = commitDetailsViewModel ?? throw new ArgumentNullException(nameof(commitDetailsViewModel));
         CommitDetails.Attach(this);
+        CommitActions = commitActionsViewModel ?? throw new ArgumentNullException(nameof(commitActionsViewModel));
+        CommitActions.Attach(this);
+        _commitActionService = commitActionService ?? throw new ArgumentNullException(nameof(commitActionService));
         _referenceService = referenceService;
         _syncService = syncService;
         _mergeService = mergeService;
@@ -218,6 +224,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public HistoryViewModel History { get; }
     public StashesViewModel Stashes { get; }
     public CommitDetailsViewModel CommitDetails { get; }
+    public CommitActionsViewModel CommitActions { get; }
     public WorkingTreeViewModel WorkingTree { get; }
     public BranchesViewModel Branches { get; }
     public ObservableCollection<GitRemote> Remotes { get; } = new BulkObservableCollection<GitRemote>();

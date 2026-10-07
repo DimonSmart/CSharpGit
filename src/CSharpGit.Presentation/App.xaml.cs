@@ -115,6 +115,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 services.AddTransient<HistoryViewModel>();
                 services.AddTransient<StashesViewModel>();
                 services.AddTransient<CommitDetailsViewModel>();
+                services.AddTransient<CommitActionsViewModel>();
                 services.AddTransient<WorktreesViewModel>();
                 services.AddTransient<RepositoryFilesViewModel>();
                 services.AddTransient<WorkingTreeViewModel>();
