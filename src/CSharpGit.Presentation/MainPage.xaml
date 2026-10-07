@@ -870,15 +870,15 @@
                 <TextBlock Text="Commit message"
                            Style="{StaticResource BodyStrongTextStyle}" />
                 <TextBox x:Name="CommitMessageEditor"
-                         Text="{Binding CommitMessage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Text="{Binding CommitCreation.CommitMessage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          AcceptsReturn="True"
                          TextWrapping="Wrap"
                          Style="{StaticResource CompactMultilineTextBoxStyle}"
                          MinHeight="{StaticResource Height.CommitEditor}"
                          AutomationProperties.Name="Commit message" />
                 <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
-                  <Button Content="Commit" Command="{Binding CommitCommand}" Style="{StaticResource CompactButtonStyle}" />
-                  <Button Content="Amend" Command="{Binding AmendCommand}" Style="{StaticResource CompactButtonStyle}" />
+                  <Button Content="Commit" Command="{Binding CommitCreation.CommitCommand}" Style="{StaticResource CompactButtonStyle}" />
+                  <Button Content="Amend" Command="{Binding CommitCreation.AmendCommand}" Style="{StaticResource CompactButtonStyle}" />
                   <Button Content="Stash…"
                           Click="CreateStash_Click"
                           IsEnabled="{Binding Stashes.CanCreateStash}"

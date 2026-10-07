@@ -96,8 +96,8 @@ dotnet run --project src/CSharpGit.Presentation -f net10.0-desktop
 
 ### Presentation architecture
 
-`OpenRepositoryViewModel` собирает feature-level presentation owners: `HistoryViewModel`, `CommitDetailsViewModel`, `CommitActionsViewModel`, `StashesViewModel`, `BranchesViewModel`, `WorkingTreeViewModel` и остальные узкие features.
+`OpenRepositoryViewModel` собирает feature-level presentation owners: `HistoryViewModel`, `CommitDetailsViewModel`, `CommitActionsViewModel`, `CommitCreationViewModel`, `StashesViewModel`, `BranchesViewModel`, `WorkingTreeViewModel` и остальные узкие features.
 
-`HistoryViewModel` владеет canonical selection исторического commit. `CommitDetailsViewModel` показывает его содержимое. `CommitActionsViewModel` владеет orchestration прямых repository mutations над выбранным historical commit; dialogs, clipboard и scrolling остаются responsibility View.
+`HistoryViewModel` владеет canonical selection исторического commit. `CommitDetailsViewModel` показывает его содержимое. `CommitCreationViewModel` владеет commit draft и workflow создания обычного, amend и empty commit, включая stage-all-and-commit. `CommitActionsViewModel` выполняет mutations над уже существующими historical commits. `WorkingTreeViewModel` остаётся владельцем staging/unstaging/discard UI; dialogs, clipboard и scrolling остаются responsibility View.
 
 Конфигурация читается из `appsettings.json` и переменных окружения с префиксом `CSHARPGIT_`. Журнал пишется локально в консоль; telemetry и пользовательская аналитика не подключены.
