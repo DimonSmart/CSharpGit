@@ -84,7 +84,7 @@ public sealed class PresentationArchitectureGuardrailTests
             ("Branches.RemoteBranches", "RepositoryPresentationRemoteBranches_CollectionChanged"),
             ("Remotes", "RepositoryPresentationRemotes_CollectionChanged"),
             ("Tags", "RepositoryPresentationTags_CollectionChanged"),
-            ("Stashes", "RepositoryPresentationStashes_CollectionChanged")
+            ("Stashes.Items", "RepositoryPresentationStashes_CollectionChanged")
         };
 
         foreach (var (collection, handler) in subscriptions)
@@ -265,6 +265,51 @@ public sealed class PresentationArchitectureGuardrailTests
             Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.ReferenceNavigation.cs")));
         Assert.False(File.Exists(
             Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.Reflog.cs")));
+    }
+
+    [Fact]
+    public void CommitDetailsAndStashesOwnTheirPresentationState()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var viewModels = Path.Combine(presentation, "ViewModels");
+        var openRepositorySources = Directory
+            .GetFiles(viewModels, "OpenRepositoryViewModel*.cs", SearchOption.TopDirectoryOnly)
+            .Select(File.ReadAllText)
+            .ToArray();
+        var openRepository = string.Join(Environment.NewLine, openRepositorySources);
+        var details = File.ReadAllText(Path.Combine(viewModels, "CommitDetailsViewModel.cs"));
+        var stashes = File.ReadAllText(Path.Combine(viewModels, "StashesViewModel.cs"));
+        var repositoryFilesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
+        var mainPage = string.Join(
+            Environment.NewLine,
+            Directory.GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+                .Select(File.ReadAllText));
+
+        Assert.False(File.Exists(Path.Combine(viewModels, "OpenRepositoryViewModel.CommitChanges.cs")));
+        Assert.False(File.Exists(Path.Combine(viewModels, "OpenRepositoryViewModel.Stashes.cs")));
+        Assert.False(File.Exists(Path.Combine(viewModels, "OpenRepositoryViewModel.RepositoryFiles.cs")));
+
+        Assert.DoesNotContain("IHistoryService", openRepository, StringComparison.Ordinal);
+        Assert.DoesNotContain("IStashService", openRepository, StringComparison.Ordinal);
+        Assert.DoesNotContain("IStashMutationService", openRepository, StringComparison.Ordinal);
+        Assert.Contains("public StashesViewModel Stashes { get; }", openRepository, StringComparison.Ordinal);
+        Assert.Contains("public CommitDetailsViewModel CommitDetails { get; }", openRepository, StringComparison.Ordinal);
+
+        Assert.Contains("IHistoryService", details, StringComparison.Ordinal);
+        Assert.Contains("IStashService", details, StringComparison.Ordinal);
+        Assert.DoesNotContain("IStashMutationService", details, StringComparison.Ordinal);
+        Assert.Contains("IStashMutationService", stashes, StringComparison.Ordinal);
+        Assert.DoesNotContain("IHistoryService", stashes, StringComparison.Ordinal);
+        Assert.DoesNotContain("IStashService", stashes, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("public ChangedFile? SelectedFile", openRepository, StringComparison.Ordinal);
+        Assert.DoesNotContain("public FileDiff? SelectedDiff", openRepository, StringComparison.Ordinal);
+        Assert.DoesNotContain("public GitStash? SelectedStash", openRepository, StringComparison.Ordinal);
+        Assert.DoesNotContain("_viewModel.SelectedFile", mainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("_viewModel.SelectedDiff", mainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("_viewModel.SelectedStashDetails", mainPage, StringComparison.Ordinal);
+        Assert.Contains("_repositoryFilesViewModel.Attach(_viewModel.CommitDetails);", repositoryFilesSurface, StringComparison.Ordinal);
     }
 
     [Fact]
