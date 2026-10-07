@@ -155,7 +155,6 @@ public sealed partial class MainPage
             var succeeded = await _viewModel.RunHistoryRewriteMutationAsync(
                 async () =>
                 {
-                    _viewModel.InvalidateForHistoryRewrite();
                     InvalidateHistoryRewritePresentation();
                     try
                     {
