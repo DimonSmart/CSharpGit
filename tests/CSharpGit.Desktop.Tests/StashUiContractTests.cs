@@ -75,13 +75,13 @@ public sealed class StashUiContractTests
         var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
         var xaml = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
         var repositoryFiles = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryFilesViewModel.cs");
-        var viewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs");
+        var historyAdapter = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.History.cs");
         var commitChanges = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.CommitChanges.cs");
 
         var stashSelection = SliceFirstCase(page, "case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:");
         Assert.Contains("await _viewModel.SelectStashAsync(stash)", stashSelection, StringComparison.Ordinal);
         Assert.Contains("await NavigateToReferenceAsync(stash.Commit, preserveSelectedStash: true)", stashSelection, StringComparison.Ordinal);
-        Assert.Contains("!string.Equals(value.Commit.Hash, selectedStash.Commit, StringComparison.Ordinal)", viewModel, StringComparison.Ordinal);
+        Assert.Contains("!string.Equals(selected.Commit.Hash, selectedStash.Commit, StringComparison.Ordinal)", historyAdapter, StringComparison.Ordinal);
         Assert.Contains("string.Equals(selectedHistoryRow.Commit.Hash, stash.Commit, StringComparison.Ordinal)", commitChanges, StringComparison.Ordinal);
 
         Assert.Contains("Visibility=\"{Binding HasSelectedDetailsObject", xaml, StringComparison.Ordinal);

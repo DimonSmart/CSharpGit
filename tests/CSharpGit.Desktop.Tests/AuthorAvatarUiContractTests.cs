@@ -35,8 +35,8 @@ public sealed class AuthorAvatarUiContractTests
             .Select(File.ReadAllText)
             .ToArray();
 
-        Assert.Contains(@"AuthorName=""{Binding SelectedHistoryRow.Commit.Author}""", details, StringComparison.Ordinal);
-        Assert.Contains(@"AuthorEmail=""{Binding SelectedHistoryRow.Commit.AuthorEmail}""", details, StringComparison.Ordinal);
+        Assert.Contains(@"AuthorName=""{Binding History.SelectedRow.Commit.Author}""", details, StringComparison.Ordinal);
+        Assert.Contains(@"AuthorEmail=""{Binding History.SelectedRow.Commit.AuthorEmail}""", details, StringComparison.Ordinal);
         Assert.Contains(@"AvatarSize=""32""", details, StringComparison.Ordinal);
         Assert.Contains("ConfigureAuthorAvatar", detailsCode, StringComparison.Ordinal);
         Assert.Contains("_authorAvatarService", composition, StringComparison.Ordinal);
