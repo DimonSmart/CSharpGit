@@ -27,10 +27,9 @@ public sealed class RepositoryHistoryRewriteUiContractTests
         Assert.Contains("_repositoryFilesViewModel.Invalidate(", source, StringComparison.Ordinal);
         Assert.Contains("CancelRequests()", repositoryFiles, StringComparison.Ordinal);
         Assert.Contains("_snapshotCache.Clear()", repositoryFiles, StringComparison.Ordinal);
-        Assert.Contains("_scopedHistory.Clear()", source, StringComparison.Ordinal);
-        Assert.Contains("InvalidateHistoryLoad()", viewModel, StringComparison.Ordinal);
+        Assert.DoesNotContain("_scopedHistory", source, StringComparison.Ordinal);
+        Assert.Contains("History.ResetForRepositoryMutation()", viewModel, StringComparison.Ordinal);
         Assert.Contains("ResetCommitChangesSession()", viewModel, StringComparison.Ordinal);
-        Assert.Contains("History.Clear()", viewModel, StringComparison.Ordinal);
     }
 
     [Fact]
