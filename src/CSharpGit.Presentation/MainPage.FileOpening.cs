@@ -81,6 +81,7 @@ public sealed partial class MainPage
         UnstagedChangesList.DoubleTapped += WorkingTreeChanges_DoubleTapped;
         StagedChangesList.DoubleTapped += WorkingTreeChanges_DoubleTapped;
         _viewModel.PropertyChanged += FileOpeningViewModel_PropertyChanged;
+        _viewModel.History.PropertyChanged += FileOpeningViewModel_PropertyChanged;
         _viewModel.WorkingTree.PropertyChanged += WorkingTreeFileOpening_PropertyChanged;
 
         _ = RefreshCommitFileActionStateAsync();
@@ -194,7 +195,7 @@ public sealed partial class MainPage
     private void FileOpeningViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (args.PropertyName is nameof(OpenRepositoryViewModel.SelectedFile)
-            or nameof(OpenRepositoryViewModel.SelectedHistoryRow)
+            or nameof(HistoryViewModel.SelectedRow)
             or nameof(OpenRepositoryViewModel.Repository))
             _ = RefreshCommitFileActionStateAsync();
 
@@ -364,7 +365,7 @@ public sealed partial class MainPage
     private async Task OpenSelectedCommitVersionAsync(DiffFileSide side)
     {
         var repository = _viewModel.Repository;
-        var commit = _viewModel.SelectedHistoryRow?.Commit;
+        var commit = _viewModel.History.SelectedRow?.Commit;
         var file = _viewModel.SelectedFile;
         if (repository is null || commit is null || file is null)
             return;
@@ -414,7 +415,7 @@ public sealed partial class MainPage
     private async Task OpenSelectedCommitExternalDiffAsync()
     {
         var repository = _viewModel.Repository;
-        var commit = _viewModel.SelectedHistoryRow?.Commit;
+        var commit = _viewModel.History.SelectedRow?.Commit;
         var file = _viewModel.SelectedFile;
         if (repository is null || commit is null || file is null) return;
         try
@@ -493,7 +494,7 @@ public sealed partial class MainPage
     private async Task RevealSelectedCommitFileAsync()
     {
         var repository = _viewModel.Repository;
-        var commit = _viewModel.SelectedHistoryRow?.Commit;
+        var commit = _viewModel.History.SelectedRow?.Commit;
         var file = _viewModel.SelectedFile;
         if (repository is null || commit is null || file is null)
             return;
@@ -532,13 +533,13 @@ public sealed partial class MainPage
     {
         var source = args.OriginalSource as FrameworkElement;
         var node = ResolveChangedFileNode(source?.DataContext);
-        if (node?.Entry is null || _viewModel.Repository is null || _viewModel.SelectedHistoryRow is null)
+        if (node?.Entry is null || _viewModel.Repository is null || _viewModel.History.SelectedRow is null)
             return;
 
         _viewModel.SelectedFile = node.Entry.File;
         try
         {
-            var pair = await _fileVersionService.ResolveCommitAsync(_viewModel.Repository, _viewModel.SelectedHistoryRow.Commit.Hash, node.Entry.File.Path);
+            var pair = await _fileVersionService.ResolveCommitAsync(_viewModel.Repository, _viewModel.History.SelectedRow.Commit.Hash, node.Entry.File.Path);
             var side = pair.Changed.CanOpen ? DiffFileSide.Changed : DiffFileSide.Original;
             await OpenResolvedVersionAsync(_viewModel.Repository, side == DiffFileSide.Changed ? pair.Changed : pair.Original, side);
         }
@@ -572,13 +573,13 @@ public sealed partial class MainPage
     {
         var source = args.OriginalSource as FrameworkElement;
         var node = ResolveChangedFileNode(source?.DataContext);
-        if (source is null || node?.Entry is null || _viewModel.Repository is null || _viewModel.SelectedHistoryRow is null)
+        if (source is null || node?.Entry is null || _viewModel.Repository is null || _viewModel.History.SelectedRow is null)
             return;
 
         _viewModel.SelectedFile = node.Entry.File;
         try
         {
-            var pair = await _fileVersionService.ResolveCommitAsync(_viewModel.Repository, _viewModel.SelectedHistoryRow.Commit.Hash, node.Entry.File.Path);
+            var pair = await _fileVersionService.ResolveCommitAsync(_viewModel.Repository, _viewModel.History.SelectedRow.Commit.Hash, node.Entry.File.Path);
             _commitFileVersions = pair;
             _commitRevealPath = TryResolveReveal(_viewModel.Repository, pair.RevealPath);
             UpdateCommitButtons();
