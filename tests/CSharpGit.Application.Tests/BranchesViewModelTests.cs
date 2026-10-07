@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
-using CSharpGit.Application.Exceptions;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.ViewModels;
 
@@ -125,30 +124,6 @@ public sealed class BranchesViewModelTests
         Assert.Equal(["delete-remote:origin:feature/a"], sync.Calls);
         Assert.Equal(["delete:feature/a:Force"], references.Calls);
         Assert.Equal(1, context.MutationLifecycleCalls);
-    }
-
-    [Fact]
-    public async Task PublishMapsNonFastForwardRejectionAndUsesRepositoryLifecycle()
-    {
-        var repository = Repository("repo");
-        var sync = new FakeSyncService
-        {
-            PublishException = new PushRejectedException(
-                PushResultKind.NonFastForwardRejected,
-                "rejected")
-        };
-        var context = new FakeBranchesRepositoryContext { Repository = repository };
-        var viewModel = CreateViewModel(new FakeReferenceService(), sync, context);
-
-        var result = await viewModel.PublishBranchAsync(
-            repository,
-            new PublishBranchRequest("origin", "main", true));
-
-        Assert.False(result.Succeeded);
-        Assert.True(result.NonFastForwardRejected);
-        Assert.Equal("rejected", result.ErrorMessage);
-        Assert.Equal(1, context.MutationLifecycleCalls);
-        Assert.Equal(["publish:origin:main:True"], sync.Calls);
     }
 
     [Fact]

@@ -10,7 +10,7 @@ public sealed partial class OpenRepositoryViewModel : IHistoryRepositoryContext
     bool IHistoryRepositoryContext.IsDetachedHead => _isDetachedHead;
     IReadOnlyList<GitBranch> IHistoryRepositoryContext.LocalBranches => Branches.LocalBranches;
     IReadOnlyList<GitBranch> IHistoryRepositoryContext.RemoteBranches => Branches.RemoteBranches;
-    IReadOnlyList<GitRemote> IHistoryRepositoryContext.Remotes => Remotes;
+    IReadOnlyList<GitRemote> IHistoryRepositoryContext.Remotes => RepositorySync.Remotes;
     IReadOnlyList<GitTag> IHistoryRepositoryContext.Tags => Tags;
     bool IHistoryRepositoryContext.CanUpdateHistorySelection => Stashes.SelectedStash is null;
 
