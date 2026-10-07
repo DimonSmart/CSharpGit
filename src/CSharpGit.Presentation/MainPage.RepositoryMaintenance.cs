@@ -22,9 +22,7 @@ public sealed partial class MainPage
         OpenRepositoryViewModel viewModel,
         CreateRepositoryViewModel createRepositoryViewModel,
         CloneRepositoryViewModel cloneRepositoryViewModel,
-        IReferenceService referenceService,
         IRepositorySyncService repositorySyncService,
-        ICommitActionService commitActionService,
         TagsViewModel tagsViewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
         IRepositoryFileVersionService fileVersionService,
@@ -47,9 +45,7 @@ public sealed partial class MainPage
         ISystemUriLauncher systemUriLauncher)
         : this(
             viewModel,
-            referenceService,
             repositorySyncService,
-            commitActionService,
             tagsViewModel,
             workingTreeStatusReader,
             fileVersionService,
