@@ -9,7 +9,7 @@ public sealed partial class MainPage
     private bool IsShuttingDown =>
         Volatile.Read(ref _shutdownStarted) != 0;
 
-    public bool RequiresCloseConfirmation => _viewModel.HasUnappliedCommitMessage;
+    public bool RequiresCloseConfirmation => _viewModel.CommitCreation.HasUnappliedCommitMessage;
 
     private void MainPage_Loaded(object sender, RoutedEventArgs args)
     {
@@ -46,7 +46,7 @@ public sealed partial class MainPage
         _viewModel.History.PropertyChanged -= HistoryViewModel_PropertyChanged;
         _viewModel.History.CommitLookupCompleted -= History_CommitLookupCompleted;
         _viewModel.CommitDetails.PropertyChanged -= ChangesViewModel_PropertyChanged;
-        _viewModel.PropertyChanged -= ConfirmationDialogs_PropertyChanged;
+        _viewModel.CommitCreation.PropertyChanged -= CommitCreationViewModel_PropertyChanged;
         _viewModel.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
         _viewModel.CommitDetails.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
         _viewModel.History.PropertyChanged -= FileOpeningViewModel_PropertyChanged;

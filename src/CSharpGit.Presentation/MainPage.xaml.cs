@@ -99,7 +99,7 @@ public sealed partial class MainPage : Page
 
     public async Task<bool> ConfirmCloseAsync()
     {
-        if (!_viewModel.HasUnappliedCommitMessage) return true;
+        if (!_viewModel.CommitCreation.HasUnappliedCommitMessage) return true;
 
         var dialog = new ContentDialog
         {
@@ -674,7 +674,7 @@ public sealed partial class MainPage : Page
         }
         else if (control && e.Key == VirtualKey.Enter && WorkingTreePane.Visibility == Visibility.Visible)
         {
-            await ExecuteCommandAsync(_viewModel.CommitCommand);
+            await ExecuteCommandAsync(_viewModel.CommitCreation.CommitCommand);
             e.Handled = true;
         }
         else if (e.Key == VirtualKey.Escape && WorkingTreePane.Visibility == Visibility.Visible)
@@ -835,8 +835,8 @@ public sealed partial class MainPage : Page
                 Check(_viewModel.History.SelectedRow is null || _viewModel.History.Rows.Any(row => ReferenceEquals(row, _viewModel.History.SelectedRow)), "all-history selection is not part of the current ItemsSource", failures);
             }
 
-            _viewModel.CommitMessage = "draft retained by close guard";
-            Check(_viewModel.HasUnappliedCommitMessage, "commit draft close guard is inactive", failures);
+            _viewModel.CommitCreation.CommitMessage = "draft retained by close guard";
+            Check(_viewModel.CommitCreation.HasUnappliedCommitMessage, "commit draft close guard is inactive", failures);
             if (_viewModel.WorkingTree.Changes.FirstOrDefault(change => change.IsUnstaged) is { } workingTreeCheckChange)
                 await _viewModel.WorkingTree.SelectChangeAsync(workingTreeCheckChange, WorkingTreeDiffKind.Unstaged);
             Check(_viewModel.WorkingTree.StageCommand.CanExecute(null), "Stage must be enabled for an unstaged selection", failures);
@@ -846,11 +846,11 @@ public sealed partial class MainPage : Page
             Check(!_viewModel.WorkingTree.StageCommand.CanExecute(null) && !_viewModel.WorkingTree.UnstageCommand.CanExecute(null), "file commands must be disabled without a selection", failures);
             if (selectedChange is not null)
                 await _viewModel.WorkingTree.SelectChangeAsync(selectedChange, WorkingTreeDiffKind.Unstaged);
-            Check(_viewModel.CommitCommand.CanExecute(null), "Commit must be enabled for a non-empty draft", failures);
-            _viewModel.CommitCommand.Execute(null);
+            Check(_viewModel.CommitCreation.CommitCommand.CanExecute(null), "Commit must be enabled for a non-empty draft", failures);
+            _viewModel.CommitCreation.CommitCommand.Execute(null);
             await WaitUntilAsync(() => !_viewModel.IsBusy, TimeSpan.FromSeconds(20));
-            Check(_viewModel.IsEmptyIndexChoiceOpen, "empty index did not present an explicit choice", failures);
-            Check(_viewModel.CommitMessage == "draft retained by close guard", "commit draft was lost", failures);
+            Check(_viewModel.CommitCreation.IsEmptyIndexChoiceOpen, "empty index did not present an explicit choice", failures);
+            Check(_viewModel.CommitCreation.CommitMessage == "draft retained by close guard", "commit draft was lost", failures);
             Check(busyObserved && !BusyIndicator.IsActive, "busy indication did not transition back to idle", failures);
 
             await File.WriteAllTextAsync(resultPath, JsonSerializer.Serialize(new DesktopCheckResult(failures.Count == 0, failures, _viewModel.Repository?.IsWorktree ?? false)));

@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using CSharpGit.Application.Abstractions;
@@ -16,7 +17,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private readonly IRepositoryService _repositoryService;
     private readonly ILogger<OpenRepositoryViewModel> _logger;
     private readonly IRepositoryStateService _stateService;
-    private readonly IWorkingTreeService _workingTreeService;
     private readonly ICommitActionService _commitActionService;
     private readonly IReferenceService _referenceService;
     private readonly IRepositorySyncService _syncService;
@@ -31,8 +31,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private int _repositoryChangeInProgress;
     private readonly SemaphoreSlim _mutationGate = new(1, 1);
     private int _disposed;
-    private string _commitMessage = string.Empty;
-    private bool _isEmptyIndexChoiceOpen;
     private GitRemote? _selectedRemote;
     private GitTag? _selectedTag;
     private string _headDisplay = string.Empty;
@@ -48,13 +46,13 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         IFolderPicker folderPicker,
         IRepositoryService repositoryService,
         IRepositoryStateService stateService,
-        IWorkingTreeService workingTreeService,
         WorkingTreeViewModel workingTreeViewModel,
         BranchesViewModel branchesViewModel,
         HistoryViewModel historyViewModel,
         StashesViewModel stashesViewModel,
         CommitDetailsViewModel commitDetailsViewModel,
         CommitActionsViewModel commitActionsViewModel,
+        CommitCreationViewModel commitCreationViewModel,
         ICommitActionService commitActionService,
         IReferenceService referenceService,
         IRepositorySyncService syncService,
@@ -67,7 +65,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         _folderPicker = folderPicker;
         _repositoryService = repositoryService;
         _stateService = stateService;
-        _workingTreeService = workingTreeService;
         WorkingTree = workingTreeViewModel ?? throw new ArgumentNullException(nameof(workingTreeViewModel));
         WorkingTree.Attach(this);
         Branches = branchesViewModel ?? throw new ArgumentNullException(nameof(branchesViewModel));
@@ -87,6 +84,10 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         RepositoryOperations.PropertyChanged += RepositoryOperations_PropertyChanged;
         InteractiveRebase = interactiveRebaseViewModel ?? throw new ArgumentNullException(nameof(interactiveRebaseViewModel));
         InteractiveRebase.Attach(this);
+        CommitCreation = commitCreationViewModel ?? throw new ArgumentNullException(nameof(commitCreationViewModel));
+        CommitCreation.Attach(this);
+        WorkingTree.Changes.CollectionChanged += CommitCreationSourceCollectionChanged;
+        RepositoryOperations.Conflicts.CollectionChanged += CommitCreationSourceCollectionChanged;
         _commitActionService = commitActionService ?? throw new ArgumentNullException(nameof(commitActionService));
         _referenceService = referenceService;
         _syncService = syncService;
@@ -96,12 +97,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         _logger = logger;
         _openRepositoryCommand = new AsyncCommand(OpenRepositoryAsync, () => !IsBusy && Repository is null);
         RefreshAllCommand = new AsyncCommand(RefreshAllAsync, () => Repository is not null);
-        CommitCommand = new AsyncCommand(RequestCommitAsync, () => CanMutate() && !string.IsNullOrWhiteSpace(CommitMessage));
-        EmptyCommitCommand = new AsyncCommand(() => CommitAsync(false, true), () => CanMutate() && !string.IsNullOrWhiteSpace(CommitMessage));
-        AmendCommand = new AsyncCommand(() => CommitAsync(true, false), () => CanMutate() && !string.IsNullOrWhiteSpace(CommitMessage));
-        StageAllAndCommitCommand = new AsyncCommand(StageAllAndCommitAsync, () => CanBulkMutate() && IsEmptyIndexChoiceOpen);
-        ConfirmEmptyCommitCommand = new AsyncCommand(ConfirmEmptyCommitAsync, () => CanMutate() && IsEmptyIndexChoiceOpen);
-        CancelCommitCommand = new AsyncCommand(CancelCommitAsync, () => IsEmptyIndexChoiceOpen);
         DismissErrorCommand = new AsyncCommand(() =>
         {
             ErrorMessage = null;
@@ -121,6 +116,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         Stashes.SelectedStashChanged -= Stashes_SelectedStashChanged;
         Stashes.Dispose();
         CommitDetails.Dispose();
+        WorkingTree.Changes.CollectionChanged -= CommitCreationSourceCollectionChanged;
+        RepositoryOperations.Conflicts.CollectionChanged -= CommitCreationSourceCollectionChanged;
         RepositoryOperations.PropertyChanged -= RepositoryOperations_PropertyChanged;
         RepositoryOperations.Dispose();
         InteractiveRebase.Dispose();
@@ -161,12 +158,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     public ICommand OpenRepositoryCommand => _openRepositoryCommand;
     public ICommand RefreshAllCommand { get; }
-    public ICommand CommitCommand { get; }
-    public ICommand EmptyCommitCommand { get; }
-    public ICommand AmendCommand { get; }
-    public ICommand StageAllAndCommitCommand { get; }
-    public ICommand ConfirmEmptyCommitCommand { get; }
-    public ICommand CancelCommitCommand { get; }
     public ICommand DismissErrorCommand { get; }
     public ICommand CheckoutTagCommand { get; }
     public ICommand FetchCommand { get; }
@@ -177,6 +168,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public StashesViewModel Stashes { get; }
     public CommitDetailsViewModel CommitDetails { get; }
     public CommitActionsViewModel CommitActions { get; }
+    public CommitCreationViewModel CommitCreation { get; }
     public RepositoryOperationsViewModel RepositoryOperations { get; }
     public InteractiveRebaseViewModel InteractiveRebase { get; }
     public WorkingTreeViewModel WorkingTree { get; }
@@ -215,9 +207,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public bool CanChangeRepository => !_isMutating && Volatile.Read(ref _repositoryChangeInProgress) == 0;
     public string RepositoryKind => Repository?.IsWorktree == true ? "Git worktree" : "Git repository";
     public bool HasSelectedCommit => History.SelectedRow is not null;
-    public string CommitMessage { get => _commitMessage; set { _commitMessage = value; Notify(); RaiseCommands(); } }
-    public bool HasUnappliedCommitMessage => CommitMessage.Length > 0;
-    public bool IsEmptyIndexChoiceOpen { get => _isEmptyIndexChoiceOpen; private set { _isEmptyIndexChoiceOpen = value; Notify(); RaiseCommands(); } }
     public GitRemote? SelectedRemote { get => _selectedRemote; set { _selectedRemote = value; Notify(); RaiseCommands(); } }
     public GitTag? SelectedTag { get => _selectedTag; set { _selectedTag = value; Notify(); RaiseCommands(); } }
     public string HeadDisplay => _headDisplay;
@@ -593,60 +582,22 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         return succeeded;
     }
 
-    private Task RequestCommitAsync()
-    {
-        if (!WorkingTree.Changes.Any(change => change.IsStaged) && WorkingTree.Changes.Any(change => change.IsUnstaged))
-        {
-            IsEmptyIndexChoiceOpen = true;
-            return Task.CompletedTask;
-        }
-
-        return CommitAsync(false, false);
-    }
-
-    private async Task StageAllAndCommitAsync()
-    {
-        IsEmptyIndexChoiceOpen = false;
-        var message = CommitMessage;
-        if (await MutateAsync(async () =>
-        {
-            await _workingTreeService.StageAllAsync(Repository!);
-            await _workingTreeService.CommitAsync(Repository!, message);
-        }, "Could not stage all files and commit", WorkingTree.ClearPresentationSelection) && CommitMessage == message) CommitMessage = string.Empty;
-    }
-
-    private Task ConfirmEmptyCommitAsync()
-    {
-        IsEmptyIndexChoiceOpen = false;
-        return CommitAsync(false, true);
-    }
-
-    private Task CancelCommitAsync()
-    {
-        IsEmptyIndexChoiceOpen = false;
-        return Task.CompletedTask;
-    }
-
-    private async Task CommitAsync(bool amend, bool empty)
-    {
-        var message = CommitMessage;
-        if (await MutateAsync(
-                () => _workingTreeService.CommitAsync(Repository!, message, amend, empty),
-                afterSuccessfulMutation: WorkingTree.ClearCommittedPresentationSelection) &&
-            CommitMessage == message)
-            CommitMessage = string.Empty;
-    }
-
     private void RaiseCommands()
     {
-        foreach (var command in new[] { RefreshAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand }.OfType<AsyncCommand>())
+        foreach (var command in new[] { RefreshAllCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand }.OfType<AsyncCommand>())
             command.RaiseCanExecuteChanged();
+        CommitCreation.RefreshAvailability();
         RepositoryOperations.RefreshAvailability();
         Branches.RefreshAvailability();
         WorkingTree.RefreshAvailability();
         History.RefreshAvailability();
         Stashes.RefreshAvailability();
     }
+
+    private void CommitCreationSourceCollectionChanged(
+        object? sender,
+        NotifyCollectionChangedEventArgs args) =>
+        CommitCreation.RefreshAvailability();
 
     private void RepositoryOperations_PropertyChanged(
         object? sender,

@@ -356,6 +356,69 @@ public sealed class PresentationArchitectureGuardrailTests
     }
 
     [Fact]
+    public void CommitCreationOwnsCommitDraftAndCreationWorkflow()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var viewModels = Path.Combine(presentation, "ViewModels");
+        var openRepositorySources = string.Join(
+            Environment.NewLine,
+            Directory.GetFiles(viewModels, "OpenRepositoryViewModel*.cs", SearchOption.TopDirectoryOnly)
+                .Select(File.ReadAllText));
+        var openRepository = File.ReadAllText(Path.Combine(viewModels, "OpenRepositoryViewModel.cs"));
+        var commitCreation = File.ReadAllText(Path.Combine(viewModels, "CommitCreationViewModel.cs"));
+        var contextAdapter = File.ReadAllText(
+            Path.Combine(viewModels, "OpenRepositoryViewModel.CommitCreation.cs"));
+        var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
+        var mainXaml = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
+        var mainPage = string.Join(
+            Environment.NewLine,
+            Directory.GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+                .Select(File.ReadAllText));
+
+        Assert.Contains("public sealed class CommitCreationViewModel : INotifyPropertyChanged", commitCreation, StringComparison.Ordinal);
+        Assert.Contains("IWorkingTreeService", commitCreation, StringComparison.Ordinal);
+        Assert.Contains("public CommitCreationViewModel CommitCreation { get; }", openRepository, StringComparison.Ordinal);
+        Assert.Contains("ICommitCreationRepositoryContext", contextAdapter, StringComparison.Ordinal);
+        Assert.Contains("services.AddTransient<CommitCreationViewModel>();", app, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("IWorkingTreeService", openRepositorySources, StringComparison.Ordinal);
+        Assert.DoesNotContain("_workingTreeService", openRepositorySources, StringComparison.Ordinal);
+        foreach (var oldParentMember in new[]
+                 {
+                     "public string CommitMessage",
+                     "public bool IsEmptyIndexChoiceOpen",
+                     "public ICommand CommitCommand",
+                     "public ICommand EmptyCommitCommand",
+                     "public ICommand AmendCommand",
+                     "public ICommand StageAllAndCommitCommand",
+                     "public ICommand ConfirmEmptyCommitCommand",
+                     "public ICommand CancelCommitCommand",
+                     "private Task RequestCommitAsync",
+                     "private async Task StageAllAndCommitAsync",
+                     "private Task ConfirmEmptyCommitAsync",
+                     "private Task CancelCommitAsync",
+                     "private async Task CommitAsync"
+                 })
+        {
+            Assert.DoesNotContain(oldParentMember, openRepositorySources, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("Binding CommitCreation.CommitMessage", mainXaml, StringComparison.Ordinal);
+        Assert.Contains("Binding CommitCreation.CommitCommand", mainXaml, StringComparison.Ordinal);
+        Assert.Contains("Binding CommitCreation.AmendCommand", mainXaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("_viewModel.CommitMessage", mainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("_viewModel.CommitCommand", mainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("_viewModel.IsEmptyIndexChoiceOpen", mainPage, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.CommitCreation.HasUnappliedCommitMessage", mainPage, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("Microsoft.UI.Xaml", commitCreation, StringComparison.Ordinal);
+        Assert.DoesNotContain("ContentDialog", commitCreation, StringComparison.Ordinal);
+        Assert.DoesNotContain("WorkingTreeViewModel", commitCreation, StringComparison.Ordinal);
+        Assert.DoesNotContain("RepositoryOperationsViewModel", commitCreation, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RepositoryOperationsAndInteractiveRebaseOwnTheirFeaturePresentationState()
     {
         var root = FindRepositoryRoot();

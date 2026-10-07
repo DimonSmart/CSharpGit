@@ -16,14 +16,14 @@ public sealed partial class MainPage
     {
         if (_confirmationDialogsInitialized) return;
         _confirmationDialogsInitialized = true;
-        _viewModel.PropertyChanged += ConfirmationDialogs_PropertyChanged;
+        _viewModel.CommitCreation.PropertyChanged += CommitCreationViewModel_PropertyChanged;
         _viewModel.WorkingTree.PropertyChanged += WorkingTreeConfirmation_PropertyChanged;
     }
 
-    private void ConfirmationDialogs_PropertyChanged(object? sender, PropertyChangedEventArgs args)
+    private void CommitCreationViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
-        if (args.PropertyName == nameof(OpenRepositoryViewModel.IsEmptyIndexChoiceOpen) &&
-            _viewModel.IsEmptyIndexChoiceOpen)
+        if (args.PropertyName == nameof(CommitCreationViewModel.IsEmptyIndexChoiceOpen) &&
+            _viewModel.CommitCreation.IsEmptyIndexChoiceOpen)
         {
             _ = ShowEmptyIndexChoiceAsync();
         }
@@ -89,7 +89,7 @@ public sealed partial class MainPage
 
     private async Task ShowEmptyIndexChoiceAsync()
     {
-        if (_emptyIndexConfirmationOpen || !_viewModel.IsEmptyIndexChoiceOpen) return;
+        if (_emptyIndexConfirmationOpen || !_viewModel.CommitCreation.IsEmptyIndexChoiceOpen) return;
 
         _emptyIndexConfirmationOpen = true;
         try
@@ -107,17 +107,17 @@ public sealed partial class MainPage
 
             var command = (await dialog.ShowAsync()) switch
             {
-                ContentDialogResult.Primary => _viewModel.StageAllAndCommitCommand,
-                ContentDialogResult.Secondary => _viewModel.ConfirmEmptyCommitCommand,
-                _ => _viewModel.CancelCommitCommand
+                ContentDialogResult.Primary => _viewModel.CommitCreation.StageAllAndCommitCommand,
+                ContentDialogResult.Secondary => _viewModel.CommitCreation.ConfirmEmptyCommitCommand,
+                _ => _viewModel.CommitCreation.CancelCommitCommand
             };
             await ExecuteCommandAsync(command);
         }
         finally
         {
             _emptyIndexConfirmationOpen = false;
-            if (_viewModel.IsEmptyIndexChoiceOpen)
-                await ExecuteCommandAsync(_viewModel.CancelCommitCommand);
+            if (_viewModel.CommitCreation.IsEmptyIndexChoiceOpen)
+                await ExecuteCommandAsync(_viewModel.CommitCreation.CancelCommitCommand);
         }
     }
 }
