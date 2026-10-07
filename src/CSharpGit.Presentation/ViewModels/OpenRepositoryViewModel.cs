@@ -10,8 +10,6 @@ using Microsoft.Extensions.Logging;
 
 namespace CSharpGit.Presentation.ViewModels;
 
-public sealed record UiChoice<T>(string Label, T Value);
-
 public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly IFolderPicker _folderPicker;
