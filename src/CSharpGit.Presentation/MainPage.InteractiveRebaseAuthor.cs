@@ -26,7 +26,7 @@ public sealed partial class MainPage
         InteractiveRebaseAuthorChangeAnalysis analysis;
         try
         {
-            analysis = _viewModel.AnalyzeInteractiveRebaseAuthorChange(
+            analysis = _viewModel.InteractiveRebase.AnalyzeInteractiveRebaseAuthorChange(
                 todoText,
                 selectionStart,
                 selectionLength);
@@ -41,7 +41,7 @@ public sealed partial class MainPage
         CSharpGit.Domain.RepositoryIdentitySnapshot? identity = null;
         try
         {
-            identity = await _viewModel.ReadInteractiveRebaseAuthorIdentityAsync();
+            identity = await _viewModel.InteractiveRebase.ReadInteractiveRebaseAuthorIdentityAsync();
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -278,7 +278,7 @@ public sealed partial class MainPage
                     ? InteractiveRebaseAuthorChangeScope.SelectedCommitLines
                     : InteractiveRebaseAuthorChangeScope.AllEligibleCommits;
                 apply.IsEnabled = false;
-                var result = await _viewModel.ApplyInteractiveRebaseAuthorChangeAsync(
+                var result = await _viewModel.InteractiveRebase.ApplyInteractiveRebaseAuthorChangeAsync(
                     new InteractiveRebaseAuthorChangeRequest(
                         todoText,
                         selectionStart,
@@ -289,7 +289,7 @@ public sealed partial class MainPage
                         resetAuthorDate.IsChecked == true,
                         ResetToCurrentGitIdentity: useCurrentIdentity));
 
-                _viewModel.RebaseTodoText = result.TodoText;
+                _viewModel.InteractiveRebase.RebaseTodoText = result.TodoText;
                 editor.Text = result.TodoText;
                 flyout.Hide();
             }

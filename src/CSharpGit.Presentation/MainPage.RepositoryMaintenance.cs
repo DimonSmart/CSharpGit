@@ -93,7 +93,7 @@ public sealed partial class MainPage
     {
         if (args.PropertyName is nameof(OpenRepositoryViewModel.Repository)
             or nameof(OpenRepositoryViewModel.IsBusy)
-            or nameof(OpenRepositoryViewModel.CurrentOperation))
+            or nameof(RepositoryOperationsViewModel.CurrentOperation))
         {
             UpdateOptimizeRepositoryAvailability();
         }
@@ -102,7 +102,7 @@ public sealed partial class MainPage
     private bool CanStartRepositoryMaintenance() =>
         _viewModel.Repository is not null
         && !_viewModel.IsBusy
-        && _viewModel.CurrentOperation == RepositoryOperation.None
+        && _viewModel.RepositoryOperations.CurrentOperation == RepositoryOperation.None
         && !_repositoryMaintenanceInProgress;
 
     private void UpdateOptimizeRepositoryAvailability()

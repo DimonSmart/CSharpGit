@@ -129,7 +129,7 @@ public sealed partial class MainPage : Page
         }
         else if (eventArgs.PropertyName is nameof(OpenRepositoryViewModel.HeadDisplay)
                  or nameof(OpenRepositoryViewModel.CurrentBranchName)
-                 or nameof(OpenRepositoryViewModel.CurrentOperation))
+                 or nameof(RepositoryOperationsViewModel.CurrentOperation))
         {
             UpdateStatusBar();
         }
@@ -281,7 +281,7 @@ public sealed partial class MainPage : Page
         StatusChangesText.Text = $"{_viewModel.WorkingTree.Changes.Count} changes";
         StatusOperationText.Text = _viewModel.IsBusy
             ? "Working…"
-            : _viewModel.CurrentOperation == RepositoryOperation.None ? "Ready" : _viewModel.CurrentOperation.ToString();
+            : _viewModel.RepositoryOperations.CurrentOperation == RepositoryOperation.None ? "Ready" : _viewModel.RepositoryOperations.CurrentOperation.ToString();
         UpdateBusyStatusPresentation();
         UpdateCommitNavigationText();
     }
@@ -424,8 +424,8 @@ public sealed partial class MainPage : Page
                 AddMenuItem(flyout, "Create branch from here…", !_viewModel.IsBusy, () => CreateBranchFromAsync(branch.Name));
                 AddMenuItem(flyout, "Merge into current branch", !branch.IsCurrent && !_viewModel.IsBusy, async () =>
                 {
-                    _viewModel.SelectedMergeBranch = branch;
-                    await ExecuteCommandAsync(_viewModel.MergeCommand);
+                    _viewModel.RepositoryOperations.SelectedMergeBranch = branch;
+                    await ExecuteCommandAsync(_viewModel.RepositoryOperations.MergeCommand);
                 });
                 AddMenuItem(
                     flyout,
