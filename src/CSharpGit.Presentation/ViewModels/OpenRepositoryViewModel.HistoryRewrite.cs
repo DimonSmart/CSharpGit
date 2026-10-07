@@ -14,7 +14,8 @@ public sealed partial class OpenRepositoryViewModel
     internal void InvalidateForHistoryRewrite()
     {
         History.ResetForRepositoryMutation();
-        ResetCommitChangesSession();
+        Stashes.ClearSelection();
+        CommitDetails.Invalidate();
     }
 
     internal async Task SelectHistoryCommitAfterRewriteAsync(string commitHash)
