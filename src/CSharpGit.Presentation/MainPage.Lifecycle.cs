@@ -31,7 +31,7 @@ public sealed partial class MainPage
         _viewModel.Branches.LocalBranches.CollectionChanged -= RepositoryPresentationLocalBranches_CollectionChanged;
         _viewModel.Branches.RemoteBranches.CollectionChanged -= RepositoryPresentationRemoteBranches_CollectionChanged;
         _viewModel.RepositorySync.Remotes.CollectionChanged -= RepositoryPresentationRemotes_CollectionChanged;
-        _viewModel.Tags.CollectionChanged -= RepositoryPresentationTags_CollectionChanged;
+        _viewModel.Tags.Items.CollectionChanged -= RepositoryPresentationTags_CollectionChanged;
         _viewModel.Stashes.Items.CollectionChanged -= RepositoryPresentationStashes_CollectionChanged;
         DetachRepositoryTreeStateTracking();
         ShutdownGitConsole();

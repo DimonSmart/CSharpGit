@@ -13,7 +13,7 @@ public sealed partial class OpenRepositoryViewModel : ITagsRepositoryContext
     Task<bool> ITagsRepositoryContext.RunTagMutationAsync(
         Repository expectedRepository,
         Func<Task> mutation,
-        string errorContext,
+        string? errorContext,
         bool includeHistory) =>
         MutateAsync(
             mutation,

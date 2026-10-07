@@ -82,7 +82,7 @@ public sealed partial class MainPage
                 _viewModel.Branches.LocalBranches,
                 _viewModel.Branches.RemoteBranches,
                 _viewModel.RepositorySync.Remotes,
-                _viewModel.Tags,
+                _viewModel.Tags.Items,
                 _viewModel.Stashes.Items,
                 _worktreesViewModel.Worktrees);
         }
@@ -116,7 +116,7 @@ public sealed partial class MainPage
             _viewModel.Branches.LocalBranches,
             _viewModel.Branches.RemoteBranches,
             _viewModel.RepositorySync.Remotes,
-            _viewModel.Tags,
+            _viewModel.Tags.Items,
             _viewModel.Stashes.Items,
             _worktreesViewModel.Worktrees);
     }

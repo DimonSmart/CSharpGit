@@ -22,7 +22,6 @@ public sealed partial class MainPage
         OpenRepositoryViewModel viewModel,
         CreateRepositoryViewModel createRepositoryViewModel,
         CloneRepositoryViewModel cloneRepositoryViewModel,
-        TagsViewModel tagsViewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
         IRepositoryFileVersionService fileVersionService,
         IDesktopShellService desktopShellService,
@@ -44,7 +43,6 @@ public sealed partial class MainPage
         ISystemUriLauncher systemUriLauncher)
         : this(
             viewModel,
-            tagsViewModel,
             workingTreeStatusReader,
             fileVersionService,
             desktopShellService,

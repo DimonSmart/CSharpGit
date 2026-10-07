@@ -29,19 +29,19 @@ public sealed class TagUiContractTests
         Assert.DoesNotContain("case RepositoryTreeNodeKind.Tag", branchDeletion, StringComparison.Ordinal);
         Assert.Contains("new MenuFlyoutSubItem { Text = \"Delete tag\" }", tags);
         Assert.Contains("_viewModel.History.SelectedRow?.Commit.Hash", tags);
-        Assert.Contains("foreach (var tag in _viewModel.Tags)", tags);
+        Assert.Contains("foreach (var tag in _viewModel.Tags.Items)", tags);
         Assert.Contains("string.Equals(tag.TargetCommit, selectedCommitHash, StringComparison.Ordinal)", tags);
 
         Assert.Contains("GitTagKind.Annotated", tags);
         Assert.Contains("Annotated tags require a non-empty message", tags);
         Assert.Contains("refs/tags/{tag.Name}", tags);
-        Assert.Contains("_tagsViewModel.CreateTagAsync", tags);
-        Assert.Contains("_tagsViewModel.FetchTagsAsync", tags);
-        Assert.Contains("_tagsViewModel.PushTagAsync", tags);
-        Assert.Contains("_tagsViewModel.PushAllTagsAsync", tags);
-        Assert.Contains("_tagsViewModel.DeleteRemoteTagAsync", tags);
-        Assert.Contains("_tagsViewModel.DeleteTagAsync", tags);
-        Assert.Contains("_tagsViewModel.ForceUpdateRemoteTagAsync", tags);
+        Assert.Contains("_viewModel.Tags.CreateTagAsync", tags);
+        Assert.Contains("_viewModel.Tags.FetchTagsAsync", tags);
+        Assert.Contains("_viewModel.Tags.PushTagAsync", tags);
+        Assert.Contains("_viewModel.Tags.PushAllTagsAsync", tags);
+        Assert.Contains("_viewModel.Tags.DeleteRemoteTagAsync", tags);
+        Assert.Contains("_viewModel.Tags.DeleteTagAsync", tags);
+        Assert.Contains("_viewModel.Tags.ForceUpdateRemoteTagAsync", tags);
         Assert.DoesNotContain("_tagService", tags, StringComparison.Ordinal);
         Assert.DoesNotContain("ITagService", mainPage, StringComparison.Ordinal);
 
@@ -86,9 +86,10 @@ public sealed class TagUiContractTests
 
         Assert.Contains("public interface IReferenceService", references);
         Assert.DoesNotContain(": ITagService", references, StringComparison.Ordinal);
-        Assert.Contains("TagsViewModel tagsViewModel", mainPage);
+        Assert.DoesNotContain("TagsViewModel tagsViewModel", mainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("_tagsViewModel", mainPage, StringComparison.Ordinal);
         Assert.DoesNotContain("OrderByDescending(tag => tag.Name", mainPage, StringComparison.Ordinal);
-        Assert.DoesNotContain("children: _viewModel.Tags", mainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("children: _viewModel.Tags.Items", mainPage, StringComparison.Ordinal);
         Assert.Contains("ChildNodes: tags.Select", descriptors, StringComparison.Ordinal);
         Assert.Contains("target.Move(currentIndex, desiredIndex);", reconciler, StringComparison.Ordinal);
         Assert.DoesNotContain("root.Children.Clear();", tags, StringComparison.Ordinal);

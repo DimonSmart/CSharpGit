@@ -83,7 +83,7 @@ public sealed class PresentationArchitectureGuardrailTests
             ("Branches.LocalBranches", "RepositoryPresentationLocalBranches_CollectionChanged"),
             ("Branches.RemoteBranches", "RepositoryPresentationRemoteBranches_CollectionChanged"),
             ("RepositorySync.Remotes", "RepositoryPresentationRemotes_CollectionChanged"),
-            ("Tags", "RepositoryPresentationTags_CollectionChanged"),
+            ("Tags.Items", "RepositoryPresentationTags_CollectionChanged"),
             ("Stashes.Items", "RepositoryPresentationStashes_CollectionChanged")
         };
 
@@ -96,22 +96,47 @@ public sealed class PresentationArchitectureGuardrailTests
     }
 
     [Fact]
-    public void MainPageDoesNotOwnTagApplicationService()
+    public void TagsFeatureOwnsTagPresentationStateAndCheckout()
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var viewModels = Path.Combine(presentation, "ViewModels");
         var mainPageSources = Directory
             .GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
             .Select(File.ReadAllText)
             .ToArray();
-        var combined = string.Join(Environment.NewLine, mainPageSources);
-        var tagsViewModel = File.ReadAllText(
-            Path.Combine(presentation, "ViewModels", "TagsViewModel.cs"));
+        var combinedMainPage = string.Join(Environment.NewLine, mainPageSources);
+        var openRepositorySources = string.Join(
+            Environment.NewLine,
+            Directory.GetFiles(viewModels, "OpenRepositoryViewModel*.cs", SearchOption.TopDirectoryOnly)
+                .Select(File.ReadAllText));
+        var openRepository = File.ReadAllText(Path.Combine(viewModels, "OpenRepositoryViewModel.cs"));
+        var tagsViewModel = File.ReadAllText(Path.Combine(viewModels, "TagsViewModel.cs"));
 
-        Assert.DoesNotContain("ITagService", combined, StringComparison.Ordinal);
-        Assert.DoesNotContain("_tagService", combined, StringComparison.Ordinal);
-        Assert.Contains("public sealed class TagsViewModel", tagsViewModel, StringComparison.Ordinal);
+        Assert.DoesNotContain("ITagService", combinedMainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("_tagService", combinedMainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("_tagsViewModel", combinedMainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("TagsViewModel tagsViewModel", combinedMainPage, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.Tags.", combinedMainPage, StringComparison.Ordinal);
+
+        Assert.Contains(
+            "public sealed class TagsViewModel : INotifyPropertyChanged, IDisposable",
+            tagsViewModel,
+            StringComparison.Ordinal);
         Assert.Contains("ITagService", tagsViewModel, StringComparison.Ordinal);
+        Assert.Contains("IReferenceService", tagsViewModel, StringComparison.Ordinal);
+        Assert.Contains("public ObservableCollection<GitTag> Items", tagsViewModel, StringComparison.Ordinal);
+        Assert.Contains("public GitTag? SelectedTag", tagsViewModel, StringComparison.Ordinal);
+        Assert.Contains("public ICommand CheckoutTagCommand", tagsViewModel, StringComparison.Ordinal);
+        Assert.Contains("ITagsRepositoryContext : INotifyPropertyChanged", tagsViewModel, StringComparison.Ordinal);
+
+        Assert.Contains("public TagsViewModel Tags { get; }", openRepository, StringComparison.Ordinal);
+        Assert.Contains("Tags.ApplyRepositoryState(state.Refs.Tags);", openRepository, StringComparison.Ordinal);
+        Assert.Contains("Tags.ClearRepositoryState();", openRepository, StringComparison.Ordinal);
+        Assert.DoesNotContain("ObservableCollection<GitTag>", openRepositorySources, StringComparison.Ordinal);
+        Assert.DoesNotContain("public GitTag? SelectedTag", openRepositorySources, StringComparison.Ordinal);
+        Assert.DoesNotContain("CheckoutTagCommand", openRepositorySources, StringComparison.Ordinal);
+        Assert.DoesNotContain("IReferenceService", openRepositorySources, StringComparison.Ordinal);
     }
 
     [Fact]
