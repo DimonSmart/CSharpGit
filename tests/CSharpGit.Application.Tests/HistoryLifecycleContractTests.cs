@@ -3,30 +3,36 @@ namespace CSharpGit.Application.Tests;
 public sealed class HistoryLifecycleContractTests
 {
     [Fact]
-    public void HistorySelectionAndLoadingHaveStableIdentityAndStaleRequestGuards()
+    public void HistorySelectionAndLoadingHaveOneOwnerAndStaleRequestGuards()
     {
         var root = FindRepositoryRoot();
-        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
+        var history = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "HistoryViewModel.cs"));
+        var adapter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.History.cs"));
         var lazyChanges = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.CommitChanges.cs"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
 
-        Assert.Contains("ReferenceEquals(_selectedHistoryRow, value)", viewModel);
-        Assert.Contains("_historyLoadGeneration", viewModel);
-        Assert.Contains("CancellationTokenSource? _historyLoadCts", viewModel);
-        Assert.Contains("generation != Volatile.Read(ref _historyLoadGeneration)", viewModel);
-        Assert.Contains("internal void InvalidateHistoryLoad()", viewModel);
-        Assert.Contains("OnSelectedHistoryRowChanged(previous);", viewModel);
+        Assert.Contains("ReferenceEquals(_selectedRow, value)", history);
+        Assert.Contains("_loadGeneration", history);
+        Assert.Contains("CancellationTokenSource? _loadCts", history);
+        Assert.Contains("request.Generation == Volatile.Read(ref _loadGeneration)", history);
+        Assert.Contains("ReferenceEquals(request.Repository, _context?.Repository)", history);
+        Assert.Contains("public void Invalidate()", history);
+        Assert.Contains("SelectedRowChanged?.Invoke(previous);", history);
+        Assert.Contains("OnSelectedHistoryRowChanged(previous);", adapter);
 
         Assert.Contains("_changedFilesLoadGeneration", lazyChanges);
         Assert.Contains("_diffLoadGeneration", lazyChanges);
-        Assert.Contains("ReferenceEquals(row, SelectedHistoryRow)", lazyChanges);
+        Assert.Contains("ReferenceEquals(row, History.SelectedRow)", lazyChanges);
         Assert.Contains("ReferenceEquals(file, SelectedFile)", lazyChanges);
         Assert.Contains("InvalidateChangedFilesLoad", lazyChanges);
         Assert.Contains("InvalidateDiffLoad", lazyChanges);
 
-        Assert.Contains("_viewModel.InvalidateHistoryLoad();", page);
-        Assert.DoesNotContain("HistoryList.SelectedItem = first", page);
-        Assert.Contains("_scopedHistory.Any(row => ReferenceEquals(row, _viewModel.SelectedHistoryRow))", page);
+        Assert.DoesNotContain("_scopedHistory", page);
+        Assert.DoesNotContain("_referenceHistoryCts", page);
+        Assert.DoesNotContain("LoadScopedHistoryAsync", page);
+        Assert.Contains("ItemsSource=\"{Binding History.Rows}\"", xaml);
+        Assert.Contains("SelectedItem=\"{Binding History.SelectedRow, Mode=TwoWay}\"", xaml);
     }
 
     private static string FindRepositoryRoot()
