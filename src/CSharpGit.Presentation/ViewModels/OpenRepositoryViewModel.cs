@@ -15,12 +15,10 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private readonly IFolderPicker _folderPicker;
     private readonly IRepositoryService _repositoryService;
     private readonly ILogger<OpenRepositoryViewModel> _logger;
-    private readonly IHistoryService _historyService;
     private readonly IRepositoryStateService _stateService;
     private readonly IWorkingTreeService _workingTreeService;
     private readonly IReferenceService _referenceService;
     private readonly IRepositorySyncService _syncService;
-    private readonly IStashMutationService _stashMutationService;
     private readonly IMergeService _mergeService;
     private readonly IInteractiveRebaseService _interactiveRebaseService;
     private readonly IConflictResolutionService _conflictResolutionService;
@@ -39,11 +37,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private bool _isMutating;
     private int _repositoryChangeInProgress;
     private readonly SemaphoreSlim _mutationGate = new(1, 1);
-    private long _diffLoadGeneration;
     private int _disposed;
-    private ChangedFile? _selectedFile;
-    private FileDiff? _selectedDiff;
-    private bool _isDiffLoading;
     private string _commitMessage = string.Empty;
     private bool _isEmptyIndexChoiceOpen;
     private GitRemote? _selectedRemote;
@@ -53,7 +47,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private string? _currentHeadCommit;
     private bool _isDetachedHead;
     private bool? _headExists;
-    private GitStash? _selectedStash;
     private GitBranch? _selectedMergeBranch;
     private string _operationDisplay = string.Empty;
     private string _rebaseOnto = string.Empty;
@@ -69,15 +62,15 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public OpenRepositoryViewModel(
         IFolderPicker folderPicker,
         IRepositoryService repositoryService,
-        IHistoryService historyService,
         IRepositoryStateService stateService,
         IWorkingTreeService workingTreeService,
         WorkingTreeViewModel workingTreeViewModel,
         BranchesViewModel branchesViewModel,
         HistoryViewModel historyViewModel,
+        StashesViewModel stashesViewModel,
+        CommitDetailsViewModel commitDetailsViewModel,
         IReferenceService referenceService,
         IRepositorySyncService syncService,
-        IStashMutationService stashMutationService,
         IMergeService mergeService,
         IInteractiveRebaseService interactiveRebaseService,
         IConflictResolutionService conflictResolutionService,
@@ -86,14 +79,12 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         IAppSettingsService settings,
         IUiDispatcher uiDispatcher,
         ILogger<OpenRepositoryViewModel> logger,
-        IStashService? stashService = null,
         IRepositoryIdentityService? repositoryIdentityService = null,
         IInteractiveRebaseAuthorChangeService? interactiveRebaseAuthorChangeService = null,
         ICommitAuthorDateReader? commitAuthorDateReader = null)
     {
         _folderPicker = folderPicker;
         _repositoryService = repositoryService;
-        _historyService = historyService;
         _stateService = stateService;
         _workingTreeService = workingTreeService;
         WorkingTree = workingTreeViewModel ?? throw new ArgumentNullException(nameof(workingTreeViewModel));
@@ -103,14 +94,17 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         History = historyViewModel ?? throw new ArgumentNullException(nameof(historyViewModel));
         History.Attach(this);
         History.SelectedRowChanged += History_SelectedRowChanged;
+        Stashes = stashesViewModel ?? throw new ArgumentNullException(nameof(stashesViewModel));
+        Stashes.Attach(this);
+        Stashes.SelectedStashChanged += Stashes_SelectedStashChanged;
+        CommitDetails = commitDetailsViewModel ?? throw new ArgumentNullException(nameof(commitDetailsViewModel));
+        CommitDetails.Attach(this);
         _referenceService = referenceService;
         _syncService = syncService;
-        _stashMutationService = stashMutationService;
         _mergeService = mergeService;
         _interactiveRebaseService = interactiveRebaseService;
         _conflictResolutionService = conflictResolutionService;
         _repositoryOperationService = repositoryOperationService;
-        _stashService = stashService;
         _externalGitToolService = externalGitToolService;
         _repositoryIdentityService = repositoryIdentityService;
         _interactiveRebaseAuthorChangeService = interactiveRebaseAuthorChangeService;
@@ -137,9 +131,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         FetchAllCommand = new AsyncCommand(() => MutateAsync(() => _syncService.FetchAllAsync(Repository!)), CanMutate);
         PullCommand = new AsyncCommand(() => MutateAsync(() => _syncService.PullAsync(Repository!)), CanMutate);
         PushCommand = new AsyncCommand(() => MutateAsync(() => _syncService.PushAsync(Repository!)), CanMutate);
-        ApplyStashCommand = new AsyncCommand(ApplySelectedStashAsync, () => CanMutateSelectedStash);
-        PopStashCommand = new AsyncCommand(PopSelectedStashAsync, () => CanMutateSelectedStash);
-        DropStashCommand = new AsyncCommand(DropSelectedStashAsync, () => CanMutateSelectedStash);
         MergeCommand = new AsyncCommand(MergeAsync, () => CanMutate() && SelectedMergeBranch is { IsCurrent: false });
         ContinueRebaseCommand = new AsyncCommand(ContinueRebaseAsync, () => CanMutate() && CurrentOperation == RepositoryOperation.Rebase);
         AbortRebaseCommand = new AsyncCommand(() => MutateAsync(() => _interactiveRebaseService.AbortRebaseAsync(Repository!)), () => CanMutate() && CurrentOperation == RepositoryOperation.Rebase);
@@ -159,7 +150,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
 
-        ResetCommitChangesSession();
+        Stashes.SelectedStashChanged -= Stashes_SelectedStashChanged;
+        Stashes.Dispose();
+        CommitDetails.Dispose();
         _settings.Changed -= AppSettings_Changed;
         History.SelectedRowChanged -= History_SelectedRowChanged;
         History.Dispose();
@@ -209,9 +202,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public ICommand FetchAllCommand { get; }
     public ICommand PullCommand { get; }
     public ICommand PushCommand { get; }
-    public ICommand ApplyStashCommand { get; }
-    public ICommand PopStashCommand { get; }
-    public ICommand DropStashCommand { get; }
     public ICommand MergeCommand { get; }
     public ICommand ContinueRebaseCommand { get; }
     public ICommand AbortRebaseCommand { get; }
@@ -226,11 +216,12 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public ICommand AbortOperationCommand { get; }
     public ICommand SkipOperationCommand { get; }
     public HistoryViewModel History { get; }
+    public StashesViewModel Stashes { get; }
+    public CommitDetailsViewModel CommitDetails { get; }
     public WorkingTreeViewModel WorkingTree { get; }
     public BranchesViewModel Branches { get; }
     public ObservableCollection<GitRemote> Remotes { get; } = new BulkObservableCollection<GitRemote>();
     public ObservableCollection<GitTag> Tags { get; } = new BulkObservableCollection<GitTag>();
-    public ObservableCollection<GitStash> Stashes { get; } = new BulkObservableCollection<GitStash>();
     public ObservableCollection<ConflictFile> Conflicts { get; } = new BulkObservableCollection<ConflictFile>();
     public Repository? Repository
     {
@@ -239,20 +230,18 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         {
             if (ReferenceEquals(_repository, value)) return;
 
-            ResetCommitChangesSession();
             SetHeadPresentationState(null, null, false, string.Empty);
             _repository = value;
             History.OnRepositoryChanged(value);
             WorkingTree.OnRepositoryChanged(value);
+            Stashes.OnRepositoryChanged(value);
+            CommitDetails.OnRepositoryChanged(value);
             _headExists = null;
             _displayedWorkingTreeBaseline.Clear();
             Notify();
             Notify(nameof(DisplayedWorkingTreeStatusSnapshot));
             Notify(nameof(HasRepository));
             Notify(nameof(RepositoryKind));
-            Notify(nameof(CanCreateStash));
-            Notify(nameof(HasSelectedDetailsObject));
-            Notify(nameof(SelectedObjectCommit));
             Notify(nameof(CanForcePushWithLease));
             Notify(nameof(CanPushTo));
         }
@@ -266,11 +255,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public bool CanChangeRepository => !_isMutating && Volatile.Read(ref _repositoryChangeInProgress) == 0;
     public string RepositoryKind => Repository?.IsWorktree == true ? "Git worktree" : "Git repository";
     public bool HasSelectedCommit => History.SelectedRow is not null;
-    public ChangedFile? SelectedFile { get => _selectedFile; set { if (_selectedFile == value) return; _selectedFile = value; Notify(); OnSelectedFileChanged(); } }
-    public FileDiff? SelectedDiff { get => _selectedDiff; private set { _selectedDiff = value; Notify(); Notify(nameof(HasTextDiff)); Notify(nameof(HasBinaryDiff)); } }
-    public bool IsDiffLoading { get => _isDiffLoading; private set { if (_isDiffLoading == value) return; _isDiffLoading = value; Notify(); } }
-    public bool HasTextDiff => SelectedDiff is { IsBinary: false };
-    public bool HasBinaryDiff => SelectedDiff?.IsBinary == true;
     public string CommitMessage { get => _commitMessage; set { _commitMessage = value; Notify(); RaiseCommands(); } }
     public bool HasUnappliedCommitMessage => CommitMessage.Length > 0;
     public bool IsEmptyIndexChoiceOpen { get => _isEmptyIndexChoiceOpen; private set { _isEmptyIndexChoiceOpen = value; Notify(); RaiseCommands(); } }
@@ -280,25 +264,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public string? CurrentBranchName => _currentBranchName;
     public string? CurrentHeadCommit => _currentHeadCommit;
     public bool IsDetachedHead => _isDetachedHead;
-    public GitStash? SelectedStash
-    {
-        get => _selectedStash;
-        set
-        {
-            if (ReferenceEquals(_selectedStash, value)) return;
-            _selectedStash = value;
-            Notify();
-            Notify(nameof(HasSelectedStash));
-            Notify(nameof(HasSelectedDetailsObject));
-            Notify(nameof(SelectedObjectCommit));
-            Notify(nameof(SelectedDetailsTitle));
-            Notify(nameof(SelectedStashDisplay));
-            Notify(nameof(SelectedStashHashDisplay));
-            Notify(nameof(CanMutateSelectedStash));
-            Notify(nameof(SelectedDiffCommitHash));
-            RaiseCommands();
-        }
-    }
     public GitBranch? SelectedMergeBranch { get => _selectedMergeBranch; set { _selectedMergeBranch = value; Notify(); RaiseCommands(); } }
     public string OperationDisplay { get => _operationDisplay; private set { _operationDisplay = value; Notify(); } }
     public string RebaseOnto => _rebaseOnto;
@@ -312,16 +277,12 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             Notify();
         }
     }
-    public RepositoryOperation CurrentOperation { get => _currentOperation; private set { _currentOperation = value; Notify(); Notify(nameof(CanCreateStash)); Notify(nameof(CanForcePushWithLease)); Notify(nameof(CanPushTo)); RaiseCommands(); } }
+    public RepositoryOperation CurrentOperation { get => _currentOperation; private set { _currentOperation = value; Notify(); Notify(nameof(CanForcePushWithLease)); Notify(nameof(CanPushTo)); RaiseCommands(); } }
     public ConflictFile? SelectedConflict { get => _selectedConflict; set { _selectedConflict = value; Notify(); Notify(nameof(CurrentSideLabel)); Notify(nameof(IncomingSideLabel)); RaiseCommands(); } }
     public RepositoryOperationState OperationState { get => _operationState; private set { _operationState = value; Notify(); Notify(nameof(HasActiveOperation)); RaiseCommands(); } }
     public string CurrentSideLabel => SelectedConflict?.CurrentLocalLabel ?? "Current/local";
     public string IncomingSideLabel => SelectedConflict?.IncomingRemoteLabel ?? "Incoming/remote";
     public bool HasActiveOperation => OperationState.Kind != RepositoryOperation.None;
-    public bool CanCreateStash => CanMutate()
-        && CurrentOperation == RepositoryOperation.None
-        && !Conflicts.Any(conflict => !conflict.IsResolved);
-
     public bool CanForcePushWithLease => Repository is not null
         && !IsBusy
         && CurrentOperation == RepositoryOperation.None
@@ -341,12 +302,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     internal Task<bool> RunMutationAsync(Func<Task> mutation, string? errorContext = null, bool includeHistory = true) =>
         MutateAsync(mutation, errorContext, includeHistory: includeHistory);
-
-    public Task CreateStashAsync(string? message) =>
-        CreateStashAsync(
-            new CreateStashRequest(
-                message,
-                StashScope.AllTrackedChanges));
 
     private async Task OpenRepositoryAsync()
     {
@@ -503,16 +458,14 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     {
         WorkingTree.ClearRepositoryState();
         Branches.ClearRepositoryState();
+        Stashes.ClearRepositoryState();
+        CommitDetails.ClearRepositoryState();
         Remotes.Clear();
         Tags.Clear();
-        Stashes.Clear();
         InvalidatePreparedInteractiveRebaseTodo();
         Conflicts.Clear();
-        SelectedFile = null;
-        SelectedDiff = null;
         SelectedRemote = null;
         SelectedTag = null;
-        SelectedStash = null;
         SelectedMergeBranch = null;
         SelectedConflict = null;
         SetHeadPresentationState(null, null, false, string.Empty);
@@ -615,21 +568,12 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             Replace(Remotes, state.Refs.Remotes);
             Notify(nameof(CanPushTo));
             Replace(Tags, state.Refs.Tags);
-            var selectedStashCommit = SelectedStash?.Commit;
-            var selectedStashIndex = SelectedStash is null
-                ? -1
-                : Stashes.ToList().FindIndex(stash =>
-                    string.Equals(stash.Commit, SelectedStash.Commit, StringComparison.Ordinal));
-            Replace(Stashes, state.Stashes);
-            await RestoreSelectedStashAfterRefreshAsync(
-                selectedStashCommit,
-                selectedStashIndex);
+            Stashes.ApplyRepositoryState(state.Stashes);
             SelectedMergeBranch = Branches.LocalBranches.FirstOrDefault(branch => !branch.IsCurrent);
             OperationDisplay = state.Operation == RepositoryOperation.None ? "No operation in progress" : $"Operation in progress: {state.Operation}";
             CurrentOperation = state.Operation;
             OperationState = state.CurrentOperation;
             Replace(Conflicts, state.CurrentOperation.Conflicts);
-            Notify(nameof(CanCreateStash));
             SelectedConflict = Conflicts.FirstOrDefault();
             SelectedRemote = SelectedRemote is null
                 ? Remotes.FirstOrDefault()
@@ -676,7 +620,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         }
 
         _isMutating = true;
-        Notify(nameof(CanCreateStash));
         Notify(nameof(CanChangeRepository));
         EnterBusy();
         RaiseCommands();
@@ -706,7 +649,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         finally
         {
             _isMutating = false;
-            Notify(nameof(CanCreateStash));
             Notify(nameof(CanChangeRepository));
             ExitBusy();
             _mutationGate.Release();
@@ -781,10 +723,11 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     private void RaiseCommands()
     {
-        foreach (var command in new[] { RefreshAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, ApplyStashCommand, PopStashCommand, DropStashCommand, MergeCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
+        foreach (var command in new[] { RefreshAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, MergeCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
         Branches.RefreshAvailability();
         WorkingTree.RefreshAvailability();
         History.RefreshAvailability();
+        Stashes.RefreshAvailability();
     }
 
     private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values)

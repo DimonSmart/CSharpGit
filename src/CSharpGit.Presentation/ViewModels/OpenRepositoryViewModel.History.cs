@@ -12,7 +12,7 @@ public sealed partial class OpenRepositoryViewModel : IHistoryRepositoryContext
     IReadOnlyList<GitBranch> IHistoryRepositoryContext.RemoteBranches => Branches.RemoteBranches;
     IReadOnlyList<GitRemote> IHistoryRepositoryContext.Remotes => Remotes;
     IReadOnlyList<GitTag> IHistoryRepositoryContext.Tags => Tags;
-    bool IHistoryRepositoryContext.CanUpdateHistorySelection => SelectedStash is null;
+    bool IHistoryRepositoryContext.CanUpdateHistorySelection => Stashes.SelectedStash is null;
 
     void IHistoryRepositoryContext.EnterHistoryBusy() => EnterBusy();
 
@@ -26,18 +26,35 @@ public sealed partial class OpenRepositoryViewModel : IHistoryRepositoryContext
 
     private void History_SelectedRowChanged(HistoryRow? previous)
     {
-        if (History.SelectedRow is { } selected
-            && SelectedStash is { } selectedStash
-            && !string.Equals(selected.Commit.Hash, selectedStash.Commit, StringComparison.Ordinal))
+        var selected = History.SelectedRow;
+        Notify(nameof(HasSelectedCommit));
+
+        if (_detailsSelectionCoordinationDepth != 0)
+            return;
+
+        if (selected is { } selectedRow && Stashes.SelectedStash is { } selectedStash)
         {
-            ClearSelectedStashSelection();
+            if (string.Equals(selectedRow.Commit.Hash, selectedStash.Commit, StringComparison.Ordinal))
+                return;
+
+            _detailsSelectionCoordinationDepth++;
+            try
+            {
+                Stashes.ClearSelection();
+            }
+            finally
+            {
+                _detailsSelectionCoordinationDepth--;
+            }
         }
 
-        Notify(nameof(HasSelectedCommit));
-        Notify(nameof(HasSelectedDetailsObject));
-        Notify(nameof(SelectedObjectCommit));
-        Notify(nameof(SelectedDetailsTitle));
-        Notify(nameof(SelectedDiffCommitHash));
-        OnSelectedHistoryRowChanged(previous);
+        if (selected is null)
+        {
+            if (Stashes.SelectedStash is null)
+                CommitDetails.ClearSelection();
+            return;
+        }
+
+        CommitDetails.ShowCommit(selected);
     }
 }
