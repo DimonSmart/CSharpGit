@@ -3,32 +3,24 @@ using CSharpGit.Domain;
 using CSharpGit.Presentation.Controls;
 using CSharpGit.Presentation.Controls.CommitGraph;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 
 namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
     private readonly CommitGraphLayoutState _historyGraphLayout = new();
-    private readonly CommitGraphLayoutState _scopedHistoryGraphLayout = new();
     private bool _commitGraphLayoutInitialized;
     private bool _commitGraphLayoutApplyQueued;
 
-    private CommitGraphLayoutState ActiveCommitGraphLayout =>
-        ReferenceEquals(HistoryList.ItemsSource, _scopedHistory)
-            ? _scopedHistoryGraphLayout
-            : _historyGraphLayout;
+    private CommitGraphLayoutState ActiveCommitGraphLayout => _historyGraphLayout;
 
     private void HistoryColumnHeader_Loaded(object sender, RoutedEventArgs args)
     {
         if (!_commitGraphLayoutInitialized)
         {
             _commitGraphLayoutInitialized = true;
-            InitializeGraphLayout(_historyGraphLayout, _viewModel.History);
-            InitializeGraphLayout(_scopedHistoryGraphLayout, _scopedHistory);
-            _viewModel.History.CollectionChanged += MainHistory_CollectionChanged;
-            _scopedHistory.CollectionChanged += ScopedHistory_CollectionChanged;
-            HistoryList.RegisterPropertyChangedCallback(ItemsControl.ItemsSourceProperty, HistoryItemsSourceChanged);
+            InitializeGraphLayout(_historyGraphLayout, _viewModel.History.Rows);
+            _viewModel.History.Rows.CollectionChanged += HistoryRows_CollectionChanged;
         }
 
         ApplyActiveCommitGraphLayout();
@@ -46,22 +38,15 @@ public sealed partial class MainPage
         HistoryRenderDiagnostics.GraphLayoutInitialized(startedAt, rowsExamined);
     }
 
-    private void MainHistory_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs args)
+    private void HistoryRows_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs args)
     {
         HistoryRenderDiagnostics.HistoryCollectionChanged(args.Action, args.NewItems?.Count ?? 0);
-        UpdateGraphLayout(_historyGraphLayout, args, ReferenceEquals(HistoryList.ItemsSource, _viewModel.History));
-    }
-
-    private void ScopedHistory_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs args)
-    {
-        HistoryRenderDiagnostics.HistoryCollectionChanged(args.Action, args.NewItems?.Count ?? 0);
-        UpdateGraphLayout(_scopedHistoryGraphLayout, args, ReferenceEquals(HistoryList.ItemsSource, _scopedHistory));
+        UpdateGraphLayout(_historyGraphLayout, args);
     }
 
     private void UpdateGraphLayout(
         CommitGraphLayoutState state,
-        NotifyCollectionChangedEventArgs args,
-        bool isActive)
+        NotifyCollectionChangedEventArgs args)
     {
         var startedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
         var reset = args.Action == NotifyCollectionChangedAction.Reset;
@@ -88,14 +73,8 @@ public sealed partial class MainPage
         }
 
         HistoryRenderDiagnostics.GraphLayoutUpdated(startedAt, reset, newRowsExamined, layoutChanged);
-        if (layoutChanged && isActive)
+        if (layoutChanged)
             QueueActiveCommitGraphLayout();
-    }
-
-    private void HistoryItemsSourceChanged(DependencyObject sender, DependencyProperty property)
-    {
-        HistoryRenderDiagnostics.ItemsSourceChanged();
-        QueueActiveCommitGraphLayout();
     }
 
     private void QueueActiveCommitGraphLayout()
@@ -126,5 +105,4 @@ public sealed partial class MainPage
         CommitGraphPresentationContext.Publish(layout);
         HistoryRenderDiagnostics.GraphLayoutApplied(startedAt);
     }
-
 }
