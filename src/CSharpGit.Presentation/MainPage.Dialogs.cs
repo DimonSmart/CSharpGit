@@ -59,7 +59,7 @@ public sealed partial class MainPage
                 dialog,
                 "InteractiveRebaseTodoEditor") is { } editor)
         {
-            await _viewModel.StartPreparedInteractiveRebaseAsync(editor.Text);
+            await _viewModel.InteractiveRebase.StartPreparedInteractiveRebaseAsync(editor.Text);
         }
     }
 

@@ -12,8 +12,8 @@ public sealed partial class OpenRepositoryViewModel :
 
     bool IStashesRepositoryContext.CanCreateStash =>
         CanMutate()
-        && CurrentOperation == RepositoryOperation.None
-        && !Conflicts.Any(conflict => !conflict.IsResolved);
+        && RepositoryOperations.CurrentOperation == RepositoryOperation.None
+        && !RepositoryOperations.Conflicts.Any(conflict => !conflict.IsResolved);
 
     bool IStashesRepositoryContext.CanMutateStash => CanMutate();
 

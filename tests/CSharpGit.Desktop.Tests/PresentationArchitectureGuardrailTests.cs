@@ -356,6 +356,104 @@ public sealed class PresentationArchitectureGuardrailTests
     }
 
     [Fact]
+    public void RepositoryOperationsAndInteractiveRebaseOwnTheirFeaturePresentationState()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var viewModels = Path.Combine(presentation, "ViewModels");
+        var openRepository = File.ReadAllText(Path.Combine(viewModels, "OpenRepositoryViewModel.cs"));
+        var operations = File.ReadAllText(Path.Combine(viewModels, "RepositoryOperationsViewModel.cs"));
+        var rebase = File.ReadAllText(Path.Combine(viewModels, "InteractiveRebaseViewModel.cs"));
+        var operationsContext = File.ReadAllText(
+            Path.Combine(viewModels, "OpenRepositoryViewModel.RepositoryOperations.cs"));
+        var rebaseContext = File.ReadAllText(
+            Path.Combine(viewModels, "OpenRepositoryViewModel.InteractiveRebaseContext.cs"));
+        var historyRewrite = File.ReadAllText(
+            Path.Combine(viewModels, "OpenRepositoryViewModel.HistoryRewrite.cs"));
+        var mainXaml = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
+        var operationBanner = File.ReadAllText(
+            Path.Combine(presentation, "Controls", "OperationBanner.xaml"));
+        var mainPage = string.Join(
+            Environment.NewLine,
+            Directory.GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+                .Select(File.ReadAllText));
+        var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
+
+        Assert.Contains("public sealed class RepositoryOperationsViewModel", operations, StringComparison.Ordinal);
+        Assert.Contains("IMergeService", operations, StringComparison.Ordinal);
+        Assert.Contains("IConflictResolutionService", operations, StringComparison.Ordinal);
+        Assert.Contains("IRepositoryOperationService", operations, StringComparison.Ordinal);
+        Assert.Contains("IExternalGitToolService", operations, StringComparison.Ordinal);
+
+        Assert.Contains("public sealed class InteractiveRebaseViewModel", rebase, StringComparison.Ordinal);
+        Assert.Contains("IInteractiveRebaseService", rebase, StringComparison.Ordinal);
+        Assert.Contains("IRepositoryIdentityService", rebase, StringComparison.Ordinal);
+        Assert.Contains("IInteractiveRebaseAuthorChangeService", rebase, StringComparison.Ordinal);
+        Assert.Contains("ICommitAuthorDateReader", rebase, StringComparison.Ordinal);
+        Assert.Contains("CancellationTokenSource", rebase, StringComparison.Ordinal);
+
+        Assert.Contains("public RepositoryOperationsViewModel RepositoryOperations { get; }", openRepository, StringComparison.Ordinal);
+        Assert.Contains("public InteractiveRebaseViewModel InteractiveRebase { get; }", openRepository, StringComparison.Ordinal);
+        Assert.Contains("IRepositoryOperationsContext", operationsContext, StringComparison.Ordinal);
+        Assert.Contains("IInteractiveRebaseRepositoryContext", rebaseContext, StringComparison.Ordinal);
+        Assert.Contains("services.AddTransient<RepositoryOperationsViewModel>();", app, StringComparison.Ordinal);
+        Assert.Contains("services.AddTransient<InteractiveRebaseViewModel>();", app, StringComparison.Ordinal);
+        Assert.Contains("RepositoryOperations.ApplyRepositoryState(", openRepository, StringComparison.Ordinal);
+        Assert.Contains("InteractiveRebase.Invalidate();", historyRewrite, StringComparison.Ordinal);
+        Assert.Contains("PublishOperationMessage", rebase, StringComparison.Ordinal);
+        Assert.Contains("RepositoryOperations.SetOperationDisplay(message)", rebaseContext, StringComparison.Ordinal);
+
+        foreach (var dependency in new[]
+                 {
+                     "IMergeService",
+                     "IConflictResolutionService",
+                     "IRepositoryOperationService",
+                     "IExternalGitToolService",
+                     "IRepositoryIdentityService",
+                     "IInteractiveRebaseAuthorChangeService",
+                     "ICommitAuthorDateReader",
+                     "IInteractiveRebaseService"
+                 })
+        {
+            Assert.DoesNotContain(dependency, openRepository, StringComparison.Ordinal);
+        }
+
+        foreach (var forwardingState in new[]
+                 {
+                     "public RepositoryOperation CurrentOperation",
+                     "public RepositoryOperationState OperationState",
+                     "public ConflictFile? SelectedConflict",
+                     "public ObservableCollection<ConflictFile> Conflicts",
+                     "public GitBranch? SelectedMergeBranch",
+                     "public string OperationDisplay",
+                     "public string RebaseOnto",
+                     "public string RebaseTodoText"
+                 })
+        {
+            Assert.DoesNotContain(forwardingState, openRepository, StringComparison.Ordinal);
+        }
+
+        Assert.False(File.Exists(
+            Path.Combine(viewModels, "OpenRepositoryViewModel.InteractiveRebase.cs")));
+        Assert.DoesNotContain("ContinueRebaseCommand", openRepository, StringComparison.Ordinal);
+        Assert.DoesNotContain("AbortRebaseCommand", openRepository, StringComparison.Ordinal);
+
+        Assert.Contains("DataContext=\"{Binding RepositoryOperations}\"", mainXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding InteractiveRebase.RebaseOnto}\"", mainXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding InteractiveRebase.RebaseTodoText, Mode=TwoWay}\"", mainXaml, StringComparison.Ordinal);
+        Assert.Contains("OperationDisplay", operationBanner, StringComparison.Ordinal);
+        Assert.Contains("ContinueOperationCommand", operationBanner, StringComparison.Ordinal);
+        Assert.Contains("SelectedConflict", operationBanner, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("IInteractiveRebaseService", mainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("IRepositoryIdentityService", mainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("IInteractiveRebaseAuthorChangeService", mainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("ICommitAuthorDateReader", mainPage, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.InteractiveRebase.", mainPage, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.RepositoryOperations.", mainPage, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void WindowTitleUsesPresentationStateAndShellOwnedWindow()
     {
         var root = FindRepositoryRoot();

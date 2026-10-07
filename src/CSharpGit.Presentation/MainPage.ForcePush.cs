@@ -115,7 +115,7 @@ public sealed partial class MainPage
     {
         if (_viewModel.Repository is null || _viewModel.IsBusy) return;
 
-        if (_viewModel.CurrentOperation != RepositoryOperation.None)
+        if (_viewModel.RepositoryOperations.CurrentOperation != RepositoryOperation.None)
         {
             await ShowErrorAsync("Push to unavailable", "Complete or abort the current Git operation first.");
             return;
@@ -239,7 +239,7 @@ public sealed partial class MainPage
     {
         if (!ReferenceEquals(repository, _viewModel.Repository)
             || _viewModel.IsBusy
-            || _viewModel.CurrentOperation != RepositoryOperation.None)
+            || _viewModel.RepositoryOperations.CurrentOperation != RepositoryOperation.None)
             return;
 
         var result = await _viewModel.Branches.PublishBranchAsync(
@@ -301,7 +301,7 @@ public sealed partial class MainPage
     private async Task RunForcePushWithLeaseAsync()
     {
         if (_viewModel.Repository is null || _viewModel.IsBusy) return;
-        if (_viewModel.CurrentOperation != RepositoryOperation.None)
+        if (_viewModel.RepositoryOperations.CurrentOperation != RepositoryOperation.None)
         {
             await ShowErrorAsync("Force push with lease unavailable", "Complete or abort the current Git operation first.");
             return;

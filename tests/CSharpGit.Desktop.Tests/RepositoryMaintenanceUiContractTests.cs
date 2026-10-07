@@ -37,7 +37,7 @@ public sealed class RepositoryMaintenanceUiContractTests
     {
         var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
 
-        Assert.Contains("_viewModel.CurrentOperation == RepositoryOperation.None", source, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.RepositoryOperations.CurrentOperation == RepositoryOperation.None", source, StringComparison.Ordinal);
         Assert.Contains("!_viewModel.IsBusy", source, StringComparison.Ordinal);
         Assert.Contains("!_repositoryMaintenanceInProgress", source, StringComparison.Ordinal);
         Assert.DoesNotContain("RepositoryOperation.Merge", source, StringComparison.Ordinal);

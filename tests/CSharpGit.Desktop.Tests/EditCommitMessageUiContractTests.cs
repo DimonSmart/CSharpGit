@@ -31,7 +31,7 @@ public sealed class EditCommitMessageUiContractTests
         Assert.Contains("string.IsNullOrWhiteSpace(candidate)", workflow, StringComparison.Ordinal);
         Assert.Contains("string.Equals(originalMessage, candidate, StringComparison.Ordinal)", workflow, StringComparison.Ordinal);
         Assert.Contains("!_viewModel.IsBusy", workflow, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.CurrentOperation == RepositoryOperation.None", workflow, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.RepositoryOperations.CurrentOperation == RepositoryOperation.None", workflow, StringComparison.Ordinal);
     }
 
     [Fact]
