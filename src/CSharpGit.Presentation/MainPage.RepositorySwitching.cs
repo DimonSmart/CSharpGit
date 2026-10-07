@@ -174,7 +174,7 @@ public sealed partial class MainPage
         }
 
         var discardDraft = _viewModel.Repository is not null
-            && _viewModel.HasUnappliedCommitMessage;
+            && _viewModel.CommitCreation.HasUnappliedCommitMessage;
         if (discardDraft
             && !await ConfirmDiscardCommitMessageAsync(closing: false))
             return false;
@@ -201,7 +201,7 @@ public sealed partial class MainPage
         if (!opened) return false;
 
         if (discardDraft)
-            _viewModel.CommitMessage = string.Empty;
+            _viewModel.CommitCreation.CommitMessage = string.Empty;
 
         RefreshPresentationCollections();
         UpdateRepositorySelectorPresentation();
@@ -215,7 +215,7 @@ public sealed partial class MainPage
         if (_viewModel.Repository is null) return true;
         if (!_viewModel.CanChangeRepository) return false;
 
-        var discardDraft = _viewModel.HasUnappliedCommitMessage;
+        var discardDraft = _viewModel.CommitCreation.HasUnappliedCommitMessage;
         if (discardDraft
             && !await ConfirmDiscardCommitMessageAsync(closing: true))
             return false;
@@ -224,7 +224,7 @@ public sealed partial class MainPage
             return false;
 
         if (discardDraft)
-            _viewModel.CommitMessage = string.Empty;
+            _viewModel.CommitCreation.CommitMessage = string.Empty;
 
         RefreshPresentationCollections();
         UpdateRepositorySelectorPresentation();
