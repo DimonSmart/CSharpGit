@@ -92,26 +92,21 @@ public sealed partial class MainPage
 
     private void UpdateCommitActionAvailability()
     {
-        var hasCommit = _viewModel.History.SelectedRow is not null;
-        var canMutate = hasCommit &&
-                        _viewModel.Repository is not null &&
-                        !_viewModel.IsBusy &&
-                        _viewModel.CurrentOperation == RepositoryOperation.None;
+        var commit = _viewModel.History.SelectedRow?.Commit;
+        var hasCommit = commit is not null;
+        var canMutate = _viewModel.CommitActions.CanMutateCommit(commit);
         var hasLocalBranch = _viewModel.CurrentBranchName is not null;
 
         if (_copyHashItem is not null) _copyHashItem.IsEnabled = hasCommit;
         if (_createBranchHereItem is not null) _createBranchHereItem.IsEnabled = canMutate;
-        if (_checkoutCommitItem is not null) _checkoutCommitItem.IsEnabled = canMutate;
-        if (_cherryPickItem is not null) _cherryPickItem.IsEnabled = canMutate;
-        if (_revertItem is not null) _revertItem.IsEnabled = canMutate;
+        if (_checkoutCommitItem is not null) _checkoutCommitItem.IsEnabled = _viewModel.CommitActions.CanCheckout(commit);
+        if (_cherryPickItem is not null) _cherryPickItem.IsEnabled = _viewModel.CommitActions.CanCherryPick(commit);
+        if (_revertItem is not null) _revertItem.IsEnabled = _viewModel.CommitActions.CanRevert(commit);
         if (_editCommitMessageItem is not null) _editCommitMessageItem.IsEnabled = canMutate;
         if (_fixupIntoPreviousCommitItem is not null)
-            _fixupIntoPreviousCommitItem.IsEnabled =
-                canMutate &&
-                hasLocalBranch &&
-                _viewModel.History.SelectedRow?.Commit.Parents.Count == 1;
+            _fixupIntoPreviousCommitItem.IsEnabled = _viewModel.CommitActions.CanFixup(commit);
         if (_interactiveRebaseFromHereItem is not null) _interactiveRebaseFromHereItem.IsEnabled = canMutate && hasLocalBranch;
-        if (_resetItem is not null) _resetItem.IsEnabled = canMutate && hasLocalBranch;
+        if (_resetItem is not null) _resetItem.IsEnabled = _viewModel.CommitActions.CanReset(commit);
     }
 
     private void CopyCommitHash_Click(object sender, RoutedEventArgs e)
@@ -180,10 +175,8 @@ public sealed partial class MainPage
         };
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
 
-        if (await _viewModel.RunMutationAsync(
-                () => _referenceService.CheckoutAsync(repository, hash),
-                "Could not checkout commit"))
-            await RestoreCommitActionSelectionAsync(hash);
+        var result = await _viewModel.CommitActions.CheckoutAsync(repository, commit);
+        await HandleCommitActionExecutionResultAsync(result);
     }
 
     private async void CherryPickCommit_Click(object sender, RoutedEventArgs e)
@@ -192,20 +185,11 @@ public sealed partial class MainPage
         var mainline = await SelectMainlineParentAsync(commit, "Cherry-pick merge commit");
         if (commit.Parents.Count > 1 && mainline is null) return;
 
-        ApplyCommitResult? result = null;
-        var succeeded = await _viewModel.RunMutationAsync(
-            async () => result = await _commitActionService.CherryPickAsync(repository, commit.Hash, mainline),
-            "Could not cherry-pick commit");
-        if (!succeeded || result is null) return;
-
-        if (result.Kind == ApplyCommitResultKind.Failed)
-        {
-            await ShowErrorAsync("Cherry-pick failed", result.Message);
-            return;
-        }
-
-        var selection = result.Kind == ApplyCommitResultKind.Completed ? result.HeadCommit : commit.Hash;
-        await RestoreCommitActionSelectionAsync(selection);
+        var result = await _viewModel.CommitActions.CherryPickAsync(
+            repository,
+            commit,
+            mainline);
+        await HandleCommitActionExecutionResultAsync(result);
     }
 
     private async void RevertCommit_Click(object sender, RoutedEventArgs e)
@@ -214,37 +198,19 @@ public sealed partial class MainPage
         var mainline = await SelectMainlineParentAsync(commit, "Revert merge commit");
         if (commit.Parents.Count > 1 && mainline is null) return;
 
-        ApplyCommitResult? result = null;
-        var succeeded = await _viewModel.RunMutationAsync(
-            async () => result = await _commitActionService.RevertAsync(repository, commit.Hash, mainline),
-            "Could not revert commit");
-        if (!succeeded || result is null) return;
-
-        if (result.Kind == ApplyCommitResultKind.Failed)
-        {
-            await ShowErrorAsync("Revert failed", result.Message);
-            return;
-        }
-
-        var selection = result.Kind == ApplyCommitResultKind.Completed ? result.HeadCommit : commit.Hash;
-        await RestoreCommitActionSelectionAsync(selection);
+        var result = await _viewModel.CommitActions.RevertAsync(
+            repository,
+            commit,
+            mainline);
+        await HandleCommitActionExecutionResultAsync(result);
     }
 
     private async void FixupIntoPreviousCommit_Click(object sender, RoutedEventArgs e)
     {
         if (!TryGetCommitActionContext(out var repository, out var commit)) return;
 
-        RebaseResult? result = null;
-        await _viewModel.RunHistoryRewriteMutationAsync(
-            async () =>
-            {
-                result = await _commitActionService.FixupIntoPreviousCommitAsync(
-                    repository,
-                    commit.Hash);
-                if (result.Kind == RebaseResultKind.Failed)
-                    throw new InvalidOperationException(result.Message);
-            },
-            "Could not fixup commit");
+        var result = await _viewModel.CommitActions.FixupAsync(repository, commit);
+        await HandleCommitActionExecutionResultAsync(result);
     }
 
     private async void InteractiveRebaseFromHere_Click(object sender, RoutedEventArgs e)
@@ -291,10 +257,11 @@ public sealed partial class MainPage
         };
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
 
-        if (await _viewModel.RunMutationAsync(
-                () => _commitActionService.ResetAsync(repository, hash, mode),
-                $"Could not {mode.ToString().ToLowerInvariant()} reset"))
-            await RestoreCommitActionSelectionAsync(hash);
+        var result = await _viewModel.CommitActions.ResetAsync(
+            repository,
+            commit,
+            mode);
+        await HandleCommitActionExecutionResultAsync(result);
     }
 
     private bool TryGetCommitActionContext(out Repository repository, out CommitHistoryItem commit)
@@ -303,8 +270,26 @@ public sealed partial class MainPage
         commit = _viewModel.History.SelectedRow?.Commit!;
         return repository is not null &&
                commit is not null &&
-               !_viewModel.IsBusy &&
-               _viewModel.CurrentOperation == RepositoryOperation.None;
+               _viewModel.CommitActions.CanMutateCommit(commit);
+    }
+
+    private async Task HandleCommitActionExecutionResultAsync(CommitActionExecutionResult result)
+    {
+        if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
+        {
+            await ShowErrorAsync(
+                result.ErrorTitle ?? "Git operation failed",
+                result.ErrorMessage);
+            return;
+        }
+
+        if (!result.LifecycleSucceeded ||
+            string.IsNullOrWhiteSpace(result.SelectionCommit))
+        {
+            return;
+        }
+
+        await RestoreCommitActionSelectionAsync(result.SelectionCommit);
     }
 
     private async Task<int?> SelectMainlineParentAsync(CommitHistoryItem commit, string title)

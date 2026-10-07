@@ -75,18 +75,14 @@ public sealed partial class MainPage
             string.Equals(originalMessage, newMessage, StringComparison.Ordinal))
             return;
         if (!ReferenceEquals(repository, _viewModel.Repository) ||
-            _viewModel.IsBusy ||
-            _viewModel.CurrentOperation != RepositoryOperation.None)
+            !_viewModel.CommitActions.CanMutateCommit(commit))
             return;
 
-        EditCommitMessageResult? result = null;
-        var succeeded = await _viewModel.RunMutationAsync(
-            async () => result = await _commitActionService.EditCommitMessageAsync(
-                repository,
-                commit.Hash,
-                newMessage),
-            "Could not edit commit message");
-        if (!succeeded || result is null) return;
+        var result = await _viewModel.EditCommitMessageAsync(
+            repository,
+            commit.Hash,
+            newMessage);
+        if (result is null) return;
 
         switch (result.Kind)
         {
