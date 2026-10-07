@@ -17,7 +17,7 @@ public sealed class RepositorySyncViewModelTests
 
         viewModel.ApplyRepositoryState([Remote("origin"), Remote("backup")]);
         viewModel.SelectedRemote = viewModel.Remotes.Single(remote => remote.Name == "backup");
-        var replacement = Remote("backup");
+        var replacement = new GitRemote("backup", "https://example.test/backup-v2", "https://example.test/backup-v2");
 
         viewModel.ApplyRepositoryState([Remote("origin"), replacement]);
 
