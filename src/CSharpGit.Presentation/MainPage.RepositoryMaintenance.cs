@@ -22,7 +22,6 @@ public sealed partial class MainPage
         OpenRepositoryViewModel viewModel,
         CreateRepositoryViewModel createRepositoryViewModel,
         CloneRepositoryViewModel cloneRepositoryViewModel,
-        IHistoryService historyService,
         IReferenceService referenceService,
         IRepositorySyncService repositorySyncService,
         ICommitActionService commitActionService,
@@ -48,7 +47,6 @@ public sealed partial class MainPage
         ISystemUriLauncher systemUriLauncher)
         : this(
             viewModel,
-            historyService,
             referenceService,
             repositorySyncService,
             commitActionService,
