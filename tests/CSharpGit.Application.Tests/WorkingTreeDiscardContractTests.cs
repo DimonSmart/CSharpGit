@@ -275,7 +275,7 @@ public sealed class WorkingTreeDiscardContractTests
         Assert.Contains("WorkingTreeDiscard.FormatFailures(results)", confirm);
         Assert.Contains("beforeMutation: ClearPresentationSelection", confirm);
 
-        var mutate = ExtractMethod(viewModel, "private async Task<bool> MutateAsync", "private Task RequestCommitAsync()");
+        var mutate = ExtractMethod(viewModel, "private async Task<bool> MutateAsync", "private void RaiseCommands()");
         Assert.Contains("await mutation()", mutate);
         Assert.Contains("await RefreshStateAsync(includeHistory)", mutate);
     }

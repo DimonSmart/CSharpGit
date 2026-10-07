@@ -201,20 +201,28 @@ public sealed class WorkingTreeDiffUiContractTests
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
+        var commitCreation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "CommitCreationViewModel.cs"));
+        var commitCreationContext = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.CommitCreation.cs"));
         var workingTreeViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
 
-        Assert.Contains("Text=\"{Binding CommitMessage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", xaml);
-        Assert.Contains("WorkingTree.ClearCommittedPresentationSelection", viewModel);
-        Assert.Contains("afterSuccessfulMutation: WorkingTree.ClearCommittedPresentationSelection", viewModel);
+        Assert.Contains("Text=\"{Binding CommitCreation.CommitMessage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", xaml);
+        Assert.Contains("WorkingTree.ClearCommittedPresentationSelection", commitCreationContext);
+        Assert.Contains("context.ClearCommittedWorkingTreePresentationSelection();", commitCreation);
         Assert.Contains("SelectedDiffKind == WorkingTreeDiffKind.Staged", workingTreeViewModel);
 
+        var commitStart = commitCreation.IndexOf("private async Task CommitAsync(", StringComparison.Ordinal);
+        var commitEnd = commitCreation.IndexOf("private void CloseEmptyIndexChoice()", commitStart, StringComparison.Ordinal);
+        var commit = commitCreation[commitStart..commitEnd];
+        var executeIndex = commit.IndexOf("await _workingTreeService.CommitAsync(", StringComparison.Ordinal);
+        var selectionIndex = commit.IndexOf("context.ClearCommittedWorkingTreePresentationSelection();", StringComparison.Ordinal);
+        Assert.True(executeIndex >= 0 && selectionIndex > executeIndex);
+
         var mutationStart = viewModel.IndexOf("private async Task<bool> MutateAsync", StringComparison.Ordinal);
-        var mutationEnd = viewModel.IndexOf("private Task RequestCommitAsync()", mutationStart, StringComparison.Ordinal);
+        var mutationEnd = viewModel.IndexOf("private void RaiseCommands()", mutationStart, StringComparison.Ordinal);
         var mutation = viewModel[mutationStart..mutationEnd];
-        var executeIndex = mutation.IndexOf("await mutation();", StringComparison.Ordinal);
-        var callbackIndex = mutation.IndexOf("afterSuccessfulMutation?.Invoke();", StringComparison.Ordinal);
-        var refreshIndex = mutation.IndexOf("await RefreshState", StringComparison.Ordinal);
-        Assert.True(executeIndex >= 0 && callbackIndex > executeIndex && refreshIndex > callbackIndex);
+        Assert.True(
+            mutation.IndexOf("await mutation();", StringComparison.Ordinal)
+            < mutation.IndexOf("await RefreshState", StringComparison.Ordinal));
     }
 
     private static int Count(string value, string fragment) =>
