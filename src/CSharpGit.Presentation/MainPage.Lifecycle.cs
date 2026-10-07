@@ -42,6 +42,7 @@ public sealed partial class MainPage
 
         _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
         _viewModel.History.PropertyChanged -= HistoryViewModel_PropertyChanged;
+        _viewModel.History.CommitLookupCompleted -= History_CommitLookupCompleted;
         _viewModel.PropertyChanged -= ChangesViewModel_PropertyChanged;
         _viewModel.PropertyChanged -= ConfirmationDialogs_PropertyChanged;
         _viewModel.PropertyChanged -= FileOpeningViewModel_PropertyChanged;

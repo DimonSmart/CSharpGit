@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using CSharpGit.Application.Abstractions;
@@ -75,6 +76,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
 
     public event PropertyChangedEventHandler? PropertyChanged;
     internal event Action<HistoryRow?>? SelectedRowChanged;
+    internal event Action<long, int>? CommitLookupCompleted;
 
     public ObservableCollection<HistoryRow> Rows => _rows;
 
@@ -306,12 +308,17 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
             Notify(nameof(FilterText));
         }
 
-        if (!requiresReload
-            && _rows.FirstOrDefault(row =>
-                string.Equals(row.Commit.Hash, commitHash, StringComparison.Ordinal)) is { } existing)
+        if (!requiresReload)
         {
-            SelectedRow = existing;
-            return existing;
+            var lookupStartedAt = Stopwatch.GetTimestamp();
+            var existing = _rows.FirstOrDefault(row =>
+                string.Equals(row.Commit.Hash, commitHash, StringComparison.Ordinal));
+            CommitLookupCompleted?.Invoke(lookupStartedAt, _rows.Count);
+            if (existing is not null)
+            {
+                SelectedRow = existing;
+                return existing;
+            }
         }
 
         var request = BeginRequest(repository);
@@ -340,8 +347,10 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
             _rows.ReplaceAll(page.Rows);
             HasMore = page.HasMore;
 
+            var lookupStartedAt = Stopwatch.GetTimestamp();
             var target = _rows.FirstOrDefault(row =>
                 string.Equals(row.Commit.Hash, commitHash, StringComparison.Ordinal));
+            CommitLookupCompleted?.Invoke(lookupStartedAt, _rows.Count);
             if (target is null)
                 throw new InvalidOperationException(
                     $"Commit {commitHash} was not present after history navigation load.");
@@ -421,6 +430,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
         Invalidate();
         _context = null;
         SelectedRowChanged = null;
+        CommitLookupCompleted = null;
     }
 
     private async Task LoadAsync(bool reset)
@@ -469,11 +479,14 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
             {
                 if (_context.CanUpdateHistorySelection)
                 {
-                    SelectedRow = selectedHash is null
+                    var lookupStartedAt = Stopwatch.GetTimestamp();
+                    var restored = selectedHash is null
                         ? _rows.FirstOrDefault()
                         : _rows.FirstOrDefault(row =>
                             string.Equals(row.Commit.Hash, selectedHash, StringComparison.Ordinal))
                           ?? _rows.FirstOrDefault();
+                    CommitLookupCompleted?.Invoke(lookupStartedAt, _rows.Count);
+                    SelectedRow = restored;
                 }
             }
             else if (_context.CanUpdateHistorySelection
