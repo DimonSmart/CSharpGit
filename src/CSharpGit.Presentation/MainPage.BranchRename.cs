@@ -86,11 +86,10 @@ public sealed partial class MainPage
             newName,
             () =>
             {
-                if (string.Equals(_activeReference, oldName, StringComparison.Ordinal))
-                {
-                    _activeReference = newName;
-                    ActiveReferenceText.Text = $"Branch: {newName}";
-                }
+                _viewModel.History.HandleReferenceRenamed(
+                    oldName,
+                    newName,
+                    $"Branch: {newName}");
             });
 
         if (succeeded)
