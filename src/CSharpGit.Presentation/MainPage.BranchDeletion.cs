@@ -200,8 +200,7 @@ public sealed partial class MainPage
             deleteRemote,
             reference =>
             {
-                if (string.Equals(_activeReference, reference, StringComparison.Ordinal))
-                    ShowAllHistory();
+                _viewModel.History.HandleReferenceDeleted(reference);
             });
 
         if (result.LocalDeleted
@@ -318,8 +317,7 @@ public sealed partial class MainPage
             localDeletionMode,
             reference =>
             {
-                if (string.Equals(_activeReference, reference, StringComparison.Ordinal))
-                    ShowAllHistory();
+                _viewModel.History.HandleReferenceDeleted(reference);
             });
 
         if (result.RemoteDeleted
