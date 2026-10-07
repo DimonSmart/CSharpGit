@@ -64,7 +64,7 @@ public sealed class RepositoryMaintenanceUiContractTests
     {
         var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
 
-        Assert.Contains("includeHistory: _viewModel.ShowReflog", source, StringComparison.Ordinal);
+        Assert.Contains("includeHistory: _viewModel.History.ShowReflog", source, StringComparison.Ordinal);
         Assert.Contains("_worktreesViewModel.RefreshAsync(throwOnError: true)", source, StringComparison.Ordinal);
         Assert.DoesNotContain("AcknowledgeRepositoryRefresh()", source, StringComparison.Ordinal);
         Assert.DoesNotContain("RefreshAllAsync", source, StringComparison.Ordinal);

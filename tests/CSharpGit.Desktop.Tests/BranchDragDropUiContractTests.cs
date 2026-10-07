@@ -63,7 +63,7 @@ public sealed class BranchDragDropUiContractTests
         Assert.Contains("string.Equals(oldName, newName, StringComparison.Ordinal)", rename, StringComparison.Ordinal);
         Assert.Contains("_viewModel.Branches.RenameBranchAsync(", rename, StringComparison.Ordinal);
         Assert.DoesNotContain("_referenceService.RenameBranchAsync(", rename, StringComparison.Ordinal);
-        Assert.Contains("_activeReference = newName;", rename, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.History.HandleReferenceRenamed(", rename, StringComparison.Ordinal);
         Assert.Contains("await _worktreesViewModel.RefreshAsync();", rename, StringComparison.Ordinal);
     }
 
