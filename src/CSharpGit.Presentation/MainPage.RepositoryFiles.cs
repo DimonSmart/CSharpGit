@@ -48,7 +48,7 @@ public sealed partial class MainPage
     {
         _repositoryFilesViewModel = repositoryFilesViewModel
             ?? throw new ArgumentNullException(nameof(repositoryFilesViewModel));
-        _repositoryFilesViewModel.Attach(_viewModel);
+        _repositoryFilesViewModel.Attach(_viewModel.CommitDetails);
         InitializeRepositoryFiles();
     }
 

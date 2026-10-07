@@ -23,7 +23,7 @@ public sealed partial class MainPage
 
         ChangedFilesTree.ItemsSource = _changedFileTreeRoots;
         _commitFiles.CollectionChanged += CommitFiles_CollectionChanged;
-        _viewModel.PropertyChanged += ChangesViewModel_PropertyChanged;
+        _viewModel.CommitDetails.PropertyChanged += ChangesViewModel_PropertyChanged;
 
         RebuildChangedFileTree();
         RebuildCompactDiff();
@@ -39,7 +39,7 @@ public sealed partial class MainPage
     private void UpdateChangesViewActivity()
     {
         var active = ReferenceEquals(DetailsTabs.SelectedItem, ChangesTabControl);
-        _viewModel.SetChangesViewActive(active);
+        _viewModel.CommitDetails.SetActive(active);
         if (!active) CancelCommitImageDiff(clearSurface: true);
     }
 
@@ -59,26 +59,26 @@ public sealed partial class MainPage
 
     private void ChangesViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
-        if (args.PropertyName is nameof(OpenRepositoryViewModel.SelectedDiff)
-            or nameof(OpenRepositoryViewModel.DiffLoadErrorMessage)
-            or nameof(OpenRepositoryViewModel.IsDiffPreviewDeferred)
-            or nameof(OpenRepositoryViewModel.DiffPreviewDeferredMessage)
-            or nameof(OpenRepositoryViewModel.DiffPreviewActionText)
-            or nameof(OpenRepositoryViewModel.IsNoNetStashDiff))
+        if (args.PropertyName is nameof(CommitDetailsViewModel.SelectedDiff)
+            or nameof(CommitDetailsViewModel.DiffLoadErrorMessage)
+            or nameof(CommitDetailsViewModel.IsDiffPreviewDeferred)
+            or nameof(CommitDetailsViewModel.DiffPreviewDeferredMessage)
+            or nameof(CommitDetailsViewModel.DiffPreviewActionText)
+            or nameof(CommitDetailsViewModel.IsNoNetStashDiff))
         {
             RebuildCompactDiff();
         }
-        else if (args.PropertyName == nameof(OpenRepositoryViewModel.SelectedFile))
+        else if (args.PropertyName == nameof(CommitDetailsViewModel.SelectedFile))
         {
             CancelCommitImageDiff(clearSurface: true);
             CompactDiffViewer.Clear();
             SetCommitDiffPresentationState(
-                _viewModel.SelectedFile is null
+                _viewModel.CommitDetails.SelectedFile is null
                     ? DiffPresentationState.NothingSelected
                     : DiffPresentationState.LoadingDiff);
             SyncChangedFileTreeSelection();
         }
-        else if (args.PropertyName == nameof(OpenRepositoryViewModel.SelectedChangedFiles))
+        else if (args.PropertyName == nameof(CommitDetailsViewModel.ChangedFiles))
         {
             EnsureCurrentCommitFileSelection();
         }
@@ -102,16 +102,16 @@ public sealed partial class MainPage
         if (!_changesSurfaceInitialized) return;
 
         CancelCommitImageDiff(clearSurface: false);
-        if (_viewModel.SelectedDiff is not { } diff)
+        if (_viewModel.CommitDetails.SelectedDiff is not { } diff)
         {
             CompactDiffViewer.Clear();
-            var state = _viewModel.SelectedFile is null
+            var state = _viewModel.CommitDetails.SelectedFile is null
                 ? DiffPresentationState.NothingSelected
-                : _viewModel.IsNoNetStashDiff
+                : _viewModel.CommitDetails.IsNoNetStashDiff
                     ? DiffPresentationState.NoNetStashDiff
-                : _viewModel.IsDiffPreviewDeferred
+                : _viewModel.CommitDetails.IsDiffPreviewDeferred
                     ? DiffPresentationState.LargeDiff
-                    : !string.IsNullOrWhiteSpace(_viewModel.DiffLoadErrorMessage)
+                    : !string.IsNullOrWhiteSpace(_viewModel.CommitDetails.DiffLoadErrorMessage)
                         ? DiffPresentationState.Error
                         : DiffPresentationState.LoadingDiff;
             SetCommitDiffPresentationState(state);
@@ -142,38 +142,38 @@ public sealed partial class MainPage
 
     private void EnsureCurrentCommitFileSelection()
     {
-        if (!_viewModel.IsChangesViewActive) return;
-        var files = _viewModel.SelectedChangedFiles;
+        if (!_viewModel.CommitDetails.IsChangesViewActive) return;
+        var files = _viewModel.CommitDetails.ChangedFiles;
         if (files.Count == 0) return;
 
-        var selected = _viewModel.SelectedFile;
+        var selected = _viewModel.CommitDetails.SelectedFile;
         var current = selected is null
             ? files[0]
             : files.FirstOrDefault(file => string.Equals(file.Path, selected.Path, StringComparison.Ordinal)) ?? files[0];
 
         if (ReferenceEquals(selected, current)) return;
-        _viewModel.SelectedFile = current;
+        _viewModel.CommitDetails.SelectedFile = current;
     }
 
     private void SyncChangedFileTreeSelection()
     {
-        if (!_changesSurfaceInitialized || _viewModel.SelectedFile is null) return;
-        var node = FindChangedFileNode(_changedFileTreeRoots, _viewModel.SelectedFile.Path);
+        if (!_changesSurfaceInitialized || _viewModel.CommitDetails.SelectedFile is null) return;
+        var node = FindChangedFileNode(_changedFileTreeRoots, _viewModel.CommitDetails.SelectedFile.Path);
         if (node is not null && !ReferenceEquals(ChangedFilesTree.SelectedItem, node))
             ChangedFilesTree.SelectedItem = node;
     }
 
     private void CommitLargeDiffButton_Click(object sender, RoutedEventArgs args) =>
-        _viewModel.LoadSelectedDiffAnyway();
+        _viewModel.CommitDetails.LoadSelectedDiffAnyway();
 
     private void ChangedFilesTree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
     {
         var node = ResolveChangedFileNode(args.InvokedItem);
         if (node?.Entry is null) return;
 
-        if (!ReferenceEquals(_viewModel.SelectedFile, node.Entry.File) && _viewModel.SelectedFile == node.Entry.File)
-            _viewModel.SelectedFile = null;
-        _viewModel.SelectedFile = node.Entry.File;
+        if (!ReferenceEquals(_viewModel.CommitDetails.SelectedFile, node.Entry.File) && _viewModel.CommitDetails.SelectedFile == node.Entry.File)
+            _viewModel.CommitDetails.SelectedFile = null;
+        _viewModel.CommitDetails.SelectedFile = node.Entry.File;
     }
 
     private static ChangedFileTreeNode? ResolveChangedFileNode(object? value) => value switch

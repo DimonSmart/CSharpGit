@@ -68,6 +68,8 @@ public sealed partial class MainPage : Page
         CommitFilesList.ItemsSource = _commitFiles;
 
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+        _viewModel.Stashes.PropertyChanged += StashesViewModel_PropertyChanged;
+        _viewModel.CommitDetails.PropertyChanged += CommitDetailsViewModel_PropertyChanged;
         _viewModel.History.PropertyChanged += HistoryViewModel_PropertyChanged;
         _viewModel.History.CommitLookupCompleted += History_CommitLookupCompleted;
         _viewModel.WorkingTree.Changes.CollectionChanged += RepositoryPresentationChanges_CollectionChanged;
@@ -75,7 +77,7 @@ public sealed partial class MainPage : Page
         _viewModel.Branches.RemoteBranches.CollectionChanged += RepositoryPresentationRemoteBranches_CollectionChanged;
         _viewModel.Remotes.CollectionChanged += RepositoryPresentationRemotes_CollectionChanged;
         _viewModel.Tags.CollectionChanged += RepositoryPresentationTags_CollectionChanged;
-        _viewModel.Stashes.CollectionChanged += RepositoryPresentationStashes_CollectionChanged;
+        _viewModel.Stashes.Items.CollectionChanged += RepositoryPresentationStashes_CollectionChanged;
         Loaded += RunDesktopCheckWhenRequested;
         RefreshPresentationCollections();
         InitializeWorkingTreeDiffSurface();
@@ -137,15 +139,6 @@ public sealed partial class MainPage : Page
         {
             UpdateStatusBar();
         }
-        else if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.SelectedChangedFiles))
-        {
-            _ = RefreshCommitFilesAsync();
-        }
-        else if (eventArgs.PropertyName is nameof(OpenRepositoryViewModel.SelectedStash)
-                 or nameof(OpenRepositoryViewModel.SelectedStashDetails))
-        {
-            UpdateStashPresentation();
-        }
         else if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.IsBusy))
         {
             var becameIdle = _wasBusy && !_viewModel.IsBusy;
@@ -154,6 +147,22 @@ public sealed partial class MainPage : Page
             if (becameIdle && ShouldRestorePendingEditedCommitSelection)
                 _ = RestorePendingEditedCommitSelectionAsync();
         }
+    }
+
+    private void StashesViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+    {
+        if (eventArgs.PropertyName is nameof(StashesViewModel.SelectedStash)
+            or nameof(StashesViewModel.HasSelectedStash))
+            UpdateStashPresentation();
+    }
+
+    private void CommitDetailsViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+    {
+        if (eventArgs.PropertyName == nameof(CommitDetailsViewModel.ChangedFiles))
+            _ = RefreshCommitFilesAsync();
+        else if (eventArgs.PropertyName is nameof(CommitDetailsViewModel.SelectedStashDetails)
+                 or nameof(CommitDetailsViewModel.HasSelectedStash))
+            UpdateStashPresentation();
     }
 
     private void HistoryViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
@@ -285,16 +294,16 @@ public sealed partial class MainPage : Page
 
     private Task RefreshCommitFilesAsync()
     {
-        var files = _viewModel.SelectedChangedFiles;
+        var files = _viewModel.CommitDetails.ChangedFiles;
         _commitFiles.Clear();
         ChangesTab.Header = files.Count == 0 ? "Changes" : $"Changes ({files.Count})";
 
         foreach (var file in files)
             _commitFiles.Add(new CommitFileRow(
-                _viewModel.GetChangedFileDisplayStatus(file),
+                _viewModel.CommitDetails.GetChangedFileDisplayStatus(file),
                 file));
 
-        var selected = _commitFiles.FirstOrDefault(row => ReferenceEquals(row.File, _viewModel.SelectedFile)) ?? _commitFiles.FirstOrDefault();
+        var selected = _commitFiles.FirstOrDefault(row => ReferenceEquals(row.File, _viewModel.CommitDetails.SelectedFile)) ?? _commitFiles.FirstOrDefault();
         CommitFilesList.SelectedItem = selected;
         return Task.CompletedTask;
     }
@@ -304,7 +313,7 @@ public sealed partial class MainPage : Page
         bool preserveSelectedStash = false)
     {
         if (!preserveSelectedStash)
-            _viewModel.ClearSelectedStashSelection();
+            _viewModel.Stashes.ClearSelection();
 
         HistoryPane.Visibility = Visibility.Visible;
         WorkingTreePane.Visibility = Visibility.Collapsed;
@@ -327,7 +336,7 @@ public sealed partial class MainPage : Page
 
     private async Task ShowAllHistoryAsync()
     {
-        _viewModel.ClearSelectedStashSelection();
+        _viewModel.Stashes.ClearSelection();
         HistoryPane.Visibility = Visibility.Visible;
         WorkingTreePane.Visibility = Visibility.Collapsed;
         await _viewModel.History.ShowAllAsync();
@@ -384,7 +393,7 @@ public sealed partial class MainPage : Page
                 await NavigateToReferenceAsync(tag.TargetCommit);
                 break;
             case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:
-                await _viewModel.SelectStashAsync(stash);
+                await _viewModel.Stashes.SelectStashAsync(stash);
                 await NavigateToReferenceAsync(stash.Commit, preserveSelectedStash: true);
                 UpdateStashPresentation();
                 break;
@@ -471,24 +480,24 @@ public sealed partial class MainPage : Page
 
             case RepositoryTreeNodeKind.Group
                 when string.Equals(node.Key, RepositoryTreeDescriptorBuilder.StashesRootKey, StringComparison.Ordinal):
-                AddMenuItem(flyout, "Stash…", _viewModel.CanCreateStash, ShowCreateStashDialogAsync);
+                AddMenuItem(flyout, "Stash…", _viewModel.Stashes.CanCreateStash, ShowCreateStashDialogAsync);
                 break;
 
             case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:
-                AddMenuItem(flyout, "Apply", _viewModel.CanMutateStash(stash), async () =>
+                AddMenuItem(flyout, "Apply", _viewModel.Stashes.CanMutateStash(stash), async () =>
                 {
-                    await _viewModel.SelectStashAsync(stash);
-                    await ExecuteCommandAsync(_viewModel.ApplyStashCommand);
+                    await _viewModel.Stashes.SelectStashAsync(stash);
+                    await ExecuteCommandAsync(_viewModel.Stashes.ApplyCommand);
                 });
-                AddMenuItem(flyout, "Pop", _viewModel.CanMutateStash(stash), async () =>
+                AddMenuItem(flyout, "Pop", _viewModel.Stashes.CanMutateStash(stash), async () =>
                 {
-                    await _viewModel.SelectStashAsync(stash);
-                    await ExecuteCommandAsync(_viewModel.PopStashCommand);
+                    await _viewModel.Stashes.SelectStashAsync(stash);
+                    await ExecuteCommandAsync(_viewModel.Stashes.PopCommand);
                 });
                 flyout.Items.Add(new MenuFlyoutSeparator());
-                AddMenuItem(flyout, "Drop…", _viewModel.CanMutateStash(stash), async () =>
+                AddMenuItem(flyout, "Drop…", _viewModel.Stashes.CanMutateStash(stash), async () =>
                 {
-                    await _viewModel.SelectStashAsync(stash);
+                    await _viewModel.Stashes.SelectStashAsync(stash);
                     await ConfirmDropStashAsync(stash);
                 });
                 break;
@@ -502,7 +511,7 @@ public sealed partial class MainPage : Page
     private void UpdateStashPresentation()
     {
         if (_repositoryFilesTab is not null)
-            _repositoryFilesTab.Header = _viewModel.HasSelectedStash
+            _repositoryFilesTab.Header = _viewModel.Stashes.HasSelectedStash
                 ? "Tracked files"
                 : "Files";
     }
@@ -632,7 +641,7 @@ public sealed partial class MainPage : Page
 
     private void CommitFilesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (CommitFilesList.SelectedItem is CommitFileRow row) _viewModel.SelectedFile = row.File;
+        if (CommitFilesList.SelectedItem is CommitFileRow row) _viewModel.CommitDetails.SelectedFile = row.File;
     }
 
     private void CommitFilesList_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)

@@ -83,7 +83,7 @@ public sealed partial class MainPage
                 _viewModel.Branches.RemoteBranches,
                 _viewModel.Remotes,
                 _viewModel.Tags,
-                _viewModel.Stashes,
+                _viewModel.Stashes.Items,
                 _worktreesViewModel.Worktrees);
         }
         catch (InvalidOperationException exception)
@@ -117,7 +117,7 @@ public sealed partial class MainPage
             _viewModel.Branches.RemoteBranches,
             _viewModel.Remotes,
             _viewModel.Tags,
-            _viewModel.Stashes,
+            _viewModel.Stashes.Items,
             _worktreesViewModel.Worktrees);
     }
 
