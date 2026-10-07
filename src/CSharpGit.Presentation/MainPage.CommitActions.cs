@@ -125,7 +125,7 @@ public sealed partial class MainPage
 
     private async Task CreateBranchFromReferenceAsync(string startPoint, string? restoreSelectionCommit = null)
     {
-        if (_viewModel.Repository is null || _viewModel.IsBusy || _viewModel.CurrentOperation != RepositoryOperation.None) return;
+        if (_viewModel.Repository is null || _viewModel.IsBusy || _viewModel.RepositoryOperations.CurrentOperation != RepositoryOperation.None) return;
 
         var branchName = new TextBox { Header = "Name", PlaceholderText = "feature/foo" };
         var switchToBranch = new CheckBox { Content = "Switch to the new branch", IsChecked = true };
@@ -218,7 +218,7 @@ public sealed partial class MainPage
         if (!TryGetCommitActionContext(out _, out var commit)) return;
 
         var hash = commit.Hash;
-        if (!await _viewModel.PrepareInteractiveRebaseFromCommitAsync(hash))
+        if (!await _viewModel.InteractiveRebase.PrepareInteractiveRebaseFromCommitAsync(hash))
             return;
 
         await ShowInteractiveRebaseEditorAsync();

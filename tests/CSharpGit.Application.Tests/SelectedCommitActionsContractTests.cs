@@ -74,7 +74,7 @@ public sealed class SelectedCommitActionsContractTests
         var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Dialogs.cs"));
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
-        var rebaseViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.InteractiveRebase.cs"));
+        var rebaseViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "InteractiveRebaseViewModel.cs"));
         var rebase = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IInteractiveRebaseService.cs"));
         var rebaseImplementation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitInteractiveRebaseService.cs"));
         var todoHelp = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "InteractiveRebaseTodoHelp.cs"));
@@ -96,8 +96,9 @@ public sealed class SelectedCommitActionsContractTests
         Assert.Contains("StartInteractiveRebaseTodoAsync", rebaseViewModel);
         Assert.DoesNotContain("ReadInteractiveRebasePlan", rebaseViewModel);
 
-        Assert.Contains("InteractiveRebaseTodo", viewModel);
-        Assert.Contains("RebaseTodoText", viewModel);
+        Assert.Contains("public InteractiveRebaseViewModel InteractiveRebase { get; }", viewModel);
+        Assert.Contains("InteractiveRebaseTodo", rebaseViewModel);
+        Assert.Contains("RebaseTodoText", rebaseViewModel);
         Assert.DoesNotContain("RebasePlanItem", viewModel);
         Assert.DoesNotContain("LoadRebasePlanCommand", viewModel);
         Assert.DoesNotContain("StartRebaseCommand", viewModel);

@@ -21,6 +21,7 @@ public sealed partial class OpenRepositoryViewModel
         History.ResetForRepositoryMutation();
         Stashes.ClearSelection();
         CommitDetails.Invalidate();
+        InteractiveRebase.Invalidate();
     }
 
     internal async Task SelectHistoryCommitAfterRewriteAsync(string commitHash)
@@ -40,13 +41,13 @@ public sealed partial class OpenRepositoryViewModel
         string newMessage)
     {
         EditCommitMessageResult? result = null;
-        var succeeded = await MutateAsync(
+        var succeeded = await RunHistoryRewriteMutationAsync(
             async () => result = await _commitActionService.EditCommitMessageAsync(
                 expectedRepository,
                 commitHash,
                 newMessage),
             "Could not edit commit message",
-            expectedRepository: expectedRepository);
+            expectedRepository);
 
         return succeeded ? result : null;
     }

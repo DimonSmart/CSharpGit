@@ -16,7 +16,7 @@
         <Grid ColumnDefinitions="*,Auto">
           <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
             <TextBlock Text="onto:" Style="{StaticResource BodySubduedTextStyle}" />
-            <TextBlock Text="{Binding RebaseOnto}" Style="{StaticResource BodyStrongTextStyle}" IsTextSelectionEnabled="True" />
+            <TextBlock Text="{Binding InteractiveRebase.RebaseOnto}" Style="{StaticResource BodyStrongTextStyle}" IsTextSelectionEnabled="True" />
           </StackPanel>
           <Button x:Name="ChangeInteractiveRebaseAuthorButton"
                   Grid.Column="1"
@@ -26,7 +26,7 @@
         </Grid>
         <controls:InteractiveRebaseTodoEditor x:Name="InteractiveRebaseTodoEditor"
                                               Grid.Row="1"
-                                              Text="{Binding RebaseTodoText, Mode=TwoWay}"
+                                              Text="{Binding InteractiveRebase.RebaseTodoText, Mode=TwoWay}"
                                               MinHeight="350"
                                               MaxHeight="650"
                                               HorizontalAlignment="Stretch"
@@ -320,7 +320,10 @@
 
         </Grid>
       </Border>
-      <controls:OperationBanner Grid.Row="1" Grid.ColumnSpan="3" Visibility="{Binding HasActiveOperation, Converter={StaticResource BooleanToVisibilityConverter}}" />
+      <controls:OperationBanner Grid.Row="1"
+                                Grid.ColumnSpan="3"
+                                DataContext="{Binding RepositoryOperations}"
+                                Visibility="{Binding HasActiveOperation, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
       <Border Grid.Row="2"
               Grid.Column="0"

@@ -23,8 +23,8 @@ public sealed class InteractiveRebaseAuthorChangeUiContractTests
         Assert.Contains("internal int SelectionLength => Editor.SelectionLength;", editor, StringComparison.Ordinal);
         Assert.Contains("AnalyzeInteractiveRebaseAuthorChange", source, StringComparison.Ordinal);
         Assert.Contains("ApplyInteractiveRebaseAuthorChangeAsync", source, StringComparison.Ordinal);
-        Assert.Contains("await _viewModel.ApplyInteractiveRebaseAuthorChangeAsync", source, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.RebaseTodoText = result.TodoText;", source, StringComparison.Ordinal);
+        Assert.Contains("await _viewModel.InteractiveRebase.ApplyInteractiveRebaseAuthorChangeAsync", source, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.InteractiveRebase.RebaseTodoText = result.TodoText;", source, StringComparison.Ordinal);
         Assert.DoesNotContain("StartPreparedInteractiveRebaseAsync", source, StringComparison.Ordinal);
         Assert.DoesNotContain("StartInteractiveRebaseTodoAsync", source, StringComparison.Ordinal);
     }

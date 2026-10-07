@@ -4,6 +4,9 @@ namespace CSharpGit.Presentation.ViewModels;
 
 public sealed partial class OpenRepositoryViewModel : ICommitActionsRepositoryContext
 {
+    RepositoryOperation ICommitActionsRepositoryContext.CurrentOperation =>
+        RepositoryOperations.CurrentOperation;
+
     Task<bool> ICommitActionsRepositoryContext.RunCommitMutationAsync(
         Repository expectedRepository,
         Func<Task> mutation,
@@ -29,5 +32,5 @@ public sealed partial class OpenRepositoryViewModel : ICommitActionsRepositoryCo
     private bool CanRunCommitAction(Repository expectedRepository) =>
         ReferenceEquals(Repository, expectedRepository)
         && !IsBusy
-        && CurrentOperation == RepositoryOperation.None;
+        && RepositoryOperations.CurrentOperation == RepositoryOperation.None;
 }

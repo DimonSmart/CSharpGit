@@ -4,6 +4,9 @@ namespace CSharpGit.Presentation.ViewModels;
 
 public sealed partial class OpenRepositoryViewModel : ITagsRepositoryContext
 {
+    RepositoryOperation ITagsRepositoryContext.CurrentOperation =>
+        RepositoryOperations.CurrentOperation;
+
     IReadOnlyList<GitRemote> ITagsRepositoryContext.Remotes => Remotes;
     IReadOnlyList<GitBranch> ITagsRepositoryContext.LocalBranches => Branches.LocalBranches;
 
