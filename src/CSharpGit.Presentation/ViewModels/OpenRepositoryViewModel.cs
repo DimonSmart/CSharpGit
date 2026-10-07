@@ -271,7 +271,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public ChangedFile? SelectedFile { get => _selectedFile; set { if (_selectedFile == value) return; _selectedFile = value; Notify(); OnSelectedFileChanged(); } }
     public FileDiff? SelectedDiff { get => _selectedDiff; private set { _selectedDiff = value; Notify(); Notify(nameof(HasTextDiff)); Notify(nameof(HasBinaryDiff)); } }
     public bool IsDiffLoading { get => _isDiffLoading; private set { if (_isDiffLoading == value) return; _isDiffLoading = value; Notify(); } }
-    public bool HasMore { get => _hasMore; private set { _hasMore = value; Notify(); ((AsyncCommand)LoadMoreCommand).RaiseCanExecuteChanged(); } }
     public bool HasTextDiff => SelectedDiff is { IsBinary: false };
     public bool HasBinaryDiff => SelectedDiff?.IsBinary == true;
     public string CommitMessage { get => _commitMessage; set { _commitMessage = value; Notify(); RaiseCommands(); } }
