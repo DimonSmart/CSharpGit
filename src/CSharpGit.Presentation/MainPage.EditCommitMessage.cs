@@ -11,7 +11,7 @@ public sealed partial class MainPage
 
     private bool ShouldRestorePendingEditedCommitSelection =>
         _pendingOriginalEditedCommitHash is not null &&
-        _viewModel.CurrentOperation == RepositoryOperation.None;
+        _viewModel.RepositoryOperations.CurrentOperation == RepositoryOperation.None;
 
     private async void EditCommitMessage_Click(object sender, RoutedEventArgs e)
     {
@@ -62,7 +62,7 @@ public sealed partial class MainPage
                 !string.IsNullOrWhiteSpace(candidate) &&
                 !string.Equals(originalMessage, candidate, StringComparison.Ordinal) &&
                 !_viewModel.IsBusy &&
-                _viewModel.CurrentOperation == RepositoryOperation.None;
+                _viewModel.RepositoryOperations.CurrentOperation == RepositoryOperation.None;
         }
 
         messageBox.TextChanged += (_, _) => UpdatePrimaryButton();

@@ -133,6 +133,7 @@ public sealed class DesktopUiContractTests
         var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
         var surface = xaml + operationBanner + page + confirmationDialogs + forcePushPage + commitActions;
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
+        var repositoryOperations = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryOperationsViewModel.cs"));
         foreach (var command in new[]
         {
             "StageSelectedCommand", "StageAllCommand", "UnstageSelectedCommand", "UnstageAllCommand",
@@ -154,10 +155,10 @@ public sealed class DesktopUiContractTests
         Assert.Contains("CurrentOperation == RepositoryOperation.None", viewModel);
         Assert.Contains("Branches.LocalBranches.Any(branch => branch.IsCurrent)", viewModel);
 
-        Assert.Contains("OperationState.CanContinue", viewModel);
-        Assert.Contains("OperationState.CanSkip", viewModel);
-        Assert.Contains("OperationState.CanAbort", viewModel);
-        Assert.Contains("SelectedConflict?.CanRunMergeTool", viewModel);
+        Assert.Contains("OperationState.CanContinue", repositoryOperations);
+        Assert.Contains("OperationState.CanSkip", repositoryOperations);
+        Assert.Contains("OperationState.CanAbort", repositoryOperations);
+        Assert.Contains("SelectedConflict?.CanRunMergeTool", repositoryOperations);
     }
 
     [Fact]

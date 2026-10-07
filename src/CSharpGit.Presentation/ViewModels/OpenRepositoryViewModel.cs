@@ -20,14 +20,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private readonly ICommitActionService _commitActionService;
     private readonly IReferenceService _referenceService;
     private readonly IRepositorySyncService _syncService;
-    private readonly IMergeService _mergeService;
-    private readonly IInteractiveRebaseService _interactiveRebaseService;
-    private readonly IConflictResolutionService _conflictResolutionService;
-    private readonly IRepositoryOperationService _repositoryOperationService;
-    private readonly IExternalGitToolService _externalGitToolService;
-    private readonly IRepositoryIdentityService? _repositoryIdentityService;
-    private readonly IInteractiveRebaseAuthorChangeService? _interactiveRebaseAuthorChangeService;
-    private readonly ICommitAuthorDateReader? _commitAuthorDateReader;
     private readonly IAppSettingsService _settings;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly AsyncCommand _openRepositoryCommand;
@@ -48,14 +40,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private string? _currentHeadCommit;
     private bool _isDetachedHead;
     private bool? _headExists;
-    private GitBranch? _selectedMergeBranch;
-    private string _operationDisplay = string.Empty;
-    private string _rebaseOnto = string.Empty;
-    private InteractiveRebaseTodo? _preparedInteractiveRebaseTodo;
-    private string _rebaseTodoText = string.Empty;
-    private RepositoryOperation _currentOperation;
-    private ConflictFile? _selectedConflict;
-    private RepositoryOperationState _operationState = RepositoryOperationState.None;
     private readonly DisplayedWorkingTreeBaseline _displayedWorkingTreeBaseline = new();
     internal event Action<Repository>? RepositoryStateRefreshStarting;
     internal event Action<Repository>? RepositoryStateRefreshCompleted;
@@ -74,17 +58,11 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         ICommitActionService commitActionService,
         IReferenceService referenceService,
         IRepositorySyncService syncService,
-        IMergeService mergeService,
-        IInteractiveRebaseService interactiveRebaseService,
-        IConflictResolutionService conflictResolutionService,
-        IRepositoryOperationService repositoryOperationService,
-        IExternalGitToolService externalGitToolService,
+        RepositoryOperationsViewModel repositoryOperationsViewModel,
+        InteractiveRebaseViewModel interactiveRebaseViewModel,
         IAppSettingsService settings,
         IUiDispatcher uiDispatcher,
-        ILogger<OpenRepositoryViewModel> logger,
-        IRepositoryIdentityService? repositoryIdentityService = null,
-        IInteractiveRebaseAuthorChangeService? interactiveRebaseAuthorChangeService = null,
-        ICommitAuthorDateReader? commitAuthorDateReader = null)
+        ILogger<OpenRepositoryViewModel> logger)
     {
         _folderPicker = folderPicker;
         _repositoryService = repositoryService;
@@ -104,17 +82,14 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         CommitDetails.Attach(this);
         CommitActions = commitActionsViewModel ?? throw new ArgumentNullException(nameof(commitActionsViewModel));
         CommitActions.Attach(this);
+        RepositoryOperations = repositoryOperationsViewModel ?? throw new ArgumentNullException(nameof(repositoryOperationsViewModel));
+        RepositoryOperations.Attach(this);
+        RepositoryOperations.PropertyChanged += RepositoryOperations_PropertyChanged;
+        InteractiveRebase = interactiveRebaseViewModel ?? throw new ArgumentNullException(nameof(interactiveRebaseViewModel));
+        InteractiveRebase.Attach(this);
         _commitActionService = commitActionService ?? throw new ArgumentNullException(nameof(commitActionService));
         _referenceService = referenceService;
         _syncService = syncService;
-        _mergeService = mergeService;
-        _interactiveRebaseService = interactiveRebaseService;
-        _conflictResolutionService = conflictResolutionService;
-        _repositoryOperationService = repositoryOperationService;
-        _externalGitToolService = externalGitToolService;
-        _repositoryIdentityService = repositoryIdentityService;
-        _interactiveRebaseAuthorChangeService = interactiveRebaseAuthorChangeService;
-        _commitAuthorDateReader = commitAuthorDateReader;
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
         _settings.Changed += AppSettings_Changed;
@@ -137,19 +112,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         FetchAllCommand = new AsyncCommand(() => MutateAsync(() => _syncService.FetchAllAsync(Repository!)), CanMutate);
         PullCommand = new AsyncCommand(() => MutateAsync(() => _syncService.PullAsync(Repository!)), CanMutate);
         PushCommand = new AsyncCommand(() => MutateAsync(() => _syncService.PushAsync(Repository!)), CanMutate);
-        MergeCommand = new AsyncCommand(MergeAsync, () => CanMutate() && SelectedMergeBranch is { IsCurrent: false });
-        ContinueRebaseCommand = new AsyncCommand(ContinueRebaseAsync, () => CanMutate() && CurrentOperation == RepositoryOperation.Rebase);
-        AbortRebaseCommand = new AsyncCommand(() => MutateAsync(() => _interactiveRebaseService.AbortRebaseAsync(Repository!)), () => CanMutate() && CurrentOperation == RepositoryOperation.Rebase);
-        OpenConflictCommand = new AsyncCommand(() => RunConflictActionAsync(() => _externalGitToolService.OpenConflictInEditorAsync(Repository!, SelectedConflict!)), () => CanMutate() && SelectedConflict?.CanOpenManually == true);
-        ChooseCurrentCommand = new AsyncCommand(() => MutateAsync(() => _conflictResolutionService.ChooseConflictSideAsync(Repository!, SelectedConflict!, ConflictResolutionSide.CurrentLocal)), () => CanMutate() && SelectedConflict?.CanChooseCurrentLocal == true);
-        ChooseIncomingCommand = new AsyncCommand(() => MutateAsync(() => _conflictResolutionService.ChooseConflictSideAsync(Repository!, SelectedConflict!, ConflictResolutionSide.IncomingRemote)), () => CanMutate() && SelectedConflict?.CanChooseIncomingRemote == true);
-        KeepDeletionCommand = new AsyncCommand(() => MutateAsync(() => _conflictResolutionService.KeepConflictDeletionAsync(Repository!, SelectedConflict!)), () => CanMutate() && SelectedConflict?.CanKeepDeletion == true);
-        StageConflictCommand = new AsyncCommand(() => MutateAsync(() => _conflictResolutionService.StageResolvedConflictAsync(Repository!, SelectedConflict!)), () => CanMutate() && SelectedConflict?.CanStage == true);
-        MergeToolCommand = new AsyncCommand(() => MutateAsync(() => _externalGitToolService.RunMergeToolForFileAsync(Repository!, SelectedConflict!)), () => CanMutate() && SelectedConflict?.CanRunMergeTool == true);
-        MergeToolWorkflowCommand = new AsyncCommand(() => MutateAsync(() => _externalGitToolService.RunMergeToolWorkflowAsync(Repository!)), () => CanMutate() && Conflicts.Any(conflict => !conflict.IsResolved));
-        ContinueOperationCommand = new AsyncCommand(() => MutateAsync(() => _repositoryOperationService.ContinueOperationAsync(Repository!)), () => CanMutate() && OperationState.CanContinue);
-        AbortOperationCommand = new AsyncCommand(() => MutateAsync(() => _repositoryOperationService.AbortOperationAsync(Repository!)), () => CanMutate() && OperationState.CanAbort);
-        SkipOperationCommand = new AsyncCommand(() => MutateAsync(() => _repositoryOperationService.SkipOperationAsync(Repository!)), () => CanMutate() && OperationState.CanSkip);
     }
 
     public void Dispose()
@@ -159,6 +121,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         Stashes.SelectedStashChanged -= Stashes_SelectedStashChanged;
         Stashes.Dispose();
         CommitDetails.Dispose();
+        RepositoryOperations.PropertyChanged -= RepositoryOperations_PropertyChanged;
+        RepositoryOperations.Dispose();
+        InteractiveRebase.Dispose();
         _settings.Changed -= AppSettings_Changed;
         History.SelectedRowChanged -= History_SelectedRowChanged;
         History.Dispose();
@@ -208,28 +173,16 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public ICommand FetchAllCommand { get; }
     public ICommand PullCommand { get; }
     public ICommand PushCommand { get; }
-    public ICommand MergeCommand { get; }
-    public ICommand ContinueRebaseCommand { get; }
-    public ICommand AbortRebaseCommand { get; }
-    public ICommand OpenConflictCommand { get; }
-    public ICommand ChooseCurrentCommand { get; }
-    public ICommand ChooseIncomingCommand { get; }
-    public ICommand KeepDeletionCommand { get; }
-    public ICommand StageConflictCommand { get; }
-    public ICommand MergeToolCommand { get; }
-    public ICommand MergeToolWorkflowCommand { get; }
-    public ICommand ContinueOperationCommand { get; }
-    public ICommand AbortOperationCommand { get; }
-    public ICommand SkipOperationCommand { get; }
     public HistoryViewModel History { get; }
     public StashesViewModel Stashes { get; }
     public CommitDetailsViewModel CommitDetails { get; }
     public CommitActionsViewModel CommitActions { get; }
+    public RepositoryOperationsViewModel RepositoryOperations { get; }
+    public InteractiveRebaseViewModel InteractiveRebase { get; }
     public WorkingTreeViewModel WorkingTree { get; }
     public BranchesViewModel Branches { get; }
     public ObservableCollection<GitRemote> Remotes { get; } = new BulkObservableCollection<GitRemote>();
     public ObservableCollection<GitTag> Tags { get; } = new BulkObservableCollection<GitTag>();
-    public ObservableCollection<ConflictFile> Conflicts { get; } = new BulkObservableCollection<ConflictFile>();
     public Repository? Repository
     {
         get => _repository;
@@ -271,33 +224,14 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public string? CurrentBranchName => _currentBranchName;
     public string? CurrentHeadCommit => _currentHeadCommit;
     public bool IsDetachedHead => _isDetachedHead;
-    public GitBranch? SelectedMergeBranch { get => _selectedMergeBranch; set { _selectedMergeBranch = value; Notify(); RaiseCommands(); } }
-    public string OperationDisplay { get => _operationDisplay; private set { _operationDisplay = value; Notify(); } }
-    public string RebaseOnto => _rebaseOnto;
-    public string RebaseTodoText
-    {
-        get => _rebaseTodoText;
-        set
-        {
-            if (string.Equals(_rebaseTodoText, value, StringComparison.Ordinal)) return;
-            _rebaseTodoText = value;
-            Notify();
-        }
-    }
-    public RepositoryOperation CurrentOperation { get => _currentOperation; private set { _currentOperation = value; Notify(); Notify(nameof(CanForcePushWithLease)); Notify(nameof(CanPushTo)); RaiseCommands(); } }
-    public ConflictFile? SelectedConflict { get => _selectedConflict; set { _selectedConflict = value; Notify(); Notify(nameof(CurrentSideLabel)); Notify(nameof(IncomingSideLabel)); RaiseCommands(); } }
-    public RepositoryOperationState OperationState { get => _operationState; private set { _operationState = value; Notify(); Notify(nameof(HasActiveOperation)); RaiseCommands(); } }
-    public string CurrentSideLabel => SelectedConflict?.CurrentLocalLabel ?? "Current/local";
-    public string IncomingSideLabel => SelectedConflict?.IncomingRemoteLabel ?? "Incoming/remote";
-    public bool HasActiveOperation => OperationState.Kind != RepositoryOperation.None;
     public bool CanForcePushWithLease => Repository is not null
         && !IsBusy
-        && CurrentOperation == RepositoryOperation.None
+        && RepositoryOperations.CurrentOperation == RepositoryOperation.None
         && Branches.LocalBranches.Any(branch => branch.IsCurrent);
 
     public bool CanPushTo => Repository is not null
         && !IsBusy
-        && CurrentOperation == RepositoryOperation.None
+        && RepositoryOperations.CurrentOperation == RepositoryOperation.None
         && Branches.LocalBranches.Any(branch => branch.IsCurrent)
         && Remotes.Count > 0;
 
@@ -469,16 +403,11 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         CommitDetails.ClearRepositoryState();
         Remotes.Clear();
         Tags.Clear();
-        InvalidatePreparedInteractiveRebaseTodo();
-        Conflicts.Clear();
+        RepositoryOperations.ClearRepositoryState();
+        InteractiveRebase.ClearRepositoryState();
         SelectedRemote = null;
         SelectedTag = null;
-        SelectedMergeBranch = null;
-        SelectedConflict = null;
         SetHeadPresentationState(null, null, false, string.Empty);
-        CurrentOperation = RepositoryOperation.None;
-        OperationState = RepositoryOperationState.None;
-        OperationDisplay = string.Empty;
         ClearDisplayedWorkingTreeBaseline();
         RaiseCommands();
     }
@@ -523,7 +452,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         && !_isMutating
         && Volatile.Read(ref _repositoryChangeInProgress) == 0;
 
-    private bool CanBulkMutate() => CanMutate() && !Conflicts.Any(conflict => !conflict.IsResolved);
+    private bool CanBulkMutate() =>
+        CanMutate()
+        && !RepositoryOperations.Conflicts.Any(conflict => !conflict.IsResolved);
 
     private void EnterBusy()
     {
@@ -576,12 +507,10 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             Notify(nameof(CanPushTo));
             Replace(Tags, state.Refs.Tags);
             Stashes.ApplyRepositoryState(state.Stashes);
-            SelectedMergeBranch = Branches.LocalBranches.FirstOrDefault(branch => !branch.IsCurrent);
-            OperationDisplay = state.Operation == RepositoryOperation.None ? "No operation in progress" : $"Operation in progress: {state.Operation}";
-            CurrentOperation = state.Operation;
-            OperationState = state.CurrentOperation;
-            Replace(Conflicts, state.CurrentOperation.Conflicts);
-            SelectedConflict = Conflicts.FirstOrDefault();
+            RepositoryOperations.ApplyRepositoryState(
+                state.Operation,
+                state.CurrentOperation,
+                Branches.LocalBranches);
             SelectedRemote = SelectedRemote is null
                 ? Remotes.FirstOrDefault()
                 : Remotes.FirstOrDefault(remote => string.Equals(remote.Name, SelectedRemote.Name, StringComparison.Ordinal))
@@ -664,26 +593,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         return succeeded;
     }
 
-    private async Task RunConflictActionAsync(Func<Task> action)
-    {
-        await action();
-        await RefreshAllAsync();
-    }
-
-    private async Task MergeAsync()
-    {
-        MergeResult? result = null;
-        await MutateAsync(async () => { result = await _mergeService.MergeAsync(Repository!, SelectedMergeBranch!.Name); });
-        if (result is not null) OperationDisplay = result.Message;
-    }
-
-    private async Task ContinueRebaseAsync()
-    {
-        RebaseResult? result = null;
-        await MutateAsync(async () => result = await _interactiveRebaseService.ContinueRebaseAsync(Repository!));
-        if (result is not null) OperationDisplay = result.Message;
-    }
-
     private Task RequestCommitAsync()
     {
         if (!WorkingTree.Changes.Any(change => change.IsStaged) && WorkingTree.Changes.Any(change => change.IsUnstaged))
@@ -730,11 +639,25 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     private void RaiseCommands()
     {
-        foreach (var command in new[] { RefreshAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand, MergeCommand, ContinueRebaseCommand, AbortRebaseCommand, OpenConflictCommand, ChooseCurrentCommand, ChooseIncomingCommand, KeepDeletionCommand, StageConflictCommand, MergeToolCommand, MergeToolWorkflowCommand, ContinueOperationCommand, AbortOperationCommand, SkipOperationCommand }.OfType<AsyncCommand>()) command.RaiseCanExecuteChanged();
+        foreach (var command in new[] { RefreshAllCommand, CommitCommand, EmptyCommitCommand, AmendCommand, StageAllAndCommitCommand, ConfirmEmptyCommitCommand, CancelCommitCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand }.OfType<AsyncCommand>())
+            command.RaiseCanExecuteChanged();
+        RepositoryOperations.RefreshAvailability();
         Branches.RefreshAvailability();
         WorkingTree.RefreshAvailability();
         History.RefreshAvailability();
         Stashes.RefreshAvailability();
+    }
+
+    private void RepositoryOperations_PropertyChanged(
+        object? sender,
+        PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName != nameof(RepositoryOperationsViewModel.CurrentOperation))
+            return;
+
+        Notify(nameof(IBranchesRepositoryContext.CurrentOperation));
+        Notify(nameof(CanForcePushWithLease));
+        Notify(nameof(CanPushTo));
     }
 
     private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values)
