@@ -26,7 +26,7 @@ public sealed class RepositorySwitchingContractTests
 
         Assert.Contains("internal async Task<bool> OpenRepositoryPathAsync", viewModel);
         Assert.Contains("internal bool CloseRepository()", viewModel);
-        Assert.Contains("InvalidateHistoryLoad();", viewModel);
+        Assert.Contains("History.Invalidate();", viewModel);
         Assert.Contains("ClearRepositoryPresentation();", viewModel);
         Assert.Contains("public bool CanChangeRepository", viewModel);
         Assert.Contains("_isMutating", viewModel);

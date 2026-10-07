@@ -28,7 +28,7 @@ public sealed class TagUiContractTests
         Assert.Contains("if (TryShowTagContextMenu(source, args)) return;", branchDeletion);
         Assert.DoesNotContain("case RepositoryTreeNodeKind.Tag", branchDeletion, StringComparison.Ordinal);
         Assert.Contains("new MenuFlyoutSubItem { Text = \"Delete tag\" }", tags);
-        Assert.Contains("_viewModel.SelectedHistoryRow?.Commit.Hash", tags);
+        Assert.Contains("_viewModel.History.SelectedRow?.Commit.Hash", tags);
         Assert.Contains("foreach (var tag in _viewModel.Tags)", tags);
         Assert.Contains("string.Equals(tag.TargetCommit, selectedCommitHash, StringComparison.Ordinal)", tags);
 

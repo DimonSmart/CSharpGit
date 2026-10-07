@@ -13,13 +13,13 @@ public sealed class CommitMetadataCopyUiContractTests
         var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
         var history = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Domain", "History.cs"));
 
-        Assert.Contains("Tag=\"{Binding SelectedHistoryRow.Commit.Message}\"", xaml);
+        Assert.Contains("Tag=\"{Binding History.SelectedRow.Commit.Message}\"", xaml);
         Assert.Contains("ToolTipService.ToolTip=\"Copy commit message\"", xaml);
-        Assert.Contains("Tag=\"{Binding SelectedHistoryRow.Commit.Hash}\"", xaml);
+        Assert.Contains("Tag=\"{Binding History.SelectedRow.Commit.Hash}\"", xaml);
         Assert.Contains("ToolTipService.ToolTip=\"Copy commit hash\"", xaml);
-        Assert.Contains("ItemsSource=\"{Binding SelectedHistoryRow.Commit.Parents}\"", xaml);
+        Assert.Contains("ItemsSource=\"{Binding History.SelectedRow.Commit.Parents}\"", xaml);
         Assert.Contains("ToolTipService.ToolTip=\"Copy parent hash\"", xaml);
-        Assert.Contains("SelectedHistoryRow.Commit.IsRootCommit", xaml);
+        Assert.Contains("History.SelectedRow.Commit.IsRootCommit", xaml);
         Assert.Contains("Clipboard.SetContent(package)", codeBehind);
         Assert.Contains("icon.Glyph = \"\\uE73E\"", codeBehind);
         Assert.Contains("<controls:CommitDetailsView x:Name=\"CommitDetailsContent\" />", mainPageXaml);
