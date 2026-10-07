@@ -69,6 +69,7 @@ public sealed partial class MainPage : Page
 
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
         _viewModel.History.PropertyChanged += HistoryViewModel_PropertyChanged;
+        _viewModel.History.CommitLookupCompleted += History_CommitLookupCompleted;
         _viewModel.WorkingTree.Changes.CollectionChanged += RepositoryPresentationChanges_CollectionChanged;
         _viewModel.Branches.LocalBranches.CollectionChanged += RepositoryPresentationLocalBranches_CollectionChanged;
         _viewModel.Branches.RemoteBranches.CollectionChanged += RepositoryPresentationRemoteBranches_CollectionChanged;
@@ -169,6 +170,9 @@ public sealed partial class MainPage : Page
                 _viewModel.History.HasMore && !_viewModel.History.IsLoading;
         }
     }
+
+    private static void History_CommitLookupCompleted(long startedAt, int itemsExamined) =>
+        HistoryRenderDiagnostics.CommitLookupCompleted(startedAt, itemsExamined);
 
     private void UpdateHistoryScopePresentation()
     {
