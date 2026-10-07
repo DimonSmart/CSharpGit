@@ -4,7 +4,6 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using CSharpGit.Application;
 using CSharpGit.Application.Abstractions;
-using CSharpGit.Application.Exceptions;
 using CSharpGit.Domain;
 
 namespace CSharpGit.Presentation.ViewModels;
@@ -29,17 +28,6 @@ public sealed record BranchDeletionOperationResult(
     bool LocalDeleted,
     bool RemoteDeleted,
     string? SecondaryFailureMessage = null);
-
-public sealed record BranchPublishResult(
-    bool Succeeded,
-    bool NonFastForwardRejected = false,
-    string? ErrorMessage = null);
-
-public sealed record BranchQueryResult<T>(T? Value, string? ErrorMessage)
-    where T : class
-{
-    public bool Succeeded => Value is not null && ErrorMessage is null;
-}
 
 public sealed class BranchesViewModel : INotifyPropertyChanged, IDisposable
 {
@@ -451,69 +439,6 @@ public sealed class BranchesViewModel : INotifyPropertyChanged, IDisposable
             "Could not delete remote branches in folder");
 
         return succeeded ? result : null;
-    }
-
-    public async Task<BranchQueryResult<PublishBranchPreparation>> PreparePublishBranchAsync(
-        Repository repository)
-    {
-        ArgumentNullException.ThrowIfNull(repository);
-        var context = _context;
-        if (!CanRunQuery(context, repository))
-            return new(null, "The repository changed while the publish dialog was open.");
-
-        _operationInProgress = true;
-        NotifyAvailability();
-        try
-        {
-            var preparation = await _syncService.PreparePublishBranchAsync(repository);
-            return IsCurrentRepository(context, repository)
-                ? new(preparation, null)
-                : new(null, "The repository changed while preparing the publish target.");
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            return new(null, exception.Message);
-        }
-        finally
-        {
-            _operationInProgress = false;
-            NotifyAvailability();
-        }
-    }
-
-    public async Task<BranchPublishResult> PublishBranchAsync(
-        Repository repository,
-        PublishBranchRequest request)
-    {
-        ArgumentNullException.ThrowIfNull(repository);
-        ArgumentNullException.ThrowIfNull(request);
-
-        Exception? failure = null;
-        var lifecycleSucceeded = await RunMutationAsync(
-            repository,
-            async () =>
-            {
-                try
-                {
-                    await _syncService.PublishBranchAsync(repository, request);
-                }
-                catch (Exception exception) when (exception is not OperationCanceledException)
-                {
-                    failure = exception;
-                }
-            },
-            "Publish branch failed");
-
-        if (!lifecycleSucceeded)
-            return new(false, ErrorMessage: "The repository could not be refreshed after the publish operation.");
-
-        return failure switch
-        {
-            null => new(true),
-            PushRejectedException { ResultKind: PushResultKind.NonFastForwardRejected } exception =>
-                new(false, true, exception.Message),
-            Exception exception => new(false, false, exception.Message)
-        };
     }
 
     public void Dispose()

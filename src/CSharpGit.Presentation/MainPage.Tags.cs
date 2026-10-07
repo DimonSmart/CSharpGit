@@ -225,7 +225,7 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         if (repository is null || !CanMutateTags()) return;
 
-        var hasRemotes = _viewModel.Remotes.Count > 0;
+        var hasRemotes = _viewModel.RepositorySync.Remotes.Count > 0;
         var deleteRemote = new CheckBox
         {
             Content = "Also delete this tag from remote",
@@ -235,7 +235,7 @@ public sealed partial class MainPage
         var remoteSelector = new ComboBox
         {
             Header = "Remote",
-            ItemsSource = _viewModel.Remotes,
+            ItemsSource = _viewModel.RepositorySync.Remotes,
             DisplayMemberPath = nameof(GitRemote.Name),
             SelectedItem = GetPreferredTagRemote(),
             IsEnabled = hasRemotes,
@@ -380,7 +380,7 @@ public sealed partial class MainPage
     {
         var repository = _viewModel.Repository;
         if (repository is null) return;
-        if (_viewModel.Remotes.Count == 0)
+        if (_viewModel.RepositorySync.Remotes.Count == 0)
         {
             await ShowInformationAsync("Remote tags", "This repository has no configured remotes.");
             return;
@@ -394,7 +394,7 @@ public sealed partial class MainPage
             var remoteSelector = new ComboBox
             {
                 Header = "Remote",
-                ItemsSource = _viewModel.Remotes,
+                ItemsSource = _viewModel.RepositorySync.Remotes,
                 DisplayMemberPath = nameof(GitRemote.Name),
                 SelectedItem = selectedRemote,
                 MinWidth = 320
@@ -524,7 +524,7 @@ public sealed partial class MainPage
 
     private async Task<GitRemote?> SelectTagRemoteAsync(string title, string prompt)
     {
-        if (_viewModel.Remotes.Count == 0)
+        if (_viewModel.RepositorySync.Remotes.Count == 0)
         {
             await ShowErrorAsync(title, "This repository has no configured remotes.");
             return null;
@@ -535,7 +535,7 @@ public sealed partial class MainPage
         var selector = new ComboBox
         {
             Header = "Remote",
-            ItemsSource = _viewModel.Remotes,
+            ItemsSource = _viewModel.RepositorySync.Remotes,
             DisplayMemberPath = nameof(GitRemote.Name),
             SelectedItem = preferred,
             MinWidth = 320

@@ -23,7 +23,6 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage : Page
 {
     private readonly OpenRepositoryViewModel _viewModel;
-    private readonly IRepositorySyncService _repositorySyncService;
     private readonly TagsViewModel _tagsViewModel;
     private readonly ObservableCollection<RepositoryTreeNode> _repositoryTreeRoots = [];
     private readonly BulkObservableCollection<WorkingTreeChange> _unstagedChanges = [];
@@ -44,13 +43,11 @@ public sealed partial class MainPage : Page
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
-        IRepositorySyncService repositorySyncService,
         TagsViewModel tagsViewModel,
         IWorkingTreeStatusReader workingTreeStatusReader)
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
-        _repositorySyncService = repositorySyncService ?? throw new ArgumentNullException(nameof(repositorySyncService));
         _tagsViewModel = tagsViewModel ?? throw new ArgumentNullException(nameof(tagsViewModel));
         _tagsViewModel.Attach(_viewModel);
         _workingTreeStatusReader = workingTreeStatusReader ?? throw new ArgumentNullException(nameof(workingTreeStatusReader));
@@ -69,7 +66,7 @@ public sealed partial class MainPage : Page
         _viewModel.WorkingTree.Changes.CollectionChanged += RepositoryPresentationChanges_CollectionChanged;
         _viewModel.Branches.LocalBranches.CollectionChanged += RepositoryPresentationLocalBranches_CollectionChanged;
         _viewModel.Branches.RemoteBranches.CollectionChanged += RepositoryPresentationRemoteBranches_CollectionChanged;
-        _viewModel.Remotes.CollectionChanged += RepositoryPresentationRemotes_CollectionChanged;
+        _viewModel.RepositorySync.Remotes.CollectionChanged += RepositoryPresentationRemotes_CollectionChanged;
         _viewModel.Tags.CollectionChanged += RepositoryPresentationTags_CollectionChanged;
         _viewModel.Stashes.Items.CollectionChanged += RepositoryPresentationStashes_CollectionChanged;
         Loaded += RunDesktopCheckWhenRequested;
@@ -439,14 +436,14 @@ public sealed partial class MainPage : Page
                 break;
 
             case RepositoryTreeNodeKind.Group when node.Name == "Remotes":
-                AddMenuItem(flyout, "Fetch all", !_viewModel.IsBusy, async () => await ExecuteCommandAsync(_viewModel.FetchAllCommand));
+                AddMenuItem(flyout, "Fetch all", !_viewModel.IsBusy, async () => await ExecuteCommandAsync(_viewModel.RepositorySync.FetchAllCommand));
                 break;
 
             case RepositoryTreeNodeKind.Remote when node.Value is GitRemote remote:
                 AddMenuItem(flyout, "Fetch", !_viewModel.IsBusy, async () =>
                 {
-                    _viewModel.SelectedRemote = remote;
-                    await ExecuteCommandAsync(_viewModel.FetchCommand);
+                    _viewModel.RepositorySync.SelectedRemote = remote;
+                    await ExecuteCommandAsync(_viewModel.RepositorySync.FetchCommand);
                 });
                 break;
 
@@ -581,8 +578,8 @@ public sealed partial class MainPage : Page
         await dialog.ShowAsync();
     }
 
-    private async void Fetch_Click(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(_viewModel.FetchCommand);
-    private async void Pull_Click(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(_viewModel.PullCommand);
+    private async void Fetch_Click(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(_viewModel.RepositorySync.FetchCommand);
+    private async void Pull_Click(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(_viewModel.RepositorySync.PullCommand);
     private async void Push_Click(object sender, RoutedEventArgs e) => await PushFromUiAsync();
 
     private async void RefreshAll_Click(object sender, RoutedEventArgs e)

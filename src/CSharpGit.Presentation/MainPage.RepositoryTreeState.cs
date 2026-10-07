@@ -81,7 +81,7 @@ public sealed partial class MainPage
             RepositoryTreeSynchronizer.ReconcileRepository(
                 _viewModel.Branches.LocalBranches,
                 _viewModel.Branches.RemoteBranches,
-                _viewModel.Remotes,
+                _viewModel.RepositorySync.Remotes,
                 _viewModel.Tags,
                 _viewModel.Stashes.Items,
                 _worktreesViewModel.Worktrees);
@@ -115,7 +115,7 @@ public sealed partial class MainPage
         RepositoryTreeSynchronizer.ReconcileRepository(
             _viewModel.Branches.LocalBranches,
             _viewModel.Branches.RemoteBranches,
-            _viewModel.Remotes,
+            _viewModel.RepositorySync.Remotes,
             _viewModel.Tags,
             _viewModel.Stashes.Items,
             _worktreesViewModel.Worktrees);
