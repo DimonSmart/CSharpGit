@@ -7,7 +7,7 @@ public sealed partial class OpenRepositoryViewModel : IBranchesRepositoryContext
     RepositoryOperation IBranchesRepositoryContext.CurrentOperation =>
         RepositoryOperations.CurrentOperation;
 
-    IReadOnlyList<GitRemote> IBranchesRepositoryContext.Remotes => Remotes;
+    IReadOnlyList<GitRemote> IBranchesRepositoryContext.Remotes => RepositorySync.Remotes;
 
     Task<bool> IBranchesRepositoryContext.RunBranchMutationAsync(
         Repository expectedRepository,

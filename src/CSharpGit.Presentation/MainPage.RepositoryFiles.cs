@@ -24,7 +24,6 @@ public sealed partial class MainPage
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
-        IRepositorySyncService repositorySyncService,
         TagsViewModel tagsViewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
         IRepositoryFileVersionService fileVersionService,
@@ -34,7 +33,6 @@ public sealed partial class MainPage
         RepositoryFilesViewModel repositoryFilesViewModel)
         : this(
             viewModel,
-            repositorySyncService,
             tagsViewModel,
             workingTreeStatusReader,
             fileVersionService,

@@ -19,7 +19,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private readonly IRepositoryStateService _stateService;
     private readonly ICommitActionService _commitActionService;
     private readonly IReferenceService _referenceService;
-    private readonly IRepositorySyncService _syncService;
     private readonly IAppSettingsService _settings;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly AsyncCommand _openRepositoryCommand;
@@ -31,7 +30,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private int _repositoryChangeInProgress;
     private readonly SemaphoreSlim _mutationGate = new(1, 1);
     private int _disposed;
-    private GitRemote? _selectedRemote;
     private GitTag? _selectedTag;
     private string _headDisplay = string.Empty;
     private string? _currentBranchName;
@@ -55,7 +53,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         CommitCreationViewModel commitCreationViewModel,
         ICommitActionService commitActionService,
         IReferenceService referenceService,
-        IRepositorySyncService syncService,
+        RepositorySyncViewModel repositorySyncViewModel,
         RepositoryOperationsViewModel repositoryOperationsViewModel,
         InteractiveRebaseViewModel interactiveRebaseViewModel,
         IAppSettingsService settings,
@@ -69,6 +67,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         WorkingTree.Attach(this);
         Branches = branchesViewModel ?? throw new ArgumentNullException(nameof(branchesViewModel));
         Branches.Attach(this);
+        RepositorySync = repositorySyncViewModel ?? throw new ArgumentNullException(nameof(repositorySyncViewModel));
+        RepositorySync.Attach(this);
         History = historyViewModel ?? throw new ArgumentNullException(nameof(historyViewModel));
         History.Attach(this);
         History.SelectedRowChanged += History_SelectedRowChanged;
@@ -90,7 +90,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         RepositoryOperations.Conflicts.CollectionChanged += CommitCreationSourceCollectionChanged;
         _commitActionService = commitActionService ?? throw new ArgumentNullException(nameof(commitActionService));
         _referenceService = referenceService;
-        _syncService = syncService;
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
         _settings.Changed += AppSettings_Changed;
@@ -103,10 +102,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             return Task.CompletedTask;
         }, () => true);
         CheckoutTagCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.CheckoutAsync(Repository!, SelectedTag!.Name)), () => CanMutate() && SelectedTag is not null);
-        FetchCommand = new AsyncCommand(() => MutateAsync(() => _syncService.FetchAsync(Repository!, SelectedRemote!.Name)), () => CanMutate() && SelectedRemote is not null);
-        FetchAllCommand = new AsyncCommand(() => MutateAsync(() => _syncService.FetchAllAsync(Repository!)), CanMutate);
-        PullCommand = new AsyncCommand(() => MutateAsync(() => _syncService.PullAsync(Repository!)), CanMutate);
-        PushCommand = new AsyncCommand(() => MutateAsync(() => _syncService.PushAsync(Repository!)), CanMutate);
     }
 
     public void Dispose()
@@ -124,6 +119,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         _settings.Changed -= AppSettings_Changed;
         History.SelectedRowChanged -= History_SelectedRowChanged;
         History.Dispose();
+        RepositorySync.Dispose();
         Branches.Dispose();
         WorkingTree.Dispose();
     }
@@ -160,10 +156,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public ICommand RefreshAllCommand { get; }
     public ICommand DismissErrorCommand { get; }
     public ICommand CheckoutTagCommand { get; }
-    public ICommand FetchCommand { get; }
-    public ICommand FetchAllCommand { get; }
-    public ICommand PullCommand { get; }
-    public ICommand PushCommand { get; }
     public HistoryViewModel History { get; }
     public StashesViewModel Stashes { get; }
     public CommitDetailsViewModel CommitDetails { get; }
@@ -173,7 +165,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public InteractiveRebaseViewModel InteractiveRebase { get; }
     public WorkingTreeViewModel WorkingTree { get; }
     public BranchesViewModel Branches { get; }
-    public ObservableCollection<GitRemote> Remotes { get; } = new BulkObservableCollection<GitRemote>();
+    public RepositorySyncViewModel RepositorySync { get; }
     public ObservableCollection<GitTag> Tags { get; } = new BulkObservableCollection<GitTag>();
     public Repository? Repository
     {
@@ -194,36 +186,22 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             Notify(nameof(DisplayedWorkingTreeStatusSnapshot));
             Notify(nameof(HasRepository));
             Notify(nameof(RepositoryKind));
-            Notify(nameof(CanForcePushWithLease));
-            Notify(nameof(CanPushTo));
         }
     }
     public WorkingTreeStatusSnapshot? DisplayedWorkingTreeStatusSnapshot => _displayedWorkingTreeBaseline.Snapshot;
     public long DisplayedRefreshBaselineRevision => _displayedWorkingTreeBaseline.Revision;
     public string? ErrorMessage { get => _errorMessage; private set { _errorMessage = value; Notify(); Notify(nameof(HasError)); } }
-    public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); Notify(nameof(CanForcePushWithLease)); Notify(nameof(CanPushTo)); _openRepositoryCommand.RaiseCanExecuteChanged(); } }
+    public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); _openRepositoryCommand.RaiseCanExecuteChanged(); } }
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
     public bool HasRepository => Repository is not null;
     public bool CanChangeRepository => !_isMutating && Volatile.Read(ref _repositoryChangeInProgress) == 0;
     public string RepositoryKind => Repository?.IsWorktree == true ? "Git worktree" : "Git repository";
     public bool HasSelectedCommit => History.SelectedRow is not null;
-    public GitRemote? SelectedRemote { get => _selectedRemote; set { _selectedRemote = value; Notify(); RaiseCommands(); } }
     public GitTag? SelectedTag { get => _selectedTag; set { _selectedTag = value; Notify(); RaiseCommands(); } }
     public string HeadDisplay => _headDisplay;
     public string? CurrentBranchName => _currentBranchName;
     public string? CurrentHeadCommit => _currentHeadCommit;
     public bool IsDetachedHead => _isDetachedHead;
-    public bool CanForcePushWithLease => Repository is not null
-        && !IsBusy
-        && RepositoryOperations.CurrentOperation == RepositoryOperation.None
-        && Branches.LocalBranches.Any(branch => branch.IsCurrent);
-
-    public bool CanPushTo => Repository is not null
-        && !IsBusy
-        && RepositoryOperations.CurrentOperation == RepositoryOperation.None
-        && Branches.LocalBranches.Any(branch => branch.IsCurrent)
-        && Remotes.Count > 0;
-
     public Task RefreshWhenActivatedAsync() => Repository is null ? Task.CompletedTask : RefreshAllAsync();
 
     internal Task OpenRepositoryAsyncForDesktopCheck() => _openRepositoryCommand.ExecuteAsync();
@@ -390,11 +368,10 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         Branches.ClearRepositoryState();
         Stashes.ClearRepositoryState();
         CommitDetails.ClearRepositoryState();
-        Remotes.Clear();
+        RepositorySync.ClearRepositoryState();
         Tags.Clear();
         RepositoryOperations.ClearRepositoryState();
         InteractiveRebase.ClearRepositoryState();
-        SelectedRemote = null;
         SelectedTag = null;
         SetHeadPresentationState(null, null, false, string.Empty);
         ClearDisplayedWorkingTreeBaseline();
@@ -491,20 +468,13 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             Branches.ApplyRepositoryState(
                 state.Refs.LocalBranches,
                 state.Refs.RemoteBranches);
-            Notify(nameof(CanForcePushWithLease));
-            Replace(Remotes, state.Refs.Remotes);
-            Notify(nameof(CanPushTo));
+            RepositorySync.ApplyRepositoryState(state.Refs.Remotes);
             Replace(Tags, state.Refs.Tags);
             Stashes.ApplyRepositoryState(state.Stashes);
             RepositoryOperations.ApplyRepositoryState(
                 state.Operation,
                 state.CurrentOperation,
                 Branches.LocalBranches);
-            SelectedRemote = SelectedRemote is null
-                ? Remotes.FirstOrDefault()
-                : Remotes.FirstOrDefault(remote => string.Equals(remote.Name, SelectedRemote.Name, StringComparison.Ordinal))
-                  ?? Remotes.FirstOrDefault();
-
             if (includeHistory)
                 await History.RefreshAsync();
 
@@ -584,8 +554,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     private void RaiseCommands()
     {
-        foreach (var command in new[] { RefreshAllCommand, CheckoutTagCommand, FetchCommand, FetchAllCommand, PullCommand, PushCommand }.OfType<AsyncCommand>())
+        foreach (var command in new[] { RefreshAllCommand, CheckoutTagCommand }.OfType<AsyncCommand>())
             command.RaiseCanExecuteChanged();
+        RepositorySync.RefreshAvailability();
         CommitCreation.RefreshAvailability();
         RepositoryOperations.RefreshAvailability();
         Branches.RefreshAvailability();
@@ -607,8 +578,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             return;
 
         Notify(nameof(IBranchesRepositoryContext.CurrentOperation));
-        Notify(nameof(CanForcePushWithLease));
-        Notify(nameof(CanPushTo));
+        RepositorySync.RefreshAvailability();
         RaiseCommands();
     }
 

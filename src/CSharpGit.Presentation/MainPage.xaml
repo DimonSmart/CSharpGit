@@ -253,9 +253,9 @@
               <Button.Flyout>
                 <MenuFlyout>
                   <MenuFlyoutItem Text="{Binding Branches.SelectedLocalBranch, Converter={StaticResource BranchTrackingActionTextConverter}, ConverterParameter=PushMenu}" Click="Push_Click" />
-                  <MenuFlyoutItem Text="Push to…" Click="PushTo_Click" IsEnabled="{Binding CanPushTo}" />
+                  <MenuFlyoutItem Text="Push to…" Click="PushTo_Click" IsEnabled="{Binding RepositorySync.CanPushTo}" />
                   <MenuFlyoutSeparator />
-                  <MenuFlyoutItem Text="Force push with lease…" Click="ForcePushWithLease_Click" IsEnabled="{Binding CanForcePushWithLease}" />
+                  <MenuFlyoutItem Text="Force push with lease…" Click="ForcePushWithLease_Click" IsEnabled="{Binding RepositorySync.CanForcePushWithLease}" />
                 </MenuFlyout>
               </Button.Flyout>
             </Button>
