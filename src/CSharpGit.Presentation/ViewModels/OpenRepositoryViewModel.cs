@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -18,7 +17,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private readonly ILogger<OpenRepositoryViewModel> _logger;
     private readonly IRepositoryStateService _stateService;
     private readonly ICommitActionService _commitActionService;
-    private readonly IReferenceService _referenceService;
     private readonly IAppSettingsService _settings;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly AsyncCommand _openRepositoryCommand;
@@ -30,7 +28,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private int _repositoryChangeInProgress;
     private readonly SemaphoreSlim _mutationGate = new(1, 1);
     private int _disposed;
-    private GitTag? _selectedTag;
     private string _headDisplay = string.Empty;
     private string? _currentBranchName;
     private string? _currentHeadCommit;
@@ -46,13 +43,13 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         IRepositoryStateService stateService,
         WorkingTreeViewModel workingTreeViewModel,
         BranchesViewModel branchesViewModel,
+        TagsViewModel tagsViewModel,
         HistoryViewModel historyViewModel,
         StashesViewModel stashesViewModel,
         CommitDetailsViewModel commitDetailsViewModel,
         CommitActionsViewModel commitActionsViewModel,
         CommitCreationViewModel commitCreationViewModel,
         ICommitActionService commitActionService,
-        IReferenceService referenceService,
         RepositorySyncViewModel repositorySyncViewModel,
         RepositoryOperationsViewModel repositoryOperationsViewModel,
         InteractiveRebaseViewModel interactiveRebaseViewModel,
@@ -67,6 +64,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         WorkingTree.Attach(this);
         Branches = branchesViewModel ?? throw new ArgumentNullException(nameof(branchesViewModel));
         Branches.Attach(this);
+        Tags = tagsViewModel ?? throw new ArgumentNullException(nameof(tagsViewModel));
+        Tags.Attach(this);
         RepositorySync = repositorySyncViewModel ?? throw new ArgumentNullException(nameof(repositorySyncViewModel));
         RepositorySync.Attach(this);
         History = historyViewModel ?? throw new ArgumentNullException(nameof(historyViewModel));
@@ -89,7 +88,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         WorkingTree.Changes.CollectionChanged += CommitCreationSourceCollectionChanged;
         RepositoryOperations.Conflicts.CollectionChanged += CommitCreationSourceCollectionChanged;
         _commitActionService = commitActionService ?? throw new ArgumentNullException(nameof(commitActionService));
-        _referenceService = referenceService;
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
         _settings.Changed += AppSettings_Changed;
@@ -101,7 +99,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             ErrorMessage = null;
             return Task.CompletedTask;
         }, () => true);
-        CheckoutTagCommand = new AsyncCommand(() => MutateAsync(() => _referenceService.CheckoutAsync(Repository!, SelectedTag!.Name)), () => CanMutate() && SelectedTag is not null);
     }
 
     public void Dispose()
@@ -120,6 +117,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         History.SelectedRowChanged -= History_SelectedRowChanged;
         History.Dispose();
         RepositorySync.Dispose();
+        Tags.Dispose();
         Branches.Dispose();
         WorkingTree.Dispose();
     }
@@ -155,7 +153,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public ICommand OpenRepositoryCommand => _openRepositoryCommand;
     public ICommand RefreshAllCommand { get; }
     public ICommand DismissErrorCommand { get; }
-    public ICommand CheckoutTagCommand { get; }
     public HistoryViewModel History { get; }
     public StashesViewModel Stashes { get; }
     public CommitDetailsViewModel CommitDetails { get; }
@@ -166,7 +163,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public WorkingTreeViewModel WorkingTree { get; }
     public BranchesViewModel Branches { get; }
     public RepositorySyncViewModel RepositorySync { get; }
-    public ObservableCollection<GitTag> Tags { get; } = new BulkObservableCollection<GitTag>();
+    public TagsViewModel Tags { get; }
     public Repository? Repository
     {
         get => _repository;
@@ -197,7 +194,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public bool CanChangeRepository => !_isMutating && Volatile.Read(ref _repositoryChangeInProgress) == 0;
     public string RepositoryKind => Repository?.IsWorktree == true ? "Git worktree" : "Git repository";
     public bool HasSelectedCommit => History.SelectedRow is not null;
-    public GitTag? SelectedTag { get => _selectedTag; set { _selectedTag = value; Notify(); RaiseCommands(); } }
     public string HeadDisplay => _headDisplay;
     public string? CurrentBranchName => _currentBranchName;
     public string? CurrentHeadCommit => _currentHeadCommit;
@@ -369,10 +365,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         Stashes.ClearRepositoryState();
         CommitDetails.ClearRepositoryState();
         RepositorySync.ClearRepositoryState();
-        Tags.Clear();
+        Tags.ClearRepositoryState();
         RepositoryOperations.ClearRepositoryState();
         InteractiveRebase.ClearRepositoryState();
-        SelectedTag = null;
         SetHeadPresentationState(null, null, false, string.Empty);
         ClearDisplayedWorkingTreeBaseline();
         RaiseCommands();
@@ -469,7 +464,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                 state.Refs.LocalBranches,
                 state.Refs.RemoteBranches);
             RepositorySync.ApplyRepositoryState(state.Refs.Remotes);
-            Replace(Tags, state.Refs.Tags);
+            Tags.ApplyRepositoryState(state.Refs.Tags);
             Stashes.ApplyRepositoryState(state.Stashes);
             RepositoryOperations.ApplyRepositoryState(
                 state.Operation,
@@ -554,8 +549,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     private void RaiseCommands()
     {
-        foreach (var command in new[] { RefreshAllCommand, CheckoutTagCommand }.OfType<AsyncCommand>())
+        foreach (var command in new[] { RefreshAllCommand }.OfType<AsyncCommand>())
             command.RaiseCanExecuteChanged();
+        Tags.RefreshAvailability();
         RepositorySync.RefreshAvailability();
         CommitCreation.RefreshAvailability();
         RepositoryOperations.RefreshAvailability();
@@ -580,21 +576,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         Notify(nameof(IBranchesRepositoryContext.CurrentOperation));
         RepositorySync.RefreshAvailability();
         RaiseCommands();
-    }
-
-    private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values)
-    {
-        var snapshot = values as IReadOnlyList<T> ?? values.ToArray();
-        if (target.SequenceEqual(snapshot)) return;
-
-        if (target is BulkObservableCollection<T> bulk)
-        {
-            bulk.ReplaceAll(snapshot);
-            return;
-        }
-
-        target.Clear();
-        foreach (var value in snapshot) target.Add(value);
     }
 
     private void Notify([CallerMemberName] string? propertyName = null) =>

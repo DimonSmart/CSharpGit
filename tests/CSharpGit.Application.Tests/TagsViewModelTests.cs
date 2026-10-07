@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.ViewModels;
@@ -148,6 +149,128 @@ public sealed class TagsViewModelTests
     }
 
     [Fact]
+    public void RepositoryStatePreservesSelectionByNameAndClearsRemovedSelection()
+    {
+        var service = new FakeTagService();
+        var context = new FakeTagsRepositoryContext { Repository = Repository("repo") };
+        var viewModel = CreateViewModel(service, context);
+        var selected = new GitTag("v1", "abc", GitTagKind.Annotated, "tag-object");
+        var other = new GitTag("v2", "def");
+
+        viewModel.ApplyRepositoryState([selected, other]);
+        viewModel.SelectedTag = selected;
+
+        var refreshedSelected = selected with { Message = "refreshed" };
+        var refreshedOther = other with { TargetCommit = "def2" };
+        viewModel.ApplyRepositoryState([refreshedSelected, refreshedOther]);
+
+        Assert.Equal(["v1", "v2"], viewModel.Items.Select(tag => tag.Name));
+        Assert.Same(refreshedSelected, viewModel.SelectedTag);
+
+        viewModel.ApplyRepositoryState([refreshedOther]);
+
+        Assert.Single(viewModel.Items);
+        Assert.Null(viewModel.SelectedTag);
+
+        viewModel.ClearRepositoryState();
+
+        Assert.Empty(viewModel.Items);
+        Assert.Null(viewModel.SelectedTag);
+    }
+
+    [Fact]
+    public void RepositorySwitchClearsTagState()
+    {
+        var service = new FakeTagService();
+        var context = new FakeTagsRepositoryContext { Repository = Repository("first") };
+        var viewModel = CreateViewModel(service, context);
+        var tag = new GitTag("v1", "abc");
+
+        viewModel.ApplyRepositoryState([tag]);
+        viewModel.SelectedTag = tag;
+
+        context.Repository = Repository("second");
+
+        Assert.Empty(viewModel.Items);
+        Assert.Null(viewModel.SelectedTag);
+    }
+
+    [Fact]
+    public async Task CheckoutCommandUsesReferenceServiceAndMutationLifecycle()
+    {
+        var service = new FakeTagService();
+        var referenceService = new FakeReferenceService();
+        var repository = Repository("repo");
+        var context = new FakeTagsRepositoryContext { Repository = repository };
+        var viewModel = CreateViewModel(service, context, referenceService);
+        var tag = new GitTag("v1", "abc");
+
+        viewModel.ApplyRepositoryState([tag]);
+        viewModel.SelectedTag = tag;
+
+        Assert.True(viewModel.CheckoutTagCommand.CanExecute(null));
+
+        await ((AsyncCommand)viewModel.CheckoutTagCommand).ExecuteAsync();
+
+        Assert.Equal(1, context.MutationLifecycleCalls);
+        Assert.Null(context.LastErrorContext);
+        Assert.True(context.LastIncludeHistory);
+        Assert.Equal(1, referenceService.CheckoutCalls);
+        Assert.Same(repository, referenceService.LastCheckoutRepository);
+        Assert.Equal("v1", referenceService.LastCheckoutReference);
+    }
+
+    [Fact]
+    public void CheckoutAvailabilityFollowsRepositorySelectionBusyAndOperation()
+    {
+        var service = new FakeTagService();
+        var context = new FakeTagsRepositoryContext { Repository = Repository("repo") };
+        var viewModel = CreateViewModel(service, context);
+        var tag = new GitTag("v1", "abc");
+
+        viewModel.ApplyRepositoryState([tag]);
+        Assert.False(viewModel.CheckoutTagCommand.CanExecute(null));
+
+        viewModel.SelectedTag = tag;
+        Assert.True(viewModel.CanCheckoutSelectedTag);
+        Assert.True(viewModel.CheckoutTagCommand.CanExecute(null));
+
+        context.IsBusy = true;
+        Assert.False(viewModel.CheckoutTagCommand.CanExecute(null));
+
+        context.IsBusy = false;
+        context.CurrentOperation = RepositoryOperation.Rebase;
+        Assert.False(viewModel.CheckoutTagCommand.CanExecute(null));
+
+        context.CurrentOperation = RepositoryOperation.None;
+        Assert.True(viewModel.CheckoutTagCommand.CanExecute(null));
+
+        context.Repository = null;
+        Assert.False(viewModel.CheckoutTagCommand.CanExecute(null));
+        Assert.Null(viewModel.SelectedTag);
+        Assert.Empty(viewModel.Items);
+    }
+
+    [Fact]
+    public async Task CheckoutRejectsStaleRepository()
+    {
+        var service = new FakeTagService();
+        var referenceService = new FakeReferenceService();
+        var currentRepository = Repository("current");
+        var staleRepository = Repository("stale");
+        var context = new FakeTagsRepositoryContext { Repository = currentRepository };
+        var viewModel = CreateViewModel(service, context, referenceService);
+
+        var succeeded = await viewModel.CheckoutTagAsync(
+            staleRepository,
+            new GitTag("v1", "abc"));
+
+        Assert.False(succeeded);
+        Assert.Equal(0, referenceService.CheckoutCalls);
+        Assert.Equal(0, context.MutationLifecycleCalls);
+    }
+
+    [Fact]
     public void AvailabilityAndPreferredRemoteFollowLiveRepositoryContext()
     {
         var service = new FakeTagService();
@@ -197,9 +320,12 @@ public sealed class TagsViewModelTests
 
     private static TagsViewModel CreateViewModel(
         FakeTagService service,
-        FakeTagsRepositoryContext context)
+        FakeTagsRepositoryContext context,
+        FakeReferenceService? referenceService = null)
     {
-        var viewModel = new TagsViewModel(service);
+        var viewModel = new TagsViewModel(
+            service,
+            referenceService ?? new FakeReferenceService());
         viewModel.Attach(context);
         return viewModel;
     }
@@ -212,9 +338,45 @@ public sealed class TagsViewModelTests
 
     private sealed class FakeTagsRepositoryContext : ITagsRepositoryContext
     {
-        public Repository? Repository { get; set; }
-        public bool IsBusy { get; set; }
-        public RepositoryOperation CurrentOperation { get; set; }
+        private Repository? _repository;
+        private bool _isBusy;
+        private RepositoryOperation _currentOperation;
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        public Repository? Repository
+        {
+            get => _repository;
+            set
+            {
+                if (ReferenceEquals(_repository, value)) return;
+                _repository = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Repository)));
+            }
+        }
+
+        public bool IsBusy
+        {
+            get => _isBusy;
+            set
+            {
+                if (_isBusy == value) return;
+                _isBusy = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsBusy)));
+            }
+        }
+
+        public RepositoryOperation CurrentOperation
+        {
+            get => _currentOperation;
+            set
+            {
+                if (_currentOperation == value) return;
+                _currentOperation = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CurrentOperation)));
+            }
+        }
+
         public IReadOnlyList<GitRemote> Remotes { get; set; } = [];
         public IReadOnlyList<GitBranch> LocalBranches { get; set; } = [];
         public int MutationLifecycleCalls { get; private set; }
@@ -225,7 +387,7 @@ public sealed class TagsViewModelTests
         public async Task<bool> RunTagMutationAsync(
             Repository expectedRepository,
             Func<Task> mutation,
-            string errorContext,
+            string? errorContext,
             bool includeHistory)
         {
             if (!ReferenceEquals(Repository, expectedRepository)) return false;
@@ -249,6 +411,65 @@ public sealed class TagsViewModelTests
                 return false;
             }
         }
+    }
+
+    private sealed class FakeReferenceService : IReferenceService
+    {
+        public Repository? LastCheckoutRepository { get; private set; }
+        public string? LastCheckoutReference { get; private set; }
+        public int CheckoutCalls { get; private set; }
+
+        public Task SwitchBranchAsync(
+            Repository repository,
+            string branch,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task CheckoutAsync(
+            Repository repository,
+            string reference,
+            CancellationToken cancellationToken = default)
+        {
+            CheckoutCalls++;
+            LastCheckoutRepository = repository;
+            LastCheckoutReference = reference;
+            return Task.CompletedTask;
+        }
+
+        public Task CreateBranchAsync(
+            Repository repository,
+            string branch,
+            string? startPoint = null,
+            bool switchToBranch = true,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task RenameBranchAsync(
+            Repository repository,
+            string oldName,
+            string newName,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task DeleteBranchAsync(
+            Repository repository,
+            string branch,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task DeleteBranchAsync(
+            Repository repository,
+            string branch,
+            BranchDeletionMode mode,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task CheckoutRemoteBranchAsync(
+            Repository repository,
+            string remoteBranch,
+            string localBranch,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 
     private sealed class FakeTagService : ITagService

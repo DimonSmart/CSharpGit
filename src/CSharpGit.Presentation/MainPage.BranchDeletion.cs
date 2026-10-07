@@ -126,8 +126,8 @@ public sealed partial class MainPage
             return;
         }
 
-        _viewModel.SelectedTag = tag;
-        await ExecuteCommandAsync(_viewModel.CheckoutTagCommand);
+        _viewModel.Tags.SelectedTag = tag;
+        await ExecuteCommandAsync(_viewModel.Tags.CheckoutTagCommand);
     }
 
     private async Task ConfirmDeleteLocalBranchAsync(GitBranch branch)

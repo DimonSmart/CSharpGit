@@ -23,7 +23,6 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage : Page
 {
     private readonly OpenRepositoryViewModel _viewModel;
-    private readonly TagsViewModel _tagsViewModel;
     private readonly ObservableCollection<RepositoryTreeNode> _repositoryTreeRoots = [];
     private readonly BulkObservableCollection<WorkingTreeChange> _unstagedChanges = [];
     private readonly BulkObservableCollection<WorkingTreeChange> _stagedChanges = [];
@@ -43,13 +42,10 @@ public sealed partial class MainPage : Page
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
-        TagsViewModel tagsViewModel,
         IWorkingTreeStatusReader workingTreeStatusReader)
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
-        _tagsViewModel = tagsViewModel ?? throw new ArgumentNullException(nameof(tagsViewModel));
-        _tagsViewModel.Attach(_viewModel);
         _workingTreeStatusReader = workingTreeStatusReader ?? throw new ArgumentNullException(nameof(workingTreeStatusReader));
         InitializeBusyStatusPresentation();
 
@@ -67,7 +63,7 @@ public sealed partial class MainPage : Page
         _viewModel.Branches.LocalBranches.CollectionChanged += RepositoryPresentationLocalBranches_CollectionChanged;
         _viewModel.Branches.RemoteBranches.CollectionChanged += RepositoryPresentationRemoteBranches_CollectionChanged;
         _viewModel.RepositorySync.Remotes.CollectionChanged += RepositoryPresentationRemotes_CollectionChanged;
-        _viewModel.Tags.CollectionChanged += RepositoryPresentationTags_CollectionChanged;
+        _viewModel.Tags.Items.CollectionChanged += RepositoryPresentationTags_CollectionChanged;
         _viewModel.Stashes.Items.CollectionChanged += RepositoryPresentationStashes_CollectionChanged;
         Loaded += RunDesktopCheckWhenRequested;
         RefreshPresentationCollections();
@@ -380,7 +376,7 @@ public sealed partial class MainPage : Page
                 await NavigateToReferenceAsync(remoteBranch.Commit);
                 break;
             case RepositoryTreeNodeKind.Tag when node.Value is GitTag tag:
-                _viewModel.SelectedTag = tag;
+                _viewModel.Tags.SelectedTag = tag;
                 await NavigateToReferenceAsync(tag.TargetCommit);
                 break;
             case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:
@@ -463,8 +459,8 @@ public sealed partial class MainPage : Page
             case RepositoryTreeNodeKind.Tag when node.Value is GitTag tag:
                 AddMenuItem(flyout, "Checkout detached", !_viewModel.IsBusy, async () =>
                 {
-                    _viewModel.SelectedTag = tag;
-                    await ExecuteCommandAsync(_viewModel.CheckoutTagCommand);
+                    _viewModel.Tags.SelectedTag = tag;
+                    await ExecuteCommandAsync(_viewModel.Tags.CheckoutTagCommand);
                 });
                 AddMenuItem(flyout, "Copy tag name", true, () => CopyTextAsync(tag.Name));
                 break;
