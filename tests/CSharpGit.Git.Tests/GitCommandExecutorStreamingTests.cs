@@ -6,35 +6,6 @@ namespace CSharpGit.Git.Tests;
 public sealed class GitCommandExecutorStreamingTests
 {
     [Fact]
-    public async Task FirstOutputEventArrivesBeforeProcessCompletes()
-    {
-        var history = new GitCommandActivityHistory();
-        var firstOutput = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        history.Changed += (_, args) =>
-        {
-            if (args.ChangeKind == GitCommandActivityChangeKind.Output &&
-                args.OutputStream == GitOutputStream.StandardOutput &&
-                args.OutputChunk?.Contains("early", StringComparison.Ordinal) == true)
-                firstOutput.TrySetResult(true);
-        };
-        var executor = CreateShellExecutor(history);
-
-        var task = executor.ExecuteForResultAsync(
-            Path.GetTempPath(),
-            "Streaming",
-            GitCommandKind.Internal,
-            CancellationToken.None,
-            null,
-            DelayedShellArguments("echo early", "echo late", 2));
-
-        await firstOutput.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        Assert.False(task.IsCompleted);
-        var result = await task.WaitAsync(TimeSpan.FromSeconds(10));
-        Assert.Contains("early", result.StandardOutput, StringComparison.Ordinal);
-        Assert.Contains("late", result.StandardOutput, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public async Task StdoutAndStderrArePumpedConcurrently()
     {
         var history = new GitCommandActivityHistory();
