@@ -17,6 +17,7 @@ public interface IRepositorySyncContext : INotifyPropertyChanged
     bool CanRunSyncMutation { get; }
     RepositoryOperation CurrentOperation { get; }
     GitBranch? CurrentLocalBranch { get; }
+    bool HasUnmergedPaths { get; }
 
     Task<bool> RunSyncMutationAsync(
         Repository expectedRepository,
@@ -146,6 +147,7 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
         _context is { Repository: not null, CanRunSyncMutation: true, IsBusy: false }
         && !_operationInProgress
         && _context.CurrentOperation == RepositoryOperation.None
+        && !_context.HasUnmergedPaths
         && _context.CurrentLocalBranch is { Upstream: { Length: > 0 } };
 
     public PullStrategy DefaultPullStrategy => _settings.DefaultPullStrategy;
@@ -167,6 +169,7 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
                 : IsBusy ? "Another repository operation is running."
                 : _context.CurrentOperation != RepositoryOperation.None
                     ? "A repository operation is already in progress."
+                    : _context.HasUnmergedPaths ? "Unmerged paths require resolution."
                     : branch is null ? "HEAD is detached."
                     : string.IsNullOrWhiteSpace(branch.Upstream) ? $"Branch '{branch.Name}' has no upstream."
                     : $"Pull from {branch.Upstream}";
