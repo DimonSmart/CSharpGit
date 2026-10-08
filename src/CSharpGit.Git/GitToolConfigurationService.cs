@@ -172,7 +172,7 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
 
         var config = await _configService.ReadSnapshotAsync(repository, cancellationToken);
         var selection = Pick(config, SelectionKeys(kind, includeCrossToolFallback: true));
-        var supported = await ReadSupportedToolsAsync(repository, kind, cancellationToken);
+        var supported = await ReadSupportedToolsAsync(repository, kind, config, cancellationToken);
         var presets = BuildToolPresets(kind, supported);
 
         ConfigValue? path = null;
@@ -302,13 +302,18 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
     private async Task<IReadOnlyList<string>> ReadSupportedToolsAsync(
         Repository? repository,
         GitToolKind kind,
+        GitConfigSnapshot config,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        var key = GitToolHelpCache.Key(kind, _executor.ExecutablePath, config);
+        if (GitToolHelpCache.TryRead(key, out var cached)) return cached;
+
         var command = kind == GitToolKind.Diff ? "difftool" : "mergetool";
-        var result = await RunGitResultAsync(
+        // Tool-help can print user-defined commands; never log those values.
+        var result = await _executor.ExecuteForResultSensitiveAsync(
             WorkingDirectory(repository),
             "GitToolHelp",
-            GitCommandKind.Internal,
             cancellationToken,
             [command, "--tool-help"]);
         if (result.ExitCode != 0) return [];
@@ -322,7 +327,9 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
             if (candidate.All(character => char.IsLetterOrDigit(character) || character is '-' or '_' or '+' or '.'))
                 tools.Add(candidate);
         }
-        return tools.Order(StringComparer.OrdinalIgnoreCase).ToArray();
+        var supported = tools.Order(StringComparer.OrdinalIgnoreCase).ToArray();
+        GitToolHelpCache.Store(key, supported);
+        return supported;
     }
 
     private Task WriteIfChangedAsync(
