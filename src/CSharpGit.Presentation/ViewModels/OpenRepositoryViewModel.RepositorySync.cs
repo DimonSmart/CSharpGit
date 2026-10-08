@@ -12,6 +12,8 @@ public sealed partial class OpenRepositoryViewModel : IRepositorySyncContext
 
     bool IRepositorySyncContext.CanRunSyncMutation => CanMutate();
 
+    bool IRepositorySyncContext.HasUnmergedPaths => RepositoryOperations.HasUnmergedPaths;
+
     Task<bool> IRepositorySyncContext.RunSyncMutationAsync(
         Repository expectedRepository,
         Func<Task> mutation,
