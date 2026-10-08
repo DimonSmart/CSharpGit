@@ -1,13 +1,10 @@
-using System.Diagnostics;
 using CSharpGit.Domain;
 
 namespace CSharpGit.Git.Tests;
 
-public sealed class InteractiveRebaseTests : IDisposable
+public sealed class InteractiveRebaseTests : IDisposable, IClassFixture<RebaseHistoryFixture>
 {
-    private readonly string _root = Path.Combine(
-        Path.GetTempPath(),
-        $"csharpgit-interactive-rebase-{Guid.NewGuid():N}");
+    private readonly string _root;
 
     private readonly string _a;
     private readonly string _b;
@@ -16,18 +13,15 @@ public sealed class InteractiveRebaseTests : IDisposable
     private readonly string _e;
     private int _nextFile;
 
-    public InteractiveRebaseTests()
+    public InteractiveRebaseTests(RebaseHistoryFixture fixture)
     {
-        Directory.CreateDirectory(_root);
-        Git("init", "-b", "main");
-        Git("config", "user.email", "tests@example.invalid");
-        Git("config", "user.name", "CSharpGit Tests");
-
-        _a = Commit("A");
-        _b = Commit("B");
-        _c = Commit("C");
-        _d = Commit("D");
-        _e = Commit("E");
+        _root = fixture.CreateCopy();
+        _a = fixture.Commits[0];
+        _b = fixture.Commits[1];
+        _c = fixture.Commits[2];
+        _d = fixture.Commits[3];
+        _e = fixture.Commits[4];
+        _nextFile = 5;
     }
 
     [Fact]
@@ -620,26 +614,8 @@ public sealed class InteractiveRebaseTests : IDisposable
         return result.Output.Trim();
     }
 
-    private (bool Success, string Output, string Error) RunGit(IReadOnlyList<string> arguments)
-    {
-        var start = new ProcessStartInfo("git")
-        {
-            WorkingDirectory = _root,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        foreach (var argument in arguments)
-            start.ArgumentList.Add(argument);
-
-        using var process = Process.Start(start) ?? throw new InvalidOperationException("Git did not start.");
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        return (process.ExitCode == 0, output, error);
-    }
+    private (bool Success, string Output, string Error) RunGit(IReadOnlyList<string> arguments) =>
+        TestGitRunner.TryRun(_root, arguments.ToArray());
 
     public void Dispose() => TestDirectory.Delete(_root);
 }

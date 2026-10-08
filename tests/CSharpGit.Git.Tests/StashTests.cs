@@ -1,23 +1,16 @@
-using System.Diagnostics;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Application.Exceptions;
 using CSharpGit.Domain;
 
 namespace CSharpGit.Git.Tests;
 
-public sealed class StashTests : IDisposable
+public sealed class StashTests : IDisposable, IClassFixture<StashHistoryFixture>
 {
-    private readonly string _root = Path.Combine(Path.GetTempPath(), $"csharpgit-stash-{Guid.NewGuid():N}");
+    private readonly string _root;
 
-    public StashTests()
+    public StashTests(StashHistoryFixture fixture)
     {
-        Directory.CreateDirectory(_root);
-        Git(_root, "init", "-b", "main");
-        Git(_root, "config", "user.email", "tests@example.invalid");
-        Git(_root, "config", "user.name", "CSharpGit Tests");
-        File.WriteAllText(Path.Combine(_root, "tracked.txt"), "initial\n");
-        Git(_root, "add", "tracked.txt");
-        Git(_root, "commit", "-m", "Initial");
+        _root = fixture.CreateCopy();
     }
 
     [Fact]
@@ -501,23 +494,8 @@ public sealed class StashTests : IDisposable
         return result.Output.Trim();
     }
 
-    private static (bool Success, string Output, string Error) RunGit(string directory, IReadOnlyList<string> arguments)
-    {
-        var start = new ProcessStartInfo("git")
-        {
-            WorkingDirectory = directory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        foreach (var argument in arguments) start.ArgumentList.Add(argument);
-        using var process = Process.Start(start) ?? throw new InvalidOperationException("Git did not start.");
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        return (process.ExitCode == 0, output, error);
-    }
+    private static (bool Success, string Output, string Error) RunGit(string directory, IReadOnlyList<string> arguments) =>
+        TestGitRunner.TryRun(directory, arguments.ToArray());
 
     public void Dispose() => TestDirectory.Delete(_root);
 }
