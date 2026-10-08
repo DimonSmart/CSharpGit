@@ -364,6 +364,35 @@ public sealed partial class SettingsPage : Page
         }
     }
 
+    private async void PullStrategyComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_selectionReady || _viewModel.IsSynchronizingFromSettings
+            || PullStrategyComboBox.SelectedItem is not PullStrategyOption option) return;
+        SettingsMessage.IsOpen = false;
+        try
+        {
+            await _viewModel.ApplyPullStrategyAsync(option);
+        }
+        catch (Exception exception)
+        {
+            ShowSettingsError(exception);
+        }
+    }
+
+    private async void ForcePullAutoStashToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_selectionReady || _viewModel.IsSynchronizingFromSettings) return;
+        SettingsMessage.IsOpen = false;
+        try
+        {
+            await _viewModel.ApplyForcePullAutoStashAsync(ForcePullAutoStashToggle.IsOn);
+        }
+        catch (Exception exception)
+        {
+            ShowSettingsError(exception);
+        }
+    }
+
     private async void ShowAuthorAvatarsToggle_Toggled(object sender, RoutedEventArgs e)
     {
         if (!_selectionReady || _viewModel.IsSynchronizingFromSettings) return;

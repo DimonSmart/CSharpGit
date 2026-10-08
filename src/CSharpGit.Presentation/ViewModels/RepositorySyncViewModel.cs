@@ -6,6 +6,7 @@ using System.Windows.Input;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Application.Exceptions;
 using CSharpGit.Domain;
+using CSharpGit.Presentation.Threading;
 
 namespace CSharpGit.Presentation.ViewModels;
 
@@ -71,10 +72,26 @@ public sealed record ForcePushExecutionResult(
     ForcePushExecutionKind Kind,
     string? Message = null);
 
+public enum PullExecutionKind
+{
+    Completed,
+    NeedsAttention,
+    Refused,
+    Failed,
+    Unavailable
+}
+
+public sealed record PullExecutionResult(
+    PullExecutionKind Kind,
+    string Message,
+    PullResult? GitResult = null);
+
 public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly IRepositorySyncService _syncService;
     private readonly IAppSettingsService _settings;
+    private readonly IUiDispatcher? _uiDispatcher;
+    private PullExecutionResult? _lastPullResult;
     private IRepositorySyncContext? _context;
     private GitRemote? _selectedRemote;
     private bool _operationInProgress;
@@ -82,8 +99,10 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
 
     public RepositorySyncViewModel(
         IRepositorySyncService syncService,
-        IAppSettingsService settings)
+        IAppSettingsService settings,
+        IUiDispatcher? uiDispatcher = null)
     {
+        _uiDispatcher = uiDispatcher;
         _syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
 
@@ -91,6 +110,7 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
         FetchAllCommand = new AsyncCommand(FetchAllCurrentAsync, () => CanFetchAll);
         PullCommand = new AsyncCommand(PullCurrentAsync, () => CanPull);
         Remotes.CollectionChanged += Remotes_CollectionChanged;
+        _settings.Changed += PullSettings_Changed;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -122,7 +142,37 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
 
     public bool CanFetchAll => _context?.CanRunSyncMutation == true;
 
-    public bool CanPull => _context?.CanRunSyncMutation == true;
+    public bool CanPull =>
+        _context is { Repository: not null, CanRunSyncMutation: true, IsBusy: false }
+        && !_operationInProgress
+        && _context.CurrentOperation == RepositoryOperation.None
+        && _context.CurrentLocalBranch is { Upstream: { Length: > 0 } };
+
+    public PullStrategy DefaultPullStrategy => _settings.DefaultPullStrategy;
+    public bool ForcePullAutoStash => _settings.ForcePullAutoStash;
+    public bool IsGitConfigurationDefault => DefaultPullStrategy == PullStrategy.GitConfiguration;
+    public bool IsMergeDefault => DefaultPullStrategy == PullStrategy.Merge;
+    public bool IsRebaseDefault => DefaultPullStrategy == PullStrategy.Rebase;
+    public bool IsFastForwardOnlyDefault => DefaultPullStrategy == PullStrategy.FastForwardOnly;
+    public GitBranch? CurrentPullBranch => _context?.CurrentLocalBranch;
+    public PullExecutionResult? LastPullResult => _lastPullResult;
+
+    public string PullTooltip
+    {
+        get
+        {
+            var branch = CurrentPullBranch;
+            var status = _context?.CurrentOperation != RepositoryOperation.None
+                ? "A repository operation is already in progress."
+                : branch is null ? "HEAD is detached."
+                : string.IsNullOrWhiteSpace(branch.Upstream) ? $"Branch '{branch.Name}' has no upstream."
+                : $"Pull from {branch.Upstream}";
+            var strategy = DefaultPullStrategy == PullStrategy.GitConfiguration
+                ? "Git configuration (Git decides)"
+                : DefaultPullStrategy.ToString();
+            return $"{status} · Strategy: {strategy} · Autostash: {(ForcePullAutoStash ? "forced" : "Git configuration")}";
+        }
+    }
 
     public bool CanPush =>
         _context is { Repository: not null, CanRunSyncMutation: true, IsBusy: false }
@@ -189,6 +239,8 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
         Notify(nameof(CanFetch));
         Notify(nameof(CanFetchAll));
         Notify(nameof(CanPull));
+        Notify(nameof(CurrentPullBranch));
+        Notify(nameof(PullTooltip));
         Notify(nameof(CanPush));
         Notify(nameof(CanPushTo));
         Notify(nameof(CanForcePushWithLease));
@@ -225,16 +277,117 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
             () => _syncService.FetchAllAsync(repository));
     }
 
-    public Task<bool> PullAsync(Repository repository)
+    public Task<PullExecutionResult> PullAsync(Repository repository) =>
+        PullAsync(repository, DefaultPullStrategy);
+
+    public async Task<PullExecutionResult> PullAsync(
+        Repository repository,
+        PullStrategy strategy)
     {
         ArgumentNullException.ThrowIfNull(repository);
+        if (!Enum.IsDefined(strategy))
+            throw new ArgumentOutOfRangeException(nameof(strategy));
         var context = _context;
         if (!IsCurrentRepository(context, repository))
-            return Task.FromResult(false);
+            return PublishPullResult(new(PullExecutionKind.Unavailable,
+                "The repository changed before pull could start."));
+        if (!CanPull)
+            return PublishPullResult(new(PullExecutionKind.Unavailable,
+                "Pull is unavailable while the repository is busy, an operation is active, or no upstream is configured."));
 
-        return context!.RunSyncMutationAsync(
+        // Snapshot both preferences before the first await. The selected one-off strategy
+        // never modifies the stored default.
+        var options = new PullOptions(strategy, ForcePullAutoStash);
+        PullExecutionResult? result = null;
+        var lifecycleSucceeded = await context!.RunSyncMutationAsync(
             repository,
-            () => _syncService.PullAsync(repository));
+            async () =>
+            {
+                try
+                {
+                    var gitResult = await _syncService.PullAsync(repository, options);
+                    var kind = gitResult.Outcome switch
+                    {
+                        PullOutcome.Completed => PullExecutionKind.Completed,
+                        PullOutcome.NeedsAttention => PullExecutionKind.NeedsAttention,
+                        PullOutcome.Refused => PullExecutionKind.Refused,
+                        _ => PullExecutionKind.Failed
+                    };
+                    result = new(kind, gitResult.Message, gitResult);
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    result = new(PullExecutionKind.Failed, exception.Message);
+                }
+            });
+
+        if (!lifecycleSucceeded || !IsCurrentRepository(_context, repository))
+            return PublishPullResult(new(
+                IsCurrentRepository(_context, repository)
+                    ? PullExecutionKind.Failed : PullExecutionKind.Unavailable,
+                IsCurrentRepository(_context, repository)
+                    ? "The repository could not be refreshed after pull."
+                    : "The repository changed while pull was running."));
+
+        return PublishPullResult(result ??
+            new(PullExecutionKind.Failed, "Pull did not produce a result."));
+    }
+
+    public async Task SetDefaultPullStrategyAsync(PullStrategy strategy)
+    {
+        try
+        {
+            await _settings.SetDefaultPullStrategyAsync(strategy);
+        }
+        finally
+        {
+            NotifyPullPreferences();
+        }
+    }
+
+    public async Task SetPullAutoStashAsync(bool value)
+    {
+        try
+        {
+            await _settings.SetForcePullAutoStashAsync(value);
+        }
+        finally
+        {
+            NotifyPullPreferences();
+        }
+    }
+
+    private PullExecutionResult PublishPullResult(PullExecutionResult result)
+    {
+        _lastPullResult = result;
+        Notify(nameof(LastPullResult));
+        return result;
+    }
+
+    private void PullSettings_Changed(object? sender, EventArgs args)
+    {
+        if (Volatile.Read(ref _disposed) != 0) return;
+        if (_uiDispatcher is { HasThreadAccess: false })
+        {
+            _uiDispatcher.TryEnqueue(() =>
+            {
+                if (Volatile.Read(ref _disposed) == 0)
+                    NotifyPullPreferences();
+            });
+            return;
+        }
+        NotifyPullPreferences();
+    }
+
+    private void NotifyPullPreferences()
+    {
+        Notify(nameof(DefaultPullStrategy));
+        Notify(nameof(ForcePullAutoStash));
+        Notify(nameof(IsGitConfigurationDefault));
+        Notify(nameof(IsMergeDefault));
+        Notify(nameof(IsRebaseDefault));
+        Notify(nameof(IsFastForwardOnlyDefault));
+        Notify(nameof(PullTooltip));
     }
 
     public async Task<PushExecutionResult> PushAsync(Repository repository)
@@ -470,6 +623,7 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
         Remotes.CollectionChanged -= Remotes_CollectionChanged;
+        _settings.Changed -= PullSettings_Changed;
         Detach();
     }
 

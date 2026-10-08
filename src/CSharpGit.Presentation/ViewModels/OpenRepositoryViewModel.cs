@@ -519,12 +519,14 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         {
             beforeMutation?.Invoke();
             Exception? failure = null;
+            OperationCanceledException? cancellation = null;
             try
             {
                 await mutation();
                 afterSuccessfulMutation?.Invoke();
             }
-            catch (Exception exception) when (exception is not OperationCanceledException) { failure = exception; }
+            catch (OperationCanceledException exception) { cancellation = exception; }
+            catch (Exception exception) { failure = exception; }
             try
             {
                 if (localOnlyRefresh)
@@ -533,6 +535,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                     await RefreshStateAsync(includeHistory);
             }
             catch (Exception exception) when (exception is not OperationCanceledException) { failure ??= exception; }
+            if (cancellation is not null)
+                System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(cancellation).Throw();
             if (failure is not null)
                 ErrorMessage = errorContext is null ? $"Git: {failure.Message}" : $"{errorContext}\nGit: {failure.Message}";
             succeeded = failure is null;

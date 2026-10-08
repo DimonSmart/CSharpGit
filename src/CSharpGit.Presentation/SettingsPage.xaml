@@ -139,6 +139,33 @@
               </StackPanel>
             </Border>
 
+            <TextBlock Text="Git pull"
+                       Style="{StaticResource SectionHeaderTextStyle}"
+                       Margin="{StaticResource Margin.Section}" />
+            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
+              <StackPanel Spacing="{StaticResource Spacing.M}">
+                <TextBlock Text="Default strategy" Style="{StaticResource BodyStrongTextStyle}" />
+                <ComboBox x:Name="PullStrategyComboBox"
+                          ItemsSource="{Binding PullStrategies}"
+                          SelectedItem="{Binding SelectedPullStrategy, Mode=TwoWay}"
+                          DisplayMemberPath="Label"
+                          Style="{StaticResource CompactComboBoxStyle}"
+                          MinWidth="220"
+                          HorizontalAlignment="Left"
+                          SelectionChanged="PullStrategyComboBox_SelectionChanged" />
+                <ToggleSwitch x:Name="ForcePullAutoStashToggle"
+                              Header="Force Git autostash"
+                              IsOn="{Binding ForcePullAutoStash, Mode=TwoWay}"
+                              OnContent="On"
+                              OffContent="Off"
+                              Toggled="ForcePullAutoStashToggle_Toggled" />
+                <TextBlock Text="When off, Git controls autostash according to its configuration. This setting does not change Git configuration."
+                           Style="{StaticResource SecondaryTextStyle}"
+                           TextWrapping="Wrap"
+                           MaxWidth="620" />
+              </StackPanel>
+            </Border>
+
             <TextBlock Text="Commit time display"
                        Style="{StaticResource SectionHeaderTextStyle}"
                        Margin="{StaticResource Margin.Section}" />
