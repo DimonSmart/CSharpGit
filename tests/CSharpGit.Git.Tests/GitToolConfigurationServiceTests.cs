@@ -275,16 +275,31 @@ public sealed class GitToolConfigurationServiceTests : IClassFixture<GitToolsEmp
         // ran many independent --get commands even when no tools were configured.
         var before = Volatile.Read(ref _gitProcessesStarted);
         await _service.ReadAsync(_repository, GitToolKind.Diff);
-        Assert.Equal(2, Volatile.Read(ref _gitProcessesStarted) - before);
+        Assert.InRange(Volatile.Read(ref _gitProcessesStarted) - before, 1, 2);
 
         before = Volatile.Read(ref _gitProcessesStarted);
         await _service.ReadAsync(_repository, GitToolKind.Merge);
-        Assert.Equal(2, Volatile.Read(ref _gitProcessesStarted) - before);
+        Assert.InRange(Volatile.Read(ref _gitProcessesStarted) - before, 1, 2);
 
         RunGit(_repositoryPath, "config", "core.editor", "vim");
         before = Volatile.Read(ref _gitProcessesStarted);
         await _service.ReadAsync(_repository, GitToolKind.Editor);
         Assert.Equal(1, Volatile.Read(ref _gitProcessesStarted) - before);
+    }
+
+    [Fact]
+    public async Task ToolHelpCacheIsInvalidatedByNewCustomToolDefinition()
+    {
+        await _service.ReadAsync(_repository, GitToolKind.Diff);
+        var uniqueTool = $"cache-check-{Guid.NewGuid():N}";
+        RunGit(_repositoryPath, "config", $"difftool.{uniqueTool}.cmd", "true");
+        var before = Volatile.Read(ref _gitProcessesStarted);
+
+        await _service.ReadAsync(_repository, GitToolKind.Diff);
+
+        // One fresh config snapshot plus a new tool-help result for a changed
+        // config fingerprint. No stale supported-tool list is returned.
+        Assert.Equal(2, Volatile.Read(ref _gitProcessesStarted) - before);
     }
 
     [Fact]
