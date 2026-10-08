@@ -13,6 +13,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         Converters =
         {
             new TolerantApplicationThemeModeConverter(),
+            new TolerantPullStrategyConverter(),
             new JsonStringEnumConverter()
         }
     };
@@ -48,6 +49,10 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     public bool ShowReflog => Volatile.Read(ref _state).ShowReflog;
 
     public bool AutoSetupRemoteOnPush => Volatile.Read(ref _state).AutoSetupRemoteOnPush;
+
+    public PullStrategy DefaultPullStrategy => Volatile.Read(ref _state).DefaultPullStrategy;
+
+    public bool ForcePullAutoStash => Volatile.Read(ref _state).ForcePullAutoStash;
 
     public bool ShowAuthorAvatars => Volatile.Read(ref _state).ShowAuthorAvatars;
 
@@ -134,6 +139,28 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             current => current.AutoSetupRemoteOnPush == value
                 ? current
                 : current with { AutoSetupRemoteOnPush = value },
+            cancellationToken);
+
+    public Task SetDefaultPullStrategyAsync(
+        PullStrategy strategy,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Enum.IsDefined(strategy))
+            throw new ArgumentOutOfRangeException(nameof(strategy));
+        return UpdateAsync(
+            current => current.DefaultPullStrategy == strategy
+                ? current
+                : current with { DefaultPullStrategy = strategy },
+            cancellationToken);
+    }
+
+    public Task SetForcePullAutoStashAsync(
+        bool value,
+        CancellationToken cancellationToken = default) =>
+        UpdateAsync(
+            current => current.ForcePullAutoStash == value
+                ? current
+                : current with { ForcePullAutoStash = value },
             cancellationToken);
 
     public Task SetShowAuthorAvatarsAsync(
@@ -407,6 +434,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 gitConsoleAutoOpenMode,
                 document.ShowReflog,
                 document.AutoSetupRemoteOnPush,
+                document.DefaultPullStrategy,
+                document.ForcePullAutoStash,
                 document.ShowAuthorAvatars ?? true,
                 document.OnlineAvatarLookupEnabled ?? true,
                 document.HistoryPerformanceDiagnosticsEnabled,
@@ -444,6 +473,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             GitConsoleAutoOpenMode = state.GitConsoleAutoOpenMode,
             ShowReflog = state.ShowReflog,
             AutoSetupRemoteOnPush = state.AutoSetupRemoteOnPush,
+            DefaultPullStrategy = state.DefaultPullStrategy,
+            ForcePullAutoStash = state.ForcePullAutoStash,
             ShowAuthorAvatars = state.ShowAuthorAvatars,
             OnlineAvatarLookupEnabled = state.OnlineAvatarLookupEnabled,
             HistoryPerformanceDiagnosticsEnabled = state.HistoryPerformanceDiagnosticsEnabled,
@@ -627,6 +658,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         GitConsoleAutoOpenMode GitConsoleAutoOpenMode,
         bool ShowReflog,
         bool AutoSetupRemoteOnPush,
+        PullStrategy DefaultPullStrategy,
+        bool ForcePullAutoStash,
         bool ShowAuthorAvatars,
         bool OnlineAvatarLookupEnabled,
         bool HistoryPerformanceDiagnosticsEnabled,
@@ -641,6 +674,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             ApplicationLogLevel.Information,
             GitConsoleAutoOpenMode.OnErrors,
             false,
+            false,
+            PullStrategy.GitConfiguration,
             false,
             true,
             true,
@@ -659,6 +694,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         public GitConsoleAutoOpenMode? GitConsoleAutoOpenMode { get; init; }
         public bool ShowReflog { get; init; }
         public bool AutoSetupRemoteOnPush { get; init; }
+        public PullStrategy DefaultPullStrategy { get; init; } = PullStrategy.GitConfiguration;
+        public bool ForcePullAutoStash { get; init; }
         public bool? ShowAuthorAvatars { get; init; }
         public bool? OnlineAvatarLookupEnabled { get; init; }
         public bool HistoryPerformanceDiagnosticsEnabled { get; init; }
@@ -667,6 +704,34 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public bool? HistorySimplifiedRenderingEnabled { get; init; }
         public List<RecentRepositorySettings>? RecentRepositories { get; init; }
+    }
+
+    private sealed class TolerantPullStrategyConverter : JsonConverter<PullStrategy>
+    {
+        public override PullStrategy Read(
+            ref Utf8JsonReader reader,
+            Type typeToConvert,
+            JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.String
+                && Enum.TryParse<PullStrategy>(reader.GetString(), false, out var strategy)
+                && Enum.IsDefined(strategy))
+                return strategy;
+            if (reader.TokenType == JsonTokenType.Number
+                && reader.TryGetInt32(out var value)
+                && Enum.IsDefined(typeof(PullStrategy), value))
+                return (PullStrategy)value;
+            if (reader.TokenType is not JsonTokenType.String and not JsonTokenType.Number and not JsonTokenType.Null)
+            {
+                using var _ = JsonDocument.ParseValue(ref reader);
+            }
+            return PullStrategy.GitConfiguration;
+        }
+
+        public override void Write(
+            Utf8JsonWriter writer,
+            PullStrategy value,
+            JsonSerializerOptions options) => writer.WriteStringValue(value.ToString());
     }
 
     private sealed class TolerantApplicationThemeModeConverter : JsonConverter<ApplicationThemeMode>

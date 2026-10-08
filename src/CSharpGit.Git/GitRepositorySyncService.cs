@@ -77,13 +77,17 @@ internal sealed partial class GitRepositorySyncService : IRepositorySyncService
             $":refs/heads/{branch}");
     }
 
-    public async Task PullAsync(
+    public async Task<PullResult> PullAsync(
         Repository repository,
+        PullOptions options,
         CancellationToken cancellationToken = default)
     {
-        var branch = await CurrentBranchAsync(
-            repository,
-            cancellationToken);
+        ArgumentNullException.ThrowIfNull(repository);
+        ArgumentNullException.ThrowIfNull(options);
+        if (!Enum.IsDefined(options.Strategy))
+            throw new ArgumentOutOfRangeException(nameof(options), "Unknown pull strategy.");
+
+        var branch = await CurrentBranchAsync(repository, cancellationToken);
         var upstream = await _runner.RunOptionalAsync(
             repository.WorkingDirectory,
             cancellationToken,
@@ -91,15 +95,143 @@ internal sealed partial class GitRepositorySyncService : IRepositorySyncService
             "--abbrev-ref",
             "--symbolic-full-name",
             "@{upstream}");
-
         if (string.IsNullOrWhiteSpace(upstream))
             throw new InvalidOperationException(
                 $"Branch '{branch}' has no configured upstream. Publish the branch or configure an upstream before pulling.");
 
-        await _runner.RunMutationAsync(
-            repository,
-            cancellationToken,
-            "pull");
+        var before = (await _runner.RunOptionalAsync(
+            repository.WorkingDirectory, cancellationToken, "rev-parse", "--verify", "HEAD")).Trim();
+
+        var arguments = new List<string> { "pull", "--prune" };
+        switch (options.Strategy)
+        {
+            case PullStrategy.Merge:
+                arguments.Add("--no-rebase");
+                break;
+            case PullStrategy.Rebase:
+                arguments.Add("--rebase");
+                break;
+            case PullStrategy.FastForwardOnly:
+                arguments.Add("--ff-only");
+                break;
+        }
+        if (options.ForceAutoStash)
+            arguments.Add("--autostash");
+
+        GitCommandResult execution;
+        try
+        {
+            execution = await _runner.RunForResultAsync(
+                repository.WorkingDirectory,
+                "Pull",
+                GitCommandKind.User,
+                cancellationToken,
+                new Dictionary<string, string?> { ["GIT_MERGE_AUTOEDIT"] = "no" },
+                arguments);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return new PullResult(
+                PullOutcome.Failed, PullCompletionKind.Unknown,
+                GitOperationDetector.Detect(repository), false, exception.Message);
+        }
+
+        // Git can finish the integration but fail to apply its autostash.
+        // Operation markers and the index, not localized CLI text, determine attention state.
+        var activeOperation = GitOperationDetector.Detect(repository);
+        var unresolved = await _runner.RunAsync(
+            repository.WorkingDirectory, cancellationToken, false,
+            "ls-files", "--unmerged", "-z");
+        var hasUnmergedPaths = !string.IsNullOrEmpty(unresolved);
+        var diagnostic = string.IsNullOrWhiteSpace(execution.StandardError)
+            ? execution.StandardOutput.Trim()
+            : execution.StandardError.Trim();
+        if (activeOperation != RepositoryOperation.None || hasUnmergedPaths)
+        {
+            var description = activeOperation == RepositoryOperation.Rebase && !hasUnmergedPaths
+                ? "Rebase is paused. Use the repository operation controls to continue or abort."
+                : activeOperation == RepositoryOperation.None
+                    ? "Unmerged files remain in the working tree. Resolve them before continuing."
+                    : "Resolve the conflicts using the repository operation controls.";
+            return new PullResult(
+                PullOutcome.NeedsAttention, PullCompletionKind.Unknown,
+                activeOperation, hasUnmergedPaths,
+                string.IsNullOrWhiteSpace(diagnostic) ? description : $"{description}\n{diagnostic}");
+        }
+
+        if (execution.ExitCode != 0)
+        {
+            var refused = options.Strategy == PullStrategy.FastForwardOnly
+                          && !string.IsNullOrWhiteSpace(before)
+                          && await HasDivergedAsync(repository, before, upstream.Trim(), cancellationToken);
+            return new PullResult(
+                refused ? PullOutcome.Refused : PullOutcome.Failed,
+                PullCompletionKind.Unknown, RepositoryOperation.None, false,
+                refused
+                    ? "Fast-forward is not possible because the local and upstream branches have diverged. Choose Merge or Rebase."
+                    : $"Git pull failed (exit {execution.ExitCode}): {diagnostic}");
+        }
+
+        var after = (await _runner.RunOptionalAsync(
+            repository.WorkingDirectory, cancellationToken, "rev-parse", "--verify", "HEAD")).Trim();
+        var completion = await ClassifyPullCompletionAsync(
+            repository, options.Strategy, before, after, cancellationToken);
+        return new PullResult(
+            PullOutcome.Completed, completion, RepositoryOperation.None, false,
+            string.IsNullOrWhiteSpace(diagnostic) ? "Git pull completed." : diagnostic);
+    }
+
+    private async Task<bool> HasDivergedAsync(
+        Repository repository,
+        string localHead,
+        string upstream,
+        CancellationToken cancellationToken)
+    {
+        var remoteHead = (await _runner.RunOptionalAsync(
+            repository.WorkingDirectory, cancellationToken,
+            "rev-parse", "--verify", upstream)).Trim();
+        if (string.IsNullOrEmpty(remoteHead))
+            return false;
+
+        async Task<bool?> IsAncestorAsync(string ancestor, string descendant)
+        {
+            var result = await _runner.RunForResultAsync(
+                repository.WorkingDirectory, "PullAncestry",
+                GitCommandKind.Internal, cancellationToken, null,
+                ["merge-base", "--is-ancestor", ancestor, descendant]);
+            return result.ExitCode switch { 0 => true, 1 => false, _ => null };
+        }
+
+        var localIsAncestor = await IsAncestorAsync(localHead, remoteHead);
+        var remoteIsAncestor = await IsAncestorAsync(remoteHead, localHead);
+        return localIsAncestor == false && remoteIsAncestor == false;
+    }
+
+    private async Task<PullCompletionKind> ClassifyPullCompletionAsync(
+        Repository repository, PullStrategy strategy, string before, string after,
+        CancellationToken cancellationToken)
+    {
+        if (string.Equals(before, after, StringComparison.Ordinal))
+            return PullCompletionKind.UpToDate;
+        if (string.IsNullOrWhiteSpace(before) || string.IsNullOrWhiteSpace(after))
+            return PullCompletionKind.Unknown;
+
+        var parents = await _runner.RunAsync(
+            repository.WorkingDirectory, cancellationToken, false,
+            "show", "-s", "--format=%P", "HEAD");
+        var parentIds = parents.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parentIds.Length > 1
+            && string.Equals(parentIds[0], before, StringComparison.Ordinal)
+            && strategy != PullStrategy.Rebase)
+            return PullCompletionKind.MergeCommit;
+
+        var ancestry = await _runner.RunForResultAsync(
+            repository.WorkingDirectory, "PullAncestry",
+            GitCommandKind.Internal, cancellationToken, null,
+            ["merge-base", "--is-ancestor", before, after]);
+        if (ancestry.ExitCode == 0 && parentIds.Length <= 1)
+            return PullCompletionKind.FastForward;
+        return PullCompletionKind.Unknown;
     }
 
     public Task PushAsync(

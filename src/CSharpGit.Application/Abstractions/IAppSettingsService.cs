@@ -50,6 +50,8 @@ public interface IAppSettingsService
     GitConsoleAutoOpenMode GitConsoleAutoOpenMode { get; }
     bool ShowReflog { get; }
     bool AutoSetupRemoteOnPush { get; }
+    PullStrategy DefaultPullStrategy { get; }
+    bool ForcePullAutoStash { get; }
     bool ShowAuthorAvatars { get; }
     bool OnlineAvatarLookupEnabled { get; }
     bool HistoryPerformanceDiagnosticsEnabled { get; }
@@ -89,6 +91,9 @@ public interface IAppSettingsService
     Task SetAutoSetupRemoteOnPushAsync(
         bool value,
         CancellationToken cancellationToken = default);
+
+    Task SetDefaultPullStrategyAsync(PullStrategy strategy, CancellationToken cancellationToken = default);
+    Task SetForcePullAutoStashAsync(bool value, CancellationToken cancellationToken = default);
 
     Task SetShowAuthorAvatarsAsync(
         bool value,

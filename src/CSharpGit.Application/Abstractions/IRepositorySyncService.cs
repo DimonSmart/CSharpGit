@@ -2,6 +2,40 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Application.Abstractions;
 
+public enum PullStrategy
+{
+    GitConfiguration,
+    Merge,
+    Rebase,
+    FastForwardOnly
+}
+
+public sealed record PullOptions(PullStrategy Strategy, bool ForceAutoStash = false);
+
+public enum PullOutcome
+{
+    Completed,
+    NeedsAttention,
+    Refused,
+    Failed
+}
+
+public enum PullCompletionKind
+{
+    Unknown,
+    UpToDate,
+    FastForward,
+    MergeCommit,
+    Rebased
+}
+
+public sealed record PullResult(
+    PullOutcome Outcome,
+    PullCompletionKind Completion,
+    RepositoryOperation ActiveOperation,
+    bool HasUnmergedPaths,
+    string Message);
+
 public sealed record PushOptions(bool AutoSetupRemote = false);
 
 public sealed record PublishBranchRequest(
@@ -18,7 +52,7 @@ public interface IRepositorySyncService
     Task FetchAsync(Repository repository, string remote, CancellationToken cancellationToken = default);
     Task FetchAllAsync(Repository repository, CancellationToken cancellationToken = default);
     Task DeleteRemoteBranchAsync(Repository repository, string remote, string branch, CancellationToken cancellationToken = default);
-    Task PullAsync(Repository repository, CancellationToken cancellationToken = default);
+    Task<PullResult> PullAsync(Repository repository, PullOptions options, CancellationToken cancellationToken = default);
     Task PushAsync(Repository repository, PushOptions? options = null, CancellationToken cancellationToken = default);
     Task<PublishBranchPreparation> PreparePublishBranchAsync(Repository repository, CancellationToken cancellationToken = default);
     Task PublishBranchAsync(Repository repository, PublishBranchRequest request, CancellationToken cancellationToken = default);
