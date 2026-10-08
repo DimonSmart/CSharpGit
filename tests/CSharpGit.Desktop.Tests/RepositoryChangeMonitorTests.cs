@@ -141,12 +141,13 @@ public sealed class RepositoryChangeMonitorTests
         monitor.Start(repository.Repository);
         monitor.EnqueueInvalidation(RepositoryInvalidationSource.WorkingTree, ["pending.txt"]);
 
+        var generationBeforeStop = monitor.Generation;
         if (dispose) monitor.Dispose();
         else monitor.Stop();
 
         clock.Advance(RepositoryChangeMonitor.DebounceDelay + TimeSpan.FromSeconds(1));
         Assert.Equal(0, notifications);
-        Assert.False(monitor.GetInvalidationsSince(0).HasAny);
+        Assert.False(monitor.GetInvalidationsSince(generationBeforeStop).HasAny);
     }
 
     [Fact]
