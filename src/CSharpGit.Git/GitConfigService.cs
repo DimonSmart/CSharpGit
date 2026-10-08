@@ -11,6 +11,29 @@ internal sealed class GitConfigService
     internal GitConfigService(GitCommandExecutor executor) =>
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
 
+    // A fresh Git-resolved view for each configuration operation. -z preserves embedded
+    // whitespace, newlines and duplicate entries, unlike line-based --get parsing.
+    internal async Task<GitConfigSnapshot> ReadSnapshotAsync(
+        Repository? repository,
+        CancellationToken cancellationToken = default,
+        bool includes = true)
+    {
+        var arguments = new[]
+        {
+            "config", "--list", "--null", "--show-origin", "--show-scope",
+            includes ? "--includes" : "--no-includes"
+        };
+        var result = await _executor.ExecuteForResultPreservingOutputEndingsAsync(
+            repository?.WorkingDirectory ?? Environment.CurrentDirectory,
+            "GitConfigSnapshot",
+            GitCommandKind.Internal,
+            cancellationToken,
+            null,
+            arguments);
+        if (result.ExitCode != 0) throw Failure("Could not read Git configuration", result);
+        return GitConfigSnapshot.Parse(result.StandardOutput);
+    }
+
     internal async Task<GitConfigValue?> ReadEffectiveAsync(
         Repository? repository,
         string key,
@@ -109,7 +132,19 @@ internal sealed class GitConfigService
         CancellationToken cancellationToken = default)
     {
         if ((await ReadDirectValuesAsync(repository, key, scope, cancellationToken)).Count == 0) return;
+        await UnsetAllWithoutReadAsync(repository, scope, key, cancellationToken);
+    }
 
+    // Used only when the caller already read the key. Git's 1/5 exit statuses
+    // represent an absent key (including a key supplied only by an included file).
+    internal async Task UnsetAllWithoutReadAsync(
+        Repository? repository,
+        GitConfigScope scope,
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateScope(repository, scope);
+        ValidateKey(key);
         var result = await RunAsync(
             repository,
             "GitConfigUnset",
