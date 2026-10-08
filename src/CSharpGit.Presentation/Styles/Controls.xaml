@@ -93,6 +93,12 @@
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
 
+  <Style x:Key="CompactRadioButtonStyle" TargetType="RadioButton">
+    <Setter Property="MinHeight" Value="{StaticResource Height.Control}" />
+    <Setter Property="FontSize" Value="{StaticResource Font.Body}" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+
   <Style x:Key="FormHeaderSurfaceStyle" TargetType="Border">
     <Setter Property="MinHeight" Value="{StaticResource Height.Toolbar}" />
     <Setter Property="Padding" Value="16,0" />

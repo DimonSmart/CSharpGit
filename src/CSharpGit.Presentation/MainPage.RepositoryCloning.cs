@@ -61,7 +61,7 @@ public sealed partial class MainPage
     private async Task<bool> ShowCloneRepositoryDialogAsync()
     {
         var repositoryUrlBox = new TextBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"),
             Header = "Repository URL",
             PlaceholderText = "https://github.com/owner/repository.git",
             Text = _cloneRepositoryViewModel.RepositoryUrl,
@@ -69,13 +69,13 @@ public sealed partial class MainPage
         };
 
         var localDirectoryBox = new TextBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"),
             Header = "Local directory",
             Text = _cloneRepositoryViewModel.LocalDirectory,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         var browseButton = new Button
-        {
+        { Style = UiStyles.Resolve<Style>("CompactButtonStyle"),
             Content = "Browse…",
             VerticalAlignment = VerticalAlignment.Bottom
         };
@@ -125,8 +125,8 @@ public sealed partial class MainPage
             Visibility = Visibility.Collapsed
         };
 
-        var cancelButton = new Button { Content = "Cancel" };
-        var cloneButton = new Button { Content = "Clone" };
+        var cancelButton = new Button { Style = UiStyles.Resolve<Style>("CompactButtonStyle"), Content = "Cancel" };
+        var cloneButton = new Button { Style = UiStyles.Resolve<Style>("CompactButtonStyle"), Content = "Clone" };
         var actions = new StackPanel
         {
             Orientation = Orientation.Horizontal,

@@ -116,12 +116,12 @@ public sealed partial class MainPage
         }
 
         var localBranchBox = new TextBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"),
             Text = preparation.LocalBranch,
             IsReadOnly = true
         };
         var remoteCombo = new ComboBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactComboBoxStyle"),
             ItemsSource = _viewModel.RepositorySync.Remotes,
             DisplayMemberPath = nameof(GitRemote.Name),
             PlaceholderText = "Select remote",
@@ -137,12 +137,12 @@ public sealed partial class MainPage
         }
 
         var remoteBranchBox = new TextBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"),
             Text = preparation.LocalBranch,
             PlaceholderText = "Remote branch name"
         };
         var trackCheck = new CheckBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactCheckBoxStyle"),
             Content = "Track this remote branch as upstream",
             IsChecked = options.DefaultSetUpstream
         };
@@ -372,19 +372,19 @@ public sealed partial class MainPage
     private async Task<(string Remote, string RemoteBranch)?> ShowForcePushTargetDialogAsync(string localBranch)
     {
         var localBranchBox = new TextBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"),
             Text = localBranch,
             IsReadOnly = true
         };
         var remoteCombo = new ComboBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactComboBoxStyle"),
             ItemsSource = _viewModel.RepositorySync.Remotes,
             DisplayMemberPath = nameof(GitRemote.Name),
             PlaceholderText = "Select remote",
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         var remoteBranchBox = new TextBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"),
             Text = localBranch,
             PlaceholderText = "Remote branch name"
         };
