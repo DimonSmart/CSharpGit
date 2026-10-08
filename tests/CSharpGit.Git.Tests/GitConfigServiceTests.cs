@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using CSharpGit.Application;
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 
 namespace CSharpGit.Git.Tests;
@@ -203,6 +205,38 @@ public sealed class GitConfigServiceTests : IDisposable
         var second = await _service.ReadSnapshotAsync(_repository);
         Assert.Equal("changed", second.Effective("core.editor")?.Value);
         Assert.Equal("worktree", first.Effective("core.editor")?.Value);
+    }
+
+    [Fact]
+    public async Task SnapshotHonorsConditionalOnBranchIncludes()
+    {
+        var included = Path.Combine(_root, "conditional.gitconfig");
+        File.WriteAllText(included, "[diff]\\n\\ttool = conditional\\n".Replace("\\n", "\n").Replace("\\t", "\t"));
+        RunGit(_repositoryPath, "config", "--global", "includeIf.onbranch:main.path", included);
+
+        var snapshot = await _service.ReadSnapshotAsync(_repository);
+        var expected = await _service.ReadEffectiveAsync(_repository, "diff.tool");
+
+        Assert.Equal(expected, snapshot.Effective("diff.tool"));
+        Assert.Equal("conditional", snapshot.Effective("diff.tool")?.Value);
+        Assert.Contains("conditional.gitconfig", snapshot.Effective("diff.tool")?.Origin ?? string.Empty);
+    }
+
+    [Fact]
+    public async Task SnapshotDoesNotLeakUnrelatedConfigurationIntoActivityHistory()
+    {
+        const string secret = "sensitive-value-must-not-appear";
+        RunGit(_repositoryPath, "config", "--local", "demo.secret", secret);
+        var history = new GitCommandActivityHistory();
+        var service = new GitConfigService(GitTestServices.CreateExecutor(activitySink: history));
+
+        var snapshot = await service.ReadSnapshotAsync(_repository);
+        var command = Assert.Single(history.GetSnapshot(GitCommandFilter.AllCommands));
+
+        Assert.Equal(secret, snapshot.Effective("demo.secret")?.Value);
+        Assert.Equal(string.Empty, command.StandardOutput);
+        Assert.Equal(string.Empty, command.StandardError);
+        Assert.DoesNotContain(secret, command.DisplayCommand);
     }
 
     [Fact]
