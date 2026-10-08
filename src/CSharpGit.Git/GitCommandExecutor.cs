@@ -281,14 +281,14 @@ internal sealed class GitCommandExecutor
 
         var outputTask = PumpTextAsync(
             process.StandardOutput,
-            activityId,
+            suppressOutputEvents ? null : activityId,
             GitOutputStream.StandardOutput,
             suppressOutputEvents ? null : activitySink,
             maxStandardOutputBytes,
             () => KillProcessTree(process));
         var errorTask = PumpTextAsync(
             process.StandardError,
-            activityId,
+            suppressOutputEvents ? null : activityId,
             GitOutputStream.StandardError,
             suppressOutputEvents ? null : activitySink);
 
