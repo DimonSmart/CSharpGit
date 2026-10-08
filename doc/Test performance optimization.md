@@ -90,3 +90,38 @@ The Git assembly reports **427 passed, 0 failed, 0 skipped on all three platform
 The corrected macOS run measured 76 template copies (2.78 s total), four template builds (2.56 s total), 36 Git helper processes during template setup (2.38 s total), 365 Git helper processes while running migrated tests (25.35 s total), and 222 cleanup calls (4.32 s total). The corresponding corrected Windows values were 76 copies (3.70 s), four template builds (4.28 s), 36 setup Git processes (4.13 s), 365 other instrumented Git processes (30.10 s), and 222 cleanup calls (12.35 s). These figures do not include GitCommandExecutor invocations by production services.
 
 Neither target of Git.Tests <180 s on Windows or <120 s on macOS has been achieved. The shortfall is now visible and attributable to remaining classes. The first paired observations are not sufficient to establish statistical confidence; repeat comparable runner measurements and report medians and dispersion before drawing a strong conclusion about Ubuntu.
+
+
+## Stage 2: Git tool configuration read/write costs (2026-10-08)
+
+### Baseline and method
+
+The previous optimization (through `3f711bf`) reduced repository setup costs, but `GitToolConfigurationService` still called Git once per config key and per scope. A source-level count of an ordinary *unconfigured* repository (with a non-null `Repository`) gives:
+
+| Read operation | Baseline config processes | Baseline other processes | New config processes | New other processes |
+|---|---:|---:|---:|---:|
+| Diff | 25 | 1 `difftool --tool-help` | 1 | 1 `--tool-help` |
+| Merge | 15 | 1 `mergetool --tool-help` | 1 | 1 `--tool-help` |
+| Editor, no configured/environment editor | 5 | 1 `git var GIT_EDITOR` | 1 | 1 `git var` |
+| Editor, configured in Git | 5 | 0 | 1 | 0 |
+
+These are **static counts from the old call graph**, not measurements of the old production executor. No production-process instrumentation existed in the baseline TRX, and the CI runtime varied significantly; do not misrepresent this table as sampled timings. For Diff/Merge, the new design reduces the configuration process count by 96% and 93%, respectively, in these examples. The regression test `ReadingToolsUsesAtMostTwoGitProcessesPerOperation` measures actual process starts after the refactor.
+
+For a new opt-in runtime profile, set `CSHARPGIT_TEST_METRICS=1` with `CSHARPGIT_TEST_METRICS_DIR`. Test-created `GitCommandExecutor` instances now record `git-service-process` events for each child process, with safe categories (`config`, `difftool-help`, `mergetool-help`, `difftool`, `mergetool`, `other`) and durations. Process count is the number of events; aggregate `elapsed_ms` for summed child-process time. No config values, stdout/stderr, argument values, paths, or environment values are added to diagnostic JSONL. Timing also includes the test activity sink/collection delay and is approximate. Test-helper `git-process` events remain separate; those counters do **not** represent all process launches.
+
+### Design and semantics
+
+- `GitConfigService.ReadSnapshotAsync` executes a single `git config --list --null --show-origin --show-scope --includes` process per operation, with an optional `--no-includes` variant. The ordinary reading, writing and removal paths of `GitToolConfigurationService` use this snapshot; no cross-operation config cache is kept. External modifications are read on the next operation.
+- `GitConfigSnapshot` retains every record in Git-reported order and indexes keys without flattening duplicate values. Its parser reads three NUL-delimited fields per entry (scope, origin, key + optional newline + value). This preserves command strings with embedded CR/LF, quotes and whitespace; keys without a value are distinct from absent keys. Git resolves `include.path`/`includeIf` while producing the snapshot. Scope is taken from Git, not guessed from an origin filename. Section/variable matching is case-insensitive, subsection matching case-sensitive.
+- The effective value of **each exact key** is its last Git-reported value. When selecting *between different keys*, the app's original explicit priority still wins: `diff.guitool`, `merge.guitool`, `diff.tool`, `merge.tool`. Diff's `difftool.<name>` → `mergetool.<name>` field fallback and merge's dedicated keys are unchanged. Global, local, worktree, system and command sources remain distinguishable.
+- `SaveAsync` and `RemoveOverrideAsync` reuse their single per-operation snapshot instead of re-reading every touched key. They still call native `git config` for writes. On a known-present key, removal uses `UnsetAllWithoutReadAsync`, avoiding the previous redundant direct-scope read while treating Git's missing-key statuses as harmless (e.g. when a key exists only via include). The public-ish `UnsetAllAsync` method retains its direct-value pre-check for other callers.
+- The executor suppresses config snapshot **stdout/stderr from the command-activity history**, as `--list` may expose unrelated secrets. It still emits process start/finish events. Command-line arguments to this operation are fixed switches, not user-provided values.
+- `git difftool/mergetool --tool-help` is intentionally **not cached**: executable/version/PATH and available tools may change between operations, and those commands are already bounded to one per Diff/Merge read.
+- The existing `GitToolsEnvironmentCollection` remains nonparallel because these tests mutate process-wide variables; removing the collection without per-executor environment isolation would be unsafe.
+- `GitToolsHistoryFixture` creates a real, immutable three-commit divergent history once for `GitToolsExecutionTests`. Each test uses an independent filesystem copy and any real merge/conflict is generated in that copy. Diff, merge, Unicode, temporary-file and state checks remain Git integrations.
+
+### Verification and remaining measurements
+
+The new tests cover process budgets, alternative-key priority across scopes, no-op saves preserving file contents and timestamps, changes between reads, duplicate values, case-sensitive subsection names, embedded newlines, included-file origin, worktree override, differential comparison with the existing Git CLI reads, malformed config, and cancellation.
+
+The original Windows GitToolConfigurationServiceTests time range was 123–161 seconds, and GitToolsExecutionTests was about 88 seconds (sums of per-test durations in historical CI). Those are **not** valid after-timings. Report the post-change per-OS TRX and metrics only after the corresponding multi-OS CI completes. Before/after median comparisons, native process wall time per operation on Windows/macOS/Linux, and baseline runtime child-process timings are still outstanding unless separately measured. Do not claim the target 50%/30% test-time improvements on the strength of the static process counts alone.
