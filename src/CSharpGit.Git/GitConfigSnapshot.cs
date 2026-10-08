@@ -9,8 +9,14 @@ namespace CSharpGit.Git;
 internal sealed class GitConfigSnapshot
 {
     private readonly IReadOnlyList<GitConfigValue> _entries;
+    private readonly IReadOnlyDictionary<string, GitConfigValue[]> _byKey;
 
-    private GitConfigSnapshot(IReadOnlyList<GitConfigValue> entries) => _entries = entries;
+    private GitConfigSnapshot(IReadOnlyList<GitConfigValue> entries)
+    {
+        _entries = entries;
+        _byKey = entries.GroupBy(entry => NormalizeKey(entry.Key), StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
+    }
 
     internal IReadOnlyList<GitConfigValue> Entries => _entries;
 
@@ -20,7 +26,7 @@ internal sealed class GitConfigSnapshot
         Values(key).LastOrDefault(entry => entry.Source == source);
 
     internal IReadOnlyList<GitConfigValue> Values(string key) =>
-        _entries.Where(entry => string.Equals(NormalizeKey(entry.Key), NormalizeKey(key), StringComparison.Ordinal)).ToArray();
+        _byKey.TryGetValue(NormalizeKey(key), out var values) ? values : [];
 
     internal IReadOnlyList<GitConfigValue> ScopedValues(string key, GitConfigSource source) =>
         Values(key).Where(entry => entry.Source == source).ToArray();
