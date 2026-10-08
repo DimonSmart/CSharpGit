@@ -1,24 +1,18 @@
-using System.Diagnostics;
 using CSharpGit.Application;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Application.Exceptions;
 
 namespace CSharpGit.Git.Tests;
 
-public sealed class PublishBranchTests : IDisposable
+public sealed class PublishBranchTests : IDisposable, IClassFixture<PublishHistoryFixture>
 {
-    private readonly string _root = Path.Combine(Path.GetTempPath(), $"csharpgit-publish-{Guid.NewGuid():N}");
+    private readonly string _root;
     private readonly string _origin;
 
-    public PublishBranchTests()
+    public PublishBranchTests(PublishHistoryFixture fixture)
     {
-        Directory.CreateDirectory(_root);
-        Git(_root, "init", "-b", "main");
-        Git(_root, "config", "user.email", "tests@example.invalid");
-        Git(_root, "config", "user.name", "CSharpGit Tests");
-        File.WriteAllText(Path.Combine(_root, "initial.txt"), "initial\n");
-        Git(_root, "add", "initial.txt");
-        Git(_root, "commit", "-m", "Initial");
+        _root = fixture.CreateCopy();
+        // Never copy a configured remote from the shared template: each test owns its bare repository.
         _origin = Path.Combine(_root, ".origin.git");
         Git(_root, "init", "--bare", _origin);
         Git(_root, "remote", "add", "origin", _origin);
@@ -300,23 +294,8 @@ public sealed class PublishBranchTests : IDisposable
     private static (bool Success, string Output, string Error) GitTryOut(string directory, params string[] arguments) =>
         RunGit(directory, arguments);
 
-    private static (bool Success, string Output, string Error) RunGit(string directory, params string[] arguments)
-    {
-        var start = new ProcessStartInfo("git")
-        {
-            WorkingDirectory = directory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        foreach (var argument in arguments) start.ArgumentList.Add(argument);
-        using var process = Process.Start(start) ?? throw new InvalidOperationException("Git did not start.");
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        return (process.ExitCode == 0, output, error);
-    }
+    private static (bool Success, string Output, string Error) RunGit(string directory, params string[] arguments) =>
+        TestGitRunner.TryRun(directory, arguments);
 
     public void Dispose() => TestDirectory.Delete(_root);
 }

@@ -1,20 +1,16 @@
-using System.Diagnostics;
 using CSharpGit.Application.Exceptions;
 using CSharpGit.Domain;
 
 namespace CSharpGit.Git.Tests;
 
-public sealed class ForcePushWithLeaseTests : IDisposable
+public sealed class ForcePushWithLeaseTests : IDisposable, IClassFixture<ForcePushHistoryFixture>
 {
-    private readonly string _root = Path.Combine(Path.GetTempPath(), $"csharpgit-force-{Guid.NewGuid():N}");
+    private readonly string _root;
     private readonly string _remote;
 
-    public ForcePushWithLeaseTests()
+    public ForcePushWithLeaseTests(ForcePushHistoryFixture fixture)
     {
-        Directory.CreateDirectory(_root);
-        Git(_root, "init", "-b", "main");
-        ConfigureIdentity(_root);
-        Commit(_root, "history.txt", "A\n", "A");
+        _root = fixture.CreateCopy();
         _remote = Path.Combine(_root, ".remote.git");
         Git(_root, "init", "--bare", _remote);
         Git(_root, "remote", "add", "origin", _remote);
@@ -233,38 +229,11 @@ public sealed class ForcePushWithLeaseTests : IDisposable
         Git(directory, "config", "user.name", "CSharpGit Tests");
     }
 
-    private static void Git(string directory, params string[] arguments)
-    {
-        var start = new ProcessStartInfo("git") { WorkingDirectory = directory, RedirectStandardError = true };
-        foreach (var argument in arguments) start.ArgumentList.Add(argument);
-        using var process = Process.Start(start)!;
-        var error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        Assert.True(process.ExitCode == 0, $"git {string.Join(' ', arguments)} failed: {error}");
-    }
+    private static void Git(string directory, params string[] arguments) =>
+        TestGitRunner.Run(directory, arguments);
 
-    private static string GitOut(string directory, params string[] arguments)
-    {
-        var start = new ProcessStartInfo("git") { WorkingDirectory = directory, RedirectStandardOutput = true, RedirectStandardError = true };
-        foreach (var argument in arguments) start.ArgumentList.Add(argument);
-        using var process = Process.Start(start)!;
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        Assert.True(process.ExitCode == 0, $"git {string.Join(' ', arguments)} failed: {error}");
-        return output.Trim();
-    }
+    private static string GitOut(string directory, params string[] arguments) =>
+        TestGitRunner.Run(directory, arguments);
 
-    public void Dispose()
-    {
-        if (!Directory.Exists(_root)) return;
-        try
-        {
-            foreach (var file in Directory.EnumerateFiles(_root, "*", SearchOption.AllDirectories))
-                File.SetAttributes(file, FileAttributes.Normal);
-            Directory.Delete(_root, recursive: true);
-        }
-        catch (IOException) { }
-        catch (UnauthorizedAccessException) { }
-    }
+    public void Dispose() => TestDirectory.Delete(_root);
 }

@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using System.Text;
 using CSharpGit.Domain;
 
 namespace CSharpGit.Git.Tests;
@@ -11,16 +11,9 @@ public sealed class GitReferenceNavigationTests : IDisposable
     public async Task ReadsAllReferencesThroughOldTargetWithTrailingContext()
     {
         InitializeRepository();
-        string targetHash = string.Empty;
-        for (var index = 0; index < 110; index++)
-        {
-            RunGit("commit", "--allow-empty", "-m", $"commit-{index}");
-            if (index == 5)
-            {
-                targetHash = RunGit("rev-parse", "HEAD");
-                RunGit("branch", "stale/old", targetHash);
-            }
-        }
+        // One fast-import process replaces 110 separate git commit processes.
+        var targetHash = BuildLinearHistory(110);
+        RunGit("branch", "stale/old", targetHash);
 
         var repository = await GitTestServices.CreateRepositoryService().OpenAsync(_temporaryDirectory);
         var service = GitTestServices.CreateHistoryService();
@@ -53,24 +46,30 @@ public sealed class GitReferenceNavigationTests : IDisposable
         RunGit("config", "user.name", "CSharpGit Tests");
     }
 
-    private string RunGit(params string[] arguments)
+    private string BuildLinearHistory(int commitCount)
     {
-        var startInfo = new ProcessStartInfo("git")
+        var commands = new StringBuilder("feature done\n");
+        for (var index = 0; index < commitCount; index++)
         {
-            WorkingDirectory = _temporaryDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
-        using var process = Process.Start(startInfo)!;
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        if (process.ExitCode != 0) throw new InvalidOperationException(error);
-        return output.Trim();
+            var subject = $"commit-{index}";
+            commands.AppendLine("commit refs/heads/main");
+            commands.Append("mark :").AppendLine((index + 1).ToString());
+            commands.Append("committer CSharpGit Tests <tests@example.invalid> ")
+                .Append(1700000000L + index).AppendLine(" +0000");
+            commands.Append("data ").AppendLine(subject.Length.ToString());
+            commands.AppendLine(subject);
+            if (index > 0) commands.Append("from :").AppendLine(index.ToString());
+            commands.AppendLine();
+        }
+        commands.AppendLine("done");
+        TestGitRunner.RunWithInput(_temporaryDirectory, commands.ToString(), "fast-import", "--quiet");
+        // fast-import updates the branch but not the checked-out index or worktree.
+        RunGit("reset", "--hard", "HEAD");
+        return RunGit("rev-parse", $"HEAD~{commitCount - 6}");
     }
+
+    private string RunGit(params string[] arguments) =>
+        TestGitRunner.Run(_temporaryDirectory, arguments);
 
     public void Dispose() => TestDirectory.Delete(_temporaryDirectory);
 }
