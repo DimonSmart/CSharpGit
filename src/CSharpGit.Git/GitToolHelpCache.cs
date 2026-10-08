@@ -19,7 +19,8 @@ internal static class GitToolHelpCache
 
     internal static string Key(GitToolKind kind, string executable, GitConfigSnapshot config)
     {
-        // All inputs affect Git's built-in/custom tool discovery. Do not retain
+        // Only environment relevant to discovery is kept: home/config changes are
+        // already captured by Git-resolved tool entries in the snapshot. Do not retain
         // user config values or paths in the key (only a cryptographic digest).
         var text = new StringBuilder();
         text.Append((int)kind).Append('\0')
@@ -28,11 +29,6 @@ internal static class GitToolHelpCache
             .Append(Environment.GetEnvironmentVariable("GIT_EXEC_PATH")).Append('\0')
             .Append(Environment.GetEnvironmentVariable("PATHEXT")).Append('\0')
             .Append(Environment.GetEnvironmentVariable("DISPLAY")).Append('\0')
-            .Append(Environment.GetEnvironmentVariable("GIT_CONFIG_GLOBAL")).Append('\0')
-            .Append(Environment.GetEnvironmentVariable("GIT_CONFIG_SYSTEM")).Append('\0')
-            .Append(Environment.GetEnvironmentVariable("HOME")).Append('\0')
-            .Append(Environment.GetEnvironmentVariable("USERPROFILE")).Append('\0')
-            .Append(Environment.GetEnvironmentVariable("XDG_CONFIG_HOME")).Append('\0')
             .Append(ExecutableTimestamp(executable)).Append('\0');
 
         foreach (var entry in config.Entries)
