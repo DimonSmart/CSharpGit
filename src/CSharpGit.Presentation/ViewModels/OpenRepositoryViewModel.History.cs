@@ -11,7 +11,7 @@ public sealed partial class OpenRepositoryViewModel : IHistoryRepositoryContext
     IReadOnlyList<GitBranch> IHistoryRepositoryContext.LocalBranches => Branches.LocalBranches;
     IReadOnlyList<GitBranch> IHistoryRepositoryContext.RemoteBranches => Branches.RemoteBranches;
     IReadOnlyList<GitRemote> IHistoryRepositoryContext.Remotes => RepositorySync.Remotes;
-    IReadOnlyList<GitTag> IHistoryRepositoryContext.Tags => Tags;
+    IReadOnlyList<GitTag> IHistoryRepositoryContext.Tags => Tags.Items;
     bool IHistoryRepositoryContext.CanUpdateHistorySelection => Stashes.SelectedStash is null;
 
     void IHistoryRepositoryContext.EnterHistoryBusy() => EnterBusy();
