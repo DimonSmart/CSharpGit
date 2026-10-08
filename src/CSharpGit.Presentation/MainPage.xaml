@@ -659,7 +659,7 @@
                     <Border x:Name="CommitDiffHeader"
                             Visibility="Collapsed"
                             Style="{StaticResource DiffHeaderSurfaceStyle}">
-                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.S}">
+                      <Grid ColumnDefinitions="*,2*" ColumnSpacing="{StaticResource Spacing.S}">
                         <Grid x:Name="CommitTextDiffHeader"
                             Visibility="Collapsed"
                             ColumnDefinitions="38,38,*">
@@ -675,7 +675,8 @@
                                    Margin="0,0,5,0"
                                    VerticalAlignment="Center" />
                       </Grid>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Spacing.S}" VerticalAlignment="Center">
+                        <ScrollViewer Grid.Column="1" HorizontalScrollMode="Enabled" HorizontalScrollBarVisibility="Auto" VerticalScrollMode="Disabled" VerticalScrollBarVisibility="Disabled">
+                      <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}" VerticalAlignment="Center">
                           <Button x:Name="CommitOpenOriginalButton" Click="CommitOpenOriginal_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Open original version">
                           <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                             <FontIcon Glyph="{StaticResource Icon.Glyph.Original}" FontSize="{StaticResource Icon.Small}" />
@@ -699,6 +700,7 @@
                             <FontIcon Glyph="{StaticResource Icon.Glyph.Reveal}" FontSize="{StaticResource Icon.Small}" />
                             <TextBlock Text="Reveal" Style="{StaticResource BodyTextStyle}" />
                           </StackPanel>
+                    </ScrollViewer>
                         </Button>
                         </StackPanel>
                       </Grid>
@@ -849,7 +851,7 @@
 
               <Grid Grid.Column="2" RowDefinitions="Auto,Auto,*" Margin="8,0,0,0">
                 <Border Style="{StaticResource PaneHeaderSurfaceStyle}">
-                  <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{StaticResource Spacing.L}">
+                  <Grid ColumnDefinitions="*,Auto,2*" ColumnSpacing="{StaticResource Spacing.L}">
                     <TextBlock x:Name="WorkingTreeDiffHeader"
                                Style="{StaticResource BodyStrongTextStyle}"
                                TextTrimming="CharacterEllipsis"
@@ -858,7 +860,8 @@
                                Grid.Column="1"
                                Style="{StaticResource CaptionStrongTextStyle}"
                                VerticalAlignment="Center" />
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{StaticResource Spacing.S}" VerticalAlignment="Center">
+                    <ScrollViewer Grid.Column="2" HorizontalScrollMode="Enabled" HorizontalScrollBarVisibility="Auto" VerticalScrollMode="Disabled" VerticalScrollBarVisibility="Disabled">
+                      <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}" VerticalAlignment="Center">
                       <Button x:Name="WorkingTreeOpenOriginalButton" Click="WorkingTreeOpenOriginal_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Open original version">
                           <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                             <FontIcon Glyph="{StaticResource Icon.Glyph.Original}" FontSize="{StaticResource Icon.Small}" />
@@ -882,6 +885,7 @@
                             <FontIcon Glyph="{StaticResource Icon.Glyph.Reveal}" FontSize="{StaticResource Icon.Small}" />
                             <TextBlock Text="Reveal" Style="{StaticResource BodyTextStyle}" />
                           </StackPanel>
+                    </ScrollViewer>
                         </Button>
                     </StackPanel>
                   </Grid>
