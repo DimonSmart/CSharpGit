@@ -2,6 +2,7 @@ using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Application.Exceptions;
 using CSharpGit.Domain;
+using CSharpGit.Presentation.Threading;
 using CSharpGit.Presentation.ViewModels;
 
 namespace CSharpGit.Application.Tests;
@@ -322,12 +323,38 @@ public sealed class RepositorySyncViewModelTests
         Assert.Equal(0, sync.ForceExecutionCalls);
     }
 
+    [Fact]
+    public void PullPreferenceNotificationsAreDispatchedAndQueuedCallbacksRespectDisposal()
+    {
+        var settings = new FakeSettingsService();
+        var dispatcher = new QueuedDispatcher();
+        var viewModel = new RepositorySyncViewModel(new FakeSyncService(), settings, dispatcher);
+        var notifications = new List<string?>();
+        viewModel.PropertyChanged += (_, e) => notifications.Add(e.PropertyName);
+
+        settings.DefaultPullStrategy = PullStrategy.Rebase;
+        settings.PublishChange();
+        Assert.Empty(notifications);
+        Assert.Single(dispatcher.QueuedActions);
+
+        dispatcher.RunAll();
+        Assert.Contains(nameof(RepositorySyncViewModel.DefaultPullStrategy), notifications);
+        Assert.Contains(nameof(RepositorySyncViewModel.PullTooltip), notifications);
+
+        notifications.Clear();
+        settings.PublishChange();
+        viewModel.Dispose();
+        notifications.Clear();
+        dispatcher.RunAll();
+        Assert.Empty(notifications);
+    }
+
     private static RepositorySyncViewModel CreateViewModel(
         FakeSyncService sync,
         FakeSettingsService settings,
         FakeSyncContext context)
     {
-        var viewModel = new RepositorySyncViewModel(sync, settings);
+        var viewModel = new RepositorySyncViewModel(sync, settings, new SynchronousDispatcher());
         viewModel.Attach(context);
         return viewModel;
     }
@@ -512,6 +539,32 @@ public sealed class RepositorySyncViewModelTests
             return ForceExecutionException is null
                 ? Task.CompletedTask
                 : Task.FromException(ForceExecutionException);
+        }
+    }
+
+    private sealed class SynchronousDispatcher : IUiDispatcher
+    {
+        public bool HasThreadAccess => true;
+        public bool TryEnqueue(Action action)
+        {
+            action();
+            return true;
+        }
+    }
+
+    private sealed class QueuedDispatcher : IUiDispatcher
+    {
+        public bool HasThreadAccess => false;
+        public Queue<Action> QueuedActions { get; } = new();
+        public bool TryEnqueue(Action action)
+        {
+            QueuedActions.Enqueue(action);
+            return true;
+        }
+        public void RunAll()
+        {
+            while (QueuedActions.Count > 0)
+                QueuedActions.Dequeue()();
         }
     }
 
