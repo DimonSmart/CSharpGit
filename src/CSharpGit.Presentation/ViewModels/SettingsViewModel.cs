@@ -30,6 +30,8 @@ public sealed record HistoryRenderingModeOption(
     string Label,
     string Description);
 
+public sealed record PullStrategyOption(PullStrategy Strategy, string Label);
+
 public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly IAppSettingsService _settings;
@@ -40,6 +42,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
     private ApplicationLogLevelOption _selectedLogLevel;
     private GitConsoleAutoOpenOption _selectedGitConsoleAutoOpenMode;
     private bool _autoSetupRemoteOnPush;
+    private PullStrategyOption _selectedPullStrategy;
+    private bool _forcePullAutoStash;
     private bool _showAuthorAvatars;
     private bool _onlineAvatarLookupEnabled;
     private bool _historyPerformanceDiagnosticsEnabled;
@@ -107,6 +111,16 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
             new(HistoryRenderingMode.Full, "5 — Full production", "Current production History row, including references, author avatar and CommitTimeText.")
         ];
 
+        PullStrategies =
+        [
+            new(PullStrategy.GitConfiguration, "Git configuration"),
+            new(PullStrategy.Merge, "Merge"),
+            new(PullStrategy.Rebase, "Rebase"),
+            new(PullStrategy.FastForwardOnly, "Fast-forward only")
+        ];
+
+        _selectedPullStrategy = FindPullStrategy(_settings.DefaultPullStrategy);
+        _forcePullAutoStash = _settings.ForcePullAutoStash;
         _selectedThemeMode = FindThemeMode(_settings.ThemeMode);
         _selectedCommitTimeMode = FindCommitTimeMode(_settings.CommitTimeDisplayMode);
         _loggingEnabled = _settings.LoggingEnabled;
@@ -183,6 +197,30 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         {
             if (Equals(_selectedGitConsoleAutoOpenMode, value)) return;
             _selectedGitConsoleAutoOpenMode = value;
+            Notify();
+        }
+    }
+
+    public IReadOnlyList<PullStrategyOption> PullStrategies { get; }
+
+    public PullStrategyOption SelectedPullStrategy
+    {
+        get => _selectedPullStrategy;
+        set
+        {
+            if (Equals(_selectedPullStrategy, value)) return;
+            _selectedPullStrategy = value;
+            Notify();
+        }
+    }
+
+    public bool ForcePullAutoStash
+    {
+        get => _forcePullAutoStash;
+        set
+        {
+            if (_forcePullAutoStash == value) return;
+            _forcePullAutoStash = value;
             Notify();
         }
     }
@@ -346,6 +384,39 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    public async Task ApplyPullStrategyAsync(
+        PullStrategyOption option,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(option);
+        SelectedPullStrategy = option;
+        try
+        {
+            await _settings.SetDefaultPullStrategyAsync(option.Strategy, cancellationToken);
+        }
+        catch
+        {
+            await SyncFromSettingsAfterFailureAsync();
+            throw;
+        }
+    }
+
+    public async Task ApplyForcePullAutoStashAsync(
+        bool value,
+        CancellationToken cancellationToken = default)
+    {
+        ForcePullAutoStash = value;
+        try
+        {
+            await _settings.SetForcePullAutoStashAsync(value, cancellationToken);
+        }
+        catch
+        {
+            await SyncFromSettingsAfterFailureAsync();
+            throw;
+        }
+    }
+
     public async Task ApplyShowAuthorAvatarsAsync(
         bool value,
         CancellationToken cancellationToken = default)
@@ -459,6 +530,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
             SelectedLogLevel = FindLogLevel(_settings.LogLevel);
             SelectedGitConsoleAutoOpenMode = FindGitConsoleMode(_settings.GitConsoleAutoOpenMode);
             AutoSetupRemoteOnPush = _settings.AutoSetupRemoteOnPush;
+            SelectedPullStrategy = FindPullStrategy(_settings.DefaultPullStrategy);
+            ForcePullAutoStash = _settings.ForcePullAutoStash;
             ShowAuthorAvatars = _settings.ShowAuthorAvatars;
             OnlineAvatarLookupEnabled = _settings.OnlineAvatarLookupEnabled;
             HistoryPerformanceDiagnosticsEnabled = _settings.HistoryPerformanceDiagnosticsEnabled;
@@ -501,6 +574,9 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
     }
 
     private bool IsDisposed => Volatile.Read(ref _disposed) != 0;
+
+    private PullStrategyOption FindPullStrategy(PullStrategy strategy) =>
+        PullStrategies.First(option => option.Strategy == strategy);
 
     private ApplicationThemeOption FindThemeMode(ApplicationThemeMode mode) =>
         ThemeModes.First(option => option.Mode == mode);
