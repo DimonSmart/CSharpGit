@@ -154,6 +154,61 @@ public sealed class PullIntegrationTests : IDisposable
         Assert.Equal(RepositoryOperation.None, retry.ActiveOperation);
     }
 
+    [Theory]
+    [InlineData(PullStrategy.Merge)]
+    [InlineData(PullStrategy.Rebase)]
+    public async Task ExplicitIntegrationOverridesPullFfOnlyAndBranchRebase(PullStrategy strategy)
+    {
+        Commit(_local, "local.txt", "local\n", "Local update");
+        Commit(_actor, "remote.txt", "remote\n", "Remote update");
+        Git(_actor, "push", "origin", "main");
+        Git(_local, "config", "pull.ff", "only");
+        Git(_local, "config", "branch.main.rebase", strategy == PullStrategy.Merge ? "true" : "false");
+        var (repository, service) = await OpenAsync();
+
+        var result = await service.PullAsync(repository, new PullOptions(strategy));
+        Assert.Equal(PullOutcome.Completed, result.Outcome);
+        Assert.Equal(RepositoryOperation.None, result.ActiveOperation);
+        Assert.Equal("local\n", File.ReadAllText(Path.Combine(_local, "local.txt")));
+        Assert.Equal("remote\n", File.ReadAllText(Path.Combine(_local, "remote.txt")));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GitConfigurationHonorsPerBranchRebase(bool useRebase)
+    {
+        Commit(_local, "local.txt", "local\n", "Local update");
+        Commit(_actor, "remote.txt", "remote\n", "Remote update");
+        Git(_actor, "push", "origin", "main");
+        Git(_local, "config", "pull.rebase", useRebase ? "false" : "true");
+        Git(_local, "config", "branch.main.rebase", useRebase ? "true" : "false");
+        var (repository, service) = await OpenAsync();
+
+        var result = await service.PullAsync(
+            repository, new PullOptions(PullStrategy.GitConfiguration));
+        Assert.Equal(PullOutcome.Completed, result.Outcome);
+        var parents = GitOut(_local, "show", "-s", "--format=%P", "HEAD")
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(useRebase ? 1 : 2, parents.Length);
+    }
+
+    [Fact]
+    public async Task FetchFailureWithPreviouslyDivergedTrackingRefIsNotRefusal()
+    {
+        Commit(_local, "local.txt", "local\n", "Local update");
+        Commit(_actor, "remote.txt", "remote\n", "Remote update");
+        Git(_actor, "push", "origin", "main");
+        Git(_local, "fetch", "origin"); // Cached origin/main is already diverged.
+        Git(_local, "remote", "set-url", "origin", Path.Combine(_root, "missing-remote.git"));
+        var (repository, service) = await OpenAsync();
+
+        var result = await service.PullAsync(
+            repository, new PullOptions(PullStrategy.FastForwardOnly));
+        Assert.Equal(PullOutcome.Failed, result.Outcome);
+        Assert.Equal(RepositoryOperation.None, result.ActiveOperation);
+    }
+
     [Fact]
     public async Task UnrelatedFailureIsNotMisclassifiedAsFastForwardDivergence()
     {
