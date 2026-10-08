@@ -80,7 +80,7 @@ public sealed partial class MainPage
         toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         _repositoryFilesSearch = new TextBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"),
             PlaceholderText = "Search files...",
             MinWidth = 180
         };
@@ -89,7 +89,7 @@ public sealed partial class MainPage
         toolbar.Children.Add(_repositoryFilesSearch);
 
         _repositoryFilesSearchMode = new ComboBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactComboBoxStyle"),
             MinWidth = 110,
             ItemsSource = new[]
             {
