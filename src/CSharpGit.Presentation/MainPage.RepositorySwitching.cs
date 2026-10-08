@@ -29,7 +29,9 @@ public sealed partial class MainPage
     private void InitializeRepositorySwitching()
     {
         RepositorySelectorList.ItemsSource = _repositorySelectorItems;
-        RepositorySelectorOpenFolderButton.Content = _desktopShellService.OpenFolderDescription;
+        RepositorySelectorOpenFolderText.Text = _desktopShellService.OpenFolderDescription;
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+            RepositorySelectorOpenFolderButton, _desktopShellService.OpenFolderDescription);
         UpdateRepositorySelectorPresentation();
     }
 
