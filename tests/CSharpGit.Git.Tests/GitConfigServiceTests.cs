@@ -141,6 +141,83 @@ public sealed class GitConfigServiceTests : IDisposable
         Assert.Empty(await _service.ReadDirectValuesAsync(_repository, "user.name", GitConfigScope.Repository));
     }
 
+    [Fact]
+    public async Task SnapshotPreservesOrderDuplicateValuesAndEmbeddedNewlines()
+    {
+        var multiline = "tool --arg='quoted value'\\nsecond line\\tlast";
+        multiline = multiline.Replace("\\n", "\n").Replace("\\t", "\t");
+        RunGit(_repositoryPath, "config", "--local", "--add", "difftool.MyTool.cmd", "first");
+        RunGit(_repositoryPath, "config", "--local", "--add", "difftool.MyTool.cmd", multiline);
+        RunGit(_repositoryPath, "config", "--local", "core.editor", "");
+
+        var snapshot = await _service.ReadSnapshotAsync(_repository);
+
+        var commands = snapshot.Values("DIFFTOOL.MyTool.CMD");
+        Assert.Equal(2, commands.Count);
+        Assert.Equal("first", commands[0].Value);
+        Assert.Equal(multiline, commands[1].Value);
+        Assert.Equal(multiline, snapshot.Effective("difftool.MyTool.cmd")?.Value);
+        Assert.Null(snapshot.Effective("difftool.mytool.cmd")); // subsection names are case-sensitive
+        Assert.Equal(string.Empty, snapshot.Effective("core.editor")?.Value);
+        Assert.Null(snapshot.Effective("missing.key"));
+    }
+
+    [Fact]
+    public async Task SnapshotMatchesGitCliAndTracksIncludeOriginsAndScopes()
+    {
+        var included = Path.Combine(_root, "included.gitconfig");
+        File.WriteAllText(included, "[diff]\\n\\ttool = from-include\\n".Replace("\\n", "\n").Replace("\\t", "\t"));
+        RunGit(_repositoryPath, "config", "--global", "include.path", included);
+        RunGit(_repositoryPath, "config", "--local", "diff.guitool", "local-gui");
+        RunGit(_repositoryPath, "config", "--local", "--add", "user.name", "one");
+        RunGit(_repositoryPath, "config", "--local", "--add", "user.name", "two");
+
+        var snapshot = await _service.ReadSnapshotAsync(_repository);
+        var direct = await _service.ReadSnapshotAsync(_repository, includes: false);
+        var expected = await _service.ReadEffectiveAsync(_repository, "diff.tool");
+        var expectedLocal = await _service.ReadScopeAsync(_repository, "diff.guitool", GitConfigScope.Repository);
+
+        Assert.Equal(expected, snapshot.Effective("diff.tool"));
+        Assert.Equal(expectedLocal, snapshot.Scoped("diff.guitool", GitConfigSource.Repository));
+        Assert.Contains("included.gitconfig", snapshot.Effective("diff.tool")?.Origin ?? string.Empty);
+        Assert.Null(direct.Effective("diff.tool"));
+        Assert.Equal(new[] { "one", "two" },
+            snapshot.ScopedValues("user.name", GitConfigSource.Repository).Select(item => item.Value));
+    }
+
+    [Fact]
+    public async Task SnapshotReflectsWorktreeAndExternalChangesWithoutStaleValues()
+    {
+        RunGit(_repositoryPath, "config", "--global", "core.editor", "global");
+        RunGit(_repositoryPath, "config", "--local", "core.editor", "local");
+        RunGit(_repositoryPath, "config", "--local", "extensions.worktreeConfig", "true");
+        RunGit(_repositoryPath, "config", "--worktree", "core.editor", "worktree");
+
+        var first = await _service.ReadSnapshotAsync(_repository);
+        Assert.Equal("global", first.Scoped("core.editor", GitConfigSource.Global)?.Value);
+        Assert.Equal("local", first.Scoped("core.editor", GitConfigSource.Repository)?.Value);
+        Assert.Equal("worktree", first.Effective("core.editor")?.Value);
+        Assert.Equal(GitConfigSource.Worktree, first.Effective("core.editor")?.Source);
+
+        RunGit(_repositoryPath, "config", "--worktree", "core.editor", "changed");
+        var second = await _service.ReadSnapshotAsync(_repository);
+        Assert.Equal("changed", second.Effective("core.editor")?.Value);
+        Assert.Equal("worktree", first.Effective("core.editor")?.Value);
+    }
+
+    [Fact]
+    public async Task SnapshotPropagatesMalformedConfigAndCancellation()
+    {
+        var configFile = Path.Combine(_repositoryPath, ".git", "config");
+        File.AppendAllText(configFile, "\n[bad section\n");
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.ReadSnapshotAsync(_repository));
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => _service.ReadSnapshotAsync(_repository, cancelled.Token));
+    }
+
     public void Dispose()
     {
         foreach (var pair in _originalEnvironment)
