@@ -152,12 +152,39 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
 
     public PullStrategy DefaultPullStrategy => _settings.DefaultPullStrategy;
     public bool ForcePullAutoStash => _settings.ForcePullAutoStash;
-    public bool IsGitConfigurationDefault => DefaultPullStrategy == PullStrategy.GitConfiguration;
     public bool IsMergeDefault => DefaultPullStrategy == PullStrategy.Merge;
     public bool IsRebaseDefault => DefaultPullStrategy == PullStrategy.Rebase;
     public bool IsFastForwardOnlyDefault => DefaultPullStrategy == PullStrategy.FastForwardOnly;
     public GitBranch? CurrentPullBranch => _context?.CurrentLocalBranch;
     public PullExecutionResult? LastPullResult => _lastPullResult;
+
+    public string PullButtonText
+    {
+        get
+        {
+            var branch = CurrentPullBranch;
+            var behind = branch is { IsCurrent: true, Upstream: { Length: > 0 }, Behind: > 0 }
+                ? $" ↓{branch.Behind}"
+                : string.Empty;
+            return $"Pull ({PullStrategyLabel(DefaultPullStrategy, compact: true)}){behind}";
+        }
+    }
+
+    public string PullAccessibleName => $"Pull using {PullStrategyLabel(DefaultPullStrategy)} strategy";
+    public string FastForwardPullAccessibleName => OneOffPullAccessibleName(PullStrategy.FastForwardOnly);
+    public string MergePullAccessibleName => OneOffPullAccessibleName(PullStrategy.Merge);
+    public string RebasePullAccessibleName => OneOffPullAccessibleName(PullStrategy.Rebase);
+
+    private string OneOffPullAccessibleName(PullStrategy strategy) =>
+        $"Pull once using {PullStrategyLabel(strategy)}{(DefaultPullStrategy == strategy ? " (current default)" : string.Empty)}";
+
+    private static string PullStrategyLabel(PullStrategy strategy, bool compact = false) => strategy switch
+    {
+        PullStrategy.FastForwardOnly => compact ? "FF only" : "Fast-forward only",
+        PullStrategy.Merge => "Merge",
+        PullStrategy.Rebase => "Rebase",
+        _ => "Fast-forward only"
+    };
 
     public string PullTooltip
     {
@@ -173,10 +200,7 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
                     : branch is null ? "HEAD is detached."
                     : string.IsNullOrWhiteSpace(branch.Upstream) ? $"Branch '{branch.Name}' has no upstream."
                     : $"Pull from {branch.Upstream}";
-            var strategy = DefaultPullStrategy == PullStrategy.GitConfiguration
-                ? "Git configuration (Git decides)"
-                : DefaultPullStrategy.ToString();
-            return $"{status} · Strategy: {strategy} · Autostash: {(ForcePullAutoStash ? "forced" : "Git configuration")}";
+            return $"{status}\nStrategy: {PullStrategyLabel(DefaultPullStrategy)}\nAutostash: {(ForcePullAutoStash ? "Forced" : "Git configuration")}";
         }
     }
 
@@ -246,6 +270,7 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
         Notify(nameof(CanFetchAll));
         Notify(nameof(CanPull));
         Notify(nameof(CurrentPullBranch));
+        Notify(nameof(PullButtonText));
         Notify(nameof(PullTooltip));
         Notify(nameof(CanPush));
         Notify(nameof(CanPushTo));
@@ -339,30 +364,6 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
             new(PullExecutionKind.Failed, "Pull did not produce a result."));
     }
 
-    public async Task SetDefaultPullStrategyAsync(PullStrategy strategy)
-    {
-        try
-        {
-            await _settings.SetDefaultPullStrategyAsync(strategy);
-        }
-        finally
-        {
-            NotifyPullPreferences();
-        }
-    }
-
-    public async Task SetPullAutoStashAsync(bool value)
-    {
-        try
-        {
-            await _settings.SetForcePullAutoStashAsync(value);
-        }
-        finally
-        {
-            NotifyPullPreferences();
-        }
-    }
-
     private PullExecutionResult PublishPullResult(PullExecutionResult result)
     {
         _lastPullResult = result;
@@ -389,7 +390,11 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
     {
         Notify(nameof(DefaultPullStrategy));
         Notify(nameof(ForcePullAutoStash));
-        Notify(nameof(IsGitConfigurationDefault));
+        Notify(nameof(PullButtonText));
+        Notify(nameof(PullAccessibleName));
+        Notify(nameof(FastForwardPullAccessibleName));
+        Notify(nameof(MergePullAccessibleName));
+        Notify(nameof(RebasePullAccessibleName));
         Notify(nameof(IsMergeDefault));
         Notify(nameof(IsRebaseDefault));
         Notify(nameof(IsFastForwardOnlyDefault));

@@ -73,6 +73,9 @@ public sealed class SettingsViewModelTests
     {
         var settings = new FakeAppSettingsService();
         using var vm = CreateViewModel(settings);
+        Assert.Equal(
+            new[] { PullStrategy.FastForwardOnly, PullStrategy.Merge, PullStrategy.Rebase },
+            vm.PullStrategies.Select(option => option.Strategy));
         var rebase = vm.PullStrategies.Single(option => option.Strategy == PullStrategy.Rebase);
         await vm.ApplyPullStrategyAsync(rebase);
         await vm.ApplyForcePullAutoStashAsync(true);
@@ -266,7 +269,7 @@ public sealed class SettingsViewModelTests
         public GitConsoleAutoOpenMode GitConsoleAutoOpenMode { get; set; } = GitConsoleAutoOpenMode.OnErrors;
         public bool ShowReflog { get; set; }
         public bool AutoSetupRemoteOnPush { get; set; }
-        public PullStrategy DefaultPullStrategy { get; set; } = PullStrategy.GitConfiguration;
+        public PullStrategy DefaultPullStrategy { get; set; } = PullStrategy.FastForwardOnly;
         public bool ForcePullAutoStash { get; set; }
         public bool ShowAuthorAvatars { get; set; } = true;
         public bool OnlineAvatarLookupEnabled { get; set; } = true;

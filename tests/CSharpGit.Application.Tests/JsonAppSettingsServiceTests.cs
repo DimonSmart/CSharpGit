@@ -11,7 +11,7 @@ public sealed class JsonAppSettingsServiceTests
     {
         using var fixture = new SettingsFixture();
         var service = fixture.CreateService();
-        Assert.Equal(PullStrategy.GitConfiguration, service.DefaultPullStrategy);
+        Assert.Equal(PullStrategy.FastForwardOnly, service.DefaultPullStrategy);
         Assert.False(service.ForcePullAutoStash);
 
         await service.SetDefaultPullStrategyAsync(PullStrategy.Rebase);
@@ -25,6 +25,9 @@ public sealed class JsonAppSettingsServiceTests
     [InlineData("\"UndefinedPullStrategy\"")]
     [InlineData("null")]
     [InlineData("971")]
+    [InlineData("{}")]
+    [InlineData("[]")]
+    [InlineData("true")]
     public void InvalidPullStrategyPreservesOtherPreferences(string serializedValue)
     {
         using var fixture = new SettingsFixture();
@@ -32,9 +35,73 @@ public sealed class JsonAppSettingsServiceTests
             "{ \"DefaultPullStrategy\": " + serializedValue +
             ", \"CommitTimeDisplayMode\": \"Absolute\", \"LoggingEnabled\": true }");
         var settings = fixture.CreateService();
-        Assert.Equal(PullStrategy.GitConfiguration, settings.DefaultPullStrategy);
+        Assert.Equal(PullStrategy.FastForwardOnly, settings.DefaultPullStrategy);
         Assert.Equal(CommitTimeDisplayMode.Absolute, settings.CommitTimeDisplayMode);
         Assert.True(settings.LoggingEnabled);
+    }
+
+    [Theory]
+    [InlineData("\"GitConfiguration\"", PullStrategy.FastForwardOnly)]
+    [InlineData("0", PullStrategy.FastForwardOnly)]
+    [InlineData("\"Merge\"", PullStrategy.Merge)]
+    [InlineData("1", PullStrategy.Merge)]
+    [InlineData("\"Rebase\"", PullStrategy.Rebase)]
+    [InlineData("2", PullStrategy.Rebase)]
+    [InlineData("\"FastForwardOnly\"", PullStrategy.FastForwardOnly)]
+    [InlineData("3", PullStrategy.FastForwardOnly)]
+    public async Task LegacyPullStrategiesMigrateWithoutLosingOtherSettings(string serialized, PullStrategy expected)
+    {
+        using var fixture = new SettingsFixture();
+        fixture.WriteSettings(
+            "{ \"DefaultPullStrategy\": " + serialized
+            + ", \"LoggingEnabled\": true, \"CommitTimeDisplayMode\": \"Absolute\" }");
+        var service = fixture.CreateService();
+
+        Assert.Equal(expected, service.DefaultPullStrategy);
+        Assert.True(service.LoggingEnabled);
+        Assert.Equal(CommitTimeDisplayMode.Absolute, service.CommitTimeDisplayMode);
+
+        await service.SetForcePullAutoStashAsync(true);
+        var restored = fixture.CreateService();
+        Assert.Equal(expected, restored.DefaultPullStrategy);
+        Assert.True(restored.LoggingEnabled);
+        using var document = JsonDocument.Parse(File.ReadAllText(fixture.SettingsPath));
+        Assert.Equal(expected.ToString(), document.RootElement.GetProperty("DefaultPullStrategy").GetString());
+    }
+
+    [Theory]
+    [InlineData(PullStrategy.FastForwardOnly)]
+    [InlineData(PullStrategy.Merge)]
+    [InlineData(PullStrategy.Rebase)]
+    public async Task AllSupportedPullStrategiesRoundTrip(PullStrategy strategy)
+    {
+        using var fixture = new SettingsFixture();
+        var settings = fixture.CreateService();
+        await settings.SetDefaultPullStrategyAsync(strategy);
+        Assert.Equal(strategy, fixture.CreateService().DefaultPullStrategy);
+    }
+
+    [Fact]
+    public async Task InvalidPullStrategyCannotBeSaved()
+    {
+        using var fixture = new SettingsFixture();
+        var settings = fixture.CreateService();
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+            () => settings.SetDefaultPullStrategyAsync((PullStrategy)0));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+            () => settings.SetDefaultPullStrategyAsync((PullStrategy)734));
+        Assert.Equal(PullStrategy.FastForwardOnly, settings.DefaultPullStrategy);
+        Assert.False(File.Exists(fixture.SettingsPath));
+    }
+
+    [Fact]
+    public void MissingStrategyFieldKeepsOtherPreferences()
+    {
+        using var fixture = new SettingsFixture();
+        fixture.WriteSettings("{ \"LoggingEnabled\": true }");
+        var settings = fixture.CreateService();
+        Assert.True(settings.LoggingEnabled);
+        Assert.Equal(PullStrategy.FastForwardOnly, settings.DefaultPullStrategy);
     }
 
     [Fact]

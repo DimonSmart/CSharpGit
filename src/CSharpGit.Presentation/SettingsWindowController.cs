@@ -45,15 +45,18 @@ public sealed class SettingsWindowController : IDisposable
     internal bool AutoSetupRemoteOnPush => _settings.AutoSetupRemoteOnPush;
     internal FrameworkElement? CurrentPage => _page;
 
-    internal void Show(SettingsSection section, Func<Repository?> repositoryAccessor)
+    internal void Show(
+        SettingsSection section,
+        Func<Repository?> repositoryAccessor,
+        bool focusPullStrategy = false)
     {
         if (Volatile.Read(ref _shutdownStarted) != 0) return;
         ArgumentNullException.ThrowIfNull(repositoryAccessor);
 
         if (_window is not null)
         {
-            _page?.SelectSection(section);
             _window.Activate();
+            _page?.SelectSection(section, focusPullStrategy);
             return;
         }
 
@@ -65,7 +68,8 @@ public sealed class SettingsWindowController : IDisposable
             _folderPicker,
             SessionFileLoggerProvider.CurrentLogPath,
             repositoryAccessor,
-            section);
+            section,
+            focusPullStrategy);
         var themeRegistration = _themeManager.Register(page);
         var window = new Window
         {

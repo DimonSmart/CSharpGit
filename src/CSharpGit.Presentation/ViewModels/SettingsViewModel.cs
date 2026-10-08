@@ -113,10 +113,9 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
 
         PullStrategies =
         [
-            new(PullStrategy.GitConfiguration, "Git configuration"),
+            new(PullStrategy.FastForwardOnly, "Fast-forward only"),
             new(PullStrategy.Merge, "Merge"),
-            new(PullStrategy.Rebase, "Rebase"),
-            new(PullStrategy.FastForwardOnly, "Fast-forward only")
+            new(PullStrategy.Rebase, "Rebase")
         ];
 
         _selectedPullStrategy = FindPullStrategy(_settings.DefaultPullStrategy);
