@@ -15,7 +15,7 @@ public sealed partial class MainPage
         if (!_viewModel.Stashes.CanCreateStash) return;
 
         var message = new TextBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"),
             Header = "Message",
             PlaceholderText = "Optional stash message"
         };
@@ -25,22 +25,22 @@ public sealed partial class MainPage
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
         };
         var allTracked = new RadioButton
-        {
+        { Style = UiStyles.Resolve<Style>("CompactRadioButtonStyle"),
             Content = "All tracked changes",
             GroupName = "RepositoryStashScope",
             IsChecked = true
         };
         var stagedOnly = new RadioButton
-        {
+        { Style = UiStyles.Resolve<Style>("CompactRadioButtonStyle"),
             Content = "Staged changes only",
             GroupName = "RepositoryStashScope"
         };
         var includeUntracked = new CheckBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactCheckBoxStyle"),
             Content = "Include untracked files",
             IsChecked = false
         };
-        var content = new StackPanel { Spacing = 8 };
+        var content = new StackPanel { Spacing = UiStyles.Resolve<double>("Spacing.L") };
         content.Children.Add(message);
         content.Children.Add(scopeLabel);
         content.Children.Add(allTracked);
@@ -97,14 +97,14 @@ public sealed partial class MainPage
         if (!_viewModel.Stashes.CanCreateSelectedStash(snapshot)) return;
 
         var message = new TextBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"),
             Header = "Message",
             PlaceholderText = "Optional stash message"
         };
         var untrackedCount = snapshot.Count(change =>
             change.Kind == FileChangeKind.Untracked);
 
-        var content = new StackPanel { Spacing = 8 };
+        var content = new StackPanel { Spacing = UiStyles.Resolve<double>("Spacing.L") };
         content.Children.Add(message);
         content.Children.Add(new TextBlock
         {
@@ -148,7 +148,7 @@ public sealed partial class MainPage
     {
         if (!_viewModel.Stashes.DropCommand.CanExecute(null)) return;
 
-        var content = new StackPanel { Spacing = 8 };
+        var content = new StackPanel { Spacing = UiStyles.Resolve<double>("Spacing.L") };
         content.Children.Add(new TextBlock
         {
             Text = stash.Display,

@@ -92,7 +92,7 @@ public sealed partial class MainPage
     private async Task<bool> ShowCreateRepositoryDialogAsync()
     {
         var directoryBox = new TextBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"),
             Header = "Directory",
             PlaceholderText = @"C:\work\MyProject",
             Text = _createRepositoryViewModel.Directory,
@@ -100,7 +100,7 @@ public sealed partial class MainPage
         };
 
         var browseButton = new Button
-        {
+        { Style = UiStyles.Resolve<Style>("CompactButtonStyle"),
             Content = "Browse…",
             VerticalAlignment = VerticalAlignment.Bottom
         };
@@ -122,7 +122,7 @@ public sealed partial class MainPage
         directoryRow.Children.Add(browseButton);
 
         var personal = new RadioButton
-        {
+        { Style = UiStyles.Resolve<Style>("CompactRadioButtonStyle"),
             Content = "Personal repository",
             GroupName = "RepositoryCreationType",
             IsChecked = true
@@ -141,7 +141,7 @@ public sealed partial class MainPage
             Opacity = 0.7
         });
         var central = new RadioButton
-        {
+        { Style = UiStyles.Resolve<Style>("CompactRadioButtonStyle"),
             Content = centralLabel,
             GroupName = "RepositoryCreationType"
         };
