@@ -30,6 +30,73 @@ public sealed class RepositorySyncViewModelTests
     }
 
     [Fact]
+    public async Task PullUsesCommittedDefaultAndOneOffDoesNotPersistIt()
+    {
+        var repo = Repository("pull-preferences");
+        var fake = new FakeSyncService();
+        var settings = new FakeSettingsService
+        {
+            DefaultPullStrategy = PullStrategy.Rebase,
+            ForcePullAutoStash = true
+        };
+        using var vm = CreateViewModel(fake, settings, Context(repo, Branch("main", "origin/main")));
+
+        var initial = await vm.PullAsync(repo);
+        Assert.Equal(PullExecutionKind.Completed, initial.Kind);
+        Assert.Equal(new PullOptions(PullStrategy.Rebase, true), fake.LastPullOptions);
+
+        var oneOff = await vm.PullAsync(repo, PullStrategy.FastForwardOnly);
+        Assert.Equal(PullExecutionKind.Completed, oneOff.Kind);
+        Assert.Equal(new PullOptions(PullStrategy.FastForwardOnly, true), fake.LastPullOptions);
+        Assert.Equal(PullStrategy.Rebase, settings.DefaultPullStrategy);
+
+        await vm.SetDefaultPullStrategyAsync(PullStrategy.Merge);
+        await vm.SetPullAutoStashAsync(false);
+        Assert.Equal(PullStrategy.Merge, vm.DefaultPullStrategy);
+        Assert.False(vm.ForcePullAutoStash);
+        await vm.PullAsync(repo);
+        Assert.Equal(new PullOptions(PullStrategy.Merge, false), fake.LastPullOptions);
+    }
+
+    [Fact]
+    public async Task PullOutcomeAndUnavailableStateAreNotReportedAsSuccess()
+    {
+        var repo = Repository("pull-conflict");
+        var fake = new FakeSyncService
+        {
+            NextPullResult = new(PullOutcome.NeedsAttention, PullCompletionKind.Unknown,
+                RepositoryOperation.Rebase, true, "Resolve conflicts.")
+        };
+        var ctx = Context(repo, Branch("main", "origin/main"));
+        using var vm = CreateViewModel(fake, new FakeSettingsService(), ctx);
+
+        var paused = await vm.PullAsync(repo);
+        Assert.Equal(PullExecutionKind.NeedsAttention, paused.Kind);
+        Assert.Equal(RepositoryOperation.Rebase, paused.GitResult?.ActiveOperation);
+
+        ctx.CurrentOperation = RepositoryOperation.Rebase;
+        Assert.False(vm.CanPull);
+        var unavailable = await vm.PullAsync(repo);
+        Assert.Equal(PullExecutionKind.Unavailable, unavailable.Kind);
+        Assert.Single(fake.Calls);
+    }
+
+    [Fact]
+    public async Task PullRejectsStaleRepositoryAndMissingUpstream()
+    {
+        var repo = Repository("pull-current");
+        var other = Repository("pull-other");
+        var fake = new FakeSyncService();
+        var ctx = Context(repo, Branch("main", null));
+        using var vm = CreateViewModel(fake, new FakeSettingsService(), ctx);
+        Assert.False(vm.CanPull);
+        Assert.Equal(PullExecutionKind.Unavailable, (await vm.PullAsync(repo)).Kind);
+        ctx.Repository = other;
+        Assert.Equal(PullExecutionKind.Unavailable, (await vm.PullAsync(repo)).Kind);
+        Assert.Empty(fake.Calls);
+    }
+
+    [Fact]
     public async Task FetchFetchAllAndPullUseSingleMutationLifecycle()
     {
         var repository = Repository("repo");
@@ -344,6 +411,8 @@ public sealed class RepositorySyncViewModelTests
         public Exception? ForcePreparationException { get; set; }
         public Exception? ForceExecutionException { get; set; }
         public PushOptions? LastPushOptions { get; private set; }
+        public PullOptions? LastPullOptions { get; private set; }
+        public PullResult NextPullResult { get; set; } = new(PullOutcome.Completed, PullCompletionKind.UpToDate, RepositoryOperation.None, false, "Up to date.");
         public int PushCalls { get; private set; }
         public int ForceExecutionCalls { get; private set; }
         public ForcePushWithLeaseSnapshot? LastForceSnapshot { get; private set; }
@@ -374,12 +443,14 @@ public sealed class RepositorySyncViewModelTests
             CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
-        public Task PullAsync(
+        public Task<PullResult> PullAsync(
             Repository repository,
+            PullOptions options,
             CancellationToken cancellationToken = default)
         {
+            LastPullOptions = options;
             Calls.Add("pull");
-            return Task.CompletedTask;
+            return Task.FromResult(NextPullResult);
         }
 
         public Task PushAsync(
@@ -449,6 +520,8 @@ public sealed class RepositorySyncViewModelTests
         public GitConsoleAutoOpenMode GitConsoleAutoOpenMode => GitConsoleAutoOpenMode.OnErrors;
         public bool ShowReflog => false;
         public bool AutoSetupRemoteOnPush { get; set; }
+        public PullStrategy DefaultPullStrategy { get; set; } = PullStrategy.GitConfiguration;
+        public bool ForcePullAutoStash { get; set; }
         public bool ShowAuthorAvatars => true;
         public bool OnlineAvatarLookupEnabled => true;
         public bool HistoryPerformanceDiagnosticsEnabled => false;
@@ -456,7 +529,8 @@ public sealed class RepositorySyncViewModelTests
         public string DefaultRepositoriesDirectory => "/work";
         public IReadOnlyList<RecentRepositorySettings> RecentRepositories => [];
 
-        public event EventHandler? Changed { add { } remove { } }
+        public event EventHandler? Changed;
+        public void PublishChange() => Changed?.Invoke(this, EventArgs.Empty);
 
         public Task SetThemeModeAsync(ApplicationThemeMode mode, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SetCommitTimeDisplayModeAsync(CommitTimeDisplayMode mode, CancellationToken cancellationToken = default) => Task.CompletedTask;
@@ -464,6 +538,18 @@ public sealed class RepositorySyncViewModelTests
         public Task SetGitConsoleAutoOpenModeAsync(GitConsoleAutoOpenMode mode, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SetShowReflogAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SetAutoSetupRemoteOnPushAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task SetDefaultPullStrategyAsync(PullStrategy strategy, CancellationToken cancellationToken = default)
+        {
+            DefaultPullStrategy = strategy;
+            PublishChange();
+            return Task.CompletedTask;
+        }
+        public Task SetForcePullAutoStashAsync(bool value, CancellationToken cancellationToken = default)
+        {
+            ForcePullAutoStash = value;
+            PublishChange();
+            return Task.CompletedTask;
+        }
         public Task SetShowAuthorAvatarsAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SetOnlineAvatarLookupEnabledAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SetHistoryPerformanceDiagnosticsEnabledAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;

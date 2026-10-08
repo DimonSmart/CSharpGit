@@ -7,6 +7,37 @@ namespace CSharpGit.Application.Tests;
 public sealed class JsonAppSettingsServiceTests
 {
     [Fact]
+    public async Task PullPreferencesRoundTripAndOldDocumentDefaults()
+    {
+        using var fixture = new SettingsFixture();
+        var service = fixture.CreateService();
+        Assert.Equal(PullStrategy.GitConfiguration, service.DefaultPullStrategy);
+        Assert.False(service.ForcePullAutoStash);
+
+        await service.SetDefaultPullStrategyAsync(PullStrategy.Rebase);
+        await service.SetForcePullAutoStashAsync(true);
+        var restored = fixture.CreateService();
+        Assert.Equal(PullStrategy.Rebase, restored.DefaultPullStrategy);
+        Assert.True(restored.ForcePullAutoStash);
+    }
+
+    [Theory]
+    [InlineData("\"UndefinedPullStrategy\"")]
+    [InlineData("null")]
+    [InlineData("971")]
+    public void InvalidPullStrategyPreservesOtherPreferences(string serializedValue)
+    {
+        using var fixture = new SettingsFixture();
+        fixture.WriteSettings(
+            "{ \"DefaultPullStrategy\": " + serializedValue +
+            ", \"CommitTimeDisplayMode\": \"Absolute\", \"LoggingEnabled\": true }");
+        var settings = fixture.CreateService();
+        Assert.Equal(PullStrategy.GitConfiguration, settings.DefaultPullStrategy);
+        Assert.Equal(CommitTimeDisplayMode.Absolute, settings.CommitTimeDisplayMode);
+        Assert.True(settings.LoggingEnabled);
+    }
+
+    [Fact]
     public void MissingSettingsFileUsesSystemTheme()
     {
         using var fixture = new SettingsFixture();

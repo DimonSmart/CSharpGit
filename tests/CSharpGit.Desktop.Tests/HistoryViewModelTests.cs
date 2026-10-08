@@ -322,6 +322,8 @@ public sealed class HistoryViewModelTests
         public GitConsoleAutoOpenMode GitConsoleAutoOpenMode => default;
         public bool ShowReflog { get; set; }
         public bool AutoSetupRemoteOnPush => false;
+        public PullStrategy DefaultPullStrategy => PullStrategy.GitConfiguration;
+        public bool ForcePullAutoStash => false;
         public bool ShowAuthorAvatars => false;
         public bool OnlineAvatarLookupEnabled => false;
         public bool HistoryPerformanceDiagnosticsEnabled => false;
@@ -345,6 +347,8 @@ public sealed class HistoryViewModelTests
         public Task SetLoggingSettingsAsync(bool enabled, ApplicationLogLevel level, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SetGitConsoleAutoOpenModeAsync(GitConsoleAutoOpenMode mode, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SetAutoSetupRemoteOnPushAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task SetDefaultPullStrategyAsync(PullStrategy strategy, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task SetForcePullAutoStashAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SetShowAuthorAvatarsAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SetOnlineAvatarLookupEnabledAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SetHistoryPerformanceDiagnosticsEnabledAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
