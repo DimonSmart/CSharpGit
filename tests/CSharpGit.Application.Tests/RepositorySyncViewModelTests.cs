@@ -74,6 +74,9 @@ public sealed class RepositorySyncViewModelTests
         Assert.Equal(PullExecutionKind.NeedsAttention, paused.Kind);
         Assert.Equal(RepositoryOperation.Rebase, paused.GitResult?.ActiveOperation);
 
+        ctx.HasUnmergedPaths = true;
+        Assert.False(vm.CanPull);
+        ctx.HasUnmergedPaths = false;
         ctx.CurrentOperation = RepositoryOperation.Rebase;
         Assert.False(vm.CanPull);
         var unavailable = await vm.PullAsync(repo);
@@ -375,6 +378,7 @@ public sealed class RepositorySyncViewModelTests
         public bool IsBusy { get; set; }
         public bool CanRunSyncMutation { get; set; } = true;
         public RepositoryOperation CurrentOperation { get; set; }
+        public bool HasUnmergedPaths { get; set; }
         public GitBranch? CurrentLocalBranch { get; set; }
         public int MutationLifecycleCalls { get; private set; }
 
