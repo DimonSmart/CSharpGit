@@ -106,6 +106,15 @@ internal sealed partial class GitRepositorySyncService : IRepositorySyncService
                 existingOperation, false,
                 "Finish or abort the active repository operation before pulling again.");
 
+        var preexistingUnmerged = await _runner.RunAsync(
+            repository.WorkingDirectory, cancellationToken, false,
+            "ls-files", "--unmerged", "-z");
+        if (!string.IsNullOrEmpty(preexistingUnmerged))
+            return new PullResult(
+                PullOutcome.NeedsAttention, PullCompletionKind.Unknown,
+                RepositoryOperation.None, true,
+                "Resolve the existing unmerged files before pulling again.");
+
         var before = (await _runner.RunOptionalAsync(
             repository.WorkingDirectory, cancellationToken, "rev-parse", "--verify", "HEAD")).Trim();
 
