@@ -471,6 +471,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                 state.Operation,
                 state.CurrentOperation,
                 Branches.LocalBranches);
+            RepositorySync.RefreshAvailability();
             if (includeHistory)
                 await History.RefreshAsync();
 
