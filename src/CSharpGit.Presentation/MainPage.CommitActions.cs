@@ -127,8 +127,8 @@ public sealed partial class MainPage
     {
         if (_viewModel.Repository is null || _viewModel.IsBusy || _viewModel.RepositoryOperations.CurrentOperation != RepositoryOperation.None) return;
 
-        var branchName = new TextBox { Header = "Name", PlaceholderText = "feature/foo" };
-        var switchToBranch = new CheckBox { Content = "Switch to the new branch", IsChecked = true };
+        var branchName = new TextBox { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"), Header = "Name", PlaceholderText = "feature/foo" };
+        var switchToBranch = new CheckBox { Style = UiStyles.Resolve<Style>("CompactCheckBoxStyle"), Content = "Switch to the new branch", IsChecked = true };
         var content = new StackPanel { Width = 420, Spacing = 10 };
         content.Children.Add(branchName);
         content.Children.Add(switchToBranch);
@@ -302,7 +302,7 @@ public sealed partial class MainPage
             .Select((hash, index) => new MainlineChoice(index + 1, $"{index + 1}  {ShortOid(hash)}"))
             .ToArray();
         var selector = new ComboBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactComboBoxStyle"),
             Header = "Mainline parent",
             ItemsSource = choices,
             DisplayMemberPath = nameof(MainlineChoice.Label),

@@ -1,3 +1,4 @@
+using Microsoft.UI.Xaml;
 using CSharpGit.Domain;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -35,7 +36,7 @@ public sealed partial class MainPage
 
         var oldName = branch.Name;
         var nameBox = new TextBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"),
             Header = "Name",
             Text = oldName,
             MinWidth = 420
