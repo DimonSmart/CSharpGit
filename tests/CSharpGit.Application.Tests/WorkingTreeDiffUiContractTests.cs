@@ -61,9 +61,10 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("EnumerateVisibleLeaves", selection);
         Assert.Contains("node.Change is not null", selection);
 
-        Assert.Contains("Command=\"{Binding WorkingTree.StageSelectedCommand}\"", xaml);
+        var contextMenu = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs"));
+        Assert.Contains("WorkingTree.StageSelectedCommand", contextMenu);
         Assert.Contains("Command=\"{Binding WorkingTree.StageAllCommand}\"", xaml);
-        Assert.Contains("Command=\"{Binding WorkingTree.UnstageSelectedCommand}\"", xaml);
+        Assert.Contains("WorkingTree.UnstageSelectedCommand", contextMenu);
         Assert.Contains("Command=\"{Binding WorkingTree.UnstageAllCommand}\"", xaml);
         Assert.Contains("BatchDiscardConfirmationMessage", confirmations);
         Assert.Contains("ShowDiscardConfirmationAsync", confirmations);
