@@ -177,6 +177,8 @@ public sealed class RepositoryOperationsViewModel : INotifyPropertyChanged, IDis
     public string CurrentSideLabel => SelectedConflict?.CurrentLocalLabel ?? "Current/local";
     public string IncomingSideLabel => SelectedConflict?.IncomingRemoteLabel ?? "Incoming/remote";
     public bool HasActiveOperation => OperationState.Kind != RepositoryOperation.None;
+    public bool HasUnmergedPaths => Conflicts.Any(conflict => !conflict.IsResolved);
+    public bool HasOperationOrConflicts => HasActiveOperation || Conflicts.Count > 0;
 
     private Repository? Repository => _context?.Repository;
     private bool CanRunRepositoryMutation => _context?.CanRunRepositoryMutation == true;
@@ -217,7 +219,9 @@ public sealed class RepositoryOperationsViewModel : INotifyPropertyChanged, IDis
         CurrentOperation = operation;
         OperationState = operationState;
         OperationDisplay = operation == RepositoryOperation.None
-            ? "No operation in progress"
+            ? operationState.Conflicts.Count > 0
+                ? "Unmerged files require resolution (no merge or rebase in progress)"
+                : "No operation in progress"
             : $"Operation in progress: {operation}";
 
         Replace(Conflicts, operationState.Conflicts);
@@ -234,6 +238,8 @@ public sealed class RepositoryOperationsViewModel : INotifyPropertyChanged, IDis
                   && !branch.IsCurrent)
               ?? branches.FirstOrDefault(branch => !branch.IsCurrent);
 
+        Notify(nameof(HasOperationOrConflicts));
+        Notify(nameof(HasUnmergedPaths));
         RefreshAvailability();
     }
 
@@ -245,6 +251,8 @@ public sealed class RepositoryOperationsViewModel : INotifyPropertyChanged, IDis
         Replace(Conflicts, []);
         SelectedConflict = null;
         SelectedMergeBranch = null;
+        Notify(nameof(HasOperationOrConflicts));
+        Notify(nameof(HasUnmergedPaths));
         RefreshAvailability();
     }
 
