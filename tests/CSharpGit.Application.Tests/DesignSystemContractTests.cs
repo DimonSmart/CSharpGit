@@ -13,6 +13,7 @@ public sealed class DesignSystemContractTests
         var tokens = Read(root, "src", "CSharpGit.Presentation", "Styles", "DesignTokens.xaml");
         var typography = Read(root, "src", "CSharpGit.Presentation", "Styles", "Typography.xaml");
         var controls = Read(root, "src", "CSharpGit.Presentation", "Styles", "Controls.xaml");
+        var icons = Read(root, "src", "CSharpGit.Presentation", "Styles", "Icons.xaml");
         var workspace = Read(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml");
         var repositoryTree = Read(root, "src", "CSharpGit.Presentation", "Styles", "RepositoryTree.xaml");
         var historyReferences = Read(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml");
@@ -20,6 +21,7 @@ public sealed class DesignSystemContractTests
         var sources = new[]
         {
             "Styles/DesignTokens.xaml",
+            "Styles/Icons.xaml",
             "Styles/Typography.xaml",
             "Styles/Controls.xaml",
             "Styles/Workspace.xaml",
@@ -60,7 +62,7 @@ public sealed class DesignSystemContractTests
         {
             "CompactButtonStyle", "IconButtonStyle", "CompactTextBoxStyle", "CompactMultilineTextBoxStyle",
             "TechnicalTextBoxStyle", "TechnicalMultilineTextBoxStyle",
-            "CompactComboBoxStyle", "CompactCheckBoxStyle"
+            "CompactComboBoxStyle", "CompactCheckBoxStyle", "CompactRadioButtonStyle"
         })
             Assert.Contains($"x:Key=\"{style}\"", controls);
 
@@ -73,6 +75,7 @@ public sealed class DesignSystemContractTests
         var dictionaries = new Dictionary<string, string>
         {
             ["DesignTokens.xaml"] = tokens,
+            ["Icons.xaml"] = icons,
             ["Typography.xaml"] = typography,
             ["Controls.xaml"] = controls,
             ["Workspace.xaml"] = workspace,
@@ -163,10 +166,6 @@ public sealed class DesignSystemContractTests
         Assert.DoesNotContain("Height=\"20\"", workspace);
 
         Assert.DoesNotContain("Staged and unstaged changes are shown independently.", main);
-        Assert.Contains("ToolTipService.ToolTip=\"Stage selected\"", main);
-        Assert.Contains("AutomationProperties.Name=\"Stage selected\"", main);
-        Assert.Contains("ToolTipService.ToolTip=\"Discard selected\"", main);
-        Assert.Contains("AutomationProperties.Name=\"Discard selected\"", main);
         Assert.Contains("ToolTipService.ToolTip=\"Discard all…\"", main);
         Assert.Contains("AutomationProperties.Name=\"Discard all\"", main);
         Assert.Contains("AutomationProperties.Name=\"Commit message\"", main);
@@ -228,6 +227,89 @@ public sealed class DesignSystemContractTests
         Assert.DoesNotContain("FontFamily=\"Consolas\"", console);
         Assert.DoesNotContain("Padding=\"12,8\"", console);
         Assert.DoesNotContain("Spacing=\"8\"", console);
+    }
+
+    [Fact]
+    public void WorkingTreeAndFileActionsHaveASingleXamlOwnerAndSharedIcons()
+    {
+        var root = FindRepositoryRoot();
+        var main = XDocument.Parse(Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var icons = XDocument.Parse(Read(root, "src", "CSharpGit.Presentation", "Styles", "Icons.xaml"));
+        var code = Read(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs");
+        var menu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+
+        XElement Named(string name) => Assert.Single(main.Descendants().Where(element =>
+            (string?)element.Attribute(x + "Name") == name));
+        var semanticIcons = icons.Descendants()
+            .Where(element => element.Attribute(x + "Key") is not null)
+            .ToDictionary(element => (string)element.Attribute(x + "Key")!, element => element.Value);
+        Assert.NotEqual(semanticIcons["Icon.Glyph.Fetch"], semanticIcons["Icon.Glyph.Pull"]);
+
+        foreach (var (header, commands) in new[]
+        {
+            ("UnstagedHeader", new[] { "StageAllCommand", "RequestDiscardAllCommand" }),
+            ("StagedHeader", new[] { "UnstageAllCommand" })
+        })
+        {
+            var buttons = Named(header).Parent!.Descendants()
+                .Where(element => element.Name.LocalName == "Button").ToArray();
+            Assert.Equal(commands.Length, buttons.Length);
+            foreach (var command in commands)
+            {
+                var button = Assert.Single(buttons.Where(element =>
+                    ((string?)element.Attribute("Command"))?.Contains(command, StringComparison.Ordinal) == true));
+                Assert.Equal("{StaticResource CompactButtonStyle}", (string?)button.Attribute("Style"));
+                Assert.NotNull(button.Attribute("AutomationProperties.Name"));
+                Assert.Single(button.Descendants().Where(element => element.Name.LocalName == "FontIcon"));
+            }
+        }
+
+        foreach (var scope in new[] { "Commit", "WorkingTree" })
+        {
+            foreach (var action in new[] { "OpenOriginal", "OpenChanged", "ExternalDiff", "Reveal" })
+            {
+                var button = Named(scope + action + "Button");
+                Assert.Equal(scope + action + "_Click", (string?)button.Attribute("Click"));
+                Assert.Equal("{StaticResource CompactButtonStyle}", (string?)button.Attribute("Style"));
+                Assert.NotNull(button.Attribute("AutomationProperties.Name"));
+                var glyph = (string?)Assert.Single(button.Descendants()
+                    .Where(element => element.Name.LocalName == "FontIcon")).Attribute("Glyph");
+                Assert.StartsWith("{StaticResource Icon.Glyph.", glyph);
+            }
+        }
+
+        Assert.DoesNotContain("InstallWorkingTreeBulkActions", code);
+        Assert.DoesNotContain("InstallCommitFileActions", code);
+        Assert.DoesNotContain("InstallWorkingTreeFileActions", code);
+        Assert.DoesNotContain("Children.Clear()", code);
+        Assert.DoesNotContain("CreateActionButton(", code);
+        Assert.Contains("WorkingTree.StageSelectedCommand", menu);
+        Assert.Contains("WorkingTree.UnstageSelectedCommand", menu);
+        Assert.Contains("WorkingTree.RequestDiscardSelectedCommand", menu);
+        Assert.Contains("Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(button)", code);
+    }
+
+    [Fact]
+    public void RuntimeDialogsResolveCanonicalResourcesWithoutDuplicatingStyleValues()
+    {
+        var root = FindRepositoryRoot();
+        var resolver = Read(root, "src", "CSharpGit.Presentation", "UiStyles.cs");
+        var styles = Read(root, "src", "CSharpGit.Presentation", "Styles", "Controls.xaml");
+        Assert.Contains("MergedDictionaries", resolver);
+        Assert.Contains("TryFind", resolver);
+        Assert.Contains("CompactRadioButtonStyle", styles);
+
+        foreach (var file in new[]
+        {
+            "MainPage.RepositoryCloning.cs", "MainPage.RepositoryCreation.cs",
+            "MainPage.ForcePush.cs", "MainPage.Stashes.cs", "MainPage.Worktrees.cs",
+            "MainPage.BranchDeletion.cs", "MainPage.Tags.cs", "MainPage.About.cs"
+        })
+        {
+            var dialog = Read(root, "src", "CSharpGit.Presentation", file);
+            Assert.Contains("UiStyles.Resolve<Style>", dialog);
+        }
     }
 
     [Fact]
