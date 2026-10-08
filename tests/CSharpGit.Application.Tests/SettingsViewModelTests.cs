@@ -69,6 +69,27 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
+    public async Task PullPreferencesUpdateAndRollBackAfterPersistenceError()
+    {
+        var settings = new FakeAppSettingsService();
+        using var vm = CreateViewModel(settings);
+        var rebase = vm.PullStrategies.Single(option => option.Strategy == PullStrategy.Rebase);
+        await vm.ApplyPullStrategyAsync(rebase);
+        await vm.ApplyForcePullAutoStashAsync(true);
+        Assert.Equal(PullStrategy.Rebase, settings.DefaultPullStrategy);
+        Assert.True(settings.ForcePullAutoStash);
+
+        settings.FailNextWrite = true;
+        var merge = vm.PullStrategies.Single(option => option.Strategy == PullStrategy.Merge);
+        await Assert.ThrowsAsync<IOException>(() => vm.ApplyPullStrategyAsync(merge));
+        Assert.Equal(PullStrategy.Rebase, vm.SelectedPullStrategy.Strategy);
+
+        settings.FailNextWrite = true;
+        await Assert.ThrowsAsync<IOException>(() => vm.ApplyForcePullAutoStashAsync(false));
+        Assert.True(vm.ForcePullAutoStash);
+    }
+
+    [Fact]
     public async Task ThemePersistenceFailureRestoresCommittedState()
     {
         var settings = new FakeAppSettingsService { ThemeMode = ApplicationThemeMode.Light };
@@ -245,6 +266,8 @@ public sealed class SettingsViewModelTests
         public GitConsoleAutoOpenMode GitConsoleAutoOpenMode { get; set; } = GitConsoleAutoOpenMode.OnErrors;
         public bool ShowReflog { get; set; }
         public bool AutoSetupRemoteOnPush { get; set; }
+        public PullStrategy DefaultPullStrategy { get; set; } = PullStrategy.GitConfiguration;
+        public bool ForcePullAutoStash { get; set; }
         public bool ShowAuthorAvatars { get; set; } = true;
         public bool OnlineAvatarLookupEnabled { get; set; } = true;
         public bool HistoryPerformanceDiagnosticsEnabled { get; set; }
@@ -312,6 +335,22 @@ public sealed class SettingsViewModelTests
             ThrowIfWriteFails(cancellationToken);
             if (AutoSetupRemoteOnPush == value) return Task.CompletedTask;
             AutoSetupRemoteOnPush = value;
+            _changed?.Invoke(this, EventArgs.Empty);
+            return Task.CompletedTask;
+        }
+
+        public Task SetDefaultPullStrategyAsync(PullStrategy strategy, CancellationToken cancellationToken = default)
+        {
+            ThrowIfWriteFails(cancellationToken);
+            DefaultPullStrategy = strategy;
+            _changed?.Invoke(this, EventArgs.Empty);
+            return Task.CompletedTask;
+        }
+
+        public Task SetForcePullAutoStashAsync(bool value, CancellationToken cancellationToken = default)
+        {
+            ThrowIfWriteFails(cancellationToken);
+            ForcePullAutoStash = value;
             _changed?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
         }

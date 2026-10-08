@@ -331,10 +331,13 @@ public sealed class BranchesViewModelTests
                 : Task.FromException(DeleteRemoteException);
         }
 
-        public Task PullAsync(
+        public Task<PullResult> PullAsync(
             Repository repository,
+            PullOptions options,
             CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+            Task.FromResult(new PullResult(
+                PullOutcome.Completed, PullCompletionKind.Unknown,
+                RepositoryOperation.None, false, "Pull completed."));
 
         public Task PushAsync(
             Repository repository,
