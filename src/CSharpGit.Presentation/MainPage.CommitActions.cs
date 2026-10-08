@@ -289,7 +289,9 @@ public sealed partial class MainPage
             return;
         }
 
-        await RestoreCommitActionSelectionAsync(result.SelectionCommit);
+        if (!await RestoreCommitActionSelectionAsync(result.SelectionCommit)
+            && !string.IsNullOrWhiteSpace(result.FallbackSelectionCommit))
+            await RestoreCommitActionSelectionAsync(result.FallbackSelectionCommit);
     }
 
     private async Task<int?> SelectMainlineParentAsync(CommitHistoryItem commit, string title)

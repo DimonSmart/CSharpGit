@@ -27,7 +27,8 @@ public sealed record CommitActionExecutionResult(
     string? ErrorTitle = null,
     string? ErrorMessage = null,
     string? ConflictOldCommit = null,
-    string? ConflictNewCommit = null)
+    string? ConflictNewCommit = null,
+    string? FallbackSelectionCommit = null)
 {
     public bool Succeeded => LifecycleSucceeded && string.IsNullOrWhiteSpace(ErrorMessage);
 }
@@ -178,7 +179,8 @@ public sealed class CommitActionsViewModel
         return result.Kind switch
         {
             EditCommitMessageResultKind.Completed => new(true,
-                SelectionCommit: result.NewCommit ?? result.OldCommit),
+                SelectionCommit: result.NewCommit ?? result.OldCommit,
+                FallbackSelectionCommit: result.OldCommit),
             EditCommitMessageResultKind.Conflicts => new(true,
                 ConflictOldCommit: result.OldCommit,
                 ConflictNewCommit: result.NewCommit),
