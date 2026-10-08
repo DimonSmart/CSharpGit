@@ -54,4 +54,24 @@ jobs:
         run: dotnet build CSharpGit.slnx --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test CSharpGit.slnx --configuration Release --no-build --verbosity minimal
+        env:
+          CSHARPGIT_TEST_METRICS: "1"
+          CSHARPGIT_TEST_METRICS_DIR: ${{ github.workspace }}/TestDiagnostics
+        run: dotnet test CSharpGit.slnx --configuration Release --no-build --verbosity minimal --logger "trx;LogFilePrefix=test-results"
+
+      - name: Report test timings
+        if: always()
+        shell: pwsh
+        run: |
+          $python = if (Get-Command python3 -ErrorAction SilentlyContinue) { "python3" } else { "python" }
+          & $python .github/scripts/report-test-timings.py --root tests --metrics TestDiagnostics
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-timings-${{ matrix.os }}
+          path: |
+            tests/**/TestResults/*.trx
+            TestDiagnostics/*.jsonl
+          if-no-files-found: warn
