@@ -107,7 +107,7 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("<TreeView x:Name=\"RepositoryTree\"", xaml);
         Assert.Contains("AutomationProperties.HelpText=\"{Binding Repository.WorkingDirectory}\"", xaml);
         Assert.Contains("DataContext=\"{Binding RepositoryOperations}\"", xaml);
-        Assert.Contains("Visibility=\"{Binding HasActiveOperation", xaml);
+        Assert.Contains("Visibility=\"{Binding HasOperationOrConflicts", xaml);
         Assert.Contains("x:Name=\"StatusBar\" Grid.Row=\"3\" Grid.ColumnSpan=\"3\"", xaml);
 
         var headerStart = xaml.IndexOf("<Border x:Name=\"RepositoryHeader\"", StringComparison.Ordinal);
