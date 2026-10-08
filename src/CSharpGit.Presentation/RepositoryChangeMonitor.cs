@@ -101,15 +101,22 @@ internal sealed class RepositoryChangeMonitor : IDisposable
     private const int MaxRecentInvalidations = 512;
 
     private readonly object _gate = new();
+    private readonly TimeProvider _timeProvider;
     private readonly List<FileSystemWatcher> _watchers = [];
     private readonly Queue<InvalidationRecord> _recentInvalidations = [];
-    private Timer? _debounceTimer;
+    private ITimer? _debounceTimer;
+    private long _lastChangeTimestamp;
     private Repository? _repository;
     private RepositoryInvalidationBatch? _pendingInvalidation;
     private long _watcherEpoch;
     private long _generation;
     private long _droppedThroughGeneration;
     private bool _disposed;
+
+    internal RepositoryChangeMonitor(TimeProvider? timeProvider = null)
+    {
+        _timeProvider = timeProvider ?? TimeProvider.System;
+    }
 
     public event EventHandler<RepositoryInvalidatedEventArgs>? RepositoryChanged;
 
@@ -258,6 +265,21 @@ internal sealed class RepositoryChangeMonitor : IDisposable
         return watcher;
     }
 
+    // Accepts already-classified relative paths; filesystem delivery is tested separately.
+    internal void EnqueueInvalidation(
+        RepositoryInvalidationSource source,
+        IReadOnlyList<string> relativePaths,
+        bool unknownOrOverflow = false)
+    {
+        ArgumentNullException.ThrowIfNull(relativePaths);
+        lock (_gate)
+        {
+            ThrowIfDisposed();
+            if (_repository is null) return;
+            EnqueueInvalidationNoLock(source, relativePaths, unknownOrOverflow);
+        }
+    }
+
     private void QueueChange(
         long epoch,
         RepositoryInvalidationSource source,
@@ -301,25 +323,40 @@ internal sealed class RepositoryChangeMonitor : IDisposable
                 }
             }
 
-            if (!unknownOrOverflow && workingPaths.Count == 0 && metadataPaths.Count == 0)
-                return;
-
-            var generation = ++_generation;
-            var invalidation = new InvalidationRecord(
-                generation,
+            EnqueueInvalidationNoLock(
                 source,
-                unknownOrOverflow,
                 source == RepositoryInvalidationSource.WorkingTree
-                    ? workingPaths.ToArray()
-                    : metadataPaths.ToArray());
-
-            RememberInvalidationNoLock(invalidation);
-            _pendingInvalidation = RepositoryInvalidationBatch.Merge(
-                _pendingInvalidation,
-                invalidation.ToBatch());
-            _debounceTimer ??= new Timer(PublishRepositoryChanged);
-            _debounceTimer.Change(DebounceDelay, Timeout.InfiniteTimeSpan);
+                    ? workingPaths
+                    : metadataPaths,
+                unknownOrOverflow);
         }
+    }
+
+    private void EnqueueInvalidationNoLock(
+        RepositoryInvalidationSource source,
+        IReadOnlyList<string> relativePaths,
+        bool unknownOrOverflow)
+    {
+        if (!unknownOrOverflow && relativePaths.Count == 0) return;
+
+        var invalidation = new InvalidationRecord(
+            ++_generation,
+            source,
+            unknownOrOverflow,
+            relativePaths.ToArray());
+
+        RememberInvalidationNoLock(invalidation);
+        _pendingInvalidation = RepositoryInvalidationBatch.Merge(
+            _pendingInvalidation,
+            invalidation.ToBatch());
+
+        _lastChangeTimestamp = _timeProvider.GetTimestamp();
+        _debounceTimer ??= _timeProvider.CreateTimer(
+            PublishRepositoryChanged,
+            null,
+            Timeout.InfiniteTimeSpan,
+            Timeout.InfiniteTimeSpan);
+        _debounceTimer.Change(DebounceDelay, Timeout.InfiniteTimeSpan);
     }
 
     private void PublishRepositoryChanged(object? state)
@@ -328,7 +365,17 @@ internal sealed class RepositoryChangeMonitor : IDisposable
         RepositoryInvalidationBatch? invalidation;
         lock (_gate)
         {
-            if (_disposed || _pendingInvalidation is null) return;
+            if (_disposed || _repository is null || _pendingInvalidation is null) return;
+
+            // A queued callback can run after Change() has reset the timer.
+            // It must not publish a newer batch before its own quiet period ends.
+            var remaining = DebounceDelay - _timeProvider.GetElapsedTime(_lastChangeTimestamp);
+            if (remaining > TimeSpan.Zero)
+            {
+                _debounceTimer?.Change(remaining, Timeout.InfiniteTimeSpan);
+                return;
+            }
+
             invalidation = _pendingInvalidation;
             _pendingInvalidation = null;
             handler = RepositoryChanged;
