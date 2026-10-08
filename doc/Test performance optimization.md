@@ -2,7 +2,7 @@
 
 ## Scope and method
 
-This change optimizes test-only Git setup without replacing real Git CLI integration or changing production services. Baseline was recorded on the original functional tests after enabling TRX reporting (commit 556db01; [run 37741331812](https://github.com/DimonSmart/CSharpGit/actions/runs/37741331812)). The first optimized revision was 3e2e920 ([run 37741718352](https://github.com/DimonSmart/CSharpGit/actions/runs/37741718352)). That revision exposed a Windows-specific newline error in fast-import; the protocol was corrected to LF-only at b7be652.
+Stage 1 optimized test-only Git setup without replacing real Git CLI integration or changing production services. Stage 2 (documented below) also optimizes production Git configuration operations. Baseline was recorded on the original functional tests after enabling TRX reporting (commit 556db01; [run 37741331812](https://github.com/DimonSmart/CSharpGit/actions/runs/37741331812)). The first optimized revision was 3e2e920 ([run 37741718352](https://github.com/DimonSmart/CSharpGit/actions/runs/37741718352)). That revision exposed a Windows-specific newline error in fast-import; the protocol was corrected to LF-only at b7be652.
 
 See [Test performance baseline 2026-10.md](Test%20performance%20baseline%202026-10.md) for source and per-class starting measurements. TRX report script and its GitHub Actions Summary display the 20 slowest test cases, 10 most expensive classes in each assembly, counts, and per-project elapsed versus summed test durations.
 
