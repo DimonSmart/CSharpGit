@@ -6,7 +6,7 @@ using CSharpGit.Git;
 namespace CSharpGit.Git.Tests;
 
 [Collection(GitToolsEnvironmentCollection.CollectionName)]
-public sealed class GitToolsExecutionTests : IDisposable
+public sealed class GitToolsExecutionTests : IClassFixture<GitToolsHistoryFixture>, IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"csharpgit-git-tools-exec-{Guid.NewGuid():N}");
     private readonly string _home;
@@ -17,12 +17,11 @@ public sealed class GitToolsExecutionTests : IDisposable
     private readonly ExternalGitToolService _service;
     private readonly Repository _repository;
 
-    public GitToolsExecutionTests()
+    public GitToolsExecutionTests(GitToolsHistoryFixture history)
     {
         _home = Path.Combine(_root, "home");
-        _repositoryPath = Path.Combine(_root, "repo");
         Directory.CreateDirectory(_home);
-        Directory.CreateDirectory(_repositoryPath);
+        _repositoryPath = history.CreateCopy();
 
         SetEnvironment("HOME", _home);
         SetEnvironment("USERPROFILE", _home);
@@ -32,10 +31,6 @@ public sealed class GitToolsExecutionTests : IDisposable
         SetEnvironment("VISUAL", null);
         SetEnvironment("EDITOR", null);
         File.WriteAllText(Path.Combine(_home, ".gitconfig"), string.Empty);
-
-        RunGit("init", "-b", "main");
-        RunGit("config", "user.name", "CSharpGit Tests");
-        RunGit("config", "user.email", "tests@example.invalid");
 
         _repository = new Repository(
             Path.GetFullPath(_repositoryPath),
@@ -179,12 +174,6 @@ public sealed class GitToolsExecutionTests : IDisposable
 
     private void CreateConflict()
     {
-        Commit("conflict.txt", "base\n", "base");
-        RunGit("checkout", "-b", "left");
-        Commit("conflict.txt", "left\n", "left");
-        RunGit("checkout", "-b", "right", "HEAD~1");
-        Commit("conflict.txt", "right\n", "right");
-        RunGit("checkout", "left");
         var result = RunGitCore(["merge", "right"]);
         Assert.NotEqual(0, result.ExitCode);
     }
@@ -209,18 +198,8 @@ public sealed class GitToolsExecutionTests : IDisposable
     {
         foreach (var pair in _originalEnvironment)
             Environment.SetEnvironmentVariable(pair.Key, pair.Value);
-        try
-        {
-            if (!Directory.Exists(_root)) return;
-            foreach (var file in Directory.EnumerateFiles(_root, "*", SearchOption.AllDirectories))
-            {
-                try { File.SetAttributes(file, FileAttributes.Normal); } catch { }
-            }
-            Directory.Delete(_root, recursive: true);
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-        }
+        TestDirectory.Delete(_repositoryPath);
+        TestDirectory.Delete(_root);
     }
 
     private void SetEnvironment(string name, string? value)
