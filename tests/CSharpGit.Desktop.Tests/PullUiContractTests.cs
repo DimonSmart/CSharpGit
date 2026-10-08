@@ -48,6 +48,7 @@ public sealed class PullUiContractTests
         Assert.Contains("_settings.SetForcePullAutoStashAsync", syncVm, StringComparison.Ordinal);
         Assert.Contains("_settings.Changed += PullSettings_Changed", syncVm, StringComparison.Ordinal);
         Assert.Contains("_settings.Changed -= PullSettings_Changed", syncVm, StringComparison.Ordinal);
+        Assert.Contains("HasUnmergedPaths", syncVm, StringComparison.Ordinal);
         Assert.Contains("RunSyncMutationAsync", syncVm, StringComparison.Ordinal);
         Assert.Contains("MutateAsync(", syncContext, StringComparison.Ordinal);
         Assert.Contains("catch (OperationCanceledException exception) { cancellation = exception; }", lifecycle, StringComparison.Ordinal);
