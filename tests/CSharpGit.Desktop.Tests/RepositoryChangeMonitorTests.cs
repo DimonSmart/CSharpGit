@@ -46,26 +46,130 @@ public sealed class RepositoryChangeMonitorTests
         await File.WriteAllTextAsync(second, "two");
 
         using var monitor = new RepositoryChangeMonitor();
-        var notifications = 0;
+        var received = new List<RepositoryInvalidationBatch>();
         var signal = NewSignal();
-        RepositoryInvalidationBatch? observed = null;
         monitor.RepositoryChanged += (_, args) =>
         {
-            Interlocked.Increment(ref notifications);
-            observed = args.Batch;
-            signal.TrySetResult(true);
+            lock (received)
+            {
+                received.Add(args.Batch);
+                var paths = received.SelectMany(batch => batch.WorkingTreePaths)
+                    .ToHashSet(RepositoryChangeMonitor.PathComparer);
+                if (paths.Contains("first.txt") && paths.Contains("second.txt"))
+                    signal.TrySetResult(true);
+            }
         };
         monitor.Start(repository.Repository);
+        var initialGeneration = monitor.Generation;
 
         await File.AppendAllTextAsync(first, " changed");
         await File.AppendAllTextAsync(second, " changed");
         await signal.Task.WaitAsync(EventTimeout);
-        await Task.Delay(RepositoryChangeMonitor.DebounceDelay + TimeSpan.FromMilliseconds(300));
 
-        Assert.Equal(1, Volatile.Read(ref notifications));
-        Assert.NotNull(observed);
-        Assert.Contains("first.txt", observed.WorkingTreePaths);
-        Assert.Contains("second.txt", observed.WorkingTreePaths);
+        lock (received)
+        {
+            Assert.NotEmpty(received);
+            Assert.All(received, batch =>
+            {
+                Assert.True(batch.HasWorkingTreeChanges);
+                Assert.False(batch.HasRelevantMetadataChanges);
+                Assert.False(batch.HasUnknownOrOverflow);
+                Assert.True(batch.Generation > initialGeneration);
+            });
+            var combined = received.SelectMany(batch => batch.WorkingTreePaths)
+                .ToHashSet(RepositoryChangeMonitor.PathComparer);
+            Assert.Contains("first.txt", combined);
+            Assert.Contains("second.txt", combined);
+        }
+    }
+
+    [Fact]
+    public void DebounceAccumulatesDistinctPathsAndResetsQuietPeriod()
+    {
+        using var repository = TestRepository.Create();
+        var clock = new ManualTimeProvider();
+        using var monitor = new RepositoryChangeMonitor(clock);
+        var published = new List<RepositoryInvalidationBatch>();
+        monitor.RepositoryChanged += (_, args) => published.Add(args.Batch);
+        monitor.Start(repository.Repository);
+        var initialGeneration = monitor.Generation;
+
+        monitor.EnqueueInvalidation(RepositoryInvalidationSource.WorkingTree, ["first.txt"]);
+        clock.Advance(TimeSpan.FromMilliseconds(400));
+        monitor.EnqueueInvalidation(
+            RepositoryInvalidationSource.WorkingTree,
+            ["second.txt", "first.txt"]);
+
+        clock.Advance(TimeSpan.FromMilliseconds(100));
+        clock.FireTimerEarly(); // A callback queued before the reset must not publish early.
+        Assert.Empty(published);
+        clock.Advance(TimeSpan.FromMilliseconds(399));
+        Assert.Empty(published);
+        clock.Advance(TimeSpan.FromMilliseconds(1));
+
+        var firstBatch = Assert.Single(published);
+        Assert.True(firstBatch.HasWorkingTreeChanges);
+        Assert.False(firstBatch.HasRelevantMetadataChanges);
+        Assert.False(firstBatch.HasUnknownOrOverflow);
+        Assert.Equal(2, firstBatch.WorkingTreePaths.Count);
+        Assert.Contains("first.txt", firstBatch.WorkingTreePaths);
+        Assert.Contains("second.txt", firstBatch.WorkingTreePaths);
+        Assert.Equal(initialGeneration + 2, firstBatch.Generation);
+
+        var sinceStart = monitor.GetInvalidationsSince(initialGeneration);
+        Assert.Equal(firstBatch.Generation, sinceStart.Generation);
+        Assert.Equal(2, sinceStart.WorkingTreePaths.Count);
+
+        monitor.EnqueueInvalidation(RepositoryInvalidationSource.WorkingTree, ["third.txt"]);
+        clock.Advance(RepositoryChangeMonitor.DebounceDelay);
+
+        Assert.Equal(2, published.Count);
+        Assert.Equal(["third.txt"], published[1].WorkingTreePaths);
+        Assert.Equal(firstBatch.Generation + 1, published[1].Generation);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void StopOrDisposeCancelsPendingPublication(bool dispose)
+    {
+        using var repository = TestRepository.Create();
+        var clock = new ManualTimeProvider();
+        using var monitor = new RepositoryChangeMonitor(clock);
+        var notifications = 0;
+        monitor.RepositoryChanged += (_, _) => notifications++;
+        monitor.Start(repository.Repository);
+        monitor.EnqueueInvalidation(RepositoryInvalidationSource.WorkingTree, ["pending.txt"]);
+
+        if (dispose) monitor.Dispose();
+        else monitor.Stop();
+
+        clock.Advance(RepositoryChangeMonitor.DebounceDelay + TimeSpan.FromSeconds(1));
+        Assert.Equal(0, notifications);
+        Assert.False(monitor.GetInvalidationsSince(0).HasAny);
+    }
+
+    [Fact]
+    public void RestartDiscardsOldRepositoryBatchEvenIfTimerCallbackWasQueued()
+    {
+        using var previous = TestRepository.Create();
+        using var current = TestRepository.Create();
+        var clock = new ManualTimeProvider();
+        using var monitor = new RepositoryChangeMonitor(clock);
+        var published = new List<RepositoryInvalidationBatch>();
+        monitor.RepositoryChanged += (_, args) => published.Add(args.Batch);
+
+        monitor.Start(previous.Repository);
+        monitor.EnqueueInvalidation(RepositoryInvalidationSource.WorkingTree, ["old.txt"]);
+        monitor.Start(current.Repository);
+        monitor.EnqueueInvalidation(RepositoryInvalidationSource.WorkingTree, ["new.txt"]);
+        clock.FireTimerEarly();
+        Assert.Empty(published);
+
+        clock.Advance(RepositoryChangeMonitor.DebounceDelay);
+        var batch = Assert.Single(published);
+        Assert.Equal(["new.txt"], batch.WorkingTreePaths);
+        Assert.False(batch.HasUnknownOrOverflow);
     }
 
     [Fact]
@@ -252,6 +356,88 @@ public sealed class RepositoryChangeMonitorTests
         using var timeout = new CancellationTokenSource(EventTimeout);
         while (!predicate())
             await Task.Delay(25, timeout.Token);
+    }
+
+    private sealed class ManualTimeProvider : TimeProvider
+    {
+        private long _ticks;
+        private readonly List<ManualTimer> _timers = [];
+
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+        public override long GetTimestamp() => _ticks;
+
+        public override ITimer CreateTimer(
+            TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = new ManualTimer(this, callback, state);
+            _timers.Add(timer);
+            timer.Change(dueTime, period);
+            return timer;
+        }
+
+        public void Advance(TimeSpan duration)
+        {
+            if (duration < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(duration));
+            var target = checked(_ticks + duration.Ticks);
+
+            while (true)
+            {
+                var next = _timers
+                    .Where(timer => timer.DueTicks is long due && due <= target)
+                    .OrderBy(timer => timer.DueTicks)
+                    .FirstOrDefault();
+                if (next is null) break;
+
+                _ticks = next.DueTicks!.Value;
+                next.Fire();
+            }
+
+            _ticks = target;
+        }
+
+        public void FireTimerEarly()
+        {
+            var next = _timers.FirstOrDefault(timer => timer.DueTicks.HasValue);
+            Assert.NotNull(next);
+            next.Fire();
+        }
+
+        private sealed class ManualTimer(
+            ManualTimeProvider owner, TimerCallback callback, object? state) : ITimer
+        {
+            private bool _disposed;
+            public long? DueTicks { get; private set; }
+
+            public bool Change(TimeSpan dueTime, TimeSpan period)
+            {
+                if (_disposed) return false;
+                if (period != Timeout.InfiniteTimeSpan)
+                    throw new NotSupportedException("Only one-shot timers are supported.");
+                DueTicks = dueTime == Timeout.InfiniteTimeSpan
+                    ? null
+                    : checked(owner._ticks + dueTime.Ticks);
+                return true;
+            }
+
+            public void Fire()
+            {
+                DueTicks = null;
+                callback(state);
+            }
+
+            public void Dispose()
+            {
+                _disposed = true;
+                DueTicks = null;
+            }
+
+            public ValueTask DisposeAsync()
+            {
+                Dispose();
+                return ValueTask.CompletedTask;
+            }
+        }
     }
 
     private sealed class TestRepository : IDisposable
