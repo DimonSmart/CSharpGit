@@ -48,7 +48,7 @@ internal static class GitToolHelpCache
         {
             if (Entries.TryGetValue(key, out var entry) && entry.Expires > DateTimeOffset.UtcNow)
             {
-                tools = entry.Tools;
+                tools = entry.Tools.ToArray(); // caller cannot mutate a shared cached array
                 return true;
             }
         }
