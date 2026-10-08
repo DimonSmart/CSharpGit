@@ -6,7 +6,7 @@ using CSharpGit.Domain;
 namespace CSharpGit.Git.Tests;
 
 [Collection(GitToolsEnvironmentCollection.CollectionName)]
-public sealed class GitConfigServiceTests : IDisposable
+public sealed class GitConfigServiceTests : IClassFixture<GitToolsEmptyFixture>, IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"csharpgit-git-config-{Guid.NewGuid():N}");
     private readonly string _repositoryPath;
@@ -15,11 +15,11 @@ public sealed class GitConfigServiceTests : IDisposable
     private readonly Repository _repository;
     private readonly GitConfigService _service;
 
-    public GitConfigServiceTests()
+    public GitConfigServiceTests(GitToolsEmptyFixture history)
     {
-        _repositoryPath = Path.Combine(_root, "repo");
+        _repositoryPath = history.CreateCopy();
         _globalConfig = Path.Combine(_root, "global.gitconfig");
-        Directory.CreateDirectory(_repositoryPath);
+        Directory.CreateDirectory(_root);
         File.WriteAllText(_globalConfig, string.Empty);
 
         SetEnvironment("GIT_CONFIG_GLOBAL", _globalConfig);
@@ -29,7 +29,6 @@ public sealed class GitConfigServiceTests : IDisposable
         SetEnvironment("GIT_CONFIG_KEY_0", null);
         SetEnvironment("GIT_CONFIG_VALUE_0", null);
 
-        RunGit(_repositoryPath, "init", "-b", "main");
         _repository = new Repository(
             Path.GetFullPath(_repositoryPath),
             Path.GetFullPath(_repositoryPath),
@@ -256,6 +255,7 @@ public sealed class GitConfigServiceTests : IDisposable
     {
         foreach (var pair in _originalEnvironment)
             Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+        TestDirectory.Delete(_repositoryPath);
         TestDirectory.Delete(_root);
     }
 
