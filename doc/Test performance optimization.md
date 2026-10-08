@@ -131,3 +131,27 @@ The original Windows GitToolConfigurationServiceTests time range was 123–161 s
 At commit `4c4bb249`, before the later test-fixture and help-cache changes, Ubuntu completed 435 Git, 403 Application and 424 Desktop tests. The opt-in profiler measured 18 `difftool-help` processes totaling 8.536 seconds and 5 `mergetool-help` processes totaling 2.218 seconds (Ubuntu), substantially more than the 293 instrumented Git `config` processes' combined 0.576 seconds. On macOS the same help calls totaled 65.506 + 17.438 = 82.944 seconds, compared with 8.012 seconds for 293 `config` calls. This is the measured reason for adding the narrowly scoped tool-help cache; the operation count reduction alone did not eliminate the help overhead. Each runner is influenced by load, so these are diagnostic samples, not cross-OS median claims.
 
 The first optimized but uncached Windows run `37746322312` passed all 427 Git tests and measured 149.22 seconds of summed `GitToolConfigurationServiceTests` durations versus 161.23 seconds at baseline run `37743973684`; this was insufficient to meet the 50% target and occurred before the helper changes. Re-evaluate the 50%/30% goals only with final cached-run TRX and Git-process metrics. Do not compare unlike test counts as if the suites were identical.
+
+### Verified cross-platform CI for final implementation
+
+At commit [`2b52909a`](https://github.com/DimonSmart/CSharpGit/commit/2b52909ace0e9d4c01189e261c0a967f045d99e7), [Build run 37748733360](https://github.com/DimonSmart/CSharpGit/actions/runs/37748733360) finished **successfully on Ubuntu, macOS, and Windows**. Each OS passed all 403 Application, 424 Desktop, and **439 Git tests**, with no failed or skipped tests. The Git count increased from 427 at baseline due to added coverage.
+
+These per-OS observations compare that verified run to original [baseline run 37743973684](https://github.com/DimonSmart/CSharpGit/actions/runs/37743973684):
+
+| Runner | Git.Tests wall, baseline → new | GitToolConfigurationServiceTests sum, baseline → new | GitToolsExecutionTests sum, baseline → new |
+|---|---|---|---|
+| Windows | 6m 28s → 4m 59s | 161.23s → 88.64s | 87.80s → 72.00s |
+| macOS | 5m 15s → 2m 44s | 58.77s → 25.63s | 32.05s → 21.85s |
+| Ubuntu | 19s → 16s | 6.34s → 3.65s | 3.64s → 2.99s |
+
+The measured improvement in summed test-case durations is approximately 45% (Windows) / 56% (macOS) / 42% (Ubuntu) for `GitToolConfigurationServiceTests`, and 18% / 32% / 18% for `GitToolsExecutionTests`. These are single-run measurements, not three-run medians; there are additional tests in the new suites, concurrent-runner load varies, and percent changes must not be interpreted as reliable medians. The desired 50% Windows and 30% Windows per-class median reductions remain **unconfirmed**, not acceptance claims.
+
+Instrumentation in the final run recorded 8 difftool help processes and 4 mergetool help processes on each OS, versus 18 and 5 in the earlier uncached refactor (run 37747123349). Summed help-process times in the final run were:
+
+| Runner | Difftool help (8) | Mergetool help (4) | All service `git config` processes |
+|---|---:|---:|---:|
+| Windows | 97.865s | 47.134s | 298 processes, 15.972s |
+| macOS | 26.180s | 11.486s | 300 processes, 5.905s |
+| Ubuntu | 3.988s | 1.836s | 300 processes, 0.599s |
+
+These suite-level counts include Git operations unrelated to the targeted `ReadAsync` methods; use the dedicated process-budget tests for the per-operation config bound. The final tool-help values demonstrate that helper discovery remains the most expensive recurring operation on Windows/macOS, despite bounded caching. Remaining investigation: version/PATH-safe caching for more varieties of custom tool definitions, and repeated measurements with runner-load awareness. Keep all native integration assertions; do not trade away correct cache invalidation or Git behavior to meet a synthetic timing target.
