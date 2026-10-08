@@ -19,7 +19,7 @@ public sealed partial class MainPage
 
         var originalMessage = commit.Message;
         var messageBox = new TextBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactMultilineTextBoxStyle"),
             Text = originalMessage,
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,

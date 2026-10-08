@@ -29,12 +29,12 @@ public sealed partial class MainPage
             TextWrapping = TextWrapping.Wrap
         };
         var updateButton = new Button
-        {
+        { Style = UiStyles.Resolve<Style>("CompactButtonStyle"),
             Content = "Update now",
             Visibility = Visibility.Collapsed
         };
         var releaseButton = new Button
-        {
+        { Style = UiStyles.Resolve<Style>("CompactButtonStyle"),
             Content = "Open release page",
             Visibility = Visibility.Collapsed
         };

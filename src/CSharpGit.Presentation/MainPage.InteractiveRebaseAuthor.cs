@@ -52,7 +52,6 @@ public sealed partial class MainPage
         var effectiveEmail = identity?.Email.EffectiveValue?.Trim();
         var resources = Microsoft.UI.Xaml.Application.Current.Resources;
         var controlHeight = (double)resources["Height.Control"];
-        var bodyFont = (double)resources["Font.Body"];
         var spacing = (double)resources["Spacing.M"];
         var compactButtonStyle = (Style)resources["CompactButtonStyle"];
         var compactTextBoxStyle = (Style)resources["CompactTextBoxStyle"];
@@ -63,12 +62,11 @@ public sealed partial class MainPage
         var secondaryTextStyle = (Style)resources["SecondaryTextStyle"];
 
         var resetMode = new RadioButton
-        {
+        { Style = UiStyles.Resolve<Style>("CompactRadioButtonStyle"),
             Content = "Reset to current Git identity",
             GroupName = "ChangeAuthorSource",
             IsChecked = true,
-            MinHeight = controlHeight,
-            FontSize = bodyFont
+
         };
         var identityText = new TextBlock
         {
@@ -85,11 +83,10 @@ public sealed partial class MainPage
         };
 
         var explicitMode = new RadioButton
-        {
+        { Style = UiStyles.Resolve<Style>("CompactRadioButtonStyle"),
             Content = "Set author explicitly",
             GroupName = "ChangeAuthorSource",
-            MinHeight = controlHeight,
-            FontSize = bodyFont
+
         };
         var nameBox = new TextBox
         {
@@ -110,22 +107,20 @@ public sealed partial class MainPage
         };
 
         var selectedScope = new RadioButton
-        {
+        { Style = UiStyles.Resolve<Style>("CompactRadioButtonStyle"),
             Content = $"Selected commit lines ({analysis.SelectedEligibleCount})",
             GroupName = "ChangeAuthorScope",
             IsEnabled = analysis.SelectedEligibleCount > 0,
             IsChecked = analysis.SelectedEligibleCount > 0,
-            MinHeight = controlHeight,
-            FontSize = bodyFont
+
         };
         var allScope = new RadioButton
-        {
+        { Style = UiStyles.Resolve<Style>("CompactRadioButtonStyle"),
             Content = $"All eligible commits ({analysis.AllEligibleCount})",
             GroupName = "ChangeAuthorScope",
             IsEnabled = analysis.AllEligibleCount > 0,
             IsChecked = analysis.SelectedEligibleCount == 0 && analysis.AllEligibleCount > 0,
-            MinHeight = controlHeight,
-            FontSize = bodyFont
+
         };
 
         var scopeInfo = new TextBlock

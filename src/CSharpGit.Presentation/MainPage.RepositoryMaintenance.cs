@@ -316,7 +316,7 @@ public sealed partial class MainPage
         });
 
         return new CheckBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactCheckBoxStyle"),
             IsChecked = false,
             Content = text,
             HorizontalAlignment = HorizontalAlignment.Stretch
@@ -440,7 +440,7 @@ public sealed partial class MainPage
             TextWrapping = TextWrapping.Wrap
         });
 
-        var viewConsole = new Button { Content = "View Git console" };
+        var viewConsole = new Button { Style = UiStyles.Resolve<Style>("CompactButtonStyle"), Content = "View Git console" };
         viewConsole.Click += (_, _) =>
         {
             dialog.Hide();
