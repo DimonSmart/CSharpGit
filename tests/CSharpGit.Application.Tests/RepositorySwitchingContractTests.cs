@@ -80,7 +80,8 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("repository.LastBranchName", switching);
         Assert.Contains("_viewModel.CurrentBranchName", switching);
         Assert.Contains("_desktopShellService.OpenFolderDescription", switching);
-        Assert.Contains("Content=\"Copy repository path\"", xaml);
+        Assert.Contains("Text=\"Copy repository path\"", xaml);
+        Assert.Contains("Icon.Glyph.Copy", xaml);
         Assert.Contains("OpenFolderInDesktopShellAsync", switching);
         Assert.Contains("ShowCreateRepositoryAsync", switching);
         Assert.Contains("ShowUnavailableRepositoryAsync", switching);
@@ -124,7 +125,7 @@ public sealed class RepositorySwitchingContractTests
         Assert.DoesNotContain("ToolbarProductTextStyle", toolbar);
         Assert.Contains("CommitNavigationButton", toolbar);
         Assert.Contains("Text=\"Fetch\"", toolbar);
-        Assert.Contains("ConverterParameter=Pull", toolbar);
+        Assert.Contains("RepositorySync.PullButtonText", toolbar);
         Assert.Contains("ConverterParameter=Push", toolbar);
         Assert.Contains("x:Name=\"RefreshButton\"", toolbar);
         Assert.Contains("AutomationProperties.Name=\"Application menu\"", toolbar);

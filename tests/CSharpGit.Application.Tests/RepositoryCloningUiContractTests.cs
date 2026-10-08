@@ -23,7 +23,8 @@ public sealed class RepositoryCloningUiContractTests
         Assert.Contains("Clone from a remote URL…", recentXaml);
         Assert.Contains("CloneRepositoryCommand", recentXaml);
         Assert.Contains("CloneRepositoryCommand", recentViewModel);
-        Assert.Contains("Content=\"Clone repository…\"", mainXaml);
+        Assert.Contains("Text=\"Clone repository…\"", mainXaml);
+        Assert.Contains("Icon.Glyph.Clone", mainXaml);
         Assert.Contains("RepositorySelectorCloneRepository_Click", switching);
         Assert.Equal(1, Count(workflow, "private async Task ShowCloneRepositoryAsync()"));
     }
