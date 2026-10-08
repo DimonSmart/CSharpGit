@@ -70,7 +70,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-timings-${{ matrix.os }}
+          name: test-timings-${{ matrix.os }}-attempt-${{ github.run_attempt }}
           path: |
             tests/**/TestResults/*.trx
             TestDiagnostics/*.jsonl
