@@ -12,7 +12,7 @@ public sealed class GitToolsEnvironmentCollection
 }
 
 [Collection(GitToolsEnvironmentCollection.CollectionName)]
-public sealed class GitToolConfigurationServiceTests : IDisposable
+public sealed class GitToolConfigurationServiceTests : IClassFixture<GitToolsEmptyFixture>, IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"csharpgit-git-tools-{Guid.NewGuid():N}");
     private readonly string _home;
@@ -22,12 +22,11 @@ public sealed class GitToolConfigurationServiceTests : IDisposable
     private int _gitProcessesStarted;
     private readonly Repository _repository;
 
-    public GitToolConfigurationServiceTests()
+    public GitToolConfigurationServiceTests(GitToolsEmptyFixture history)
     {
         _home = Path.Combine(_root, "home");
-        _repositoryPath = Path.Combine(_root, "repo");
         Directory.CreateDirectory(_home);
-        Directory.CreateDirectory(_repositoryPath);
+        _repositoryPath = history.CreateCopy();
 
         SetEnvironment("HOME", _home);
         SetEnvironment("USERPROFILE", _home);
@@ -39,7 +38,6 @@ public sealed class GitToolConfigurationServiceTests : IDisposable
         SetEnvironment("EDITOR", null);
         File.WriteAllText(Path.Combine(_home, ".gitconfig"), string.Empty);
 
-        RunGit(_repositoryPath, "init", "-b", "main");
         _repository = new Repository(
             Path.GetFullPath(_repositoryPath),
             Path.GetFullPath(_repositoryPath),
@@ -351,13 +349,8 @@ public sealed class GitToolConfigurationServiceTests : IDisposable
     {
         foreach (var pair in _originalEnvironment)
             Environment.SetEnvironmentVariable(pair.Key, pair.Value);
-        try
-        {
-            if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-        }
+        TestDirectory.Delete(_repositoryPath);
+        TestDirectory.Delete(_root);
     }
 
     private void SetEnvironment(string name, string? value)
