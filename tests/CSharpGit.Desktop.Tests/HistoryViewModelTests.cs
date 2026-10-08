@@ -322,7 +322,7 @@ public sealed class HistoryViewModelTests
         public GitConsoleAutoOpenMode GitConsoleAutoOpenMode => default;
         public bool ShowReflog { get; set; }
         public bool AutoSetupRemoteOnPush => false;
-        public PullStrategy DefaultPullStrategy => PullStrategy.GitConfiguration;
+        public PullStrategy DefaultPullStrategy => PullStrategy.FastForwardOnly;
         public bool ForcePullAutoStash => false;
         public bool ShowAuthorAvatars => false;
         public bool OnlineAvatarLookupEnabled => false;
