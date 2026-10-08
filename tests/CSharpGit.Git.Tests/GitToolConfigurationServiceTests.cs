@@ -288,6 +288,19 @@ public sealed class GitToolConfigurationServiceTests : IClassFixture<GitToolsEmp
     }
 
     [Fact]
+    public async Task UnchangedSupportedToolsAreCachedButConfigurationIsAlwaysRead()
+    {
+        await _service.ReadAsync(_repository, GitToolKind.Diff);
+        var before = Volatile.Read(ref _gitProcessesStarted);
+
+        await _service.ReadAsync(_repository, GitToolKind.Diff);
+
+        // The second read still starts Git for a fresh config snapshot, but
+        // does not repeat expensive --tool-help with unchanged dependencies.
+        Assert.Equal(1, Volatile.Read(ref _gitProcessesStarted) - before);
+    }
+
+    [Fact]
     public async Task ToolHelpCacheIsInvalidatedByNewCustomToolDefinition()
     {
         await _service.ReadAsync(_repository, GitToolKind.Diff);
