@@ -111,7 +111,7 @@
                         Background="{ThemeResource AccentFillColorSecondaryBrush}"
                         VerticalAlignment="Top">
                   <Grid>
-                    <FontIcon Glyph="&#xE8B7;"
+                    <FontIcon Glyph="{StaticResource Icon.Glyph.Open}"
                               FontSize="25"
                               HorizontalAlignment="Center"
                               VerticalAlignment="Center"
@@ -245,7 +245,7 @@
                   Padding="{StaticResource Padding.Form}"
                   HorizontalContentAlignment="Stretch">
             <Grid ColumnDefinitions="42,*" ColumnSpacing="{StaticResource Spacing.XL}">
-              <FontIcon Glyph="&#xE8B7;" FontSize="24" VerticalAlignment="Center" />
+              <FontIcon Glyph="{StaticResource Icon.Glyph.Open}" FontSize="24" VerticalAlignment="Center" />
               <StackPanel Grid.Column="1" Spacing="{StaticResource Spacing.XS}" VerticalAlignment="Center">
                 <TextBlock Text="Open repository" Style="{StaticResource BodyStrongTextStyle}" />
                 <TextBlock Text="Choose a folder…" Style="{StaticResource SecondaryTextStyle}" />
@@ -259,7 +259,7 @@
                   Padding="{StaticResource Padding.Form}"
                   HorizontalContentAlignment="Stretch">
             <Grid ColumnDefinitions="42,*" ColumnSpacing="{StaticResource Spacing.XL}">
-              <FontIcon Glyph="&#xE896;" FontSize="24" VerticalAlignment="Center" />
+              <FontIcon Glyph="{StaticResource Icon.Glyph.Clone}" FontSize="24" VerticalAlignment="Center" />
               <StackPanel Grid.Column="1" Spacing="{StaticResource Spacing.XS}" VerticalAlignment="Center">
                 <TextBlock Text="Clone repository" Style="{StaticResource BodyStrongTextStyle}" />
                 <TextBlock Text="Clone from a remote URL…" Style="{StaticResource SecondaryTextStyle}" />
@@ -273,7 +273,7 @@
                   Padding="{StaticResource Padding.Form}"
                   HorizontalContentAlignment="Stretch">
             <Grid ColumnDefinitions="42,*" ColumnSpacing="{StaticResource Spacing.XL}">
-              <FontIcon Glyph="&#xE710;" FontSize="24" VerticalAlignment="Center" />
+              <FontIcon Glyph="{StaticResource Icon.Glyph.Create}" FontSize="24" VerticalAlignment="Center" />
               <StackPanel Grid.Column="1" Spacing="{StaticResource Spacing.XS}" VerticalAlignment="Center">
                 <TextBlock Text="Create repository" Style="{StaticResource BodyStrongTextStyle}" />
                 <TextBlock Text="Create a new local repository…" Style="{StaticResource SecondaryTextStyle}" />
@@ -288,7 +288,7 @@
                   Padding="{StaticResource Padding.Form}"
                   HorizontalContentAlignment="Stretch">
             <Grid ColumnDefinitions="42,*" ColumnSpacing="{StaticResource Spacing.XL}">
-              <FontIcon Glyph="&#xE74D;" FontSize="24" VerticalAlignment="Center" />
+              <FontIcon Glyph="{StaticResource Icon.Glyph.Discard}" FontSize="24" VerticalAlignment="Center" />
               <StackPanel Grid.Column="1" Spacing="{StaticResource Spacing.XS}" VerticalAlignment="Center">
                 <TextBlock Text="Remove missing" Style="{StaticResource BodyStrongTextStyle}" />
                 <TextBlock Text="Clean up recent list" Style="{StaticResource SecondaryTextStyle}" />

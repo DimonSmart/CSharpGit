@@ -1,0 +1,22 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Share icon data, not UIElement instances. -->
+  <x:String x:Key="Icon.Glyph.Commit">&#xE73E;</x:String>
+  <x:String x:Key="Icon.Glyph.Fetch">&#xE896;</x:String>
+  <x:String x:Key="Icon.Glyph.Pull">&#xE72C;</x:String>
+  <x:String x:Key="Icon.Glyph.Push">&#xE898;</x:String>
+  <x:String x:Key="Icon.Glyph.Refresh">&#xE72C;</x:String>
+  <x:String x:Key="Icon.Glyph.Stage">&#xE710;</x:String>
+  <x:String x:Key="Icon.Glyph.Unstage">&#xE738;</x:String>
+  <x:String x:Key="Icon.Glyph.Discard">&#xE74D;</x:String>
+  <x:String x:Key="Icon.Glyph.Stash">&#xE8B7;</x:String>
+  <x:String x:Key="Icon.Glyph.Open">&#xE8B7;</x:String>
+  <x:String x:Key="Icon.Glyph.Clone">&#xE896;</x:String>
+  <x:String x:Key="Icon.Glyph.Create">&#xE710;</x:String>
+  <x:String x:Key="Icon.Glyph.Copy">&#xE8C8;</x:String>
+  <x:String x:Key="Icon.Glyph.Diff">&#xE8F0;</x:String>
+  <x:String x:Key="Icon.Glyph.Reveal">&#xE8B7;</x:String>
+  <x:String x:Key="Icon.Glyph.Original">&#xE896;</x:String>
+  <x:String x:Key="Icon.Glyph.Changed">&#xE898;</x:String>
+  <x:String x:Key="Icon.Glyph.Browse">&#xE8B7;</x:String>
+  <x:String x:Key="Icon.Glyph.Console">&#xE8F0;</x:String>
+</ResourceDictionary>
