@@ -162,11 +162,14 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
         get
         {
             var branch = CurrentPullBranch;
-            var status = _context?.CurrentOperation != RepositoryOperation.None
-                ? "A repository operation is already in progress."
-                : branch is null ? "HEAD is detached."
-                : string.IsNullOrWhiteSpace(branch.Upstream) ? $"Branch '{branch.Name}' has no upstream."
-                : $"Pull from {branch.Upstream}";
+            var status = _context?.Repository is null
+                ? "Open a repository to pull."
+                : IsBusy ? "Another repository operation is running."
+                : _context.CurrentOperation != RepositoryOperation.None
+                    ? "A repository operation is already in progress."
+                    : branch is null ? "HEAD is detached."
+                    : string.IsNullOrWhiteSpace(branch.Upstream) ? $"Branch '{branch.Name}' has no upstream."
+                    : $"Pull from {branch.Upstream}";
             var strategy = DefaultPullStrategy == PullStrategy.GitConfiguration
                 ? "Git configuration (Git decides)"
                 : DefaultPullStrategy.ToString();
