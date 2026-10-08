@@ -239,8 +239,8 @@ public sealed class DesignSystemContractTests
         var menu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
         XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
 
-        XElement Named(string name) => Assert.Single(main.Descendants().Where(element =>
-            (string?)element.Attribute(x + "Name") == name));
+        XElement Named(string name) => Assert.Single(main.Descendants(), element =>
+            (string?)element.Attribute(x + "Name") == name);
         var semanticIcons = icons.Descendants()
             .Where(element => element.Attribute(x + "Key") is not null)
             .ToDictionary(element => (string)element.Attribute(x + "Key")!, element => element.Value);
@@ -257,11 +257,11 @@ public sealed class DesignSystemContractTests
             Assert.Equal(commands.Length, buttons.Length);
             foreach (var command in commands)
             {
-                var button = Assert.Single(buttons.Where(element =>
-                    ((string?)element.Attribute("Command"))?.Contains(command, StringComparison.Ordinal) == true));
+                var button = Assert.Single(buttons, element =>
+                    ((string?)element.Attribute("Command"))?.Contains(command, StringComparison.Ordinal) == true);
                 Assert.Equal("{StaticResource CompactButtonStyle}", (string?)button.Attribute("Style"));
                 Assert.NotNull(button.Attribute("AutomationProperties.Name"));
-                Assert.Single(button.Descendants().Where(element => element.Name.LocalName == "FontIcon"));
+                Assert.Single(button.Descendants(), element => element.Name.LocalName == "FontIcon");
             }
         }
 
@@ -273,8 +273,7 @@ public sealed class DesignSystemContractTests
                 Assert.Equal(scope + action + "_Click", (string?)button.Attribute("Click"));
                 Assert.Equal("{StaticResource CompactButtonStyle}", (string?)button.Attribute("Style"));
                 Assert.NotNull(button.Attribute("AutomationProperties.Name"));
-                var glyph = (string?)Assert.Single(button.Descendants()
-                    .Where(element => element.Name.LocalName == "FontIcon")).Attribute("Glyph");
+                var glyph = (string?)Assert.Single(button.Descendants(), element => element.Name.LocalName == "FontIcon").Attribute("Glyph");
                 Assert.StartsWith("{StaticResource Icon.Glyph.", glyph);
             }
         }
