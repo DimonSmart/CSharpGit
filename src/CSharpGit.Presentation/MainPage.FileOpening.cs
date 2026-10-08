@@ -22,14 +22,6 @@ public sealed partial class MainPage
     private string? _workingTreeRevealPath;
     private long _commitFileActionGeneration;
     private long _workingTreeFileActionGeneration;
-    private Button? _commitOpenOriginalButton;
-    private Button? _commitOpenChangedButton;
-    private Button? _commitExternalDiffButton;
-    private Button? _commitRevealButton;
-    private Button? _workingTreeOpenOriginalButton;
-    private Button? _workingTreeOpenChangedButton;
-    private Button? _workingTreeExternalDiffButton;
-    private Button? _workingTreeRevealButton;
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
@@ -62,9 +54,6 @@ public sealed partial class MainPage
 
     private void InitializeFileOpening()
     {
-        InstallCommitFileActions();
-        InstallWorkingTreeFileActions();
-        InstallWorkingTreeBulkActions();
 
         ChangedFilesTree.RightTapped += ChangedFilesTree_RightTapped;
         ChangedFilesTree.DoubleTapped += ChangedFilesTree_DoubleTapped;
@@ -79,110 +68,6 @@ public sealed partial class MainPage
 
         _ = RefreshCommitFileActionStateAsync();
         _ = RefreshWorkingTreeFileActionStateAsync();
-    }
-
-    private void InstallCommitFileActions()
-    {
-        if (CompactDiffViewer.Parent is not Grid diffBody || diffBody.Parent is not Grid diffGrid)
-            return;
-        var header = diffGrid.Children.OfType<Border>().FirstOrDefault(element => Grid.GetRow(element) == 0);
-        if (header?.Child is not UIElement existingContent) return;
-
-        header.Child = null;
-        var layout = new Grid { ColumnSpacing = 6 };
-        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        Grid.SetColumn(existingContent, 0);
-        layout.Children.Add(existingContent);
-
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
-        _commitOpenOriginalButton = CreateActionButton("Original", "Open original version", CommitOpenOriginal_Click);
-        _commitOpenChangedButton = CreateActionButton("Changed", "Open changed version", CommitOpenChanged_Click);
-        _commitExternalDiffButton = CreateActionButton("Diff tool", "Open this exact pair in the configured external diff tool", CommitExternalDiff_Click);
-        _commitRevealButton = CreateActionButton("Reveal", _desktopShellService.RevealDescription, CommitReveal_Click);
-        actions.Children.Add(_commitOpenOriginalButton);
-        actions.Children.Add(_commitOpenChangedButton);
-        actions.Children.Add(_commitExternalDiffButton);
-        actions.Children.Add(_commitRevealButton);
-        Grid.SetColumn(actions, 1);
-        layout.Children.Add(actions);
-        header.Child = layout;
-    }
-
-    private void InstallWorkingTreeFileActions()
-    {
-        if (WorkingTreeDiffHeader.Parent is not Grid headerGrid) return;
-        headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
-        _workingTreeOpenOriginalButton = CreateActionButton("Original", "Open original side of this diff", WorkingTreeOpenOriginal_Click);
-        _workingTreeOpenChangedButton = CreateActionButton("Changed", "Open changed side of this diff", WorkingTreeOpenChanged_Click);
-        _workingTreeExternalDiffButton = CreateActionButton("Diff tool", "Open this exact pair in the configured external diff tool", WorkingTreeExternalDiff_Click);
-        _workingTreeRevealButton = CreateActionButton("Reveal", _desktopShellService.RevealDescription, WorkingTreeReveal_Click);
-        actions.Children.Add(_workingTreeOpenOriginalButton);
-        actions.Children.Add(_workingTreeOpenChangedButton);
-        actions.Children.Add(_workingTreeExternalDiffButton);
-        actions.Children.Add(_workingTreeRevealButton);
-        Grid.SetColumn(actions, 2);
-        headerGrid.Children.Add(actions);
-    }
-
-    private void InstallWorkingTreeBulkActions()
-    {
-        if (FindWorkingTreeHeaderActions(UnstagedHeader) is { } unstagedActions)
-        {
-            unstagedActions.Children.Clear();
-            unstagedActions.Children.Add(CreateWorkingTreeActionButton("Stage all", "\uE710", _viewModel.WorkingTree.StageAllCommand));
-            unstagedActions.Children.Add(CreateWorkingTreeActionButton("Discard all", "\uE74D", _viewModel.WorkingTree.RequestDiscardAllCommand, destructive: true));
-        }
-
-        if (FindWorkingTreeHeaderActions(StagedHeader) is { } stagedActions)
-        {
-            stagedActions.Children.Clear();
-            stagedActions.Children.Add(CreateWorkingTreeActionButton("Unstage all", "\uE738", _viewModel.WorkingTree.UnstageAllCommand));
-        }
-    }
-
-    private static StackPanel? FindWorkingTreeHeaderActions(TextBlock header) =>
-        header.Parent is Grid grid
-            ? grid.Children.OfType<StackPanel>().FirstOrDefault(child => Grid.GetColumn(child) == 1)
-            : null;
-
-    private static Button CreateWorkingTreeActionButton(string text, string glyph, System.Windows.Input.ICommand command, bool destructive = false)
-    {
-        var content = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 4,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        content.Children.Add(new FontIcon { Glyph = glyph, FontSize = 12 });
-        content.Children.Add(new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center });
-
-        var button = new Button
-        {
-            Content = content,
-            Command = command,
-            Padding = new Thickness(7, 2, 7, 2),
-            MinHeight = 26,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        if (destructive) button.Foreground = CreateDestructiveBrush();
-        return button;
-    }
-
-    private static Button CreateActionButton(string text, string tooltip, RoutedEventHandler click)
-    {
-        var button = new Button
-        {
-            Content = text,
-            Padding = new Thickness(7, 2, 7, 2),
-            MinHeight = 26,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        ToolTipService.SetToolTip(button, tooltip);
-        button.Click += click;
-        return button;
     }
 
     private void FileOpeningViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
@@ -262,30 +147,30 @@ public sealed partial class MainPage
     {
         if (_commitFileVersions is not null)
         {
-            SetVersionButton(_commitOpenOriginalButton, _commitFileVersions.Original, "No original version is available.");
-            SetVersionButton(_commitOpenChangedButton, _commitFileVersions.Changed, "No changed version is available.");
-            SetExternalDiffButton(_commitExternalDiffButton, _commitFileVersions);
+            SetVersionButton(CommitOpenOriginalButton, _commitFileVersions.Original, "No original version is available.");
+            SetVersionButton(CommitOpenChangedButton, _commitFileVersions.Changed, "No changed version is available.");
+            SetExternalDiffButton(CommitExternalDiffButton, _commitFileVersions);
         }
         else
         {
             var file = _viewModel.CommitDetails.SelectedFile;
             SetAvailabilityButton(
-                _commitOpenOriginalButton,
+                CommitOpenOriginalButton,
                 file is not null && !string.Equals(file.Status, "A", StringComparison.Ordinal),
                 "Open original version",
                 "No original version is available.");
             SetAvailabilityButton(
-                _commitOpenChangedButton,
+                CommitOpenChangedButton,
                 file is not null && !string.Equals(file.Status, "D", StringComparison.Ordinal),
                 "Open changed version",
                 "No changed version is available.");
             SetAvailabilityButton(
-                _commitExternalDiffButton,
+                CommitExternalDiffButton,
                 file is not null,
                 "Open this exact OLD/NEW pair in the configured external diff tool",
                 "Select a file diff first.");
         }
-        SetRevealButton(_commitRevealButton, _commitRevealPath);
+        SetRevealButton(CommitRevealButton, _commitRevealPath);
     }
 
     private static void SetAvailabilityButton(Button? button, bool enabled, string enabledText, string disabledText)
@@ -297,10 +182,10 @@ public sealed partial class MainPage
 
     private void UpdateWorkingTreeButtons()
     {
-        SetVersionButton(_workingTreeOpenOriginalButton, _workingTreeFileVersions?.Original, "No original version is available.");
-        SetVersionButton(_workingTreeOpenChangedButton, _workingTreeFileVersions?.Changed, "No changed version is available.");
-        SetExternalDiffButton(_workingTreeExternalDiffButton, _workingTreeFileVersions);
-        SetRevealButton(_workingTreeRevealButton, _workingTreeRevealPath);
+        SetVersionButton(WorkingTreeOpenOriginalButton, _workingTreeFileVersions?.Original, "No original version is available.");
+        SetVersionButton(WorkingTreeOpenChangedButton, _workingTreeFileVersions?.Changed, "No changed version is available.");
+        SetExternalDiffButton(WorkingTreeExternalDiffButton, _workingTreeFileVersions);
+        SetRevealButton(WorkingTreeRevealButton, _workingTreeRevealPath);
     }
 
     private static void SetVersionButton(Button? button, DiffFileVersion? version, string fallbackReason)
@@ -308,7 +193,7 @@ public sealed partial class MainPage
         if (button is null) return;
         button.IsEnabled = version?.CanOpen == true;
         ToolTipService.SetToolTip(button, version?.CanOpen == true
-            ? button.Content?.ToString()
+            ? Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(button)
             : version?.UnavailableReason ?? fallbackReason);
     }
 

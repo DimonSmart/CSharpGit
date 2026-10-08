@@ -52,15 +52,24 @@
         <StackPanel Orientation="Horizontal"
                     HorizontalAlignment="Center"
                     Spacing="{StaticResource Spacing.M}">
-          <Button Content="Select folder…"
-                  Click="OpenRepository_Click"
-                  Style="{StaticResource CompactButtonStyle}" />
-          <Button Content="Clone repository…"
-                  Click="CloneRepository_Click"
-                  Style="{StaticResource CompactButtonStyle}" />
-          <Button Content="Create repository…"
-                  Click="CreateRepository_Click"
-                  Style="{StaticResource CompactButtonStyle}" />
+          <Button Click="OpenRepository_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Select folder…">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+              <FontIcon Glyph="{StaticResource Icon.Glyph.Open}" FontSize="{StaticResource Icon.Small}" />
+              <TextBlock Text="Select folder…" Style="{StaticResource BodyTextStyle}" />
+            </StackPanel>
+          </Button>
+          <Button Click="CloneRepository_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Clone repository…">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+              <FontIcon Glyph="{StaticResource Icon.Glyph.Clone}" FontSize="{StaticResource Icon.Small}" />
+              <TextBlock Text="Clone repository…" Style="{StaticResource BodyTextStyle}" />
+            </StackPanel>
+          </Button>
+          <Button Click="CreateRepository_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Create repository…">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+              <FontIcon Glyph="{StaticResource Icon.Glyph.Create}" FontSize="{StaticResource Icon.Small}" />
+              <TextBlock Text="Create repository…" Style="{StaticResource BodyTextStyle}" />
+            </StackPanel>
+          </Button>
         </StackPanel>
         <StackPanel Orientation="Horizontal"
                     HorizontalAlignment="Center"
@@ -174,27 +183,35 @@
                   <Button x:Name="RepositorySelectorOpenFolderButton"
                           Style="{StaticResource RepositorySelectorActionButtonStyle}"
                           Click="RepositorySelectorOpenFolder_Click" />
-                  <Button x:Name="RepositorySelectorCopyPathButton"
-                          Content="Copy repository path"
-                          Style="{StaticResource RepositorySelectorActionButtonStyle}"
-                          Click="RepositorySelectorCopyPath_Click" />
+                  <Button x:Name="RepositorySelectorCopyPathButton" Click="RepositorySelectorCopyPath_Click" Style="{StaticResource RepositorySelectorActionButtonStyle}" AutomationProperties.Name="Copy repository path">
+                      <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                        <FontIcon Glyph="{StaticResource Icon.Glyph.Copy}" FontSize="{StaticResource Icon.Small}" />
+                        <TextBlock Text="Copy repository path" Style="{StaticResource BodyTextStyle}" />
+                      </StackPanel>
+                    </Button>
 
                   <Border Height="1"
                           Margin="0,4"
                           Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-                  <Button x:Name="RepositorySelectorOpenButton"
-                          Content="Open repository…"
-                          Style="{StaticResource RepositorySelectorActionButtonStyle}"
-                          Click="RepositorySelectorOpenRepository_Click" />
-                  <Button x:Name="RepositorySelectorCloneButton"
-                          Content="Clone repository…"
-                          Style="{StaticResource RepositorySelectorActionButtonStyle}"
-                          Click="RepositorySelectorCloneRepository_Click" />
-                  <Button x:Name="RepositorySelectorCreateButton"
-                          Content="Create repository…"
-                          Style="{StaticResource RepositorySelectorActionButtonStyle}"
-                          Click="RepositorySelectorCreateRepository_Click" />
+                  <Button x:Name="RepositorySelectorOpenButton" Click="RepositorySelectorOpenRepository_Click" Style="{StaticResource RepositorySelectorActionButtonStyle}" AutomationProperties.Name="Open repository…">
+                      <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                        <FontIcon Glyph="{StaticResource Icon.Glyph.Open}" FontSize="{StaticResource Icon.Small}" />
+                        <TextBlock Text="Open repository…" Style="{StaticResource BodyTextStyle}" />
+                      </StackPanel>
+                    </Button>
+                  <Button x:Name="RepositorySelectorCloneButton" Click="RepositorySelectorCloneRepository_Click" Style="{StaticResource RepositorySelectorActionButtonStyle}" AutomationProperties.Name="Clone repository…">
+                      <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                        <FontIcon Glyph="{StaticResource Icon.Glyph.Clone}" FontSize="{StaticResource Icon.Small}" />
+                        <TextBlock Text="Clone repository…" Style="{StaticResource BodyTextStyle}" />
+                      </StackPanel>
+                    </Button>
+                  <Button x:Name="RepositorySelectorCreateButton" Click="RepositorySelectorCreateRepository_Click" Style="{StaticResource RepositorySelectorActionButtonStyle}" AutomationProperties.Name="Create repository…">
+                      <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                        <FontIcon Glyph="{StaticResource Icon.Glyph.Create}" FontSize="{StaticResource Icon.Small}" />
+                        <TextBlock Text="Create repository…" Style="{StaticResource BodyTextStyle}" />
+                      </StackPanel>
+                    </Button>
                   <Button x:Name="RepositorySelectorRepositoriesButton"
                           Content="Repositories…"
                           Style="{StaticResource RepositorySelectorActionButtonStyle}"
@@ -229,11 +246,14 @@
                     Click="CommitNavigation_Click"
                     Style="{StaticResource ToolbarButtonStyle}"
                     AutomationProperties.Name="Commit changes">
-              <TextBlock x:Name="CommitNavigationText" Text="Commit (0)" Style="{StaticResource BodyTextStyle}" />
+              <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                <FontIcon Glyph="{StaticResource Icon.Glyph.Commit}" FontSize="{StaticResource Icon.Small}" />
+                <TextBlock x:Name="CommitNavigationText" Text="Commit (0)" Style="{StaticResource BodyTextStyle}" />
+              </StackPanel>
             </Button>
             <Button Click="Fetch_Click" Style="{StaticResource ToolbarButtonStyle}">
               <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
-                <FontIcon Glyph="&#xE896;" FontSize="{StaticResource Icon.Small}" />
+                <FontIcon Glyph="{StaticResource Icon.Glyph.Fetch}" FontSize="{StaticResource Icon.Small}" />
                 <TextBlock Text="Fetch" Style="{StaticResource BodyTextStyle}" />
               </StackPanel>
             </Button>
@@ -246,7 +266,7 @@
                       Style="{StaticResource ToolbarButtonStyle}"
                       AutomationProperties.Name="{Binding RepositorySync.PullAccessibleName}">
                 <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
-                  <FontIcon Glyph="&#xE896;" FontSize="{StaticResource Icon.Small}" />
+                  <FontIcon Glyph="{StaticResource Icon.Glyph.Pull}" FontSize="{StaticResource Icon.Small}" />
                   <TextBlock Text="{Binding RepositorySync.PullButtonText}"
                              Style="{StaticResource BodyTextStyle}" />
                 </StackPanel>
@@ -295,7 +315,7 @@
             </StackPanel>
             <Button Style="{StaticResource ToolbarButtonStyle}">
               <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
-                <FontIcon Glyph="&#xE898;" FontSize="{StaticResource Icon.Small}" />
+                <FontIcon Glyph="{StaticResource Icon.Glyph.Push}" FontSize="{StaticResource Icon.Small}" />
                 <TextBlock Text="{Binding Branches.SelectedLocalBranch, Converter={StaticResource BranchTrackingActionTextConverter}, ConverterParameter=Push}"
                            Style="{StaticResource BodyTextStyle}" />
               </StackPanel>
@@ -316,13 +336,13 @@
                     AutomationProperties.Name="Refresh repository">
               <Grid Width="16" Height="16">
                 <FontIcon x:Name="RefreshIcon"
-                          Glyph="&#xE72C;"
+                          Glyph="{StaticResource Icon.Glyph.Refresh}"
                           FontSize="{StaticResource Icon.Normal}"
                           Foreground="{ThemeResource SystemFillColorSuccessBrush}"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Center" />
                 <FontIcon x:Name="RefreshRequiredIcon"
-                          Glyph="&#xE72C;"
+                          Glyph="{StaticResource Icon.Glyph.Refresh}"
                           FontSize="{StaticResource Icon.Normal}"
                           Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                           HorizontalAlignment="Center"
@@ -631,7 +651,8 @@
                     <Border x:Name="CommitDiffHeader"
                             Visibility="Collapsed"
                             Style="{StaticResource DiffHeaderSurfaceStyle}">
-                      <Grid x:Name="CommitTextDiffHeader"
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.S}">
+                        <Grid x:Name="CommitTextDiffHeader"
                             Visibility="Collapsed"
                             ColumnDefinitions="38,38,*">
                         <TextBlock Text="OLD"
@@ -645,6 +666,33 @@
                                    HorizontalAlignment="Right"
                                    Margin="0,0,5,0"
                                    VerticalAlignment="Center" />
+                      </Grid>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Spacing.S}" VerticalAlignment="Center">
+                          <Button x:Name="CommitOpenOriginalButton" Click="CommitOpenOriginal_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Open original version">
+                          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                            <FontIcon Glyph="{StaticResource Icon.Glyph.Original}" FontSize="{StaticResource Icon.Small}" />
+                            <TextBlock Text="Original" Style="{StaticResource BodyTextStyle}" />
+                          </StackPanel>
+                        </Button>
+                        <Button x:Name="CommitOpenChangedButton" Click="CommitOpenChanged_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Open changed version">
+                          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                            <FontIcon Glyph="{StaticResource Icon.Glyph.Changed}" FontSize="{StaticResource Icon.Small}" />
+                            <TextBlock Text="Changed" Style="{StaticResource BodyTextStyle}" />
+                          </StackPanel>
+                        </Button>
+                        <Button x:Name="CommitExternalDiffButton" Click="CommitExternalDiff_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Open in Diff Tool">
+                          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                            <FontIcon Glyph="{StaticResource Icon.Glyph.Diff}" FontSize="{StaticResource Icon.Small}" />
+                            <TextBlock Text="Diff tool" Style="{StaticResource BodyTextStyle}" />
+                          </StackPanel>
+                        </Button>
+                        <Button x:Name="CommitRevealButton" Click="CommitReveal_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Reveal file">
+                          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                            <FontIcon Glyph="{StaticResource Icon.Glyph.Reveal}" FontSize="{StaticResource Icon.Small}" />
+                            <TextBlock Text="Reveal" Style="{StaticResource BodyTextStyle}" />
+                          </StackPanel>
+                        </Button>
+                        </StackPanel>
                       </Grid>
                     </Border>
 
@@ -723,37 +771,18 @@
                                Text="Unstaged changes"
                                Style="{StaticResource BodyStrongTextStyle}"
                                VerticalAlignment="Center" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Spacing.XS}">
-                      <Button Command="{Binding WorkingTree.StageSelectedCommand}"
-                              Style="{StaticResource IconButtonStyle}"
-                              ToolTipService.ToolTip="Stage selected"
-                              AutomationProperties.Name="Stage selected">
-                        <FontIcon Glyph="&#xE710;" FontSize="{StaticResource Icon.Small}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                      <Button Command="{Binding WorkingTree.StageAllCommand}" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Stage all" ToolTipService.ToolTip="Stage all">
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                          <FontIcon Glyph="{StaticResource Icon.Glyph.Stage}" FontSize="{StaticResource Icon.Small}" />
+                          <TextBlock Text="Stage all" Style="{StaticResource BodyTextStyle}" />
+                        </StackPanel>
                       </Button>
-                      <Button Command="{Binding WorkingTree.StageAllCommand}"
-                              Style="{StaticResource IconButtonStyle}"
-                              ToolTipService.ToolTip="Stage all"
-                              AutomationProperties.Name="Stage all">
-                        <TextBlock Text="++" Style="{StaticResource CaptionStrongTextStyle}" />
-                      </Button>
-                      <Border Width="1"
-                              Height="18"
-                              Margin="3,0"
-                              Background="{ThemeResource DividerStrokeColorDefaultBrush}"
-                              VerticalAlignment="Center" />
-                      <Button Command="{Binding WorkingTree.RequestDiscardSelectedCommand}"
-                              Style="{StaticResource IconButtonStyle}"
-                              Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                              ToolTipService.ToolTip="Discard selected"
-                              AutomationProperties.Name="Discard selected">
-                        <FontIcon Glyph="&#xE74D;" FontSize="{StaticResource Icon.Small}" />
-                      </Button>
-                      <Button Command="{Binding WorkingTree.RequestDiscardAllCommand}"
-                              Style="{StaticResource IconButtonStyle}"
-                              Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                              ToolTipService.ToolTip="Discard all…"
-                              AutomationProperties.Name="Discard all">
-                        <TextBlock Text="All…" Style="{StaticResource CaptionStrongTextStyle}" />
+                      <Button Command="{Binding WorkingTree.RequestDiscardAllCommand}" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Discard all" ToolTipService.ToolTip="Discard all…" Foreground="{ThemeResource SystemFillColorCriticalBrush}">
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                          <FontIcon Glyph="{StaticResource Icon.Glyph.Discard}" FontSize="{StaticResource Icon.Small}" />
+                          <TextBlock Text="Discard all" Style="{StaticResource BodyTextStyle}" />
+                        </StackPanel>
                       </Button>
                     </StackPanel>
                   </Grid>
@@ -782,18 +811,12 @@
                                Text="Staged changes"
                                Style="{StaticResource BodyStrongTextStyle}"
                                VerticalAlignment="Center" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Spacing.XS}">
-                      <Button Command="{Binding WorkingTree.UnstageSelectedCommand}"
-                              Style="{StaticResource IconButtonStyle}"
-                              ToolTipService.ToolTip="Unstage selected"
-                              AutomationProperties.Name="Unstage selected">
-                        <TextBlock Text="−" Style="{StaticResource BodyStrongTextStyle}" />
-                      </Button>
-                      <Button Command="{Binding WorkingTree.UnstageAllCommand}"
-                              Style="{StaticResource IconButtonStyle}"
-                              ToolTipService.ToolTip="Unstage all"
-                              AutomationProperties.Name="Unstage all">
-                        <TextBlock Text="−−" Style="{StaticResource CaptionStrongTextStyle}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                      <Button Command="{Binding WorkingTree.UnstageAllCommand}" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Unstage all" ToolTipService.ToolTip="Unstage all">
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                          <FontIcon Glyph="{StaticResource Icon.Glyph.Unstage}" FontSize="{StaticResource Icon.Small}" />
+                          <TextBlock Text="Unstage all" Style="{StaticResource BodyTextStyle}" />
+                        </StackPanel>
                       </Button>
                     </StackPanel>
                   </Grid>
@@ -818,7 +841,7 @@
 
               <Grid Grid.Column="2" RowDefinitions="Auto,Auto,*" Margin="8,0,0,0">
                 <Border Style="{StaticResource PaneHeaderSurfaceStyle}">
-                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
+                  <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{StaticResource Spacing.L}">
                     <TextBlock x:Name="WorkingTreeDiffHeader"
                                Style="{StaticResource BodyStrongTextStyle}"
                                TextTrimming="CharacterEllipsis"
@@ -827,6 +850,32 @@
                                Grid.Column="1"
                                Style="{StaticResource CaptionStrongTextStyle}"
                                VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{StaticResource Spacing.S}" VerticalAlignment="Center">
+                      <Button x:Name="WorkingTreeOpenOriginalButton" Click="WorkingTreeOpenOriginal_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Open original version">
+                          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                            <FontIcon Glyph="{StaticResource Icon.Glyph.Original}" FontSize="{StaticResource Icon.Small}" />
+                            <TextBlock Text="Original" Style="{StaticResource BodyTextStyle}" />
+                          </StackPanel>
+                        </Button>
+                        <Button x:Name="WorkingTreeOpenChangedButton" Click="WorkingTreeOpenChanged_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Open changed version">
+                          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                            <FontIcon Glyph="{StaticResource Icon.Glyph.Changed}" FontSize="{StaticResource Icon.Small}" />
+                            <TextBlock Text="Changed" Style="{StaticResource BodyTextStyle}" />
+                          </StackPanel>
+                        </Button>
+                        <Button x:Name="WorkingTreeExternalDiffButton" Click="WorkingTreeExternalDiff_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Open in Diff Tool">
+                          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                            <FontIcon Glyph="{StaticResource Icon.Glyph.Diff}" FontSize="{StaticResource Icon.Small}" />
+                            <TextBlock Text="Diff tool" Style="{StaticResource BodyTextStyle}" />
+                          </StackPanel>
+                        </Button>
+                        <Button x:Name="WorkingTreeRevealButton" Click="WorkingTreeReveal_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Reveal file">
+                          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                            <FontIcon Glyph="{StaticResource Icon.Glyph.Reveal}" FontSize="{StaticResource Icon.Small}" />
+                            <TextBlock Text="Reveal" Style="{StaticResource BodyTextStyle}" />
+                          </StackPanel>
+                        </Button>
+                    </StackPanel>
                   </Grid>
                 </Border>
 
@@ -928,10 +977,12 @@
                 <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                   <Button Content="Commit" Command="{Binding CommitCreation.CommitCommand}" Style="{StaticResource CompactButtonStyle}" />
                   <Button Content="Amend" Command="{Binding CommitCreation.AmendCommand}" Style="{StaticResource CompactButtonStyle}" />
-                  <Button Content="Stash…"
-                          Click="CreateStash_Click"
-                          IsEnabled="{Binding Stashes.CanCreateStash}"
-                          Style="{StaticResource CompactButtonStyle}" />
+                  <Button Click="CreateStash_Click" IsEnabled="{Binding Stashes.CanCreateStash}" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Stash changes">
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                      <FontIcon Glyph="{StaticResource Icon.Glyph.Stash}" FontSize="{StaticResource Icon.Small}" />
+                      <TextBlock Text="Stash…" Style="{StaticResource BodyTextStyle}" />
+                    </StackPanel>
+                  </Button>
                 </StackPanel>
               </StackPanel>
             </Border>
