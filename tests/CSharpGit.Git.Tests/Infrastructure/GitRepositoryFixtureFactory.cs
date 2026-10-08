@@ -160,3 +160,12 @@ public sealed class GitToolsHistoryFixture : IDisposable
 
     public void Dispose() => TestDirectory.Delete(_template);
 }
+
+public sealed class GitToolsEmptyFixture : IDisposable
+{
+    private readonly string _template = GitRepositoryFixtureFactory.CreateTemplate("git-config", _ => { });
+
+    internal string CreateCopy() => GitRepositoryFixtureFactory.CopyTemplate(_template, "git-config");
+
+    public void Dispose() => TestDirectory.Delete(_template);
+}
