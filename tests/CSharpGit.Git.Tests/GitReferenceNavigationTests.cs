@@ -52,16 +52,16 @@ public sealed class GitReferenceNavigationTests : IDisposable
         for (var index = 0; index < commitCount; index++)
         {
             var subject = $"commit-{index}";
-            commands.AppendLine("commit refs/heads/main");
-            commands.Append("mark :").AppendLine((index + 1).ToString());
+            commands.Append("commit refs/heads/main\n");
+            commands.Append("mark :").Append(index + 1).Append('\n');
             commands.Append("committer CSharpGit Tests <tests@example.invalid> ")
-                .Append(1700000000L + index).AppendLine(" +0000");
-            commands.Append("data ").AppendLine(subject.Length.ToString());
-            commands.AppendLine(subject);
-            if (index > 0) commands.Append("from :").AppendLine(index.ToString());
-            commands.AppendLine();
+                .Append(1700000000L + index).Append(" +0000\n");
+            commands.Append("data ").Append(subject.Length).Append('\n');
+            commands.Append(subject).Append('\n');
+            if (index > 0) commands.Append("from :").Append(index).Append('\n');
+            commands.Append('\n');
         }
-        commands.AppendLine("done");
+        commands.Append("done\n");
         TestGitRunner.RunWithInput(_temporaryDirectory, commands.ToString(), "fast-import", "--quiet");
         // fast-import updates the branch but not the checked-out index or worktree.
         RunGit("reset", "--hard", "HEAD");

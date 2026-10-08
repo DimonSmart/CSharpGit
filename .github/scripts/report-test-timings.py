@@ -43,7 +43,10 @@ def read_trx(path):
     cases = []
     for result in elements(root, "UnitTestResult"):
         cls, name = tests.get(result.get("testId"), ("Unknown", result.get("testName", "Unknown")))
-        cases.append((cls, name, result.get("outcome", "Unknown"), duration_seconds(result.get("duration"))))
+        display_name = result.get("testName") or name
+        if display_name.startswith(cls + "."):
+            display_name = display_name[len(cls) + 1:]
+        cases.append((cls, display_name, result.get("outcome", "Unknown"), duration_seconds(result.get("duration"))))
     times = next(elements(root, "Times"), None)
     wall = None
     if times is not None and times.get("start") and times.get("finish"):
@@ -113,6 +116,12 @@ def main():
            for p, cases in sorted(groups.items())])
     lines.append("Test duration sums are **not** elapsed CI time; tests may overlap. TRX wall durations are per test run, not total job time.")
     lines.append("")
+    lines.extend(["### Top 20 slowest test cases (all projects)", ""])
+    all_cases = [(project, *case) for project, cases in groups.items() for case in cases]
+    all_cases.sort(key=lambda c: c[4], reverse=True)
+    table(lines, ["Project", "Test", "Outcome", "Duration"],
+          [(project, f"{cls}.{name}", outcome, f"{elapsed:.3f} s")
+           for project, cls, name, outcome, elapsed in all_cases[:20]])
     for project, cases in sorted(groups.items()):
         lines.extend([f"### {project}", ""])
         slow = sorted(cases, key=lambda c: c[3], reverse=True)
