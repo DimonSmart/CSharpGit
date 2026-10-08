@@ -373,7 +373,7 @@
       <controls:OperationBanner Grid.Row="1"
                                 Grid.ColumnSpan="3"
                                 DataContext="{Binding RepositoryOperations}"
-                                Visibility="{Binding HasActiveOperation, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                Visibility="{Binding HasOperationOrConflicts, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
       <Border Grid.Row="2"
               Grid.Column="0"
