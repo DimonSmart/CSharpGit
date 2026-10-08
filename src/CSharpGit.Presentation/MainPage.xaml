@@ -237,13 +237,63 @@
                 <TextBlock Text="Fetch" Style="{StaticResource BodyTextStyle}" />
               </StackPanel>
             </Button>
-            <Button Click="Pull_Click" Style="{StaticResource ToolbarButtonStyle}">
-              <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
-                <FontIcon Glyph="&#xE896;" FontSize="{StaticResource Icon.Small}" />
-                <TextBlock Text="{Binding Branches.SelectedLocalBranch, Converter={StaticResource BranchTrackingActionTextConverter}, ConverterParameter=Pull}"
-                           Style="{StaticResource BodyTextStyle}" />
-              </StackPanel>
-            </Button>
+            <StackPanel Orientation="Horizontal"
+                        Spacing="0"
+                        ToolTipService.ToolTip="{Binding RepositorySync.PullTooltip}">
+              <Button x:Name="PullPrimaryButton"
+                      Click="Pull_Click"
+                      IsEnabled="{Binding RepositorySync.CanPull}"
+                      Style="{StaticResource ToolbarButtonStyle}"
+                      AutomationProperties.Name="Pull using default strategy">
+                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                  <FontIcon Glyph="&#xE896;" FontSize="{StaticResource Icon.Small}" />
+                  <TextBlock Text="{Binding RepositorySync.CurrentPullBranch, Converter={StaticResource BranchTrackingActionTextConverter}, ConverterParameter=Pull}"
+                             Style="{StaticResource BodyTextStyle}" />
+                </StackPanel>
+              </Button>
+              <Button x:Name="PullMenuButton"
+                      Style="{StaticResource ToolbarButtonStyle}"
+                      Padding="6,0"
+                      AutomationProperties.Name="Pull strategies and preferences">
+                <FontIcon Glyph="&#xE70D;" FontSize="{StaticResource Icon.Small}" />
+                <Button.Flyout>
+                  <MenuFlyout>
+                    <MenuFlyoutItem Text="Pull once: Git configuration"
+                                    Click="PullGitConfiguration_Click"
+                                    IsEnabled="{Binding RepositorySync.CanPull}" />
+                    <MenuFlyoutItem Text="Pull once: Merge"
+                                    Click="PullMerge_Click"
+                                    IsEnabled="{Binding RepositorySync.CanPull}" />
+                    <MenuFlyoutItem Text="Pull once: Rebase"
+                                    Click="PullRebase_Click"
+                                    IsEnabled="{Binding RepositorySync.CanPull}" />
+                    <MenuFlyoutItem Text="Pull once: Fast-forward only"
+                                    Click="PullFastForwardOnly_Click"
+                                    IsEnabled="{Binding RepositorySync.CanPull}" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutSubItem Text="Default strategy">
+                      <ToggleMenuFlyoutItem Text="Git configuration"
+                                            IsChecked="{Binding RepositorySync.IsGitConfigurationDefault, Mode=OneWay}"
+                                            Click="DefaultPullGitConfiguration_Click" />
+                      <ToggleMenuFlyoutItem Text="Merge"
+                                            IsChecked="{Binding RepositorySync.IsMergeDefault, Mode=OneWay}"
+                                            Click="DefaultPullMerge_Click" />
+                      <ToggleMenuFlyoutItem Text="Rebase"
+                                            IsChecked="{Binding RepositorySync.IsRebaseDefault, Mode=OneWay}"
+                                            Click="DefaultPullRebase_Click" />
+                      <ToggleMenuFlyoutItem Text="Fast-forward only"
+                                            IsChecked="{Binding RepositorySync.IsFastForwardOnlyDefault, Mode=OneWay}"
+                                            Click="DefaultPullFastForwardOnly_Click" />
+                    </MenuFlyoutSubItem>
+                    <MenuFlyoutSeparator />
+                    <ToggleMenuFlyoutItem Text="Force Git autostash"
+                                          IsChecked="{Binding RepositorySync.ForcePullAutoStash, Mode=OneWay}"
+                                          Click="ForcePullAutoStash_Click"
+                                          ToolTipService.ToolTip="When off, Git configuration controls autostash." />
+                  </MenuFlyout>
+                </Button.Flyout>
+              </Button>
+            </StackPanel>
             <Button Style="{StaticResource ToolbarButtonStyle}">
               <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                 <FontIcon Glyph="&#xE898;" FontSize="{StaticResource Icon.Small}" />
