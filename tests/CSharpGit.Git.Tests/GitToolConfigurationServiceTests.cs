@@ -19,6 +19,7 @@ public sealed class GitToolConfigurationServiceTests : IDisposable
     private readonly string _repositoryPath;
     private readonly Dictionary<string, string?> _originalEnvironment = new(StringComparer.Ordinal);
     private readonly GitToolConfigurationService _service;
+    private int _gitProcessesStarted;
     private readonly Repository _repository;
 
     public GitToolConfigurationServiceTests()
@@ -45,7 +46,7 @@ public sealed class GitToolConfigurationServiceTests : IDisposable
             Path.GetFullPath(Path.Combine(_repositoryPath, ".git")),
             false);
 
-        var executor = GitTestServices.CreateExecutor();
+        var executor = GitTestServices.CreateExecutor(processStarted: _ => Interlocked.Increment(ref _gitProcessesStarted));
         _service = new GitToolConfigurationService(
             executor,
             new GitConfigService(executor),
@@ -266,6 +267,68 @@ public sealed class GitToolConfigurationServiceTests : IDisposable
             _repository,
             new GitToolEdit(GitToolKind.Editor, GitToolWriteScope.Global, "code --wait"));
 
+        Assert.Equal(sentinel, File.GetLastWriteTimeUtc(configPath));
+    }
+
+    [Fact]
+    public async Task ReadingToolsUsesAtMostTwoGitProcessesPerOperation()
+    {
+        // One config snapshot and one --tool-help. The historical implementation
+        // ran many independent --get commands even when no tools were configured.
+        var before = Volatile.Read(ref _gitProcessesStarted);
+        await _service.ReadAsync(_repository, GitToolKind.Diff);
+        Assert.Equal(2, Volatile.Read(ref _gitProcessesStarted) - before);
+
+        before = Volatile.Read(ref _gitProcessesStarted);
+        await _service.ReadAsync(_repository, GitToolKind.Merge);
+        Assert.Equal(2, Volatile.Read(ref _gitProcessesStarted) - before);
+
+        RunGit(_repositoryPath, "config", "core.editor", "vim");
+        before = Volatile.Read(ref _gitProcessesStarted);
+        await _service.ReadAsync(_repository, GitToolKind.Editor);
+        Assert.Equal(1, Volatile.Read(ref _gitProcessesStarted) - before);
+    }
+
+    [Fact]
+    public async Task SnapshotIsRefreshedAfterExternalGitConfigurationChange()
+    {
+        RunGit(_repositoryPath, "config", "diff.guitool", "first");
+        var first = await _service.ReadAsync(_repository, GitToolKind.Diff);
+        RunGit(_repositoryPath, "config", "diff.guitool", "second");
+        var second = await _service.ReadAsync(_repository, GitToolKind.Diff);
+
+        Assert.Equal("first", first.EffectiveValue);
+        Assert.Equal("second", second.EffectiveValue);
+    }
+
+    [Fact]
+    public async Task HigherPriorityAlternativeKeyOverridesNewerLowerPriorityScope()
+    {
+        RunGit(_repositoryPath, "config", "--global", "diff.guitool", "global-gui");
+        RunGit(_repositoryPath, "config", "--local", "diff.tool", "local-generic");
+
+        var snapshot = await _service.ReadAsync(_repository, GitToolKind.Diff);
+
+        Assert.Equal("global-gui", snapshot.EffectiveValue);
+        Assert.Equal(GitToolConfigurationSource.Global, snapshot.EffectiveSource);
+        Assert.Equal("local-generic", snapshot.Repository.SelectionValue);
+    }
+
+    [Fact]
+    public async Task UnchangedSelectionAndOptionalFieldsDoNotRewriteConfig()
+    {
+        RunGit(_repositoryPath, "config", "diff.guitool", "mytool");
+        RunGit(_repositoryPath, "config", "difftool.mytool.path", "tool path");
+        var configPath = Path.Combine(_repositoryPath, ".git", "config");
+        var initial = File.ReadAllBytes(configPath);
+        var sentinel = new DateTime(2001, 2, 3, 4, 5, 6, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(configPath, sentinel);
+
+        await _service.SaveAsync(_repository, new GitToolEdit(
+            GitToolKind.Diff, GitToolWriteScope.Repository, "mytool",
+            Path: "tool path", UpdatePath: true));
+
+        Assert.Equal(initial, File.ReadAllBytes(configPath));
         Assert.Equal(sentinel, File.GetLastWriteTimeUtc(configPath));
     }
 
