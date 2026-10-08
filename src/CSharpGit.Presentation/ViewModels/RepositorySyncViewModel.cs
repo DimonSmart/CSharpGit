@@ -91,7 +91,7 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
 {
     private readonly IRepositorySyncService _syncService;
     private readonly IAppSettingsService _settings;
-    private readonly IUiDispatcher? _uiDispatcher;
+    private readonly IUiDispatcher _uiDispatcher;
     private PullExecutionResult? _lastPullResult;
     private IRepositorySyncContext? _context;
     private GitRemote? _selectedRemote;
@@ -101,9 +101,9 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
     public RepositorySyncViewModel(
         IRepositorySyncService syncService,
         IAppSettingsService settings,
-        IUiDispatcher? uiDispatcher = null)
+        IUiDispatcher uiDispatcher)
     {
-        _uiDispatcher = uiDispatcher;
+        _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
         _syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
 
@@ -373,7 +373,7 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
     private void PullSettings_Changed(object? sender, EventArgs args)
     {
         if (Volatile.Read(ref _disposed) != 0) return;
-        if (_uiDispatcher is { HasThreadAccess: false })
+        if (!_uiDispatcher.HasThreadAccess)
         {
             _uiDispatcher.TryEnqueue(() =>
             {

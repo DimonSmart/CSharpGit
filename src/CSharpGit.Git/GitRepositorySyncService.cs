@@ -275,8 +275,13 @@ internal sealed partial class GitRepositorySyncService : IRepositorySyncService
             repository.WorkingDirectory, "PullAncestry",
             GitCommandKind.Internal, cancellationToken, null,
             ["merge-base", "--is-ancestor", before, after]);
-        if (ancestry.ExitCode == 0 && parentIds.Length <= 1)
+        // A remote fast-forward target may itself be a merge commit.
+        if (ancestry.ExitCode == 0)
             return PullCompletionKind.FastForward;
+        // Git completed an integration without preserving the previous HEAD in the
+        // new history. This is the characteristic topology of a successful rebase.
+        if (ancestry.ExitCode == 1 && parentIds.Length <= 1)
+            return PullCompletionKind.Rebased;
         return PullCompletionKind.Unknown;
     }
 

@@ -52,6 +52,26 @@ public sealed class PullIntegrationTests : IDisposable
     }
 
     [Fact]
+    public async Task FastForwardToRemoteMergeCommitIsStillFastForward()
+    {
+        Git(_actor, "switch", "-c", "feature/remote-merge");
+        Commit(_actor, "feature.txt", "feature\n", "Feature");
+        Git(_actor, "switch", "main");
+        Commit(_actor, "main.txt", "main\n", "Main");
+        Git(_actor, "merge", "--no-ff", "--no-edit", "feature/remote-merge");
+        Git(_actor, "push", "origin", "main");
+
+        var (repository, service) = await OpenAsync();
+        var result = await service.PullAsync(
+            repository, new PullOptions(PullStrategy.FastForwardOnly));
+
+        Assert.Equal(PullOutcome.Completed, result.Outcome);
+        Assert.Equal(PullCompletionKind.FastForward, result.Completion);
+        Assert.Equal(2, GitOut(_local, "show", "-s", "--format=%P", "HEAD")
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries).Length);
+    }
+
+    [Fact]
     public async Task MergeProducesMergeCommitWithoutOpeningEditor()
     {
         Commit(_local, "local.txt", "local\n", "Local update");
@@ -78,6 +98,7 @@ public sealed class PullIntegrationTests : IDisposable
 
         var result = await service.PullAsync(repository, new PullOptions(PullStrategy.Rebase));
         Assert.Equal(PullOutcome.Completed, result.Outcome);
+        Assert.Equal(PullCompletionKind.Rebased, result.Completion);
         Assert.Equal(RepositoryOperation.None, result.ActiveOperation);
         Assert.Equal("local\n", File.ReadAllText(Path.Combine(_local, "local.txt")));
         Assert.Equal("remote\n", File.ReadAllText(Path.Combine(_local, "remote.txt")));
@@ -188,6 +209,7 @@ public sealed class PullIntegrationTests : IDisposable
         var result = await service.PullAsync(
             repository, new PullOptions(PullStrategy.GitConfiguration));
         Assert.Equal(PullOutcome.Completed, result.Outcome);
+        Assert.Equal(useRebase ? PullCompletionKind.Rebased : PullCompletionKind.MergeCommit, result.Completion);
         var parents = GitOut(_local, "show", "-s", "--format=%P", "HEAD")
             .Split(' ', StringSplitOptions.RemoveEmptyEntries);
         Assert.Equal(useRebase ? 1 : 2, parents.Length);
