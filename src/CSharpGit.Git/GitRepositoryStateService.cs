@@ -170,7 +170,9 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
         IReadOnlyList<WorkingTreeChange> changes,
         CancellationToken cancellationToken)
     {
-        if (operation == RepositoryOperation.None)
+        // Autostash conflicts may leave unmerged paths without a merge/rebase.
+        // The ordinary operation-free refresh must not add a Git process.
+        if (operation == RepositoryOperation.None && !changes.Any(change => change.IsConflicted))
             return RepositoryOperationState.None;
 
         var unmerged = await RunReadAsync(
