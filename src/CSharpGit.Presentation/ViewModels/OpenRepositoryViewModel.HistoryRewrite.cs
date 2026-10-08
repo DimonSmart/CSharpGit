@@ -2,8 +2,12 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Presentation.ViewModels;
 
-public sealed partial class OpenRepositoryViewModel
+public sealed partial class OpenRepositoryViewModel : IRepositoryHistoryRewriteContext
 {
+    Task<bool> IRepositoryHistoryRewriteContext.RunHistoryRewriteMutationAsync(
+        Repository repository, Func<Task> mutation, string errorContext) =>
+        RunHistoryRewriteMutationAsync(mutation, errorContext, repository);
+
     internal Task<bool> RunHistoryRewriteMutationAsync(
         Func<Task> mutation,
         string? errorContext = null,
@@ -24,31 +28,4 @@ public sealed partial class OpenRepositoryViewModel
         InteractiveRebase.Invalidate();
     }
 
-    internal async Task SelectHistoryCommitAfterRewriteAsync(string commitHash)
-    {
-        if (string.IsNullOrWhiteSpace(commitHash)) return;
-
-        var target = History.Rows.FirstOrDefault(row =>
-            string.Equals(row.Commit.Hash, commitHash, StringComparison.Ordinal));
-        target ??= await History.NavigateToCommitAsync(commitHash);
-        if (target is not null)
-            History.SelectedRow = target;
-    }
-
-    internal async Task<EditCommitMessageResult?> EditCommitMessageAsync(
-        Repository expectedRepository,
-        string commitHash,
-        string newMessage)
-    {
-        EditCommitMessageResult? result = null;
-        var succeeded = await RunHistoryRewriteMutationAsync(
-            async () => result = await _commitActionService.EditCommitMessageAsync(
-                expectedRepository,
-                commitHash,
-                newMessage),
-            "Could not edit commit message",
-            expectedRepository);
-
-        return succeeded ? result : null;
-    }
 }

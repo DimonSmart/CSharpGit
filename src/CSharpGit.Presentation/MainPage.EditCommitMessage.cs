@@ -78,30 +78,17 @@ public sealed partial class MainPage
             !_viewModel.CommitActions.CanMutateCommit(commit))
             return;
 
-        var result = await _viewModel.EditCommitMessageAsync(
-            repository,
-            commit.Hash,
-            newMessage);
-        if (result is null) return;
-
-        switch (result.Kind)
+        var result = await _viewModel.CommitActions.EditCommitMessageAsync(
+            repository, commit, newMessage);
+        if (result.ConflictOldCommit is not null)
         {
-            case EditCommitMessageResultKind.Completed:
-                ClearPendingEditedCommitSelection();
-                if (!await RestoreCommitActionSelectionAsync(result.NewCommit))
-                    await RestoreCommitActionSelectionAsync(result.OldCommit);
-                break;
-
-            case EditCommitMessageResultKind.Conflicts:
-                _pendingEditedCommitHash = result.NewCommit;
-                _pendingOriginalEditedCommitHash = result.OldCommit;
-                break;
-
-            case EditCommitMessageResultKind.Failed:
-                ClearPendingEditedCommitSelection();
-                await ShowErrorAsync("Commit message was not changed", result.Message);
-                break;
+            _pendingEditedCommitHash = result.ConflictNewCommit;
+            _pendingOriginalEditedCommitHash = result.ConflictOldCommit;
+            return;
         }
+
+        ClearPendingEditedCommitSelection();
+        await HandleCommitActionExecutionResultAsync(result);
     }
 
     private async Task RestorePendingEditedCommitSelectionAsync()
