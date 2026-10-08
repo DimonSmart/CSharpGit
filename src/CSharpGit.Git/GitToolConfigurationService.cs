@@ -41,34 +41,35 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
                 ? "Enter a Git editor command."
                 : "Enter a Git tool name.", nameof(edit));
 
+        var config = await _configService.ReadSnapshotAsync(repository, cancellationToken);
         if (edit.Kind == GitToolKind.Editor)
         {
-            await WriteIfChangedAsync(repository, edit.Scope, "core.editor", value, cancellationToken);
+            await WriteIfChangedAsync(repository, edit.Scope, config, "core.editor", value, cancellationToken);
             return;
         }
 
         ValidateToolName(value);
-        var selectionKey = await SelectWritableSelectionKeyAsync(repository, edit.Kind, edit.Scope, cancellationToken);
-        await WriteIfChangedAsync(repository, edit.Scope, selectionKey, value, cancellationToken);
+        var selectionKey = SelectWritableSelectionKey(config, edit.Kind, edit.Scope);
+        await WriteIfChangedAsync(repository, edit.Scope, config, selectionKey, value, cancellationToken);
 
         var prefix = edit.Kind == GitToolKind.Diff ? "difftool" : "mergetool";
         if (edit.UpdatePath)
-            await WriteOrUnsetIfChangedAsync(repository, edit.Scope, $"{prefix}.{value}.path", NormalizeOptional(edit.Path), cancellationToken);
+            await WriteOrUnsetIfChangedAsync(repository, edit.Scope, config, $"{prefix}.{value}.path", NormalizeOptional(edit.Path), cancellationToken);
         if (edit.UpdateCommand)
         {
             var command = NormalizeOptional(edit.Command);
             ValidateCustomCommand(edit.Kind, command);
-            await WriteOrUnsetIfChangedAsync(repository, edit.Scope, $"{prefix}.{value}.cmd", command, cancellationToken);
+            await WriteOrUnsetIfChangedAsync(repository, edit.Scope, config, $"{prefix}.{value}.cmd", command, cancellationToken);
         }
         if (edit.UpdateTrustExitCode)
         {
             var trustKey = edit.Kind == GitToolKind.Diff
                 ? "difftool.trustExitCode"
                 : $"mergetool.{value}.trustExitCode";
-            await WriteOrUnsetIfChangedAsync(repository, edit.Scope, trustKey, BoolText(edit.TrustExitCode), cancellationToken);
+            await WriteOrUnsetIfChangedAsync(repository, edit.Scope, config, trustKey, BoolText(edit.TrustExitCode), cancellationToken);
         }
         if (edit.Kind == GitToolKind.Merge && edit.UpdateKeepBackup)
-            await WriteOrUnsetIfChangedAsync(repository, edit.Scope, "mergetool.keepBackup", BoolText(edit.KeepBackup), cancellationToken);
+            await WriteOrUnsetIfChangedAsync(repository, edit.Scope, config, "mergetool.keepBackup", BoolText(edit.KeepBackup), cancellationToken);
     }
 
     public async Task RemoveOverrideAsync(
@@ -78,9 +79,10 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
         CancellationToken cancellationToken = default)
     {
         EnsureWritableScope(repository, scope);
+        var config = await _configService.ReadSnapshotAsync(repository, cancellationToken);
         if (kind == GitToolKind.Editor)
         {
-            await UnsetIfPresentAsync(repository, scope, "core.editor", cancellationToken);
+            await UnsetIfPresentAsync(repository, scope, config, "core.editor", cancellationToken);
             return;
         }
 
@@ -89,8 +91,8 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
             : new[] { "merge.guitool", "merge.tool" };
         foreach (var key in keys)
         {
-            if (await ReadScopedConfigValueAsync(repository, key, scope, cancellationToken) is null) continue;
-            await UnsetIfPresentAsync(repository, scope, key, cancellationToken);
+            if (config.Scoped(key, SourceFor(scope)) is null) continue;
+            await UnsetIfPresentAsync(repository, scope, config, key, cancellationToken);
             return;
         }
     }
@@ -99,14 +101,15 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
         Repository? repository,
         CancellationToken cancellationToken)
     {
-        var global = await ReadEditorScopeAsync(repository, GitToolConfigurationSource.Global, GitToolWriteScope.Global, cancellationToken);
+        var config = await _configService.ReadSnapshotAsync(repository, cancellationToken);
+        var global = EditorScope(config, GitToolConfigurationSource.Global, GitConfigSource.Global);
         var local = repository is null
             ? EmptyScope(GitToolConfigurationSource.Repository)
-            : await ReadEditorScopeAsync(repository, GitToolConfigurationSource.Repository, GitToolWriteScope.Repository, cancellationToken);
+            : EditorScope(config, GitToolConfigurationSource.Repository, GitConfigSource.Repository);
         var worktree = repository is null
             ? EmptyScope(GitToolConfigurationSource.Worktree)
-            : await ReadEditorWorktreeAsync(repository, cancellationToken);
-        var system = await ReadEditorSystemAsync(repository, cancellationToken);
+            : EditorScope(config, GitToolConfigurationSource.Worktree, GitConfigSource.Worktree);
+        var system = EditorScope(config, GitToolConfigurationSource.System, GitConfigSource.System);
 
         ConfigValue effective;
         var gitEditor = NormalizeOptional(Environment.GetEnvironmentVariable("GIT_EDITOR"));
@@ -114,7 +117,7 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
         {
             effective = new ConfigValue("GIT_EDITOR", gitEditor, GitToolConfigurationSource.Environment, "Environment: GIT_EDITOR");
         }
-        else if (await ReadEffectiveConfigValueAsync(repository, "core.editor", cancellationToken) is { } configured)
+        else if (FromSnapshot(config.Effective("core.editor")) is { } configured)
         {
             effective = configured;
         }
@@ -167,7 +170,8 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
     {
         if (kind is not (GitToolKind.Diff or GitToolKind.Merge)) throw new ArgumentOutOfRangeException(nameof(kind));
 
-        var selection = await ReadEffectiveSelectionAsync(repository, kind, cancellationToken);
+        var config = await _configService.ReadSnapshotAsync(repository, cancellationToken);
+        var selection = Pick(config, SelectionKeys(kind, includeCrossToolFallback: true));
         var supported = await ReadSupportedToolsAsync(repository, kind, cancellationToken);
         var presets = BuildToolPresets(kind, supported);
 
@@ -177,24 +181,24 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
         ConfigValue? keepBackup = null;
         if (selection is not null)
         {
-            path = await ReadEffectiveToolFieldAsync(repository, kind, selection.Value, "path", cancellationToken);
-            command = await ReadEffectiveToolFieldAsync(repository, kind, selection.Value, "cmd", cancellationToken);
+            path = Pick(config, ToolFieldKeys(kind, selection.Value, "path"));
+            command = Pick(config, ToolFieldKeys(kind, selection.Value, "cmd"));
             if (kind == GitToolKind.Merge)
-                trust = await ReadEffectiveToolFieldAsync(repository, kind, selection.Value, "trustExitCode", cancellationToken);
+                trust = Pick(config, ToolFieldKeys(kind, selection.Value, "trustExitCode"));
         }
         if (kind == GitToolKind.Diff)
-            trust = await ReadEffectiveConfigValueAsync(repository, "difftool.trustExitCode", cancellationToken);
+            trust = FromSnapshot(config.Effective("difftool.trustExitCode"));
         else
-            keepBackup = await ReadEffectiveConfigValueAsync(repository, "mergetool.keepBackup", cancellationToken);
+            keepBackup = FromSnapshot(config.Effective("mergetool.keepBackup"));
 
-        var global = await ReadToolScopeAsync(repository, kind, GitToolConfigurationSource.Global, GitToolWriteScope.Global, cancellationToken);
+        var global = ToolScope(config, kind, GitToolConfigurationSource.Global, GitConfigSource.Global);
         var local = repository is null
             ? EmptyScope(GitToolConfigurationSource.Repository)
-            : await ReadToolScopeAsync(repository, kind, GitToolConfigurationSource.Repository, GitToolWriteScope.Repository, cancellationToken);
+            : ToolScope(config, kind, GitToolConfigurationSource.Repository, GitConfigSource.Repository);
         var worktree = repository is null
             ? EmptyScope(GitToolConfigurationSource.Worktree)
-            : await ReadToolWorktreeAsync(repository, kind, cancellationToken);
-        var system = await ReadToolSystemAsync(repository, kind, cancellationToken);
+            : ToolScope(config, kind, GitToolConfigurationSource.Worktree, GitConfigSource.Worktree);
+        var system = ToolScope(config, kind, GitToolConfigurationSource.System, GitConfigSource.System);
 
         var resolved = ResolveToolExecutable(selection?.Value, path?.Value, command?.Value, presets);
         var validation = ValidateConfiguration(kind, selection?.Value, path?.Value, command?.Value, resolved, presets, supported);
@@ -217,61 +221,38 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
             validation);
     }
 
-    private async Task<GitToolScopeConfiguration> ReadEditorScopeAsync(
-        Repository? repository,
-        GitToolConfigurationSource source,
-        GitToolWriteScope scope,
-        CancellationToken cancellationToken)
+    private static GitToolScopeConfiguration EditorScope(
+        GitConfigSnapshot config, GitToolConfigurationSource source, GitConfigSource scope)
     {
-        var value = await ReadScopedConfigValueAsync(repository, "core.editor", scope, cancellationToken);
+        var value = FromSnapshot(config.Scoped("core.editor", scope));
         return value is null
             ? EmptyScope(source)
             : new GitToolScopeConfiguration(source, "core.editor", value.Value, value.Origin, Command: value.Value);
     }
 
-    private async Task<GitToolScopeConfiguration> ReadEditorWorktreeAsync(Repository repository, CancellationToken cancellationToken)
-    {
-        var value = await ReadConfigAtArgumentScopeAsync(repository, "core.editor", "--worktree", GitToolConfigurationSource.Worktree, cancellationToken);
-        return value is null
-            ? EmptyScope(GitToolConfigurationSource.Worktree)
-            : new GitToolScopeConfiguration(GitToolConfigurationSource.Worktree, "core.editor", value.Value, value.Origin, Command: value.Value);
-    }
-
-    private async Task<GitToolScopeConfiguration> ReadEditorSystemAsync(Repository? repository, CancellationToken cancellationToken)
-    {
-        var value = await ReadConfigAtArgumentScopeAsync(repository, "core.editor", "--system", GitToolConfigurationSource.System, cancellationToken);
-        return value is null
-            ? EmptyScope(GitToolConfigurationSource.System)
-            : new GitToolScopeConfiguration(GitToolConfigurationSource.System, "core.editor", value.Value, value.Origin, Command: value.Value);
-    }
-
-    private async Task<GitToolScopeConfiguration> ReadToolScopeAsync(
-        Repository? repository,
+    private static GitToolScopeConfiguration ToolScope(
+        GitConfigSnapshot config,
         GitToolKind kind,
         GitToolConfigurationSource source,
-        GitToolWriteScope scope,
-        CancellationToken cancellationToken)
+        GitConfigSource scope)
     {
-        var selection = await ReadScopeSelectionAsync(repository, kind, scope, cancellationToken);
+        var selection = Pick(config, SelectionKeys(kind, includeCrossToolFallback: true), scope);
         var trust = kind == GitToolKind.Diff
-            ? await ReadScopedConfigValueAsync(repository, "difftool.trustExitCode", scope, cancellationToken)
+            ? FromSnapshot(config.Scoped("difftool.trustExitCode", scope))
             : selection is null
                 ? null
-                : await ReadScopedToolFieldAsync(repository, kind, selection.Value, "trustExitCode", scope, cancellationToken);
+                : Pick(config, ToolFieldKeys(kind, selection.Value, "trustExitCode"), scope);
         var keep = kind == GitToolKind.Merge
-            ? await ReadScopedConfigValueAsync(repository, "mergetool.keepBackup", scope, cancellationToken)
+            ? FromSnapshot(config.Scoped("mergetool.keepBackup", scope))
             : null;
         if (selection is null)
             return new GitToolScopeConfiguration(
-                source,
-                null,
-                null,
-                null,
+                source, null, null, null,
                 TrustExitCode: ParseGitBoolean(trust?.Value),
                 KeepBackup: ParseGitBoolean(keep?.Value));
 
-        var path = await ReadScopedToolFieldAsync(repository, kind, selection.Value, "path", scope, cancellationToken);
-        var command = await ReadScopedToolFieldAsync(repository, kind, selection.Value, "cmd", scope, cancellationToken);
+        var path = Pick(config, ToolFieldKeys(kind, selection.Value, "path"), scope);
+        var command = Pick(config, ToolFieldKeys(kind, selection.Value, "cmd"), scope);
         return new GitToolScopeConfiguration(
             source,
             selection.Key,
@@ -283,198 +264,39 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
             ParseGitBoolean(keep?.Value));
     }
 
-    private async Task<GitToolScopeConfiguration> ReadToolWorktreeAsync(
-        Repository repository,
-        GitToolKind kind,
-        CancellationToken cancellationToken)
+    private static ConfigValue? Pick(
+        GitConfigSnapshot config,
+        IEnumerable<string> keys,
+        GitConfigSource? source = null)
     {
-        var selection = await ReadSelectionAtArgumentScopeAsync(repository, kind, "--worktree", GitToolConfigurationSource.Worktree, cancellationToken);
-        var trust = kind == GitToolKind.Diff
-            ? await ReadConfigAtArgumentScopeAsync(repository, "difftool.trustExitCode", "--worktree", GitToolConfigurationSource.Worktree, cancellationToken)
-            : selection is null
-                ? null
-                : await ReadToolFieldAtArgumentScopeAsync(repository, kind, selection.Value, "trustExitCode", "--worktree", GitToolConfigurationSource.Worktree, cancellationToken);
-        var keep = kind == GitToolKind.Merge
-            ? await ReadConfigAtArgumentScopeAsync(repository, "mergetool.keepBackup", "--worktree", GitToolConfigurationSource.Worktree, cancellationToken)
-            : null;
-        if (selection is null)
-            return new GitToolScopeConfiguration(
-                GitToolConfigurationSource.Worktree,
-                null,
-                null,
-                null,
-                TrustExitCode: ParseGitBoolean(trust?.Value),
-                KeepBackup: ParseGitBoolean(keep?.Value));
-
-        var path = await ReadToolFieldAtArgumentScopeAsync(repository, kind, selection.Value, "path", "--worktree", GitToolConfigurationSource.Worktree, cancellationToken);
-        var command = await ReadToolFieldAtArgumentScopeAsync(repository, kind, selection.Value, "cmd", "--worktree", GitToolConfigurationSource.Worktree, cancellationToken);
-        return new GitToolScopeConfiguration(
-            GitToolConfigurationSource.Worktree,
-            selection.Key,
-            selection.Value,
-            selection.Origin,
-            path?.Value,
-            command?.Value,
-            ParseGitBoolean(trust?.Value),
-            ParseGitBoolean(keep?.Value));
-    }
-
-    private async Task<GitToolScopeConfiguration> ReadToolSystemAsync(
-        Repository? repository,
-        GitToolKind kind,
-        CancellationToken cancellationToken)
-    {
-        var selection = await ReadSelectionAtArgumentScopeAsync(repository, kind, "--system", GitToolConfigurationSource.System, cancellationToken);
-        var trust = kind == GitToolKind.Diff
-            ? await ReadConfigAtArgumentScopeAsync(repository, "difftool.trustExitCode", "--system", GitToolConfigurationSource.System, cancellationToken)
-            : selection is null
-                ? null
-                : await ReadToolFieldAtArgumentScopeAsync(repository, kind, selection.Value, "trustExitCode", "--system", GitToolConfigurationSource.System, cancellationToken);
-        var keep = kind == GitToolKind.Merge
-            ? await ReadConfigAtArgumentScopeAsync(repository, "mergetool.keepBackup", "--system", GitToolConfigurationSource.System, cancellationToken)
-            : null;
-        if (selection is null)
-            return new GitToolScopeConfiguration(
-                GitToolConfigurationSource.System,
-                null,
-                null,
-                null,
-                TrustExitCode: ParseGitBoolean(trust?.Value),
-                KeepBackup: ParseGitBoolean(keep?.Value));
-
-        var path = await ReadToolFieldAtArgumentScopeAsync(repository, kind, selection.Value, "path", "--system", GitToolConfigurationSource.System, cancellationToken);
-        var command = await ReadToolFieldAtArgumentScopeAsync(repository, kind, selection.Value, "cmd", "--system", GitToolConfigurationSource.System, cancellationToken);
-        return new GitToolScopeConfiguration(
-            GitToolConfigurationSource.System,
-            selection.Key,
-            selection.Value,
-            selection.Origin,
-            path?.Value,
-            command?.Value,
-            ParseGitBoolean(trust?.Value),
-            ParseGitBoolean(keep?.Value));
-    }
-
-    private async Task<ConfigValue?> ReadEffectiveSelectionAsync(Repository? repository, GitToolKind kind, CancellationToken cancellationToken)
-    {
-        foreach (var key in SelectionKeys(kind, includeCrossToolFallback: true))
-            if (await ReadEffectiveConfigValueAsync(repository, key, cancellationToken) is { } value)
-                return value;
+        // Alternative keys have a product-defined priority, independent of Git scope.
+        foreach (var key in keys)
+        {
+            var value = source is null ? config.Effective(key) : config.Scoped(key, source.Value);
+            if (value is not null) return FromSnapshot(value);
+        }
         return null;
     }
 
-    private async Task<ConfigValue?> ReadScopeSelectionAsync(
-        Repository? repository,
-        GitToolKind kind,
-        GitToolWriteScope scope,
-        CancellationToken cancellationToken)
-    {
-        foreach (var key in SelectionKeys(kind, includeCrossToolFallback: true))
-            if (await ReadScopedConfigValueAsync(repository, key, scope, cancellationToken) is { } value)
-                return value;
-        return null;
-    }
+    private static ConfigValue? FromSnapshot(GitConfigValue? value) =>
+        value is null ? null : ToToolConfigValue(value);
 
-    private async Task<ConfigValue?> ReadSelectionAtArgumentScopeAsync(
-        Repository? repository,
-        GitToolKind kind,
-        string scopeArgument,
-        GitToolConfigurationSource source,
-        CancellationToken cancellationToken)
+    private static GitConfigSource SourceFor(GitToolWriteScope scope) => scope switch
     {
-        foreach (var key in SelectionKeys(kind, includeCrossToolFallback: true))
-            if (await ReadConfigAtArgumentScopeAsync(repository, key, scopeArgument, source, cancellationToken) is { } value)
-                return value;
-        return null;
-    }
+        GitToolWriteScope.Global => GitConfigSource.Global,
+        GitToolWriteScope.Repository => GitConfigSource.Repository,
+        _ => throw new ArgumentOutOfRangeException(nameof(scope))
+    };
 
-    private async Task<string> SelectWritableSelectionKeyAsync(
-        Repository? repository,
+    private static string SelectWritableSelectionKey(
+        GitConfigSnapshot config,
         GitToolKind kind,
-        GitToolWriteScope scope,
-        CancellationToken cancellationToken)
+        GitToolWriteScope scope)
     {
         foreach (var key in SelectionKeys(kind, includeCrossToolFallback: false))
-            if (await ReadScopedConfigValueAsync(repository, key, scope, cancellationToken) is not null)
+            if (config.Scoped(key, SourceFor(scope)) is not null)
                 return key;
         return kind == GitToolKind.Diff ? "diff.guitool" : "merge.guitool";
-    }
-
-    private async Task<ConfigValue?> ReadEffectiveToolFieldAsync(
-        Repository? repository,
-        GitToolKind kind,
-        string tool,
-        string field,
-        CancellationToken cancellationToken)
-    {
-        foreach (var key in ToolFieldKeys(kind, tool, field))
-            if (await ReadEffectiveConfigValueAsync(repository, key, cancellationToken) is { } value)
-                return value;
-        return null;
-    }
-
-    private async Task<ConfigValue?> ReadScopedToolFieldAsync(
-        Repository? repository,
-        GitToolKind kind,
-        string tool,
-        string field,
-        GitToolWriteScope scope,
-        CancellationToken cancellationToken)
-    {
-        foreach (var key in ToolFieldKeys(kind, tool, field))
-            if (await ReadScopedConfigValueAsync(repository, key, scope, cancellationToken) is { } value)
-                return value;
-        return null;
-    }
-
-    private async Task<ConfigValue?> ReadToolFieldAtArgumentScopeAsync(
-        Repository? repository,
-        GitToolKind kind,
-        string tool,
-        string field,
-        string scopeArgument,
-        GitToolConfigurationSource source,
-        CancellationToken cancellationToken)
-    {
-        foreach (var key in ToolFieldKeys(kind, tool, field))
-            if (await ReadConfigAtArgumentScopeAsync(repository, key, scopeArgument, source, cancellationToken) is { } value)
-                return value;
-        return null;
-    }
-
-    private async Task<ConfigValue?> ReadEffectiveConfigValueAsync(
-        Repository? repository,
-        string key,
-        CancellationToken cancellationToken)
-    {
-        var value = await _configService.ReadEffectiveAsync(repository, key, cancellationToken);
-        return value is null ? null : ToToolConfigValue(value);
-    }
-
-    private async Task<ConfigValue?> ReadScopedConfigValueAsync(
-        Repository? repository,
-        string key,
-        GitToolWriteScope scope,
-        CancellationToken cancellationToken)
-    {
-        if (scope == GitToolWriteScope.Repository && repository is null) return null;
-        var value = await _configService.ReadScopeAsync(repository, key, ToConfigScope(scope), cancellationToken);
-        return value is null ? null : ToToolConfigValue(value);
-    }
-
-    private async Task<ConfigValue?> ReadConfigAtArgumentScopeAsync(
-        Repository? repository,
-        string key,
-        string scopeArgument,
-        GitToolConfigurationSource source,
-        CancellationToken cancellationToken)
-    {
-        var value = await _configService.ReadScopeAsync(
-            repository,
-            key,
-            ParseConfigScopeArgument(scopeArgument),
-            cancellationToken);
-        return value is null ? null : new ConfigValue(key, value.Value, source, value.Origin);
     }
 
     private async Task<IReadOnlyList<string>> ReadSupportedToolsAsync(
@@ -503,42 +325,45 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
         return tools.Order(StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
-    private async Task WriteIfChangedAsync(
+    private Task WriteIfChangedAsync(
         Repository? repository,
         GitToolWriteScope scope,
+        GitConfigSnapshot config,
         string key,
         string value,
         CancellationToken cancellationToken)
     {
-        var existing = await ReadScopedConfigValueAsync(repository, key, scope, cancellationToken);
-        if (string.Equals(existing?.Value, value, StringComparison.Ordinal)) return;
-        await _configService.SetValueAsync(repository, ToConfigScope(scope), key, value, replaceAll: false, cancellationToken);
+        var existing = config.Scoped(key, SourceFor(scope));
+        if (string.Equals(existing?.Value, value, StringComparison.Ordinal)) return Task.CompletedTask;
+        return _configService.SetValueAsync(repository, ToConfigScope(scope), key, value, replaceAll: false, cancellationToken);
     }
 
-    private async Task WriteOrUnsetIfChangedAsync(
+    private Task WriteOrUnsetIfChangedAsync(
         Repository? repository,
         GitToolWriteScope scope,
+        GitConfigSnapshot config,
         string key,
         string? value,
         CancellationToken cancellationToken)
     {
-        var existing = await ReadScopedConfigValueAsync(repository, key, scope, cancellationToken);
+        var existing = config.Scoped(key, SourceFor(scope));
         if (value is null)
-        {
-            if (existing is null) return;
-            await UnsetIfPresentAsync(repository, scope, key, cancellationToken);
-            return;
-        }
-        if (string.Equals(existing?.Value, value, StringComparison.Ordinal)) return;
-        await WriteIfChangedAsync(repository, scope, key, value, cancellationToken);
+            return existing is null
+                ? Task.CompletedTask
+                : _configService.UnsetAllWithoutReadAsync(repository, ToConfigScope(scope), key, cancellationToken);
+        if (string.Equals(existing?.Value, value, StringComparison.Ordinal)) return Task.CompletedTask;
+        return _configService.SetValueAsync(repository, ToConfigScope(scope), key, value, replaceAll: false, cancellationToken);
     }
 
     private Task UnsetIfPresentAsync(
         Repository? repository,
         GitToolWriteScope scope,
+        GitConfigSnapshot config,
         string key,
         CancellationToken cancellationToken) =>
-        _configService.UnsetAllAsync(repository, ToConfigScope(scope), key, cancellationToken);
+        config.Scoped(key, SourceFor(scope)) is null
+            ? Task.CompletedTask
+            : _configService.UnsetAllWithoutReadAsync(repository, ToConfigScope(scope), key, cancellationToken);
 
     private Task<GitCommandResult> RunGitResultAsync(
         string workingDirectory,
