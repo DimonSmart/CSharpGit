@@ -23,12 +23,10 @@ internal sealed class GitConfigService
             "config", "--list", "--null", "--show-origin", "--show-scope",
             includes ? "--includes" : "--no-includes"
         };
-        var result = await _executor.ExecuteForResultPreservingOutputEndingsAsync(
+        var result = await _executor.ExecuteForResultSensitiveAsync(
             repository?.WorkingDirectory ?? Environment.CurrentDirectory,
             "GitConfigSnapshot",
-            GitCommandKind.Internal,
             cancellationToken,
-            null,
             arguments);
         if (result.ExitCode != 0) throw Failure("Could not read Git configuration", result);
         return GitConfigSnapshot.Parse(result.StandardOutput);
