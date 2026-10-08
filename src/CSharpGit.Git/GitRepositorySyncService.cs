@@ -134,6 +134,13 @@ internal sealed partial class GitRepositorySyncService : IRepositorySyncService
         if (options.ForceAutoStash)
             arguments.Add("--autostash");
 
+        // FETCH_HEAD is rewritten by Git's fetch phase. A historical remote-tracking
+        // divergence alone must not masquerade as a fast-forward refusal if fetch fails.
+        var fetchHeadPath = Path.Combine(repository.GitDirectory, "FETCH_HEAD");
+        var previousFetchHeadWrite = File.Exists(fetchHeadPath)
+            ? File.GetLastWriteTimeUtc(fetchHeadPath)
+            : DateTime.MinValue;
+
         GitCommandResult execution;
         try
         {
@@ -179,7 +186,9 @@ internal sealed partial class GitRepositorySyncService : IRepositorySyncService
         {
             var refused = options.Strategy == PullStrategy.FastForwardOnly
                           && !string.IsNullOrWhiteSpace(before)
-                          && await HasDivergedAsync(repository, before, upstream.Trim(), cancellationToken);
+                          && await HasDivergedAsync(
+                              repository, before, upstream.Trim(),
+                              fetchHeadPath, previousFetchHeadWrite, cancellationToken);
             return new PullResult(
                 refused ? PullOutcome.Refused : PullOutcome.Failed,
                 PullCompletionKind.Unknown, RepositoryOperation.None, false,
@@ -201,6 +210,8 @@ internal sealed partial class GitRepositorySyncService : IRepositorySyncService
         Repository repository,
         string localHead,
         string upstream,
+        string fetchHeadPath,
+        DateTime previousFetchHeadWrite,
         CancellationToken cancellationToken)
     {
         var remoteHead = (await _runner.RunOptionalAsync(
@@ -208,6 +219,25 @@ internal sealed partial class GitRepositorySyncService : IRepositorySyncService
             "rev-parse", "--verify", upstream)).Trim();
         if (string.IsNullOrEmpty(remoteHead))
             return false;
+
+        // The fetch phase must have produced a fresh FETCH_HEAD for this upstream.
+        // Transport/authentication failures can leave an older divergent tracking ref.
+        try
+        {
+            if (!File.Exists(fetchHeadPath)
+                || File.GetLastWriteTimeUtc(fetchHeadPath) <= previousFetchHeadWrite
+                || !File.ReadLines(fetchHeadPath).Any(line =>
+                    line.StartsWith(remoteHead + "\t", StringComparison.Ordinal)))
+                return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
 
         async Task<bool?> IsAncestorAsync(string ancestor, string descendant)
         {
