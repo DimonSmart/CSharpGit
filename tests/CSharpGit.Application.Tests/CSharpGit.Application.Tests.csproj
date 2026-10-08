@@ -28,6 +28,7 @@
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BranchesViewModel.cs" Link="Presentation/BranchesViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositorySyncViewModel.cs" Link="Presentation/RepositorySyncViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CommitActionsViewModel.cs" Link="Presentation/CommitActionsViewModel.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryHistoryRewriteViewModel.cs" Link="Presentation/RepositoryHistoryRewriteViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryOperationsViewModel.cs" Link="Presentation/RepositoryOperationsViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/InteractiveRebaseViewModel.cs" Link="Presentation/InteractiveRebaseViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorktreesViewModel.cs" Link="Presentation/WorktreesViewModel.cs" />
