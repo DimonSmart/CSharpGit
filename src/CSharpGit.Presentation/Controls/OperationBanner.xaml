@@ -12,7 +12,8 @@
                    Style="{StaticResource BodyStrongTextStyle}"
                    VerticalAlignment="Center" />
       </StackPanel>
-      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Spacing.M}">
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Spacing.M}"
+                  Visibility="{Binding HasActiveOperation, Converter={StaticResource BooleanToVisibilityConverter}}">
         <Button Content="Continue" Command="{Binding ContinueOperationCommand}" Style="{StaticResource CompactButtonStyle}" />
         <Button Content="Abort" Command="{Binding AbortOperationCommand}" Style="{StaticResource CompactButtonStyle}" />
         <Button Content="Skip" Command="{Binding SkipOperationCommand}" Style="{StaticResource CompactButtonStyle}" />
