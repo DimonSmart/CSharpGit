@@ -700,9 +700,10 @@
                             <FontIcon Glyph="{StaticResource Icon.Glyph.Reveal}" FontSize="{StaticResource Icon.Small}" />
                             <TextBlock Text="Reveal" Style="{StaticResource BodyTextStyle}" />
                           </StackPanel>
-                    </ScrollViewer>
+                    
                         </Button>
                         </StackPanel>
+                    </ScrollViewer>
                       </Grid>
                     </Border>
 
@@ -885,9 +886,10 @@
                             <FontIcon Glyph="{StaticResource Icon.Glyph.Reveal}" FontSize="{StaticResource Icon.Small}" />
                             <TextBlock Text="Reveal" Style="{StaticResource BodyTextStyle}" />
                           </StackPanel>
-                    </ScrollViewer>
+                    
                         </Button>
                     </StackPanel>
+                    </ScrollViewer>
                   </Grid>
                 </Border>
 
