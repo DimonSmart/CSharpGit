@@ -138,6 +138,20 @@ public sealed class PullIntegrationTests : IDisposable
         Assert.Equal(PullOutcome.NeedsAttention, result.Outcome);
         Assert.Equal(RepositoryOperation.None, result.ActiveOperation);
         Assert.True(result.HasUnmergedPaths);
+
+        var actualState = await GitTestServices.CreateRepositoryStateService()
+            .ReadAsync(repository);
+        Assert.Equal(RepositoryOperation.None, actualState.Operation);
+        Assert.NotEmpty(actualState.CurrentOperation.Conflicts);
+        Assert.All(actualState.CurrentOperation.Conflicts, conflict =>
+            Assert.False(conflict.IsResolved));
+        Assert.False(actualState.CurrentOperation.CanContinue);
+        Assert.False(actualState.CurrentOperation.CanAbort);
+        Assert.False(actualState.CurrentOperation.CanSkip);
+
+        var retry = await service.PullAsync(repository, new PullOptions(PullStrategy.Merge));
+        Assert.Equal(PullOutcome.NeedsAttention, retry.Outcome);
+        Assert.Equal(RepositoryOperation.None, retry.ActiveOperation);
     }
 
     [Fact]
