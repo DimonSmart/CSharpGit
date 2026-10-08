@@ -163,7 +163,13 @@ public sealed class GitToolsHistoryFixture : IDisposable
 
 public sealed class GitToolsEmptyFixture : IDisposable
 {
-    private readonly string _template = GitRepositoryFixtureFactory.CreateTemplate("git-config", _ => { });
+    // Configuration tests must start without a local user.name/email, otherwise
+    // they cannot test that a global-only value becomes effective.
+    private readonly string _template = GitRepositoryFixtureFactory.CreateTemplate("git-config", directory =>
+    {
+        TestGitRunner.Run(directory, "config", "--local", "--unset-all", "user.name");
+        TestGitRunner.Run(directory, "config", "--local", "--unset-all", "user.email");
+    });
 
     internal string CreateCopy() => GitRepositoryFixtureFactory.CopyTemplate(_template, "git-config");
 
