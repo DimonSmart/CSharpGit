@@ -1,3 +1,4 @@
+using Microsoft.UI.Xaml;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
@@ -53,13 +54,13 @@ public sealed partial class MainPage
         }
 
         var directory = new TextBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"),
             Header = "Directory",
             Text = SuggestWorktreePath(repository, branch.Name),
             MinWidth = 520
         };
-        var content = new StackPanel { Spacing = 8 };
-        content.Children.Add(new TextBox { Header = "Branch", Text = branch.Name, IsReadOnly = true });
+        var content = new StackPanel { Spacing = UiStyles.Resolve<double>("Spacing.L") };
+        content.Children.Add(new TextBox { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"), Header = "Branch", Text = branch.Name, IsReadOnly = true });
         content.Children.Add(directory);
 
         var dialog = new ContentDialog
@@ -94,14 +95,14 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         if (repository is null || !_worktreesViewModel.CanMutate) return;
 
-        var branch = new TextBox { Header = "New branch", PlaceholderText = "feature/new-api", MinWidth = 520 };
+        var branch = new TextBox { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"), Header = "New branch", PlaceholderText = "feature/new-api", MinWidth = 520 };
         var startPoint = new TextBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"),
             Header = "Start from",
             Text = _viewModel.Branches.LocalBranches.FirstOrDefault(item => item.IsCurrent)?.Name ?? "HEAD"
         };
         var directory = new TextBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"),
             Header = "Directory",
             Text = SuggestWorktreePath(repository, "new-worktree")
         };
@@ -119,7 +120,7 @@ public sealed partial class MainPage
             if (!updatingDirectory) autoDirectory = false;
         };
 
-        var content = new StackPanel { Spacing = 8 };
+        var content = new StackPanel { Spacing = UiStyles.Resolve<double>("Spacing.L") };
         content.Children.Add(branch);
         content.Children.Add(startPoint);
         content.Children.Add(directory);
@@ -203,7 +204,7 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         if (repository is null || !_worktreesViewModel.CanLock(worktree)) return;
 
-        var reason = new TextBox { Header = "Reason (optional)", MinWidth = 420 };
+        var reason = new TextBox { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"), Header = "Reason (optional)", MinWidth = 420 };
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,

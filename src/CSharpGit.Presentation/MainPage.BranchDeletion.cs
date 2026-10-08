@@ -139,7 +139,7 @@ public sealed partial class MainPage
 
         var remoteTarget = _viewModel.Branches.ResolveRemoteDeletionTargetForLocal(branch);
 
-        var content = new StackPanel { Spacing = 8 };
+        var content = new StackPanel { Spacing = UiStyles.Resolve<double>("Spacing.L") };
         content.Children.Add(new TextBlock
         {
             Text = $"Delete local branch '{branch.Name}'?",
@@ -147,7 +147,7 @@ public sealed partial class MainPage
         });
 
         var forceDeleteCheckBox = new CheckBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactCheckBoxStyle"),
             Content = "Force delete even if the branch is not fully merged",
             IsChecked = false
         };
@@ -163,7 +163,7 @@ public sealed partial class MainPage
         if (remoteTarget is not null)
         {
             deleteRemoteCheckBox = new CheckBox
-            {
+            { Style = UiStyles.Resolve<Style>("CompactCheckBoxStyle"),
                 Content = $"Also delete remote branch '{remoteTarget.Remote.Name}/{remoteTarget.BranchName}'",
                 IsChecked = false
             };
@@ -233,7 +233,7 @@ public sealed partial class MainPage
             return;
         }
 
-        var content = new StackPanel { Spacing = 8 };
+        var content = new StackPanel { Spacing = UiStyles.Resolve<double>("Spacing.L") };
         content.Children.Add(new TextBlock
         {
             Text = $"Delete remote branch '{remoteBranch.Name}'?",
@@ -245,7 +245,7 @@ public sealed partial class MainPage
         if (target.LocalBranch is { } localBranch)
         {
             deleteLocalCheckBox = new CheckBox
-            {
+            { Style = UiStyles.Resolve<Style>("CompactCheckBoxStyle"),
                 Content = $"Also delete local branch '{localBranch.Name}'",
                 IsChecked = false,
                 IsEnabled = !localBranch.IsCurrent
@@ -253,7 +253,7 @@ public sealed partial class MainPage
             content.Children.Add(deleteLocalCheckBox);
 
             var forceCheckBox = new CheckBox
-            {
+            { Style = UiStyles.Resolve<Style>("CompactCheckBoxStyle"),
                 Content = "Force delete local branch even if it is not fully merged",
                 IsChecked = false,
                 IsEnabled = false

@@ -120,23 +120,23 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         if (repository is null || !CanMutateTags()) return;
 
-        var name = new TextBox { Header = "Tag name", PlaceholderText = "v1.2.0" };
+        var name = new TextBox { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"), Header = "Tag name", PlaceholderText = "v1.2.0" };
         var target = new TextBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"),
             Header = "Target commit",
             Text = targetCommit,
             IsReadOnly = true,
             IsTabStop = false
         };
         var type = new ComboBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactComboBoxStyle"),
             Header = "Type",
             ItemsSource = new[] { GitTagKind.Annotated, GitTagKind.Lightweight },
             SelectedItem = GitTagKind.Annotated,
             MinWidth = 220
         };
         var message = new TextBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactMultilineTextBoxStyle"),
             Header = "Message",
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
@@ -201,7 +201,7 @@ public sealed partial class MainPage
         }
 
         var display = new TextBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactMultilineTextBoxStyle"),
             Text = text.ToString(),
             IsReadOnly = true,
             AcceptsReturn = true,
@@ -227,13 +227,13 @@ public sealed partial class MainPage
 
         var hasRemotes = _viewModel.RepositorySync.Remotes.Count > 0;
         var deleteRemote = new CheckBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactCheckBoxStyle"),
             Content = "Also delete this tag from remote",
             IsChecked = hasRemotes,
             IsEnabled = hasRemotes
         };
         var remoteSelector = new ComboBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactComboBoxStyle"),
             Header = "Remote",
             ItemsSource = _viewModel.RepositorySync.Remotes,
             DisplayMemberPath = nameof(GitRemote.Name),
@@ -392,7 +392,7 @@ public sealed partial class MainPage
         {
             IReadOnlyList<RemoteTagInfo> remoteTags = [];
             var remoteSelector = new ComboBox
-            {
+            { Style = UiStyles.Resolve<Style>("CompactComboBoxStyle"),
                 Header = "Remote",
                 ItemsSource = _viewModel.RepositorySync.Remotes,
                 DisplayMemberPath = nameof(GitRemote.Name),
@@ -533,7 +533,7 @@ public sealed partial class MainPage
         var preferred = GetPreferredTagRemote();
 
         var selector = new ComboBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactComboBoxStyle"),
             Header = "Remote",
             ItemsSource = _viewModel.RepositorySync.Remotes,
             DisplayMemberPath = nameof(GitRemote.Name),

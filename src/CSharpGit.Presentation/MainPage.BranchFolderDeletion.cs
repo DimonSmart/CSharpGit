@@ -36,7 +36,7 @@ public sealed partial class MainPage
             return;
         }
 
-        var content = new StackPanel { Spacing = 8 };
+        var content = new StackPanel { Spacing = UiStyles.Resolve<double>("Spacing.L") };
         content.Children.Add(new TextBlock
         {
             Text = $"{plan.Attempted} local branches will be attempted:",
@@ -61,7 +61,7 @@ public sealed partial class MainPage
         content.Children.Add(CreateBoundedBranchList(branchList));
 
         var forceDeleteCheckBox = new CheckBox
-        {
+        { Style = UiStyles.Resolve<Style>("CompactCheckBoxStyle"),
             Content = "Force delete branches even if they are not fully merged",
             IsChecked = false
         };
@@ -142,7 +142,7 @@ public sealed partial class MainPage
             return;
         }
 
-        var content = new StackPanel { Spacing = 8 };
+        var content = new StackPanel { Spacing = UiStyles.Resolve<double>("Spacing.L") };
         content.Children.Add(new TextBlock
         {
             Text = $"{targets.Count} remote branches will be attempted:",
@@ -208,7 +208,7 @@ public sealed partial class MainPage
         BranchFolderInfo folderInfo,
         BranchFolderDeletionPlan plan)
     {
-        var content = new StackPanel { Spacing = 8 };
+        var content = new StackPanel { Spacing = UiStyles.Resolve<double>("Spacing.L") };
         content.Children.Add(new TextBlock
         {
             Text = $"The folder contains {plan.Total} branches:",
@@ -237,7 +237,7 @@ public sealed partial class MainPage
         IReadOnlyList<BranchDeletionFailure> failures,
         int skipped)
     {
-        var content = new StackPanel { Spacing = 8 };
+        var content = new StackPanel { Spacing = UiStyles.Resolve<double>("Spacing.L") };
         content.Children.Add(new TextBlock
         {
             Text = remote
