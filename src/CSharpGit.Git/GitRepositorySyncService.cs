@@ -99,6 +99,13 @@ internal sealed partial class GitRepositorySyncService : IRepositorySyncService
             throw new InvalidOperationException(
                 $"Branch '{branch}' has no configured upstream. Publish the branch or configure an upstream before pulling.");
 
+        var existingOperation = GitOperationDetector.Detect(repository);
+        if (existingOperation != RepositoryOperation.None)
+            return new PullResult(
+                PullOutcome.NeedsAttention, PullCompletionKind.Unknown,
+                existingOperation, false,
+                "Finish or abort the active repository operation before pulling again.");
+
         var before = (await _runner.RunOptionalAsync(
             repository.WorkingDirectory, cancellationToken, "rev-parse", "--verify", "HEAD")).Trim();
 
