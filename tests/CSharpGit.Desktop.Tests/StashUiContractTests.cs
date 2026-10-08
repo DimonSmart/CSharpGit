@@ -27,7 +27,8 @@ public sealed class StashUiContractTests
         var stashPage = Read(root, "src", "CSharpGit.Presentation", "MainPage.Stashes.cs");
         var stashViewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "StashesViewModel.cs");
 
-        Assert.Contains("Content=\"Stash…\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Stash…\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Icon.Glyph.Stash", xaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"CreateStash_Click\"", xaml, StringComparison.Ordinal);
         Assert.Contains("IsEnabled=\"{Binding Stashes.CanCreateStash}\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("IsEnabled=\"{Binding CanCreateStash}\"", xaml, StringComparison.Ordinal);
