@@ -135,3 +135,28 @@ public sealed class ForcePushHistoryFixture : IDisposable
 
     public void Dispose() => TestDirectory.Delete(_template);
 }
+
+public sealed class GitToolsHistoryFixture : IDisposable
+{
+    // Left and right branches are committed, but each test creates its own real
+    // unmerged index/working tree via git merge on an isolated repository copy.
+    private readonly string _template = GitRepositoryFixtureFactory.CreateTemplate("git-tools", directory =>
+    {
+        File.WriteAllText(Path.Combine(directory, "conflict.txt"), "base\n");
+        TestGitRunner.Run(directory, "add", "conflict.txt");
+        TestGitRunner.Run(directory, "commit", "-m", "base");
+        TestGitRunner.Run(directory, "checkout", "-b", "left");
+        File.WriteAllText(Path.Combine(directory, "conflict.txt"), "left\n");
+        TestGitRunner.Run(directory, "add", "conflict.txt");
+        TestGitRunner.Run(directory, "commit", "-m", "left");
+        TestGitRunner.Run(directory, "checkout", "-b", "right", "HEAD~1");
+        File.WriteAllText(Path.Combine(directory, "conflict.txt"), "right\n");
+        TestGitRunner.Run(directory, "add", "conflict.txt");
+        TestGitRunner.Run(directory, "commit", "-m", "right");
+        TestGitRunner.Run(directory, "checkout", "left");
+    });
+
+    internal string CreateCopy() => GitRepositoryFixtureFactory.CopyTemplate(_template, "git-tools");
+
+    public void Dispose() => TestDirectory.Delete(_template);
+}
