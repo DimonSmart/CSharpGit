@@ -16,7 +16,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private readonly IRepositoryService _repositoryService;
     private readonly ILogger<OpenRepositoryViewModel> _logger;
     private readonly IRepositoryStateService _stateService;
-    private readonly ICommitActionService _commitActionService;
     private readonly IAppSettingsService _settings;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly AsyncCommand _openRepositoryCommand;
@@ -49,7 +48,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         CommitDetailsViewModel commitDetailsViewModel,
         CommitActionsViewModel commitActionsViewModel,
         CommitCreationViewModel commitCreationViewModel,
-        ICommitActionService commitActionService,
+        RepositoryHistoryRewriteViewModel repositoryHistoryRewriteViewModel,
         RepositorySyncViewModel repositorySyncViewModel,
         RepositoryOperationsViewModel repositoryOperationsViewModel,
         InteractiveRebaseViewModel interactiveRebaseViewModel,
@@ -78,6 +77,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         CommitDetails.Attach(this);
         CommitActions = commitActionsViewModel ?? throw new ArgumentNullException(nameof(commitActionsViewModel));
         CommitActions.Attach(this);
+        RepositoryHistoryRewrite = repositoryHistoryRewriteViewModel ?? throw new ArgumentNullException(nameof(repositoryHistoryRewriteViewModel));
+        RepositoryHistoryRewrite.Attach(this);
         RepositoryOperations = repositoryOperationsViewModel ?? throw new ArgumentNullException(nameof(repositoryOperationsViewModel));
         RepositoryOperations.Attach(this);
         RepositoryOperations.PropertyChanged += RepositoryOperations_PropertyChanged;
@@ -87,7 +88,6 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         CommitCreation.Attach(this);
         WorkingTree.Changes.CollectionChanged += CommitCreationSourceCollectionChanged;
         RepositoryOperations.Conflicts.CollectionChanged += CommitCreationSourceCollectionChanged;
-        _commitActionService = commitActionService ?? throw new ArgumentNullException(nameof(commitActionService));
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
         _settings.Changed += AppSettings_Changed;
@@ -157,6 +157,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public StashesViewModel Stashes { get; }
     public CommitDetailsViewModel CommitDetails { get; }
     public CommitActionsViewModel CommitActions { get; }
+    public RepositoryHistoryRewriteViewModel RepositoryHistoryRewrite { get; }
     public CommitCreationViewModel CommitCreation { get; }
     public RepositoryOperationsViewModel RepositoryOperations { get; }
     public InteractiveRebaseViewModel InteractiveRebase { get; }

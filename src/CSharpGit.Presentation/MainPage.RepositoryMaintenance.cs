@@ -28,7 +28,6 @@ public sealed partial class MainPage
         IRepositoryPathService repositoryPathService,
         IExternalGitToolService externalGitToolService,
         RepositoryFilesViewModel repositoryFilesViewModel,
-        IRepositoryHistoryRewriteService repositoryHistoryRewriteService,
         IRepositoryMaintenanceService repositoryMaintenanceService,
         IAppSettingsService appSettings,
         IGitCommandActivitySource gitCommandActivitySource,
@@ -48,9 +47,9 @@ public sealed partial class MainPage
             desktopShellService,
             repositoryPathService,
             externalGitToolService,
-            repositoryFilesViewModel,
-            repositoryHistoryRewriteService)
+            repositoryFilesViewModel)
     {
+        InstallRepositoryHistoryRewriteMenus();
         _createRepositoryViewModel = createRepositoryViewModel
             ?? throw new ArgumentNullException(nameof(createRepositoryViewModel));
         _cloneRepositoryViewModel = cloneRepositoryViewModel

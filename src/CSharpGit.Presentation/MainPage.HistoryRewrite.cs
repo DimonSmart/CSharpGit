@@ -9,33 +9,7 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private readonly IRepositoryHistoryRewriteService _repositoryHistoryRewriteService = null!;
-    private bool _historyRewriteInProgress;
-
-    internal bool IsHistoryRewriteInProgress => _historyRewriteInProgress;
-
-    private MainPage(
-        OpenRepositoryViewModel viewModel,
-        IWorkingTreeStatusReader workingTreeStatusReader,
-        IRepositoryFileVersionService fileVersionService,
-        IDesktopShellService desktopShellService,
-        IRepositoryPathService repositoryPathService,
-        IExternalGitToolService externalGitToolService,
-        RepositoryFilesViewModel repositoryFilesViewModel,
-        IRepositoryHistoryRewriteService repositoryHistoryRewriteService)
-        : this(
-            viewModel,
-            workingTreeStatusReader,
-            fileVersionService,
-            desktopShellService,
-            repositoryPathService,
-            externalGitToolService,
-            repositoryFilesViewModel)
-    {
-        _repositoryHistoryRewriteService = repositoryHistoryRewriteService
-            ?? throw new ArgumentNullException(nameof(repositoryHistoryRewriteService));
-        InstallRepositoryHistoryRewriteMenus();
-    }
+    internal bool IsHistoryRewriteInProgress => _viewModel.RepositoryHistoryRewrite.IsInProgress;
 
     private void InstallRepositoryHistoryRewriteMenus()
     {
@@ -96,7 +70,7 @@ public sealed partial class MainPage
             AddMenuItem(
                 flyout,
                 "Remove from repository history…",
-                !_viewModel.IsBusy && !_historyRewriteInProgress,
+                !_viewModel.IsBusy && !_viewModel.RepositoryHistoryRewrite.IsInProgress,
                 () => RemovePathFromRepositoryHistoryAsync(entry));
             flyout.Items.Add(new MenuFlyoutSeparator());
         }
@@ -107,93 +81,55 @@ public sealed partial class MainPage
 
     private async Task RemovePathFromRepositoryHistoryAsync(RepositorySnapshotEntry entry)
     {
-        var service = _repositoryHistoryRewriteService;
         var repository = _viewModel.Repository;
-        if (repository is null
-            || entry.Kind != RepositorySnapshotEntryKind.File
-            || _historyRewriteInProgress
+        if (repository is null || entry.Kind != RepositorySnapshotEntryKind.File
+            || _viewModel.RepositoryHistoryRewrite.IsInProgress
             || !_repositoryFilesViewModel.SnapshotMatchesSelection)
-        {
             return;
-        }
 
-        try
+        var preparation = await _viewModel.RepositoryHistoryRewrite.PreparePathRemovalAsync(repository, entry.Path);
+        switch (preparation.Status)
         {
-            var tool = await service.GetToolStatusAsync(repository);
-            if (!tool.IsAvailable)
-            {
-                await ShowHistoryRewriteMessageAsync(
-                    "git-filter-repo is required",
+            case PathRemovalPreparationStatus.ToolUnavailable:
+                await ShowHistoryRewriteMessageAsync("git-filter-repo is required",
                     "git-filter-repo is required for this operation. CSharpGit will not install Python, pip, or git-filter-repo automatically.");
                 return;
-            }
-
-            var analysis = await service.AnalyzePathRemovalAsync(repository, entry.Path);
-            if (analysis.PathHistoryCommitCount == 0)
-            {
-                await ShowHistoryRewriteMessageAsync(
-                    "Nothing to remove",
+            case PathRemovalPreparationStatus.NothingToRemove:
+                await ShowHistoryRewriteMessageAsync("Nothing to remove",
                     "The file is no longer present in repository history.");
                 return;
-            }
-
-            if (!await ConfirmPathHistoryRemovalAsync(analysis))
+            case PathRemovalPreparationStatus.RepositoryChanged:
+            case PathRemovalPreparationStatus.Cancelled:
                 return;
+            case PathRemovalPreparationStatus.Failed:
+                await ShowHistoryRewriteMessageAsync("History rewrite failed",
+                    preparation.FailureMessage ?? "Repository history rewrite did not complete successfully.");
+                return;
+            case PathRemovalPreparationStatus.Ready:
+                break;
+            default:
+                return;
+        }
 
-            _historyRewriteInProgress = true;
-            PathRemovalResult? result = null;
-            Exception? capturedFailure = null;
-
-            var succeeded = await _viewModel.RunHistoryRewriteMutationAsync(
-                async () =>
-                {
-                    InvalidateHistoryRewritePresentation();
-                    try
-                    {
-                        result = await service.RemovePathFromHistoryAsync(repository, entry.Path);
-                    }
-                    catch (Exception exception)
-                    {
-                        capturedFailure = exception;
-                        throw;
-                    }
-                },
-                "Repository history rewrite did not complete successfully.");
-
-            if (succeeded && result is not null)
-            {
-                await _viewModel.SelectHistoryCommitAfterRewriteAsync(result.HeadObjectId);
+        var analysis = preparation.Analysis!;
+        if (!await ConfirmPathHistoryRemovalAsync(analysis)) return;
+        var execution = await _viewModel.RepositoryHistoryRewrite.RemovePathAsync(
+            repository, entry.Path, InvalidateHistoryRewritePresentation);
+        switch (execution.Status)
+        {
+            case PathRemovalExecutionStatus.Completed when execution.Result is { } result:
+                await RestoreCommitActionSelectionAsync(result.HeadObjectId);
                 await ShowHistoryRewriteSuccessAsync(analysis, result);
-            }
-            else if (result is not null)
-            {
-                await ShowHistoryRewriteMessageAsync(
-                    "History rewrite refresh failed",
+                break;
+            case PathRemovalExecutionStatus.RewriteCompletedButRefreshFailed:
+                await ShowHistoryRewriteMessageAsync("History rewrite refresh failed",
                     "Repository history was rewritten and verified, but CSharpGit could not refresh the UI completely.\n\n" +
-                    $"Safety backup:\n{result.BackupPath}\n\n" +
+                    $"Safety backup:\n{execution.BackupPath}\n\n" +
                     "Use Refresh to reread the repository state.");
-            }
-            else
-            {
-                await ShowHistoryRewriteFailureAsync(capturedFailure);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (RepositoryHistoryRewriteException exception)
-        {
-            await ShowHistoryRewriteFailureAsync(exception);
-        }
-        catch (Exception)
-        {
-            await ShowHistoryRewriteMessageAsync(
-                "History rewrite failed",
-                "Repository history rewrite did not complete successfully.");
-        }
-        finally
-        {
-            _historyRewriteInProgress = false;
+                break;
+            case PathRemovalExecutionStatus.Failed:
+                await ShowHistoryRewriteFailureAsync(execution);
+                break;
         }
     }
 
@@ -262,29 +198,14 @@ public sealed partial class MainPage
         await ShowHistoryRewriteMessageAsync("History rewritten", message);
     }
 
-    private async Task ShowHistoryRewriteFailureAsync(Exception? failure)
+    private async Task ShowHistoryRewriteFailureAsync(PathRemovalExecutionResult failure)
     {
-        if (failure is RepositoryHistoryRewriteException rewriteFailure)
-        {
-            var message = rewriteFailure.Message;
-            if (rewriteFailure.DestructivePhaseStarted)
-                message += "\n\nThe repository may have been partially rewritten.";
-
-            if (!string.IsNullOrWhiteSpace(rewriteFailure.BackupPath))
-            {
-                var label = rewriteFailure.DestructivePhaseStarted
-                    ? "Safety backup"
-                    : "Backup location";
-                message += $"\n\n{label}:\n{rewriteFailure.BackupPath}";
-            }
-
-            await ShowHistoryRewriteMessageAsync("History rewrite failed", message);
-            return;
-        }
-
-        await ShowHistoryRewriteMessageAsync(
-            "History rewrite failed",
-            "Repository history rewrite did not complete successfully.");
+        var message = failure.FailureMessage ?? "Repository history rewrite did not complete successfully.";
+        if (failure.DestructivePhaseStarted)
+            message += "\n\nThe repository may have been partially rewritten.";
+        if (!string.IsNullOrWhiteSpace(failure.BackupPath))
+            message += $"\n\n{(failure.DestructivePhaseStarted ? "Safety backup" : "Backup location")}:\n{failure.BackupPath}";
+        await ShowHistoryRewriteMessageAsync("History rewrite failed", message);
     }
 
     private async Task ShowHistoryRewriteMessageAsync(string title, string message)

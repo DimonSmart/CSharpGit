@@ -25,7 +25,9 @@ public sealed record CommitActionExecutionResult(
     bool LifecycleSucceeded,
     string? SelectionCommit = null,
     string? ErrorTitle = null,
-    string? ErrorMessage = null)
+    string? ErrorMessage = null,
+    string? ConflictOldCommit = null,
+    string? ConflictNewCommit = null)
 {
     public bool Succeeded => LifecycleSucceeded && string.IsNullOrWhiteSpace(ErrorMessage);
 }
@@ -157,6 +159,34 @@ public sealed class CommitActionsViewModel
         return new(
             succeeded,
             SelectionCommit: succeeded ? commit.Hash : null);
+    }
+
+    public async Task<CommitActionExecutionResult> EditCommitMessageAsync(
+        Repository repository, CommitHistoryItem commit, string newMessage)
+    {
+        if (!CanExecute(repository, commit) || string.IsNullOrWhiteSpace(newMessage))
+            return new(false);
+
+        EditCommitMessageResult? result = null;
+        var succeeded = await _context!.RunCommitHistoryRewriteMutationAsync(
+            repository,
+            async () => result = await _commitActionService.EditCommitMessageAsync(
+                repository, commit.Hash, newMessage),
+            "Could not edit commit message");
+
+        if (!succeeded || result is null) return new(false);
+        return result.Kind switch
+        {
+            EditCommitMessageResultKind.Completed => new(true,
+                SelectionCommit: result.NewCommit ?? result.OldCommit),
+            EditCommitMessageResultKind.Conflicts => new(true,
+                ConflictOldCommit: result.OldCommit,
+                ConflictNewCommit: result.NewCommit),
+            EditCommitMessageResultKind.Failed => new(true,
+                ErrorTitle: "Commit message was not changed",
+                ErrorMessage: result.Message),
+            _ => throw new ArgumentOutOfRangeException(nameof(result.Kind))
+        };
     }
 
     public async Task<CommitActionExecutionResult> FixupAsync(
