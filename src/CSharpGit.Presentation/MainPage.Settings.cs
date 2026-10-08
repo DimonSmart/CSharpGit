@@ -12,6 +12,11 @@ public sealed partial class MainPage
     private void RepositorySettings_Click(object sender, RoutedEventArgs e) =>
         OpenSettingsWindow(SettingsSection.Identity);
 
-    private void OpenSettingsWindow(SettingsSection section = SettingsSection.General) =>
-        _settingsWindowController.Show(section, () => _viewModel.Repository);
+    private void PullSettings_Click(object sender, RoutedEventArgs e) =>
+        OpenSettingsWindow(SettingsSection.General, focusPullStrategy: true);
+
+    private void OpenSettingsWindow(
+        SettingsSection section = SettingsSection.General,
+        bool focusPullStrategy = false) =>
+        _settingsWindowController.Show(section, () => _viewModel.Repository, focusPullStrategy);
 }

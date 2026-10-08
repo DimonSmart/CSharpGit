@@ -123,6 +123,7 @@ internal sealed partial class GitRepositorySyncService : IRepositorySyncService
         {
             case PullStrategy.Merge:
                 arguments.Add("--no-rebase");
+                arguments.Add("--ff");
                 break;
             case PullStrategy.Rebase:
                 arguments.Add("--rebase");
@@ -130,6 +131,8 @@ internal sealed partial class GitRepositorySyncService : IRepositorySyncService
             case PullStrategy.FastForwardOnly:
                 arguments.Add("--ff-only");
                 break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(options), "Unknown pull strategy.");
         }
         if (options.ForceAutoStash)
             arguments.Add("--autostash");

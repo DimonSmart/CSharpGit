@@ -31,7 +31,6 @@ public sealed class PullIntegrationTests : IDisposable
     }
 
     [Theory]
-    [InlineData(PullStrategy.GitConfiguration)]
     [InlineData(PullStrategy.Merge)]
     [InlineData(PullStrategy.Rebase)]
     [InlineData(PullStrategy.FastForwardOnly)]
@@ -195,24 +194,66 @@ public sealed class PullIntegrationTests : IDisposable
     }
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task GitConfigurationHonorsPerBranchRebase(bool useRebase)
+    [InlineData("false")]
+    [InlineData("only")]
+    public async Task MergeOverridesPullFfConfigOnDivergence(string pullFf)
     {
         Commit(_local, "local.txt", "local\n", "Local update");
         Commit(_actor, "remote.txt", "remote\n", "Remote update");
         Git(_actor, "push", "origin", "main");
-        Git(_local, "config", "pull.rebase", useRebase ? "false" : "true");
-        Git(_local, "config", "branch.main.rebase", useRebase ? "true" : "false");
+        Git(_local, "config", "pull.ff", pullFf);
+        Git(_local, "config", "pull.rebase", "true");
         var (repository, service) = await OpenAsync();
 
-        var result = await service.PullAsync(
-            repository, new PullOptions(PullStrategy.GitConfiguration));
+        var result = await service.PullAsync(repository, new PullOptions(PullStrategy.Merge));
         Assert.Equal(PullOutcome.Completed, result.Outcome);
-        Assert.Equal(useRebase ? PullCompletionKind.Rebased : PullCompletionKind.MergeCommit, result.Completion);
-        var parents = GitOut(_local, "show", "-s", "--format=%P", "HEAD")
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        Assert.Equal(useRebase ? 1 : 2, parents.Length);
+        Assert.Equal(PullCompletionKind.MergeCommit, result.Completion);
+        Assert.Equal(2, GitOut(_local, "show", "-s", "--format=%P", "HEAD")
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries).Length);
+    }
+
+    [Fact]
+    public async Task MergeFastForwardsDespitePullFfFalse()
+    {
+        Commit(_actor, "remote.txt", "remote\n", "Remote update");
+        Git(_actor, "push", "origin", "main");
+        Git(_local, "config", "pull.ff", "false");
+        var (repository, service) = await OpenAsync();
+
+        var result = await service.PullAsync(repository, new PullOptions(PullStrategy.Merge));
+        Assert.Equal(PullOutcome.Completed, result.Outcome);
+        Assert.Equal(PullCompletionKind.FastForward, result.Completion);
+        Assert.Equal(GitOut(_actor, "rev-parse", "HEAD"), GitOut(_local, "rev-parse", "HEAD"));
+    }
+
+    [Fact]
+    public async Task RebaseOverridesPullFfOnlyOnDivergence()
+    {
+        Commit(_local, "local.txt", "local\n", "Local update");
+        Commit(_actor, "remote.txt", "remote\n", "Remote update");
+        Git(_actor, "push", "origin", "main");
+        Git(_local, "config", "pull.ff", "only");
+        Git(_local, "config", "pull.rebase", "false");
+        var (repository, service) = await OpenAsync();
+
+        var result = await service.PullAsync(repository, new PullOptions(PullStrategy.Rebase));
+        Assert.Equal(PullOutcome.Completed, result.Outcome);
+        Assert.Equal(PullCompletionKind.Rebased, result.Completion);
+    }
+
+    [Fact]
+    public async Task FastForwardOnlyIgnoresRebasePreferenceWhenDiverged()
+    {
+        Commit(_local, "local.txt", "local\n", "Local update");
+        Commit(_actor, "remote.txt", "remote\n", "Remote update");
+        Git(_actor, "push", "origin", "main");
+        Git(_local, "config", "pull.rebase", "true");
+        var initialHead = GitOut(_local, "rev-parse", "HEAD");
+        var (repository, service) = await OpenAsync();
+
+        var result = await service.PullAsync(repository, new PullOptions(PullStrategy.FastForwardOnly));
+        Assert.Equal(PullOutcome.Refused, result.Outcome);
+        Assert.Equal(initialHead, GitOut(_local, "rev-parse", "HEAD"));
     }
 
     [Fact]
@@ -281,6 +322,8 @@ public sealed class PullIntegrationTests : IDisposable
         var (repository, service) = await OpenAsync();
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
             () => service.PullAsync(repository, new PullOptions((PullStrategy)734)));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+            () => service.PullAsync(repository, new PullOptions((PullStrategy)0)));
     }
 
     private async Task<(Repository Repository, GitRepositorySyncService Service)> OpenAsync()

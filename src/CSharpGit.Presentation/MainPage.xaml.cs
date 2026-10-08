@@ -604,8 +604,6 @@ public sealed partial class MainPage : Page
         await ShowPullResultAsync(result);
     }
 
-    private async void PullGitConfiguration_Click(object sender, RoutedEventArgs e) =>
-        await PullOnceFromUiAsync(PullStrategy.GitConfiguration);
     private async void PullMerge_Click(object sender, RoutedEventArgs e) =>
         await PullOnceFromUiAsync(PullStrategy.Merge);
     private async void PullRebase_Click(object sender, RoutedEventArgs e) =>
@@ -613,39 +611,6 @@ public sealed partial class MainPage : Page
     private async void PullFastForwardOnly_Click(object sender, RoutedEventArgs e) =>
         await PullOnceFromUiAsync(PullStrategy.FastForwardOnly);
 
-    private async Task SelectDefaultPullStrategyAsync(PullStrategy strategy)
-    {
-        try
-        {
-            await _viewModel.RepositorySync.SetDefaultPullStrategyAsync(strategy);
-        }
-        catch (Exception exception)
-        {
-            await ShowErrorAsync("Could not save default pull strategy", exception.Message);
-        }
-    }
-
-    private async void DefaultPullGitConfiguration_Click(object sender, RoutedEventArgs e) =>
-        await SelectDefaultPullStrategyAsync(PullStrategy.GitConfiguration);
-    private async void DefaultPullMerge_Click(object sender, RoutedEventArgs e) =>
-        await SelectDefaultPullStrategyAsync(PullStrategy.Merge);
-    private async void DefaultPullRebase_Click(object sender, RoutedEventArgs e) =>
-        await SelectDefaultPullStrategyAsync(PullStrategy.Rebase);
-    private async void DefaultPullFastForwardOnly_Click(object sender, RoutedEventArgs e) =>
-        await SelectDefaultPullStrategyAsync(PullStrategy.FastForwardOnly);
-
-    private async void ForcePullAutoStash_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            await _viewModel.RepositorySync.SetPullAutoStashAsync(
-                !_viewModel.RepositorySync.ForcePullAutoStash);
-        }
-        catch (Exception exception)
-        {
-            await ShowErrorAsync("Could not save pull autostash setting", exception.Message);
-        }
-    }
     private async void Push_Click(object sender, RoutedEventArgs e) => await PushFromUiAsync();
 
     private async void RefreshAll_Click(object sender, RoutedEventArgs e)

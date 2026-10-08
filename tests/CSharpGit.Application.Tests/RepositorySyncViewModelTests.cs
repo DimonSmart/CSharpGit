@@ -51,12 +51,60 @@ public sealed class RepositorySyncViewModelTests
         Assert.Equal(new PullOptions(PullStrategy.FastForwardOnly, true), fake.LastPullOptions);
         Assert.Equal(PullStrategy.Rebase, settings.DefaultPullStrategy);
 
-        await vm.SetDefaultPullStrategyAsync(PullStrategy.Merge);
-        await vm.SetPullAutoStashAsync(false);
+        await settings.SetDefaultPullStrategyAsync(PullStrategy.Merge);
+        await settings.SetForcePullAutoStashAsync(false);
         Assert.Equal(PullStrategy.Merge, vm.DefaultPullStrategy);
         Assert.False(vm.ForcePullAutoStash);
         await vm.PullAsync(repo);
         Assert.Equal(new PullOptions(PullStrategy.Merge, false), fake.LastPullOptions);
+    }
+
+    [Fact]
+    public void PullButtonTextAndTooltipReflectSettingsAndBranchChanges()
+    {
+        var first = Repository("pull-display-one");
+        var second = Repository("pull-display-two");
+        var settings = new FakeSettingsService();
+        var ctx = Context(first, Branch("main", "origin/main") with { Behind = 3 });
+        using var vm = CreateViewModel(new FakeSyncService(), settings, ctx);
+
+        Assert.Equal("Pull (FF only) ↓3", vm.PullButtonText);
+        Assert.Equal("Pull using Fast-forward only strategy", vm.PullAccessibleName);
+        Assert.Equal("Pull once using Fast-forward only (current default)", vm.FastForwardPullAccessibleName);
+        Assert.Equal("Pull once using Merge", vm.MergePullAccessibleName);
+        Assert.Contains("Pull from origin/main", vm.PullTooltip, StringComparison.Ordinal);
+        Assert.Contains("Strategy: Fast-forward only", vm.PullTooltip, StringComparison.Ordinal);
+        Assert.Contains("Autostash: Git configuration", vm.PullTooltip, StringComparison.Ordinal);
+
+        settings.DefaultPullStrategy = PullStrategy.Merge;
+        settings.ForcePullAutoStash = true;
+        settings.PublishChange();
+        Assert.Equal("Pull (Merge) ↓3", vm.PullButtonText);
+        Assert.Equal("Pull once using Merge (current default)", vm.MergePullAccessibleName);
+        Assert.Equal("Pull once using Fast-forward only", vm.FastForwardPullAccessibleName);
+        Assert.Contains("Autostash: Forced", vm.PullTooltip, StringComparison.Ordinal);
+
+        ctx.CurrentLocalBranch = Branch("other", "origin/other") with { Behind = 1 };
+        vm.RefreshAvailability();
+        Assert.Equal("Pull (Merge) ↓1", vm.PullButtonText);
+
+        ctx.Repository = second;
+        ctx.CurrentLocalBranch = Branch("other", "origin/other");
+        vm.RefreshAvailability();
+        Assert.Equal("Pull (Merge)", vm.PullButtonText);
+    }
+
+    [Fact]
+    public async Task UnsupportedPullStrategyDoesNotRunMutation()
+    {
+        var repo = Repository("invalid-pull");
+        var sync = new FakeSyncService();
+        var context = Context(repo, Branch("main", "origin/main"));
+        using var vm = CreateViewModel(sync, new FakeSettingsService(), context);
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => vm.PullAsync(repo, (PullStrategy)0));
+        Assert.Empty(sync.Calls);
+        Assert.Equal(0, context.MutationLifecycleCalls);
     }
 
     [Fact]
@@ -340,6 +388,9 @@ public sealed class RepositorySyncViewModelTests
         dispatcher.RunAll();
         Assert.Contains(nameof(RepositorySyncViewModel.DefaultPullStrategy), notifications);
         Assert.Contains(nameof(RepositorySyncViewModel.PullTooltip), notifications);
+        Assert.Contains(nameof(RepositorySyncViewModel.PullButtonText), notifications);
+        Assert.Contains(nameof(RepositorySyncViewModel.PullAccessibleName), notifications);
+        Assert.Contains(nameof(RepositorySyncViewModel.MergePullAccessibleName), notifications);
 
         notifications.Clear();
         settings.PublishChange();
@@ -577,7 +628,7 @@ public sealed class RepositorySyncViewModelTests
         public GitConsoleAutoOpenMode GitConsoleAutoOpenMode => GitConsoleAutoOpenMode.OnErrors;
         public bool ShowReflog => false;
         public bool AutoSetupRemoteOnPush { get; set; }
-        public PullStrategy DefaultPullStrategy { get; set; } = PullStrategy.GitConfiguration;
+        public PullStrategy DefaultPullStrategy { get; set; } = PullStrategy.FastForwardOnly;
         public bool ForcePullAutoStash { get; set; }
         public bool ShowAuthorAvatars => true;
         public bool OnlineAvatarLookupEnabled => true;

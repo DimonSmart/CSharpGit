@@ -675,7 +675,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             GitConsoleAutoOpenMode.OnErrors,
             false,
             false,
-            PullStrategy.GitConfiguration,
+            PullStrategy.FastForwardOnly,
             false,
             true,
             true,
@@ -694,7 +694,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         public GitConsoleAutoOpenMode? GitConsoleAutoOpenMode { get; init; }
         public bool ShowReflog { get; init; }
         public bool AutoSetupRemoteOnPush { get; init; }
-        public PullStrategy DefaultPullStrategy { get; init; } = PullStrategy.GitConfiguration;
+        public PullStrategy DefaultPullStrategy { get; init; } = PullStrategy.FastForwardOnly;
         public bool ForcePullAutoStash { get; init; }
         public bool? ShowAuthorAvatars { get; init; }
         public bool? OnlineAvatarLookupEnabled { get; init; }
@@ -713,10 +713,15 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             Type typeToConvert,
             JsonSerializerOptions options)
         {
-            if (reader.TokenType == JsonTokenType.String
-                && Enum.TryParse<PullStrategy>(reader.GetString(), false, out var strategy)
-                && Enum.IsDefined(strategy))
-                return strategy;
+            if (reader.TokenType == JsonTokenType.String)
+            {
+                var name = reader.GetString();
+                if (string.Equals(name, "GitConfiguration", StringComparison.Ordinal))
+                    return PullStrategy.FastForwardOnly;
+                if (Enum.TryParse<PullStrategy>(name, false, out var strategy)
+                    && Enum.IsDefined(strategy))
+                    return strategy;
+            }
             if (reader.TokenType == JsonTokenType.Number
                 && reader.TryGetInt32(out var value)
                 && Enum.IsDefined(typeof(PullStrategy), value))
@@ -725,13 +730,14 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             {
                 using var _ = JsonDocument.ParseValue(ref reader);
             }
-            return PullStrategy.GitConfiguration;
+            return PullStrategy.FastForwardOnly;
         }
 
         public override void Write(
             Utf8JsonWriter writer,
             PullStrategy value,
-            JsonSerializerOptions options) => writer.WriteStringValue(value.ToString());
+            JsonSerializerOptions options) =>
+            writer.WriteStringValue((Enum.IsDefined(value) ? value : PullStrategy.FastForwardOnly).ToString());
     }
 
     private sealed class TolerantApplicationThemeModeConverter : JsonConverter<ApplicationThemeMode>

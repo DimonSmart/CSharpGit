@@ -4,10 +4,9 @@ namespace CSharpGit.Application.Abstractions;
 
 public enum PullStrategy
 {
-    GitConfiguration,
-    Merge,
-    Rebase,
-    FastForwardOnly
+    Merge = 1,
+    Rebase = 2,
+    FastForwardOnly = 3
 }
 
 public sealed record PullOptions(PullStrategy Strategy, bool ForceAutoStash = false);

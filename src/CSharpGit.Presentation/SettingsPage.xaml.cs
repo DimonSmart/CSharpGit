@@ -35,6 +35,7 @@ public sealed partial class SettingsPage : Page
     private bool _selectionReady;
     private bool _settingsDetached;
     private bool _gitToolsLoaded;
+    private readonly bool _focusPullStrategyOnLoad;
 
     internal SettingsPage(
         SettingsViewModel viewModel,
@@ -44,7 +45,8 @@ public sealed partial class SettingsPage : Page
         IFolderPicker folderPicker,
         string logFilePath,
         Func<Repository?> repositoryAccessor,
-        SettingsSection initialSection)
+        SettingsSection initialSection,
+        bool focusPullStrategy = false)
     {
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _identityViewModel = identityViewModel ?? throw new ArgumentNullException(nameof(identityViewModel));
@@ -55,6 +57,7 @@ public sealed partial class SettingsPage : Page
             ? throw new ArgumentException("A log file path is required.", nameof(logFilePath))
             : Path.GetFullPath(logFilePath);
         _repositoryAccessor = repositoryAccessor ?? throw new ArgumentNullException(nameof(repositoryAccessor));
+        _focusPullStrategyOnLoad = focusPullStrategy;
 
         InitializeComponent();
         LogFilePathText.Text = _logFilePath;
@@ -68,14 +71,33 @@ public sealed partial class SettingsPage : Page
             _selectionReady = true;
             LogLevelComboBox.IsEnabled = LoggingToggle.IsOn;
             await ActivateSectionAsync(SelectedSection(), force: true);
+            if (_focusPullStrategyOnLoad)
+                FocusPullStrategy();
         };
     }
 
-    internal void SelectSection(SettingsSection section)
+    internal void SelectSection(SettingsSection section, bool focusPullStrategy = false)
     {
         SettingsNavigation.SelectedIndex = IndexOfSection(section);
         if (_selectionReady)
+        {
             _ = ActivateSectionAsync(section, force: true);
+            if (focusPullStrategy)
+                FocusPullStrategy();
+        }
+    }
+
+    private void FocusPullStrategy()
+    {
+        // Defer until the General panel is visible and the window has laid out.
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (_settingsDetached || SelectedSection() != SettingsSection.General)
+                return;
+            GeneralSettingsPanel.UpdateLayout();
+            PullStrategyComboBox.StartBringIntoView();
+            PullStrategyComboBox.Focus(FocusState.Programmatic);
+        });
     }
 
     internal void RepositoryChanged()
