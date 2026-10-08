@@ -7,7 +7,7 @@ internal static class UiStyles
 {
     internal static T Resolve<T>(string key)
     {
-        var resources = Application.Current?.Resources
+        var resources = Microsoft.UI.Xaml.Application.Current?.Resources
             ?? throw new InvalidOperationException("Application resources have not been initialized.");
         if (TryFind(resources, key, out var resource) && resource is T typed)
             return typed;
