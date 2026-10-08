@@ -182,7 +182,12 @@
 
                   <Button x:Name="RepositorySelectorOpenFolderButton"
                           Style="{StaticResource RepositorySelectorActionButtonStyle}"
-                          Click="RepositorySelectorOpenFolder_Click" />
+                          Click="RepositorySelectorOpenFolder_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                      <FontIcon Glyph="{StaticResource Icon.Glyph.Reveal}" FontSize="{StaticResource Icon.Small}" />
+                      <TextBlock x:Name="RepositorySelectorOpenFolderText" Style="{StaticResource BodyTextStyle}" />
+                    </StackPanel>
+                  </Button>
                   <Button x:Name="RepositorySelectorCopyPathButton" Click="RepositorySelectorCopyPath_Click" Style="{StaticResource RepositorySelectorActionButtonStyle}" AutomationProperties.Name="Copy repository path">
                       <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                         <FontIcon Glyph="{StaticResource Icon.Glyph.Copy}" FontSize="{StaticResource Icon.Small}" />
@@ -241,7 +246,9 @@
               Grid.Column="2"
               Style="{StaticResource ToolbarSurfaceStyle}">
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.M}">
-          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.XS}" VerticalAlignment="Center">
+          <ScrollViewer HorizontalScrollMode="Enabled" HorizontalScrollBarVisibility="Auto"
+                        VerticalScrollMode="Disabled" VerticalScrollBarVisibility="Disabled">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.XS}" VerticalAlignment="Center">
             <Button x:Name="CommitNavigationButton"
                     Click="CommitNavigation_Click"
                     Style="{StaticResource ToolbarButtonStyle}"
@@ -356,6 +363,7 @@
               </Grid>
             </Button>
           </StackPanel>
+          </ScrollViewer>
           <Button Grid.Column="1" Style="{StaticResource IconButtonStyle}" VerticalAlignment="Center" AutomationProperties.Name="Application menu">
             <FontIcon Glyph="&#xE712;" FontSize="{StaticResource Icon.Normal}" />
             <Button.Flyout>
