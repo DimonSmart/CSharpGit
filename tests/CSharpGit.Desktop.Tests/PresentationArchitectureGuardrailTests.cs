@@ -5,6 +5,36 @@ namespace CSharpGit.Desktop.Tests;
 public sealed class PresentationArchitectureGuardrailTests
 {
     [Fact]
+    public void RewriteFeaturesOwnGitServicesWithoutLeakingIntoShellOrPage()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var viewModels = Path.Combine(presentation, "ViewModels");
+        var parentSources = string.Join("\n", Directory.GetFiles(viewModels, "OpenRepositoryViewModel*.cs")
+            .Select(File.ReadAllText));
+        var mainPageSources = string.Join("\n", Directory.GetFiles(presentation, "MainPage*.cs")
+            .Select(File.ReadAllText));
+        var actions = File.ReadAllText(Path.Combine(viewModels, "CommitActionsViewModel.cs"));
+        var rewrite = File.ReadAllText(Path.Combine(viewModels, "RepositoryHistoryRewriteViewModel.cs"));
+        var parent = File.ReadAllText(Path.Combine(viewModels, "OpenRepositoryViewModel.cs"));
+        var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
+
+        Assert.DoesNotContain("ICommitActionService", parentSources, StringComparison.Ordinal);
+        Assert.DoesNotContain("EditCommitMessageAsync", parentSources, StringComparison.Ordinal);
+        Assert.DoesNotContain("IRepositoryHistoryRewriteService", mainPageSources, StringComparison.Ordinal);
+        Assert.DoesNotContain("_repositoryHistoryRewriteService", mainPageSources, StringComparison.Ordinal);
+        Assert.DoesNotContain("_historyRewriteInProgress", mainPageSources, StringComparison.Ordinal);
+        Assert.Contains("ICommitActionService", actions, StringComparison.Ordinal);
+        Assert.Contains("EditCommitMessageAsync", actions, StringComparison.Ordinal);
+        Assert.Contains("IRepositoryHistoryRewriteService", rewrite, StringComparison.Ordinal);
+        Assert.Contains("public RepositoryHistoryRewriteViewModel RepositoryHistoryRewrite", parent, StringComparison.Ordinal);
+        Assert.Contains("services.AddTransient<RepositoryHistoryRewriteViewModel>();", app, StringComparison.Ordinal);
+        foreach (var forbidden in new[] { "Microsoft.UI.Xaml", "ContentDialog", "HistoryViewModel",
+            "CommitDetailsViewModel", "RepositoryFilesViewModel", "InteractiveRebaseViewModel" })
+            Assert.DoesNotContain(forbidden, rewrite, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ProductionSourceDoesNotReintroduceGlobalApplicationServiceAccess()
     {
         var root = FindRepositoryRoot();

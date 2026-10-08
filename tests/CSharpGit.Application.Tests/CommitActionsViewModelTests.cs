@@ -169,6 +169,31 @@ public sealed class CommitActionsViewModelTests
         Assert.Contains("fixup:target", actions.Calls);
     }
 
+    [Fact]
+    public async Task EditMessageUsesHistoryRewriteLifecycleAndReturnsNewCommit()
+    {
+        var repository = Repository("repo");
+        var context = new FakeContext { Repository = repository, CurrentBranchName = "main" };
+        var viewModel = CreateViewModel(context, out _, out var actions);
+        var result = await viewModel.EditCommitMessageAsync(
+            repository, Commit("old", "parent"), "new message");
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("old", result.SelectionCommit);
+        Assert.Equal(1, context.HistoryRewriteLifecycleCalls);
+        Assert.Equal(0, context.MutationLifecycleCalls);
+
+        context.IsBusy = true;
+        var rejected = await viewModel.EditCommitMessageAsync(repository, Commit("old"), "updated");
+        Assert.False(rejected.Succeeded);
+        Assert.Equal(1, context.HistoryRewriteLifecycleCalls);
+
+        context.IsBusy = false;
+        rejected = await viewModel.EditCommitMessageAsync(repository, Commit("old"), " ");
+        Assert.False(rejected.Succeeded);
+        Assert.Equal(1, context.HistoryRewriteLifecycleCalls);
+    }
+
     private static CommitActionsViewModel CreateViewModel(
         FakeContext context,
         out FakeReferenceService references,
