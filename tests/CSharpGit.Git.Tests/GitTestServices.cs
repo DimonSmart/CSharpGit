@@ -11,8 +11,13 @@ internal static class GitTestServices
         Action<int>? processStarted = null) =>
         new(
             options ?? new GitCliOptions(),
-            activitySink ?? new GitCommandActivityHistory(),
+            ProfileIfEnabled(activitySink ?? new GitCommandActivityHistory()),
             processStarted);
+
+    private static IGitCommandActivitySink ProfileIfEnabled(IGitCommandActivitySink sink) =>
+        Environment.GetEnvironmentVariable("CSHARPGIT_TEST_METRICS") == "1"
+            ? new ProfilingGitCommandActivitySink(sink)
+            : sink;
 
     internal static GitRepositoryService CreateRepositoryService() =>
         new(CreateExecutor());
