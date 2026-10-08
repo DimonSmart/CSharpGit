@@ -178,9 +178,18 @@ public sealed class GitConfigServiceTests : IClassFixture<GitToolsEmptyFixture>,
         var expected = await _service.ReadEffectiveAsync(_repository, "diff.tool");
         var expectedLocal = await _service.ReadScopeAsync(_repository, "diff.guitool", GitConfigScope.Repository);
 
-        Assert.Equal(expected, snapshot.Effective("diff.tool"));
-        Assert.Equal(expectedLocal, snapshot.Scoped("diff.guitool", GitConfigSource.Repository));
-        Assert.Contains("included.gitconfig", snapshot.Effective("diff.tool")?.Origin ?? string.Empty);
+        var actual = snapshot.Effective("diff.tool");
+        var actualLocal = snapshot.Scoped("diff.guitool", GitConfigSource.Repository);
+        // Git's regular --show-origin quotes/escapes Windows paths, while -z
+        // returns the raw origin field. Compare their meaning, not the display syntax.
+        Assert.Equal(expected?.Key, actual?.Key);
+        Assert.Equal(expected?.Value, actual?.Value);
+        Assert.Equal(expected?.Source, actual?.Source);
+        Assert.Equal(expectedLocal?.Key, actualLocal?.Key);
+        Assert.Equal(expectedLocal?.Value, actualLocal?.Value);
+        Assert.Equal(expectedLocal?.Source, actualLocal?.Source);
+        Assert.Contains("included.gitconfig", expected?.Origin ?? string.Empty);
+        Assert.Contains("included.gitconfig", actual?.Origin ?? string.Empty);
         Assert.Null(direct.Effective("diff.tool"));
         Assert.Equal(new[] { "one", "two" },
             snapshot.ScopedValues("user.name", GitConfigSource.Repository).Select(item => item.Value));
@@ -216,9 +225,11 @@ public sealed class GitConfigServiceTests : IClassFixture<GitToolsEmptyFixture>,
         var snapshot = await _service.ReadSnapshotAsync(_repository);
         var expected = await _service.ReadEffectiveAsync(_repository, "diff.tool");
 
-        Assert.Equal(expected, snapshot.Effective("diff.tool"));
-        Assert.Equal("conditional", snapshot.Effective("diff.tool")?.Value);
-        Assert.Contains("conditional.gitconfig", snapshot.Effective("diff.tool")?.Origin ?? string.Empty);
+        var actual = snapshot.Effective("diff.tool");
+        Assert.Equal(expected?.Value, actual?.Value);
+        Assert.Equal(expected?.Source, actual?.Source);
+        Assert.Equal("conditional", actual?.Value);
+        Assert.Contains("conditional.gitconfig", actual?.Origin ?? string.Empty);
     }
 
     [Fact]
