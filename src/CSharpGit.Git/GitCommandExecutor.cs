@@ -137,6 +137,26 @@ internal sealed class GitCommandExecutor
             trimOutputEndings: false,
             maxStandardOutputBytes: maxStandardOutputBytes);
 
+    // Config snapshots can contain arbitrary user secrets. Retain the process
+    // lifecycle for diagnostics, but never forward its stdout/stderr to the activity sink.
+    internal Task<GitCommandResult> ExecuteForResultSensitiveAsync(
+        string workingDirectory,
+        string operation,
+        CancellationToken cancellationToken,
+        IReadOnlyList<string> arguments) =>
+        ExecuteProcessCoreAsync(
+            _gitExecutable,
+            workingDirectory,
+            operation,
+            GitCommandKind.Internal,
+            cancellationToken,
+            arguments,
+            _activitySink,
+            null,
+            _processStarted,
+            trimOutputEndings: false,
+            suppressOutputEvents: true);
+
     internal Task<GitCommandResult> ExecuteForResultPreservingGitEditorAsync(
         string workingDirectory,
         string operation,
@@ -246,7 +266,8 @@ internal sealed class GitCommandExecutor
         Action<int>? processStarted = null,
         bool installNoOpGitEditor = true,
         bool trimOutputEndings = true,
-        int? maxStandardOutputBytes = null)
+        int? maxStandardOutputBytes = null,
+        bool suppressOutputEvents = false)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var effectiveArguments = GitProgressPolicy.Apply(arguments, commandKind);
@@ -262,14 +283,14 @@ internal sealed class GitCommandExecutor
             process.StandardOutput,
             activityId,
             GitOutputStream.StandardOutput,
-            activitySink,
+            suppressOutputEvents ? null : activitySink,
             maxStandardOutputBytes,
             () => KillProcessTree(process));
         var errorTask = PumpTextAsync(
             process.StandardError,
             activityId,
             GitOutputStream.StandardError,
-            activitySink);
+            suppressOutputEvents ? null : activitySink);
 
         try
         {
