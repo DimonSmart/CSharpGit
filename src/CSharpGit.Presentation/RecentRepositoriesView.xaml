@@ -7,7 +7,7 @@
     <controls:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
     <ItemsPanelTemplate x:Key="RecentRepositoriesItemsPanelTemplate">
-      <ItemsWrapGrid Orientation="Horizontal" ItemWidth="268" ItemHeight="120" />
+      <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="268" ItemHeight="120" />
     </ItemsPanelTemplate>
 
     <Style x:Key="RecentRepositoryGridItemStyle" TargetType="GridViewItem">

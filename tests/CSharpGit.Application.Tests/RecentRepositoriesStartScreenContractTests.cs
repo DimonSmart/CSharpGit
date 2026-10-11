@@ -114,7 +114,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("SetRepositoryPreviewPath(null)", recentViewCodeBehind);
         Assert.Contains("StartImageLoading()", recentViewCodeBehind);
         Assert.Contains("RepositoryTileGridMetrics.Calculate(grid.ActualWidth)", recentViewCodeBehind);
-        Assert.Contains("ItemsPanelRoot is not ItemsWrapGrid", recentViewCodeBehind);
+        Assert.Contains("ItemsPanelRoot is not VariableSizedWrapGrid", recentViewCodeBehind);
         Assert.Contains("panel.ItemWidth = cellWidth", recentViewCodeBehind);
         Assert.Contains("MinCardWidth = 260", metrics);
         Assert.Contains("MaxCardWidth = 340", metrics);
@@ -128,7 +128,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("TileDescription", recentViewModel);
         Assert.Contains("TileDescription", recentView);
         Assert.Contains("media slot", imagesIntent);
-        Assert.Contains("ItemsWrapGrid", launcherIntent);
+        Assert.Contains("VariableSizedWrapGrid", launcherIntent);
         Assert.DoesNotContain("344x156", imagesIntent);
         Assert.DoesNotContain("one/two-column", launcherIntent);
 
@@ -148,11 +148,11 @@ public sealed class RecentRepositoriesStartScreenContractTests
         var tiles = document.Descendants(ns + "DataTemplate")
             .Where(template => (string?)template.Attribute(xns + "Key") == "RecentRepositoryTileTemplate").ToArray();
         var tile = Assert.Single(tiles);
-        Assert.Single(tile.Descendants(ns + "Image").Where(image => (string?)image.Attribute("Source") == "{Binding RepositoryImage}"));
-        Assert.Single(tile.Descendants(ns + "Image").Where(image => (string?)image.Attribute("Source") == "{Binding RepositoryPreview}"));
+        Assert.Single(tile.Descendants(ns + "Image"), image => (string?)image.Attribute("Source") == "{Binding RepositoryImage}");
+        Assert.Single(tile.Descendants(ns + "Image"), image => (string?)image.Attribute("Source") == "{Binding RepositoryPreview}");
         Assert.Equal(3, tile.Descendants(ns + "Button").Count());
         Assert.Contains(tile.Descendants(ns + "Grid"), grid => (string?)grid.Attribute("ColumnDefinitions") == "72,*,Auto");
-        Assert.Contains(document.Descendants(ns + "ItemsWrapGrid"), grid => (string?)grid.Attribute("ItemWidth") == "268");
+        Assert.Contains(document.Descendants(ns + "VariableSizedWrapGrid"), grid => (string?)grid.Attribute("ItemWidth") == "268");
         Assert.Contains("HorizontalScrollMode=\"Disabled\"", recentView);
         Assert.Contains("HorizontalScrollBarVisibility=\"Disabled\"", recentView);
 
