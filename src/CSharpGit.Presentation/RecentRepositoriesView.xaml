@@ -21,30 +21,7 @@
       <!-- Right/bottom margins are the 8 DIP inter-card gutters, included in ItemsWrapGrid cells. -->
       <Grid Margin="0,0,8,8" Opacity="{Binding TileOpacity}">
         <Grid.ContextFlyout>
-          <MenuFlyout>
-            <MenuFlyoutItem Text="Open"
-                            Command="{Binding OpenCommand}"
-                            IsEnabled="{Binding IsAvailable}" />
-            <MenuFlyoutItem Text="{Binding OpenFolderActionLabel}"
-                            Command="{Binding OpenFolderCommand}"
-                            IsEnabled="{Binding IsAvailable}" />
-            <MenuFlyoutItem Text="Copy repository path"
-                            Command="{Binding CopyPathCommand}" />
-            <MenuFlyoutSeparator />
-            <MenuFlyoutItem Text="{Binding PinActionLabel}"
-                            Command="{Binding PinCommand}" />
-            <MenuFlyoutItem Text="Move earlier"
-                            Command="{Binding MoveEarlierCommand}"
-                            IsEnabled="{Binding CanMoveEarlier}"
-                            Visibility="{Binding IsPinned, Converter={StaticResource BooleanToVisibilityConverter}}" />
-            <MenuFlyoutItem Text="Move later"
-                            Command="{Binding MoveLaterCommand}"
-                            IsEnabled="{Binding CanMoveLater}"
-                            Visibility="{Binding IsPinned, Converter={StaticResource BooleanToVisibilityConverter}}" />
-            <MenuFlyoutSeparator />
-            <MenuFlyoutItem Text="Remove from recent"
-                            Command="{Binding RemoveCommand}" />
-          </MenuFlyout>
+          <MenuFlyout Opening="RepositoryContextFlyout_Opening" />
         </Grid.ContextFlyout>
 
         <!-- The open target sits behind non-hit-testable text/media; Pin/Remove are siblings,
@@ -112,7 +89,7 @@
           <StackPanel Grid.Column="2"
                       Orientation="Horizontal"
                       Spacing="{StaticResource Spacing.XS}">
-            <Button Command="{Binding PinCommand}"
+            <Button Click="RepositoryPin_Click"
                     Style="{StaticResource RepositoryTileActionButtonStyle}"
                     Foreground="{ThemeResource AccentFillColorDefaultBrush}"
                     ToolTipService.ToolTip="{Binding PinActionLabel}"
@@ -161,36 +138,74 @@
       <StackPanel Margin="{StaticResource Padding.Page}"
                   Spacing="{StaticResource Spacing.XL}"
                   HorizontalAlignment="Stretch">
-        <TextBlock Text="Repositories" Style="{StaticResource TitleTextStyle}" />
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.S}">
+          <TextBlock Text="Repositories" Style="{StaticResource TitleTextStyle}" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Content="+ New group"
+                  Click="NewGroup_Click"
+                  AutomationProperties.Name="Create repository group"
+                  VerticalAlignment="Center" />
+        </Grid>
 
         <TextBox Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                  PlaceholderText="Search by name or path…"
                  Style="{StaticResource CompactTextBoxStyle}"
                  AutomationProperties.Name="Search repositories by name or path" />
 
-        <StackPanel Spacing="{StaticResource Spacing.S}"
-                    Visibility="{Binding HasPinnedRepositories, Converter={StaticResource BooleanToVisibilityConverter}}">
-          <TextBlock Text="Pinned" Style="{StaticResource BodyStrongTextStyle}" />
-          <GridView x:Name="PinnedRepositoriesGridView"
-                                               ItemsSource="{Binding PinnedRepositories}"
-                                               SelectionMode="None"
-                                               IsItemClickEnabled="False"
-                                               CanDragItems="True"
-                                               CanReorderItems="False"
-                                               AllowDrop="True"
-                                               DragItemsStarting="PinnedRepositoriesGridView_DragItemsStarting"
-                                               DragOver="PinnedRepositoriesGridView_DragOver"
-                                               DragLeave="PinnedRepositoriesGridView_DragLeave"
-                                               Drop="PinnedRepositoriesGridView_Drop"
-                                               DragItemsCompleted="PinnedRepositoriesGridView_DragItemsCompleted"
-                                               HorizontalAlignment="Stretch"
-                                               Padding="0"
-                                               ItemsPanel="{StaticResource RecentRepositoriesItemsPanelTemplate}"
-                                               ItemContainerStyle="{StaticResource RecentRepositoryGridItemStyle}"
-                                               ItemTemplate="{StaticResource RecentRepositoryTileTemplate}"
-                                               Loaded="RepositoryGrid_Loaded"
-                                               SizeChanged="RepositoryGrid_SizeChanged" />
-        </StackPanel>
+        <ItemsControl ItemsSource="{Binding Groups}"
+                      HorizontalAlignment="Stretch">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Spacing="{StaticResource Spacing.S}"
+                          HorizontalAlignment="Stretch"
+                          Visibility="{Binding IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid ColumnDefinitions="*,Auto"
+                      ColumnSpacing="{StaticResource Spacing.S}">
+                  <Button Click="GroupExpand_Click"
+                          IsEnabled="{Binding CanToggleExpanded}"
+                          HorizontalAlignment="Left"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          UseSystemFocusVisuals="True"
+                          AutomationProperties.Name="{Binding Heading}">
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                      <FontIcon Glyph="{Binding ExpandGlyph}"
+                                FontSize="{StaticResource Icon.Small}" />
+                      <TextBlock Text="{Binding Heading}"
+                                 Style="{StaticResource BodyStrongTextStyle}"
+                                 MaxWidth="600"
+                                 TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </Button>
+                  <Button Grid.Column="1"
+                          Content="&#x2026;"
+                          Click="GroupActions_Click"
+                          AutomationProperties.Name="{Binding ActionsLabel}"
+                          ToolTipService.ToolTip="{Binding ActionsLabel}"
+                          VerticalAlignment="Center" />
+                </Grid>
+                <GridView ItemsSource="{Binding Repositories}"
+                          Visibility="{Binding EffectiveIsExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"
+                          SelectionMode="None"
+                          IsItemClickEnabled="False"
+                          CanDragItems="True"
+                          CanReorderItems="False"
+                          AllowDrop="True"
+                          DragItemsStarting="PinnedRepositoriesGridView_DragItemsStarting"
+                          DragOver="PinnedRepositoriesGridView_DragOver"
+                          DragLeave="PinnedRepositoriesGridView_DragLeave"
+                          Drop="PinnedRepositoriesGridView_Drop"
+                          DragItemsCompleted="PinnedRepositoriesGridView_DragItemsCompleted"
+                          HorizontalAlignment="Stretch"
+                          Padding="0"
+                          ItemsPanel="{StaticResource RecentRepositoriesItemsPanelTemplate}"
+                          ItemContainerStyle="{StaticResource RecentRepositoryGridItemStyle}"
+                          ItemTemplate="{StaticResource RecentRepositoryTileTemplate}"
+                          Loaded="RepositoryGrid_Loaded"
+                          SizeChanged="RepositoryGrid_SizeChanged" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
 
         <StackPanel Spacing="{StaticResource Spacing.S}"
                     Visibility="{Binding HasRecentRepositories, Converter={StaticResource BooleanToVisibilityConverter}}">
