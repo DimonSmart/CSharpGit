@@ -464,21 +464,22 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        if (newIndex < 0) throw new ArgumentOutOfRangeException(nameof(newIndex));
-
         var normalizedPath = NormalizePath(path);
         return UpdateAsync(
             current =>
             {
+                var existing = current.RecentRepositories.FirstOrDefault(
+                    candidate => PathComparer.Equals(candidate.Path, normalizedPath));
+                if (existing is not { IsPinned: true }) return current;
                 var pinned = current.RecentRepositories
-                    .Where(candidate => candidate.IsPinned && candidate.GroupId == current.RecentRepositories
-                        .FirstOrDefault(entry => PathComparer.Equals(entry.Path, normalizedPath))?.GroupId)
+                    .Where(candidate => candidate.IsPinned && candidate.GroupId == existing.GroupId)
                     .OrderBy(candidate => candidate.PinnedOrder ?? int.MaxValue)
                     .ToList();
                 var currentIndex = pinned.FindIndex(
                     candidate => PathComparer.Equals(candidate.Path, normalizedPath));
                 if (currentIndex < 0) return current;
-                if (newIndex >= pinned.Count) throw new ArgumentOutOfRangeException(nameof(newIndex));
+                if (newIndex < 0 || newIndex >= pinned.Count)
+                    throw new ArgumentOutOfRangeException(nameof(newIndex));
                 if (currentIndex == newIndex) return current;
 
                 var moving = pinned[currentIndex];
