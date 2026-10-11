@@ -37,6 +37,22 @@ public sealed class UnoXamlCompatibilityContractTests
     }
 
     [Fact]
+    public void CompactTextBoxesKeepSemanticVerticalContentAlignment()
+    {
+        var controls = ReadStyle("Controls.xaml");
+        var singleLine = Slice(controls,
+            "<Style x:Key=\"CompactTextBoxStyle\"",
+            "</Style>");
+        var multiline = Slice(controls,
+            "<Style x:Key=\"CompactMultilineTextBoxStyle\"",
+            "</Style>");
+
+        Assert.Contains("<Setter Property=\"VerticalContentAlignment\" Value=\"Center\" />", singleLine);
+        Assert.Contains("BasedOn=\"{StaticResource CompactTextBoxStyle}\"", multiline);
+        Assert.Contains("<Setter Property=\"VerticalContentAlignment\" Value=\"Top\" />", multiline);
+    }
+
+    [Fact]
     public void HistoryTextColumnsKeepSemanticGap()
     {
         var workspace = ReadStyle("Workspace.xaml");
