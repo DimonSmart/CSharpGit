@@ -63,6 +63,7 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
     public bool IsAvailable => _isAvailable;
     public double TileOpacity => IsAvailable ? 1d : 0.5d;
     public string Metadata => _metadata;
+    public string TileDescription => $"{DisplayName}\n{Path}\n{Metadata}";
     public bool IsPinned => _isPinned;
     public int? PinnedOrder => _pinnedOrder;
     public string PinActionLabel => IsPinned ? "Unpin repository" : "Pin repository";
@@ -81,14 +82,10 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
     public ImageSource? RepositoryImage => _repositoryImage;
     public string? RepositoryImagePath => _repositoryImagePath;
     public double RepositoryImageOpacity => _repositoryImage is null ? 0d : 1d;
-    public double RepositoryGlyphOpacity => _repositoryImage is null ? 1d : 0d;
+    public double RepositoryGlyphOpacity => _repositoryImage is null && _repositoryPreview is null ? 1d : 0d;
     public ImageSource? RepositoryPreview => _repositoryPreview;
     public string? RepositoryPreviewPath => _repositoryPreviewPath;
-    public int RepositoryColumnSpan => _repositoryPreview is null ? 1 : 2;
-    public Visibility RepositoryCompactLayoutVisibility =>
-        _repositoryPreview is null ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility RepositoryPreviewLayoutVisibility =>
-        _repositoryPreview is null ? Visibility.Collapsed : Visibility.Visible;
+    public double RepositoryPreviewOpacity => _repositoryPreview is null ? 0d : 1d;
 
     internal bool NeedsImageRefresh { get; set; }
 
@@ -103,6 +100,7 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
         {
             _displayName = settings.DisplayName;
             OnPropertyChanged(nameof(DisplayName));
+            OnPropertyChanged(nameof(TileDescription));
         }
 
         if (_lastOpenedUtc != settings.LastOpenedUtc)
@@ -210,9 +208,8 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
         _repositoryPreview = image;
         OnPropertyChanged(nameof(RepositoryPreviewPath));
         OnPropertyChanged(nameof(RepositoryPreview));
-        OnPropertyChanged(nameof(RepositoryColumnSpan));
-        OnPropertyChanged(nameof(RepositoryCompactLayoutVisibility));
-        OnPropertyChanged(nameof(RepositoryPreviewLayoutVisibility));
+        OnPropertyChanged(nameof(RepositoryPreviewOpacity));
+        OnPropertyChanged(nameof(RepositoryGlyphOpacity));
     }
 
     private void UpdateMetadata(CommitTimeDisplayMode commitTimeDisplayMode)
@@ -230,6 +227,7 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
         if (string.Equals(_metadata, metadata, StringComparison.Ordinal)) return;
         _metadata = metadata;
         OnPropertyChanged(nameof(Metadata));
+        OnPropertyChanged(nameof(TileDescription));
     }
 
     private static (ImageSource? Image, string? Path) LoadImage(string? imagePath)
