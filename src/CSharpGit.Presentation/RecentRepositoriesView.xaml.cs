@@ -2,6 +2,7 @@ using CSharpGit.Presentation.Controls;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using Windows.ApplicationModel.DataTransfer;
 
@@ -113,9 +114,20 @@ public sealed partial class RecentRepositoriesView : UserControl
     private async void GroupExpand_Click(object sender, RoutedEventArgs e)
     {
         if (Model is not { IsSearchActive: false } vm
-            || sender is not Button { DataContext: RepositoryGroupViewModel group }) return;
-        await RunActionAsync("Could not change group expansion",
-            () => vm.SetGroupExpandedAsync(group.Id, !group.IsExpanded));
+            || sender is not ToggleButton { DataContext: RepositoryGroupViewModel group } toggle) return;
+        try
+        {
+            await vm.SetGroupExpandedAsync(group.Id, !group.IsExpanded);
+        }
+        catch (OperationCanceledException)
+        {
+            toggle.IsChecked = group.EffectiveIsExpanded;
+        }
+        catch (Exception exception)
+        {
+            toggle.IsChecked = group.EffectiveIsExpanded;
+            await ShowErrorAsync("Could not change group expansion", exception);
+        }
     }
 
     private void GroupActions_Click(object sender, RoutedEventArgs e)
@@ -155,7 +167,7 @@ public sealed partial class RecentRepositoriesView : UserControl
             await RunActionAsync("Could not delete group", () => vm.DeleteGroupAsync(group.Id));
     }
 
-    private void ShowGroupChoices(FrameworkElement anchor, RecentRepositoryItem repository, bool moving)
+    private void ShowGroupChoices(FrameworkElement anchor, RecentRepositoryItem repository)
     {
         if (Model is not { } vm) return;
         var flyout = new MenuFlyout();
@@ -175,10 +187,16 @@ public sealed partial class RecentRepositoriesView : UserControl
             || sender is not Button { DataContext: RecentRepositoryItem repository } button) return;
         if (!repository.IsPinned && vm.Groups.Count > 1)
         {
-            ShowGroupChoices(button, repository, moving: false);
+            ShowGroupChoices(button, repository);
             return;
         }
         await RunActionAsync("Could not change repository pin", () => vm.TogglePinAsync(repository));
+    }
+
+    private async void RepositoryRemove_Click(object sender, RoutedEventArgs e)
+    {
+        if (Model is { } vm && sender is Button { DataContext: RecentRepositoryItem repo })
+            await RunActionAsync("Could not remove repository", () => vm.RemoveRepositoryAsync(repo));
     }
 
     private void RepositoryContextFlyout_Opening(object sender, object args)
@@ -208,9 +226,11 @@ public sealed partial class RecentRepositoriesView : UserControl
             }
             flyout.Items.Add(move);
             flyout.Items.Add(MenuAction("Move earlier", repo.CanMoveEarlier,
-                () => { if (repo.MoveEarlierCommand.CanExecute(null)) repo.MoveEarlierCommand.Execute(null); }));
+                () => _ = RunActionAsync("Could not reorder repositories",
+                    () => vm.MovePinnedRepositoryAsync(repo, repo.PinnedOrder!.Value - 1))));
             flyout.Items.Add(MenuAction("Move later", repo.CanMoveLater,
-                () => { if (repo.MoveLaterCommand.CanExecute(null)) repo.MoveLaterCommand.Execute(null); }));
+                () => _ = RunActionAsync("Could not reorder repositories",
+                    () => vm.MovePinnedRepositoryAsync(repo, repo.PinnedOrder!.Value + 1))));
         }
         else if (vm.Groups.Count > 1)
         {
@@ -225,7 +245,7 @@ public sealed partial class RecentRepositoriesView : UserControl
 
         flyout.Items.Add(new MenuFlyoutSeparator());
         flyout.Items.Add(MenuAction("Remove from recent", true,
-            () => { if (repo.RemoveCommand.CanExecute(null)) repo.RemoveCommand.Execute(null); }));
+            () => _ = RunActionAsync("Could not remove repository", () => vm.RemoveRepositoryAsync(repo))));
     }
 
     private void ClearDrag()

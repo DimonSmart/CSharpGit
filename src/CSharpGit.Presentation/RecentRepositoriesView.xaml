@@ -98,7 +98,7 @@
                         FontSize="{StaticResource Icon.Small}"
                         Opacity="{Binding PinIndicatorOpacity}" />
             </Button>
-            <Button Command="{Binding RemoveCommand}"
+            <Button Click="RepositoryRemove_Click"
                     Style="{StaticResource RepositoryTileActionButtonStyle}"
                     ToolTipService.ToolTip="Remove from recent"
                     AutomationProperties.Name="Remove from recent">
@@ -160,13 +160,14 @@
                           Visibility="{Binding IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid ColumnDefinitions="*,Auto"
                       ColumnSpacing="{StaticResource Spacing.S}">
-                  <Button Click="GroupExpand_Click"
+                  <ToggleButton Click="GroupExpand_Click"
+                          IsChecked="{Binding EffectiveIsExpanded, Mode=OneWay}"
                           IsEnabled="{Binding CanToggleExpanded}"
                           HorizontalAlignment="Left"
                           Background="Transparent"
                           BorderThickness="0"
                           UseSystemFocusVisuals="True"
-                          AutomationProperties.Name="{Binding Heading}">
+                          AutomationProperties.Name="{Binding ExpansionActionLabel}">
                     <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                       <FontIcon Glyph="{Binding ExpandGlyph}"
                                 FontSize="{StaticResource Icon.Small}" />
@@ -175,7 +176,7 @@
                                  MaxWidth="600"
                                  TextTrimming="CharacterEllipsis" />
                     </StackPanel>
-                  </Button>
+                  </ToggleButton>
                   <Button Grid.Column="1"
                           Content="&#x2026;"
                           Click="GroupActions_Click"
