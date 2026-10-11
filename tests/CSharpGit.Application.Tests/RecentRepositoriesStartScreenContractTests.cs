@@ -127,7 +127,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.DoesNotContain("MaxWidth=\"1120\"", recentView);
         Assert.Contains("TileDescription", recentViewModel);
         Assert.Contains("TileDescription", recentView);
-        Assert.Contains("compact", imagesIntent, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("media slot", imagesIntent);
         Assert.Contains("ItemsWrapGrid", launcherIntent);
         Assert.DoesNotContain("344x156", imagesIntent);
         Assert.DoesNotContain("one/two-column", launcherIntent);
@@ -162,7 +162,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("_settings.CommitTimeDisplayMode", recentViewModel);
         Assert.DoesNotContain("Last opened {localOpened:g}", recentViewModel);
         Assert.Contains("RepositoryPreview", recentViewModel);
-        Assert.Contains("_repositoryPreview is null ? 1 : 2", recentViewModel);
+        Assert.DoesNotContain("_repositoryPreview is null ? 1 : 2", recentViewModel);
         Assert.Contains("SetRepositoryVisual", recentViewModel);
         Assert.Contains("state.Kind == RepositoryImageKind.Icon", recentViewModel);
         Assert.Contains("state.Kind == RepositoryImageKind.Preview", recentViewModel);
