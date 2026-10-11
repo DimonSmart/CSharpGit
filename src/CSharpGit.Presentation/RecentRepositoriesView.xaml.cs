@@ -1,3 +1,4 @@
+using CSharpGit.Presentation.Controls;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -21,6 +22,26 @@ public sealed partial class RecentRepositoriesView : UserControl
     {
         if (DataContext is RecentRepositoriesViewModel viewModel)
             viewModel.StartImageLoading();
+    }
+
+    private static void RepositoryGrid_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is GridView grid) UpdateRepositoryGridMetrics(grid);
+    }
+
+    private static void RepositoryGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (sender is GridView grid) UpdateRepositoryGridMetrics(grid);
+    }
+
+    private static void UpdateRepositoryGridMetrics(GridView grid)
+    {
+        if (grid.ItemsPanelRoot is not ItemsWrapGrid panel) return;
+
+        var (_, cellWidth) = RepositoryTileGridMetrics.Calculate(grid.ActualWidth);
+        if (cellWidth <= 0 || Math.Abs(panel.ItemWidth - cellWidth) < 0.05) return;
+
+        panel.ItemWidth = cellWidth;
     }
 
     private void RepositoryImage_ImageFailed(object sender, ExceptionRoutedEventArgs e)

@@ -18,7 +18,9 @@ public sealed class RecentRepositoriesStartScreenContractTests
         var recentView = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "RecentRepositoriesView.xaml"));
         var controlsStyles = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Controls.xaml"));
         var recentViewCodeBehind = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "RecentRepositoriesView.xaml.cs"));
-        var recentGrid = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "RecentRepositoriesGridView.cs"));
+        var metrics = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "RepositoryTileGridMetrics.cs"));
+        var imagesIntent = File.ReadAllText(Path.Combine(root, ".idd", "intent", "IDD-0016.spec-repository-images.md"));
+        var launcherIntent = File.ReadAllText(Path.Combine(root, ".idd", "intent", "IDD-0037.spec-recent-repositories-start-screen.md"));
         var recentViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RecentRepositoriesViewModel.cs"));
         var integration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RecentRepositories.cs"));
 
@@ -79,9 +81,6 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("PinnedRepositories", recentView);
         Assert.Contains("PinCommand", recentView);
         Assert.Contains("PinActionLabel", recentView);
-        Assert.Contains("RecentRepositoryTextTemplate", recentView);
-        Assert.Contains("RecentRepositoryActionsTemplate", recentView);
-        Assert.Contains("RowDefinitions=\"38,Auto,*\"", recentView);
         Assert.Contains("TextWrapping=\"Wrap\"", recentView);
         Assert.Contains("MaxLines=\"2\"", recentView);
         Assert.DoesNotContain("RepositoryTileActionCapsuleStyle", recentView);
@@ -104,29 +103,58 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("IsEnabled=\"{Binding HasUnavailableRepositories}\"", recentView);
         Assert.Contains("Remove missing", recentView);
         Assert.Contains("TileOpacity", recentView);
-        Assert.Contains("controls:RecentRepositoriesGridView", recentView);
-        Assert.Contains("VariableSizedWrapGrid", recentView);
-        Assert.DoesNotContain("ItemsWrapGrid", recentView);
-        Assert.Contains("ItemWidth=\"344\" ItemHeight=\"156\"", recentView);
-        Assert.Contains("Width=\"64\" Height=\"64\"", recentView);
         Assert.Contains("Source=\"{Binding RepositoryImage}\"", recentView);
-        Assert.Contains("RepositoryGlyphOpacity", recentView);
-        Assert.Contains("RepositoryCompactLayoutVisibility", recentView);
-        Assert.Contains("RepositoryPreviewLayoutVisibility", recentView);
         Assert.Contains("Source=\"{Binding RepositoryPreview}\"", recentView);
-        Assert.Contains("ColumnDefinitions=\"*,280\"", recentView);
-        Assert.Contains("Width=\"280\" Height=\"116\"", recentView);
-        Assert.Contains("Stretch=\"UniformToFill\"", recentView);
+        Assert.Contains("RepositoryGlyphOpacity", recentView);
+        Assert.Contains("RepositoryPreviewOpacity", recentView);
+        Assert.Contains("Stretch=\"Uniform\"", recentView);
         Assert.Contains("ImageFailed=\"RepositoryImage_ImageFailed\"", recentView);
         Assert.Contains("ImageFailed=\"RepositoryPreview_ImageFailed\"", recentView);
         Assert.Contains("SetRepositoryImagePath(null)", recentViewCodeBehind);
         Assert.Contains("SetRepositoryPreviewPath(null)", recentViewCodeBehind);
         Assert.Contains("StartImageLoading()", recentViewCodeBehind);
+        Assert.Contains("RepositoryTileGridMetrics.Calculate(grid.ActualWidth)", recentViewCodeBehind);
+        Assert.Contains("ItemsPanelRoot is not ItemsWrapGrid", recentViewCodeBehind);
+        Assert.Contains("panel.ItemWidth = cellWidth", recentViewCodeBehind);
+        Assert.Contains("MinCardWidth = 260", metrics);
+        Assert.Contains("MaxCardWidth = 340", metrics);
+        Assert.Contains("Gap = 8", metrics);
+        Assert.DoesNotContain("RepositoryColumnSpan", recentViewModel);
+        Assert.DoesNotContain("RepositoryColumnSpan", recentView);
+        Assert.DoesNotContain("VariableSizedWrapGrid.SetColumnSpan", recentViewCodeBehind);
+        Assert.DoesNotContain("RepositoryPreviewLayoutVisibility", recentViewModel);
+        Assert.DoesNotContain("RepositoryCompactLayoutVisibility", recentView);
+        Assert.DoesNotContain("MaxWidth=\"1120\"", recentView);
+        Assert.Contains("TileDescription", recentViewModel);
+        Assert.Contains("TileDescription", recentView);
+        Assert.Contains("compact", imagesIntent, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("ItemsWrapGrid", launcherIntent);
+        Assert.DoesNotContain("344x156", imagesIntent);
+        Assert.DoesNotContain("one/two-column", launcherIntent);
 
-        Assert.Contains("VariableSizedWrapGrid.SetColumnSpan", recentGrid);
-        Assert.Contains("PrepareContainerForItemOverride", recentGrid);
-        Assert.Contains("RepositoryColumnSpan", recentGrid);
-        Assert.Contains("PropertyChanged", recentGrid);
+        var ns = System.Xml.Linq.XNamespace.Get("http://schemas.microsoft.com/winfx/2006/xaml/presentation");
+        var xns = System.Xml.Linq.XNamespace.Get("http://schemas.microsoft.com/winfx/2006/xaml");
+        var document = System.Xml.Linq.XDocument.Parse(recentView);
+        var gridViews = document.Descendants(ns + "GridView").ToArray();
+        Assert.Equal(2, gridViews.Length);
+        Assert.All(gridViews, grid =>
+        {
+            Assert.Equal("{StaticResource RecentRepositoriesItemsPanelTemplate}", (string?)grid.Attribute("ItemsPanel"));
+            Assert.Equal("{StaticResource RecentRepositoryGridItemStyle}", (string?)grid.Attribute("ItemContainerStyle"));
+            Assert.Equal("{StaticResource RecentRepositoryTileTemplate}", (string?)grid.Attribute("ItemTemplate"));
+            Assert.NotNull(grid.Attribute("Loaded"));
+            Assert.NotNull(grid.Attribute("SizeChanged"));
+        });
+        var tiles = document.Descendants(ns + "DataTemplate")
+            .Where(template => (string?)template.Attribute(xns + "Key") == "RecentRepositoryTileTemplate").ToArray();
+        var tile = Assert.Single(tiles);
+        Assert.Single(tile.Descendants(ns + "Image").Where(image => (string?)image.Attribute("Source") == "{Binding RepositoryImage}"));
+        Assert.Single(tile.Descendants(ns + "Image").Where(image => (string?)image.Attribute("Source") == "{Binding RepositoryPreview}"));
+        Assert.Equal(3, tile.Descendants(ns + "Button").Count());
+        Assert.Contains(tile.Descendants(ns + "Grid"), grid => (string?)grid.Attribute("ColumnDefinitions") == "72,*,Auto");
+        Assert.Contains(document.Descendants(ns + "ItemsWrapGrid"), grid => (string?)grid.Attribute("ItemWidth") == "268");
+        Assert.Contains("HorizontalScrollMode=\"Disabled\"", recentView);
+        Assert.Contains("HorizontalScrollBarVisibility=\"Disabled\"", recentView);
 
         Assert.Contains("Folder not found", recentViewModel);
         Assert.Contains("INotifyPropertyChanged", recentViewModel);
@@ -134,10 +162,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("_settings.CommitTimeDisplayMode", recentViewModel);
         Assert.DoesNotContain("Last opened {localOpened:g}", recentViewModel);
         Assert.Contains("RepositoryPreview", recentViewModel);
-        Assert.Contains("RepositoryColumnSpan", recentViewModel);
         Assert.Contains("_repositoryPreview is null ? 1 : 2", recentViewModel);
-        Assert.Contains("RepositoryCompactLayoutVisibility", recentViewModel);
-        Assert.Contains("RepositoryPreviewLayoutVisibility", recentViewModel);
         Assert.Contains("SetRepositoryVisual", recentViewModel);
         Assert.Contains("state.Kind == RepositoryImageKind.Icon", recentViewModel);
         Assert.Contains("state.Kind == RepositoryImageKind.Preview", recentViewModel);
