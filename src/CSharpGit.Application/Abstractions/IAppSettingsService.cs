@@ -39,7 +39,14 @@ public sealed record RecentRepositorySettings(
     DateTimeOffset LastOpenedUtc,
     string? LastBranchName,
     bool IsPinned = false,
-    int? PinnedOrder = null);
+    int? PinnedOrder = null,
+    string? GroupId = null);
+
+public sealed record RepositoryGroupSettings(string Id, string Name, int Order, bool IsExpanded);
+
+public sealed record RepositoryLauncherSettingsSnapshot(
+    IReadOnlyList<RepositoryGroupSettings> Groups,
+    IReadOnlyList<RecentRepositorySettings> Repositories);
 
 public interface IAppSettingsService
 {
@@ -58,6 +65,8 @@ public interface IAppSettingsService
     HistoryRenderingMode HistoryRenderingMode { get; }
     string DefaultRepositoriesDirectory { get; }
     IReadOnlyList<RecentRepositorySettings> RecentRepositories { get; }
+    IReadOnlyList<RepositoryGroupSettings> RepositoryGroups { get; }
+    RepositoryLauncherSettingsSnapshot RepositoryLauncherSnapshot { get; }
 
     /// <summary>
     /// Raised after a new settings state has been persisted successfully and published as committed state.
@@ -125,6 +134,13 @@ public interface IAppSettingsService
         string path,
         string? lastBranchName,
         CancellationToken cancellationToken = default);
+
+    Task<RepositoryGroupSettings> CreateRepositoryGroupAsync(string name, CancellationToken cancellationToken = default);
+    Task RenameRepositoryGroupAsync(string groupId, string name, CancellationToken cancellationToken = default);
+    Task DeleteRepositoryGroupAsync(string groupId, CancellationToken cancellationToken = default);
+    Task MoveRepositoryGroupAsync(string groupId, int newIndex, CancellationToken cancellationToken = default);
+    Task SetRepositoryGroupExpandedAsync(string groupId, bool expanded, CancellationToken cancellationToken = default);
+    Task MoveRecentRepositoryToGroupAsync(string path, string groupId, CancellationToken cancellationToken = default);
 
     Task SetRecentRepositoryPinnedAsync(
         string path,

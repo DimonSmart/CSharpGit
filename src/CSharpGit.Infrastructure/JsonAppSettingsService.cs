@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json.Serialization;
 using CSharpGit.Application.Abstractions;
 
@@ -7,6 +9,7 @@ namespace CSharpGit.Infrastructure;
 public sealed class JsonAppSettingsService : IAppSettingsService
 {
     private const int MaxUnpinnedRecentRepositories = 1000;
+    private const string FavoritesId = "favorites";
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         WriteIndented = true,
@@ -65,6 +68,17 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     public string DefaultRepositoriesDirectory => Volatile.Read(ref _state).DefaultRepositoriesDirectory;
 
     public IReadOnlyList<RecentRepositorySettings> RecentRepositories => Volatile.Read(ref _state).RecentRepositories;
+
+    public IReadOnlyList<RepositoryGroupSettings> RepositoryGroups => Volatile.Read(ref _state).RepositoryGroups;
+
+    public RepositoryLauncherSettingsSnapshot RepositoryLauncherSnapshot
+    {
+        get
+        {
+            var state = Volatile.Read(ref _state);
+            return new RepositoryLauncherSettingsSnapshot(state.RepositoryGroups, state.RecentRepositories);
+        }
+    }
 
     public event EventHandler? Changed;
 
@@ -243,11 +257,12 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                     DateTimeOffset.UtcNow,
                     normalizedBranchName,
                     existing?.IsPinned ?? false,
-                    existing?.PinnedOrder);
+                    existing?.PinnedOrder,
+                    existing?.GroupId);
                 var updated = current.RecentRepositories
                     .Where(candidate => !PathComparer.Equals(candidate.Path, normalizedPath))
                     .Append(entry);
-                return current with { RecentRepositories = NormalizeRecentRepositories(updated) };
+                return current with { RecentRepositories = NormalizeRecentRepositories(updated, current.RepositoryGroups) };
             },
             cancellationToken);
     }
@@ -286,31 +301,141 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             cancellationToken);
     }
 
-    public Task SetRecentRepositoryPinnedAsync(
-        string path,
-        bool pinned,
-        CancellationToken cancellationToken = default)
+
+    public async Task<RepositoryGroupSettings> CreateRepositoryGroupAsync(
+        string name, CancellationToken cancellationToken = default)
+    {
+        var normalizedName = ValidateGroupName(name);
+        var created = new RepositoryGroupSettings(Guid.NewGuid().ToString("N"), normalizedName, 0, true);
+        await UpdateAsync(current =>
+        {
+            EnsureUniqueGroupName(current.RepositoryGroups, normalizedName);
+            created = created with { Order = current.RepositoryGroups.Count };
+            return current with
+            {
+                RepositoryGroups = Array.AsReadOnly(current.RepositoryGroups.Append(created).ToArray())
+            };
+        }, cancellationToken).ConfigureAwait(false);
+        return created;
+    }
+
+    public Task RenameRepositoryGroupAsync(
+        string groupId, string name, CancellationToken cancellationToken = default)
+    {
+        var normalizedName = ValidateGroupName(name);
+        return UpdateAsync(current =>
+        {
+            var group = FindGroup(current, groupId);
+            if (group.Name == normalizedName) return current;
+            EnsureUniqueGroupName(current.RepositoryGroups, normalizedName, group.Id);
+            return current with
+            {
+                RepositoryGroups = Array.AsReadOnly(current.RepositoryGroups
+                    .Select(candidate => candidate.Id == group.Id ? candidate with { Name = normalizedName } : candidate)
+                    .ToArray())
+            };
+        }, cancellationToken);
+    }
+
+    public Task DeleteRepositoryGroupAsync(string groupId, CancellationToken cancellationToken = default) =>
+        UpdateAsync(current =>
+        {
+            var group = FindGroup(current, groupId);
+            if (group.Id == FavoritesId)
+                throw new InvalidOperationException("Favorites cannot be deleted.");
+
+            var groups = current.RepositoryGroups
+                .Where(candidate => candidate.Id != group.Id)
+                .Select((candidate, index) => candidate with { Order = index })
+                .ToArray();
+            var appendOffset = current.RecentRepositories.Count(candidate => candidate.IsPinned && candidate.GroupId == FavoritesId);
+            var moved = current.RecentRepositories.Select(candidate =>
+                candidate.IsPinned && candidate.GroupId == group.Id
+                    ? candidate with { GroupId = FavoritesId, PinnedOrder = appendOffset + candidate.PinnedOrder.GetValueOrDefault() }
+                    : candidate);
+            return current with
+            {
+                RepositoryGroups = Array.AsReadOnly(groups),
+                RecentRepositories = NormalizeRecentRepositories(moved, groups)
+            };
+        }, cancellationToken);
+
+    public Task MoveRepositoryGroupAsync(string groupId, int newIndex, CancellationToken cancellationToken = default) =>
+        UpdateAsync(current =>
+        {
+            var group = FindGroup(current, groupId);
+            if (newIndex < 0 || newIndex >= current.RepositoryGroups.Count)
+                throw new ArgumentOutOfRangeException(nameof(newIndex));
+            if (group.Order == newIndex) return current;
+            var groups = current.RepositoryGroups.ToList();
+            groups.RemoveAt(group.Order);
+            groups.Insert(newIndex, group);
+            return current with
+            {
+                RepositoryGroups = Array.AsReadOnly(groups
+                    .Select((candidate, index) => candidate with { Order = index }).ToArray())
+            };
+        }, cancellationToken);
+
+    public Task SetRepositoryGroupExpandedAsync(
+        string groupId, bool expanded, CancellationToken cancellationToken = default) =>
+        UpdateAsync(current =>
+        {
+            var group = FindGroup(current, groupId);
+            if (group.IsExpanded == expanded) return current;
+            return current with
+            {
+                RepositoryGroups = Array.AsReadOnly(current.RepositoryGroups
+                    .Select(candidate => candidate.Id == group.Id ? candidate with { IsExpanded = expanded } : candidate)
+                    .ToArray())
+            };
+        }, cancellationToken);
+
+    public Task MoveRecentRepositoryToGroupAsync(
+        string path, string groupId, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         var normalizedPath = NormalizePath(path);
+        return UpdateAsync(current =>
+        {
+            var group = FindGroup(current, groupId);
+            var existing = current.RecentRepositories.FirstOrDefault(candidate => PathComparer.Equals(candidate.Path, normalizedPath));
+            if (existing is null || existing.IsPinned && existing.GroupId == group.Id) return current;
 
-        return UpdateAsync(
-            current =>
+            var appendIndex = current.RecentRepositories.Count(candidate => candidate.IsPinned && candidate.GroupId == group.Id);
+            return current with
             {
-                var existing = current.RecentRepositories.FirstOrDefault(
-                    candidate => PathComparer.Equals(candidate.Path, normalizedPath));
-                if (existing is null || existing.IsPinned == pinned) return current;
+                RecentRepositories = NormalizeRecentRepositories(current.RecentRepositories.Select(candidate =>
+                    PathComparer.Equals(candidate.Path, normalizedPath)
+                        ? candidate with { IsPinned = true, GroupId = group.Id, PinnedOrder = appendIndex }
+                        : candidate), current.RepositoryGroups)
+            };
+        }, cancellationToken);
+    }
 
-                int? pinnedOrder = pinned
-                    ? current.RecentRepositories.Count(candidate => candidate.IsPinned)
-                    : null;
-                var updated = current.RecentRepositories.Select(
-                    candidate => PathComparer.Equals(candidate.Path, normalizedPath)
-                        ? candidate with { IsPinned = pinned, PinnedOrder = pinnedOrder }
-                        : candidate);
-                return current with { RecentRepositories = NormalizeRecentRepositories(updated) };
-            },
-            cancellationToken);
+    public Task SetRecentRepositoryPinnedAsync(
+        string path, bool pinned, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var normalizedPath = NormalizePath(path);
+        return UpdateAsync(current =>
+        {
+            var existing = current.RecentRepositories.FirstOrDefault(
+                candidate => PathComparer.Equals(candidate.Path, normalizedPath));
+            if (existing is null || existing.IsPinned == pinned) return current;
+            var appendIndex = current.RecentRepositories.Count(
+                candidate => candidate.IsPinned && candidate.GroupId == FavoritesId);
+            var updated = current.RecentRepositories.Select(candidate =>
+                PathComparer.Equals(candidate.Path, normalizedPath)
+                    ? candidate with
+                    {
+                        IsPinned = pinned,
+                        GroupId = pinned ? FavoritesId : null,
+                        PinnedOrder = pinned ? appendIndex : null
+                    }
+                    : candidate);
+            return current with { RecentRepositories = NormalizeRecentRepositories(updated, current.RepositoryGroups) };
+        }, cancellationToken);
     }
 
     public Task RemoveRecentRepositoryAsync(
@@ -328,7 +453,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                     .ToArray();
                 return updated.Length == current.RecentRepositories.Count
                     ? current
-                    : current with { RecentRepositories = NormalizeRecentRepositories(updated) };
+                    : current with { RecentRepositories = NormalizeRecentRepositories(updated, current.RepositoryGroups) };
             },
             cancellationToken);
     }
@@ -346,7 +471,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             current =>
             {
                 var pinned = current.RecentRepositories
-                    .Where(candidate => candidate.IsPinned)
+                    .Where(candidate => candidate.IsPinned && candidate.GroupId == current.RecentRepositories
+                        .FirstOrDefault(entry => PathComparer.Equals(entry.Path, normalizedPath))?.GroupId)
                     .OrderBy(candidate => candidate.PinnedOrder ?? int.MaxValue)
                     .ToList();
                 var currentIndex = pinned.FindIndex(
@@ -364,7 +490,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                     .ToDictionary(candidate => candidate.Path, PathComparer);
                 var updated = current.RecentRepositories.Select(
                     candidate => candidate.IsPinned ? reordered[candidate.Path] : candidate);
-                return current with { RecentRepositories = NormalizeRecentRepositories(updated) };
+                return current with { RecentRepositories = NormalizeRecentRepositories(updated, current.RepositoryGroups) };
             },
             cancellationToken);
     }
@@ -424,7 +550,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                     : HistoryRenderingMode.Full;
             var defaultRepositoriesDirectory = NormalizePersistedRepositoriesDirectory(
                 document.DefaultRepositoriesDirectory);
-            var recentRepositories = NormalizeRecentRepositories(document.RecentRepositories);
+            var repositoryGroups = NormalizeRepositoryGroups(document.RepositoryGroups);
+            var recentRepositories = NormalizeRecentRepositories(ReadRecentRepositories(document.RecentRepositories), repositoryGroups);
 
             return new SettingsState(
                 themeMode,
@@ -441,7 +568,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 document.HistoryPerformanceDiagnosticsEnabled,
                 historyRenderingMode,
                 defaultRepositoriesDirectory,
-                recentRepositories);
+                recentRepositories,
+                repositoryGroups);
         }
         catch (JsonException)
         {
@@ -480,7 +608,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             HistoryPerformanceDiagnosticsEnabled = state.HistoryPerformanceDiagnosticsEnabled,
             HistoryRenderingMode = state.HistoryRenderingMode,
             DefaultRepositoriesDirectory = state.DefaultRepositoriesDirectory,
-            RecentRepositories = state.RecentRepositories.ToList()
+            RecentRepositories = JsonSerializer.SerializeToElement(state.RecentRepositories, SerializerOptions),
+            RepositoryGroups = JsonSerializer.SerializeToElement(state.RepositoryGroups, SerializerOptions)
         };
         var json = JsonSerializer.Serialize(document, SerializerOptions);
         var temporaryPath = _filePath + ".tmp";
@@ -504,10 +633,132 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         }
     }
 
+
+    private static IReadOnlyList<RecentRepositorySettings> ReadRecentRepositories(JsonElement json)
+    {
+        if (json.ValueKind != JsonValueKind.Array) return [];
+        var entries = new List<RecentRepositorySettings>();
+        foreach (var element in json.EnumerateArray())
+        {
+            if (element.ValueKind != JsonValueKind.Object) continue;
+            try
+            {
+                // A malformed new GroupId must not invalidate the rest of a legacy settings document.
+                var parsed = element.Deserialize<RecentRepositorySettings>(SerializerOptions);
+                if (parsed is not null) entries.Add(parsed);
+            }
+            catch (JsonException)
+            {
+                try
+                {
+                    var node = System.Text.Json.Nodes.JsonNode.Parse(element.GetRawText());
+                    if (node is not System.Text.Json.Nodes.JsonObject obj) continue;
+                    obj.Remove("GroupId");
+                    var parsed = obj.Deserialize<RecentRepositorySettings>(SerializerOptions);
+                    if (parsed is not null) entries.Add(parsed);
+                }
+                catch (JsonException) { }
+                catch (InvalidOperationException) { }
+            }
+        }
+        return entries;
+    }
+
+    private static IReadOnlyList<RepositoryGroupSettings> NormalizeRepositoryGroups(JsonElement json)
+    {
+        var candidates = new List<(string? Id, string? Name, int Order, bool Expanded, int Position)>();
+        if (json.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var element in json.EnumerateArray())
+            {
+                if (element.ValueKind != JsonValueKind.Object) continue;
+                string? ReadString(string property) =>
+                    element.TryGetProperty(property, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+                int ReadOrder() =>
+                    element.TryGetProperty("Order", out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out var n) ? n : -1;
+                bool ReadExpanded() =>
+                    !element.TryGetProperty("IsExpanded", out var v) || v.ValueKind != JsonValueKind.False;
+                candidates.Add((ReadString("Id"), ReadString("Name"), ReadOrder(), ReadExpanded(), candidates.Count));
+            }
+        }
+
+        var seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var favoritesPosition = candidates.FindIndex(candidate => string.Equals(candidate.Id?.Trim(), FavoritesId, StringComparison.OrdinalIgnoreCase));
+        if (favoritesPosition < 0)
+            candidates.Add((FavoritesId, "Favorites", 0, true, candidates.Count));
+
+        // Favorites gets first claim on its reserved ID even if it occurs late in the document.
+        favoritesPosition = candidates.FindIndex(candidate => string.Equals(candidate.Id?.Trim(), FavoritesId, StringComparison.OrdinalIgnoreCase));
+        var favorites = candidates[favoritesPosition];
+        var normalized = new List<(RepositoryGroupSettings Group, int Position)>();
+        normalized.Add((new RepositoryGroupSettings(FavoritesId, favorites.Name?.Trim() ?? "Favorites", favorites.Order, favorites.Expanded), favorites.Position));
+        seenIds.Add(FavoritesId);
+        for (var i = 0; i < candidates.Count; i++)
+        {
+            if (i == favoritesPosition) continue;
+            var candidate = candidates[i];
+            var id = candidate.Id?.Trim();
+            if (string.IsNullOrEmpty(id) || !seenIds.Add(id))
+            {
+                var attempt = 0;
+                do
+                {
+                    var data = Encoding.UTF8.GetBytes($"{candidate.Position}:{candidate.Id}:{candidate.Name}:{attempt++}");
+                    id = Convert.ToHexString(SHA256.HashData(data))[..32].ToLowerInvariant();
+                } while (!seenIds.Add(id));
+            }
+            normalized.Add((new RepositoryGroupSettings(id, candidate.Name?.Trim() ?? "", candidate.Order, candidate.Expanded), candidate.Position));
+        }
+
+        // Process favorites first for name conflicts, regardless of its display order.
+        var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var renamed = normalized.Select(pair =>
+        {
+            var name = pair.Group.Name;
+            if (string.IsNullOrWhiteSpace(name)) name = "Group";
+            name = string.Concat(name.EnumerateRunes().Take(64).Select(rune => rune.ToString()));
+            var baseName = name;
+            var suffix = 2;
+            while (!seenNames.Add(name))
+                name = $"{baseName} ({suffix++})";
+            return (Group: pair.Group with { Name = name }, pair.Position);
+        });
+        return Array.AsReadOnly(renamed
+            .OrderBy(pair => pair.Group.Order >= 0 ? 0 : 1)
+            .ThenBy(pair => pair.Group.Order >= 0 ? pair.Group.Order : int.MaxValue)
+            .ThenBy(pair => pair.Position)
+            .Select((pair, index) => pair.Group with { Order = index })
+            .ToArray());
+    }
+
+    private static string ValidateGroupName(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        var result = name.Trim();
+        if (result.EnumerateRunes().Count() > 64)
+            throw new ArgumentException("A group name cannot exceed 64 Unicode code points.", nameof(name));
+        return result;
+    }
+
+    private static void EnsureUniqueGroupName(
+        IReadOnlyList<RepositoryGroupSettings> groups, string name, string? exceptId = null)
+    {
+        if (groups.Any(group => group.Id != exceptId &&
+                string.Equals(group.Name, name, StringComparison.OrdinalIgnoreCase)))
+            throw new ArgumentException("A group with this name already exists.", nameof(name));
+    }
+
+    private static RepositoryGroupSettings FindGroup(SettingsState current, string groupId) =>
+        current.RepositoryGroups.FirstOrDefault(group => group.Id == groupId)
+        ?? throw new ArgumentException("Unknown repository group.", nameof(groupId));
+
     private static IReadOnlyList<RecentRepositorySettings> NormalizeRecentRepositories(
-        IEnumerable<RecentRepositorySettings>? entries)
+        IEnumerable<RecentRepositorySettings>? entries,
+        IReadOnlyList<RepositoryGroupSettings>? groups = null)
     {
         if (entries is null) return [];
+        groups ??= [new RepositoryGroupSettings(FavoritesId, "Favorites", 0, true)];
+        var validIds = groups.Select(group => group.Id).ToHashSet(StringComparer.Ordinal);
 
         var normalizedEntries = entries
             .Select(NormalizeRecentRepository)
@@ -521,20 +772,29 @@ public sealed class JsonAppSettingsService : IAppSettingsService
 
         var deduplicated = normalizedEntries
             .GroupBy(candidate => candidate.Path, PathComparer)
-            .Select(group => group.First())
+            .Select(group => group.First() with
+            {
+                GroupId = group.First().IsPinned && validIds.Contains(group.First().GroupId ?? "")
+                    ? group.First().GroupId : group.First().IsPinned ? FavoritesId : null
+            })
             .ToArray();
 
         var pinned = deduplicated
             .Where(candidate => candidate.IsPinned)
-            .OrderBy(candidate => candidate.PinnedOrder.HasValue ? 0 : 1)
-            .ThenBy(candidate => candidate.PinnedOrder ?? int.MaxValue)
-            .ThenByDescending(candidate => candidate.LastOpenedUtc)
-            .ThenBy(candidate => candidate.Path, PathComparer)
-            .Select((candidate, index) => candidate with
-            {
-                IsPinned = true,
-                PinnedOrder = index
-            });
+            .GroupBy(candidate => candidate.GroupId!)
+            .ToDictionary(group => group.Key, group => group
+                .OrderBy(candidate => candidate.PinnedOrder.HasValue ? 0 : 1)
+                .ThenBy(candidate => candidate.PinnedOrder ?? int.MaxValue)
+                .ThenByDescending(candidate => candidate.LastOpenedUtc)
+                .ThenBy(candidate => candidate.Path, PathComparer)
+                .Select((candidate, index) => candidate with
+                {
+                    IsPinned = true,
+                    PinnedOrder = index
+                }).ToArray());
+
+        var orderedPins = groups.SelectMany(group =>
+            pinned.TryGetValue(group.Id, out var repositories) ? repositories : []);
 
         var unpinned = deduplicated
             .Where(candidate => !candidate.IsPinned)
@@ -544,10 +804,11 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             .Select(candidate => candidate with
             {
                 IsPinned = false,
+                GroupId = null,
                 PinnedOrder = null
             });
 
-        return Array.AsReadOnly(pinned.Concat(unpinned).ToArray());
+        return Array.AsReadOnly(orderedPins.Concat(unpinned).ToArray());
     }
 
     private static RecentRepositorySettings? NormalizeRecentRepository(RecentRepositorySettings entry)
@@ -579,6 +840,9 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             LastOpenedUtc = entry.LastOpenedUtc.ToUniversalTime(),
             LastBranchName = string.IsNullOrWhiteSpace(entry.LastBranchName) ? null : entry.LastBranchName.Trim(),
             IsPinned = isPinned,
+            GroupId = isPinned ? (string.IsNullOrWhiteSpace(entry.GroupId) ? FavoritesId
+                : string.Equals(entry.GroupId.Trim(), FavoritesId, StringComparison.OrdinalIgnoreCase)
+                    ? FavoritesId : entry.GroupId.Trim()) : null,
             PinnedOrder = pinnedOrder
         };
     }
@@ -665,7 +929,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         bool HistoryPerformanceDiagnosticsEnabled,
         HistoryRenderingMode HistoryRenderingMode,
         string DefaultRepositoriesDirectory,
-        IReadOnlyList<RecentRepositorySettings> RecentRepositories)
+        IReadOnlyList<RecentRepositorySettings> RecentRepositories,
+        IReadOnlyList<RepositoryGroupSettings> RepositoryGroups)
     {
         public static SettingsState Default { get; } = new(
             ApplicationThemeMode.System,
@@ -682,7 +947,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             false,
             HistoryRenderingMode.Full,
             GetDefaultRepositoriesDirectory(),
-            Array.AsReadOnly(Array.Empty<RecentRepositorySettings>()));
+            Array.AsReadOnly(Array.Empty<RecentRepositorySettings>()),
+            Array.AsReadOnly(new[] { new RepositoryGroupSettings(FavoritesId, "Favorites", 0, true) }));
     }
 
     private sealed class SettingsDocument
@@ -703,7 +969,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         public string? DefaultRepositoriesDirectory { get; init; }
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public bool? HistorySimplifiedRenderingEnabled { get; init; }
-        public List<RecentRepositorySettings>? RecentRepositories { get; init; }
+        public JsonElement RecentRepositories { get; init; }
+        public JsonElement RepositoryGroups { get; init; }
     }
 
     private sealed class TolerantPullStrategyConverter : JsonConverter<PullStrategy>
