@@ -92,7 +92,8 @@ public sealed partial class MainPage
         if (IsShuttingDown || _recentRepositoriesShutdown || _recentRepositoriesView is null) return;
 
         var repositoryOpen = _viewModel.Repository is not null;
-        var hasRecentRepositories = _recentRepositorySettings.RecentRepositories.Count > 0;
+        var snapshot = _recentRepositorySettings.RepositoryLauncherSnapshot;
+        var hasRecentRepositories = snapshot.Repositories.Count > 0 || snapshot.Groups.Count > 1;
         EmptyStartScreen.Visibility = !repositoryOpen && !hasRecentRepositories
             ? Visibility.Visible
             : Visibility.Collapsed;

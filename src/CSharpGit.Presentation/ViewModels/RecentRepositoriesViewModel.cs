@@ -26,6 +26,7 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
     private string _metadata = string.Empty;
     private bool _isPinned;
     private int? _pinnedOrder;
+    private string? _groupId;
     private bool _canMoveEarlier;
     private bool _canMoveLater;
 
@@ -66,6 +67,7 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
     public string TileDescription => $"{DisplayName}\n{Path}\n{Metadata}";
     public bool IsPinned => _isPinned;
     public int? PinnedOrder => _pinnedOrder;
+    public string? GroupId => _groupId;
     public string PinActionLabel => IsPinned ? "Unpin repository" : "Pin repository";
     public string PinGlyph => IsPinned ? "\uE718" : "\uE77A";
     public double PinIndicatorOpacity => IsPinned ? 1d : 0.85d;
@@ -128,6 +130,12 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
         {
             _pinnedOrder = settings.PinnedOrder;
             OnPropertyChanged(nameof(PinnedOrder));
+        }
+
+        if (!string.Equals(_groupId, settings.GroupId, StringComparison.Ordinal))
+        {
+            _groupId = settings.GroupId;
+            OnPropertyChanged(nameof(GroupId));
         }
 
         UpdateMetadata(commitTimeDisplayMode);
@@ -254,6 +262,82 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
 
+
+public sealed class RepositoryGroupViewModel : INotifyPropertyChanged
+{
+    private string _name;
+    private int _order;
+    private bool _isExpanded;
+    private bool _isSearchActive;
+    private bool _isVisible = true;
+    private bool _effectiveIsExpanded;
+    private int _repositoryCount;
+    private bool _canMoveUp;
+    private bool _canMoveDown;
+
+    internal RepositoryGroupViewModel(RepositoryGroupSettings settings)
+    {
+        Id = settings.Id;
+        _name = settings.Name;
+        _order = settings.Order;
+        _isExpanded = settings.IsExpanded;
+        _effectiveIsExpanded = settings.IsExpanded;
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public string Id { get; }
+    public string Name => _name;
+    public int Order => _order;
+    public bool IsExpanded => _isExpanded;
+    public bool EffectiveIsExpanded => _effectiveIsExpanded;
+    public string ExpandGlyph => EffectiveIsExpanded ? "\uE70D" : "\uE76C";
+    public bool CanToggleExpanded => !_isSearchActive;
+    public bool IsVisible => _isVisible;
+    public int RepositoryCount => _repositoryCount;
+    public string Heading => $"{Name} ({RepositoryCount})";
+    public string ActionsLabel => $"Actions for {Name} group";
+    public bool CanDelete => Id != "favorites";
+    public bool CanMoveUp => _canMoveUp;
+    public bool CanMoveDown => _canMoveDown;
+    public ObservableCollection<RecentRepositoryItem> Repositories { get; } = [];
+
+    internal void Update(RepositoryGroupSettings settings, bool searching, int count,
+        IReadOnlyList<RecentRepositoryItem> items, bool canMoveUp, bool canMoveDown)
+    {
+        if (_name != settings.Name)
+        {
+            _name = settings.Name;
+            Notify(nameof(Name)); Notify(nameof(Heading)); Notify(nameof(ActionsLabel));
+        }
+        if (_order != settings.Order) { _order = settings.Order; Notify(nameof(Order)); }
+        if (_isExpanded != settings.IsExpanded) { _isExpanded = settings.IsExpanded; Notify(nameof(IsExpanded)); }
+        if (_isSearchActive != searching)
+        {
+            _isSearchActive = searching;
+            Notify(nameof(CanToggleExpanded));
+        }
+        var effective = searching ? count > 0 : _isExpanded;
+        if (_effectiveIsExpanded != effective)
+        {
+            _effectiveIsExpanded = effective;
+            Notify(nameof(EffectiveIsExpanded)); Notify(nameof(ExpandGlyph));
+        }
+        var visible = !searching || count > 0;
+        if (_isVisible != visible) { _isVisible = visible; Notify(nameof(IsVisible)); }
+        if (_repositoryCount != count)
+        {
+            _repositoryCount = count;
+            Notify(nameof(RepositoryCount)); Notify(nameof(Heading));
+        }
+        if (_canMoveUp != canMoveUp) { _canMoveUp = canMoveUp; Notify(nameof(CanMoveUp)); }
+        if (_canMoveDown != canMoveDown) { _canMoveDown = canMoveDown; Notify(nameof(CanMoveDown)); }
+        RecentRepositoriesViewModel.SyncCollection(Repositories, items);
+    }
+
+    private void Notify([CallerMemberName] string? name = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+}
+
 public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDisposable
 {
     private static readonly StringComparer PathComparer = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
@@ -268,6 +352,7 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
     private readonly string _openFolderActionLabel;
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly Dictionary<string, RecentRepositoryItem> _itemsByPath = new(PathComparer);
+    private readonly Dictionary<string, RepositoryGroupViewModel> _groupsById = new(StringComparer.Ordinal);
     private readonly HashSet<string> _imageLoadsInProgress = new(PathComparer);
     private readonly CancellationTokenSource _imageLoadCancellation = new();
     private bool _imageLoadingStarted;
@@ -308,7 +393,7 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public ObservableCollection<RecentRepositoryItem> PinnedRepositories { get; } = [];
+    public ObservableCollection<RepositoryGroupViewModel> Groups { get; } = [];
 
     public ObservableCollection<RecentRepositoryItem> RecentRepositories { get; } = [];
 
@@ -336,13 +421,13 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
 
     public bool IsSearchActive => !string.IsNullOrWhiteSpace(SearchText);
 
-    public bool HasPinnedRepositories => PinnedRepositories.Count > 0;
+    public bool HasPinnedRepositories => Groups.Any(group => group.Repositories.Count > 0);
 
     public bool HasRecentRepositories => RecentRepositories.Count > 0;
 
     public bool HasSearchResults => HasPinnedRepositories || HasRecentRepositories;
 
-    public bool ShowNoSearchResults => IsSearchActive && _itemsByPath.Count > 0 && !HasSearchResults;
+    public bool ShowNoSearchResults => IsSearchActive && !HasSearchResults;
 
     public bool HasUnavailableRepositories => _itemsByPath.Values.Any(item => !item.IsAvailable);
 
@@ -352,6 +437,15 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
         _imageLoadingStarted = true;
         ScheduleImageRefreshes();
     }
+
+    public Task<RepositoryGroupSettings> CreateGroupAsync(string name) => _settings.CreateRepositoryGroupAsync(name);
+    public Task RenameGroupAsync(string id, string name) => _settings.RenameRepositoryGroupAsync(id, name);
+    public Task DeleteGroupAsync(string id) => _settings.DeleteRepositoryGroupAsync(id);
+    public Task MoveGroupAsync(string id, int newIndex) => _settings.MoveRepositoryGroupAsync(id, newIndex);
+    public Task SetGroupExpandedAsync(string id, bool expanded) => _settings.SetRepositoryGroupExpandedAsync(id, expanded);
+    public Task PinToGroupAsync(RecentRepositoryItem item, string id) => _settings.MoveRecentRepositoryToGroupAsync(item.Path, id);
+    public Task UnpinAsync(RecentRepositoryItem item) => _settings.SetRecentRepositoryPinnedAsync(item.Path, false);
+    public Task TogglePinAsync(RecentRepositoryItem item) => _settings.SetRecentRepositoryPinnedAsync(item.Path, !item.IsPinned);
 
     internal Task MovePinnedRepositoryAsync(RecentRepositoryItem item, int newIndex)
     {
@@ -387,7 +481,8 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
 
     private void Reconcile()
     {
-        var currentSettings = _settings.RecentRepositories;
+        var snapshot = _settings.RepositoryLauncherSnapshot;
+        var currentSettings = snapshot.Repositories;
         var currentPaths = currentSettings.Select(settings => settings.Path).ToHashSet(PathComparer);
 
         foreach (var path in _itemsByPath.Keys.Where(path => !currentPaths.Contains(path)).ToArray())
@@ -427,12 +522,29 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
 
     private void RebuildProjection()
     {
-        var projection = RecentRepositoriesProjectionBuilder.Build(_settings.RecentRepositories, SearchText);
-        SyncCollection(
-            PinnedRepositories,
-            projection.Pinned.Select(settings => _itemsByPath[settings.Path]).ToArray());
-        SyncCollection(
-            RecentRepositories,
+        var snapshot = _settings.RepositoryLauncherSnapshot;
+        var projection = RecentRepositoriesProjectionBuilder.Build(snapshot.Groups, snapshot.Repositories, SearchText);
+        var visibleGroups = projection.Groups.ToDictionary(group => group.Settings.Id, StringComparer.Ordinal);
+        var desiredGroups = new List<RepositoryGroupViewModel>();
+        foreach (var settings in snapshot.Groups.OrderBy(group => group.Order))
+        {
+            if (!_groupsById.TryGetValue(settings.Id, out var group))
+            {
+                group = new RepositoryGroupViewModel(settings);
+                _groupsById.Add(settings.Id, group);
+            }
+            var matched = visibleGroups.TryGetValue(settings.Id, out var projected)
+                ? projected.Repositories : [];
+            var items = matched.Select(item => _itemsByPath[item.Path]).ToArray();
+            group.Update(settings, IsSearchActive, items.Length, items,
+                settings.Order > 0, settings.Order < snapshot.Groups.Count - 1);
+            desiredGroups.Add(group);
+        }
+
+        foreach (var id in _groupsById.Keys.Where(id => desiredGroups.All(group => group.Id != id)).ToArray())
+            _groupsById.Remove(id);
+        SyncGroups(Groups, desiredGroups);
+        SyncCollection(RecentRepositories,
             projection.Recent.Select(settings => _itemsByPath[settings.Path]).ToArray());
 
         foreach (var item in _itemsByPath.Values)
@@ -440,11 +552,14 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
 
         if (!IsSearchActive)
         {
-            var allPinned = RecentRepositoriesProjectionBuilder.Build(_settings.RecentRepositories, null).Pinned;
-            for (var index = 0; index < allPinned.Count; index++)
+            var allGroups = RecentRepositoriesProjectionBuilder.Build(snapshot.Groups, snapshot.Repositories, null).Groups;
+            foreach (var group in allGroups)
             {
-                var item = _itemsByPath[allPinned[index].Path];
-                item.SetMoveCapabilities(index > 0, index < allPinned.Count - 1);
+                for (var index = 0; index < group.Repositories.Count; index++)
+                {
+                    var item = _itemsByPath[group.Repositories[index].Path];
+                    item.SetMoveCapabilities(index > 0, index < group.Repositories.Count - 1);
+                }
             }
         }
 
@@ -454,7 +569,22 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
         OnPropertyChanged(nameof(ShowNoSearchResults));
     }
 
-    private static void SyncCollection(
+    private static void SyncGroups(
+        ObservableCollection<RepositoryGroupViewModel> collection,
+        IReadOnlyList<RepositoryGroupViewModel> desired)
+    {
+        for (var index = collection.Count - 1; index >= 0; index--)
+            if (!desired.Contains(collection[index])) collection.RemoveAt(index);
+        for (var index = 0; index < desired.Count; index++)
+        {
+            if (index < collection.Count && ReferenceEquals(collection[index], desired[index])) continue;
+            var oldIndex = collection.IndexOf(desired[index]);
+            if (oldIndex >= 0) collection.Move(oldIndex, index);
+            else collection.Insert(index, desired[index]);
+        }
+    }
+
+    internal static void SyncCollection(
         ObservableCollection<RecentRepositoryItem> collection,
         IReadOnlyList<RecentRepositoryItem> desired)
     {
@@ -552,8 +682,7 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
     private Task RemoveAsync(RecentRepositoryItem item) =>
         _settings.RemoveRecentRepositoryAsync(item.Path);
 
-    private Task TogglePinnedAsync(RecentRepositoryItem item) =>
-        _settings.SetRecentRepositoryPinnedAsync(item.Path, !item.IsPinned);
+    private Task TogglePinnedAsync(RecentRepositoryItem item) => TogglePinAsync(item);
 
     private Task MoveEarlierAsync(RecentRepositoryItem item) =>
         item.PinnedOrder is > 0 && !IsSearchActive

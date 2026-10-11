@@ -66,8 +66,10 @@ public sealed partial class MainPage
                 true));
         }
 
+        var snapshot = _recentRepositorySettings.RepositoryLauncherSnapshot;
         var quickRepositories = RecentRepositoriesProjectionBuilder.BuildQuickList(
-            _recentRepositorySettings.RecentRepositories,
+            snapshot.Groups,
+            snapshot.Repositories,
             currentPath,
             QuickRepositoryLimit);
 
