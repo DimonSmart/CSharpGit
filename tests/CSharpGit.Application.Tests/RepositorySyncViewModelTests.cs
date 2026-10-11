@@ -636,6 +636,23 @@ public sealed class RepositorySyncViewModelTests
         public HistoryRenderingMode HistoryRenderingMode => HistoryRenderingMode.Full;
         public string DefaultRepositoriesDirectory => "/work";
         public IReadOnlyList<RecentRepositorySettings> RecentRepositories => [];
+        public IReadOnlyList<RepositoryGroupSettings> RepositoryGroups =>
+            [new RepositoryGroupSettings("favorites", "Favorites", 0, true)];
+        public RepositoryLauncherSettingsSnapshot RepositoryLauncherSnapshot =>
+            new(RepositoryGroups, RecentRepositories);
+        public Task<RepositoryGroupSettings> CreateRepositoryGroupAsync(string name, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+        public Task RenameRepositoryGroupAsync(string id, string name, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+        public Task DeleteRepositoryGroupAsync(string id, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+        public Task MoveRepositoryGroupAsync(string id, int newIndex, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+        public Task SetRepositoryGroupExpandedAsync(string id, bool expanded, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+        public Task MoveRecentRepositoryToGroupAsync(string path, string id, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
 
         public event EventHandler? Changed;
         public void PublishChange() => Changed?.Invoke(this, EventArgs.Empty);

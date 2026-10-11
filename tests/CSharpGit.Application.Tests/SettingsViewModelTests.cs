@@ -278,6 +278,23 @@ public sealed class SettingsViewModelTests
         public string DefaultRepositoriesDirectory { get; set; } =
             Path.Combine(Path.GetTempPath(), "CSharpGit", "repos");
         public IReadOnlyList<RecentRepositorySettings> RecentRepositories => [];
+        public IReadOnlyList<RepositoryGroupSettings> RepositoryGroups =>
+            [new RepositoryGroupSettings("favorites", "Favorites", 0, true)];
+        public RepositoryLauncherSettingsSnapshot RepositoryLauncherSnapshot =>
+            new(RepositoryGroups, RecentRepositories);
+        public Task<RepositoryGroupSettings> CreateRepositoryGroupAsync(string name, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+        public Task RenameRepositoryGroupAsync(string id, string name, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+        public Task DeleteRepositoryGroupAsync(string id, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+        public Task MoveRepositoryGroupAsync(string id, int newIndex, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+        public Task SetRepositoryGroupExpandedAsync(string id, bool expanded, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+        public Task MoveRecentRepositoryToGroupAsync(string path, string id, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public bool FailNextWrite { get; set; }
         public int ChangedSubscriberCount { get; private set; }
         public int ThemeWriteAttempts { get; private set; }
