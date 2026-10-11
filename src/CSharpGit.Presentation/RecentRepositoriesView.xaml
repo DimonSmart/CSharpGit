@@ -7,7 +7,7 @@
     <controls:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
     <ItemsPanelTemplate x:Key="RecentRepositoriesItemsPanelTemplate">
-      <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="344" ItemHeight="156" />
+      <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="268" ItemHeight="120" />
     </ItemsPanelTemplate>
 
     <Style x:Key="RecentRepositoryGridItemStyle" TargetType="GridViewItem">
@@ -17,53 +17,9 @@
       <Setter Property="VerticalContentAlignment" Value="Stretch" />
     </Style>
 
-    <DataTemplate x:Key="RecentRepositoryTextTemplate">
-      <Grid RowDefinitions="38,Auto,*">
-        <TextBlock Text="{Binding DisplayName}"
-                   Style="{StaticResource TitleTextStyle}"
-                   Margin="0,0,76,0"
-                   VerticalAlignment="Center"
-                   TextTrimming="CharacterEllipsis" />
-        <TextBlock Grid.Row="1"
-                   Text="{Binding Path}"
-                   Style="{StaticResource TechnicalSecondaryTextStyle}"
-                   Margin="0,2,0,0"
-                   TextTrimming="CharacterEllipsis"
-                   ToolTipService.ToolTip="{Binding Path}" />
-        <TextBlock Grid.Row="2"
-                   Text="{Binding Metadata}"
-                   Style="{StaticResource SecondaryTextStyle}"
-                   Margin="0,6,0,0"
-                   VerticalAlignment="Top"
-                   TextWrapping="Wrap"
-                   MaxLines="2"
-                   TextTrimming="CharacterEllipsis" />
-      </Grid>
-    </DataTemplate>
-
-    <DataTemplate x:Key="RecentRepositoryActionsTemplate">
-      <StackPanel Orientation="Horizontal"
-                  Spacing="{StaticResource Spacing.XS}">
-        <Button Command="{Binding PinCommand}"
-                Style="{StaticResource RepositoryTileActionButtonStyle}"
-                Foreground="{ThemeResource AccentFillColorDefaultBrush}"
-                ToolTipService.ToolTip="{Binding PinActionLabel}"
-                AutomationProperties.Name="{Binding PinActionLabel}">
-          <FontIcon Glyph="{Binding PinGlyph}"
-                    FontSize="{StaticResource Icon.Small}"
-                    Opacity="{Binding PinIndicatorOpacity}" />
-        </Button>
-        <Button Command="{Binding RemoveCommand}"
-                Style="{StaticResource RepositoryTileActionButtonStyle}"
-                ToolTipService.ToolTip="Remove from recent"
-                AutomationProperties.Name="Remove from recent">
-          <FontIcon Glyph="&#xE711;" FontSize="{StaticResource Icon.Small}" />
-        </Button>
-      </StackPanel>
-    </DataTemplate>
-
     <DataTemplate x:Key="RecentRepositoryTileTemplate">
-      <Grid Height="156" Padding="6">
+      <!-- Right/bottom margins are the 8 DIP inter-card gutters, included in ItemsWrapGrid cells. -->
+      <Grid Margin="0,0,8,8" Opacity="{Binding TileOpacity}">
         <Grid.ContextFlyout>
           <MenuFlyout>
             <MenuFlyoutItem Text="Open"
@@ -91,86 +47,108 @@
           </MenuFlyout>
         </Grid.ContextFlyout>
 
+        <!-- The open target sits behind non-hit-testable text/media; Pin/Remove are siblings,
+             not nested buttons, and have their own keyboard and pointer hit targets. -->
         <Button Command="{Binding OpenCommand}"
                 Padding="0"
+                MinWidth="0"
+                MinHeight="0"
                 BorderThickness="0"
                 Background="Transparent"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch"
                 HorizontalContentAlignment="Stretch"
-                VerticalContentAlignment="Stretch">
+                VerticalContentAlignment="Stretch"
+                UseSystemFocusVisuals="True"
+                ToolTipService.ToolTip="{Binding TileDescription}"
+                AutomationProperties.Name="{Binding DisplayName}"
+                AutomationProperties.HelpText="{Binding TileDescription}">
           <Border Style="{StaticResource FormCardStyle}"
                   Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                  CornerRadius="10"
-                  Opacity="{Binding TileOpacity}">
-            <Grid>
-              <Grid Visibility="{Binding RepositoryCompactLayoutVisibility}"
-                    ColumnDefinitions="64,*"
-                    ColumnSpacing="{StaticResource Spacing.XL}">
-                <Border Width="64" Height="64" CornerRadius="9"
-                        Background="{ThemeResource AccentFillColorSecondaryBrush}"
-                        VerticalAlignment="Top">
-                  <Grid>
-                    <FontIcon Glyph="{StaticResource Icon.Glyph.Open}"
-                              FontSize="25"
-                              HorizontalAlignment="Center"
-                              VerticalAlignment="Center"
-                              Opacity="{Binding RepositoryGlyphOpacity}" />
-                    <Image Source="{Binding RepositoryImage}"
-                           Stretch="Uniform"
-                           HorizontalAlignment="Stretch"
-                           VerticalAlignment="Stretch"
-                           Opacity="{Binding RepositoryImageOpacity}"
-                           ImageFailed="RepositoryImage_ImageFailed" />
-                  </Grid>
-                </Border>
-                <ContentControl Grid.Column="1"
-                                Content="{Binding}"
-                                ContentTemplate="{StaticResource RecentRepositoryTextTemplate}"
-                                HorizontalContentAlignment="Stretch"
-                                VerticalContentAlignment="Stretch" />
-              </Grid>
-
-              <Grid Visibility="{Binding RepositoryPreviewLayoutVisibility}"
-                    ColumnDefinitions="*,280"
-                    ColumnSpacing="{StaticResource Spacing.XL}">
-                <ContentControl Content="{Binding}"
-                                ContentTemplate="{StaticResource RecentRepositoryTextTemplate}"
-                                HorizontalContentAlignment="Stretch"
-                                VerticalContentAlignment="Stretch" />
-                <Border Grid.Column="1"
-                        Width="280" Height="116"
-                        CornerRadius="7"
-                        BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                        BorderThickness="1"
-                        VerticalAlignment="Center">
-                  <Image Source="{Binding RepositoryPreview}"
-                         Stretch="UniformToFill"
-                         HorizontalAlignment="Stretch"
-                         VerticalAlignment="Stretch"
-                         ImageFailed="RepositoryPreview_ImageFailed" />
-                </Border>
-              </Grid>
-            </Grid>
-          </Border>
+                  CornerRadius="9" />
         </Button>
 
-        <Grid Visibility="{Binding RepositoryCompactLayoutVisibility}"
-              Margin="18">
-          <ContentControl Content="{Binding}"
-                          ContentTemplate="{StaticResource RecentRepositoryActionsTemplate}"
-                          HorizontalAlignment="Right"
-                          VerticalAlignment="Top" />
-        </Grid>
+        <Grid Padding="8"
+              ColumnDefinitions="72,*,Auto"
+              RowDefinitions="32,Auto,*"
+              ColumnSpacing="4">
+          <Border Grid.RowSpan="3"
+                  Width="70" Height="48"
+                  CornerRadius="7"
+                  Background="{ThemeResource AccentFillColorSecondaryBrush}"
+                  VerticalAlignment="Top"
+                  IsHitTestVisible="False">
+            <Grid>
+              <FontIcon Glyph="{StaticResource Icon.Glyph.Open}"
+                        FontSize="23"
+                        Opacity="{Binding RepositoryGlyphOpacity}"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center" />
+              <Image Source="{Binding RepositoryImage}"
+                     Width="44" Height="44"
+                     Stretch="Uniform"
+                     Opacity="{Binding RepositoryImageOpacity}"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center"
+                     ImageFailed="RepositoryImage_ImageFailed" />
+              <Image Source="{Binding RepositoryPreview}"
+                     Width="68" Height="46"
+                     Stretch="Uniform"
+                     Opacity="{Binding RepositoryPreviewOpacity}"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center"
+                     ImageFailed="RepositoryPreview_ImageFailed" />
+            </Grid>
+          </Border>
 
-        <Grid Visibility="{Binding RepositoryPreviewLayoutVisibility}"
-              Margin="18"
-              ColumnDefinitions="*,280"
-              ColumnSpacing="{StaticResource Spacing.XL}">
-          <ContentControl Content="{Binding}"
-                          ContentTemplate="{StaticResource RecentRepositoryActionsTemplate}"
-                          HorizontalAlignment="Right"
-                          VerticalAlignment="Top" />
+          <TextBlock Grid.Column="1"
+                     Text="{Binding DisplayName}"
+                     Style="{StaticResource BodyStrongTextStyle}"
+                     VerticalAlignment="Center"
+                     TextWrapping="NoWrap"
+                     TextTrimming="CharacterEllipsis"
+                     IsHitTestVisible="False" />
+
+          <StackPanel Grid.Column="2"
+                      Orientation="Horizontal"
+                      Spacing="{StaticResource Spacing.XS}">
+            <Button Command="{Binding PinCommand}"
+                    Style="{StaticResource RepositoryTileActionButtonStyle}"
+                    Foreground="{ThemeResource AccentFillColorDefaultBrush}"
+                    ToolTipService.ToolTip="{Binding PinActionLabel}"
+                    AutomationProperties.Name="{Binding PinActionLabel}">
+              <FontIcon Glyph="{Binding PinGlyph}"
+                        FontSize="{StaticResource Icon.Small}"
+                        Opacity="{Binding PinIndicatorOpacity}" />
+            </Button>
+            <Button Command="{Binding RemoveCommand}"
+                    Style="{StaticResource RepositoryTileActionButtonStyle}"
+                    ToolTipService.ToolTip="Remove from recent"
+                    AutomationProperties.Name="Remove from recent">
+              <FontIcon Glyph="&#xE711;" FontSize="{StaticResource Icon.Small}" />
+            </Button>
+          </StackPanel>
+
+          <TextBlock Grid.Row="1"
+                     Grid.Column="1"
+                     Grid.ColumnSpan="2"
+                     Text="{Binding Path}"
+                     Style="{StaticResource TechnicalSecondaryTextStyle}"
+                     Margin="0,2,0,0"
+                     TextWrapping="NoWrap"
+                     TextTrimming="CharacterEllipsis"
+                     IsHitTestVisible="False" />
+          <TextBlock Grid.Row="2"
+                     Grid.Column="1"
+                     Grid.ColumnSpan="2"
+                     Text="{Binding Metadata}"
+                     Style="{StaticResource SecondaryTextStyle}"
+                     Margin="0,4,0,0"
+                     TextWrapping="Wrap"
+                     MaxLines="2"
+                     TextTrimming="CharacterEllipsis"
+                     VerticalAlignment="Top"
+                     IsHitTestVisible="False" />
         </Grid>
       </Grid>
     </DataTemplate>
@@ -180,10 +158,9 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto"
                   HorizontalScrollMode="Disabled"
                   HorizontalScrollBarVisibility="Disabled">
-      <StackPanel MaxWidth="1120"
-                  Margin="{StaticResource Padding.Page}"
+      <StackPanel Margin="{StaticResource Padding.Page}"
                   Spacing="{StaticResource Spacing.XL}"
-                  HorizontalAlignment="Center">
+                  HorizontalAlignment="Stretch">
         <TextBlock Text="Repositories" Style="{StaticResource TitleTextStyle}" />
 
         <TextBox Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -194,7 +171,7 @@
         <StackPanel Spacing="{StaticResource Spacing.S}"
                     Visibility="{Binding HasPinnedRepositories, Converter={StaticResource BooleanToVisibilityConverter}}">
           <TextBlock Text="Pinned" Style="{StaticResource BodyStrongTextStyle}" />
-          <controls:RecentRepositoriesGridView x:Name="PinnedRepositoriesGridView"
+          <GridView x:Name="PinnedRepositoriesGridView"
                                                ItemsSource="{Binding PinnedRepositories}"
                                                SelectionMode="None"
                                                IsItemClickEnabled="False"
@@ -210,13 +187,15 @@
                                                Padding="0"
                                                ItemsPanel="{StaticResource RecentRepositoriesItemsPanelTemplate}"
                                                ItemContainerStyle="{StaticResource RecentRepositoryGridItemStyle}"
-                                               ItemTemplate="{StaticResource RecentRepositoryTileTemplate}" />
+                                               ItemTemplate="{StaticResource RecentRepositoryTileTemplate}"
+                                               Loaded="RepositoryGrid_Loaded"
+                                               SizeChanged="RepositoryGrid_SizeChanged" />
         </StackPanel>
 
         <StackPanel Spacing="{StaticResource Spacing.S}"
                     Visibility="{Binding HasRecentRepositories, Converter={StaticResource BooleanToVisibilityConverter}}">
           <TextBlock Text="Recent" Style="{StaticResource BodyStrongTextStyle}" />
-          <controls:RecentRepositoriesGridView x:Name="RecentRepositoriesGridView"
+          <GridView x:Name="RecentRepositoriesGridView"
                                                ItemsSource="{Binding RecentRepositories}"
                                                SelectionMode="None"
                                                IsItemClickEnabled="False"
@@ -225,7 +204,9 @@
                                                Padding="0"
                                                ItemsPanel="{StaticResource RecentRepositoriesItemsPanelTemplate}"
                                                ItemContainerStyle="{StaticResource RecentRepositoryGridItemStyle}"
-                                               ItemTemplate="{StaticResource RecentRepositoryTileTemplate}" />
+                                               ItemTemplate="{StaticResource RecentRepositoryTileTemplate}"
+                                               Loaded="RepositoryGrid_Loaded"
+                                               SizeChanged="RepositoryGrid_SizeChanged" />
         </StackPanel>
 
         <TextBlock Text="No repositories match your search."
