@@ -306,6 +306,130 @@ public sealed class JsonAppSettingsRecentRepositoriesTests
         Assert.Equal(0, changes);
     }
 
+    [Fact]
+    public void LegacyPinnedRepositoriesMigrateToFavoritesWithoutWritingTheFile()
+    {
+        using var fixture = new SettingsFixture();
+        fixture.WriteRecentRepositories(new[]
+        {
+            new RecentRepositorySettings(fixture.RepositoryPath("second"), "second",
+                DateTimeOffset.UnixEpoch.AddMinutes(2), "dev", true, 1),
+            new RecentRepositorySettings(fixture.RepositoryPath("first"), "first",
+                DateTimeOffset.UnixEpoch.AddMinutes(1), "main", true, 0)
+        });
+        var before = File.ReadAllText(fixture.SettingsPath);
+        var settings = fixture.CreateService();
+        Assert.Equal("favorites", Assert.Single(settings.RepositoryGroups).Id);
+        Assert.All(settings.RecentRepositories, entry => Assert.Equal("favorites", entry.GroupId));
+        Assert.Equal(new[] { "first", "second" },
+            settings.RecentRepositories.Select(entry => entry.DisplayName));
+        Assert.Equal(before, File.ReadAllText(fixture.SettingsPath));
+    }
+
+    [Fact]
+    public async Task GroupOperationsPreserveMembershipAndIndependentOrder()
+    {
+        using var fixture = new SettingsFixture();
+        var service = fixture.CreateService();
+        var a = fixture.RepositoryPath("a");
+        var b = fixture.RepositoryPath("b");
+        var c = fixture.RepositoryPath("c");
+        foreach (var path in new[] { a, b, c })
+            await service.RecordRecentRepositoryAsync(path, Path.GetFileName(path), "main");
+
+        var work = await service.CreateRepositoryGroupAsync(" Work ");
+        var personal = await service.CreateRepositoryGroupAsync("Personal");
+        await service.MoveRecentRepositoryToGroupAsync(a, work.Id);
+        await service.MoveRecentRepositoryToGroupAsync(b, work.Id);
+        await service.MoveRecentRepositoryToGroupAsync(c, personal.Id);
+        await service.MovePinnedRepositoryAsync(b, 0);
+        await service.RenameRepositoryGroupAsync(work.Id, "Office");
+        await service.MoveRepositoryGroupAsync(work.Id, 0);
+        await service.SetRepositoryGroupExpandedAsync(work.Id, false);
+        var restored = fixture.CreateService();
+        Assert.Equal("Office", restored.RepositoryGroups[0].Name);
+        Assert.False(restored.RepositoryGroups[0].IsExpanded);
+        Assert.Equal(new[] { "b", "a" }, restored.RecentRepositories
+            .Where(entry => entry.GroupId == work.Id)
+            .Select(entry => entry.DisplayName));
+        Assert.Equal(0, restored.RecentRepositories.Single(entry => entry.GroupId == personal.Id).PinnedOrder);
+
+        await service.DeleteRepositoryGroupAsync(work.Id);
+        Assert.DoesNotContain(service.RepositoryGroups, group => group.Id == work.Id);
+        var moved = service.RecentRepositories.Where(entry => entry.GroupId == "favorites").ToArray();
+        Assert.Equal(new[] { "b", "a" }, moved.Select(entry => entry.DisplayName));
+        Assert.Equal(new int?[] { 0, 1 }, moved.Select(entry => entry.PinnedOrder));
+        Assert.All(moved, entry => Assert.True(entry.IsPinned));
+    }
+
+    [Fact]
+    public async Task InvalidGroupOperationsAndNoOpsDoNotPublishChanges()
+    {
+        using var fixture = new SettingsFixture();
+        var service = fixture.CreateService();
+        var count = 0;
+        service.Changed += (_, _) => count++;
+        await Assert.ThrowsAsync<ArgumentException>(() => service.CreateRepositoryGroupAsync("   "));
+        var group = await service.CreateRepositoryGroupAsync("Work");
+        Assert.Equal(1, count);
+        await Assert.ThrowsAsync<ArgumentException>(() => service.CreateRepositoryGroupAsync("work"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.DeleteRepositoryGroupAsync("favorites"));
+        await Assert.ThrowsAsync<ArgumentException>(() => service.MoveRecentRepositoryToGroupAsync(fixture.RepositoryPath("missing"), "absent"));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => service.MoveRepositoryGroupAsync(group.Id, -1));
+        await service.RenameRepositoryGroupAsync(group.Id, "Work");
+        await service.SetRepositoryGroupExpandedAsync(group.Id, true);
+        await service.MoveRepositoryGroupAsync(group.Id, 1);
+        Assert.Equal(1, count);
+    }
+
+    [Fact]
+    public void InvalidGroupFieldsAreRepairedWithoutLosingOtherSettings()
+    {
+        using var fixture = new SettingsFixture();
+        var path = JsonSerializer.Serialize(fixture.RepositoryPath("repo"));
+        fixture.WriteSettings($"""
+        {
+          "LoggingEnabled": true,
+          "RepositoryGroups": [
+            { "Id": "favorites", "Name": "Favorites", "Order": 1, "IsExpanded": false },
+            { "Id": "duplicates", "Name": "Work", "Order": "invalid" },
+            { "Id": "duplicates", "Name": "work", "Order": 0, "IsExpanded": true },
+            { "Id": null, "Name": "", "Order": -10 },
+            42
+          ],
+          "RecentRepositories": [
+            { "Path": {{path}}, "DisplayName": "repo", "LastOpenedUtc": "2026-01-01T00:00:00Z",
+              "IsPinned": true, "PinnedOrder": 0, "GroupId": { "invalid": true } }
+          ]
+        }
+        """);
+        var first = fixture.CreateService();
+        var second = fixture.CreateService();
+        Assert.True(first.LoggingEnabled);
+        Assert.Equal(first.RepositoryGroups, second.RepositoryGroups);
+        Assert.Equal(4, first.RepositoryGroups.Count);
+        Assert.Equal(4, first.RepositoryGroups.Select(group => group.Id)
+            .Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Equal(4, first.RepositoryGroups.Select(group => group.Name)
+            .Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.False(first.RepositoryGroups.Single(group => group.Id == "favorites").IsExpanded);
+        var repository = Assert.Single(first.RecentRepositories);
+        Assert.Equal("favorites", repository.GroupId);
+    }
+
+    [Fact]
+    public async Task FailedGroupSaveDoesNotPublishCandidate()
+    {
+        using var fixture = new SettingsFixture();
+        var service = fixture.CreateService();
+        Directory.CreateDirectory(fixture.SettingsPath + ".tmp");
+        var changes = 0;
+        service.Changed += (_, _) => changes++;
+        await Assert.ThrowsAnyAsync<Exception>(() => service.CreateRepositoryGroupAsync("Work"));
+        Assert.Single(service.RepositoryGroups);
+        Assert.Equal(0, changes);
+    }
+
     private sealed class SettingsFixture : IDisposable
     {
         public SettingsFixture()

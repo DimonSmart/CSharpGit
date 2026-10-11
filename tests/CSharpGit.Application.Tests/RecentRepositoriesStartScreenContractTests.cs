@@ -76,10 +76,13 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.DoesNotContain("Continue with a repository you opened recently", recentView);
         Assert.DoesNotContain("Recent repositories", recentView);
         Assert.Contains("SearchText", recentView);
-        Assert.Contains("Text=\"Pinned\"", recentView);
+        Assert.Contains("ItemsSource=\"{Binding Groups}\"", recentView);
+        Assert.Contains("NewGroup_Click", recentView);
+        Assert.Contains("GroupExpand_Click", recentView);
         Assert.Contains("Text=\"Recent\"", recentView);
-        Assert.Contains("PinnedRepositories", recentView);
-        Assert.Contains("PinCommand", recentView);
+        Assert.Contains("DragItemsStarting", recentView);
+        Assert.Contains("RepositoryPin_Click", recentView);
+        Assert.Contains("PinActionLabel", recentView);
         Assert.Contains("PinActionLabel", recentView);
         Assert.Contains("TextWrapping=\"Wrap\"", recentView);
         Assert.Contains("MaxLines=\"2\"", recentView);
@@ -88,12 +91,12 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.DoesNotContain("RepositoryTileActionCapsuleStyle", controlsStyles);
         Assert.Contains("RepositoryTileActionButtonStyle", controlsStyles);
         Assert.Contains("UseSystemFocusVisuals", controlsStyles);
-        Assert.Contains("Move earlier", recentView);
-        Assert.Contains("Move later", recentView);
-        Assert.Contains("OpenFolderCommand", recentView);
-        Assert.Contains("CopyPathCommand", recentView);
-        Assert.Contains("OpenFolderActionLabel", recentView);
-        Assert.Contains("Copy repository path", recentView);
+        Assert.Contains("Move earlier", recentViewCodeBehind);
+        Assert.Contains("Move later", recentViewCodeBehind);
+        Assert.Contains("OpenFolderCommand", recentViewCodeBehind);
+        Assert.Contains("CopyPathCommand", recentViewCodeBehind);
+        Assert.Contains("OpenFolderActionLabel", recentViewCodeBehind);
+        Assert.Contains("Copy repository path", recentViewCodeBehind);
         Assert.Contains("Remove from recent", recentView);
         Assert.Contains("DragItemsStarting", recentView);
         Assert.Contains("CanReorderItems=\"False\"", recentView);
@@ -137,6 +140,10 @@ public sealed class RecentRepositoriesStartScreenContractTests
         var document = System.Xml.Linq.XDocument.Parse(recentView);
         var gridViews = document.Descendants(ns + "GridView").ToArray();
         Assert.Equal(2, gridViews.Length);
+        Assert.Single(document.Descendants(ns + "DataTemplate").Where(template =>
+            template.Descendants(ns + "GridView").Any()));
+        Assert.Contains("source.GroupId == group.Id", recentViewCodeBehind);
+        Assert.Contains("target.GroupId == group.Id", recentViewCodeBehind);
         Assert.All(gridViews, grid =>
         {
             Assert.Equal("{StaticResource RecentRepositoriesItemsPanelTemplate}", (string?)grid.Attribute("ItemsPanel"));

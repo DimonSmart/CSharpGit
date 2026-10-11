@@ -123,6 +123,42 @@ public sealed class RecentRepositoriesProjectionTests
                 repositories[^1].Path));
     }
 
+    [Fact]
+    public void GroupedProjectionSearchAndQuickListUseIndependentGroupOrder()
+    {
+        var groups = new[]
+        {
+            new RepositoryGroupSettings("favorites", "Favorites", 1, true),
+            new RepositoryGroupSettings("work", "Work", 0, false),
+            new RepositoryGroupSettings("empty", "Empty", 2, true)
+        };
+        var entries = new[]
+        {
+            new RecentRepositorySettings("/p/f", "Match favorite",
+                DateTimeOffset.UnixEpoch, null, true, 0, "favorites"),
+            new RecentRepositorySettings("/p/w1", "Match work one",
+                DateTimeOffset.UnixEpoch, "feature", true, 1, "work"),
+            new RecentRepositorySettings("/p/w0", "Work first",
+                DateTimeOffset.UnixEpoch, "feature", true, 0, "work"),
+            new RecentRepositorySettings("/p/r", "Match recent",
+                DateTimeOffset.UnixEpoch, null)
+        };
+        var all = RecentRepositoriesProjectionBuilder.Build(groups, entries, null);
+        Assert.Equal(new[] { "work", "favorites", "empty" },
+            all.Groups.Select(group => group.Settings.Id));
+        Assert.Empty(all.Groups[2].Repositories);
+        Assert.Equal(new[] { "Work first", "Match work one", "Match favorite", "Match recent" },
+            RecentRepositoriesProjectionBuilder.BuildQuickList(groups, entries, null, 8)
+                .Select(repository => repository.DisplayName));
+
+        var filtered = RecentRepositoriesProjectionBuilder.Build(groups, entries, "Match");
+        Assert.Equal(new[] { "work", "favorites" },
+            filtered.Groups.Select(group => group.Settings.Id));
+        Assert.Single(filtered.Groups[0].Repositories);
+        Assert.Single(filtered.Recent);
+        Assert.False(filtered.Groups[0].Settings.IsExpanded);
+    }
+
     private static RecentRepositorySettings Repository(
         string displayName,
         string path,
