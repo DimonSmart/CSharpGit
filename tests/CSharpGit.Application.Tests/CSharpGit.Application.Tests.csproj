@@ -36,6 +36,7 @@
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryIdentitySettingsViewModel.cs" Link="Presentation/RepositoryIdentitySettingsViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CloneRepositoryViewModel.cs" Link="Presentation/CloneRepositoryViewModel.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RecentRepositoriesProjection.cs" Link="Presentation/RecentRepositoriesProjection.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/Controls/RepositoryTileGridMetrics.cs" Link="Presentation/RepositoryTileGridMetrics.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Controls/GitOutputDisplayBuffer.cs" Link="Presentation/GitOutputDisplayBuffer.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Controls/GitConsoleClipboardText.cs" Link="Presentation/GitConsoleClipboardText.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Controls/GitCommandConsoleItem.cs" Link="Presentation/GitCommandConsoleItem.cs" />
