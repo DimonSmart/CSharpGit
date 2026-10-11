@@ -490,7 +490,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                     .Select((candidate, index) => candidate with { PinnedOrder = index })
                     .ToDictionary(candidate => candidate.Path, PathComparer);
                 var updated = current.RecentRepositories.Select(
-                    candidate => candidate.IsPinned ? reordered[candidate.Path] : candidate);
+                    candidate => candidate.IsPinned && candidate.GroupId == existing.GroupId
+                        ? reordered[candidate.Path] : candidate);
                 return current with { RecentRepositories = NormalizeRecentRepositories(updated, current.RepositoryGroups) };
             },
             cancellationToken);
