@@ -295,6 +295,7 @@ public sealed class RepositoryGroupViewModel : INotifyPropertyChanged
     public bool IsVisible => _isVisible;
     public int RepositoryCount => _repositoryCount;
     public string Heading => $"{Name} ({RepositoryCount})";
+    public string ExpansionActionLabel => $"{(EffectiveIsExpanded ? "Collapse" : "Expand")} {Heading}";
     public string ActionsLabel => $"Actions for {Name} group";
     public bool CanDelete => Id != "favorites";
     public bool CanMoveUp => _canMoveUp;
@@ -308,6 +309,7 @@ public sealed class RepositoryGroupViewModel : INotifyPropertyChanged
         {
             _name = settings.Name;
             Notify(nameof(Name)); Notify(nameof(Heading)); Notify(nameof(ActionsLabel));
+            Notify(nameof(ExpansionActionLabel));
         }
         if (_order != settings.Order) { _order = settings.Order; Notify(nameof(Order)); }
         if (_isExpanded != settings.IsExpanded) { _isExpanded = settings.IsExpanded; Notify(nameof(IsExpanded)); }
@@ -321,6 +323,7 @@ public sealed class RepositoryGroupViewModel : INotifyPropertyChanged
         {
             _effectiveIsExpanded = effective;
             Notify(nameof(EffectiveIsExpanded)); Notify(nameof(ExpandGlyph));
+            Notify(nameof(ExpansionActionLabel));
         }
         var visible = !searching || count > 0;
         if (_isVisible != visible) { _isVisible = visible; Notify(nameof(IsVisible)); }
@@ -328,6 +331,7 @@ public sealed class RepositoryGroupViewModel : INotifyPropertyChanged
         {
             _repositoryCount = count;
             Notify(nameof(RepositoryCount)); Notify(nameof(Heading));
+            Notify(nameof(ExpansionActionLabel));
         }
         if (_canMoveUp != canMoveUp) { _canMoveUp = canMoveUp; Notify(nameof(CanMoveUp)); }
         if (_canMoveDown != canMoveDown) { _canMoveDown = canMoveDown; Notify(nameof(CanMoveDown)); }
@@ -446,6 +450,7 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
     public Task SetGroupExpandedAsync(string id, bool expanded) => _settings.SetRepositoryGroupExpandedAsync(id, expanded);
     public Task PinToGroupAsync(RecentRepositoryItem item, string id) => _settings.MoveRecentRepositoryToGroupAsync(item.Path, id);
     public Task UnpinAsync(RecentRepositoryItem item) => _settings.SetRecentRepositoryPinnedAsync(item.Path, false);
+    public Task RemoveRepositoryAsync(RecentRepositoryItem item) => _settings.RemoveRecentRepositoryAsync(item.Path);
     public Task TogglePinAsync(RecentRepositoryItem item) => _settings.SetRecentRepositoryPinnedAsync(item.Path, !item.IsPinned);
 
     internal Task MovePinnedRepositoryAsync(RecentRepositoryItem item, int newIndex)
