@@ -140,8 +140,8 @@ public sealed class RecentRepositoriesStartScreenContractTests
         var document = System.Xml.Linq.XDocument.Parse(recentView);
         var gridViews = document.Descendants(ns + "GridView").ToArray();
         Assert.Equal(2, gridViews.Length);
-        Assert.Single(document.Descendants(ns + "DataTemplate").Where(template =>
-            template.Descendants(ns + "GridView").Any()));
+        Assert.Single(document.Descendants(ns + "DataTemplate"), template =>
+            template.Descendants(ns + "GridView").Any());
         Assert.Contains("source.GroupId == group.Id", recentViewCodeBehind);
         Assert.Contains("target.GroupId == group.Id", recentViewCodeBehind);
         Assert.All(gridViews, grid =>
