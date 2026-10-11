@@ -206,9 +206,9 @@ public sealed class DesignSystemContractTests
         Assert.Equal("Center", Setting("VerticalContentAlignment"));
         Assert.Equal("{StaticResource Font.Body}", Setting("FontSize"));
         Assert.Equal("True", Setting("UseSystemFocusVisuals"));
-        Assert.Empty(headerStyle.Elements().Where(element =>
+        Assert.DoesNotContain(headerStyle.Elements(), element =>
             element.Name.LocalName == "Setter" &&
-            (string?)element.Attribute("Property") is "Height" or "Template"));
+            (string?)element.Attribute("Property") is "Height" or "Template");
 
         var headerTemplate = Resource(workspace, "PivotHeaderTemplate");
         var grid = Assert.Single(headerTemplate.Elements());
