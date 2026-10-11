@@ -16,7 +16,7 @@
   <Thickness x:Key="Margin.DiffNumber">0,0,5,0</Thickness>
   <Thickness x:Key="Margin.HistoryColumnGap">4,0,0,0</Thickness>
   <Thickness x:Key="Padding.DiffText">5,0</Thickness>
-  <Thickness x:Key="Padding.CompactPivotHeader">8,0</Thickness>
+  <Thickness x:Key="Padding.CompactPivotHeader">4,0</Thickness>
 
   <Style x:Key="ReferenceBadgeStyle" TargetType="Border">
     <Setter Property="Background" Value="{ThemeResource ControlSolidFillColorDefaultBrush}" />
@@ -143,9 +143,10 @@
   </Style>
 
   <Style x:Key="CompactPivotHeaderItemStyle" TargetType="primitives:PivotHeaderItem">
-    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="MinHeight" Value="{StaticResource Height.TabHeader}" />
     <Setter Property="Margin" Value="0" />
     <Setter Property="Padding" Value="{StaticResource Padding.CompactPivotHeader}" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="FontSize" Value="{StaticResource Font.Body}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="UseSystemFocusVisuals" Value="True" />
@@ -155,7 +156,6 @@
     <Grid MinHeight="{StaticResource Height.TabHeader}">
       <TextBlock Text="{Binding}"
                  Style="{StaticResource BodyStrongTextStyle}"
-                 Margin="2,0"
                  VerticalAlignment="Center" />
     </Grid>
   </DataTemplate>
