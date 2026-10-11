@@ -387,7 +387,7 @@ public sealed class JsonAppSettingsRecentRepositoriesTests
     {
         using var fixture = new SettingsFixture();
         var path = JsonSerializer.Serialize(fixture.RepositoryPath("repo"));
-        fixture.WriteSettings($"""
+        fixture.WriteSettings($$"""
         {
           "LoggingEnabled": true,
           "RepositoryGroups": [
