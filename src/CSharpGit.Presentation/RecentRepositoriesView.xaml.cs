@@ -24,19 +24,19 @@ public sealed partial class RecentRepositoriesView : UserControl
             viewModel.StartImageLoading();
     }
 
-    private static void RepositoryGrid_Loaded(object sender, RoutedEventArgs e)
+    private void RepositoryGrid_Loaded(object sender, RoutedEventArgs e)
     {
         if (sender is GridView grid) UpdateRepositoryGridMetrics(grid);
     }
 
-    private static void RepositoryGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+    private void RepositoryGrid_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         if (sender is GridView grid) UpdateRepositoryGridMetrics(grid);
     }
 
     private static void UpdateRepositoryGridMetrics(GridView grid)
     {
-        if (grid.ItemsPanelRoot is not ItemsWrapGrid panel) return;
+        if (grid.ItemsPanelRoot is not VariableSizedWrapGrid panel) return;
 
         var (_, cellWidth) = RepositoryTileGridMetrics.Calculate(grid.ActualWidth);
         if (cellWidth <= 0 || Math.Abs(panel.ItemWidth - cellWidth) < 0.05) return;
