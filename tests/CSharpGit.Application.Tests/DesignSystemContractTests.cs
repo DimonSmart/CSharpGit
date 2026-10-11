@@ -125,7 +125,7 @@ public sealed class DesignSystemContractTests
         Assert.Contains("<x:Double x:Key=\"Height.DataRow\">24</x:Double>", tokens);
         Assert.Contains("<x:Double x:Key=\"Height.Header\">26</x:Double>", tokens);
         Assert.Contains("<x:Double x:Key=\"Height.ColumnHeader\">24</x:Double>", tokens);
-        Assert.Contains("<x:Double x:Key=\"Height.TabHeader\">28</x:Double>", tokens);
+        Assert.Contains("<x:Double x:Key=\"Height.TabHeader\">24</x:Double>", tokens);
         Assert.Contains("<x:Double x:Key=\"Height.Toolbar\">34</x:Double>", tokens);
         Assert.Contains("<x:Double x:Key=\"Height.StatusBar\">22</x:Double>", tokens);
         Assert.Contains("<x:Double x:Key=\"Height.DiffRow\">20</x:Double>", tokens);
@@ -169,6 +169,101 @@ public sealed class DesignSystemContractTests
         Assert.Contains("ToolTipService.ToolTip=\"Discard all…\"", main);
         Assert.Contains("AutomationProperties.Name=\"Discard all\"", main);
         Assert.Contains("AutomationProperties.Name=\"Commit message\"", main);
+    }
+
+    [Fact]
+    public void DetailsPivotHeadersShareCompactGeometryWithoutOverridingPlatformStates()
+    {
+        var root = FindRepositoryRoot();
+        var main = XDocument.Parse(Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var tokens = XDocument.Parse(Read(root, "src", "CSharpGit.Presentation", "Styles", "DesignTokens.xaml"));
+        var workspace = XDocument.Parse(Read(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+
+        XElement Resource(XDocument document, string key) =>
+            Assert.Single(document.Descendants(), element => (string?)element.Attribute(x + "Key") == key);
+
+        var height = Resource(tokens, "Height.TabHeader");
+        Assert.Equal("24", height.Value);
+        var padding = Resource(workspace, "Padding.CompactPivotHeader");
+        Assert.Equal("4,0", padding.Value);
+        Assert.Single(workspace.Descendants(), element =>
+            (string?)element.Attribute(x + "Key") == "PivotHeaderTemplate");
+        Assert.Single(workspace.Descendants(), element =>
+            (string?)element.Attribute(x + "Key") == "CompactPivotHeaderItemStyle");
+
+        var headerStyle = Resource(workspace, "CompactPivotHeaderItemStyle");
+        Assert.Equal("primitives:PivotHeaderItem", (string?)headerStyle.Attribute("TargetType"));
+
+        string? Setting(string property) =>
+            (string?)Assert.Single(headerStyle.Elements(), element =>
+                element.Name.LocalName == "Setter" &&
+                (string?)element.Attribute("Property") == property).Attribute("Value");
+
+        Assert.Equal("{StaticResource Height.TabHeader}", Setting("MinHeight"));
+        Assert.Equal("{StaticResource Padding.CompactPivotHeader}", Setting("Padding"));
+        Assert.Equal("0", Setting("Margin"));
+        Assert.Equal("Center", Setting("VerticalContentAlignment"));
+        Assert.Equal("{StaticResource Font.Body}", Setting("FontSize"));
+        Assert.Equal("True", Setting("UseSystemFocusVisuals"));
+        Assert.Empty(headerStyle.Elements().Where(element =>
+            element.Name.LocalName == "Setter" &&
+            (string?)element.Attribute("Property") is "Height" or "Template"));
+
+        var headerTemplate = Resource(workspace, "PivotHeaderTemplate");
+        var grid = Assert.Single(headerTemplate.Elements());
+        Assert.Equal("Grid", grid.Name.LocalName);
+        Assert.Equal("{StaticResource Height.TabHeader}", (string?)grid.Attribute("MinHeight"));
+        var label = Assert.Single(grid.Elements());
+        Assert.Equal("TextBlock", label.Name.LocalName);
+        Assert.Equal("{Binding}", (string?)label.Attribute("Text"));
+        Assert.Equal("Center", (string?)label.Attribute("VerticalAlignment"));
+        Assert.Null(label.Attribute("Margin"));
+
+        var pivot = Assert.Single(main.Descendants(), element =>
+            (string?)element.Attribute(x + "Name") == "DetailsTabs");
+        Assert.Equal("Pivot", pivot.Name.LocalName);
+        Assert.Equal("{StaticResource PivotHeaderTemplate}", (string?)pivot.Attribute("HeaderTemplate"));
+        Assert.Equal("DetailsTabs_SelectionChanged", (string?)pivot.Attribute("SelectionChanged"));
+
+        var resources = Assert.Single(pivot.Elements(), element =>
+            element.Name.LocalName == "Pivot.Resources");
+        var implicitStyle = Assert.Single(resources.Elements());
+        Assert.Equal("primitives:PivotHeaderItem", (string?)implicitStyle.Attribute("TargetType"));
+        Assert.Equal("{StaticResource CompactPivotHeaderItemStyle}",
+            (string?)implicitStyle.Attribute("BasedOn"));
+        Assert.Null(implicitStyle.Attribute(x + "Key"));
+
+        var items = pivot.Elements().Where(element => element.Name.LocalName == "PivotItem").ToArray();
+        Assert.Equal(new[] { "SummaryTab", "ChangesTab" },
+            items.Select(element => (string?)element.Attribute(x + "Name")));
+        Assert.All(items, item => Assert.Null(item.Attribute("HeaderTemplate")));
+        Assert.Equal("{Binding CommitDetails.SelectedDetailsTitle}",
+            (string?)items[0].Attribute("Header"));
+    }
+
+    [Fact]
+    public void DynamicallyNamedDetailsTabsRetainSharedStyleAndLazySelection()
+    {
+        var root = FindRepositoryRoot();
+        var files = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs");
+        var changes = Read(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs");
+        var mainCode = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
+
+        Assert.Contains("new PivotItem { Header = \"Files\", Name = \"FilesTab\" }", files);
+        Assert.Contains("DetailsTabs.Items.Add(_repositoryFilesTab)", files);
+        Assert.DoesNotContain("_repositoryFilesTab.HeaderTemplate =", files);
+        Assert.DoesNotContain("_repositoryFilesTab.Style =", files);
+        Assert.Contains("DetailsTabs.SelectedItem", files);
+        Assert.Contains("SetActiveAsync(IsRepositoryFilesActive)", files);
+        Assert.Contains("DetailsTabs.SelectedItem", changes);
+        Assert.Contains("SetActive(active)", changes);
+        Assert.Contains("UpdateRepositoryFilesViewActivity();", changes);
+        Assert.Contains("UpdateChangesViewActivity();", changes);
+        Assert.Contains("Changes ({_commitFiles.Count})", changes);
+        Assert.Contains("\"Tracked files\"", mainCode);
+        Assert.Contains("\"Stash\"", mainCode + changes + files + 
+            Read(root, "src", "CSharpGit.Presentation", "ViewModels", "CommitDetailsViewModel.cs"));
     }
 
     [Fact]
