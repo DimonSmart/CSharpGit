@@ -66,6 +66,7 @@
     <Setter Property="Padding" Value="{StaticResource Padding.Control}" />
     <Setter Property="FontSize" Value="{StaticResource Font.Body}" />
     <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
 
   <Style x:Key="CompactMultilineTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource CompactTextBoxStyle}">
