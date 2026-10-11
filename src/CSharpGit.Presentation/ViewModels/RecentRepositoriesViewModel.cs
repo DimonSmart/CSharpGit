@@ -358,6 +358,7 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
     private bool _imageLoadingStarted;
     private bool _disposed;
     private string _searchText = string.Empty;
+    private RepositoryLauncherSettingsSnapshot _reconciledSnapshot = null!;
 
     internal RecentRepositoriesViewModel(
         IAppSettingsService settings,
@@ -482,6 +483,7 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
     private void Reconcile()
     {
         var snapshot = _settings.RepositoryLauncherSnapshot;
+        _reconciledSnapshot = snapshot;
         var currentSettings = snapshot.Repositories;
         var currentPaths = currentSettings.Select(settings => settings.Path).ToHashSet(PathComparer);
 
@@ -522,7 +524,7 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
 
     private void RebuildProjection()
     {
-        var snapshot = _settings.RepositoryLauncherSnapshot;
+        var snapshot = _reconciledSnapshot;
         var projection = RecentRepositoriesProjectionBuilder.Build(snapshot.Groups, snapshot.Repositories, SearchText);
         var visibleGroups = projection.Groups.ToDictionary(group => group.Settings.Id, StringComparer.Ordinal);
         var desiredGroups = new List<RepositoryGroupViewModel>();
