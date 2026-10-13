@@ -25,34 +25,45 @@ public sealed partial class RecentRepositoriesView : UserControl
     private void RecentRepositoriesView_Loaded(object sender, RoutedEventArgs e) =>
         Model?.StartImageLoading();
 
-    private void RepositoryGrid_Loaded(object sender, RoutedEventArgs e)
+    private void RepositoryTileLayout_Loaded(object sender, RoutedEventArgs e)
     {
-        if (sender is GridView grid) UpdateRepositoryGridMetrics(grid);
+        if (sender is Grid tile) UpdateTileLayout(tile);
     }
 
-    private void RepositoryGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+    private void RepositoryTileLayout_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        if (sender is GridView grid) UpdateRepositoryGridMetrics(grid);
+        if (sender is Grid tile) UpdateTileLayout(tile);
     }
 
-    private static void UpdateRepositoryGridMetrics(GridView grid)
+    private static void UpdateTileLayout(Grid tile)
     {
-        if (grid.ItemsPanelRoot is not VariableSizedWrapGrid panel) return;
-        var (_, cellWidth) = RepositoryTileGridMetrics.Calculate(grid.ActualWidth);
-        if (cellWidth <= 0 || Math.Abs(panel.ItemWidth - cellWidth) < 0.05) return;
-        panel.ItemWidth = cellWidth;
-    }
+        if (tile.DataContext is not RecentRepositoryItem item
+            || tile.FindName("RepositoryTileMedia") is not Border media
+            || tile.FindName("RepositoryTileText") is not Grid text)
+            return;
 
-    private void RepositoryImage_ImageFailed(object sender, ExceptionRoutedEventArgs e)
-    {
-        if (sender is FrameworkElement { DataContext: RecentRepositoryItem item })
-            item.SetRepositoryImagePath(null);
-    }
+        // A single cell never exceeds 348 DIP including its gutter, whereas
+        // a two-column preview is at least 528 DIP wide excluding the gutter.
+        var wide = item.HasReadyPreview && tile.ActualWidth >= 400;
+        var innerWidth = Math.Max(0, tile.ActualWidth - 16);
+        var previewWidth = Math.Min(280,
+            Math.Min(Math.Max(200, innerWidth * 0.42), innerWidth - 8 - 220));
+        var compactPreviewWidth = item.HasReadyPreview && innerWidth - 8 - 96 >= 220
+            ? 96 : 72;
+        var mediaWidth = wide ? Math.Max(72, previewWidth) : compactPreviewWidth;
+        var mediaHeight = wide ? 96d : 72d;
 
-    private void RepositoryPreview_ImageFailed(object sender, ExceptionRoutedEventArgs e)
-    {
-        if (sender is FrameworkElement { DataContext: RecentRepositoryItem item })
-            item.SetRepositoryPreviewPath(null);
+        var textColumn = wide ? 0 : 1;
+        var mediaColumn = wide ? 1 : 0;
+        if (Grid.GetColumn(text) != textColumn) Grid.SetColumn(text, textColumn);
+        if (Grid.GetColumn(media) != mediaColumn) Grid.SetColumn(media, mediaColumn);
+
+        var firstWidth = wide ? new GridLength(1, GridUnitType.Star) : new GridLength(mediaWidth);
+        var secondWidth = wide ? new GridLength(mediaWidth) : new GridLength(1, GridUnitType.Star);
+        if (tile.ColumnDefinitions[0].Width != firstWidth) tile.ColumnDefinitions[0].Width = firstWidth;
+        if (tile.ColumnDefinitions[1].Width != secondWidth) tile.ColumnDefinitions[1].Width = secondWidth;
+        if (Math.Abs(media.Width - mediaWidth) >= 0.05) media.Width = mediaWidth;
+        if (Math.Abs(media.Height - mediaHeight) >= 0.05) media.Height = mediaHeight;
     }
 
     private async Task ShowErrorAsync(string action, Exception exception)
