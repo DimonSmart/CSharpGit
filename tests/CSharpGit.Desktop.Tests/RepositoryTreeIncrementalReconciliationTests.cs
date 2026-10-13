@@ -136,6 +136,36 @@ public sealed class RepositoryTreeIncrementalReconciliationTests
     }
 
     [Fact]
+    public void DefaultBranchChangeReordersWithoutReplacingNodesOrResettingCollection()
+    {
+        var roots = Reconcile([], Build(local:
+        [
+            Branch("alpha") with { IsDefault = true },
+            Branch("develop", current: true),
+            Branch("zeta")
+        ]));
+        var branches = Find(roots, "group:branches");
+        var alpha = Find(roots, "local-branch:alpha");
+        var zeta = Find(roots, "local-branch:zeta");
+        var actions = Observe(branches.Children);
+
+        Reconcile(roots, Build(local:
+        [
+            Branch("alpha"),
+            Branch("develop", current: true),
+            Branch("zeta") with { IsDefault = true }
+        ]));
+
+        Assert.Equal(
+            ["local-branch:zeta", "local-branch:alpha", "local-branch:develop"],
+            branches.Children.Select(node => node.Key).ToArray());
+        Assert.Same(alpha, Find(roots, "local-branch:alpha"));
+        Assert.Same(zeta, Find(roots, "local-branch:zeta"));
+        Assert.Contains(NotifyCollectionChangedAction.Move, actions);
+        Assert.DoesNotContain(NotifyCollectionChangedAction.Reset, actions);
+    }
+
+    [Fact]
     public void TagOrderingUsesMoveAddRemoveWithoutReplacingSurvivors()
     {
         var roots = Reconcile([], Build(tags: [Tag("v1"), Tag("v2"), Tag("v3")]));

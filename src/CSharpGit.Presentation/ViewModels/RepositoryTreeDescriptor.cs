@@ -168,7 +168,9 @@ internal static class RepositoryTreeDescriptorBuilder
     private static IReadOnlyList<RepositoryTreeDescriptor> BuildBranchChildren(BranchFolderBuilder folder)
     {
         var result = new List<RepositoryTreeDescriptor>(folder.Leaves.Count + folder.Folders.Count);
-        result.AddRange(folder.Leaves.OrderBy(node => node.Name, StringComparer.OrdinalIgnoreCase));
+        result.AddRange(folder.Leaves
+            .OrderByDescending(node => node.Value is GitBranch { IsDefault: true })
+            .ThenBy(node => node.Name, StringComparer.OrdinalIgnoreCase));
         result.AddRange(folder.Folders.Values
             .OrderBy(child => child.Name, StringComparer.OrdinalIgnoreCase)
             .Select(child => new RepositoryTreeDescriptor(
