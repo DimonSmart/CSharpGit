@@ -19,6 +19,11 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
     private string? _repositoryImagePath;
     private ImageSource? _repositoryPreview;
     private string? _repositoryPreviewPath;
+    private BitmapImage? _visualCandidate;
+    private string? _candidatePath;
+    private RepositoryImageKind? _candidateKind;
+    private string? _failedCandidatePath;
+    private RepositoryImageKind? _failedCandidateKind;
     private string _displayName = string.Empty;
     private DateTimeOffset _lastOpenedUtc;
     private string? _lastBranchName;
@@ -88,6 +93,10 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
     public ImageSource? RepositoryPreview => _repositoryPreview;
     public string? RepositoryPreviewPath => _repositoryPreviewPath;
     public double RepositoryPreviewOpacity => _repositoryPreview is null ? 0d : 1d;
+    public bool HasReadyPreview => _repositoryPreview is not null;
+    // A transparent Image in the live tree drives decoding of this candidate.
+    // Asset-level completion events are independent of container recycling.
+    public ImageSource? RepositoryCandidate => _visualCandidate;
 
     internal bool NeedsImageRefresh { get; set; }
 
@@ -172,52 +181,91 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
 
     internal void SetRepositoryVisual(RepositoryImageCacheState state)
     {
-        if (state.Kind == RepositoryImageKind.Icon)
+        if (state.Kind is not { } kind || string.IsNullOrWhiteSpace(state.ImagePath))
         {
-            SetRepositoryPreviewPath(null);
-            SetRepositoryImagePath(state.ImagePath);
+            // Failed refreshes do not evict an already decoded visual.
+            if (_repositoryImage is null && _repositoryPreview is null)
+                ReleaseCandidate();
             return;
         }
 
-        if (state.Kind == RepositoryImageKind.Preview)
+        string path;
+        try { path = System.IO.Path.GetFullPath(state.ImagePath); }
+        catch (Exception) { return; }
+
+        if (kind == RepositoryImageKind.Icon && _repositoryImage is not null
+            && string.Equals(_repositoryImagePath, path, StringComparison.Ordinal))
+            return;
+        if (kind == RepositoryImageKind.Preview && _repositoryPreview is not null
+            && string.Equals(_repositoryPreviewPath, path, StringComparison.Ordinal))
+            return;
+        if (_candidateKind == kind && string.Equals(_candidatePath, path, StringComparison.Ordinal))
+            return;
+        if (_failedCandidateKind == kind && string.Equals(_failedCandidatePath, path, StringComparison.Ordinal))
+            return;
+
+        var (loaded, normalizedPath) = LoadImage(path);
+        if (loaded is not BitmapImage candidate || normalizedPath is null)
         {
-            SetRepositoryImagePath(null);
-            SetRepositoryPreviewPath(state.ImagePath);
+            _failedCandidateKind = kind;
+            _failedCandidatePath = path;
             return;
         }
 
-        SetRepositoryPreviewPath(null);
-        SetRepositoryImagePath(null);
+        ReleaseCandidate();
+        _failedCandidateKind = null;
+        _failedCandidatePath = null;
+        _candidateKind = kind;
+        _candidatePath = normalizedPath;
+        _visualCandidate = candidate;
+        candidate.ImageOpened += Candidate_ImageOpened;
+        candidate.ImageFailed += Candidate_ImageFailed;
+        OnPropertyChanged(nameof(RepositoryCandidate));
     }
 
-    internal void SetRepositoryImagePath(string? imagePath)
+    private void Candidate_ImageOpened(object sender, RoutedEventArgs e)
     {
-        var (image, normalizedPath) = LoadImage(imagePath);
-        if (string.Equals(_repositoryImagePath, normalizedPath, StringComparison.Ordinal)
-            && (_repositoryImage is null) == (image is null))
+        if (sender is not BitmapImage image || !ReferenceEquals(_visualCandidate, image))
             return;
 
-        _repositoryImagePath = normalizedPath;
-        _repositoryImage = image;
+        var kind = _candidateKind;
+        var path = _candidatePath;
+        ReleaseCandidate();
+
+        // Publish the entire presentation state before notifying the grid.
+        _repositoryImage = kind == RepositoryImageKind.Icon ? image : null;
+        _repositoryImagePath = kind == RepositoryImageKind.Icon ? path : null;
+        _repositoryPreview = kind == RepositoryImageKind.Preview ? image : null;
+        _repositoryPreviewPath = kind == RepositoryImageKind.Preview ? path : null;
         OnPropertyChanged(nameof(RepositoryImagePath));
-        OnPropertyChanged(nameof(RepositoryImage));
-        OnPropertyChanged(nameof(RepositoryImageOpacity));
-        OnPropertyChanged(nameof(RepositoryGlyphOpacity));
-    }
-
-    internal void SetRepositoryPreviewPath(string? imagePath)
-    {
-        var (image, normalizedPath) = LoadImage(imagePath);
-        if (string.Equals(_repositoryPreviewPath, normalizedPath, StringComparison.Ordinal)
-            && (_repositoryPreview is null) == (image is null))
-            return;
-
-        _repositoryPreviewPath = normalizedPath;
-        _repositoryPreview = image;
         OnPropertyChanged(nameof(RepositoryPreviewPath));
+        OnPropertyChanged(nameof(RepositoryImage));
         OnPropertyChanged(nameof(RepositoryPreview));
+        OnPropertyChanged(nameof(RepositoryImageOpacity));
         OnPropertyChanged(nameof(RepositoryPreviewOpacity));
         OnPropertyChanged(nameof(RepositoryGlyphOpacity));
+        OnPropertyChanged(nameof(HasReadyPreview));
+    }
+
+    private void Candidate_ImageFailed(object sender, ExceptionRoutedEventArgs e)
+    {
+        if (sender is not BitmapImage image || !ReferenceEquals(_visualCandidate, image))
+            return;
+
+        _failedCandidateKind = _candidateKind;
+        _failedCandidatePath = _candidatePath;
+        ReleaseCandidate(); // Keep any previously decoded image displayed.
+    }
+
+    private void ReleaseCandidate()
+    {
+        if (_visualCandidate is null) return;
+        _visualCandidate.ImageOpened -= Candidate_ImageOpened;
+        _visualCandidate.ImageFailed -= Candidate_ImageFailed;
+        _visualCandidate = null;
+        _candidateKind = null;
+        _candidatePath = null;
+        OnPropertyChanged(nameof(RepositoryCandidate));
     }
 
     private void UpdateMetadata(CommitTimeDisplayMode commitTimeDisplayMode)
