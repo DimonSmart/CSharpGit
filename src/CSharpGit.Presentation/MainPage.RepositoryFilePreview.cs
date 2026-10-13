@@ -111,6 +111,7 @@ public sealed partial class MainPage
             selection.Path,
             selection.LineNumber);
         var lease = _repositoryPreviewGate.Begin(context);
+        _repositoryFilePreviewStartedActivation = _repositoryFilesActivationRevision;
         _repositoryFilePreviewHost?.ShowLoading(selection.Path);
 
         try

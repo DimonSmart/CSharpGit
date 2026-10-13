@@ -122,6 +122,19 @@ public sealed class RepositoryFilesUiContractTests
         Assert.Contains("SnapshotMatchesSelection", filesSurface, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void RepositoryFilesSelectionUsesEventDeltaAndSuppressesReverseFeedback()
+    {
+        var root = FindRepositoryRoot();
+        var files = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs"));
+        Assert.Contains("args.AddedItems.Cast<object?>()", files, StringComparison.Ordinal);
+        Assert.Contains("args.RemovedItems.Cast<object?>()", files, StringComparison.Ordinal);
+        Assert.Contains("_repositoryFilesSelectionRouter.Route(", files, StringComparison.Ordinal);
+        Assert.Contains("_repositoryFilesHandlingUserSelection", files, StringComparison.Ordinal);
+        Assert.DoesNotContain("SelectTreeNode(sender.SelectedItem", files, StringComparison.Ordinal);
+        Assert.Contains("ActivateRepositoryFilesAsync", files, StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
