@@ -6,6 +6,28 @@ internal static class RepositoryTileGridMetrics
     internal const double MinCardWidth = 260;
     internal const double MaxCardWidth = 340;
     internal const double Gap = 8;
+    internal const double DefaultPreviewAspectRatio = 1200d / 630d;
+    internal const double MinimumWideTextWidth = 236;
+    internal const double MaximumWidePreviewWidth = 360;
+
+    /// <summary>
+    /// Reserve at least 220 DIP of content and 16 DIP of insets for the text
+    /// column. With an ordinary Social Preview this gives full-height imagery
+    /// without letterboxing, an extra media frame or cropping.
+    /// </summary>
+    internal static double WidePreviewWidth(double cardWidth, double cardHeight, double aspectRatio)
+    {
+        if (!double.IsFinite(cardWidth) || cardWidth <= 0
+            || !double.IsFinite(cardHeight) || cardHeight <= 0)
+            return 0;
+
+        if (!double.IsFinite(aspectRatio) || aspectRatio <= 0)
+            aspectRatio = DefaultPreviewAspectRatio;
+
+        var available = Math.Max(0, cardWidth - MinimumWideTextWidth);
+        return Math.Min(Math.Min(cardHeight * aspectRatio, MaximumWidePreviewWidth), available);
+    }
+
 
     internal static int ColumnSpan(bool hasReadyPreview, int columns) =>
         hasReadyPreview && columns >= 2 ? 2 : 1;
