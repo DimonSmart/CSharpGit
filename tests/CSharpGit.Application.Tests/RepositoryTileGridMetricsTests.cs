@@ -54,4 +54,50 @@ public sealed class RepositoryTileGridMetricsTests
         Assert.InRange(cellWidth, 0, RepositoryTileGridMetrics.MaxCardWidth + RepositoryTileGridMetrics.Gap);
         Assert.True(columns * cellWidth <= width + 0.001);
     }
+    [Theory]
+    [InlineData(535.99, 1, 348)]
+    [InlineData(536, 2, 268)]
+    [InlineData(668, 2, 334)]
+    [InlineData(992, 3, 330.66)]
+    public void PreviewSpanAdaptsToTheCurrentGrid(double width, int columns, double cellWidth)
+    {
+        var metrics = RepositoryTileGridMetrics.Calculate(width);
+        Assert.Equal(columns, metrics.Columns);
+        Assert.Equal(cellWidth, metrics.CellWidth, 2);
+        Assert.Equal(1, RepositoryTileGridMetrics.ColumnSpan(false, metrics.Columns));
+        var previewSpan = RepositoryTileGridMetrics.ColumnSpan(true, metrics.Columns);
+        Assert.Equal(columns >= 2 ? 2 : 1, previewSpan);
+        Assert.Equal(cellWidth - 8, RepositoryTileGridMetrics.VisibleCardWidth(cellWidth, 1), 2);
+        if (columns >= 2)
+        {
+            var visibleWidth = RepositoryTileGridMetrics.VisibleCardWidth(cellWidth, previewSpan);
+            Assert.Equal(2 * cellWidth - 8, visibleWidth, 2);
+            Assert.True(visibleWidth <= columns * cellWidth);
+        }
+    }
+
+    [Fact]
+    public void PreviewSpanFollowsResizeWithoutRetainingThePreviousLayout()
+    {
+        var widths = new[] { 500d, 536d, 500d, 992d, 992d };
+        var spans = widths.Select(width =>
+        {
+            var (columns, _) = RepositoryTileGridMetrics.Calculate(width);
+            return RepositoryTileGridMetrics.ColumnSpan(true, columns);
+        }).ToArray();
+        Assert.Equal(new[] { 1, 2, 1, 2, 2 }, spans);
+        Assert.Equal(1, RepositoryTileGridMetrics.ColumnSpan(true, 0));
+        Assert.Equal(1, RepositoryTileGridMetrics.ColumnSpan(false, 10));
+    }
+
+    [Theory]
+    [InlineData(72)]
+    [InlineData(268)]
+    [InlineData(348)]
+    public void CompactAndWideWidthsRespectCellGutters(double cellWidth)
+    {
+        Assert.Equal(cellWidth - 8, RepositoryTileGridMetrics.VisibleCardWidth(cellWidth, 1));
+        Assert.Equal(cellWidth * 2 - 8, RepositoryTileGridMetrics.VisibleCardWidth(cellWidth, 2));
+    }
+
 }

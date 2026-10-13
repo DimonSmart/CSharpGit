@@ -19,6 +19,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         var controlsStyles = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Controls.xaml"));
         var recentViewCodeBehind = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "RecentRepositoriesView.xaml.cs"));
         var metrics = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "RepositoryTileGridMetrics.cs"));
+        var repositoryGrid = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "RepositoryTileGridView.cs"));
         var imagesIntent = File.ReadAllText(Path.Combine(root, ".idd", "intent", "IDD-0016.spec-repository-images.md"));
         var launcherIntent = File.ReadAllText(Path.Combine(root, ".idd", "intent", "IDD-0037.spec-recent-repositories-start-screen.md"));
         var recentViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RecentRepositoriesViewModel.cs"));
@@ -111,20 +112,33 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("RepositoryGlyphOpacity", recentView);
         Assert.Contains("RepositoryPreviewOpacity", recentView);
         Assert.Contains("Stretch=\"Uniform\"", recentView);
-        Assert.Contains("ImageFailed=\"RepositoryImage_ImageFailed\"", recentView);
-        Assert.Contains("ImageFailed=\"RepositoryPreview_ImageFailed\"", recentView);
-        Assert.Contains("SetRepositoryImagePath(null)", recentViewCodeBehind);
-        Assert.Contains("SetRepositoryPreviewPath(null)", recentViewCodeBehind);
+        Assert.Contains("Source=\"{Binding RepositoryCandidate}\"", recentView);
+        Assert.Contains("Candidate_ImageOpened", recentViewModel);
+        Assert.Contains("Candidate_ImageFailed", recentViewModel);
+        Assert.Contains("ReferenceEquals(_visualCandidate, image)", recentViewModel);
+        Assert.Contains("ReleaseCandidate()", recentViewModel);
+        Assert.Contains("HasReadyPreview", recentViewModel);
         Assert.Contains("StartImageLoading()", recentViewCodeBehind);
-        Assert.Contains("RepositoryTileGridMetrics.Calculate(grid.ActualWidth)", recentViewCodeBehind);
-        Assert.Contains("ItemsPanelRoot is not VariableSizedWrapGrid", recentViewCodeBehind);
-        Assert.Contains("panel.ItemWidth = cellWidth", recentViewCodeBehind);
+        Assert.Contains("RepositoryTileGridMetrics.Calculate(ActualWidth)", repositoryGrid);
+        Assert.Contains("ItemsPanelRoot is VariableSizedWrapGrid", repositoryGrid);
+        Assert.Contains("panel.ItemWidth = cellWidth", repositoryGrid);
+        Assert.Contains("PrepareContainerForItemOverride", repositoryGrid);
+        Assert.Contains("ClearContainerForItemOverride", repositoryGrid);
+        Assert.Contains("VariableSizedWrapGrid.SetColumnSpan(container, span)", repositoryGrid);
+        Assert.Contains("VariableSizedWrapGrid.SetColumnSpan(container, 1)", repositoryGrid);
+        Assert.Contains("subscription.Item.PropertyChanged -= subscription.Handler", repositoryGrid);
+        Assert.Contains("ReferenceEquals(current.Item, item)", repositoryGrid);
+        Assert.Contains("RepositoryTileGridMetrics.ColumnSpan(item.HasReadyPreview, _columns)", repositoryGrid);
+        Assert.Contains("RepositoryTileLayout_SizeChanged", recentViewCodeBehind);
+        Assert.Contains("innerWidth - 8 - 220", recentViewCodeBehind);
         Assert.Contains("MinCardWidth = 260", metrics);
         Assert.Contains("MaxCardWidth = 340", metrics);
         Assert.Contains("Gap = 8", metrics);
         Assert.DoesNotContain("RepositoryColumnSpan", recentViewModel);
         Assert.DoesNotContain("RepositoryColumnSpan", recentView);
-        Assert.DoesNotContain("VariableSizedWrapGrid.SetColumnSpan", recentViewCodeBehind);
+        Assert.DoesNotContain("GetCachedState", repositoryGrid);
+        Assert.DoesNotContain("ResolveAsync", repositoryGrid);
+        Assert.DoesNotContain("Directory.Exists", repositoryGrid);
         Assert.DoesNotContain("RepositoryPreviewLayoutVisibility", recentViewModel);
         Assert.DoesNotContain("RepositoryCompactLayoutVisibility", recentView);
         Assert.DoesNotContain("MaxWidth=\"1120\"", recentView);
@@ -138,10 +152,10 @@ public sealed class RecentRepositoriesStartScreenContractTests
         var ns = System.Xml.Linq.XNamespace.Get("http://schemas.microsoft.com/winfx/2006/xaml/presentation");
         var xns = System.Xml.Linq.XNamespace.Get("http://schemas.microsoft.com/winfx/2006/xaml");
         var document = System.Xml.Linq.XDocument.Parse(recentView);
-        var gridViews = document.Descendants(ns + "GridView").ToArray();
+        var gridViews = document.Descendants(System.Xml.Linq.XName.Get("RepositoryTileGridView", "using:CSharpGit.Presentation.Controls")).ToArray();
         Assert.True(gridViews.Length >= 2);
         Assert.Single(document.Descendants(ns + "DataTemplate"), template =>
-            template.Descendants(ns + "GridView").Any());
+            template.Descendants(System.Xml.Linq.XName.Get("RepositoryTileGridView", "using:CSharpGit.Presentation.Controls")).Any());
         Assert.Contains("source.GroupId == group.Id", recentViewCodeBehind);
         Assert.Contains("target.GroupId == group.Id", recentViewCodeBehind);
         Assert.All(gridViews, grid =>
@@ -149,8 +163,8 @@ public sealed class RecentRepositoriesStartScreenContractTests
             Assert.Equal("{StaticResource RecentRepositoriesItemsPanelTemplate}", (string?)grid.Attribute("ItemsPanel"));
             Assert.Equal("{StaticResource RecentRepositoryGridItemStyle}", (string?)grid.Attribute("ItemContainerStyle"));
             Assert.Equal("{StaticResource RecentRepositoryTileTemplate}", (string?)grid.Attribute("ItemTemplate"));
-            Assert.NotNull(grid.Attribute("Loaded"));
-            Assert.NotNull(grid.Attribute("SizeChanged"));
+            Assert.Null(grid.Attribute("Loaded"));
+            Assert.Null(grid.Attribute("SizeChanged"));
         });
         var tiles = document.Descendants(ns + "DataTemplate")
             .Where(template => (string?)template.Attribute(xns + "Key") == "RecentRepositoryTileTemplate").ToArray();
@@ -158,7 +172,12 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Single(tile.Descendants(ns + "Image"), image => (string?)image.Attribute("Source") == "{Binding RepositoryImage}");
         Assert.Single(tile.Descendants(ns + "Image"), image => (string?)image.Attribute("Source") == "{Binding RepositoryPreview}");
         Assert.Equal(3, tile.Descendants(ns + "Button").Count());
-        Assert.Contains(tile.Descendants(ns + "Grid"), grid => (string?)grid.Attribute("ColumnDefinitions") == "72,*,Auto");
+        Assert.Contains(tile.Descendants(ns + "Grid"), grid => (string?)grid.Attribute("ColumnDefinitions") == "72,*");
+        Assert.Contains(tile.Descendants(ns + "Grid"), grid => (string?)grid.Attribute("ColumnDefinitions") == "*,Auto");
+        Assert.Contains(tile.Descendants(ns + "Image"), image => (string?)image.Attribute("Source") == "{Binding RepositoryCandidate}");
+        Assert.Contains(tile.Descendants(ns + "Border"), border => (string?)border.Attribute(xns + "Name") == "RepositoryTileMedia");
+        Assert.Equal("8", (string?)tile.Descendants(ns + "Grid").First(grid =>
+            (string?)grid.Attribute(xns + "Name") == "RepositoryTileLayout").Attribute("Padding"));
         Assert.Contains(document.Descendants(ns + "VariableSizedWrapGrid"), grid => (string?)grid.Attribute("ItemWidth") == "268");
         Assert.Contains("HorizontalScrollMode=\"Disabled\"", recentView);
         Assert.Contains("HorizontalScrollBarVisibility=\"Disabled\"", recentView);
@@ -170,9 +189,13 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.DoesNotContain("Last opened {localOpened:g}", recentViewModel);
         Assert.Contains("RepositoryPreview", recentViewModel);
         Assert.DoesNotContain("_repositoryPreview is null ? 1 : 2", recentViewModel);
+        Assert.Contains("ImageOpened += Candidate_ImageOpened", recentViewModel);
+        Assert.Contains("ImageFailed += Candidate_ImageFailed", recentViewModel);
+        Assert.Contains("ReleaseCandidate(); // Keep any previously decoded image", recentViewModel);
+        Assert.Contains("Grid.GetColumn(media)", recentViewCodeBehind);
         Assert.Contains("SetRepositoryVisual", recentViewModel);
-        Assert.Contains("state.Kind == RepositoryImageKind.Icon", recentViewModel);
-        Assert.Contains("state.Kind == RepositoryImageKind.Preview", recentViewModel);
+        Assert.Contains("kind == RepositoryImageKind.Icon", recentViewModel);
+        Assert.Contains("kind == RepositoryImageKind.Preview", recentViewModel);
         Assert.Contains("GetCachedState(item.Path)", recentViewModel);
         Assert.Contains("item.SetRepositoryVisual(cached)", recentViewModel);
         Assert.Contains("item.SetRepositoryVisual(resolved)", recentViewModel);
