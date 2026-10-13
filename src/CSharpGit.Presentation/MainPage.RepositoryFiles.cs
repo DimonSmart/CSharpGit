@@ -21,6 +21,10 @@ public sealed partial class MainPage
     private TextBlock? _repositoryFilesStatus;
     private bool _repositoryFilesBuildingTree;
     private bool _repositoryFilesRestoringPresentationState;
+    private bool _repositoryFilesHandlingUserSelection;
+    private readonly RepositoryFilesTreeSelectionRouter<RepositorySnapshotTreeNode> _repositoryFilesSelectionRouter = new();
+    private long _repositoryFilesActivationRevision;
+    private long _repositoryFilePreviewStartedActivation = -1;
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
@@ -189,11 +193,15 @@ public sealed partial class MainPage
                 break;
 
             case nameof(RepositoryFilesViewModel.TreeRevision):
+                _repositoryFilesSelectionRouter.ReplaceTree(
+                    _repositoryFilesViewModel.TreeRoots,
+                    node => node.Children);
                 SynchronizeRepositoryFilesTreeSelection();
                 break;
 
             case nameof(RepositoryFilesViewModel.SelectionRevision):
-                SynchronizeRepositoryFilesTreeSelection();
+                if (!_repositoryFilesHandlingUserSelection)
+                    SynchronizeRepositoryFilesTreeSelection();
                 ApplyRepositoryFileSelectionFromViewModel();
                 break;
         }
@@ -205,8 +213,33 @@ public sealed partial class MainPage
     private void UpdateRepositoryFilesViewActivity()
     {
         if (!IsRepositoryFilesActive)
+        {
+            ++_repositoryFilesActivationRevision;
             CancelRepositoryFilePreview();
-        _ = _repositoryFilesViewModel.SetActiveAsync(IsRepositoryFilesActive);
+            _ = _repositoryFilesViewModel.SetActiveAsync(false);
+            return;
+        }
+
+        if (_repositoryFilesViewModel.IsActive)
+            return;
+
+        var activation = ++_repositoryFilesActivationRevision;
+        _ = ActivateRepositoryFilesAsync(activation);
+    }
+
+    private async Task ActivateRepositoryFilesAsync(long activation)
+    {
+        await _repositoryFilesViewModel.SetActiveAsync(true);
+        if (!IsRepositoryFilesActive
+            || !_repositoryFilesViewModel.IsActive
+            || activation != _repositoryFilesActivationRevision)
+            return;
+
+        // Rebuilding may have generated no SelectionRevision (same selected node).
+        // Resume the preview cancelled on tab deactivation, but not if RefreshAsync
+        // has already started it through a genuine selection change.
+        if (_repositoryFilePreviewStartedActivation != activation)
+            ApplyRepositoryFileSelectionFromViewModel();
     }
 
     private void SynchronizeRepositoryFilesSearchControls()
@@ -240,11 +273,21 @@ public sealed partial class MainPage
 
     private void SynchronizeRepositoryFilesTreeSelection()
     {
-        if (_repositoryFilesTree is null) return;
+        if (_repositoryFilesTree is null
+            || _repositoryFilesHandlingUserSelection
+            || _repositoryFilesViewModel.IsRebuildingTree
+            || _repositoryFilesViewModel.IsContentSearchMode)
+            return;
+
+        var target = _repositoryFilesViewModel.SelectedTreeNode;
+        if (ReferenceEquals(_repositoryFilesTree.SelectedItem, target))
+            return;
+
+        _repositoryFilesSelectionRouter.ExpectProgrammaticSelection(target);
         _repositoryFilesBuildingTree = true;
         try
         {
-            _repositoryFilesTree.SelectedItem = _repositoryFilesViewModel.SelectedTreeNode;
+            _repositoryFilesTree.SelectedItem = target;
         }
         finally
         {
@@ -254,6 +297,9 @@ public sealed partial class MainPage
 
     private void ApplyRepositoryFileSelectionFromViewModel()
     {
+        if (!IsRepositoryFilesActive)
+            return;
+
         if (_repositoryFilesViewModel.SelectedPath is not { } path)
         {
             ClearRepositoryFileSelection();
@@ -313,10 +359,68 @@ public sealed partial class MainPage
 
     private void RepositoryFilesTree_SelectionChanged(TreeView sender, TreeViewSelectionChangedEventArgs args)
     {
-        if (_repositoryFilesBuildingTree || _repositoryFilesViewModel.IsRebuildingTree)
+        if (_repositoryFilesBuildingTree || _repositoryFilesViewModel.IsRebuildingTree
+            || _repositoryFilesViewModel.IsContentSearchMode
+            || !_repositoryFilesViewModel.SnapshotMatchesSelection)
             return;
-        _repositoryFilesViewModel.SelectTreeNode(sender.SelectedItem as RepositorySnapshotTreeNode);
+
+        var decision = _repositoryFilesSelectionRouter.Route(
+            args.AddedItems.Cast<object?>().ToArray(),
+            args.RemovedItems.Cast<object?>().ToArray(),
+            ResolveRepositoryFilesTreeNode,
+            _repositoryFilesViewModel.SelectedTreeNode,
+            rebuilding: false);
+
+        if (decision.Action == RepositoryFilesTreeSelectionAction.Select)
+        {
+            _repositoryFilesHandlingUserSelection = true;
+            try
+            {
+                _repositoryFilesViewModel.SelectTreeNode(decision.Node);
+            }
+            finally
+            {
+                _repositoryFilesHandlingUserSelection = false;
+            }
+        }
+        else if (decision.Action == RepositoryFilesTreeSelectionAction.ClearIfStillUnselected)
+        {
+            var selectionRevision = _repositoryFilesViewModel.SelectionRevision;
+            var treeRevision = _repositoryFilesViewModel.TreeRevision;
+            var selectedNode = _repositoryFilesViewModel.SelectedTreeNode;
+            // A remove(A) -> add(B) sequence must not clear B. This also filters
+            // delayed removal emitted by a programmatic tree reconciliation.
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (!IsRepositoryFilesActive || _repositoryFilesViewModel.IsRebuildingTree
+                    || _repositoryFilesViewModel.IsContentSearchMode
+                    || !_repositoryFilesViewModel.SnapshotMatchesSelection
+                    || selectionRevision != _repositoryFilesViewModel.SelectionRevision
+                    || treeRevision != _repositoryFilesViewModel.TreeRevision
+                    || !ReferenceEquals(selectedNode, _repositoryFilesViewModel.SelectedTreeNode)
+                    || sender.SelectedItem is not null)
+                    return;
+
+                _repositoryFilesHandlingUserSelection = true;
+                try
+                {
+                    _repositoryFilesViewModel.SelectTreeNode(null);
+                }
+                finally
+                {
+                    _repositoryFilesHandlingUserSelection = false;
+                }
+            });
+        }
     }
+
+    private static RepositorySnapshotTreeNode? ResolveRepositoryFilesTreeNode(object? value) =>
+        value switch
+        {
+            RepositorySnapshotTreeNode node => node,
+            TreeViewNode { Content: RepositorySnapshotTreeNode node } => node,
+            _ => null
+        };
 
     private async void RepositoryFilesTree_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
     {
