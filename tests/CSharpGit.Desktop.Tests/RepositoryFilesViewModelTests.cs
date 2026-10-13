@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
+using CSharpGit.Presentation;
 using CSharpGit.Presentation.ViewModels;
 
 namespace CSharpGit.Desktop.Tests;
@@ -198,6 +199,49 @@ public sealed class RepositoryFilesViewModelTests
 
         Assert.Null(viewModel.SelectedEntry);
         Assert.Null(viewModel.SelectedPath);
+    }
+
+    [Fact]
+    public async Task SelectionRevisionIsNotRepeatedAndProgrammaticContentEchoPreservesLine()
+    {
+        var service = new FakeRepositorySnapshotService
+        {
+            Tree = [File("A.cs"), File("B.cs")],
+            SearchResults = [new RepositoryContentSearchMatch("B.cs", 42, "needle")]
+        };
+        var context = new FakeRepositoryFilesContext(Repository("repo"), "commit");
+        using var viewModel = CreateViewModel(service, context);
+        await viewModel.SetActiveAsync(true);
+
+        var a = Assert.IsType<RepositorySnapshotTreeNode>(FindNode(viewModel.TreeRoots, "A.cs"));
+        var revision = viewModel.SelectionRevision;
+        viewModel.SelectTreeNode(a);
+        Assert.Equal(revision + 1, viewModel.SelectionRevision);
+        viewModel.SelectTreeNode(a);
+        Assert.Equal(revision + 1, viewModel.SelectionRevision);
+
+        viewModel.SetSearchMode(RepositoryFilesViewModel.ContentSearchMode, "");
+        await viewModel.SearchContentAsync("needle");
+        var row = Assert.Single(viewModel.ContentResults);
+        viewModel.SelectContentResult(row);
+        Assert.Equal("B.cs", viewModel.SelectedPath);
+        Assert.Equal(42, viewModel.SelectedLineNumber);
+        var contentRevision = viewModel.SelectionRevision;
+        viewModel.SelectContentResult(row);
+        Assert.Equal(contentRevision, viewModel.SelectionRevision);
+
+        var router = new RepositoryFilesTreeSelectionRouter<RepositorySnapshotTreeNode>();
+        router.ReplaceTree(viewModel.TreeRoots, node => node.Children);
+        router.ExpectProgrammaticSelection(viewModel.SelectedTreeNode);
+        var eventResult = router.Route(
+            [viewModel.SelectedTreeNode],
+            [],
+            value => value as RepositorySnapshotTreeNode,
+            viewModel.SelectedTreeNode,
+            rebuilding: false);
+        Assert.Equal(RepositoryFilesTreeSelectionAction.Ignore, eventResult.Action);
+        Assert.Equal(42, viewModel.SelectedLineNumber);
+        Assert.Equal(contentRevision, viewModel.SelectionRevision);
     }
 
     [Fact]

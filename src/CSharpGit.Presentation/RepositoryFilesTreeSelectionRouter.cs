@@ -17,7 +17,6 @@ internal sealed class RepositoryFilesTreeSelectionRouter<TNode> where TNode : cl
 {
     private readonly HashSet<TNode> _currentNodes = new(ReferenceEqualityComparer.Instance);
     private TNode? _expectedProgrammaticSelection;
-    private bool _expectedProgrammaticClear;
 
     internal void ReplaceTree(
         IEnumerable<TNode> roots,
@@ -25,7 +24,6 @@ internal sealed class RepositoryFilesTreeSelectionRouter<TNode> where TNode : cl
     {
         _currentNodes.Clear();
         _expectedProgrammaticSelection = null;
-        _expectedProgrammaticClear = false;
         foreach (var root in roots)
             AddDescendants(root, children);
     }
@@ -33,7 +31,6 @@ internal sealed class RepositoryFilesTreeSelectionRouter<TNode> where TNode : cl
     internal void ExpectProgrammaticSelection(TNode? target)
     {
         _expectedProgrammaticSelection = target;
-        _expectedProgrammaticClear = target is null;
     }
 
     internal RepositoryFilesTreeSelectionDecision<TNode> Route(
@@ -51,7 +48,11 @@ internal sealed class RepositoryFilesTreeSelectionRouter<TNode> where TNode : cl
             // Single-selection mode must not arbitrarily pick among several additions.
             if (added.Count != 1 || resolve(added[0]) is not { } next
                 || !_currentNodes.Contains(next))
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "Ignoring ambiguous, unsupported, or stale repository Files tree selection.");
                 return default;
+            }
 
             // This is also true for a delayed notification following a programmatic
             // selection. Do not call SelectTreeNode again: that clears search line context.
@@ -65,14 +66,11 @@ internal sealed class RepositoryFilesTreeSelectionRouter<TNode> where TNode : cl
             // A genuinely different addition always wins over a pending programmatic
             // expectation. Never discard a user click merely due to an old marker.
             _expectedProgrammaticSelection = null;
-            _expectedProgrammaticClear = false;
             return new(RepositoryFilesTreeSelectionAction.Select, next);
         }
 
         if (removed.Count == 0 || logicalSelection is null)
         {
-            if (logicalSelection is null)
-                _expectedProgrammaticClear = false;
             return default;
         }
 
