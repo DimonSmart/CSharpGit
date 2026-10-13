@@ -194,8 +194,8 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("ReleaseCandidate(); // Keep any previously decoded image", recentViewModel);
         Assert.Contains("Grid.GetColumn(media)", recentViewCodeBehind);
         Assert.Contains("SetRepositoryVisual", recentViewModel);
-        Assert.Contains("state.Kind == RepositoryImageKind.Icon", recentViewModel);
-        Assert.Contains("state.Kind == RepositoryImageKind.Preview", recentViewModel);
+        Assert.Contains("kind == RepositoryImageKind.Icon", recentViewModel);
+        Assert.Contains("kind == RepositoryImageKind.Preview", recentViewModel);
         Assert.Contains("GetCachedState(item.Path)", recentViewModel);
         Assert.Contains("item.SetRepositoryVisual(cached)", recentViewModel);
         Assert.Contains("item.SetRepositoryVisual(resolved)", recentViewModel);
