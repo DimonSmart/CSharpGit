@@ -532,11 +532,21 @@ public sealed class RepositoryFilesViewModel : INotifyPropertyChanged, IDisposab
             var selected = state?.SelectedPath is { } selectedPath
                 ? FindPath(TreeRoots, selectedPath)
                 : null;
+            // Content Search can select a regular file that is not present in the
+            // filtered tree. Rebuilding (including after tab reactivation) must
+            // not discard that file or its matched line solely because its node
+            // is hidden. A genuinely missing snapshot entry is not retained.
+            var contentEntry = _selectedLineNumber is not null
+                && string.Equals(_selectedPath, state?.SelectedPath, StringComparison.Ordinal)
+                ? _snapshot.FirstOrDefault(entry =>
+                    entry.Kind == RepositorySnapshotEntryKind.File
+                    && string.Equals(entry.Path, _selectedPath, StringComparison.Ordinal))
+                : null;
             SetSelectionCore(
                 selected,
-                selected?.Path,
-                null,
-                selected?.Entry);
+                contentEntry?.Path ?? selected?.Path,
+                contentEntry is null ? null : _selectedLineNumber,
+                contentEntry ?? selected?.Entry);
 
             if (searchActive && TreeRoots.Count == 0 && _snapshot.Count > 0)
                 SetStatus("No matches", loading: false);

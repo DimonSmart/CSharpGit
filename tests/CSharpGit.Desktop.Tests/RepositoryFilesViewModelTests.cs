@@ -245,6 +245,56 @@ public sealed class RepositoryFilesViewModelTests
     }
 
     [Fact]
+    public async Task ReactivationPreservesContentSearchLineWithoutNewSelectionRevision()
+    {
+        var service = new FakeRepositorySnapshotService
+        {
+            Tree = [File("A.cs"), File("B.cs")],
+            SearchResults = [new RepositoryContentSearchMatch("B.cs", 42, "needle")]
+        };
+        var context = new FakeRepositoryFilesContext(Repository("repo"), "commit");
+        using var viewModel = CreateViewModel(service, context);
+        await viewModel.SetActiveAsync(true);
+        viewModel.SetSearchMode(RepositoryFilesViewModel.ContentSearchMode, "");
+        await viewModel.SearchContentAsync("needle");
+        viewModel.SelectContentResult(Assert.Single(viewModel.ContentResults));
+        var revision = viewModel.SelectionRevision;
+
+        await viewModel.SetActiveAsync(false);
+        await viewModel.SetActiveAsync(true);
+
+        Assert.Equal("B.cs", viewModel.SelectedPath);
+        Assert.Equal("B.cs", viewModel.SelectedEntry?.Path);
+        Assert.Equal(42, viewModel.SelectedLineNumber);
+        Assert.Equal(revision, viewModel.SelectionRevision);
+    }
+
+    [Fact]
+    public async Task RebuildKeepsContentResultHiddenByNameFilter()
+    {
+        var service = new FakeRepositorySnapshotService
+        {
+            Tree = [File("A.cs"), File("B.cs")],
+            SearchResults = [new RepositoryContentSearchMatch("B.cs", 42, "needle")]
+        };
+        var context = new FakeRepositoryFilesContext(Repository("repo"), "commit");
+        using var viewModel = CreateViewModel(service, context);
+        await viewModel.SetActiveAsync(true);
+        viewModel.SetNameQuery("A.cs");
+        viewModel.SetSearchMode(RepositoryFilesViewModel.ContentSearchMode, "");
+        await viewModel.SearchContentAsync("needle");
+        viewModel.SelectContentResult(Assert.Single(viewModel.ContentResults));
+        Assert.Null(viewModel.SelectedTreeNode);
+
+        viewModel.SetSearchMode(RepositoryFilesViewModel.NameSearchMode, "A.cs");
+
+        Assert.Null(viewModel.SelectedTreeNode);
+        Assert.Equal("B.cs", viewModel.SelectedPath);
+        Assert.Equal("B.cs", viewModel.SelectedEntry?.Path);
+        Assert.Equal(42, viewModel.SelectedLineNumber);
+    }
+
+    [Fact]
     public async Task ResolveFileVersionUsesCurrentCommitAndRejectsStaleContext()
     {
         var expected = new DiffFileVersion(
