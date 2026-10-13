@@ -100,4 +100,44 @@ public sealed class RepositoryTileGridMetricsTests
         Assert.Equal(cellWidth * 2 - 8, RepositoryTileGridMetrics.VisibleCardWidth(cellWidth, 2));
     }
 
+    [Theory]
+    [InlineData(528, 112, 1200d / 630d, 213.33333333333334)]
+    [InlineData(528, 112, 16d / 9d, 199.11111111111111)]
+    [InlineData(528, 112, 1, 112)]
+    [InlineData(528, 112, 4, 292)] // Reserve 236 DIP for text.
+    [InlineData(660, 112, 4, 360)] // Do not consume the entire large tile.
+    [InlineData(660, 112, 0.5, 56)]
+    public void FullHeightWidePreviewPreservesImageAspectAndRoomForActions(
+        double width, double height, double aspectRatio, double expected)
+    {
+        var mediaWidth = RepositoryTileGridMetrics.WidePreviewWidth(width, height, aspectRatio);
+        Assert.Equal(expected, mediaWidth, 2);
+        Assert.True(mediaWidth + RepositoryTileGridMetrics.MinimumWideTextWidth <= width);
+        Assert.True(mediaWidth <= RepositoryTileGridMetrics.MaximumWidePreviewWidth);
+    }
+
+    [Theory]
+    [InlineData(double.NaN, 112, 1.9, 0)]
+    [InlineData(528, double.PositiveInfinity, 1.9, 0)]
+    [InlineData(0, 112, 1.9, 0)]
+    [InlineData(-1, 112, 1.9, 0)]
+    public void InvalidTileGeometryCannotTriggerImageOverflow(
+        double width, double height, double aspectRatio, double expected)
+    {
+        Assert.Equal(expected, RepositoryTileGridMetrics.WidePreviewWidth(width, height, aspectRatio));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-2)]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    public void MissingImageAspectRatioUsesTypicalSocialPreviewWithoutCropping(double aspectRatio)
+    {
+        Assert.Equal(
+            RepositoryTileGridMetrics.WidePreviewWidth(528, 112,
+                RepositoryTileGridMetrics.DefaultPreviewAspectRatio),
+            RepositoryTileGridMetrics.WidePreviewWidth(528, 112, aspectRatio));
+    }
+
 }
