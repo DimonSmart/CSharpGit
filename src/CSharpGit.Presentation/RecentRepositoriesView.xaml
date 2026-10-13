@@ -45,87 +45,92 @@
                   CornerRadius="9" />
         </Button>
 
-        <Grid Padding="8"
-              ColumnDefinitions="72,*,Auto"
-              RowDefinitions="32,Auto,*"
-              ColumnSpacing="4">
-          <Border Grid.RowSpan="3"
-                  Width="70" Height="48"
-                  CornerRadius="7"
-                  Background="{ThemeResource AccentFillColorSecondaryBrush}"
-                  VerticalAlignment="Top"
+        <Grid x:Name="RepositoryTileLayout"
+              Padding="8"
+              ColumnDefinitions="72,*"
+              ColumnSpacing="8"
+              Loaded="RepositoryTileLayout_Loaded"
+              SizeChanged="RepositoryTileLayout_SizeChanged">
+          <Border x:Name="RepositoryTileMedia"
+                  Grid.Column="0"
+                  Width="72" Height="72"
+                  CornerRadius="8"
+                  Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                  VerticalAlignment="Center"
                   IsHitTestVisible="False">
             <Grid>
               <FontIcon Glyph="{StaticResource Icon.Glyph.Open}"
-                        FontSize="23"
+                        FontSize="26"
                         Opacity="{Binding RepositoryGlyphOpacity}"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center" />
               <Image Source="{Binding RepositoryImage}"
-                     Width="44" Height="44"
+                     Width="56" Height="56"
                      Stretch="Uniform"
                      Opacity="{Binding RepositoryImageOpacity}"
                      HorizontalAlignment="Center"
-                     VerticalAlignment="Center"
-                     ImageFailed="RepositoryImage_ImageFailed" />
+                     VerticalAlignment="Center" />
               <Image Source="{Binding RepositoryPreview}"
-                     Width="68" Height="46"
                      Stretch="Uniform"
                      Opacity="{Binding RepositoryPreviewOpacity}"
-                     HorizontalAlignment="Center"
-                     VerticalAlignment="Center"
-                     ImageFailed="RepositoryPreview_ImageFailed" />
+                     HorizontalAlignment="Stretch"
+                     VerticalAlignment="Stretch" />
+              <!-- Keep the bitmap candidate in the live visual tree until decode
+                   finishes. Never use Collapsed for the decoder. -->
+              <Image Source="{Binding RepositoryCandidate}"
+                     Width="1" Height="1"
+                     Opacity="0.001"
+                     IsHitTestVisible="False" />
             </Grid>
           </Border>
-
-          <TextBlock Grid.Column="1"
-                     Text="{Binding DisplayName}"
-                     Style="{StaticResource BodyStrongTextStyle}"
-                     VerticalAlignment="Center"
-                     TextWrapping="NoWrap"
-                     TextTrimming="CharacterEllipsis"
-                     IsHitTestVisible="False" />
-
-          <StackPanel Grid.Column="2"
-                      Orientation="Horizontal"
-                      Spacing="{StaticResource Spacing.XS}">
-            <Button Click="RepositoryPin_Click"
-                    Style="{StaticResource RepositoryTileActionButtonStyle}"
-                    Foreground="{ThemeResource AccentFillColorDefaultBrush}"
-                    ToolTipService.ToolTip="{Binding PinActionLabel}"
-                    AutomationProperties.Name="{Binding PinActionLabel}">
-              <FontIcon Glyph="{Binding PinGlyph}"
-                        FontSize="{StaticResource Icon.Small}"
-                        Opacity="{Binding PinIndicatorOpacity}" />
-            </Button>
-            <Button Click="RepositoryRemove_Click"
-                    Style="{StaticResource RepositoryTileActionButtonStyle}"
-                    ToolTipService.ToolTip="Remove from recent"
-                    AutomationProperties.Name="Remove from recent">
-              <FontIcon Glyph="&#xE711;" FontSize="{StaticResource Icon.Small}" />
-            </Button>
-          </StackPanel>
-
-          <TextBlock Grid.Row="1"
-                     Grid.Column="1"
-                     Grid.ColumnSpan="2"
-                     Text="{Binding Path}"
-                     Style="{StaticResource TechnicalSecondaryTextStyle}"
-                     Margin="0,2,0,0"
-                     TextWrapping="NoWrap"
-                     TextTrimming="CharacterEllipsis"
-                     IsHitTestVisible="False" />
-          <TextBlock Grid.Row="2"
-                     Grid.Column="1"
-                     Grid.ColumnSpan="2"
-                     Text="{Binding Metadata}"
-                     Style="{StaticResource SecondaryTextStyle}"
-                     Margin="0,4,0,0"
-                     TextWrapping="Wrap"
-                     MaxLines="2"
-                     TextTrimming="CharacterEllipsis"
-                     VerticalAlignment="Top"
-                     IsHitTestVisible="False" />
+          <Grid x:Name="RepositoryTileText"
+                Grid.Column="1"
+                ColumnDefinitions="*,Auto"
+                RowDefinitions="32,Auto,*">
+            <TextBlock Text="{Binding DisplayName}"
+                       Style="{StaticResource BodyStrongTextStyle}"
+                       VerticalAlignment="Center"
+                       TextWrapping="NoWrap"
+                       TextTrimming="CharacterEllipsis"
+                       IsHitTestVisible="False" />
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        Spacing="{StaticResource Spacing.XS}">
+              <Button Click="RepositoryPin_Click"
+                      Style="{StaticResource RepositoryTileActionButtonStyle}"
+                      Foreground="{ThemeResource AccentFillColorDefaultBrush}"
+                      ToolTipService.ToolTip="{Binding PinActionLabel}"
+                      AutomationProperties.Name="{Binding PinActionLabel}">
+                <FontIcon Glyph="{Binding PinGlyph}"
+                          FontSize="{StaticResource Icon.Small}"
+                          Opacity="{Binding PinIndicatorOpacity}" />
+              </Button>
+              <Button Click="RepositoryRemove_Click"
+                      Style="{StaticResource RepositoryTileActionButtonStyle}"
+                      ToolTipService.ToolTip="Remove from recent"
+                      AutomationProperties.Name="Remove from recent">
+                <FontIcon Glyph="&#xE711;" FontSize="{StaticResource Icon.Small}" />
+              </Button>
+            </StackPanel>
+            <TextBlock Grid.Row="1"
+                       Grid.ColumnSpan="2"
+                       Text="{Binding Path}"
+                       Style="{StaticResource TechnicalSecondaryTextStyle}"
+                       Margin="0,2,0,0"
+                       TextWrapping="NoWrap"
+                       TextTrimming="CharacterEllipsis"
+                       IsHitTestVisible="False" />
+            <TextBlock Grid.Row="2"
+                       Grid.ColumnSpan="2"
+                       Text="{Binding Metadata}"
+                       Style="{StaticResource SecondaryTextStyle}"
+                       Margin="0,4,0,0"
+                       TextWrapping="Wrap"
+                       MaxLines="2"
+                       TextTrimming="CharacterEllipsis"
+                       VerticalAlignment="Top"
+                       IsHitTestVisible="False" />
+          </Grid>
         </Grid>
       </Grid>
     </DataTemplate>
@@ -184,7 +189,7 @@
                           ToolTipService.ToolTip="{Binding ActionsLabel}"
                           VerticalAlignment="Center" />
                 </Grid>
-                <GridView ItemsSource="{Binding Repositories}"
+                <controls:RepositoryTileGridView ItemsSource="{Binding Repositories}"
                           Visibility="{Binding EffectiveIsExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"
                           SelectionMode="None"
                           IsItemClickEnabled="False"
@@ -200,9 +205,7 @@
                           Padding="0"
                           ItemsPanel="{StaticResource RecentRepositoriesItemsPanelTemplate}"
                           ItemContainerStyle="{StaticResource RecentRepositoryGridItemStyle}"
-                          ItemTemplate="{StaticResource RecentRepositoryTileTemplate}"
-                          Loaded="RepositoryGrid_Loaded"
-                          SizeChanged="RepositoryGrid_SizeChanged" />
+                          ItemTemplate="{StaticResource RecentRepositoryTileTemplate}" />
               </StackPanel>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
@@ -211,7 +214,7 @@
         <StackPanel Spacing="{StaticResource Spacing.S}"
                     Visibility="{Binding HasRecentRepositories, Converter={StaticResource BooleanToVisibilityConverter}}">
           <TextBlock Text="Recent" Style="{StaticResource BodyStrongTextStyle}" />
-          <GridView x:Name="RecentRepositoriesGridView"
+          <controls:RepositoryTileGridView x:Name="RecentRepositoriesGridView"
                                                ItemsSource="{Binding RecentRepositories}"
                                                SelectionMode="None"
                                                IsItemClickEnabled="False"
@@ -220,9 +223,7 @@
                                                Padding="0"
                                                ItemsPanel="{StaticResource RecentRepositoriesItemsPanelTemplate}"
                                                ItemContainerStyle="{StaticResource RecentRepositoryGridItemStyle}"
-                                               ItemTemplate="{StaticResource RecentRepositoryTileTemplate}"
-                                               Loaded="RepositoryGrid_Loaded"
-                                               SizeChanged="RepositoryGrid_SizeChanged" />
+                                               ItemTemplate="{StaticResource RecentRepositoryTileTemplate}" />
         </StackPanel>
 
         <TextBlock Text="No repositories match your search."
