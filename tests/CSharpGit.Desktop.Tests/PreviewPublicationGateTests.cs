@@ -61,7 +61,37 @@ public sealed class PreviewPublicationGateTests
         firstFinished.SetResult();
         await first;
 
-        Assert.Equal(["repo|X|B"], published);
+        Assert.Equal(new[] { "repo|X|B" }, published);
+    }
+
+    [Fact]
+    public async Task ThreeRequestsCompletedBackwardsOnlyPublishC()
+    {
+        var gate = new PreviewPublicationGate<string>();
+        var aReady = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var bReady = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cReady = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var published = new List<string>();
+
+        async Task LoadAsync(string context, Task release)
+        {
+            var lease = gate.Begin(context);
+            await release;
+            if (gate.CanPublish(lease, context))
+                published.Add(context);
+        }
+
+        var a = LoadAsync("repo|commit|A", aReady.Task);
+        var b = LoadAsync("repo|commit|B", bReady.Task);
+        var c = LoadAsync("repo|commit|C", cReady.Task);
+        cReady.SetResult();
+        await c;
+        bReady.SetResult();
+        await b;
+        aReady.SetResult();
+        await a;
+
+        Assert.Equal(new[] { "repo|commit|C" }, published);
     }
 
     [Fact]
