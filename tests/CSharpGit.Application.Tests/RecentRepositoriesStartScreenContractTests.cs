@@ -126,7 +126,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("ClearContainerForItemOverride", repositoryGrid);
         Assert.Contains("VariableSizedWrapGrid.SetColumnSpan(container, span)", repositoryGrid);
         Assert.Contains("VariableSizedWrapGrid.SetColumnSpan(container, 1)", repositoryGrid);
-        Assert.Contains("item.PropertyChanged -= subscription.Handler", repositoryGrid);
+        Assert.Contains("subscription.Item.PropertyChanged -= subscription.Handler", repositoryGrid);
         Assert.Contains("ReferenceEquals(current.Item, item)", repositoryGrid);
         Assert.Contains("RepositoryTileGridMetrics.ColumnSpan(item.HasReadyPreview, _columns)", repositoryGrid);
         Assert.Contains("RepositoryTileLayout_SizeChanged", recentViewCodeBehind);
