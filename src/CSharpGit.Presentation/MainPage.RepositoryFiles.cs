@@ -274,6 +274,7 @@ public sealed partial class MainPage
     private void SynchronizeRepositoryFilesTreeSelection()
     {
         if (_repositoryFilesTree is null
+            || !IsRepositoryFilesActive
             || _repositoryFilesHandlingUserSelection
             || _repositoryFilesViewModel.IsRebuildingTree
             || _repositoryFilesViewModel.IsContentSearchMode)
@@ -359,7 +360,8 @@ public sealed partial class MainPage
 
     private void RepositoryFilesTree_SelectionChanged(TreeView sender, TreeViewSelectionChangedEventArgs args)
     {
-        if (_repositoryFilesBuildingTree || _repositoryFilesViewModel.IsRebuildingTree
+        if (!IsRepositoryFilesActive
+            || _repositoryFilesBuildingTree || _repositoryFilesViewModel.IsRebuildingTree
             || _repositoryFilesViewModel.IsContentSearchMode
             || !_repositoryFilesViewModel.SnapshotMatchesSelection)
             return;
