@@ -204,8 +204,8 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
         if (_failedCandidateKind == kind && string.Equals(_failedCandidatePath, path, StringComparison.Ordinal))
             return;
 
-        var (loaded, normalizedPath) = LoadImage(path);
-        if (loaded is not BitmapImage candidate || normalizedPath is null)
+        var (imageUri, normalizedPath) = LoadImage(path);
+        if (imageUri is null || normalizedPath is null)
         {
             _failedCandidateKind = kind;
             _failedCandidatePath = path;
@@ -215,12 +215,22 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
         ReleaseCandidate();
         _failedCandidateKind = null;
         _failedCandidatePath = null;
+        var candidate = new BitmapImage();
         _candidateKind = kind;
         _candidatePath = normalizedPath;
         _visualCandidate = candidate;
         candidate.ImageOpened += Candidate_ImageOpened;
         candidate.ImageFailed += Candidate_ImageFailed;
         OnPropertyChanged(nameof(RepositoryCandidate));
+        // Set the URI only after subscribing, so even an immediate decoder
+        // completion cannot be missed by the pending/ready state machine.
+        try { candidate.UriSource = imageUri; }
+        catch (Exception)
+        {
+            _failedCandidateKind = kind;
+            _failedCandidatePath = normalizedPath;
+            ReleaseCandidate();
+        }
     }
 
     private void Candidate_ImageOpened(object sender, RoutedEventArgs e)
@@ -231,6 +241,11 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
         var kind = _candidateKind;
         var path = _candidatePath;
         ReleaseCandidate();
+        if (_repositoryImage is BitmapImage oldIcon)
+            oldIcon.ImageFailed -= ReadyVisual_ImageFailed;
+        if (_repositoryPreview is BitmapImage oldPreview)
+            oldPreview.ImageFailed -= ReadyVisual_ImageFailed;
+        image.ImageFailed += ReadyVisual_ImageFailed;
 
         // Publish the entire presentation state before notifying the grid.
         _repositoryImage = kind == RepositoryImageKind.Icon ? image : null;
@@ -255,6 +270,38 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
         _failedCandidateKind = _candidateKind;
         _failedCandidatePath = _candidatePath;
         ReleaseCandidate(); // Keep any previously decoded image displayed.
+    }
+
+    private void ReadyVisual_ImageFailed(object sender, ExceptionRoutedEventArgs e)
+    {
+        if (sender is not BitmapImage image
+            || (!ReferenceEquals(_repositoryImage, image)
+                && !ReferenceEquals(_repositoryPreview, image)))
+            return;
+
+        image.ImageFailed -= ReadyVisual_ImageFailed;
+        if (ReferenceEquals(_repositoryImage, image))
+        {
+            _failedCandidateKind = RepositoryImageKind.Icon;
+            _failedCandidatePath = _repositoryImagePath;
+            _repositoryImage = null;
+            _repositoryImagePath = null;
+            OnPropertyChanged(nameof(RepositoryImage));
+            OnPropertyChanged(nameof(RepositoryImagePath));
+            OnPropertyChanged(nameof(RepositoryImageOpacity));
+        }
+        else
+        {
+            _failedCandidateKind = RepositoryImageKind.Preview;
+            _failedCandidatePath = _repositoryPreviewPath;
+            _repositoryPreview = null;
+            _repositoryPreviewPath = null;
+            OnPropertyChanged(nameof(RepositoryPreview));
+            OnPropertyChanged(nameof(RepositoryPreviewPath));
+            OnPropertyChanged(nameof(RepositoryPreviewOpacity));
+            OnPropertyChanged(nameof(HasReadyPreview));
+        }
+        OnPropertyChanged(nameof(RepositoryGlyphOpacity));
     }
 
     private void ReleaseCandidate()
@@ -286,7 +333,7 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
         OnPropertyChanged(nameof(TileDescription));
     }
 
-    private static (ImageSource? Image, string? Path) LoadImage(string? imagePath)
+    private static (Uri? Uri, string? Path) LoadImage(string? imagePath)
     {
         if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
             return (null, null);
@@ -298,7 +345,7 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
             {
                 Path = normalizedPath
             }.Uri;
-            return (new BitmapImage(imageUri), normalizedPath);
+            return (imageUri, normalizedPath);
         }
         catch
         {
