@@ -1,9 +1,11 @@
+using System.ComponentModel;
 using CSharpGit.Presentation.Controls;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.ApplicationModel.DataTransfer;
 
 namespace CSharpGit.Presentation;
@@ -13,6 +15,7 @@ public sealed partial class RecentRepositoriesView : UserControl
     private RecentRepositoryItem? _pinnedDragSource;
     private GridView? _pinnedDragGrid;
     private GridViewItem? _pinnedDragTarget;
+    private readonly Dictionary<Grid, TileLayoutSubscription> _tileSubscriptions = [];
 
     public RecentRepositoriesView()
     {
@@ -27,7 +30,22 @@ public sealed partial class RecentRepositoriesView : UserControl
 
     private void RepositoryTileLayout_Loaded(object sender, RoutedEventArgs e)
     {
-        if (sender is Grid tile) UpdateTileLayout(tile);
+        if (sender is not Grid tile) return;
+        TrackTileLayout(tile);
+        UpdateTileLayout(tile);
+    }
+
+    private void RepositoryTileLayout_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is Grid tile) UntrackTileLayout(tile);
+    }
+
+    private void RepositoryTileLayout_DataContextChanged(
+        FrameworkElement sender, DataContextChangedEventArgs args)
+    {
+        if (sender is not Grid tile || !tile.IsLoaded) return;
+        TrackTileLayout(tile);
+        UpdateTileLayout(tile);
     }
 
     private void RepositoryTileLayout_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -35,36 +53,90 @@ public sealed partial class RecentRepositoriesView : UserControl
         if (sender is Grid tile) UpdateTileLayout(tile);
     }
 
+    private void TrackTileLayout(Grid tile)
+    {
+        if (tile.DataContext is not RecentRepositoryItem item)
+        {
+            UntrackTileLayout(tile);
+            return;
+        }
+
+        if (_tileSubscriptions.TryGetValue(tile, out var existing))
+        {
+            if (ReferenceEquals(existing.Item, item)) return;
+            UntrackTileLayout(tile);
+        }
+
+        PropertyChangedEventHandler handler = (_, e) =>
+        {
+            if (e.PropertyName is not (nameof(RecentRepositoryItem.RepositoryPreview)
+                    or nameof(RecentRepositoryItem.HasReadyPreview))
+                || !ReferenceEquals(tile.DataContext, item))
+                return;
+
+            // A new image can have a different aspect ratio even when span stays 2.
+            UpdateTileLayout(tile);
+        };
+        _tileSubscriptions.Add(tile, new TileLayoutSubscription(item, handler));
+        item.PropertyChanged += handler;
+    }
+
+    private void UntrackTileLayout(Grid tile)
+    {
+        if (_tileSubscriptions.Remove(tile, out var subscription))
+            subscription.Item.PropertyChanged -= subscription.Handler;
+    }
+
     private static void UpdateTileLayout(Grid tile)
     {
         if (tile.DataContext is not RecentRepositoryItem item
             || tile.FindName("RepositoryTileMedia") is not Border media
-            || tile.FindName("RepositoryTileText") is not Grid text)
+            || tile.FindName("RepositoryTileCompactMediaBackground") is not Border backdrop
+            || tile.FindName("RepositoryTileText") is not Grid text
+            || !double.IsFinite(tile.ActualWidth) || tile.ActualWidth <= 0
+            || !double.IsFinite(tile.ActualHeight) || tile.ActualHeight <= 0)
             return;
 
-        // A single cell never exceeds 348 DIP including its gutter, whereas
-        // a two-column preview is at least 528 DIP wide excluding the gutter.
+        // One-column cards are at most 340 DIP wide; two-column cards start
+        // at 528 DIP, so the measured width unambiguously identifies Wide.
         var wide = item.HasReadyPreview && tile.ActualWidth >= 400;
-        var innerWidth = Math.Max(0, tile.ActualWidth - 16);
-        var previewWidth = Math.Min(280,
-            Math.Min(Math.Max(200, innerWidth * 0.42), innerWidth - 8 - 220));
-        var compactPreviewWidth = item.HasReadyPreview && innerWidth - 8 - 96 >= 220
-            ? 96 : 72;
-        var mediaWidth = wide ? Math.Max(72, previewWidth) : compactPreviewWidth;
-        var mediaHeight = wide ? 96d : 72d;
+        var aspectRatio = item.RepositoryPreview is BitmapImage { PixelWidth: > 0, PixelHeight: > 0 } image
+            ? (double)image.PixelWidth / image.PixelHeight
+            : RepositoryTileGridMetrics.DefaultPreviewAspectRatio;
+        var mediaWidth = wide
+            ? RepositoryTileGridMetrics.WidePreviewWidth(tile.ActualWidth, tile.ActualHeight, aspectRatio)
+            : item.HasReadyPreview && tile.ActualWidth >= 340 ? 96d : 72d;
+        var mediaHeight = wide ? tile.ActualHeight : 72d;
 
-        var textColumn = wide ? 0 : 1;
-        var mediaColumn = wide ? 1 : 0;
-        if (Grid.GetColumn(text) != textColumn) Grid.SetColumn(text, textColumn);
-        if (Grid.GetColumn(media) != mediaColumn) Grid.SetColumn(media, mediaColumn);
+        // Only Wide removes the tile padding, media background and inner
+        // gutter. Its image reaches the left, top and bottom card edges.
+        var tilePadding = new Thickness(wide ? 0 : 8);
+        var textPadding = new Thickness(wide ? 8 : 0);
+        if (!tile.Padding.Equals(tilePadding)) tile.Padding = tilePadding;
+        if (!text.Padding.Equals(textPadding)) text.Padding = textPadding;
+        var spacing = wide ? 0d : 8d;
+        if (tile.ColumnSpacing != spacing) tile.ColumnSpacing = spacing;
 
-        var firstWidth = wide ? new GridLength(1, GridUnitType.Star) : new GridLength(mediaWidth);
-        var secondWidth = wide ? new GridLength(mediaWidth) : new GridLength(1, GridUnitType.Star);
-        if (tile.ColumnDefinitions[0].Width != firstWidth) tile.ColumnDefinitions[0].Width = firstWidth;
-        if (tile.ColumnDefinitions[1].Width != secondWidth) tile.ColumnDefinitions[1].Width = secondWidth;
+        var desiredCornerRadius = wide
+            ? new CornerRadius(9, 0, 0, 9)
+            : new CornerRadius(8);
+        if (!media.CornerRadius.Equals(desiredCornerRadius))
+            media.CornerRadius = desiredCornerRadius;
+        var alignment = wide ? VerticalAlignment.Stretch : VerticalAlignment.Center;
+        if (media.VerticalAlignment != alignment) media.VerticalAlignment = alignment;
+        var backdropVisibility = wide ? Visibility.Collapsed : Visibility.Visible;
+        if (backdrop.Visibility != backdropVisibility) backdrop.Visibility = backdropVisibility;
+
+        var imageColumn = new GridLength(mediaWidth);
+        if (tile.ColumnDefinitions[0].Width != imageColumn)
+            tile.ColumnDefinitions[0].Width = imageColumn;
+        // Media is always left; the text and its actions always occupy the right.
         if (Math.Abs(media.Width - mediaWidth) >= 0.05) media.Width = mediaWidth;
         if (Math.Abs(media.Height - mediaHeight) >= 0.05) media.Height = mediaHeight;
     }
+
+    private sealed record TileLayoutSubscription(
+        RecentRepositoryItem Item, PropertyChangedEventHandler Handler);
 
     private async Task ShowErrorAsync(string action, Exception exception)
     {
