@@ -7,6 +7,12 @@ internal static class RepositoryTileGridMetrics
     internal const double MaxCardWidth = 340;
     internal const double Gap = 8;
 
+    internal static int ColumnSpan(bool hasReadyPreview, int columns) =>
+        hasReadyPreview && columns >= 2 ? 2 : 1;
+
+    internal static double VisibleCardWidth(double cellWidth, int span) =>
+        Math.Max(0, cellWidth * span - Gap);
+
     /// <summary>
     /// The trailing gutter belongs to the cell, so a full row always fits inside the
     /// measured GridView width. A partial last row never stretches its cards.
