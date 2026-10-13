@@ -54,7 +54,9 @@ public sealed class RepositoryFilesUiContractTests
         var feature = File.ReadAllText(Path.Combine(presentation, "ViewModels", "RepositoryFilesViewModel.cs"));
         var model = File.ReadAllText(Path.Combine(presentation, "ViewModels", "RepositorySnapshotTreeNode.cs"));
 
-        Assert.Contains("SetActiveAsync(IsRepositoryFilesActive)", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("SetActiveAsync(true)", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("SetActiveAsync(false)", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("ActivateRepositoryFilesAsync", filesSurface, StringComparison.Ordinal);
         Assert.Contains("_snapshotCache.TryGet", feature, StringComparison.Ordinal);
         Assert.Contains("_snapshotLoadedSuccessfully", feature, StringComparison.Ordinal);
         Assert.Contains("CancelRequests", feature, StringComparison.Ordinal);

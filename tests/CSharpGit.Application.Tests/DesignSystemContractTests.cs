@@ -255,7 +255,9 @@ public sealed class DesignSystemContractTests
         Assert.DoesNotContain("_repositoryFilesTab.HeaderTemplate =", files);
         Assert.DoesNotContain("_repositoryFilesTab.Style =", files);
         Assert.Contains("DetailsTabs.SelectedItem", files);
-        Assert.Contains("SetActiveAsync(IsRepositoryFilesActive)", files);
+        Assert.Contains("SetActiveAsync(true)", files);
+        Assert.Contains("SetActiveAsync(false)", files);
+        Assert.Contains("ActivateRepositoryFilesAsync", files);
         Assert.Contains("DetailsTabs.SelectedItem", changes);
         Assert.Contains("SetActive(active)", changes);
         Assert.Contains("UpdateRepositoryFilesViewActivity();", changes);
