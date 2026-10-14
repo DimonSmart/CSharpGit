@@ -515,6 +515,7 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
             _searchText = next;
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsSearchActive));
+            OnPropertyChanged(nameof(CanToggleRecentExpanded));
             RebuildProjection();
         }
     }
@@ -524,6 +525,13 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
     public bool HasPinnedRepositories => Groups.Any(group => group.Repositories.Count > 0);
 
     public bool HasRecentRepositories => RecentRepositories.Count > 0;
+    public string RecentHeading => $"Recent ({RecentRepositories.Count})";
+    public bool IsRecentExpanded => _settings.RecentRepositoriesExpanded;
+    public bool EffectiveIsRecentExpanded => IsSearchActive ? HasRecentRepositories : IsRecentExpanded;
+    public string RecentExpandGlyph => EffectiveIsRecentExpanded ? "\uE70D" : "\uE76C";
+    public string RecentExpansionActionLabel => $"{(EffectiveIsRecentExpanded ? "Collapse" : "Expand")} {RecentHeading}";
+    public bool CanToggleRecentExpanded => !IsSearchActive;
+    public Task SetRecentExpandedAsync(bool expanded) => _settings.SetRecentRepositoriesExpandedAsync(expanded);
 
     public bool HasSearchResults => HasPinnedRepositories || HasRecentRepositories;
 
@@ -667,6 +675,11 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
 
         OnPropertyChanged(nameof(HasPinnedRepositories));
         OnPropertyChanged(nameof(HasRecentRepositories));
+        OnPropertyChanged(nameof(RecentHeading));
+        OnPropertyChanged(nameof(IsRecentExpanded));
+        OnPropertyChanged(nameof(EffectiveIsRecentExpanded));
+        OnPropertyChanged(nameof(RecentExpandGlyph));
+        OnPropertyChanged(nameof(RecentExpansionActionLabel));
         OnPropertyChanged(nameof(HasSearchResults));
         OnPropertyChanged(nameof(ShowNoSearchResults));
     }
