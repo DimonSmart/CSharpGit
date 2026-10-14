@@ -7,6 +7,20 @@ namespace CSharpGit.Application.Tests;
 public sealed class JsonAppSettingsRecentRepositoriesTests
 {
     [Fact]
+    public async Task RecentExpansionDefaultsToOpenAndPersistsAfterRestart()
+    {
+        using var fixture = new SettingsFixture();
+        var service = fixture.CreateService();
+        Assert.True(service.RecentRepositoriesExpanded);
+
+        await service.SetRecentRepositoriesExpandedAsync(false);
+        Assert.False(fixture.CreateService().RecentRepositoriesExpanded);
+
+        await service.SetRecentRepositoriesExpandedAsync(true);
+        Assert.True(fixture.CreateService().RecentRepositoriesExpanded);
+    }
+
+    [Fact]
     public void LoadKeepsOneThousandUnpinnedAndAllPinnedRepositories()
     {
         using var fixture = new SettingsFixture();
