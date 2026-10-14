@@ -10,6 +10,53 @@
       <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="268" ItemHeight="120" />
     </ItemsPanelTemplate>
 
+    <Style x:Key="RepositoryTileOpenButtonStyle" TargetType="Button">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+      <Setter Property="BorderBrush" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="UseSystemFocusVisuals" Value="False" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="CardSurface"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="9">
+              <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup x:Name="CommonStates">
+                  <VisualState x:Name="Normal" />
+                  <VisualState x:Name="PointerOver">
+                    <VisualState.Setters>
+                      <Setter Target="CardSurface.BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}" />
+                    </VisualState.Setters>
+                  </VisualState>
+                  <VisualState x:Name="Pressed">
+                    <VisualState.Setters>
+                      <Setter Target="CardSurface.BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}" />
+                    </VisualState.Setters>
+                  </VisualState>
+                  <VisualState x:Name="Disabled" />
+                </VisualStateGroup>
+                <VisualStateGroup x:Name="FocusStates">
+                  <VisualState x:Name="Unfocused" />
+                  <VisualState x:Name="PointerFocused" />
+                  <VisualState x:Name="Focused">
+                    <VisualState.Setters>
+                      <Setter Target="CardSurface.BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}" />
+                    </VisualState.Setters>
+                  </VisualState>
+                </VisualStateGroup>
+              </VisualStateManager.VisualStateGroups>
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
     <Style x:Key="RecentRepositoryGridItemStyle" TargetType="GridViewItem">
       <Setter Property="Padding" Value="0" />
       <Setter Property="Margin" Value="0" />
@@ -27,23 +74,12 @@
         <!-- The open target sits behind non-hit-testable text/media; Pin/Remove are siblings,
              not nested buttons, and have their own keyboard and pointer hit targets. -->
         <Button Command="{Binding OpenCommand}"
-                Padding="0"
-                MinWidth="0"
-                MinHeight="0"
-                BorderThickness="0"
-                Background="Transparent"
+                Style="{StaticResource RepositoryTileOpenButtonStyle}"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch"
-                HorizontalContentAlignment="Stretch"
-                VerticalContentAlignment="Stretch"
-                UseSystemFocusVisuals="True"
                 ToolTipService.ToolTip="{Binding TileDescription}"
                 AutomationProperties.Name="{Binding DisplayName}"
-                AutomationProperties.HelpText="{Binding TileDescription}">
-          <Border Style="{StaticResource FormCardStyle}"
-                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                  CornerRadius="9" />
-        </Button>
+                AutomationProperties.HelpText="{Binding TileDescription}" />
 
         <Grid x:Name="RepositoryTileLayout"
               Padding="8"
