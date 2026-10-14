@@ -24,6 +24,7 @@ public sealed partial class MainPage
         _recentRepositoriesShutdown = false;
         _recentRepositoriesViewModel = new RecentRepositoriesViewModel(
             _recentRepositorySettings,
+            _recentRepositorySettings,
             _repositoryImageService,
             OpenRecentRepositoryAsync,
             OpenRecentRepositoryFolderAsync,

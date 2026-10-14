@@ -443,7 +443,8 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
         ? StringComparer.OrdinalIgnoreCase
         : StringComparer.Ordinal;
 
-    private readonly IAppSettingsService _settings;
+    private readonly IRepositoryLauncherSettings _settings;
+    private readonly IAppearanceSettings _appearanceSettings;
     private readonly IRepositoryImageService _repositoryImageService;
     private readonly Func<RecentRepositoryItem, Task> _openRecentAsync;
     private readonly Func<RecentRepositoryItem, Task> _openRecentFolderAsync;
@@ -460,7 +461,8 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
     private RepositoryLauncherSettingsSnapshot _reconciledSnapshot = null!;
 
     internal RecentRepositoriesViewModel(
-        IAppSettingsService settings,
+        IRepositoryLauncherSettings settings,
+        IAppearanceSettings appearanceSettings,
         IRepositoryImageService repositoryImageService,
         Func<RecentRepositoryItem, Task> openRecentAsync,
         Func<RecentRepositoryItem, Task> openRecentFolderAsync,
@@ -472,6 +474,7 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
         DispatcherQueue dispatcherQueue)
     {
         _settings = settings;
+        _appearanceSettings = appearanceSettings;
         _repositoryImageService = repositoryImageService;
         _openRecentAsync = openRecentAsync;
         _openRecentFolderAsync = openRecentFolderAsync;
@@ -602,13 +605,13 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
         {
             if (_itemsByPath.TryGetValue(settings.Path, out var existing))
             {
-                existing.UpdateSettings(settings, _settings.CommitTimeDisplayMode);
+                existing.UpdateSettings(settings, _appearanceSettings.CommitTimeDisplayMode);
                 continue;
             }
 
             var item = new RecentRepositoryItem(
                 settings,
-                _settings.CommitTimeDisplayMode,
+                _appearanceSettings.CommitTimeDisplayMode,
                 _openRecentAsync,
                 _openRecentFolderAsync,
                 _copyRecentPathAsync,
@@ -784,7 +787,7 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
         {
             if (Directory.Exists(item.Path))
             {
-                item.SetAvailability(true, _settings.CommitTimeDisplayMode);
+                item.SetAvailability(true, _appearanceSettings.CommitTimeDisplayMode);
                 continue;
             }
 
