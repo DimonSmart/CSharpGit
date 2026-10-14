@@ -142,7 +142,8 @@ public sealed class HistoryDiffUiContractTests
         Assert.Contains("string? parentHash", service);
         Assert.Contains("ChangedFile file", service);
         Assert.Contains("process.Kill(entireProcessTree: true)", executor);
-        Assert.Contains("Task.WhenAll(outputTask, errorTask)", executor);
+        Assert.Contains("WaitForProcessAndPumpsAsync(process, cancellationToken, outputTask, errorTask)", executor);
+        Assert.Contains("await Task.WhenAny(pending)", executor);
     }
 
     [Fact]

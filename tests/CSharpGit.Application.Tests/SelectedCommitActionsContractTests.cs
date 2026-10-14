@@ -12,7 +12,7 @@ public sealed class SelectedCommitActionsContractTests
 
         Assert.DoesNotContain("_repositoryService.OpenAsync(Repository.WorkingDirectory)", viewModel);
         Assert.Contains("RefreshStateAsync(bool includeHistory)", viewModel);
-        Assert.Contains("if (includeHistory)", viewModel);
+        Assert.Contains("if (includeHistory && IsCurrentSession(lifetime, repository))", viewModel);
         Assert.Contains("StageFileAsync", ExtractMethod(workingTree, "StageActiveAsync"));
         Assert.Contains("UnstageFileAsync", ExtractMethod(workingTree, "UnstageActiveAsync"));
         Assert.Contains("StageChangesAsync", ExtractMethod(workingTree, "StageSelectedAsync"));
