@@ -17,11 +17,16 @@ public sealed class GitCommandStreamingActivityTests
         history.OutputReceived(id, GitOutputStream.StandardOutput, "-two");
         history.OutputReceived(id, GitOutputStream.StandardError, "two");
 
-        var activity = history.Get(id);
-        Assert.NotNull(activity);
+        // Unterminated records stay private until their complete value can be sanitized.
+        var inProgress = history.Get(id);
+        Assert.NotNull(inProgress);
+        Assert.Equal(string.Empty, inProgress.StandardOutput);
+        Assert.Equal(string.Empty, inProgress.StandardError);
+        history.Completed(id, 0);
+        var activity = history.Get(id)!;
         Assert.Equal("one-two", activity.StandardOutput);
         Assert.Equal("err-two", activity.StandardError);
-        Assert.Equal(GitCommandStatus.Running, activity.Status);
+        Assert.Equal(GitCommandStatus.Succeeded, activity.Status);
     }
 
     [Fact]
