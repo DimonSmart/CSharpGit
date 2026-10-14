@@ -312,9 +312,9 @@ public sealed partial class MainPage
             if (!IsCurrentWorkingTreeImageRequest(repository, change, kind, generation, cancellation.Token))
                 return;
 
-            _workingTreeFileVersions = imageResult.Versions;
-            _workingTreeRevealPath = TryResolveReveal(repository, imageResult.Versions.RevealPath);
-            UpdateWorkingTreeButtons();
+            _fileActions.PublishWorkingTreePreview(
+                new WorkingTreeFileActionRequest(repository, change, kind),
+                imageResult.Versions);
 
             if (imageResult.Content is null)
             {
