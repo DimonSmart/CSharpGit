@@ -85,6 +85,7 @@ public sealed class FileActionsViewModel : INotifyPropertyChanged, IDisposable
     public FileActionSelectionState WorkingTree { get; private set; } =
         new(FileActionLoadPhase.Unavailable, null, null);
     public string RevealDescription => _shell.RevealDescription;
+    internal DiffFileVersionPathResolver PathResolver => _pathResolver;
 
     internal void Attach(IFileActionsContext context) =>
         _context = context ?? throw new ArgumentNullException(nameof(context));
@@ -157,6 +158,25 @@ public sealed class FileActionsViewModel : INotifyPropertyChanged, IDisposable
             Commit = state;
             Notify(nameof(Commit));
         }
+    }
+
+    // Commit image preview may already have prepared the same pair.
+    public void PublishCommitPreview(CommitFileActionRequest request, DiffFileVersionPair pair)
+    {
+        if (!IsCurrent(request) || !Equals(Commit.Request, request))
+            return;
+        SetState(false, new(FileActionLoadPhase.Ready, request,
+            new PreparedFileActions(request, pair, TryResolveReveal(request.Repository, pair.RevealPath))));
+    }
+
+    public async Task OpenResolvedVersionAsync(
+        Repository repository, DiffFileVersion version, DiffFileSide side)
+    {
+        if (!IsCurrent(new CommitFileActionRequest(repository, string.Empty, version.GitPath)))
+            return;
+        var path = await _pathResolver.ResolveAsync(repository, version, side, CancellationToken.None);
+        if (_context?.IsCurrentFileActionsRepository(repository) == true)
+            await _shell.OpenFileAsync(path);
     }
 
     // Image preview may already have resolved the same version pair; never overwrite a new selection.
