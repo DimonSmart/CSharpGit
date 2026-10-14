@@ -70,6 +70,19 @@ internal sealed class BoundedUtf8TextBuffer
             requiresResync);
     }
 
+    // Fail closed for diagnostic records too long to validate safely.
+    public BoundedUtf8AppendResult Suppress()
+    {
+        if (Truncated) return BoundedUtf8AppendResult.None;
+        var requiresResync = _byteCount > _maximumBytes - _truncationMarkerBytes;
+        if (requiresResync)
+            TrimExistingToUtf8Bytes(_maximumBytes - _truncationMarkerBytes);
+        _builder.Append(_truncationMarker);
+        _byteCount += _truncationMarkerBytes;
+        Truncated = true;
+        return new BoundedUtf8AppendResult(true, _truncationMarker, requiresResync);
+    }
+
     public override string ToString() => _builder.ToString();
 
     private void TrimExistingToUtf8Bytes(int maximumBytes)

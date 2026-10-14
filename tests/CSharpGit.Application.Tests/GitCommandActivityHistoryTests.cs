@@ -130,4 +130,76 @@ public sealed class GitCommandActivityHistoryTests
         Assert.DoesNotContain("bearer-secret", entry.DisplayCommand, StringComparison.Ordinal);
         Assert.Contains("***", entry.DisplayCommand, StringComparison.Ordinal);
     }
+    [Theory]
+    [InlineData(GitOutputStream.StandardOutput)]
+    [InlineData(GitOutputStream.StandardError)]
+    public void SecretsSplitAcrossChunksNeverAppearInSnapshotsOrEvents(GitOutputStream stream)
+    {
+        const string secret = "synthetic-token-123456";
+        var history = new GitCommandActivityHistory();
+        var published = new List<string>();
+        history.Changed += (_, args) =>
+        {
+            if (args.Activity is { } snapshot)
+            {
+                published.Add(snapshot.DisplayCommand);
+                published.Add(snapshot.StandardOutput);
+                published.Add(snapshot.StandardError);
+            }
+            if (args.OutputChunk is { } chunk)
+                published.Add(chunk);
+        };
+        var id = history.Started("git", "/repo",
+            ["fetch", "https://user:pass-secret@example.com/repo", "--token", secret],
+            GitCommandKind.User);
+
+        history.OutputReceived(id, stream, "Authorization: Bea");
+        Assert.DoesNotContain("Authorization: Bea", history.Get(id)!.StandardOutput);
+        history.OutputReceived(id, stream, "rer " + secret + "\r");
+        history.OutputReceived(id, stream, "\npassword=" + secret + "\0");
+        history.OutputReceived(id, stream, "https://user:" + secret[..8]);
+        history.OutputReceived(id, stream, secret[8..] + "@example.com/path\n");
+        history.Completed(id, 0);
+
+        var activity = history.Get(id)!;
+        Assert.DoesNotContain(secret, activity.StandardOutput);
+        Assert.DoesNotContain(secret, activity.StandardError);
+        Assert.DoesNotContain("pass-secret", activity.DisplayCommand);
+        Assert.All(published, value => Assert.DoesNotContain(secret, value, StringComparison.Ordinal));
+        Assert.All(published, value => Assert.DoesNotContain("pass-secret", value, StringComparison.Ordinal));
+        var copy = CSharpGit.Presentation.Controls.GitConsoleClipboardText.Build(activity);
+        Assert.DoesNotContain(secret, copy);
+        Assert.DoesNotContain("pass-secret", copy);
+        Assert.Contains("***", stream == GitOutputStream.StandardOutput
+            ? activity.StandardOutput
+            : activity.StandardError);
+    }
+
+    [Fact]
+    public void NormalUtf8AndMachineSeparatorsSurviveSanitization()
+    {
+        var history = new GitCommandActivityHistory();
+        var id = history.Started("git", "/repo", ["log"], GitCommandKind.Internal);
+        history.OutputReceived(id, GitOutputStream.StandardOutput, "é😀\r");
+        history.OutputReceived(id, GitOutputStream.StandardOutput, "\nentry\0tail");
+        history.Completed(id, 0);
+        Assert.Equal("é😀\r\nentry\0tail", history.Get(id)!.StandardOutput);
+    }
+
+    [Fact]
+    public void OverlongUnterminatedRecordIsSuppressedWithoutLeakingItsEnd()
+    {
+        var history = new GitCommandActivityHistory();
+        var id = history.Started("git", "/repo", ["status"], GitCommandKind.Internal);
+        history.OutputReceived(id, GitOutputStream.StandardError, new string('a', 9000));
+        history.OutputReceived(id, GitOutputStream.StandardError, "token=synthetic-secret");
+        history.Completed(id, 1);
+        var activity = history.Get(id)!;
+        Assert.True(activity.StandardErrorTruncated);
+        Assert.Contains("[output truncated]", activity.StandardError);
+        Assert.DoesNotContain("synthetic-secret", activity.StandardError);
+        Assert.True(Encoding.UTF8.GetByteCount(activity.StandardError)
+            <= GitCommandActivityHistory.MaximumOutputBytes);
+    }
+
 }

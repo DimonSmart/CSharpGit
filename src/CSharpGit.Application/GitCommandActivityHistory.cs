@@ -133,6 +133,8 @@ public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCom
             if (!_byId.TryGetValue(id, out var state)) return;
             if (state.Status != GitCommandStatus.Running) return;
 
+            var stdoutFinal = state.StandardOutput.Flush();
+            var stderrFinal = state.StandardError.Flush();
             var completedAt = DateTimeOffset.UtcNow;
             state.CompletedAt = completedAt;
             state.Duration = completedAt - state.StartedAt;
@@ -141,6 +143,14 @@ public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCom
             snapshot = CreateSnapshot(state);
         }
 
+        if (stdoutFinal.Changed)
+            Changed?.Invoke(this, new GitCommandActivityChangedEventArgs(
+                id, snapshot.CommandKind, GitOutputStream.StandardOutput,
+                stdoutFinal.PublishedChunk, stdoutFinal.RequiresResync));
+        if (stderrFinal.Changed)
+            Changed?.Invoke(this, new GitCommandActivityChangedEventArgs(
+                id, snapshot.CommandKind, GitOutputStream.StandardError,
+                stderrFinal.PublishedChunk, stderrFinal.RequiresResync));
         Changed?.Invoke(this, new GitCommandActivityChangedEventArgs(
             snapshot,
             status == GitCommandStatus.Cancelled
@@ -203,10 +213,10 @@ public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCom
         public GitCommandKind CommandKind { get; }
         public int? ExitCode { get; set; }
         public GitCommandStatus Status { get; set; } = GitCommandStatus.Running;
-        public BoundedUtf8TextBuffer StandardOutput { get; } = new(MaximumOutputBytes, TruncationMarker);
-        public BoundedUtf8TextBuffer StandardError { get; } = new(MaximumOutputBytes, TruncationMarker);
+        public SanitizedDiagnosticStream StandardOutput { get; } = new();
+        public SanitizedDiagnosticStream StandardError { get; } = new();
 
-        public BoundedUtf8TextBuffer GetBuffer(GitOutputStream stream) => stream switch
+        public SanitizedDiagnosticStream GetBuffer(GitOutputStream stream) => stream switch
         {
             GitOutputStream.StandardOutput => StandardOutput,
             GitOutputStream.StandardError => StandardError,
@@ -214,6 +224,70 @@ public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCom
         };
     }
 }
+
+
+ // Sanitizes complete diagnostic records before they enter persistent buffers
+ // or Changed events. Arbitrary chunk boundaries cannot expose incomplete
+ // credentials. Overlong unterminated records fail closed.
+ internal sealed class SanitizedDiagnosticStream
+ {
+     private const int MaximumPendingCharacters = 8192;
+     private readonly BoundedUtf8TextBuffer _output =
+         new(GitCommandActivityHistory.MaximumOutputBytes, GitCommandActivityHistory.TruncationMarker);
+     private readonly StringBuilder _pending = new();
+
+     public bool Truncated => _output.Truncated;
+
+     public BoundedUtf8AppendResult Append(string chunk)
+     {
+         if (_output.Truncated || chunk.Length == 0) return BoundedUtf8AppendResult.None;
+         var published = new StringBuilder();
+         var requiresResync = false;
+         foreach (var character in chunk)
+         {
+             if (_pending.Length >= MaximumPendingCharacters)
+             {
+                 _pending.Clear();
+                 var suppressed = _output.Suppress();
+                 if (suppressed.RequiresResync)
+                 {
+                     requiresResync = true;
+                     published.Clear();
+                 }
+                 published.Append(suppressed.PublishedChunk);
+                 break;
+             }
+
+             _pending.Append(character);
+             if (character is not ('\r' or '\n' or '\0')) continue;
+             var result = Flush();
+             if (!result.Changed) continue;
+             if (result.RequiresResync)
+             {
+                 requiresResync = true;
+                 published.Clear();
+             }
+             published.Append(result.PublishedChunk);
+             if (_output.Truncated) break;
+         }
+
+         return published.Length == 0
+             ? BoundedUtf8AppendResult.None
+             : new BoundedUtf8AppendResult(true, published.ToString(), requiresResync);
+     }
+
+     public BoundedUtf8AppendResult Flush()
+     {
+         if (_pending.Length == 0 || _output.Truncated)
+             return BoundedUtf8AppendResult.None;
+
+         var sanitized = GitCommandFormatter.SanitizeOutput(_pending.ToString());
+         _pending.Clear();
+         return _output.Append(sanitized);
+     }
+
+     public override string ToString() => _output.ToString();
+ }
 
 public static partial class GitCommandFormatter
 {
@@ -243,6 +317,13 @@ public static partial class GitCommandFormatter
     {
         var safeArguments = argumentsAreSanitized ? arguments : SanitizeArguments(arguments);
         return string.Join(' ', new[] { DisplayExecutable(executable) }.Concat(safeArguments.Select(QuoteArgument)));
+    }
+
+    // Only for the diagnostic boundary; never modify Git parser output.
+    public static string SanitizeOutput(string output)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+        return SanitizeValue(output);
     }
 
     public static IReadOnlyList<string> SanitizeArguments(IReadOnlyList<string> arguments)
@@ -330,9 +411,9 @@ public static partial class GitCommandFormatter
     [GeneratedRegex(@"(?<scheme>https?://)(?<user>[^:/@\s]+):[^@/\s]+@", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex UrlCredentialsPattern();
 
-    [GeneratedRegex(@"(?<prefix>authorization\s*:\s*(?:(?:basic|bearer)\s+)?)\S+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(?<prefix>authorization\s*:\s*(?:(?:basic|bearer)\s+)?)[^\s\0]+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex AuthorizationPattern();
 
-    [GeneratedRegex(@"(?<prefix>(?:--)?(?:password|token|access[_-]?token|credential)\s*=\s*)[^\s]+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(?<prefix>(?:--)?(?:password|token|access[_-]?token|credential)\s*=\s*)[^\s\0]+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex SensitiveAssignmentPattern();
 }
