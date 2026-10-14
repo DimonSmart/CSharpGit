@@ -25,7 +25,8 @@ public sealed class SettingsDiagnosticsUiContractTests
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml"));
-        var settings = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IAppSettingsService.cs"));
+        var settings = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IDiagnosticsSettings.cs")) +
+            File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IAppearanceSettings.cs"));
 
         Assert.Contains("Enable history performance diagnostics", xaml, StringComparison.Ordinal);
         Assert.Contains("HistoryPerformanceDiagnosticsEnabled", settings, StringComparison.Ordinal);

@@ -619,78 +619,35 @@ public sealed class RepositorySyncViewModelTests
         }
     }
 
-    private sealed class FakeSettingsService : IAppSettingsService
+    private sealed class FakeSettingsService : IGitWorkflowSettings
     {
-        public ApplicationThemeMode ThemeMode => ApplicationThemeMode.System;
-        public CommitTimeDisplayMode CommitTimeDisplayMode => CommitTimeDisplayMode.Smart;
-        public bool LoggingEnabled => false;
-        public ApplicationLogLevel LogLevel => ApplicationLogLevel.Information;
-        public GitConsoleAutoOpenMode GitConsoleAutoOpenMode => GitConsoleAutoOpenMode.OnErrors;
-        public bool ShowReflog => false;
         public bool AutoSetupRemoteOnPush { get; set; }
         public PullStrategy DefaultPullStrategy { get; set; } = PullStrategy.FastForwardOnly;
         public bool ForcePullAutoStash { get; set; }
-        public bool ShowAuthorAvatars => true;
-        public bool OnlineAvatarLookupEnabled => true;
-        public bool HistoryPerformanceDiagnosticsEnabled => false;
-        public HistoryRenderingMode HistoryRenderingMode => HistoryRenderingMode.Full;
-        public string DefaultRepositoriesDirectory => "/work";
-        public IReadOnlyList<RecentRepositorySettings> RecentRepositories => [];
-        public IReadOnlyList<RepositoryGroupSettings> RepositoryGroups =>
-            [new RepositoryGroupSettings("favorites", "Favorites", 0, true)];
-        public bool RecentRepositoriesExpanded { get; private set; } = true;
-        public Task SetRecentRepositoriesExpandedAsync(bool expanded, CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            RecentRepositoriesExpanded = expanded;
-            return Task.CompletedTask;
-        }
-        public RepositoryLauncherSettingsSnapshot RepositoryLauncherSnapshot =>
-            new(RepositoryGroups, RecentRepositories);
-        public Task<RepositoryGroupSettings> CreateRepositoryGroupAsync(string name, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-        public Task RenameRepositoryGroupAsync(string id, string name, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-        public Task DeleteRepositoryGroupAsync(string id, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-        public Task MoveRepositoryGroupAsync(string id, int newIndex, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-        public Task SetRepositoryGroupExpandedAsync(string id, bool expanded, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-        public Task MoveRecentRepositoryToGroupAsync(string path, string id, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
 
         public event EventHandler? Changed;
+
         public void PublishChange() => Changed?.Invoke(this, EventArgs.Empty);
 
-        public Task SetThemeModeAsync(ApplicationThemeMode mode, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetCommitTimeDisplayModeAsync(CommitTimeDisplayMode mode, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetLoggingSettingsAsync(bool enabled, ApplicationLogLevel level, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetGitConsoleAutoOpenModeAsync(GitConsoleAutoOpenMode mode, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetShowReflogAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetAutoSetupRemoteOnPushAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task SetAutoSetupRemoteOnPushAsync(bool value, CancellationToken cancellationToken = default)
+        {
+            AutoSetupRemoteOnPush = value;
+            PublishChange();
+            return Task.CompletedTask;
+        }
+
         public Task SetDefaultPullStrategyAsync(PullStrategy strategy, CancellationToken cancellationToken = default)
         {
             DefaultPullStrategy = strategy;
             PublishChange();
             return Task.CompletedTask;
         }
+
         public Task SetForcePullAutoStashAsync(bool value, CancellationToken cancellationToken = default)
         {
             ForcePullAutoStash = value;
             PublishChange();
             return Task.CompletedTask;
         }
-        public Task SetShowAuthorAvatarsAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetOnlineAvatarLookupEnabledAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetHistoryPerformanceDiagnosticsEnabledAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetHistoryRenderingModeAsync(HistoryRenderingMode mode, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetDefaultRepositoriesDirectoryAsync(string directory, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task RecordRecentRepositoryAsync(string path, string displayName, string? lastBranchName, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task UpdateRecentRepositoryBranchAsync(string path, string? lastBranchName, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetRecentRepositoryPinnedAsync(string path, bool pinned, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task MovePinnedRepositoryAsync(string path, int newIndex, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task RemoveRecentRepositoryAsync(string path, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }

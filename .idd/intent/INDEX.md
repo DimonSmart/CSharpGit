@@ -63,3 +63,4 @@ opened.
 | IDD-0041 | Spec | Repository Git identity | Git-owned repository-local user.name/user.email with effective-source display and repository-switch safety | — |
 | IDD-0042 | ADR | Repository sync presentation boundary | RepositorySyncViewModel owns remote synchronization/publication while MainPage owns dialogs and Branches keeps branch lifecycle | — |
 | IDD-0043 | ADR | Presentation feature boundaries | Independent maintenance and file actions workflows, captured requests and shared session/mutation ownership | — |
+| IDD-0044 | ADR | Settings contracts and testable Core | One settings state and event, four facets, Uno-free testable assembly owners, no direct production source compilation in tests | — |
