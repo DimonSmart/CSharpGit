@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Presentation.ViewModels;
+using CSharpGit.Presentation.Controls;
 using Microsoft.UI.Xaml;
 
 namespace CSharpGit.Presentation;
@@ -8,6 +9,7 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage
 {
     private readonly RepositoryMaintenanceViewModel _repositoryMaintenance = null!;
+    private readonly IDesktopShellService _desktopShellService = null!;
 
     internal bool IsRepositoryMaintenanceInProgress => _repositoryMaintenance.IsRunning;
 
@@ -16,6 +18,7 @@ public sealed partial class MainPage
         CreateRepositoryViewModel createRepositoryViewModel,
         CloneRepositoryViewModel cloneRepositoryViewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
+        IDesktopShellService desktopShellService,
         IRepositoryFileVersionService fileVersionService,
         IExternalGitToolService externalGitToolService,
         RepositoryFilesViewModel repositoryFilesViewModel,
@@ -45,6 +48,7 @@ public sealed partial class MainPage
             ?? throw new ArgumentNullException(nameof(createRepositoryViewModel));
         _cloneRepositoryViewModel = cloneRepositoryViewModel
             ?? throw new ArgumentNullException(nameof(cloneRepositoryViewModel));
+        _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
         _repositoryMaintenance = repositoryMaintenance
             ?? throw new ArgumentNullException(nameof(repositoryMaintenance));
         _recentRepositorySettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
@@ -104,8 +108,9 @@ public sealed partial class MainPage
             || _viewModel.Repository is not { } repository)
             return;
 
+        if (XamlRoot is not { } root) return;
         var dialog = new RepositoryMaintenanceDialog(
-            XamlRoot, () => OpenGitConsole(null, manualOpen: true));
+            root, () => OpenGitConsole(null, manualOpen: true));
 
         try
         {
