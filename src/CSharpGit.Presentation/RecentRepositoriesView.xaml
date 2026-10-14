@@ -150,13 +150,7 @@
       <StackPanel Margin="{StaticResource Padding.Page}"
                   Spacing="{StaticResource Spacing.XL}"
                   HorizontalAlignment="Stretch">
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.S}">
-          <TextBlock Text="Repositories" Style="{StaticResource TitleTextStyle}" VerticalAlignment="Center" />
-          <Button Grid.Column="1" Content="+ New group"
-                  Click="NewGroup_Click"
-                  AutomationProperties.Name="Create repository group"
-                  VerticalAlignment="Center" />
-        </Grid>
+        <TextBlock Text="Repositories" Style="{StaticResource TitleTextStyle}" />
 
         <TextBox Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                  PlaceholderText="Search by name or path…"
