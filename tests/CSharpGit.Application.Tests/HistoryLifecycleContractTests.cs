@@ -6,9 +6,9 @@ public sealed class HistoryLifecycleContractTests
     public void HistorySelectionAndLoadingHaveOneOwnerAndStaleRequestGuards()
     {
         var root = FindRepositoryRoot();
-        var history = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "HistoryViewModel.cs"));
+        var history = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "HistoryViewModel.cs"));
         var adapter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.History.cs"));
-        var lazyChanges = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "CommitDetailsViewModel.cs"));
+        var lazyChanges = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
 

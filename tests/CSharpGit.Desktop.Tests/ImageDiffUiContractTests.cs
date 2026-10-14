@@ -33,7 +33,7 @@ public sealed class ImageDiffUiContractTests
     {
         var root = FindRepositoryRoot();
         var service = Read(root, "src", "CSharpGit.Presentation", "Previewing", "ImageDiffPreviewService.cs");
-        var resolver = Read(root, "src", "CSharpGit.Presentation", "Previewing", "DiffFileVersionPathResolver.cs");
+        var resolver = Read(root, "src", "CSharpGit.Presentation.Core", "Previewing", "DiffFileVersionPathResolver.cs");
         var fileOpening = Read(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs");
 
         Assert.Contains("ResolveCommitAsync", service);
@@ -42,7 +42,7 @@ public sealed class ImageDiffUiContractTests
         Assert.Contains("ResolveExistingWorkingTreeFile", resolver);
         Assert.Contains("DiffFileVersionLocation.GitSnapshot", resolver);
         Assert.Contains("MaterializeAsync", resolver);
-        var fileActions = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "FileActionsViewModel.cs");
+        var fileActions = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "FileActionsViewModel.cs");
         var imageUi = Read(root, "src", "CSharpGit.Presentation", "MainPage.ImageDiff.cs");
         Assert.Contains("_pathResolver.ResolveAsync", fileActions);
         Assert.Contains("_fileActions.PathResolver", imageUi);
@@ -56,9 +56,9 @@ public sealed class ImageDiffUiContractTests
     public void SinglePreviewAndDiffShareMetadataReaderAndBoundedSafety()
     {
         var root = FindRepositoryRoot();
-        var filePreview = Read(root, "src", "CSharpGit.Presentation", "Previewing", "FilePreviewService.cs");
+        var filePreview = Read(root, "src", "CSharpGit.Presentation.Core", "Previewing", "FilePreviewService.cs");
         var imageDiff = Read(root, "src", "CSharpGit.Presentation", "Previewing", "ImageDiffPreviewService.cs");
-        var metadata = Read(root, "src", "CSharpGit.Presentation", "Previewing", "ImageMetadataReader.cs");
+        var metadata = Read(root, "src", "CSharpGit.Presentation.Core", "Previewing", "ImageMetadataReader.cs");
 
         Assert.Contains("SharedImageMetadataReader.Instance", filePreview);
         Assert.Contains("SharedImageMetadataReader.Instance", imageDiff);

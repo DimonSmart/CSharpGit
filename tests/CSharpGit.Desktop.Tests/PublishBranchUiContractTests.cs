@@ -10,8 +10,8 @@ public sealed class PublishBranchUiContractTests
         var xaml = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
         var converter = File.ReadAllText(Path.Combine(presentation, "Controls", "BranchTrackingActionTextConverter.cs"));
         var workflow = File.ReadAllText(Path.Combine(presentation, "MainPage.ForcePush.cs"));
-        var feature = File.ReadAllText(Path.Combine(presentation, "ViewModels", "RepositorySyncViewModel.cs"));
-        var branches = File.ReadAllText(Path.Combine(presentation, "ViewModels", "BranchesViewModel.cs"));
+        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySyncViewModel.cs"));
+        var branches = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "BranchesViewModel.cs"));
         var settings = File.ReadAllText(Path.Combine(presentation, "SettingsPage.xaml"));
 
         Assert.Contains("Publish branch…", converter, StringComparison.Ordinal);

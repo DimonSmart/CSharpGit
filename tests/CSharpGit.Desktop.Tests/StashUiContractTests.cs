@@ -25,7 +25,7 @@ public sealed class StashUiContractTests
         var xaml = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
         var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
         var stashPage = Read(root, "src", "CSharpGit.Presentation", "MainPage.Stashes.cs");
-        var stashViewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "StashesViewModel.cs");
+        var stashViewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "StashesViewModel.cs");
 
         Assert.Contains("Text=\"Stash…\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Icon.Glyph.Stash", xaml, StringComparison.Ordinal);
@@ -56,7 +56,7 @@ public sealed class StashUiContractTests
         var root = FindRepositoryRoot();
         var menu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
         var stashPage = Read(root, "src", "CSharpGit.Presentation", "MainPage.Stashes.cs");
-        var stashViewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "StashesViewModel.cs");
+        var stashViewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "StashesViewModel.cs");
 
         Assert.Contains("\"Stash selected…\"", menu, StringComparison.Ordinal);
         Assert.Contains("$\"Stash {count} files…\"", menu, StringComparison.Ordinal);
@@ -77,10 +77,10 @@ public sealed class StashUiContractTests
         var root = FindRepositoryRoot();
         var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
         var xaml = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
-        var repositoryFiles = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryFilesViewModel.cs");
+        var repositoryFiles = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs");
         var historyAdapter = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.History.cs");
         var detailsComposition = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.DetailsComposition.cs");
-        var detailsViewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "CommitDetailsViewModel.cs");
+        var detailsViewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs");
 
         var stashSelection = SliceFirstCase(page, "case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:");
         Assert.Contains("await _viewModel.Stashes.SelectStashAsync(stash)", stashSelection, StringComparison.Ordinal);
@@ -108,7 +108,7 @@ public sealed class StashUiContractTests
         var root = FindRepositoryRoot();
         var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
         var stashPage = Read(root, "src", "CSharpGit.Presentation", "MainPage.Stashes.cs");
-        var stashViewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "StashesViewModel.cs");
+        var stashViewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "StashesViewModel.cs");
 
         var stashMenu = SliceCase(page, "case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:");
         Assert.Contains("\"Apply\"", stashMenu, StringComparison.Ordinal);
@@ -133,7 +133,7 @@ public sealed class StashUiContractTests
         var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
         var changes = Read(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs");
         var presentation = Read(root, "src", "CSharpGit.Presentation", "MainPage.DiffPresentation.cs");
-        var detailsViewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "CommitDetailsViewModel.cs");
+        var detailsViewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs");
 
         Assert.Contains("GetChangedFileDisplayStatus(file)", page, StringComparison.Ordinal);
         Assert.Contains("StateLabel", detailsViewModel, StringComparison.Ordinal);

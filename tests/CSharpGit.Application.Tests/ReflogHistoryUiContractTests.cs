@@ -9,7 +9,7 @@ public sealed class ReflogHistoryUiContractTests
         var historyReferences = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml"));
         var presenter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferencesPresenter.cs"));
         var domain = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Domain", "History.cs"));
-        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "HistoryViewModel.cs"));
+        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "HistoryViewModel.cs"));
         var git = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCommitHistoryReader.cs"));
 
         Assert.Contains("HistoryReferenceDecoration", domain);
@@ -44,9 +44,9 @@ public sealed class ReflogHistoryUiContractTests
         var root = FindRepositoryRoot();
         var historyReferences = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml"));
         var graphControl = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphControl.cs"));
-        var trackPresentation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphTrackPresentation.cs"));
-        var graphVisual = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphRowVisual.cs"));
-        var geometryKey = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphGeometryKey.cs"));
+        var trackPresentation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "Controls", "CommitGraph", "CommitGraphTrackPresentation.cs"));
+        var graphVisual = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "Controls", "CommitGraph", "CommitGraphRowVisual.cs"));
+        var geometryKey = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "Controls", "CommitGraph", "CommitGraphGeometryKey.cs"));
         var converter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitTopologyToGraphVisualConverter.cs"));
         var domain = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Domain", "History.cs"));
 

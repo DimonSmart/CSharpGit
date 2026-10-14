@@ -30,7 +30,7 @@ public sealed class AboutUpdateUiContractTests
         var app = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
         var infrastructure = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Infrastructure", "ApplicationUpdateServices.cs"));
+            root, "src", "CSharpGit.Infrastructure.Core", "ApplicationUpdateServices.cs"));
 
         Assert.Contains("Checking for updates...", about);
         Assert.Contains("You are up to date.", about);

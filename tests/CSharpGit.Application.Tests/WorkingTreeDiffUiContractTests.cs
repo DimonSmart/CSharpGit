@@ -8,7 +8,7 @@ public sealed class WorkingTreeDiffUiContractTests
         var root = FindRepositoryRoot();
         var contract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IWorkingTreeDiffService.cs"));
         var mutationContract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IWorkingTreeService.cs"));
-        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
+        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs"));
 
         Assert.Contains("enum WorkingTreeDiffKind", contract);
         Assert.Contains("Unstaged", contract);
@@ -30,7 +30,7 @@ public sealed class WorkingTreeDiffUiContractTests
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var confirmations = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ConfirmationDialogs.cs"));
         var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs"));
-        var selection = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeTreeSelection.cs"));
+        var selection = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeTreeSelection.cs"));
         var repositoryTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "RepositoryTree.xaml"));
         var workspace = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
         var selectableDiff = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "SelectableDiffViewer.xaml"));
@@ -87,10 +87,10 @@ public sealed class WorkingTreeDiffUiContractTests
     public void WorkingTreeHierarchyIsPresentationOnlyAndUsesSharedPathBuilder()
     {
         var root = FindRepositoryRoot();
-        var workingTreeNode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeTreeNode.cs"));
-        var changedFileNode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "ChangedFileTreeNode.cs"));
-        var snapshotNode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositorySnapshotTreeNode.cs"));
-        var builder = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "PathTreeBuilder.cs"));
+        var workingTreeNode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeTreeNode.cs"));
+        var changedFileNode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "ChangedFileTreeNode.cs"));
+        var snapshotNode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySnapshotTreeNode.cs"));
+        var builder = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "PathTreeBuilder.cs"));
 
         Assert.Contains("PathTreeBuilder.Build", workingTreeNode);
         Assert.Contains("PathTreeBuilder.Build", changedFileNode);
@@ -110,7 +110,7 @@ public sealed class WorkingTreeDiffUiContractTests
         var root = FindRepositoryRoot();
         var contract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IWorkingTreeService.cs"));
         var staging = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitWorkingTreeService.Staging.cs"));
-        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
+        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs"));
         var repositoryViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var contextBridge = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.WorkingTree.cs"));
 
@@ -142,7 +142,7 @@ public sealed class WorkingTreeDiffUiContractTests
         var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs"));
         var git = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitWorkingTreeService.cs"));
         var gitDiff = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitWorkingTreeDiffService.cs"));
-        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
+        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs"));
         var workingTreeViewModel = discardViewModel;
 
         Assert.Contains("CancellationTokenSource", workingTreeViewModel);
@@ -202,9 +202,9 @@ public sealed class WorkingTreeDiffUiContractTests
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
-        var commitCreation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "CommitCreationViewModel.cs"));
+        var commitCreation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitCreationViewModel.cs"));
         var commitCreationContext = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.CommitCreation.cs"));
-        var workingTreeViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
+        var workingTreeViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs"));
 
         Assert.Contains("Text=\"{Binding CommitCreation.CommitMessage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", xaml);
         Assert.Contains("WorkingTree.ClearCommittedPresentationSelection", commitCreationContext);

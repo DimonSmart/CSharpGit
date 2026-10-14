@@ -221,7 +221,7 @@ public sealed class WorkingTreeDiscardContractTests
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ConfirmationDialogs.cs"));
-        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
+        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs"));
 
         var menu = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs"));
         Assert.Contains("WorkingTree.RequestDiscardSelectedCommand", menu);
@@ -253,7 +253,7 @@ public sealed class WorkingTreeDiscardContractTests
     public void CancelConfirmationDoesNotRunDiscardMutation()
     {
         var root = FindRepositoryRoot();
-        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
+        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs"));
         var method = ExtractMethod(discardViewModel, "private Task CancelBatchDiscardAsync()", "private async Task ConfirmBatchDiscardAsync()");
 
         Assert.Contains("SetPendingBatchDiscard(null)", method);
@@ -267,7 +267,7 @@ public sealed class WorkingTreeDiscardContractTests
     {
         var root = FindRepositoryRoot();
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
-        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
+        var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs"));
 
         var confirm = ExtractMethod(discardViewModel, "private async Task ConfirmBatchDiscardAsync()", "private void SetPendingBatchDiscard");
         Assert.Contains("RunMutationCoreAsync", confirm);

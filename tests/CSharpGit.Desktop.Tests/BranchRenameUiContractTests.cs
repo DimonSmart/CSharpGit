@@ -39,7 +39,7 @@ public sealed class BranchRenameUiContractTests
     {
         var root = FindRepositoryRoot();
         var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchRename.cs"));
-        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "BranchesViewModel.cs"));
+        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "BranchesViewModel.cs"));
 
         Assert.Contains("Title = \"Rename branch\"", workflow, StringComparison.Ordinal);
         Assert.Contains("Header = \"Name\"", workflow, StringComparison.Ordinal);

@@ -47,7 +47,7 @@ public sealed class SettingsDiagnosticsUiContractTests
     {
         var root = FindRepositoryRoot();
         var contracts = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryFileVersionService.cs"));
-        var shell = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure", "DesktopFileServices.cs"));
+        var shell = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure.Core", "DesktopFileServices.cs"));
 
         Assert.Contains("Task OpenFolderAsync(", contracts, StringComparison.Ordinal);
         Assert.Contains("OperatingSystem.IsWindows()", shell, StringComparison.Ordinal);

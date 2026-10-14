@@ -15,6 +15,7 @@ public sealed class CoreAssemblyArchitectureTests
         Assert.Equal("CSharpGit.Infrastructure.Core", typeof(RepositoryImageService).Assembly.GetName().Name);
         Assert.Equal("CSharpGit.Presentation.Core", typeof(IUiDispatcher).Assembly.GetName().Name);
         Assert.Equal("CSharpGit.Presentation.Core", typeof(RepositorySyncViewModel).Assembly.GetName().Name);
+        Assert.Equal("CSharpGit.Presentation.Core", typeof(HistoryViewModel).Assembly.GetName().Name);
         Assert.Equal("CSharpGit.Presentation.Core", typeof(RepositoryMaintenanceViewModel).Assembly.GetName().Name);
         Assert.Equal("CSharpGit.Presentation.Core", typeof(FileActionsViewModel).Assembly.GetName().Name);
         foreach (var assembly in new[] { typeof(JsonAppSettingsService).Assembly, typeof(RepositorySyncViewModel).Assembly })
@@ -42,39 +43,77 @@ public sealed class CoreAssemblyArchitectureTests
     }
 
     [Fact]
-    public void CompileOwnershipIsUniqueEvenForLinkedSources()
+    public void CoreSourcesArePhysicallyOwnedAndCompiledByOneProject()
     {
         var root = Root();
-        foreach (var (coreName, adapterName, expected) in new[]
+        var sourcesRoot = Path.Combine(root, "src");
+        var coreProjects = new[]
         {
-            ("CSharpGit.Infrastructure.Core", "CSharpGit.Infrastructure", 11),
-            ("CSharpGit.Presentation.Core", "CSharpGit.Presentation", 81)
-        })
+            ("CSharpGit.Infrastructure.Core", "CSharpGit.Infrastructure"),
+            ("CSharpGit.Presentation.Core", "CSharpGit.Presentation")
+        };
+        foreach (var (coreName, adapterName) in coreProjects)
         {
-            var corePath = Path.Combine(root, "src", coreName, coreName + ".csproj");
-            var adapterPath = Path.Combine(root, "src", adapterName, adapterName + ".csproj");
-            var core = XDocument.Load(corePath);
-            var adapter = XDocument.Load(adapterPath);
+            var coreDirectory = Path.Combine(sourcesRoot, coreName);
+            var adapterDirectory = Path.Combine(sourcesRoot, adapterName);
+            var core = XDocument.Load(Path.Combine(coreDirectory, coreName + ".csproj"));
+            var adapter = XDocument.Load(Path.Combine(adapterDirectory, adapterName + ".csproj"));
+
             Assert.Equal("Microsoft.NET.Sdk", core.Root?.Attribute("Sdk")?.Value);
             Assert.Equal("net10.0", core.Descendants("TargetFramework").Single().Value);
-            var linked = core.Descendants("Compile")
-                .Select(element => element.Attribute("Include")?.Value)
-                .Where(value => value is not null && value.StartsWith("../", StringComparison.Ordinal))
-                .Select(value => value!).ToArray();
-            Assert.Equal(expected, linked.Length);
-            Assert.Equal(linked.Length, linked.Distinct(StringComparer.Ordinal).Count());
-            var excluded = adapter.Descendants("Compile").Select(x => x.Attribute("Remove")?.Value)
-                .Where(x => x is not null).ToHashSet(StringComparer.Ordinal);
-            foreach (var source in linked)
+            Assert.DoesNotContain(core.Descendants("EnableDefaultCompileItems"),
+                setting => string.Equals(setting.Value.Trim(), "false", StringComparison.OrdinalIgnoreCase));
+            Assert.Empty(core.Descendants("Compile").Where(item => item.Attribute("Include") is not null));
+            Assert.Empty(core.Descendants("Compile").Where(item => item.Attribute("Remove") is not null));
+
+            var coreSourceFiles = Directory.EnumerateFiles(coreDirectory, "*.cs", SearchOption.AllDirectories)
+                .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
+                    StringComparison.OrdinalIgnoreCase))
+                .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}",
+                    StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            Assert.NotEmpty(coreSourceFiles);
+            foreach (var source in coreSourceFiles)
             {
-                var name = source.Substring(("../" + adapterName + "/").Length);
-                Assert.StartsWith("../" + adapterName + "/", source, StringComparison.Ordinal);
-                Assert.Contains(name, excluded);
-                Assert.True(File.Exists(Path.GetFullPath(Path.Combine(root, "src", coreName, source))));
+                var relative = Path.GetRelativePath(coreDirectory, source);
+                Assert.False(relative.StartsWith("..", StringComparison.Ordinal));
+                Assert.True(File.Exists(source));
+                Assert.False(File.Exists(Path.Combine(adapterDirectory, relative)),
+                    $"Core source is duplicated in Uno: {source}");
+                Assert.DoesNotContain(adapter.Descendants("Compile"),
+                    item => string.Equals(item.Attribute("Remove")?.Value?.Replace('\\', '/'),
+                        relative.Replace('\\', '/'), StringComparison.OrdinalIgnoreCase));
             }
-            var references = core.Descendants("ProjectReference").Select(x => x.Attribute("Include")?.Value ?? "").ToArray();
-            Assert.DoesNotContain(references, value => value.Contains("Presentation/", StringComparison.Ordinal) ||
-                value.Contains("Infrastructure/", StringComparison.Ordinal) || value.Contains("Uno", StringComparison.Ordinal));
+
+            var references = core.Descendants("ProjectReference")
+                .Select(item => item.Attribute("Include")?.Value ?? "")
+                .ToArray();
+            Assert.DoesNotContain(references, value =>
+                value.Contains("Presentation/", StringComparison.Ordinal) ||
+                value.Contains("Infrastructure/", StringComparison.Ordinal) ||
+                value.Contains("Uno", StringComparison.Ordinal));
+            Assert.Contains(adapter.Descendants("ProjectReference"), reference =>
+                reference.Attribute("Include")?.Value.Replace('\\', '/')
+                    .EndsWith("/" + coreName + ".csproj", StringComparison.Ordinal) == true);
+        }
+
+        // No other production project may link external source files back into its compilation.
+        foreach (var projectPath in Directory.GetFiles(sourcesRoot, "*.csproj", SearchOption.AllDirectories))
+        {
+            var project = XDocument.Load(projectPath);
+            var projectDirectory = Path.GetDirectoryName(projectPath)!;
+            foreach (var compile in project.Descendants("Compile"))
+            {
+                var include = compile.Attribute("Include")?.Value;
+                if (include is null || include.Contains('*') || include.Contains('?') || include.Contains("$("))
+                    continue;
+                var fullPath = Path.GetFullPath(Path.Combine(projectDirectory,
+                    include.Replace('/', Path.DirectorySeparatorChar)));
+                Assert.True(File.Exists(fullPath), $"Missing compile source: {projectPath}: {include}");
+                Assert.True(fullPath.StartsWith(projectDirectory + Path.DirectorySeparatorChar,
+                    StringComparison.OrdinalIgnoreCase),
+                    $"Production source compiled outside its project: {projectPath}: {include}");
+            }
         }
     }
 

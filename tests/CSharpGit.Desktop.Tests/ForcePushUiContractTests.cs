@@ -35,7 +35,7 @@ public sealed class ForcePushUiContractTests
         var feature = File.ReadAllText(Path.Combine(
             root,
             "src",
-            "CSharpGit.Presentation",
+            "CSharpGit.Presentation.Core",
             "ViewModels",
             "RepositorySyncViewModel.cs"));
         var parent = File.ReadAllText(Path.Combine(
@@ -89,7 +89,7 @@ public sealed class ForcePushUiContractTests
         var feature = File.ReadAllText(Path.Combine(
             root,
             "src",
-            "CSharpGit.Presentation",
+            "CSharpGit.Presentation.Core",
             "ViewModels",
             "RepositorySyncViewModel.cs"));
 

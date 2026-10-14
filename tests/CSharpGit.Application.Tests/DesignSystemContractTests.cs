@@ -265,7 +265,7 @@ public sealed class DesignSystemContractTests
         Assert.Contains("Changes ({_commitFiles.Count})", changes);
         Assert.Contains("\"Tracked files\"", mainCode);
         Assert.Contains("\"Stash\"", mainCode + changes + files + 
-            Read(root, "src", "CSharpGit.Presentation", "ViewModels", "CommitDetailsViewModel.cs"));
+            Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs"));
     }
 
     [Fact]
@@ -412,9 +412,9 @@ public sealed class DesignSystemContractTests
     public void CommitGraphLayoutDoesNotOwnHistoryRowHeight()
     {
         var root = FindRepositoryRoot();
-        var metrics = Read(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphMetrics.cs");
+        var metrics = Read(root, "src", "CSharpGit.Presentation.Core", "Controls", "CommitGraph", "CommitGraphMetrics.cs");
         var control = Read(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphControl.cs");
-        var builder = Read(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphGeometryBuilder.cs");
+        var builder = Read(root, "src", "CSharpGit.Presentation.Core", "Controls", "CommitGraph", "CommitGraphGeometryBuilder.cs");
 
         Assert.DoesNotContain("DefaultRowHeight", metrics);
         Assert.DoesNotContain("DefaultRowHeight", control);

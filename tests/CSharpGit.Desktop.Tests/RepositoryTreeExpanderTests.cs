@@ -39,13 +39,13 @@ public sealed class RepositoryTreeExpanderTests
         var snapshotNode = File.ReadAllText(Path.Combine(
             root,
             "src",
-            "CSharpGit.Presentation",
+            "CSharpGit.Presentation.Core",
             "ViewModels",
             "RepositorySnapshotTreeNode.cs"));
         var workingTreeNode = File.ReadAllText(Path.Combine(
             root,
             "src",
-            "CSharpGit.Presentation",
+            "CSharpGit.Presentation.Core",
             "ViewModels",
             "WorkingTreeTreeNode.cs"));
 

@@ -25,7 +25,7 @@ public sealed class RepositoryFilesUiContractTests
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
         var previewSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFilePreview.cs"));
-        var feature = File.ReadAllText(Path.Combine(presentation, "ViewModels", "RepositoryFilesViewModel.cs"));
+        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
 
         Assert.DoesNotContain("IRepositorySnapshotService", filesSurface, StringComparison.Ordinal);
         Assert.DoesNotContain("_repositorySnapshotService", filesSurface, StringComparison.Ordinal);
@@ -51,8 +51,8 @@ public sealed class RepositoryFilesUiContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
-        var feature = File.ReadAllText(Path.Combine(presentation, "ViewModels", "RepositoryFilesViewModel.cs"));
-        var model = File.ReadAllText(Path.Combine(presentation, "ViewModels", "RepositorySnapshotTreeNode.cs"));
+        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
+        var model = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySnapshotTreeNode.cs"));
 
         Assert.Contains("SetActiveAsync(true)", filesSurface, StringComparison.Ordinal);
         Assert.Contains("SetActiveAsync(false)", filesSurface, StringComparison.Ordinal);
@@ -72,7 +72,7 @@ public sealed class RepositoryFilesUiContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
-        var feature = File.ReadAllText(Path.Combine(presentation, "ViewModels", "RepositoryFilesViewModel.cs"));
+        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
         var changesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.Changes.cs"));
 
         Assert.Contains("public ObservableCollection<RepositorySnapshotTreeNode> TreeRoots { get; } = []", feature, StringComparison.Ordinal);
@@ -89,8 +89,8 @@ public sealed class RepositoryFilesUiContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
-        var feature = File.ReadAllText(Path.Combine(presentation, "ViewModels", "RepositoryFilesViewModel.cs"));
-        var model = File.ReadAllText(Path.Combine(presentation, "ViewModels", "RepositorySnapshotTreeNode.cs"));
+        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
+        var model = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySnapshotTreeNode.cs"));
 
         Assert.Contains("args.Key != VirtualKey.Enter", filesSurface, StringComparison.Ordinal);
         Assert.Contains("_repositoryFilesViewModel.SearchContentAsync", filesSurface, StringComparison.Ordinal);
@@ -108,7 +108,7 @@ public sealed class RepositoryFilesUiContractTests
         var previewSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFilePreview.cs"));
         var treeStyles = File.ReadAllText(Path.Combine(presentation, "Styles", "RepositoryTree.xaml"));
         var previewHost = File.ReadAllText(Path.Combine(presentation, "Controls", "FilePreviewHost.cs"));
-        var previewService = File.ReadAllText(Path.Combine(presentation, "Previewing", "FilePreviewService.cs"));
+        var previewService = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "Previewing", "FilePreviewService.cs"));
 
         Assert.Contains("RepositoryFilesTreeItemTemplate", treeStyles, StringComparison.Ordinal);
         Assert.Contains("controls:RepositoryTreeGuides", treeStyles, StringComparison.Ordinal);

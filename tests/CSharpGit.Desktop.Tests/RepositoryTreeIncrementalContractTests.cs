@@ -26,7 +26,7 @@ public sealed class RepositoryTreeIncrementalContractTests
     public void StableKeysAndSeparateWorktreeReconciliationAreExplicit()
     {
         var root = FindRepositoryRoot();
-        var descriptors = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryTreeDescriptor.cs"));
+        var descriptors = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryTreeDescriptor.cs"));
         var synchronizer = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryTreeSynchronizer.cs"));
         var node = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryTreeNode.cs"));
 

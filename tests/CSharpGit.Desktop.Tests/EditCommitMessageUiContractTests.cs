@@ -40,7 +40,7 @@ public sealed class EditCommitMessageUiContractTests
         var workflow = Read("src", "CSharpGit.Presentation", "MainPage.EditCommitMessage.cs");
         var actions = Read("src", "CSharpGit.Presentation", "MainPage.CommitActions.cs");
         var page = Read("src", "CSharpGit.Presentation", "MainPage.xaml.cs");
-        var rewriteOwner = Read("src", "CSharpGit.Presentation", "ViewModels", "CommitActionsViewModel.cs");
+        var rewriteOwner = Read("src", "CSharpGit.Presentation.Core", "ViewModels", "CommitActionsViewModel.cs");
 
         Assert.Contains("_viewModel.CommitActions.EditCommitMessageAsync(", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("_commitActionService", workflow, StringComparison.Ordinal);

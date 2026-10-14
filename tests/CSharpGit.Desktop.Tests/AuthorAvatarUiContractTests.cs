@@ -32,6 +32,8 @@ public sealed class AuthorAvatarUiContractTests
                 Path.Combine(root, "src", "CSharpGit.Presentation"),
                 "*.cs",
                 SearchOption.AllDirectories)
+            .Concat(Directory.EnumerateFiles(Path.Combine(root, "src", "CSharpGit.Presentation.Core"),
+                "*.cs", SearchOption.AllDirectories))
             .Select(File.ReadAllText)
             .ToArray();
 
@@ -93,7 +95,7 @@ public sealed class AuthorAvatarUiContractTests
     {
         var root = FindRepositoryRoot();
         var control = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "AuthorAvatar.xaml.cs"));
-        var gate = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "AuthorAvatarRequestGate.cs"));
+        var gate = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "Controls", "AuthorAvatarRequestGate.cs"));
 
         var unloaded = MethodBlock(control, "private void AuthorAvatar_Unloaded");
         var avatarSizeChanged = MethodBlock(control, "private static void AvatarSizePropertyChanged");
