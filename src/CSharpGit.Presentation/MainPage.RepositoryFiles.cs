@@ -555,7 +555,7 @@ public sealed partial class MainPage
 
             if (!openInEditor)
             {
-                await OpenResolvedVersionAsync(repository, version, DiffFileSide.Changed);
+                await _fileActions.OpenResolvedVersionAsync(repository, version, DiffFileSide.Changed);
                 return;
             }
 
