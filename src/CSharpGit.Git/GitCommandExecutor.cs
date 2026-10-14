@@ -14,16 +14,19 @@ internal sealed class GitCommandExecutor
     private readonly string _gitExecutable;
     private readonly IGitCommandActivitySink _activitySink;
     private readonly Action<int>? _processStarted;
+    private readonly Func<string, Stream>? _destinationStreamFactory;
 
     internal GitCommandExecutor(
         GitCliOptions options,
         IGitCommandActivitySink activitySink,
-        Action<int>? processStarted = null)
+        Action<int>? processStarted = null,
+        Func<string, Stream>? destinationStreamFactory = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         _gitExecutable = string.IsNullOrWhiteSpace(options.ExecutablePath) ? "git" : options.ExecutablePath;
         _activitySink = activitySink ?? throw new ArgumentNullException(nameof(activitySink));
         _processStarted = processStarted;
+        _destinationStreamFactory = destinationStreamFactory;
     }
 
     internal string ExecutablePath => _gitExecutable;
@@ -198,59 +201,60 @@ internal sealed class GitCommandExecutor
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        // Destination failures must not create an orphaned process.
+        await using var file = _destinationStreamFactory?.Invoke(destination)
+            ?? new FileStream(destination, FileMode.CreateNew, FileAccess.Write,
+                FileShare.None, 81920, FileOptions.Asynchronous);
         var startInfo = CreateStartInfo(_gitExecutable, workingDirectory, arguments, null);
         using var process = new Process { StartInfo = startInfo };
         var stopwatch = Stopwatch.StartNew();
         process.Start();
-        var activityId = _activitySink.Started(_gitExecutable, workingDirectory, arguments, GitCommandKind.Internal);
-        _activitySink.OutputReceived(activityId, GitOutputStream.StandardOutput, BinaryOutputOmitted);
-        _processStarted?.Invoke(process.Id);
-        var errorTask = PumpTextAsync(
-            process.StandardError,
-            activityId,
-            GitOutputStream.StandardError,
-            _activitySink);
-
+        Guid? activityId = null;
+        Task copyTask = Task.CompletedTask;
+        Task<string> errorTask = Task.FromResult(string.Empty);
+        var finished = false;
         try
         {
-            await using (var file = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, FileOptions.Asynchronous))
-            {
-                var copyTask = process.StandardOutput.BaseStream.CopyToAsync(file, CancellationToken.None);
-                try
-                {
-                    await process.WaitForExitAsync(cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    KillProcessTree(process);
-                    await WaitForExitAfterKillAsync(process);
-                    await DrainAfterKillAsync(copyTask, errorTask);
-                    stopwatch.Stop();
-                    _activitySink.Cancelled(activityId, TryGetExitCode(process));
-                    throw;
-                }
+            activityId = _activitySink.Started(_gitExecutable, workingDirectory, arguments, GitCommandKind.Internal);
+            _activitySink.OutputReceived(activityId.Value, GitOutputStream.StandardOutput, BinaryOutputOmitted);
+            _processStarted?.Invoke(process.Id);
+            errorTask = PumpTextAsync(
+                process.StandardError,
+                activityId,
+                GitOutputStream.StandardError,
+                _activitySink);
+            copyTask = process.StandardOutput.BaseStream.CopyToAsync(file, CancellationToken.None);
 
-                await copyTask;
-                await file.FlushAsync(CancellationToken.None);
-            }
+            await WaitForProcessAndPumpsAsync(process, cancellationToken, copyTask, errorTask);
+            await file.FlushAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
 
-            var error = (await errorTask).TrimEnd('\r', '\n');
-            if (cancellationToken.IsCancellationRequested)
-            {
-                _activitySink.Cancelled(activityId, TryGetExitCode(process));
-                cancellationToken.ThrowIfCancellationRequested();
-            }
-            stopwatch.Stop();
+            var error = errorTask.Result.TrimEnd('\r', '\n');
             var result = new GitCommandResult(process.ExitCode, BinaryOutputOmitted, error);
-            _activitySink.Completed(activityId, result.ExitCode);
+            stopwatch.Stop();
+            _activitySink.Completed(activityId.Value, result.ExitCode);
+            finished = true;
             Trace.WriteLine($"Git command operation={operation} duration={stopwatch.ElapsedMilliseconds}ms");
             ThrowIfFailed(result);
         }
         catch
         {
-            if (process.HasExited && stopwatch.IsRunning)
-                stopwatch.Stop();
+            // Include failures in activity callbacks, stream copy, flush and
+            // process coordination, not just cancellation.
+            if (!finished)
+            {
+                await CleanupAfterFailureAsync(process, copyTask, errorTask);
+                if (activityId is { } id)
+                {
+                    try { _activitySink.Cancelled(id, TryGetExitCode(process)); }
+                    catch (Exception exception) { Trace.WriteLine($"Git activity cleanup failed: {exception}"); }
+                }
+            }
             throw;
+        }
+        finally
+        {
+            stopwatch.Stop();
         }
     }
 
@@ -276,71 +280,83 @@ internal sealed class GitCommandExecutor
         using var process = new Process { StartInfo = startInfo };
         var stopwatch = Stopwatch.StartNew();
         process.Start();
-        var activityId = activitySink?.Started(executable, workingDirectory, effectiveArguments, commandKind);
-        processStarted?.Invoke(process.Id);
 
-        var outputTask = PumpTextAsync(
-            process.StandardOutput,
-            suppressOutputEvents ? null : activityId,
-            GitOutputStream.StandardOutput,
-            suppressOutputEvents ? null : activitySink,
-            maxStandardOutputBytes,
-            () => KillProcessTree(process));
-        var errorTask = PumpTextAsync(
-            process.StandardError,
-            suppressOutputEvents ? null : activityId,
-            GitOutputStream.StandardError,
-            suppressOutputEvents ? null : activitySink);
-
+        Guid? activityId = null;
+        Task<string> outputTask = Task.FromResult(string.Empty);
+        Task<string> errorTask = Task.FromResult(string.Empty);
+        var finished = false;
         try
         {
-            await process.WaitForExitAsync(cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            KillProcessTree(process);
-            await WaitForExitAfterKillAsync(process);
-            await DrainAfterKillAsync(outputTask, errorTask);
+            activityId = activitySink?.Started(executable, workingDirectory, effectiveArguments, commandKind);
+            processStarted?.Invoke(process.Id);
+
+            outputTask = PumpTextAsync(
+                process.StandardOutput,
+                suppressOutputEvents ? null : activityId,
+                GitOutputStream.StandardOutput,
+                suppressOutputEvents ? null : activitySink,
+                maxStandardOutputBytes,
+                () => KillProcessTree(process));
+            errorTask = PumpTextAsync(
+                process.StandardError,
+                suppressOutputEvents ? null : activityId,
+                GitOutputStream.StandardError,
+                suppressOutputEvents ? null : activitySink);
+
+            await WaitForProcessAndPumpsAsync(process, cancellationToken, outputTask, errorTask);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var rawOutput = outputTask.Result;
+            var output = trimOutputEndings ? rawOutput.TrimEnd('\r', '\n') : rawOutput;
+            var error = errorTask.Result.TrimEnd('\r', '\n');
             stopwatch.Stop();
-            if (activityId is { } cancelledId)
-                activitySink!.Cancelled(cancelledId, TryGetExitCode(process));
-            throw;
-        }
+            Trace.WriteLine($"Git command operation={operation} duration={stopwatch.ElapsedMilliseconds}ms");
 
-        try
-        {
-            await Task.WhenAll(outputTask, errorTask);
+            var result = new GitCommandResult(process.ExitCode, output, error);
+            if (activityId is { } completedId)
+                activitySink!.Completed(completedId, result.ExitCode);
+            finished = true;
+            return result;
         }
         catch
         {
-            var outputLimitException = outputTask.Exception?.InnerExceptions
-                .OfType<GitCommandOutputLimitExceededException>()
-                .FirstOrDefault();
-            if (outputLimitException is null) throw;
-
-            await WaitForExitAfterKillAsync(process);
-            stopwatch.Stop();
-            if (activityId is { } limitedId)
-                activitySink!.Cancelled(limitedId, TryGetExitCode(process));
-            throw outputLimitException;
+            if (!finished)
+            {
+                await CleanupAfterFailureAsync(process, outputTask, errorTask);
+                if (activityId is { } cancelledId)
+                {
+                    try { activitySink!.Cancelled(cancelledId, TryGetExitCode(process)); }
+                    catch (Exception exception) { Trace.WriteLine($"Git activity cleanup failed: {exception}"); }
+                }
+            }
+            throw;
         }
-
-        var rawOutput = outputTask.Result;
-        var output = trimOutputEndings ? rawOutput.TrimEnd('\r', '\n') : rawOutput;
-        var error = errorTask.Result.TrimEnd('\r', '\n');
-        if (cancellationToken.IsCancellationRequested)
+        finally
         {
-            if (activityId is { } cancelledId)
-                activitySink!.Cancelled(cancelledId, TryGetExitCode(process));
-            cancellationToken.ThrowIfCancellationRequested();
+            stopwatch.Stop();
         }
+    }
 
-        stopwatch.Stop();
-        Trace.WriteLine($"Git command operation={operation} duration={stopwatch.ElapsedMilliseconds}ms");
-        var result = new GitCommandResult(process.ExitCode, output, error);
-        if (activityId is { } completedId)
-            activitySink!.Completed(completedId, result.ExitCode);
-        return result;
+    private static async Task WaitForProcessAndPumpsAsync(
+        Process process, CancellationToken cancellationToken, params Task[] pumps)
+    {
+        var pending = new List<Task>(pumps.Length + 1) { process.WaitForExitAsync(cancellationToken) };
+        pending.AddRange(pumps);
+        while (pending.Count > 0)
+        {
+            var completed = await Task.WhenAny(pending);
+            await completed; // Propagate pump errors immediately; otherwise Git may block on its pipes.
+            pending.Remove(completed);
+        }
+    }
+
+    private static async Task CleanupAfterFailureAsync(Process process, params Task[] pumps)
+    {
+        KillProcessTree(process);
+        try { await WaitForExitAfterKillAsync(process).WaitAsync(TimeSpan.FromSeconds(5)); }
+        catch (Exception exception) { Trace.WriteLine($"Git process shutdown failed: {exception}"); }
+        try { await Task.WhenAll(pumps).WaitAsync(TimeSpan.FromSeconds(5)); }
+        catch (Exception exception) { Trace.WriteLine($"Git stream drain failed: {exception}"); }
     }
 
     private static async Task<string> PumpTextAsync(
@@ -358,14 +374,7 @@ internal sealed class GitCommandExecutor
         while (true)
         {
             int read;
-            try
-            {
-                read = await reader.ReadAsync(buffer.AsMemory(0, buffer.Length), CancellationToken.None);
-            }
-            catch (IOException)
-            {
-                break;
-            }
+            read = await reader.ReadAsync(buffer.AsMemory(0, buffer.Length), CancellationToken.None);
 
             if (read == 0) break;
             if (maxOutputBytes is { } limit)

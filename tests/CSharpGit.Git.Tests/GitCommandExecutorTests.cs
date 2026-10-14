@@ -7,6 +7,57 @@ namespace CSharpGit.Git.Tests;
 public sealed class GitCommandExecutorTests
 {
     [Fact]
+    public async Task DestinationFailureDoesNotStartGit()
+    {
+        var startCount = 0;
+        var executor = new GitCommandExecutor(
+            new GitCliOptions(),
+            new GitCommandActivityHistory(),
+            _ => Interlocked.Increment(ref startCount));
+        var destination = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "output.bin");
+
+        await Assert.ThrowsAnyAsync<IOException>(
+            () => executor.ExecuteToFileAsync(Path.GetTempPath(), "MissingDestination",
+                CancellationToken.None, destination, "--version"));
+        Assert.Equal(0, startCount);
+    }
+
+    [Fact]
+    public async Task WriteFailureAfterStartKillsProcess()
+    {
+        var started = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var shell = OperatingSystem.IsWindows()
+            ? Environment.GetEnvironmentVariable("ComSpec") ?? "cmd.exe"
+            : "/bin/sh";
+        var args = OperatingSystem.IsWindows()
+            ? new[] { "/d", "/s", "/c", "echo first & ping -n 30 127.0.0.1 >nul" }
+            : new[] { "-c", "echo first; sleep 30" };
+        var executor = new GitCommandExecutor(
+            new GitCliOptions { ExecutablePath = shell },
+            new GitCommandActivityHistory(),
+            id => started.TrySetResult(id),
+            _ => new ThrowingWriteStream());
+        var task = executor.ExecuteToFileAsync(
+            Path.GetTempPath(), "WriteFailure", CancellationToken.None, "unused", args);
+        var pid = await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await Assert.ThrowsAsync<IOException>(() => task.WaitAsync(TimeSpan.FromSeconds(10)));
+        try
+        {
+            using var process = Process.GetProcessById(pid);
+            Assert.True(process.HasExited);
+        }
+        catch (ArgumentException)
+        {
+        }
+    }
+
+    private sealed class ThrowingWriteStream : MemoryStream
+    {
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) =>
+            ValueTask.FromException(new IOException("injected write failure"));
+    }
+
+    [Fact]
     public async Task CheckedExecutionReturnsOutput()
     {
         var executor = CreateExecutor();
