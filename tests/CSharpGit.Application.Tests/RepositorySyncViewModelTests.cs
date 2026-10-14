@@ -638,6 +638,13 @@ public sealed class RepositorySyncViewModelTests
         public IReadOnlyList<RecentRepositorySettings> RecentRepositories => [];
         public IReadOnlyList<RepositoryGroupSettings> RepositoryGroups =>
             [new RepositoryGroupSettings("favorites", "Favorites", 0, true)];
+        public bool RecentRepositoriesExpanded { get; private set; } = true;
+        public Task SetRecentRepositoriesExpandedAsync(bool expanded, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RecentRepositoriesExpanded = expanded;
+            return Task.CompletedTask;
+        }
         public RepositoryLauncherSettingsSnapshot RepositoryLauncherSnapshot =>
             new(RepositoryGroups, RecentRepositories);
         public Task<RepositoryGroupSettings> CreateRepositoryGroupAsync(string name, CancellationToken cancellationToken = default) =>
