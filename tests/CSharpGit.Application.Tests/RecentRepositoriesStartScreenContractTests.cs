@@ -80,8 +80,8 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("ItemsSource=\"{Binding Groups}\"", recentView);
         Assert.DoesNotContain("+ New group", recentView);
         Assert.DoesNotContain("NewGroup_Click", recentView);
-        Assert.Contains("Click=\\"GroupActions_Click\\"", recentView);
-        Assert.Contains("MenuAction(\\"New group\\", true, () => _ = CreateGroupAsync(vm))", recentViewCodeBehind);
+        Assert.Contains("Click=\"GroupActions_Click\"", recentView);
+        Assert.Contains("MenuAction(\"New group\", true, () => _ = CreateGroupAsync(vm))", recentViewCodeBehind);
         Assert.Contains("CreateGroupAsync(string name)", recentViewModel);
         Assert.Contains("group.CanDelete", recentViewCodeBehind);
         Assert.Contains("group.Id == FavoritesId", settingsPersistence);
