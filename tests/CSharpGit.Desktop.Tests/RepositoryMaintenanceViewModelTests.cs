@@ -191,7 +191,11 @@ public sealed class RepositoryMaintenanceViewModelTests
 
     private sealed class Context : IRepositoryMaintenanceContext
     {
-        public event EventHandler? MaintenanceAvailabilityChanged;
+        public event EventHandler? MaintenanceAvailabilityChanged
+        {
+            add { }
+            remove { }
+        }
         public Repository? CurrentMaintenanceRepository { get; set; } = RepositoryA;
         public bool CanStartRepositoryMaintenance => CurrentMaintenanceRepository is not null && !IsBusy;
         public bool IsBusy { get; set; }
