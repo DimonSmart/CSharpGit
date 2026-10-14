@@ -615,8 +615,26 @@ public sealed partial class MainPage : Page
 
     private async void RefreshAll_Click(object sender, RoutedEventArgs e)
     {
-        await _viewModel.RefreshAsyncForDesktopCheck();
-        RefreshPresentationCollections();
+        await RefreshRepositoryFromUiAsync();
+    }
+
+    private async Task RefreshRepositoryFromUiAsync()
+    {
+        if (IsShuttingDown) return;
+        try
+        {
+            await _viewModel.RefreshAsyncForDesktopCheck();
+            if (!IsShuttingDown)
+                RefreshPresentationCollections();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            if (!IsShuttingDown && !_viewModel.HasError)
+                await ShowErrorAsync("Refresh failed", exception.Message);
+        }
     }
 
 
@@ -697,7 +715,7 @@ public sealed partial class MainPage : Page
         }
         else if (e.Key == VirtualKey.F5)
         {
-            await _viewModel.RefreshAsyncForDesktopCheck();
+            await RefreshRepositoryFromUiAsync();
             e.Handled = true;
         }
         else if (control && e.Key == VirtualKey.Enter && WorkingTreePane.Visibility == Visibility.Visible)

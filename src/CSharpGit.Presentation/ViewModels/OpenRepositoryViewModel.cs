@@ -92,13 +92,21 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
         _settings.Changed += AppSettings_Changed;
         _logger = logger;
-        _openRepositoryCommand = new AsyncCommand(OpenRepositoryAsync, () => !IsBusy && Repository is null);
-        RefreshAllCommand = new AsyncCommand(RefreshAllAsync, () => Repository is not null);
+        _openRepositoryCommand = new AsyncCommand(OpenRepositoryAsync, () => !IsBusy && Repository is null,
+            _logger, HandleUnhandledCommandError);
+        RefreshAllCommand = new AsyncCommand(RefreshAllAsync, () => Repository is not null,
+            _logger, HandleUnhandledCommandError);
         DismissErrorCommand = new AsyncCommand(() =>
         {
             ErrorMessage = null;
             return Task.CompletedTask;
         }, () => true);
+    }
+
+    private void HandleUnhandledCommandError(Exception exception)
+    {
+        if (Volatile.Read(ref _disposed) != 0 || HasError) return;
+        ErrorMessage = $"Git: {exception.Message}";
     }
 
     public void Dispose()

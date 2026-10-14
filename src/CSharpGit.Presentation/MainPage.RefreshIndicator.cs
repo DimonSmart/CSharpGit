@@ -15,7 +15,16 @@ public sealed partial class MainPage
         try
         {
             await _viewModel.RefreshAsyncForDesktopCheck();
-            RefreshPresentationCollections();
+            if (!IsShuttingDown)
+                RefreshPresentationCollections();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            if (!IsShuttingDown && !_viewModel.HasError)
+                await ShowErrorAsync("Refresh failed", exception.Message);
         }
         finally
         {
