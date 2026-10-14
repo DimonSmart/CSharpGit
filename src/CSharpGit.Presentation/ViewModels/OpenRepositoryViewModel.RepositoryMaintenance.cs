@@ -3,7 +3,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Presentation.ViewModels;
 
-internal enum RepositoryMaintenanceNotStartedReason
+public enum RepositoryMaintenanceNotStartedReason
 {
     None,
     GateBusy,
