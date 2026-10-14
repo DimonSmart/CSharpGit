@@ -63,8 +63,8 @@ public sealed class CoreAssemblyArchitectureTests
             Assert.Equal("net10.0", core.Descendants("TargetFramework").Single().Value);
             Assert.DoesNotContain(core.Descendants("EnableDefaultCompileItems"),
                 setting => string.Equals(setting.Value.Trim(), "false", StringComparison.OrdinalIgnoreCase));
-            Assert.Empty(core.Descendants("Compile").Where(item => item.Attribute("Include") is not null));
-            Assert.Empty(core.Descendants("Compile").Where(item => item.Attribute("Remove") is not null));
+            Assert.DoesNotContain(core.Descendants("Compile"), item => item.Attribute("Include") is not null);
+            Assert.DoesNotContain(core.Descendants("Compile"), item => item.Attribute("Remove") is not null);
 
             var coreSourceFiles = Directory.EnumerateFiles(coreDirectory, "*.cs", SearchOption.AllDirectories)
                 .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
