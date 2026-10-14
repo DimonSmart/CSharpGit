@@ -56,6 +56,8 @@ public sealed partial class MainPage
         _repositoryFilesViewModel.PropertyChanged -= RepositoryFilesViewModel_PropertyChanged;
         _repositoryFilesViewModel.Dispose();
         _viewModel.PropertyChanged -= RepositoryMaintenanceViewModel_PropertyChanged;
+        _repositoryMaintenance.PropertyChanged -= RepositoryMaintenance_PropertyChanged;
+        _repositoryMaintenance.Dispose();
         _viewModel.History.Rows.CollectionChanged -= HistoryRows_CollectionChanged;
         _viewModel.Dispose();
     }
