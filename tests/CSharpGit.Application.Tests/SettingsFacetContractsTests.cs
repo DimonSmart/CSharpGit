@@ -142,6 +142,30 @@ public sealed class SettingsFacetContractsTests
         }
     }
 
+    [Fact]
+    public void ProductionCompositionRootAliasesEveryFacetToItsAggregateSingleton()
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "CSharpGit.slnx")))
+            directory = directory.Parent;
+        Assert.NotNull(directory);
+        var app = File.ReadAllText(Path.Combine(directory!.FullName, "src", "CSharpGit.Presentation", "App.xaml.cs"));
+        Assert.Equal(2, app.Split("new JsonAppSettingsService()", StringSplitOptions.None).Length);
+        Assert.Contains("services.AddSingleton<IAppSettingsService>(appSettings);", app, StringComparison.Ordinal);
+        foreach (var name in new[]
+        {
+            nameof(IAppSettingsChangeSource),
+            nameof(IAppearanceSettings),
+            nameof(IGitWorkflowSettings),
+            nameof(IDiagnosticsSettings),
+            nameof(IRepositoryLauncherSettings)
+        })
+            Assert.Contains(
+                $"services.AddSingleton<{name}>(provider => provider.GetRequiredService<IAppSettingsService>());",
+                app,
+                StringComparison.Ordinal);
+    }
+
     private static Type SettingsParameter<T>() =>
         typeof(T).GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
             .SelectMany(constructor => constructor.GetParameters())
