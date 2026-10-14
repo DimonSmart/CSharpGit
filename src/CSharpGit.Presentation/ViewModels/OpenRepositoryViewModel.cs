@@ -20,6 +20,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private readonly IUiDispatcher _uiDispatcher;
     private readonly AsyncCommand _openRepositoryCommand;
     private Repository? _repository;
+    private RepositorySessionLifetime? _repositoryLifetime;
+    private long _repositoryGeneration;
     private string? _errorMessage;
     private bool _isBusy;
     private int _busyOperations;
@@ -113,6 +115,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
 
+        _repositoryLifetime?.End();
+        _repositoryLifetime = null;
         Stashes.SelectedStashChanged -= Stashes_SelectedStashChanged;
         Stashes.Dispose();
         CommitDetails.Dispose();
@@ -180,6 +184,10 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         {
             if (ReferenceEquals(_repository, value)) return;
 
+            _repositoryLifetime?.End();
+            _repositoryLifetime = value is null || Volatile.Read(ref _disposed) != 0
+                ? null
+                : new RepositorySessionLifetime(Interlocked.Increment(ref _repositoryGeneration));
             SetHeadPresentationState(null, null, false, string.Empty);
             _repository = value;
             History.OnRepositoryChanged(value);
@@ -249,6 +257,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (Volatile.Read(ref _disposed) != 0) return false;
         if (Interlocked.CompareExchange(ref _repositoryChangeInProgress, 1, 0) != 0)
             return false;
 
@@ -270,12 +279,14 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             var openedRepository = await _repositoryService.OpenAsync(
                 path,
                 cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (Volatile.Read(ref _disposed) != 0) return false;
 
             History.Invalidate();
             Repository = openedRepository;
             try
             {
-                await RefreshAllAsync();
+                await RefreshStateCoreAsync(includeHistory: true, localOnly: false, cancellationToken);
             }
             catch
             {
@@ -335,6 +346,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     internal bool CloseRepository()
     {
+        if (Volatile.Read(ref _disposed) != 0) return false;
         if (Repository is null) return true;
         if (Interlocked.CompareExchange(ref _repositoryChangeInProgress, 1, 0) != 0)
             return false;
@@ -446,21 +458,36 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private Task RefreshStateLocalOnlyAsync(bool includeHistory) =>
         RefreshStateCoreAsync(includeHistory, localOnly: true);
 
-    private async Task RefreshStateCoreAsync(bool includeHistory, bool localOnly)
+    private bool IsCurrentSession(RepositorySessionLifetime lifetime, Repository repository) =>
+        Volatile.Read(ref _disposed) == 0
+        && ReferenceEquals(lifetime, _repositoryLifetime)
+        && ReferenceEquals(repository, Repository)
+        && lifetime.IsActive;
+
+    private async Task RefreshStateCoreAsync(
+        bool includeHistory,
+        bool localOnly,
+        CancellationToken cancellationToken = default)
     {
-        if (Repository is null) return;
-        EnterBusy();
         var repository = Repository;
+        var lifetime = _repositoryLifetime;
+        if (repository is null || lifetime is null || !lifetime.TryAcquire(out var sessionToken))
+            return;
+
+        EnterBusy();
         RepositoryStateRefreshStarting?.Invoke(repository);
         try
         {
+            using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+                sessionToken, cancellationToken);
             var stateRead = await _stateService.ReadWithWorkingTreeStatusAsync(
                 repository,
-                localOnly);
+                localOnly,
+                linkedCancellation.Token);
+            if (!IsCurrentSession(lifetime, repository)) return;
+
             var state = stateRead.State;
             var workingTreeStatus = stateRead.WorkingTreeStatus;
-            if (!ReferenceEquals(repository, Repository)) return;
-
             _headExists = state.HeadCommit is not null;
             var shortHead = state.HeadCommit is { } commit ? commit[..Math.Min(10, commit.Length)] : "no commit";
             SetHeadPresentationState(
@@ -480,16 +507,23 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                 state.CurrentOperation,
                 Branches.LocalBranches);
             RepositorySync.RefreshAvailability();
-            if (includeHistory)
+            if (includeHistory && IsCurrentSession(lifetime, repository))
                 await History.RefreshAsync();
 
-            if (ReferenceEquals(repository, Repository))
+            if (IsCurrentSession(lifetime, repository))
                 PublishDisplayedWorkingTreeBaseline(workingTreeStatus);
+        }
+        catch (OperationCanceledException) when (sessionToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            // Repository switch or application shutdown owns this cancellation.
         }
         finally
         {
-            RepositoryStateRefreshCompleted?.Invoke(repository);
-            ExitBusy();
+            if (IsCurrentSession(lifetime, repository))
+                RepositoryStateRefreshCompleted?.Invoke(repository);
+            lifetime.Release();
+            if (Volatile.Read(ref _disposed) == 0)
+                ExitBusy();
         }
     }
 
@@ -592,6 +626,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         RaiseCommands();
     }
 
-    private void Notify([CallerMemberName] string? propertyName = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    private void Notify([CallerMemberName] string? propertyName = null)
+    {
+        if (Volatile.Read(ref _disposed) == 0)
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
 }

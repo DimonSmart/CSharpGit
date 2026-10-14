@@ -17,6 +17,7 @@ public sealed partial class MainPage
     private readonly RepositoryChangeMonitor _repositoryChangeMonitor = new();
     private readonly CancellationTokenSource _workingTreeStatusStop = new();
     private CancellationToken _workingTreeStatusToken;
+    private CancellationTokenSource? _repositoryStatusStop;
     private readonly IWorkingTreeStatusReader _workingTreeStatusReader;
     private readonly RepositoryRefreshLifecycleState _repositoryRefreshLifecycle = new();
     private bool _repositoryChangeMonitoringInitialized;
@@ -39,6 +40,7 @@ public sealed partial class MainPage
     {
         if (IsShuttingDown || _repositoryChangeMonitoringInitialized) return;
         _workingTreeStatusToken = _workingTreeStatusStop.Token;
+        _repositoryStatusStop = CancellationTokenSource.CreateLinkedTokenSource(_workingTreeStatusToken);
         _repositoryChangeMonitoringInitialized = true;
 
         _repositoryChangeMonitor.RepositoryChanged += RepositoryChangeMonitor_RepositoryChanged;
@@ -62,6 +64,9 @@ public sealed partial class MainPage
         _viewModel.RepositoryStateRefreshCompleted -= RepositoryStateRefreshCompleted;
         _repositoryChangeMonitor.RepositoryChanged -= RepositoryChangeMonitor_RepositoryChanged;
         _workingTreeStatusStop.Cancel();
+        _repositoryStatusStop?.Cancel();
+        _repositoryStatusStop?.Dispose();
+        _repositoryStatusStop = null;
         _repositoryChangeMonitor.Dispose();
         _workingTreeStatusStop.Dispose();
     }
@@ -150,6 +155,12 @@ public sealed partial class MainPage
         if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
 
         var repository = _viewModel.Repository;
+        if (!ReferenceEquals(repository, _monitoredRepository))
+        {
+            _repositoryStatusStop?.Cancel();
+            _repositoryStatusStop?.Dispose();
+            _repositoryStatusStop = CancellationTokenSource.CreateLinkedTokenSource(_workingTreeStatusToken);
+        }
         if (repository is null)
         {
             _monitoredRepository = null;
@@ -269,16 +280,18 @@ public sealed partial class MainPage
                 var baselineRevision = _repositoryRefreshLifecycle.BaselineRevision;
                 if (repository is null || baseline is null) continue;
 
+                var statusToken = _repositoryStatusStop?.Token ?? _workingTreeStatusToken;
                 WorkingTreeStatusSnapshot current;
                 try
                 {
                     current = await _workingTreeStatusReader.ReadAsync(
                         repository,
-                        _workingTreeStatusToken);
+                        statusToken);
                 }
-                catch (OperationCanceledException) when (_workingTreeStatusToken.IsCancellationRequested)
+                catch (OperationCanceledException) when (statusToken.IsCancellationRequested)
                 {
-                    return;
+                    if (IsShuttingDown) return;
+                    continue;
                 }
                 catch (Exception exception)
                 {
