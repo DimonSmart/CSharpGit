@@ -86,7 +86,11 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("group.CanDelete", recentViewCodeBehind);
         Assert.Contains("group.Id == FavoritesId", settingsPersistence);
         Assert.Contains("GroupExpand_Click", recentView);
-        Assert.Contains("Text=\"Recent\"", recentView);
+        Assert.Contains("RecentHeading", recentView);
+        Assert.Contains("RecentExpand_Click", recentView);
+        Assert.Contains("EffectiveIsRecentExpanded", recentView);
+        Assert.Contains("SetRecentExpandedAsync", recentViewModel);
+        Assert.Contains("RecentRepositoriesExpanded", settingsPersistence);
         Assert.Contains("DragItemsStarting", recentView);
         Assert.Contains("RepositoryPin_Click", recentView);
         Assert.Contains("PinActionLabel", recentView);
