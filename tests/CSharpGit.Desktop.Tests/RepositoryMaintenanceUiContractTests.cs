@@ -23,11 +23,16 @@ public sealed class RepositoryMaintenanceUiContractTests
         var viewModel = ReadSource(
             "src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.RepositoryMaintenance.cs");
 
-        Assert.Contains("IRepositoryMaintenanceService", source, StringComparison.Ordinal);
-        Assert.Contains("service.GarbageCollectAsync(repository, options)", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("Process.Start", source, StringComparison.Ordinal);
+        var feature = ReadSource("src/CSharpGit.Presentation/ViewModels/RepositoryMaintenanceViewModel.cs");
+        Assert.DoesNotContain("IRepositoryMaintenanceService", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("GarbageCollectAsync", source, StringComparison.Ordinal);
+        Assert.Contains("IRepositoryMaintenanceService", feature, StringComparison.Ordinal);
+        Assert.Contains("_service.GarbageCollectAsync(repository, options)", feature, StringComparison.Ordinal);
+        Assert.DoesNotContain("Process.Start", feature, StringComparison.Ordinal);
 
         Assert.Contains("_mutationGate.WaitAsync(0)", viewModel, StringComparison.Ordinal);
+        Assert.Contains("IsMaintenanceSessionCurrent(expectedRepository)", viewModel, StringComparison.Ordinal);
+        Assert.Contains("_mutationGate.Release()", viewModel, StringComparison.Ordinal);
         Assert.Contains("RefreshStateLocalOnlyAsync(includeHistory)", viewModel, StringComparison.Ordinal);
         Assert.DoesNotContain("new SemaphoreSlim", viewModel, StringComparison.Ordinal);
     }
@@ -37,9 +42,11 @@ public sealed class RepositoryMaintenanceUiContractTests
     {
         var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
 
-        Assert.Contains("_viewModel.RepositoryOperations.CurrentOperation == RepositoryOperation.None", source, StringComparison.Ordinal);
-        Assert.Contains("!_viewModel.IsBusy", source, StringComparison.Ordinal);
-        Assert.Contains("!_repositoryMaintenanceInProgress", source, StringComparison.Ordinal);
+        var context = ReadSource("src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.RepositoryMaintenance.cs");
+        Assert.Contains("RepositoryOperations.CurrentOperation == RepositoryOperation.None", context, StringComparison.Ordinal);
+        Assert.Contains("!IsBusy", context, StringComparison.Ordinal);
+        Assert.Contains("_repositoryMaintenance.CanStart", source, StringComparison.Ordinal);
+        Assert.Contains("_repositoryMaintenance.IsRunning", source, StringComparison.Ordinal);
         Assert.DoesNotContain("RepositoryOperation.Merge", source, StringComparison.Ordinal);
         Assert.DoesNotContain("RepositoryOperation.Rebase", source, StringComparison.Ordinal);
         Assert.DoesNotContain("RepositoryOperation.CherryPick", source, StringComparison.Ordinal);
@@ -52,9 +59,11 @@ public sealed class RepositoryMaintenanceUiContractTests
         var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
         var app = ReadSource("src/CSharpGit.Presentation/App.xaml.cs");
 
-        Assert.Contains("args.Cancel = true", source, StringComparison.Ordinal);
-        Assert.Contains("args.GetDeferral()", source, StringComparison.Ordinal);
-        Assert.Contains("if (_repositoryMaintenanceInProgress)", source, StringComparison.Ordinal);
+        var dialog = ReadSource("src/CSharpGit.Presentation/RepositoryMaintenanceDialog.cs");
+        Assert.Contains("args.Cancel = true", dialog, StringComparison.Ordinal);
+        Assert.Contains("args.GetDeferral()", dialog, StringComparison.Ordinal);
+        Assert.Contains("if (workflow.IsRunning)", dialog, StringComparison.Ordinal);
+        Assert.Contains("=> _repositoryMaintenance.IsRunning", source, StringComparison.Ordinal);
         Assert.Contains("page?.IsRepositoryMaintenanceInProgress == true", app, StringComparison.Ordinal);
         Assert.Contains("eventArgs.Cancel = true", app, StringComparison.Ordinal);
     }
@@ -63,17 +72,18 @@ public sealed class RepositoryMaintenanceUiContractTests
     public void PostGcRefreshIsTargetedAndUsesReflogAndWorktreeState()
     {
         var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
+        var feature = ReadSource("src/CSharpGit.Presentation/ViewModels/RepositoryMaintenanceViewModel.cs");
 
-        Assert.Contains("includeHistory: _viewModel.History.ShowReflog", source, StringComparison.Ordinal);
+        Assert.Contains("includeHistory: _context.ShowMaintenanceReflog", feature, StringComparison.Ordinal);
         Assert.Contains("_worktreesViewModel.RefreshAsync(throwOnError: true)", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("AcknowledgeRepositoryRefresh()", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("RefreshAllAsync", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("AcknowledgeRepositoryRefresh()", feature, StringComparison.Ordinal);
+        Assert.DoesNotContain("RefreshAllAsync", feature, StringComparison.Ordinal);
     }
 
     [Fact]
     public void StatisticsContentFitsWithinContentDialog()
     {
-        var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
+        var source = ReadSource("src/CSharpGit.Presentation/RepositoryMaintenanceDialog.cs");
 
         Assert.Contains("RepositoryMaintenanceContentWidth = 460", source, StringComparison.Ordinal);
         Assert.Contains("Width = RepositoryMaintenanceContentWidth", source, StringComparison.Ordinal);
@@ -85,8 +95,10 @@ public sealed class RepositoryMaintenanceUiContractTests
     public void FailureUsesExistingGitConsole()
     {
         var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
+        var dialog = ReadSource("src/CSharpGit.Presentation/RepositoryMaintenanceDialog.cs");
 
-        Assert.Contains("View Git console", source, StringComparison.Ordinal);
+        Assert.Contains("View Git console", dialog, StringComparison.Ordinal);
+        Assert.Contains("_openConsole()", dialog, StringComparison.Ordinal);
         Assert.Contains("OpenGitConsole(null, manualOpen: true)", source, StringComparison.Ordinal);
     }
 
