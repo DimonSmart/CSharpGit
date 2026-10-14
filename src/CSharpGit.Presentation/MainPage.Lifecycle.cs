@@ -52,6 +52,14 @@ public sealed partial class MainPage
         _viewModel.History.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
         _viewModel.WorkingTree.PropertyChanged -= WorkingTreeViewModel_PropertyChanged;
         _viewModel.WorkingTree.PropertyChanged -= WorkingTreeFileOpening_PropertyChanged;
+        _fileActions.PropertyChanged -= FileActions_PropertyChanged;
+        ChangedFilesTree.RightTapped -= ChangedFilesTree_RightTapped;
+        ChangedFilesTree.DoubleTapped -= ChangedFilesTree_DoubleTapped;
+        UnstagedChangesList.RightTapped -= WorkingTreeChanges_RightTapped;
+        StagedChangesList.RightTapped -= WorkingTreeChanges_RightTapped;
+        UnstagedChangesList.DoubleTapped -= WorkingTreeChanges_DoubleTapped;
+        StagedChangesList.DoubleTapped -= WorkingTreeChanges_DoubleTapped;
+        _fileActions.Dispose();
         _viewModel.WorkingTree.PropertyChanged -= WorkingTreeConfirmation_PropertyChanged;
         _repositoryFilesViewModel.PropertyChanged -= RepositoryFilesViewModel_PropertyChanged;
         _repositoryFilesViewModel.Dispose();
