@@ -31,7 +31,8 @@ public sealed record FileActionSelectionState(
     FileActionLoadPhase Phase,
     FileActionRequest? Request,
     PreparedFileActions? Prepared,
-    string? Error = null);
+    string? Error = null,
+    string? RevealPath = null);
 
 public sealed class FileActionsViewModel : INotifyPropertyChanged, IDisposable
 {
@@ -83,6 +84,16 @@ public sealed class FileActionsViewModel : INotifyPropertyChanged, IDisposable
         WorkingTree = new(FileActionLoadPhase.Unavailable, null, null);
         Notify(nameof(Commit));
         Notify(nameof(WorkingTree));
+    }
+
+    // Commit actions remain lazy until explicitly requested, as in the original UI.
+    public void SelectCommitLazy(CommitFileActionRequest? request)
+    {
+        Interlocked.Increment(ref _commitGeneration);
+        SetState(false, request is null || !IsCurrent(request)
+            ? new(FileActionLoadPhase.Unavailable, null, null)
+            : new(FileActionLoadPhase.Loading, request, null,
+                RevealPath: TryResolveReveal(request.Repository, request.Path)));
     }
 
     public Task SelectCommitAsync(CommitFileActionRequest? request) =>
