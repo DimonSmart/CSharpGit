@@ -140,7 +140,7 @@ public sealed class FileActionsViewModel : INotifyPropertyChanged, IDisposable
     {
         var state = workingTree ? WorkingTree : Commit;
         return !_disposed && IsCurrent(request)
-            && generation == Volatile.Read(ref workingTree ? ref _workingGeneration : ref _commitGeneration)
+            && generation == (workingTree ? Volatile.Read(ref _workingGeneration) : Volatile.Read(ref _commitGeneration))
             && Equals(state.Request, request);
     }
 
@@ -157,6 +157,15 @@ public sealed class FileActionsViewModel : INotifyPropertyChanged, IDisposable
             Commit = state;
             Notify(nameof(Commit));
         }
+    }
+
+    // Image preview may already have resolved the same version pair; never overwrite a new selection.
+    public void PublishWorkingTreePreview(WorkingTreeFileActionRequest request, DiffFileVersionPair pair)
+    {
+        if (!IsCurrent(request) || !Equals(WorkingTree.Request, request))
+            return;
+        SetState(true, new(FileActionLoadPhase.Ready, request,
+            new PreparedFileActions(request, pair, TryResolveReveal(request.Repository, pair.RevealPath))));
     }
 
     // Menu preparation is deliberately not published to either selection slot.
