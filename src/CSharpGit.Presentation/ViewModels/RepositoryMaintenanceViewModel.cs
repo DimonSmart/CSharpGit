@@ -6,17 +6,17 @@ using CSharpGit.Presentation.Threading;
 
 namespace CSharpGit.Presentation.ViewModels;
 
-internal enum RepositoryMaintenancePhase
+public enum RepositoryMaintenancePhase
 {
     Idle, LoadingStatistics, Ready, Running, Completed, Failed
 }
 
-internal enum RepositoryMaintenanceResultKind
+public enum RepositoryMaintenanceResultKind
 {
     NotStarted, GcFailed, Completed
 }
 
-internal sealed record RepositoryMaintenanceResult(
+public sealed record RepositoryMaintenanceResult(
     RepositoryMaintenanceResultKind Kind,
     RepositoryMaintenanceNotStartedReason NotStartedReason,
     RepositoryStorageStatistics? Before,
@@ -26,7 +26,7 @@ internal sealed record RepositoryMaintenanceResult(
     Exception? RefreshFailure);
 
 // Independent feature workflow. Only the repository context owns the mutation gate.
-internal sealed class RepositoryMaintenanceViewModel : INotifyPropertyChanged, IDisposable
+public sealed class RepositoryMaintenanceViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly IRepositoryMaintenanceService _service;
     private readonly IUiDispatcher _dispatcher;
@@ -54,7 +54,7 @@ internal sealed class RepositoryMaintenanceViewModel : INotifyPropertyChanged, I
     public bool IsRunning => _isRunning;
     public bool CanStart => !_disposed && !_isRunning && _context?.CanStartRepositoryMaintenance == true;
 
-    public void Attach(IRepositoryMaintenanceContext context, Func<Task> refreshWorktrees)
+    internal void Attach(IRepositoryMaintenanceContext context, Func<Task> refreshWorktrees)
     {
         if (_context is not null)
             throw new InvalidOperationException("Repository maintenance is already attached.");
