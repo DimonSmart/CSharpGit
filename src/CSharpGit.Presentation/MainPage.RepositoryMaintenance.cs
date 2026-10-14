@@ -17,10 +17,9 @@ public sealed partial class MainPage
         CloneRepositoryViewModel cloneRepositoryViewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
         IRepositoryFileVersionService fileVersionService,
-        IDesktopShellService desktopShellService,
-        IRepositoryPathService repositoryPathService,
         IExternalGitToolService externalGitToolService,
         RepositoryFilesViewModel repositoryFilesViewModel,
+        FileActionsViewModel fileActions,
         RepositoryMaintenanceViewModel repositoryMaintenance,
         IAppSettingsService appSettings,
         IGitCommandActivitySource gitCommandActivitySource,
@@ -37,9 +36,8 @@ public sealed partial class MainPage
             viewModel,
             workingTreeStatusReader,
             fileVersionService,
-            desktopShellService,
-            repositoryPathService,
             externalGitToolService,
+            fileActions,
             repositoryFilesViewModel)
     {
         InstallRepositoryHistoryRewriteMenus();
