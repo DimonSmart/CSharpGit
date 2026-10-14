@@ -31,7 +31,7 @@ internal sealed class RepositoryMaintenanceViewModel : INotifyPropertyChanged, I
     private readonly IRepositoryMaintenanceService _service;
     private readonly IUiDispatcher _dispatcher;
     private IRepositoryMaintenanceContext? _context;
-    private Action? _refreshWorktrees;
+    private Func<Task>? _refreshWorktrees;
     private int _generation;
     private bool _disposed;
     private bool _isRunning;
@@ -54,7 +54,7 @@ internal sealed class RepositoryMaintenanceViewModel : INotifyPropertyChanged, I
     public bool IsRunning => _isRunning;
     public bool CanStart => !_disposed && !_isRunning && _context?.CanStartRepositoryMaintenance == true;
 
-    public void Attach(IRepositoryMaintenanceContext context, Action refreshWorktrees)
+    public void Attach(IRepositoryMaintenanceContext context, Func<Task> refreshWorktrees)
     {
         if (_context is not null)
             throw new InvalidOperationException("Repository maintenance is already attached.");
@@ -145,11 +145,7 @@ internal sealed class RepositoryMaintenanceViewModel : INotifyPropertyChanged, I
                     }
                 },
                 includeHistory: _context.ShowMaintenanceReflog,
-                additionalRefresh: () =>
-                {
-                    _refreshWorktrees();
-                    return Task.CompletedTask;
-                });
+                additionalRefresh: _refreshWorktrees);
 
             var result = !mutation.Started
                 ? NotStarted(mutation.NotStartedReason)
