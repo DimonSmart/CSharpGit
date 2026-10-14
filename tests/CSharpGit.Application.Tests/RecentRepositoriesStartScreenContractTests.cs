@@ -96,6 +96,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.DoesNotContain("RepositoryTileActionCapsuleStyle", recentView);
         Assert.Contains("RepositoryTileActionButtonStyle", recentView);
         Assert.Contains("RepositoryTileOpenButtonStyle", recentView);
+        Assert.Contains("ControlTemplate TargetType=\"GridViewItem\"", recentView);
         Assert.Contains("CardSurface.BorderBrush", recentView);
         Assert.Contains("AccentFillColorDefaultBrush", recentView);
         Assert.Contains("CornerRadius=\"9\"", recentView);
