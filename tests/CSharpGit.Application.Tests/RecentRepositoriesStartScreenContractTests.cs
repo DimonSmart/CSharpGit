@@ -98,8 +98,8 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("RepositoryTileOpenButtonStyle", recentView);
         Assert.Contains("CardSurface.BorderBrush", recentView);
         Assert.Contains("AccentFillColorDefaultBrush", recentView);
-        Assert.Contains("CornerRadius=\\"9\\"", recentView);
-        Assert.DoesNotContain("Style=\\"{StaticResource FormCardStyle}\\"", recentView);
+        Assert.Contains("CornerRadius=\"9\"", recentView);
+        Assert.DoesNotContain("Style=\"{StaticResource FormCardStyle}\"", recentView);
         Assert.DoesNotContain("RepositoryTileActionCapsuleStyle", controlsStyles);
         Assert.Contains("RepositoryTileActionButtonStyle", controlsStyles);
         Assert.Contains("UseSystemFocusVisuals", controlsStyles);
