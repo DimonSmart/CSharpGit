@@ -209,6 +209,13 @@ public sealed class FileActionsViewModel : INotifyPropertyChanged, IDisposable
             if (prepared is null || !IsCurrent(request))
                 return new(FileActionOutcomeKind.Stale);
 
+            // Publish only to the slot still representing this request. A menu from A
+            // may execute while B is selected, without changing B's availability.
+            if (request is CommitFileActionRequest commit)
+                PublishCommitPreview(commit, prepared.Pair);
+            else if (request is WorkingTreeFileActionRequest working)
+                PublishWorkingTreePreview(working, prepared.Pair);
+
             if (action is FileActionKind.Original or FileActionKind.Changed or FileActionKind.Preferred)
             {
                 var side = action == FileActionKind.Preferred
