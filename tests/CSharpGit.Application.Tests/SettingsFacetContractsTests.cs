@@ -94,6 +94,54 @@ public sealed class SettingsFacetContractsTests
         }
     }
 
+    [Fact]
+    public async Task ConcurrentChangesViaDifferentFacetsPreserveStateAndPublishCommittedValues()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "CSharpGitFacetConcurrency", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var settingsFile = Path.Combine(directory, "settings.json");
+            var settings = new JsonAppSettingsService(settingsFile);
+            var appearance = (IAppearanceSettings)settings;
+            var workflow = (IGitWorkflowSettings)settings;
+            var diagnostics = (IDiagnosticsSettings)settings;
+            var launcher = (IRepositoryLauncherSettings)settings;
+            var committedObservations = 0;
+            var backgroundObservations = 0;
+            appearance.Changed += (_, _) =>
+            {
+                if (diagnostics.LoggingEnabled)
+                    Assert.Equal(ApplicationLogLevel.Warning, diagnostics.LogLevel);
+                if (Thread.CurrentThread.IsThreadPoolThread)
+                    Interlocked.Increment(ref backgroundObservations);
+                Interlocked.Increment(ref committedObservations);
+            };
+
+            await Task.WhenAll(
+                Task.Run(() => appearance.SetHistoryRenderingModeAsync(HistoryRenderingMode.SubjectOnly)),
+                Task.Run(() => workflow.SetAutoSetupRemoteOnPushAsync(true)),
+                Task.Run(() => diagnostics.SetLoggingSettingsAsync(true, ApplicationLogLevel.Warning)),
+                Task.Run(() => launcher.SetRecentRepositoriesExpandedAsync(false)));
+
+            Assert.Equal(4, committedObservations);
+            Assert.True(backgroundObservations > 0);
+            var restored = new JsonAppSettingsService(settingsFile);
+            Assert.Equal(HistoryRenderingMode.SubjectOnly, restored.HistoryRenderingMode);
+            Assert.True(restored.AutoSetupRemoteOnPush);
+            Assert.True(restored.LoggingEnabled);
+            Assert.Equal(ApplicationLogLevel.Warning, restored.LogLevel);
+            Assert.False(restored.RecentRepositoriesExpanded);
+
+            await diagnostics.SetLoggingSettingsAsync(true, ApplicationLogLevel.Warning);
+            Assert.Equal(4, committedObservations);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static Type SettingsParameter<T>() =>
         typeof(T).GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
             .SelectMany(constructor => constructor.GetParameters())
