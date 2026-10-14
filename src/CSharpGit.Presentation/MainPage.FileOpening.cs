@@ -97,8 +97,11 @@ public sealed partial class MainPage
             ? null : new WorkingTreeFileActionRequest(repository, change, kind.Value);
     }
 
-    private Task RefreshCommitFileActionStateAsync() =>
-        _fileActions.SelectCommitAsync(CaptureCommitRequest());
+    private Task RefreshCommitFileActionStateAsync()
+    {
+        _fileActions.SelectCommitLazy(CaptureCommitRequest());
+        return Task.CompletedTask;
+    }
 
     private Task RefreshWorkingTreeFileActionStateAsync() =>
         _fileActions.SelectWorkingTreeAsync(CaptureWorkingTreeRequest());
@@ -126,7 +129,7 @@ public sealed partial class MainPage
                 "Open this exact OLD/NEW pair in the configured external diff tool",
                 "Select a file diff first.");
         }
-        SetRevealButton(CommitRevealButton, _fileActions.Commit.Prepared?.RevealPath);
+        SetRevealButton(CommitRevealButton, _fileActions.Commit.Prepared?.RevealPath ?? _fileActions.Commit.RevealPath);
     }
 
     private void UpdateWorkingTreeButtons()
@@ -306,6 +309,11 @@ public sealed partial class MainPage
             if (prepared is null || !_fileActions.IsCurrent(request) || source.XamlRoot is null
                 || !IsMenuSelectionCurrent(request))
                 return;
+
+            if (request is CommitFileActionRequest commit)
+                _fileActions.PublishCommitPreview(commit, prepared.Pair);
+            else if (request is WorkingTreeFileActionRequest change)
+                _fileActions.PublishWorkingTreePreview(change, prepared.Pair);
 
             var flyout = request is WorkingTreeFileActionRequest working
                 ? BuildWorkingTreeFileMenu(working, prepared)
