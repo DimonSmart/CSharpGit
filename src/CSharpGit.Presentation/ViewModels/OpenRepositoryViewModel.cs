@@ -16,7 +16,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private readonly IRepositoryService _repositoryService;
     private readonly ILogger<OpenRepositoryViewModel> _logger;
     private readonly IRepositoryStateService _stateService;
-    private readonly IAppSettingsService _settings;
+    private readonly IAppearanceSettings _settings;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly AsyncCommand _openRepositoryCommand;
     private Repository? _repository;
@@ -54,7 +54,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         RepositorySyncViewModel repositorySyncViewModel,
         RepositoryOperationsViewModel repositoryOperationsViewModel,
         InteractiveRebaseViewModel interactiveRebaseViewModel,
-        IAppSettingsService settings,
+        IAppearanceSettings settings,
         IUiDispatcher uiDispatcher,
         ILogger<OpenRepositoryViewModel> logger)
     {

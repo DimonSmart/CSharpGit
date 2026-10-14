@@ -37,7 +37,7 @@ public interface IHistoryRepositoryContext
 public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly IHistoryService _historyService;
-    private readonly IAppSettingsService _settings;
+    private readonly IAppearanceSettings _settings;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly BulkObservableCollection<HistoryRow> _rows = [];
     private IHistoryRepositoryContext? _context;
@@ -56,7 +56,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
 
     public HistoryViewModel(
         IHistoryService historyService,
-        IAppSettingsService settings,
+        IAppearanceSettings settings,
         IUiDispatcher uiDispatcher)
     {
         _historyService = historyService ?? throw new ArgumentNullException(nameof(historyService));

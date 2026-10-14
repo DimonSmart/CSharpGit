@@ -60,6 +60,11 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             .ConfigureServices(services =>
             {
                 services.AddSingleton<IAppSettingsService>(appSettings);
+                services.AddSingleton<IAppSettingsChangeSource>(provider => provider.GetRequiredService<IAppSettingsService>());
+                services.AddSingleton<IAppearanceSettings>(provider => provider.GetRequiredService<IAppSettingsService>());
+                services.AddSingleton<IGitWorkflowSettings>(provider => provider.GetRequiredService<IAppSettingsService>());
+                services.AddSingleton<IDiagnosticsSettings>(provider => provider.GetRequiredService<IAppSettingsService>());
+                services.AddSingleton<IRepositoryLauncherSettings>(provider => provider.GetRequiredService<IAppSettingsService>());
                 services.AddSingleton<IUiDispatcher>(_ =>
                     new UiDispatcher(
                         DispatcherQueue.GetForCurrentThread()

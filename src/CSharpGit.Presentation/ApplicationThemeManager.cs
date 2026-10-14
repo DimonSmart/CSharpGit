@@ -5,12 +5,12 @@ namespace CSharpGit.Presentation;
 
 public sealed class ApplicationThemeManager : IDisposable
 {
-    private readonly IAppSettingsService _settings;
+    private readonly IAppearanceSettings _settings;
     private readonly object _gate = new();
     private readonly HashSet<FrameworkElement> _roots = [];
     private bool _disposed;
 
-    public ApplicationThemeManager(IAppSettingsService settings)
+    public ApplicationThemeManager(IAppearanceSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
         _settings = settings;

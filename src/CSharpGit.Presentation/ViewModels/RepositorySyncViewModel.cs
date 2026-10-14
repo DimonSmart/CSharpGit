@@ -90,7 +90,7 @@ public sealed record PullExecutionResult(
 public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly IRepositorySyncService _syncService;
-    private readonly IAppSettingsService _settings;
+    private readonly IGitWorkflowSettings _settings;
     private readonly IUiDispatcher _uiDispatcher;
     private PullExecutionResult? _lastPullResult;
     private IRepositorySyncContext? _context;
@@ -100,7 +100,7 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
 
     public RepositorySyncViewModel(
         IRepositorySyncService syncService,
-        IAppSettingsService settings,
+        IGitWorkflowSettings settings,
         IUiDispatcher uiDispatcher)
     {
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
