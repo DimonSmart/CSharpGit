@@ -62,3 +62,4 @@ opened.
 | IDD-0040 | Spec | Repository cloning | Native Git clone, default local target, cancellation and common repository switch lifecycle | — |
 | IDD-0041 | Spec | Repository Git identity | Git-owned repository-local user.name/user.email with effective-source display and repository-switch safety | — |
 | IDD-0042 | ADR | Repository sync presentation boundary | RepositorySyncViewModel owns remote synchronization/publication while MainPage owns dialogs and Branches keeps branch lifecycle | — |
+| IDD-0043 | ADR | Presentation feature boundaries | Independent maintenance and file actions workflows, captured requests and shared session/mutation ownership | — |

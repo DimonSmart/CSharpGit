@@ -7,6 +7,7 @@ public sealed class FileOpeningUiContractTests
     {
         var root = FindRepositoryRoot();
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
+        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "FileActionsViewModel.cs"));
         var abstractions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryFileVersionService.cs"));
         var app = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
         var gitComposition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitServiceCollectionExtensions.cs"));
@@ -15,8 +16,14 @@ public sealed class FileOpeningUiContractTests
         Assert.Contains("IDesktopShellService", abstractions);
         Assert.Contains("OpenFolderDescription", abstractions);
         Assert.Contains("IRepositoryPathService", abstractions);
-        Assert.Contains("ResolveCommitAsync", page);
-        Assert.Contains("ResolveWorkingTreeAsync", page);
+        Assert.DoesNotContain("ResolveCommitAsync", page);
+        Assert.DoesNotContain("ResolveWorkingTreeAsync", page);
+        Assert.Contains("_versions.ResolveCommitAsync", feature);
+        Assert.Contains("_versions.ResolveWorkingTreeAsync", feature);
+        Assert.Contains("new DiffFileVersionPathResolver", feature);
+        Assert.Contains("_shell.OpenFileAsync", feature);
+        Assert.Contains("_tools.RunExternalDiffAsync", feature);
+        Assert.Contains("FileActionRequest", page);
         Assert.Contains("ChangedFilesTree.RightTapped", page);
         Assert.Contains("ChangedFilesTree.DoubleTapped", page);
         Assert.Contains("UnstagedChangesList.RightTapped", page);
@@ -25,6 +32,7 @@ public sealed class FileOpeningUiContractTests
         Assert.Contains("Open changed", page);
         Assert.Contains("Open in Diff Tool", page);
         Assert.Contains("RevealDescription", page);
+        Assert.Contains("RevealDescription", feature);
         Assert.DoesNotContain("Process.Start", page);
         Assert.DoesNotContain("ProcessStartInfo", page);
         Assert.DoesNotContain("RunGit", page);
@@ -46,6 +54,7 @@ public sealed class FileOpeningUiContractTests
     {
         var root = FindRepositoryRoot();
         var versions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitRepositoryFileVersionService.cs"));
+        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "FileActionsViewModel.cs"));
         var executor = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCommandExecutor.cs"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
 
@@ -59,8 +68,9 @@ public sealed class FileOpeningUiContractTests
         Assert.Contains("version.BlobId", versions);
         Assert.Contains("version.GitPath", versions);
         Assert.Contains("side.ToString()", versions);
-        Assert.Contains("ResolveExistingWorkingTreeFile(repository, pair.RevealPath", page);
-        Assert.DoesNotContain("RevealFileAsync(snapshot", page);
+        Assert.Contains("ResolveExistingWorkingTreeFile", feature);
+        Assert.Contains("prepared.Pair.RevealPath", feature);
+        Assert.DoesNotContain("RevealFileAsync(snapshot", feature);
     }
 
     [Fact]
