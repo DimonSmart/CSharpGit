@@ -2,16 +2,22 @@ namespace CSharpGit.Presentation.ViewModels;
 
 // Owns only cancellable repository reads. Mutation lifetimes remain governed by
 // the existing mutation gate and its close/switch restrictions.
-internal sealed class RepositorySessionLifetime(long generation)
+internal sealed class RepositorySessionLifetime
 {
     private readonly object _sync = new();
     private readonly CancellationTokenSource _cancellation = new();
-    private readonly CancellationToken _token = _cancellation.Token;
+    private readonly CancellationToken _token;
     private int _readers;
     private bool _ended;
     private bool _cancelled;
 
-    public long Generation { get; } = generation;
+    public RepositorySessionLifetime(long generation)
+    {
+        Generation = generation;
+        _token = _cancellation.Token;
+    }
+
+    public long Generation { get; }
 
     public bool IsActive
     {
