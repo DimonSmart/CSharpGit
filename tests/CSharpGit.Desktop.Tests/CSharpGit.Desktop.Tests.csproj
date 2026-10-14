@@ -51,6 +51,11 @@
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BulkObservableCollection.cs" Link="WorkingTree/BulkObservableCollection.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/AsyncCommand.cs" Link="WorkingTree/AsyncCommand.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositorySessionLifetime.cs" Link="WorkingTree/RepositorySessionLifetime.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryMaintenanceContext.cs" Link="Features/RepositoryMaintenanceContext.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryMaintenanceViewModel.cs" Link="Features/RepositoryMaintenanceViewModel.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/FileActionsContext.cs" Link="Features/FileActionsContext.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/FileActionsViewModel.cs" Link="Features/FileActionsViewModel.cs" />
+    <Compile Include="../../src/CSharpGit.Presentation/Previewing/DiffFileVersionPathResolver.cs" Link="Features/DiffFileVersionPathResolver.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/UiChoice.cs" Link="History/UiChoice.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/Threading/IUiDispatcher.cs" Link="History/IUiDispatcher.cs" />
     <Compile Include="../../src/CSharpGit.Presentation/ViewModels/HistoryViewModel.cs" Link="History/HistoryViewModel.cs" />

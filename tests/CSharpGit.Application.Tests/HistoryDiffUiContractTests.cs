@@ -151,11 +151,12 @@ public sealed class HistoryDiffUiContractTests
     {
         var root = FindRepositoryRoot();
         var source = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
-        var stateMethod = ExtractBetween(source, "private Task RefreshCommitFileActionStateAsync()", "private async Task RefreshWorkingTreeFileActionStateAsync()");
+        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "FileActionsViewModel.cs"));
 
-        Assert.DoesNotContain("ResolveCommitAsync", stateMethod);
-        Assert.Contains("SelectedFile", stateMethod);
-        Assert.Contains("TryResolveReveal", stateMethod);
+        Assert.Contains("_fileActions.SelectCommitLazy(CaptureCommitRequest())", source);
+        Assert.Contains("public void SelectCommitLazy", feature);
+        Assert.Contains("TryResolveReveal(request.Repository, request.Path)", feature);
+        Assert.DoesNotContain("ResolveCommitAsync(", source);
     }
 
     [Fact]
@@ -163,12 +164,13 @@ public sealed class HistoryDiffUiContractTests
     {
         var root = FindRepositoryRoot();
         var source = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
-        var action = ExtractBetween(source, "private async Task OpenSelectedCommitExternalDiffAsync()", "private async Task OpenSelectedWorkingTreeExternalDiffAsync()");
+        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "FileActionsViewModel.cs"));
 
-        Assert.Contains("ResolveCommitAsync(repository, commit.Hash, file.Path)", action);
-        Assert.Contains("RunExternalDiffAsync(repository, pair)", action);
-        Assert.DoesNotContain("Parents", action);
-        Assert.DoesNotContain("HEAD", action);
+        Assert.Contains("_versions.ResolveCommitAsync", feature);
+        Assert.Contains("_tools.RunExternalDiffAsync(request.Repository, prepared.Pair)", feature);
+        Assert.Contains("var pair = await ResolveAsync(request, lease.Token)", feature);
+        Assert.DoesNotContain("Parents", feature);
+        Assert.DoesNotContain("ResolveCommitAsync(", source);
         Assert.Contains("History.SelectedRow", source);
         Assert.DoesNotContain("_viewModel.SelectedCommit", source);
     }

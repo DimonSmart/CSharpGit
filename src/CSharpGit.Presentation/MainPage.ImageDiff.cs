@@ -1,5 +1,6 @@
 using CSharpGit.Domain;
 using CSharpGit.Presentation.Previewing;
+using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 
 namespace CSharpGit.Presentation;
@@ -13,7 +14,7 @@ public sealed partial class MainPage
     private ImageDiffPreviewService ImageDiffService =>
         _imageDiffPreviewService ??= new ImageDiffPreviewService(
             _fileVersionService,
-            _diffFileVersionPathResolver,
+            _fileActions.PathResolver,
             SharedImageMetadataReader.Instance);
 
     private async Task LoadCommitImageDiffAsync()
@@ -44,9 +45,9 @@ public sealed partial class MainPage
             if (!IsCurrentCommitImageDiffRequest(repository, commitHash, file.Path, generation, cts))
                 return;
 
-            _commitFileVersions = result.Versions;
-            _commitRevealPath = TryResolveReveal(repository, result.Versions.RevealPath);
-            UpdateCommitButtons();
+            _fileActions.PublishCommitPreview(
+                new CommitFileActionRequest(repository, commitHash, file.Path),
+                result.Versions);
 
             if (result.Content is null)
             {

@@ -607,6 +607,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     private void RaiseCommands()
     {
+        MaintenanceAvailabilityChanged?.Invoke(this, EventArgs.Empty);
         foreach (var command in new[] { RefreshAllCommand }.OfType<AsyncCommand>())
             command.RaiseCanExecuteChanged();
         Tags.RefreshAvailability();

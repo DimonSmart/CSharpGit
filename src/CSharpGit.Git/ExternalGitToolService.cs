@@ -1,5 +1,6 @@
 using CSharpGit.Application;
 using CSharpGit.Application.Abstractions;
+using CSharpGit.Application.Exceptions;
 using CSharpGit.Domain;
 
 namespace CSharpGit.Git;
@@ -297,7 +298,7 @@ internal sealed class ExternalGitToolService : IExternalGitToolService
     private static void EnsureRunnable(GitToolConfigurationSnapshot configuration, string displayName)
     {
         if (string.IsNullOrWhiteSpace(configuration.EffectiveValue))
-            throw new InvalidOperationException($"{displayName} is not configured.");
+            throw new GitToolNotConfiguredException(displayName);
         var error = configuration.Validation.FirstOrDefault(message => message.Severity == GitToolValidationSeverity.Error);
         if (error is not null) throw new InvalidOperationException(error.Message);
     }

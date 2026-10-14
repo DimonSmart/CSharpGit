@@ -42,7 +42,11 @@ public sealed class ImageDiffUiContractTests
         Assert.Contains("ResolveExistingWorkingTreeFile", resolver);
         Assert.Contains("DiffFileVersionLocation.GitSnapshot", resolver);
         Assert.Contains("MaterializeAsync", resolver);
-        Assert.Contains("_diffFileVersionPathResolver.ResolveAsync", fileOpening);
+        var fileActions = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "FileActionsViewModel.cs");
+        var imageUi = Read(root, "src", "CSharpGit.Presentation", "MainPage.ImageDiff.cs");
+        Assert.Contains("_pathResolver.ResolveAsync", fileActions);
+        Assert.Contains("_fileActions.PathResolver", imageUi);
+        Assert.DoesNotContain("ResolveCommitAsync(", fileOpening);
         Assert.DoesNotContain("git show", service, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("git cat-file", service, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("git diff", service, StringComparison.OrdinalIgnoreCase);
