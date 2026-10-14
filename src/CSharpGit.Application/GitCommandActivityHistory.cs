@@ -128,13 +128,15 @@ public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCom
     private void Finish(Guid id, int? exitCode, GitCommandStatus status)
     {
         GitCommandActivity snapshot;
+        BoundedUtf8AppendResult stdoutFinal;
+        BoundedUtf8AppendResult stderrFinal;
         lock (_sync)
         {
             if (!_byId.TryGetValue(id, out var state)) return;
             if (state.Status != GitCommandStatus.Running) return;
 
-            var stdoutFinal = state.StandardOutput.Flush();
-            var stderrFinal = state.StandardError.Flush();
+            stdoutFinal = state.StandardOutput.Flush();
+            stderrFinal = state.StandardError.Flush();
             var completedAt = DateTimeOffset.UtcNow;
             state.CompletedAt = completedAt;
             state.Duration = completedAt - state.StartedAt;
