@@ -30,17 +30,15 @@ public sealed partial class MainPage
         OpenRepositoryViewModel viewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
         IRepositoryFileVersionService fileVersionService,
-        IDesktopShellService desktopShellService,
-        IRepositoryPathService repositoryPathService,
         IExternalGitToolService externalGitToolService,
+        FileActionsViewModel fileActions,
         RepositoryFilesViewModel repositoryFilesViewModel)
         : this(
             viewModel,
             workingTreeStatusReader,
             fileVersionService,
-            desktopShellService,
-            repositoryPathService,
-            externalGitToolService)
+            externalGitToolService,
+            fileActions)
     {
         _repositoryFilesViewModel = repositoryFilesViewModel
             ?? throw new ArgumentNullException(nameof(repositoryFilesViewModel));
