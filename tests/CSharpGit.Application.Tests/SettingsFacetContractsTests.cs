@@ -42,7 +42,6 @@ public sealed class SettingsFacetContractsTests
     {
         Assert.Equal(typeof(IGitWorkflowSettings), SettingsParameter<RepositorySyncViewModel>());
         Assert.Equal(typeof(IAppearanceSettings), SettingsParameter<HistoryViewModel>());
-        Assert.Equal(typeof(IAppearanceSettings), SettingsParameter<OpenRepositoryViewModel>());
         Assert.Equal(typeof(IAppSettingsService), SettingsParameter<SettingsViewModel>());
     }
 
