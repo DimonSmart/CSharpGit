@@ -6,7 +6,8 @@ public sealed class RecentRepositoriesStartScreenContractTests
     public void RecentRepositoryLauncherPreservesEmptyStateAndTracksRepositoryMetadata()
     {
         var root = FindRepositoryRoot();
-        var settingsContract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IAppSettingsService.cs"));
+        var settingsContract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IAppSettingsService.cs")) +
+            File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryLauncherSettings.cs"));
         var imageContract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryImageService.cs"));
         var settingsPersistence = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure", "JsonAppSettingsService.cs"));
         var imageService = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure", "RepositoryImageService.cs"));

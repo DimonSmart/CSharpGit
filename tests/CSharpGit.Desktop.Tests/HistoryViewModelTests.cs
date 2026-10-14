@@ -313,47 +313,14 @@ public sealed class HistoryViewModelTests
             throw new NotSupportedException();
     }
 
-    private sealed class FakeSettings : IAppSettingsService
+    private sealed class FakeSettings : IAppearanceSettings
     {
-        public ApplicationThemeMode ThemeMode => default;
-        public CommitTimeDisplayMode CommitTimeDisplayMode => default;
-        public bool LoggingEnabled => false;
-        public ApplicationLogLevel LogLevel => default;
-        public GitConsoleAutoOpenMode GitConsoleAutoOpenMode => default;
+        public ApplicationThemeMode ThemeMode => ApplicationThemeMode.System;
+        public CommitTimeDisplayMode CommitTimeDisplayMode => CommitTimeDisplayMode.Smart;
+        public HistoryRenderingMode HistoryRenderingMode => HistoryRenderingMode.Full;
         public bool ShowReflog { get; set; }
-        public bool AutoSetupRemoteOnPush => false;
-        public PullStrategy DefaultPullStrategy => PullStrategy.FastForwardOnly;
-        public bool ForcePullAutoStash => false;
         public bool ShowAuthorAvatars => false;
         public bool OnlineAvatarLookupEnabled => false;
-        public bool HistoryPerformanceDiagnosticsEnabled => false;
-        public HistoryRenderingMode HistoryRenderingMode => default;
-        public string DefaultRepositoriesDirectory => string.Empty;
-        public IReadOnlyList<RecentRepositorySettings> RecentRepositories => [];
-        public IReadOnlyList<RepositoryGroupSettings> RepositoryGroups =>
-            [new RepositoryGroupSettings("favorites", "Favorites", 0, true)];
-        public bool RecentRepositoriesExpanded { get; private set; } = true;
-        public Task SetRecentRepositoriesExpandedAsync(bool expanded, CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            RecentRepositoriesExpanded = expanded;
-            return Task.CompletedTask;
-        }
-        public RepositoryLauncherSettingsSnapshot RepositoryLauncherSnapshot =>
-            new(RepositoryGroups, RecentRepositories);
-        public Task<RepositoryGroupSettings> CreateRepositoryGroupAsync(string name, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-        public Task RenameRepositoryGroupAsync(string id, string name, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-        public Task DeleteRepositoryGroupAsync(string id, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-        public Task MoveRepositoryGroupAsync(string id, int newIndex, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-        public Task SetRepositoryGroupExpandedAsync(string id, bool expanded, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-        public Task MoveRecentRepositoryToGroupAsync(string path, string id, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
         public int SetShowReflogCalls { get; private set; }
 
         public event EventHandler? Changed;
@@ -368,20 +335,8 @@ public sealed class HistoryViewModelTests
 
         public Task SetThemeModeAsync(ApplicationThemeMode mode, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SetCommitTimeDisplayModeAsync(CommitTimeDisplayMode mode, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetLoggingSettingsAsync(bool enabled, ApplicationLogLevel level, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetGitConsoleAutoOpenModeAsync(GitConsoleAutoOpenMode mode, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetAutoSetupRemoteOnPushAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetDefaultPullStrategyAsync(PullStrategy strategy, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetForcePullAutoStashAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task SetHistoryRenderingModeAsync(HistoryRenderingMode mode, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SetShowAuthorAvatarsAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SetOnlineAvatarLookupEnabledAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetHistoryPerformanceDiagnosticsEnabledAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetHistoryRenderingModeAsync(HistoryRenderingMode mode, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetDefaultRepositoriesDirectoryAsync(string directory, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task RecordRecentRepositoryAsync(string path, string displayName, string? lastBranchName, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task UpdateRecentRepositoryBranchAsync(string path, string? lastBranchName, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetRecentRepositoryPinnedAsync(string path, bool pinned, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task MovePinnedRepositoryAsync(string path, int newIndex, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task RemoveRecentRepositoryAsync(string path, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }

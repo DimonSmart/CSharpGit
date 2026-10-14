@@ -57,7 +57,7 @@ public sealed class DesktopUiContractTests
         var repositoryViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var themeManager = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ApplicationThemeManager.cs"));
         var app = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
-        var applicationContract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IAppSettingsService.cs"));
+        var applicationContract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IAppearanceSettings.cs"));
         var infrastructure = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure", "JsonAppSettingsService.cs"));
 
         Assert.DoesNotContain("AppearanceDialog", mainXaml);
@@ -92,7 +92,7 @@ public sealed class DesktopUiContractTests
         Assert.Contains("ApplicationThemeMode ThemeMode", applicationContract);
         Assert.Contains("SetThemeModeAsync", applicationContract);
         Assert.Contains("ApplicationThemeManager", app);
-        Assert.Contains("IAppSettingsService _settings", themeManager);
+        Assert.Contains("IAppearanceSettings _settings", themeManager);
         Assert.Contains("_settings.Changed += Settings_Changed", themeManager);
         Assert.Contains("_settings.Changed -= Settings_Changed", themeManager);
         Assert.Contains("ApplicationThemeMode.System => ElementTheme.Default", themeManager);

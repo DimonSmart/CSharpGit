@@ -260,7 +260,8 @@ public sealed class PresentationArchitectureGuardrailTests
 
         Assert.Contains("public sealed class RepositorySyncViewModel", repositorySync, StringComparison.Ordinal);
         Assert.Contains("IRepositorySyncService", repositorySync, StringComparison.Ordinal);
-        Assert.Contains("IAppSettingsService", repositorySync, StringComparison.Ordinal);
+        Assert.Contains("IGitWorkflowSettings", repositorySync, StringComparison.Ordinal);
+        Assert.DoesNotContain("IAppSettingsService", repositorySync, StringComparison.Ordinal);
         Assert.Contains("_syncService.FetchAsync(", repositorySync, StringComparison.Ordinal);
         Assert.Contains("_syncService.PullAsync(", repositorySync, StringComparison.Ordinal);
         Assert.Contains("_syncService.PushAsync(", repositorySync, StringComparison.Ordinal);
