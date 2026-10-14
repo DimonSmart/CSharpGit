@@ -212,6 +212,24 @@ public sealed partial class RecentRepositoriesView : UserControl
         }
     }
 
+    private async void RecentExpand_Click(object sender, RoutedEventArgs e)
+    {
+        if (Model is not { IsSearchActive: false } vm || sender is not ToggleButton toggle) return;
+        try
+        {
+            await vm.SetRecentExpandedAsync(!vm.IsRecentExpanded);
+        }
+        catch (OperationCanceledException)
+        {
+            toggle.IsChecked = vm.EffectiveIsRecentExpanded;
+        }
+        catch (Exception exception)
+        {
+            toggle.IsChecked = vm.EffectiveIsRecentExpanded;
+            await ShowErrorAsync("Could not change Recent expansion", exception);
+        }
+    }
+
     private void GroupActions_Click(object sender, RoutedEventArgs e)
     {
         if (Model is not { } vm
