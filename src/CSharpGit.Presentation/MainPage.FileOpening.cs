@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
-using CSharpGit.Presentation.Previewing;
+using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -11,50 +11,28 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
+    // The repository-files preview/editor is an independent scenario and still uses these services.
     private readonly IRepositoryFileVersionService _fileVersionService = null!;
-    private readonly IDesktopShellService _desktopShellService = null!;
-    private readonly IRepositoryPathService _repositoryPathService = null!;
-    private readonly DiffFileVersionPathResolver _diffFileVersionPathResolver = null!;
     private readonly IExternalGitToolService _externalGitToolService = null!;
-    private DiffFileVersionPair? _commitFileVersions;
-    private DiffFileVersionPair? _workingTreeFileVersions;
-    private string? _commitRevealPath;
-    private string? _workingTreeRevealPath;
-    private long _commitFileActionGeneration;
-    private long _workingTreeFileActionGeneration;
+    private readonly FileActionsViewModel _fileActions = null!;
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
         IRepositoryFileVersionService fileVersionService,
-        IDesktopShellService desktopShellService,
-        IRepositoryPathService repositoryPathService)
+        IExternalGitToolService externalGitToolService,
+        FileActionsViewModel fileActions)
         : this(viewModel, workingTreeStatusReader)
     {
         _fileVersionService = fileVersionService ?? throw new ArgumentNullException(nameof(fileVersionService));
-        _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
-        _repositoryPathService = repositoryPathService ?? throw new ArgumentNullException(nameof(repositoryPathService));
-        _diffFileVersionPathResolver = new DiffFileVersionPathResolver(_fileVersionService, _repositoryPathService);
-        InitializeFileOpening();
-    }
-
-    private MainPage(
-        OpenRepositoryViewModel viewModel,
-        IWorkingTreeStatusReader workingTreeStatusReader,
-        IRepositoryFileVersionService fileVersionService,
-        IDesktopShellService desktopShellService,
-        IRepositoryPathService repositoryPathService,
-        IExternalGitToolService externalGitToolService)
-        : this(viewModel, workingTreeStatusReader, fileVersionService, desktopShellService, repositoryPathService)
-    {
         _externalGitToolService = externalGitToolService ?? throw new ArgumentNullException(nameof(externalGitToolService));
-        UpdateCommitButtons();
-        UpdateWorkingTreeButtons();
+        _fileActions = fileActions ?? throw new ArgumentNullException(nameof(fileActions));
+        _fileActions.Attach(_viewModel);
+        InitializeFileOpening();
     }
 
     private void InitializeFileOpening()
     {
-
         ChangedFilesTree.RightTapped += ChangedFilesTree_RightTapped;
         ChangedFilesTree.DoubleTapped += ChangedFilesTree_DoubleTapped;
         UnstagedChangesList.RightTapped += WorkingTreeChanges_RightTapped;
@@ -65,13 +43,25 @@ public sealed partial class MainPage
         _viewModel.CommitDetails.PropertyChanged += FileOpeningViewModel_PropertyChanged;
         _viewModel.History.PropertyChanged += FileOpeningViewModel_PropertyChanged;
         _viewModel.WorkingTree.PropertyChanged += WorkingTreeFileOpening_PropertyChanged;
+        _fileActions.PropertyChanged += FileActions_PropertyChanged;
 
         _ = RefreshCommitFileActionStateAsync();
         _ = RefreshWorkingTreeFileActionStateAsync();
     }
 
+    private void FileActions_PropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(FileActionsViewModel.Commit))
+            UpdateCommitButtons();
+        else if (args.PropertyName == nameof(FileActionsViewModel.WorkingTree))
+            UpdateWorkingTreeButtons();
+    }
+
     private void FileOpeningViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
+        if (args.PropertyName == nameof(OpenRepositoryViewModel.Repository))
+            _fileActions.Invalidate();
+
         if (args.PropertyName is nameof(CommitDetailsViewModel.SelectedFile)
             or nameof(HistoryViewModel.SelectedRow)
             or nameof(OpenRepositoryViewModel.Repository))
@@ -88,89 +78,64 @@ public sealed partial class MainPage
             _ = RefreshWorkingTreeFileActionStateAsync();
     }
 
-    private Task RefreshCommitFileActionStateAsync()
+    private CommitFileActionRequest? CaptureCommitRequest(string? path = null)
     {
-        Interlocked.Increment(ref _commitFileActionGeneration);
-        _commitFileVersions = null;
-        _commitRevealPath = null;
-
         var repository = _viewModel.Repository;
-        var file = _viewModel.CommitDetails.SelectedFile;
-        if (repository is not null && file is not null)
-            _commitRevealPath = TryResolveReveal(repository, file.Path);
-
-        UpdateCommitButtons();
-        return Task.CompletedTask;
+        var commit = _viewModel.History.SelectedRow?.Commit;
+        path ??= _viewModel.CommitDetails.SelectedFile?.Path;
+        return repository is null || commit is null || path is null
+            ? null : new CommitFileActionRequest(repository, commit.Hash, path);
     }
 
-    private async Task RefreshWorkingTreeFileActionStateAsync()
+    private WorkingTreeFileActionRequest? CaptureWorkingTreeRequest(
+        WorkingTreeChange? change = null, WorkingTreeDiffKind? kind = null)
     {
-        var generation = Interlocked.Increment(ref _workingTreeFileActionGeneration);
-        _workingTreeFileVersions = null;
-        _workingTreeRevealPath = null;
-        UpdateWorkingTreeButtons();
-
         var repository = _viewModel.Repository;
-        var change = _viewModel.WorkingTree.SelectedChange;
-        var kind = _viewModel.WorkingTree.SelectedDiffKind;
-        if (repository is null || change is null || kind is null)
-            return;
-
-        try
-        {
-            var pair = await _fileVersionService.ResolveWorkingTreeAsync(repository, change, kind.Value);
-            if (generation != Volatile.Read(ref _workingTreeFileActionGeneration)
-                || !ReferenceEquals(repository, _viewModel.Repository)
-                || _viewModel.WorkingTree.SelectedDiffKind != kind
-                || _viewModel.WorkingTree.SelectedChange is not { } current
-                || !SameWorkingTreeChange(current, change))
-                return;
-
-            _workingTreeFileVersions = pair;
-            try
-            {
-                _workingTreeRevealPath = _repositoryPathService.ResolveExistingWorkingTreeFile(repository, pair.RevealPath, allowFinalLink: true);
-            }
-            catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or IOException or UnauthorizedAccessException)
-            {
-                _workingTreeRevealPath = null;
-            }
-            UpdateWorkingTreeButtons();
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            if (generation == Volatile.Read(ref _workingTreeFileActionGeneration)) UpdateWorkingTreeButtons();
-        }
+        change ??= _viewModel.WorkingTree.SelectedChange;
+        kind ??= _viewModel.WorkingTree.SelectedDiffKind;
+        return repository is null || change is null || kind is null
+            ? null : new WorkingTreeFileActionRequest(repository, change, kind.Value);
     }
+
+    private Task RefreshCommitFileActionStateAsync() =>
+        _fileActions.SelectCommitAsync(CaptureCommitRequest());
+
+    private Task RefreshWorkingTreeFileActionStateAsync() =>
+        _fileActions.SelectWorkingTreeAsync(CaptureWorkingTreeRequest());
 
     private void UpdateCommitButtons()
     {
-        if (_commitFileVersions is not null)
+        var pair = _fileActions.Commit.Prepared?.Pair;
+        if (pair is not null)
         {
-            SetVersionButton(CommitOpenOriginalButton, _commitFileVersions.Original, "No original version is available.");
-            SetVersionButton(CommitOpenChangedButton, _commitFileVersions.Changed, "No changed version is available.");
-            SetExternalDiffButton(CommitExternalDiffButton, _commitFileVersions);
+            SetVersionButton(CommitOpenOriginalButton, pair.Original, "No original version is available.");
+            SetVersionButton(CommitOpenChangedButton, pair.Changed, "No changed version is available.");
+            SetExternalDiffButton(CommitExternalDiffButton, pair);
         }
         else
         {
+            // Preserve the existing conservative/optimistic button state during loading.
             var file = _viewModel.CommitDetails.SelectedFile;
-            SetAvailabilityButton(
-                CommitOpenOriginalButton,
-                file is not null && !string.Equals(file.Status, "A", StringComparison.Ordinal),
-                "Open original version",
+            SetAvailabilityButton(CommitOpenOriginalButton,
+                file is not null && file.Status != "A", "Open original version",
                 "No original version is available.");
-            SetAvailabilityButton(
-                CommitOpenChangedButton,
-                file is not null && !string.Equals(file.Status, "D", StringComparison.Ordinal),
-                "Open changed version",
+            SetAvailabilityButton(CommitOpenChangedButton,
+                file is not null && file.Status != "D", "Open changed version",
                 "No changed version is available.");
-            SetAvailabilityButton(
-                CommitExternalDiffButton,
-                file is not null,
+            SetAvailabilityButton(CommitExternalDiffButton, file is not null,
                 "Open this exact OLD/NEW pair in the configured external diff tool",
                 "Select a file diff first.");
         }
-        SetRevealButton(CommitRevealButton, _commitRevealPath);
+        SetRevealButton(CommitRevealButton, _fileActions.Commit.Prepared?.RevealPath);
+    }
+
+    private void UpdateWorkingTreeButtons()
+    {
+        var prepared = _fileActions.WorkingTree.Prepared;
+        SetVersionButton(WorkingTreeOpenOriginalButton, prepared?.Pair.Original, "No original version is available.");
+        SetVersionButton(WorkingTreeOpenChangedButton, prepared?.Pair.Changed, "No changed version is available.");
+        SetExternalDiffButton(WorkingTreeExternalDiffButton, prepared?.Pair);
+        SetRevealButton(WorkingTreeRevealButton, prepared?.RevealPath);
     }
 
     private static void SetAvailabilityButton(Button? button, bool enabled, string enabledText, string disabledText)
@@ -178,14 +143,6 @@ public sealed partial class MainPage
         if (button is null) return;
         button.IsEnabled = enabled;
         ToolTipService.SetToolTip(button, enabled ? enabledText : disabledText);
-    }
-
-    private void UpdateWorkingTreeButtons()
-    {
-        SetVersionButton(WorkingTreeOpenOriginalButton, _workingTreeFileVersions?.Original, "No original version is available.");
-        SetVersionButton(WorkingTreeOpenChangedButton, _workingTreeFileVersions?.Changed, "No changed version is available.");
-        SetExternalDiffButton(WorkingTreeExternalDiffButton, _workingTreeFileVersions);
-        SetRevealButton(WorkingTreeRevealButton, _workingTreeRevealPath);
     }
 
     private static void SetVersionButton(Button? button, DiffFileVersion? version, string fallbackReason)
@@ -197,152 +154,80 @@ public sealed partial class MainPage
             : version?.UnavailableReason ?? fallbackReason);
     }
 
-    private void SetExternalDiffButton(Button? button, DiffFileVersionPair? pair)
+    private static void SetExternalDiffButton(Button? button, DiffFileVersionPair? pair)
     {
         if (button is null) return;
-        var enabled = pair is not null && CanExternalDiff(pair);
+        var enabled = pair is not null && FileActionsViewModel.CanExternalDiff(pair);
         button.IsEnabled = enabled;
         ToolTipService.SetToolTip(button, enabled
             ? "Open this exact OLD/NEW pair in the configured external diff tool"
-            : ExternalDiffUnavailableReason(pair));
+            : FileActionsViewModel.ExternalDiffUnavailableReason(pair));
     }
 
-    private void SetRevealButton(Button? button, string? fullPath)
+    private void SetRevealButton(Button? button, string? path)
     {
         if (button is null) return;
-        button.IsEnabled = fullPath is not null;
-        ToolTipService.SetToolTip(button, fullPath is null
+        button.IsEnabled = path is not null;
+        ToolTipService.SetToolTip(button, path is null
             ? "The file is not present in the current working tree."
-            : _desktopShellService.RevealDescription);
+            : _fileActions.RevealDescription);
+    }
+
+    private async Task ExecuteFileActionAsync(
+        FileActionRequest? request,
+        FileActionKind action,
+        string errorTitle,
+        PreparedFileActions? prepared = null)
+    {
+        if (request is null) return;
+        try
+        {
+            var result = await _fileActions.ExecuteAsync(request, action, prepared);
+            switch (result.Kind)
+            {
+                case FileActionOutcomeKind.NotConfigured:
+                    await ShowDiffToolNotConfiguredAsync();
+                    break;
+                case FileActionOutcomeKind.Failed:
+                case FileActionOutcomeKind.Unavailable:
+                    if (_fileActions.IsCurrent(request))
+                        await ShowErrorAsync(errorTitle, result.Reason ?? "The file operation failed.");
+                    break;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            if (_fileActions.IsCurrent(request))
+                await ShowErrorAsync(errorTitle, FileActionsViewModel.UserFacingFileError(exception));
+        }
     }
 
     private async void CommitOpenOriginal_Click(object sender, RoutedEventArgs args) =>
-        await OpenSelectedCommitVersionAsync(DiffFileSide.Original);
+        await ExecuteFileActionAsync(CaptureCommitRequest(), FileActionKind.Original, "Could not open original version");
 
     private async void CommitOpenChanged_Click(object sender, RoutedEventArgs args) =>
-        await OpenSelectedCommitVersionAsync(DiffFileSide.Changed);
+        await ExecuteFileActionAsync(CaptureCommitRequest(), FileActionKind.Changed, "Could not open changed version");
 
     private async void CommitExternalDiff_Click(object sender, RoutedEventArgs args) =>
-        await OpenSelectedCommitExternalDiffAsync();
+        await ExecuteFileActionAsync(CaptureCommitRequest(), FileActionKind.ExternalDiff, "Could not open external diff tool");
 
     private async void CommitReveal_Click(object sender, RoutedEventArgs args) =>
-        await RevealSelectedCommitFileAsync();
+        await ExecuteFileActionAsync(CaptureCommitRequest(), FileActionKind.Reveal, "Could not reveal file");
 
     private async void WorkingTreeOpenOriginal_Click(object sender, RoutedEventArgs args) =>
-        await OpenSelectedWorkingTreeVersionAsync(DiffFileSide.Original);
+        await ExecuteFileActionAsync(CaptureWorkingTreeRequest(), FileActionKind.Original, "Could not open original version");
 
     private async void WorkingTreeOpenChanged_Click(object sender, RoutedEventArgs args) =>
-        await OpenSelectedWorkingTreeVersionAsync(DiffFileSide.Changed);
+        await ExecuteFileActionAsync(CaptureWorkingTreeRequest(), FileActionKind.Changed, "Could not open changed version");
 
     private async void WorkingTreeExternalDiff_Click(object sender, RoutedEventArgs args) =>
-        await OpenSelectedWorkingTreeExternalDiffAsync();
+        await ExecuteFileActionAsync(CaptureWorkingTreeRequest(), FileActionKind.ExternalDiff, "Could not open external diff tool");
 
     private async void WorkingTreeReveal_Click(object sender, RoutedEventArgs args) =>
-        await RevealSelectedWorkingTreeFileAsync();
-
-    private async Task OpenSelectedCommitVersionAsync(DiffFileSide side)
-    {
-        var repository = _viewModel.Repository;
-        var commit = _viewModel.History.SelectedRow?.Commit;
-        var file = _viewModel.CommitDetails.SelectedFile;
-        if (repository is null || commit is null || file is null)
-            return;
-
-        try
-        {
-            var pair = await _fileVersionService.ResolveCommitAsync(repository, commit.Hash, file.Path);
-            var version = side == DiffFileSide.Original ? pair.Original : pair.Changed;
-            await OpenResolvedVersionAsync(repository, version, side);
-            _commitFileVersions = pair;
-            UpdateCommitButtons();
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception exception)
-        {
-            await ShowErrorAsync(side == DiffFileSide.Original ? "Could not open original version" : "Could not open changed version", UserFacingFileError(exception));
-        }
-    }
-
-    private async Task OpenSelectedWorkingTreeVersionAsync(DiffFileSide side)
-    {
-        var repository = _viewModel.Repository;
-        var change = _viewModel.WorkingTree.SelectedChange;
-        var kind = _viewModel.WorkingTree.SelectedDiffKind;
-        if (repository is null || change is null || kind is null)
-            return;
-
-        try
-        {
-            var pair = await _fileVersionService.ResolveWorkingTreeAsync(repository, change, kind.Value);
-            var version = side == DiffFileSide.Original ? pair.Original : pair.Changed;
-            await OpenResolvedVersionAsync(repository, version, side);
-            _workingTreeFileVersions = pair;
-            UpdateWorkingTreeButtons();
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception exception)
-        {
-            await ShowErrorAsync(side == DiffFileSide.Original ? "Could not open original version" : "Could not open changed version", UserFacingFileError(exception));
-        }
-    }
-
-    private async Task OpenSelectedCommitExternalDiffAsync()
-    {
-        var repository = _viewModel.Repository;
-        var commit = _viewModel.History.SelectedRow?.Commit;
-        var file = _viewModel.CommitDetails.SelectedFile;
-        if (repository is null || commit is null || file is null) return;
-        try
-        {
-            var pair = await _fileVersionService.ResolveCommitAsync(repository, commit.Hash, file.Path);
-            if (!CanExternalDiff(pair)) throw new NotSupportedException(ExternalDiffUnavailableReason(pair));
-            await _externalGitToolService.RunExternalDiffAsync(repository, pair);
-            _commitFileVersions = pair;
-            UpdateCommitButtons();
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (InvalidOperationException exception) when (exception.Message.Contains("Diff tool is not configured", StringComparison.OrdinalIgnoreCase))
-        {
-            await ShowDiffToolNotConfiguredAsync();
-        }
-        catch (Exception exception)
-        {
-            await ShowErrorAsync("Could not open external diff tool", UserFacingFileError(exception));
-        }
-    }
-
-    private async Task OpenSelectedWorkingTreeExternalDiffAsync()
-    {
-        var repository = _viewModel.Repository;
-        var change = _viewModel.WorkingTree.SelectedChange;
-        var kind = _viewModel.WorkingTree.SelectedDiffKind;
-        if (repository is null || change is null || kind is null) return;
-        try
-        {
-            var pair = await _fileVersionService.ResolveWorkingTreeAsync(repository, change, kind.Value);
-            if (!CanExternalDiff(pair)) throw new NotSupportedException(ExternalDiffUnavailableReason(pair));
-            await _externalGitToolService.RunExternalDiffAsync(repository, pair);
-            _workingTreeFileVersions = pair;
-            UpdateWorkingTreeButtons();
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (InvalidOperationException exception) when (exception.Message.Contains("Diff tool is not configured", StringComparison.OrdinalIgnoreCase))
-        {
-            await ShowDiffToolNotConfiguredAsync();
-        }
-        catch (Exception exception)
-        {
-            await ShowErrorAsync("Could not open external diff tool", UserFacingFileError(exception));
-        }
-    }
+        await ExecuteFileActionAsync(CaptureWorkingTreeRequest(), FileActionKind.Reveal, "Could not reveal file");
 
     private async Task ShowDiffToolNotConfiguredAsync()
     {
@@ -359,145 +244,100 @@ public sealed partial class MainPage
             OpenSettingsWindow(SettingsSection.GitTools);
     }
 
-    private async Task OpenResolvedVersionAsync(Repository repository, DiffFileVersion version, DiffFileSide side)
-    {
-        var path = await _diffFileVersionPathResolver.ResolveAsync(
-            repository,
-            version,
-            side,
-            CancellationToken.None);
-        await _desktopShellService.OpenFileAsync(path);
-    }
-
-    private async Task RevealSelectedCommitFileAsync()
-    {
-        var repository = _viewModel.Repository;
-        var commit = _viewModel.History.SelectedRow?.Commit;
-        var file = _viewModel.CommitDetails.SelectedFile;
-        if (repository is null || commit is null || file is null)
-            return;
-        try
-        {
-            var pair = await _fileVersionService.ResolveCommitAsync(repository, commit.Hash, file.Path);
-            var path = _repositoryPathService.ResolveExistingWorkingTreeFile(repository, pair.RevealPath, allowFinalLink: true);
-            await _desktopShellService.RevealFileAsync(path);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            await ShowErrorAsync("Could not reveal file", UserFacingFileError(exception));
-        }
-    }
-
-    private async Task RevealSelectedWorkingTreeFileAsync()
-    {
-        var repository = _viewModel.Repository;
-        var change = _viewModel.WorkingTree.SelectedChange;
-        var kind = _viewModel.WorkingTree.SelectedDiffKind;
-        if (repository is null || change is null || kind is null)
-            return;
-        try
-        {
-            var pair = await _fileVersionService.ResolveWorkingTreeAsync(repository, change, kind.Value);
-            var path = _repositoryPathService.ResolveExistingWorkingTreeFile(repository, pair.RevealPath, allowFinalLink: true);
-            await _desktopShellService.RevealFileAsync(path);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            await ShowErrorAsync("Could not reveal file", UserFacingFileError(exception));
-        }
-    }
-
     private async void ChangedFilesTree_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
     {
         var source = args.OriginalSource as FrameworkElement;
         var node = ResolveChangedFileNode(source?.DataContext);
-        if (node?.Entry is null || _viewModel.Repository is null || _viewModel.History.SelectedRow is null)
-            return;
-
+        if (node?.Entry is null) return;
+        var request = CaptureCommitRequest(node.Entry.File.Path);
+        if (request is null) return;
         _viewModel.CommitDetails.SelectedFile = node.Entry.File;
-        try
-        {
-            var pair = await _fileVersionService.ResolveCommitAsync(_viewModel.Repository, _viewModel.History.SelectedRow.Commit.Hash, node.Entry.File.Path);
-            var side = pair.Changed.CanOpen ? DiffFileSide.Changed : DiffFileSide.Original;
-            await OpenResolvedVersionAsync(_viewModel.Repository, side == DiffFileSide.Changed ? pair.Changed : pair.Original, side);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            await ShowErrorAsync("Could not open file", UserFacingFileError(exception));
-        }
         args.Handled = true;
+        await ExecuteFileActionAsync(request, FileActionKind.Preferred, "Could not open file");
     }
 
     private async void WorkingTreeChanges_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
     {
-        if (sender is not ListView list || list.SelectedItem is not WorkingTreeChange change || _viewModel.Repository is null)
+        if (sender is not ListView list
+            || args.OriginalSource is not FrameworkElement element
+            || element.DataContext is not WorkingTreeChange change)
             return;
-        var kind = ReferenceEquals(list, StagedChangesList) ? WorkingTreeDiffKind.Staged : WorkingTreeDiffKind.Unstaged;
+        var kind = ReferenceEquals(list, StagedChangesList)
+            ? WorkingTreeDiffKind.Staged : WorkingTreeDiffKind.Unstaged;
+        var request = CaptureWorkingTreeRequest(change, kind);
+        if (request is null) return;
         SelectWorkingTreeChange(change, kind);
-        try
-        {
-            var pair = await _fileVersionService.ResolveWorkingTreeAsync(_viewModel.Repository, change, kind);
-            var side = pair.Changed.CanOpen ? DiffFileSide.Changed : DiffFileSide.Original;
-            await OpenResolvedVersionAsync(_viewModel.Repository, side == DiffFileSide.Changed ? pair.Changed : pair.Original, side);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            await ShowErrorAsync("Could not open file", UserFacingFileError(exception));
-        }
         args.Handled = true;
+        await ExecuteFileActionAsync(request, FileActionKind.Preferred, "Could not open file");
     }
 
     private async void ChangedFilesTree_RightTapped(object sender, RightTappedRoutedEventArgs args)
     {
         var source = args.OriginalSource as FrameworkElement;
         var node = ResolveChangedFileNode(source?.DataContext);
-        if (source is null || node?.Entry is null || _viewModel.Repository is null || _viewModel.History.SelectedRow is null)
-            return;
-
+        if (source is null || node?.Entry is null) return;
+        var request = CaptureCommitRequest(node.Entry.File.Path);
+        if (request is null) return;
         _viewModel.CommitDetails.SelectedFile = node.Entry.File;
-        try
-        {
-            var pair = await _fileVersionService.ResolveCommitAsync(_viewModel.Repository, _viewModel.History.SelectedRow.Commit.Hash, node.Entry.File.Path);
-            _commitFileVersions = pair;
-            _commitRevealPath = TryResolveReveal(_viewModel.Repository, pair.RevealPath);
-            UpdateCommitButtons();
-            var flyout = BuildFileMenu(
-                pair,
-                _commitRevealPath is not null,
-                () => OpenSelectedCommitVersionAsync(DiffFileSide.Changed),
-                () => OpenSelectedCommitVersionAsync(DiffFileSide.Original),
-                OpenSelectedCommitExternalDiffAsync,
-                RevealSelectedCommitFileAsync);
-            flyout.ShowAt(source);
-            args.Handled = true;
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            await ShowErrorAsync("Could not read file versions", UserFacingFileError(exception));
-        }
+        args.Handled = true;
+        await ShowFileMenuAsync(source, request);
     }
 
     private async void WorkingTreeChanges_RightTapped(object sender, RightTappedRoutedEventArgs args)
     {
         var source = args.OriginalSource as FrameworkElement;
-        if (source is null || sender is not ListView list || source.DataContext is not WorkingTreeChange change || _viewModel.Repository is null)
+        if (source is null || sender is not ListView list
+            || source.DataContext is not WorkingTreeChange change)
             return;
-        var kind = ReferenceEquals(list, StagedChangesList) ? WorkingTreeDiffKind.Staged : WorkingTreeDiffKind.Unstaged;
+        var kind = ReferenceEquals(list, StagedChangesList)
+            ? WorkingTreeDiffKind.Staged : WorkingTreeDiffKind.Unstaged;
+        var request = CaptureWorkingTreeRequest(change, kind);
+        if (request is null) return;
         SelectWorkingTreeContextRow(list, change, kind);
+        args.Handled = true;
+        await ShowFileMenuAsync(source, request);
+    }
+
+    private async Task ShowFileMenuAsync(FrameworkElement source, FileActionRequest request)
+    {
         try
         {
-            var pair = await _fileVersionService.ResolveWorkingTreeAsync(_viewModel.Repository, change, kind);
-            _workingTreeFileVersions = pair;
-            _workingTreeRevealPath = TryResolveReveal(_viewModel.Repository, pair.RevealPath);
-            UpdateWorkingTreeButtons();
-            var flyout = BuildWorkingTreeFileMenu(pair, kind, _workingTreeRevealPath is not null);
+            var prepared = await _fileActions.PrepareAsync(request);
+            if (prepared is null || !_fileActions.IsCurrent(request) || source.XamlRoot is null
+                || !IsMenuSelectionCurrent(request))
+                return;
+
+            var flyout = request is WorkingTreeFileActionRequest working
+                ? BuildWorkingTreeFileMenu(working, prepared)
+                : BuildFileMenu(request, prepared);
             flyout.ShowAt(source);
-            args.Handled = true;
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (OperationCanceledException)
         {
-            await ShowErrorAsync("Could not read file versions", UserFacingFileError(exception));
         }
+        catch (Exception exception)
+        {
+            if (_fileActions.IsCurrent(request) && !IsShuttingDown)
+                await ShowErrorAsync("Could not read file versions",
+                    FileActionsViewModel.UserFacingFileError(exception));
+        }
+    }
+
+    private bool IsMenuSelectionCurrent(FileActionRequest request)
+    {
+        if (!_fileActions.IsCurrent(request)) return false;
+        return request switch
+        {
+            CommitFileActionRequest commit =>
+                CaptureCommitRequest() is { } current
+                && Equals(current, commit),
+            WorkingTreeFileActionRequest change =>
+                CaptureWorkingTreeRequest() is { } current
+                && ReferenceEquals(current.Repository, change.Repository)
+                && current.Kind == change.Kind
+                && SameWorkingTreeChange(current.Change, change.Change),
+            _ => false
+        };
     }
 
     private void SelectWorkingTreeContextRow(ListView list, WorkingTreeChange change, WorkingTreeDiffKind kind)
@@ -517,71 +357,75 @@ public sealed partial class MainPage
         SelectWorkingTreeChange(change, kind);
     }
 
-    private MenuFlyout BuildWorkingTreeFileMenu(DiffFileVersionPair pair, WorkingTreeDiffKind kind, bool canReveal)
+    private MenuFlyout BuildWorkingTreeFileMenu(
+        WorkingTreeFileActionRequest request, PreparedFileActions prepared)
     {
-        var flyout = BuildFileMenu(
-            pair,
-            canReveal,
-            () => OpenSelectedWorkingTreeVersionAsync(DiffFileSide.Changed),
-            () => OpenSelectedWorkingTreeVersionAsync(DiffFileSide.Original),
-            OpenSelectedWorkingTreeExternalDiffAsync,
-            RevealSelectedWorkingTreeFileAsync,
-            separateReveal: false);
-
+        var flyout = BuildFileMenu(request, prepared, separateReveal: false);
         flyout.Items.Insert(0, new MenuFlyoutSeparator());
-        if (kind == WorkingTreeDiffKind.Unstaged)
+        if (request.Kind == WorkingTreeDiffKind.Unstaged)
         {
-            flyout.Items.Insert(0, CreateWorkingTreeCommandMenuItem("Discard file", "\uE74D", _viewModel.WorkingTree.RequestDiscardSelectedCommand, destructive: true));
-            flyout.Items.Insert(0, CreateWorkingTreeCommandMenuItem("Stage file", "\uE710", _viewModel.WorkingTree.StageCommand));
+            flyout.Items.Insert(0, CreateWorkingTreeCommandMenuItem(
+                "Discard file", "\uE74D", _viewModel.WorkingTree.RequestDiscardSelectedCommand, request, destructive: true));
+            flyout.Items.Insert(0, CreateWorkingTreeCommandMenuItem(
+                "Stage file", "\uE710", _viewModel.WorkingTree.StageCommand, request));
         }
         else
         {
-            flyout.Items.Insert(0, CreateWorkingTreeCommandMenuItem("Unstage file", "\uE738", _viewModel.WorkingTree.UnstageCommand));
+            flyout.Items.Insert(0, CreateWorkingTreeCommandMenuItem(
+                "Unstage file", "\uE738", _viewModel.WorkingTree.UnstageCommand, request));
         }
-
         return flyout;
     }
 
-    private static MenuFlyoutItem CreateWorkingTreeCommandMenuItem(
-        string text,
-        string glyph,
-        System.Windows.Input.ICommand command,
-        bool destructive = false)
+    private MenuFlyoutItem CreateWorkingTreeCommandMenuItem(
+        string text, string glyph, System.Windows.Input.ICommand command,
+        WorkingTreeFileActionRequest request, bool destructive = false)
     {
         var item = new MenuFlyoutItem
         {
             Text = text,
             Icon = new FontIcon { Glyph = glyph },
-            Command = command
+            IsEnabled = command.CanExecute(null)
+        };
+        // Keep Stage/Unstage/Discard in WorkingTreeViewModel; stale menus cannot mutate B.
+        item.Click += (_, _) =>
+        {
+            if (IsMenuSelectionCurrent(request) && command.CanExecute(null))
+                command.Execute(null);
         };
         if (destructive) item.Foreground = CreateDestructiveBrush();
         return item;
     }
 
     private MenuFlyout BuildFileMenu(
-        DiffFileVersionPair pair,
-        bool canReveal,
-        Func<Task> openChanged,
-        Func<Task> openOriginal,
-        Func<Task> openExternalDiff,
-        Func<Task> reveal,
-        bool separateReveal = true)
+        FileActionRequest request, PreparedFileActions prepared, bool separateReveal = true)
     {
+        var pair = prepared.Pair;
         var flyout = new MenuFlyout();
-        flyout.Items.Add(CreateMenuItem("Open changed", pair.Changed, openChanged));
-        flyout.Items.Add(CreateMenuItem("Open original", pair.Original, openOriginal));
+        flyout.Items.Add(CreateMenuItem("Open changed", pair.Changed,
+            () => ExecuteFileActionAsync(request, FileActionKind.Changed, "Could not open changed version", prepared)));
+        flyout.Items.Add(CreateMenuItem("Open original", pair.Original,
+            () => ExecuteFileActionAsync(request, FileActionKind.Original, "Could not open original version", prepared)));
         var externalItem = new MenuFlyoutItem
         {
             Text = "Open in Diff Tool",
-            IsEnabled = CanExternalDiff(pair)
+            IsEnabled = prepared.CanExternalDiff
         };
-        ToolTipService.SetToolTip(externalItem, externalItem.IsEnabled ? externalItem.Text : ExternalDiffUnavailableReason(pair));
-        externalItem.Click += async (_, _) => await openExternalDiff();
+        ToolTipService.SetToolTip(externalItem, prepared.CanExternalDiff
+            ? externalItem.Text : FileActionsViewModel.ExternalDiffUnavailableReason(pair));
+        externalItem.Click += async (_, _) => await ExecuteFileActionAsync(
+            request, FileActionKind.ExternalDiff, "Could not open external diff tool", prepared);
         flyout.Items.Add(externalItem);
         if (separateReveal) flyout.Items.Add(new MenuFlyoutSeparator());
-        var revealItem = new MenuFlyoutItem { Text = _desktopShellService.RevealDescription, IsEnabled = canReveal };
-        ToolTipService.SetToolTip(revealItem, canReveal ? revealItem.Text : "The file is not present in the current working tree.");
-        revealItem.Click += async (_, _) => await reveal();
+        var revealItem = new MenuFlyoutItem
+        {
+            Text = _fileActions.RevealDescription,
+            IsEnabled = prepared.CanReveal
+        };
+        ToolTipService.SetToolTip(revealItem, prepared.CanReveal
+            ? revealItem.Text : "The file is not present in the current working tree.");
+        revealItem.Click += async (_, _) => await ExecuteFileActionAsync(
+            request, FileActionKind.Reveal, "Could not reveal file", prepared);
         flyout.Items.Add(revealItem);
         return flyout;
     }
@@ -589,7 +433,8 @@ public sealed partial class MainPage
     private static MenuFlyoutItem CreateMenuItem(string text, DiffFileVersion version, Func<Task> action)
     {
         var item = new MenuFlyoutItem { Text = text, IsEnabled = version.CanOpen };
-        ToolTipService.SetToolTip(item, version.CanOpen ? text : version.UnavailableReason ?? "This version is unavailable.");
+        ToolTipService.SetToolTip(item, version.CanOpen ? text
+            : version.UnavailableReason ?? "This version is unavailable.");
         item.Click += async (_, _) => await action();
         return item;
     }
@@ -597,41 +442,6 @@ public sealed partial class MainPage
     private static SolidColorBrush CreateDestructiveBrush() =>
         new(Microsoft.UI.Colors.Red);
 
-    private static bool CanExternalDiff(DiffFileVersionPair pair) =>
-        CanExternalDiffSide(pair.Original) && CanExternalDiffSide(pair.Changed);
-
-    private static bool CanExternalDiffSide(DiffFileVersion version) =>
-        version.EntryKind == GitEntryKind.RegularFile && version.Location != DiffFileVersionLocation.Unavailable
-        || version.EntryKind == GitEntryKind.Missing && version.Location == DiffFileVersionLocation.Unavailable;
-
-    private static string ExternalDiffUnavailableReason(DiffFileVersionPair? pair)
-    {
-        if (pair is null) return "Select a file diff first.";
-        if (!CanExternalDiffSide(pair.Original)) return pair.Original.UnavailableReason ?? "The original side cannot be represented for an external diff tool.";
-        if (!CanExternalDiffSide(pair.Changed)) return pair.Changed.UnavailableReason ?? "The changed side cannot be represented for an external diff tool.";
-        return "External diff is unavailable.";
-    }
-
-    private string? TryResolveReveal(Repository repository, string gitPath)
-    {
-        try
-        {
-            return _repositoryPathService.ResolveExistingWorkingTreeFile(repository, gitPath, allowFinalLink: true);
-        }
-        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or IOException or UnauthorizedAccessException)
-        {
-            return null;
-        }
-    }
-
-    private static string UserFacingFileError(Exception exception) => exception switch
-    {
-        FileNotFoundException => "The file is no longer present in the current working tree.",
-        UnauthorizedAccessException => "CSharpGit does not have permission to access this file.",
-        NotSupportedException => exception.Message,
-        ArgumentException => exception.Message,
-        InvalidOperationException => exception.Message,
-        IOException => "The file could not be prepared or opened.",
-        _ => "The file operation failed."
-    };
+    private static string UserFacingFileError(Exception exception) =>
+        FileActionsViewModel.UserFacingFileError(exception);
 }
