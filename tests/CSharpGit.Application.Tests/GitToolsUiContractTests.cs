@@ -60,11 +60,11 @@ public sealed class GitToolsUiContractTests
     {
         var root = FindRepositoryRoot();
         var fileOpening = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
-        var repositoryOperations = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryOperationsViewModel.cs"));
+        var repositoryOperations = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryOperationsViewModel.cs"));
         var gitTools = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "ExternalGitToolService.cs"));
 
         Assert.Contains("Open in Diff Tool", fileOpening);
-        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "FileActionsViewModel.cs"));
+        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "FileActionsViewModel.cs"));
         Assert.Contains("_tools.RunExternalDiffAsync(request.Repository, prepared.Pair)", feature);
         Assert.DoesNotContain("RunExternalDiffAsync(", fileOpening);
         Assert.Contains("SettingsSection.GitTools", fileOpening);

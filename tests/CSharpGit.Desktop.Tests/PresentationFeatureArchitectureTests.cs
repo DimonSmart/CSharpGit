@@ -6,7 +6,7 @@ public sealed class PresentationFeatureArchitectureTests
     public void RepositoryMaintenanceIsFeatureOwnedAndUsesSharedGate()
     {
         var page = Read("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
-        var workflow = Read("src/CSharpGit.Presentation/ViewModels/RepositoryMaintenanceViewModel.cs");
+        var workflow = Read("src/CSharpGit.Presentation.Core/ViewModels/RepositoryMaintenanceViewModel.cs");
         var context = Read("src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.RepositoryMaintenance.cs");
         var dialog = Read("src/CSharpGit.Presentation/RepositoryMaintenanceDialog.cs");
 
@@ -26,7 +26,7 @@ public sealed class PresentationFeatureArchitectureTests
     public void FileActionsAreBoundToCapturedImmutableRequests()
     {
         var page = Read("src/CSharpGit.Presentation/MainPage.FileOpening.cs");
-        var feature = Read("src/CSharpGit.Presentation/ViewModels/FileActionsViewModel.cs");
+        var feature = Read("src/CSharpGit.Presentation.Core/ViewModels/FileActionsViewModel.cs");
         var context = Read("src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.FileActions.cs");
         Assert.DoesNotContain("ResolveCommitAsync(", page);
         Assert.DoesNotContain("ResolveWorkingTreeAsync(", page);
@@ -38,15 +38,15 @@ public sealed class PresentationFeatureArchitectureTests
         Assert.Contains("IsMenuSelectionCurrent(request)", page);
         Assert.Contains("CaptureCommitRequest(node.Entry.File.Path)", page);
         Assert.Contains("CaptureWorkingTreeRequest(change, kind)", page);
-        Assert.Contains("RepositorySessionLifetime", Read("src/CSharpGit.Presentation/ViewModels/FileActionsContext.cs"));
+        Assert.Contains("RepositorySessionLifetime", Read("src/CSharpGit.Presentation.Core/ViewModels/FileActionsContext.cs"));
         Assert.Contains("TryAcquire", context);
     }
 
     [Fact]
     public void FeaturesAreXamlFreeAndExplicitlyComposed()
     {
-        var maintenance = Read("src/CSharpGit.Presentation/ViewModels/RepositoryMaintenanceViewModel.cs");
-        var files = Read("src/CSharpGit.Presentation/ViewModels/FileActionsViewModel.cs");
+        var maintenance = Read("src/CSharpGit.Presentation.Core/ViewModels/RepositoryMaintenanceViewModel.cs");
+        var files = Read("src/CSharpGit.Presentation.Core/ViewModels/FileActionsViewModel.cs");
         var app = Read("src/CSharpGit.Presentation/App.xaml.cs");
         var main = Read("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
         foreach (var source in new[] { maintenance, files })
@@ -77,7 +77,7 @@ public sealed class PresentationFeatureArchitectureTests
     public void ExternalDiffConfigurationIsTyped()
     {
         var git = Read("src/CSharpGit.Git/ExternalGitToolService.cs");
-        var feature = Read("src/CSharpGit.Presentation/ViewModels/FileActionsViewModel.cs");
+        var feature = Read("src/CSharpGit.Presentation.Core/ViewModels/FileActionsViewModel.cs");
         var page = Read("src/CSharpGit.Presentation/MainPage.FileOpening.cs");
         Assert.Contains("throw new GitToolNotConfiguredException(displayName)", git);
         Assert.Contains("catch (GitToolNotConfiguredException)", feature);

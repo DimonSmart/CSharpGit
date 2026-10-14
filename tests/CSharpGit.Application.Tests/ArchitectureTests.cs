@@ -18,7 +18,7 @@ public sealed class ArchitectureTests
         var root = FindRepositoryRoot();
         var application = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "ApplicationThemeMode.cs"))
             + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IAppSettingsService.cs"));
-        var infrastructure = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure", "JsonAppSettingsService.cs"));
+        var infrastructure = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure.Core", "JsonAppSettingsService.cs"));
 
         Assert.DoesNotContain("Microsoft.UI.Xaml", application);
         Assert.DoesNotContain("ElementTheme", application);

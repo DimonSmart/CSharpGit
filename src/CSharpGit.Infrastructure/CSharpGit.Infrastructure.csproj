@@ -9,16 +9,5 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../CSharpGit.Infrastructure.Core/CSharpGit.Infrastructure.Core.csproj" />
-    <Compile Remove="JsonAppSettingsService.cs" />
-    <Compile Remove="ExternalToolProcessService.cs" />
-    <Compile Remove="ApplicationUpdateServices.cs" />
-    <Compile Remove="AuthorAvatarService.cs" />
-    <Compile Remove="RepositoryImageService.cs" />
-    <Compile Remove="RepositoryImageService.Cache.cs" />
-    <Compile Remove="RepositoryImageService.Utilities.cs" />
-    <Compile Remove="RepositoryImageInternals.cs" />
-    <Compile Remove="LocalRepositoryImageProvider.cs" />
-    <Compile Remove="GitHubRepositoryImageProvider.cs" />
-    <Compile Remove="DesktopFileServices.cs" />
   </ItemGroup>
 </Project>

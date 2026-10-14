@@ -14,8 +14,8 @@ public sealed class PresentationArchitectureGuardrailTests
             .Select(File.ReadAllText));
         var mainPageSources = string.Join("\n", Directory.GetFiles(presentation, "MainPage*.cs")
             .Select(File.ReadAllText));
-        var actions = File.ReadAllText(Path.Combine(viewModels, "CommitActionsViewModel.cs"));
-        var rewrite = File.ReadAllText(Path.Combine(viewModels, "RepositoryHistoryRewriteViewModel.cs"));
+        var actions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "CommitActionsViewModel.cs"));
+        var rewrite = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "RepositoryHistoryRewriteViewModel.cs"));
         var parent = File.ReadAllText(Path.Combine(viewModels, "OpenRepositoryViewModel.cs"));
         var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
 
@@ -66,7 +66,9 @@ public sealed class PresentationArchitectureGuardrailTests
         var appPath = Path.Combine(presentation, "App.xaml.cs");
         var app = File.ReadAllText(appPath);
 
-        foreach (var file in ProductionCsFiles(presentation).Where(path => !Path.GetFullPath(path).Equals(Path.GetFullPath(appPath), StringComparison.OrdinalIgnoreCase)))
+        foreach (var file in ProductionCsFiles(presentation)
+            .Concat(ProductionCsFiles(Path.Combine(root, "src", "CSharpGit.Presentation.Core")))
+            .Where(path => !Path.GetFullPath(path).Equals(Path.GetFullPath(appPath), StringComparison.OrdinalIgnoreCase)))
         {
             var source = File.ReadAllText(file);
             Assert.DoesNotContain("new JsonAppSettingsService", source, StringComparison.Ordinal);
@@ -141,7 +143,7 @@ public sealed class PresentationArchitectureGuardrailTests
             Directory.GetFiles(viewModels, "OpenRepositoryViewModel*.cs", SearchOption.TopDirectoryOnly)
                 .Select(File.ReadAllText));
         var openRepository = File.ReadAllText(Path.Combine(viewModels, "OpenRepositoryViewModel.cs"));
-        var tagsViewModel = File.ReadAllText(Path.Combine(viewModels, "TagsViewModel.cs"));
+        var tagsViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "TagsViewModel.cs"));
 
         Assert.DoesNotContain("ITagService", combinedMainPage, StringComparison.Ordinal);
         Assert.DoesNotContain("_tagService", combinedMainPage, StringComparison.Ordinal);
@@ -180,7 +182,7 @@ public sealed class PresentationArchitectureGuardrailTests
             .ToArray();
         var combined = string.Join(Environment.NewLine, mainPageSources);
         var worktreesViewModel = File.ReadAllText(
-            Path.Combine(presentation, "ViewModels", "WorktreesViewModel.cs"));
+            Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorktreesViewModel.cs"));
 
         Assert.DoesNotContain("IWorktreeService", combined, StringComparison.Ordinal);
         Assert.DoesNotContain("_worktreeService", combined, StringComparison.Ordinal);
@@ -199,7 +201,7 @@ public sealed class PresentationArchitectureGuardrailTests
             .ToArray();
         var combined = string.Join(Environment.NewLine, mainPageSources);
         var repositoryFilesViewModel = File.ReadAllText(
-            Path.Combine(presentation, "ViewModels", "RepositoryFilesViewModel.cs"));
+            Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
 
         Assert.DoesNotContain("IRepositorySnapshotService", combined, StringComparison.Ordinal);
         Assert.DoesNotContain("_repositorySnapshotService", combined, StringComparison.Ordinal);
@@ -220,7 +222,7 @@ public sealed class PresentationArchitectureGuardrailTests
             .ToArray();
         var combined = string.Join(Environment.NewLine, mainPageSources);
         var workingTreeViewModel = File.ReadAllText(
-            Path.Combine(presentation, "ViewModels", "WorkingTreeViewModel.cs"));
+            Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs"));
 
         Assert.DoesNotContain("IWorkingTreeService", combined, StringComparison.Ordinal);
         Assert.DoesNotContain("_workingTreeService", combined, StringComparison.Ordinal);
@@ -245,8 +247,8 @@ public sealed class PresentationArchitectureGuardrailTests
             Environment.NewLine,
             Directory.GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
                 .Select(File.ReadAllText));
-        var branchesViewModel = File.ReadAllText(Path.Combine(viewModels, "BranchesViewModel.cs"));
-        var repositorySync = File.ReadAllText(Path.Combine(viewModels, "RepositorySyncViewModel.cs"));
+        var branchesViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "BranchesViewModel.cs"));
+        var repositorySync = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "RepositorySyncViewModel.cs"));
         var openRepository = File.ReadAllText(Path.Combine(viewModels, "OpenRepositoryViewModel.cs"));
         var syncContext = File.ReadAllText(Path.Combine(viewModels, "OpenRepositoryViewModel.RepositorySync.cs"));
         var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
@@ -300,7 +302,7 @@ public sealed class PresentationArchitectureGuardrailTests
             .ToArray();
         var combined = string.Join(Environment.NewLine, mainPageSources);
         var history = File.ReadAllText(
-            Path.Combine(presentation, "ViewModels", "HistoryViewModel.cs"));
+            Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "HistoryViewModel.cs"));
         var openRepository = File.ReadAllText(
             Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.cs"));
 
@@ -336,8 +338,8 @@ public sealed class PresentationArchitectureGuardrailTests
             .Select(File.ReadAllText)
             .ToArray();
         var openRepository = string.Join(Environment.NewLine, openRepositorySources);
-        var details = File.ReadAllText(Path.Combine(viewModels, "CommitDetailsViewModel.cs"));
-        var stashes = File.ReadAllText(Path.Combine(viewModels, "StashesViewModel.cs"));
+        var details = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "CommitDetailsViewModel.cs"));
+        var stashes = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "StashesViewModel.cs"));
         var repositoryFilesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
         var mainPage = string.Join(
             Environment.NewLine,
@@ -380,7 +382,7 @@ public sealed class PresentationArchitectureGuardrailTests
             Environment.NewLine,
             Directory.GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
                 .Select(File.ReadAllText));
-        var commitActions = File.ReadAllText(Path.Combine(viewModels, "CommitActionsViewModel.cs"));
+        var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "CommitActionsViewModel.cs"));
         var openRepository = File.ReadAllText(Path.Combine(viewModels, "OpenRepositoryViewModel.cs"));
         var contextAdapter = File.ReadAllText(Path.Combine(viewModels, "OpenRepositoryViewModel.CommitActions.cs"));
         var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
@@ -424,7 +426,7 @@ public sealed class PresentationArchitectureGuardrailTests
             Directory.GetFiles(viewModels, "OpenRepositoryViewModel*.cs", SearchOption.TopDirectoryOnly)
                 .Select(File.ReadAllText));
         var openRepository = File.ReadAllText(Path.Combine(viewModels, "OpenRepositoryViewModel.cs"));
-        var commitCreation = File.ReadAllText(Path.Combine(viewModels, "CommitCreationViewModel.cs"));
+        var commitCreation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "CommitCreationViewModel.cs"));
         var contextAdapter = File.ReadAllText(
             Path.Combine(viewModels, "OpenRepositoryViewModel.CommitCreation.cs"));
         var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
@@ -483,8 +485,8 @@ public sealed class PresentationArchitectureGuardrailTests
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var viewModels = Path.Combine(presentation, "ViewModels");
         var openRepository = File.ReadAllText(Path.Combine(viewModels, "OpenRepositoryViewModel.cs"));
-        var operations = File.ReadAllText(Path.Combine(viewModels, "RepositoryOperationsViewModel.cs"));
-        var rebase = File.ReadAllText(Path.Combine(viewModels, "InteractiveRebaseViewModel.cs"));
+        var operations = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "RepositoryOperationsViewModel.cs"));
+        var rebase = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "InteractiveRebaseViewModel.cs"));
         var operationsContext = File.ReadAllText(
             Path.Combine(viewModels, "OpenRepositoryViewModel.RepositoryOperations.cs"));
         var rebaseContext = File.ReadAllText(
@@ -582,7 +584,7 @@ public sealed class PresentationArchitectureGuardrailTests
         var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
         var mainPage = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
         var viewModel = File.ReadAllText(Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.cs"));
-        var formatter = File.ReadAllText(Path.Combine(presentation, "MainWindowTitleFormatter.cs"));
+        var formatter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "MainWindowTitleFormatter.cs"));
 
         Assert.Contains("mainPage.WindowTitleChanged += MainPage_WindowTitleChanged;", app, StringComparison.Ordinal);
         Assert.Contains("page.WindowTitleChanged -= MainPage_WindowTitleChanged;", app, StringComparison.Ordinal);

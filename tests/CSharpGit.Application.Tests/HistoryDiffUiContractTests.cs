@@ -10,9 +10,9 @@ public sealed class HistoryDiffUiContractTests
         var selectableDiff = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "SelectableDiffViewer.xaml"));
         var selectableDiffCode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "SelectableDiffViewer.xaml.cs"));
         var changes = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs"));
-        var tree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "ChangedFileTreeNode.cs"));
-        var pathTreeBuilder = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "PathTreeBuilder.cs"));
-        var diff = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "CompactDiffLine.cs"));
+        var tree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "ChangedFileTreeNode.cs"));
+        var pathTreeBuilder = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "PathTreeBuilder.cs"));
+        var diff = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CompactDiffLine.cs"));
         var commitChangesSurface = ExtractCommitChangesSurface(xaml);
 
         Assert.Contains("x:Name=\"ChangedFilesTree\"", commitChangesSurface);
@@ -73,7 +73,7 @@ public sealed class HistoryDiffUiContractTests
     public void ChangedFilesAndDiffHaveIndependentLazyCancellationCacheAndLocalLoading()
     {
         var root = FindRepositoryRoot();
-        var lazy = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "CommitDetailsViewModel.cs"));
+        var lazy = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs"));
         var overlays = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.LoadingOverlays.cs"));
 
         Assert.Contains("ChangedFilesDebounceMilliseconds = 120", lazy);
@@ -97,7 +97,7 @@ public sealed class HistoryDiffUiContractTests
         var root = FindRepositoryRoot();
         var changes = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs"));
         var presentation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.DiffPresentation.cs"));
-        var lazy = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "CommitDetailsViewModel.cs"));
+        var lazy = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs"));
 
         Assert.Contains("DiffPresentationResolver.Resolve", changes);
         Assert.Contains("DiffPresentationState.NoTextualPatch", changes);
@@ -115,7 +115,7 @@ public sealed class HistoryDiffUiContractTests
     {
         var root = FindRepositoryRoot();
         var policy = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "DiffPreviewPolicy.cs"));
-        var lazy = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "CommitDetailsViewModel.cs"));
+        var lazy = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs"));
         var changes = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs"));
         var executor = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCommandExecutor.cs"));
 
@@ -151,7 +151,7 @@ public sealed class HistoryDiffUiContractTests
     {
         var root = FindRepositoryRoot();
         var source = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
-        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "FileActionsViewModel.cs"));
+        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "FileActionsViewModel.cs"));
 
         Assert.Contains("_fileActions.SelectCommitLazy(CaptureCommitRequest())", source);
         Assert.Contains("public void SelectCommitLazy", feature);
@@ -164,7 +164,7 @@ public sealed class HistoryDiffUiContractTests
     {
         var root = FindRepositoryRoot();
         var source = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
-        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "FileActionsViewModel.cs"));
+        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "FileActionsViewModel.cs"));
 
         Assert.Contains("_versions.ResolveCommitAsync", feature);
         Assert.Contains("_tools.RunExternalDiffAsync(request.Repository, prepared.Pair)", feature);

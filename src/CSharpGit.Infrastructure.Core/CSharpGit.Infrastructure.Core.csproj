@@ -1,24 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../CSharpGit.Application/CSharpGit.Application.csproj" />
     <ProjectReference Include="../CSharpGit.Domain/CSharpGit.Domain.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Properties/AssemblyInfo.cs" />
-    <Compile Include="../CSharpGit.Infrastructure/JsonAppSettingsService.cs" Link="JsonAppSettingsService.cs" />
-    <Compile Include="../CSharpGit.Infrastructure/ExternalToolProcessService.cs" Link="ExternalToolProcessService.cs" />
-    <Compile Include="../CSharpGit.Infrastructure/ApplicationUpdateServices.cs" Link="ApplicationUpdateServices.cs" />
-    <Compile Include="../CSharpGit.Infrastructure/AuthorAvatarService.cs" Link="AuthorAvatarService.cs" />
-    <Compile Include="../CSharpGit.Infrastructure/RepositoryImageService.cs" Link="RepositoryImageService.cs" />
-    <Compile Include="../CSharpGit.Infrastructure/RepositoryImageService.Cache.cs" Link="RepositoryImageService.Cache.cs" />
-    <Compile Include="../CSharpGit.Infrastructure/RepositoryImageService.Utilities.cs" Link="RepositoryImageService.Utilities.cs" />
-    <Compile Include="../CSharpGit.Infrastructure/RepositoryImageInternals.cs" Link="RepositoryImageInternals.cs" />
-    <Compile Include="../CSharpGit.Infrastructure/LocalRepositoryImageProvider.cs" Link="LocalRepositoryImageProvider.cs" />
-    <Compile Include="../CSharpGit.Infrastructure/GitHubRepositoryImageProvider.cs" Link="GitHubRepositoryImageProvider.cs" />
-    <Compile Include="../CSharpGit.Infrastructure/DesktopFileServices.cs" Link="DesktopFileServices.cs" />
   </ItemGroup>
 </Project>

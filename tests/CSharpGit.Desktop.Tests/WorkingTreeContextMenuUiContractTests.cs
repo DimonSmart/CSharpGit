@@ -63,7 +63,7 @@ public sealed class WorkingTreeContextMenuUiContractTests
     {
         var root = FindRepositoryRoot();
         var contextMenu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
-        var viewModel = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs");
+        var viewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs");
 
         Assert.Contains("if (count == 1)", contextMenu, StringComparison.Ordinal);
         Assert.Contains("ConfirmDiscardStagedFileAsync", contextMenu, StringComparison.Ordinal);

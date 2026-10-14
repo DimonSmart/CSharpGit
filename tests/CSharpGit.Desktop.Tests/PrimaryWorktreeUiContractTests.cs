@@ -8,11 +8,11 @@ public sealed class PrimaryWorktreeUiContractTests
         var root = FindRepositoryRoot();
         var worktreeInfo = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Domain", "WorktreeInfo.cs"));
         var parser = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitWorktreeParser.cs"));
-        var descriptor = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryTreeDescriptor.cs"));
+        var descriptor = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryTreeDescriptor.cs"));
         var node = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryTreeNode.cs"));
         var repositoryTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "RepositoryTree.xaml"));
         var worktreesPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Worktrees.cs"));
-        var worktreesFeature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorktreesViewModel.cs"));
+        var worktreesFeature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorktreesViewModel.cs"));
 
         Assert.Contains("public bool IsPrimary { get; init; }", worktreeInfo, StringComparison.Ordinal);
         Assert.Contains("IsPrimary = result.Count == 0", parser, StringComparison.Ordinal);

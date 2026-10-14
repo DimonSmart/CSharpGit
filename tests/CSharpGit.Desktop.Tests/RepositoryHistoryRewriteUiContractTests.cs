@@ -20,7 +20,7 @@ public sealed class RepositoryHistoryRewriteUiContractTests
     {
         var source = ReadSource("src/CSharpGit.Presentation/MainPage.HistoryRewrite.cs");
         var viewModel = ReadSource("src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.HistoryRewrite.cs");
-        var repositoryFiles = ReadSource("src/CSharpGit.Presentation/ViewModels/RepositoryFilesViewModel.cs");
+        var repositoryFiles = ReadSource("src/CSharpGit.Presentation.Core/ViewModels/RepositoryFilesViewModel.cs");
 
         Assert.Contains("_viewModel.RepositoryHistoryRewrite.RemovePathAsync", source, StringComparison.Ordinal);
         Assert.Contains("localOnlyRefresh: true", viewModel, StringComparison.Ordinal);

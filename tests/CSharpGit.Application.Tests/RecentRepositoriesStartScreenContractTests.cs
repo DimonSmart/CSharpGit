@@ -9,17 +9,17 @@ public sealed class RecentRepositoriesStartScreenContractTests
         var settingsContract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IAppSettingsService.cs")) +
             File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryLauncherSettings.cs"));
         var imageContract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryImageService.cs"));
-        var settingsPersistence = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure", "JsonAppSettingsService.cs"));
-        var imageService = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure", "RepositoryImageService.cs"));
-        var localImageProvider = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure", "LocalRepositoryImageProvider.cs"));
-        var githubImageProvider = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure", "GitHubRepositoryImageProvider.cs"));
-        var imageInternals = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure", "RepositoryImageInternals.cs"));
+        var settingsPersistence = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure.Core", "JsonAppSettingsService.cs"));
+        var imageService = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure.Core", "RepositoryImageService.cs"));
+        var localImageProvider = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure.Core", "LocalRepositoryImageProvider.cs"));
+        var githubImageProvider = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure.Core", "GitHubRepositoryImageProvider.cs"));
+        var imageInternals = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure.Core", "RepositoryImageInternals.cs"));
         var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
         var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var recentView = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "RecentRepositoriesView.xaml"));
         var controlsStyles = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Controls.xaml"));
         var recentViewCodeBehind = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "RecentRepositoriesView.xaml.cs"));
-        var metrics = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "RepositoryTileGridMetrics.cs"));
+        var metrics = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "Controls", "RepositoryTileGridMetrics.cs"));
         var repositoryGrid = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "RepositoryTileGridView.cs"));
         var imagesIntent = File.ReadAllText(Path.Combine(root, ".idd", "intent", "IDD-0016.spec-repository-images.md"));
         var launcherIntent = File.ReadAllText(Path.Combine(root, ".idd", "intent", "IDD-0037.spec-recent-repositories-start-screen.md"));

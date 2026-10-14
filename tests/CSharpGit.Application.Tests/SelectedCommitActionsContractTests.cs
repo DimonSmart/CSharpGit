@@ -7,7 +7,7 @@ public sealed class SelectedCommitActionsContractTests
     {
         var root = FindRepositoryRoot();
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
-        var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
+        var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs"));
         var contextBridge = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.WorkingTree.cs"));
 
         Assert.DoesNotContain("_repositoryService.OpenAsync(Repository.WorkingDirectory)", viewModel);
@@ -27,11 +27,11 @@ public sealed class SelectedCommitActionsContractTests
     {
         var root = FindRepositoryRoot();
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
-        var bulk = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "BulkObservableCollection.cs"));
+        var bulk = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "BulkObservableCollection.cs"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var coalescing = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryRefresh.cs"));
 
-        var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "WorkingTreeViewModel.cs"));
+        var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs"));
         Assert.Contains("WorkingTree.ApplyRepositoryState(repository, state.Changes)", viewModel);
         Assert.Contains("ReplaceAll(snapshot)", workingTree);
         Assert.Contains("NotifyCollectionChangedAction.Reset", bulk);
@@ -44,7 +44,7 @@ public sealed class SelectedCommitActionsContractTests
     {
         var root = FindRepositoryRoot();
         var actions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
-        var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "CommitActionsViewModel.cs"));
+        var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitActionsViewModel.cs"));
         var contextAdapter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.CommitActions.cs"));
 
         foreach (var label in new[] { "Copy hash", "Create branch here…", "Checkout this commit", "Cherry-pick", "Revert", "Edit commit message…", "Fixup into previous commit", "Interactive rebase from here…", "Reset current branch to here", "Soft…", "Mixed…", "Hard…" })
@@ -74,7 +74,7 @@ public sealed class SelectedCommitActionsContractTests
         var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Dialogs.cs"));
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
-        var rebaseViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "InteractiveRebaseViewModel.cs"));
+        var rebaseViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "InteractiveRebaseViewModel.cs"));
         var rebase = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IInteractiveRebaseService.cs"));
         var rebaseImplementation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitInteractiveRebaseService.cs"));
         var todoHelp = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "InteractiveRebaseTodoHelp.cs"));
@@ -151,7 +151,7 @@ public sealed class SelectedCommitActionsContractTests
     public void CancelCommitRemainsPresentationOnly()
     {
         var root = FindRepositoryRoot();
-        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "CommitCreationViewModel.cs"));
+        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitCreationViewModel.cs"));
         var method = ExtractMethod(viewModel, "CancelCommitAsync");
 
         Assert.Contains("CloseEmptyIndexChoice();", method);

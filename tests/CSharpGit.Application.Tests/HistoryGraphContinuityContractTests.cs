@@ -9,7 +9,7 @@ public sealed class HistoryGraphContinuityContractTests
         var workspace = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
         var historyReferences = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml"));
         var graphControl = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphControl.cs"));
-        var graphMetrics = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphMetrics.cs"));
+        var graphMetrics = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "Controls", "CommitGraph", "CommitGraphMetrics.cs"));
 
         var historyStyle = Slice(workspace,
             "<Style x:Key=\"HistoryRowStyle\"",

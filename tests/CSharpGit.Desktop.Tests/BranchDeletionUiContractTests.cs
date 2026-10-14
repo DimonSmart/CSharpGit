@@ -52,7 +52,7 @@ public sealed class BranchDeletionUiContractTests
         var feature = File.ReadAllText(Path.Combine(
             root,
             "src",
-            "CSharpGit.Presentation",
+            "CSharpGit.Presentation.Core",
             "ViewModels",
             "BranchesViewModel.cs"));
 
@@ -99,8 +99,8 @@ public sealed class BranchDeletionUiContractTests
     {
         var root = FindRepositoryRoot();
         var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchFolderDeletion.cs"));
-        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "BranchesViewModel.cs"));
-        var planner = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "BranchFolderDeletionPlanning.cs"));
+        var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "BranchesViewModel.cs"));
+        var planner = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "BranchFolderDeletionPlanning.cs"));
 
         Assert.Contains("BranchFolderDeletionPlanner.Collect(", workflow, StringComparison.Ordinal);
         Assert.Contains("_viewModel.Branches.CreateLocalFolderDeletionPlan(snapshot)", workflow, StringComparison.Ordinal);

@@ -9,7 +9,7 @@ public sealed class SettingsLoggingContractTests
         var settingsXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml"));
         var settingsContract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IAppSettingsService.cs")) +
             File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IDiagnosticsSettings.cs"));
-        var settingsPersistence = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure", "JsonAppSettingsService.cs"));
+        var settingsPersistence = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure.Core", "JsonAppSettingsService.cs"));
         var logger = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Diagnostics", "SessionFileLoggerProvider.cs"));
         var graphControl = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphControl.cs"));
         var graphConverter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitTopologyToGraphVisualConverter.cs"));

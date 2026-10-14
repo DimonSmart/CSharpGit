@@ -23,7 +23,7 @@ public sealed class RepositoryMaintenanceUiContractTests
         var viewModel = ReadSource(
             "src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.RepositoryMaintenance.cs");
 
-        var feature = ReadSource("src/CSharpGit.Presentation/ViewModels/RepositoryMaintenanceViewModel.cs");
+        var feature = ReadSource("src/CSharpGit.Presentation.Core/ViewModels/RepositoryMaintenanceViewModel.cs");
         Assert.DoesNotContain("IRepositoryMaintenanceService", source, StringComparison.Ordinal);
         Assert.DoesNotContain("GarbageCollectAsync", source, StringComparison.Ordinal);
         Assert.Contains("IRepositoryMaintenanceService", feature, StringComparison.Ordinal);
@@ -72,7 +72,7 @@ public sealed class RepositoryMaintenanceUiContractTests
     public void PostGcRefreshIsTargetedAndUsesReflogAndWorktreeState()
     {
         var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
-        var feature = ReadSource("src/CSharpGit.Presentation/ViewModels/RepositoryMaintenanceViewModel.cs");
+        var feature = ReadSource("src/CSharpGit.Presentation.Core/ViewModels/RepositoryMaintenanceViewModel.cs");
 
         Assert.Contains("includeHistory: _context.ShowMaintenanceReflog", feature, StringComparison.Ordinal);
         Assert.Contains("_worktreesViewModel.RefreshAsync(throwOnError: true)", source, StringComparison.Ordinal);

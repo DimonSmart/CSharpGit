@@ -11,7 +11,7 @@ public sealed class GitConsoleUiContractTests
         var consoleCode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "GitConsoleView.xaml.cs"));
         var integration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.GitConsole.cs"));
         var settingsXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml"));
-        var settingsViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "SettingsViewModel.cs"));
+        var settingsViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "SettingsViewModel.cs"));
         var operationBanner = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "OperationBanner.xaml"));
 
         Assert.Contains("Git Console", consoleXaml);

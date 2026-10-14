@@ -7,7 +7,7 @@ public sealed class TagUiContractTests
     {
         var root = FindRepositoryRoot();
         var tags = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Tags.cs"));
-        var tagFeature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "TagsViewModel.cs"));
+        var tagFeature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "TagsViewModel.cs"));
         var tagService = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitTagService.cs"));
         var contract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "ITagService.cs"));
 

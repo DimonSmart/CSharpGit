@@ -9,7 +9,7 @@ public sealed class PullUiContractTests
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var ui = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
         var view = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
-        var syncVm = File.ReadAllText(Path.Combine(presentation, "ViewModels", "RepositorySyncViewModel.cs"));
+        var syncVm = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySyncViewModel.cs"));
 
         Assert.Contains("x:Name=\"PullPrimaryButton\"", ui, StringComparison.Ordinal);
         Assert.Contains("Click=\"Pull_Click\"", ui, StringComparison.Ordinal);
@@ -68,7 +68,7 @@ public sealed class PullUiContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var syncVm = File.ReadAllText(Path.Combine(presentation, "ViewModels", "RepositorySyncViewModel.cs"));
+        var syncVm = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySyncViewModel.cs"));
         var syncContext = File.ReadAllText(Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.RepositorySync.cs"));
         var lifecycle = File.ReadAllText(Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.cs"));
 
