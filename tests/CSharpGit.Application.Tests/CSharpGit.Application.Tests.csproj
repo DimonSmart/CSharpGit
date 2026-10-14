@@ -10,37 +10,7 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
     <ProjectReference Include="../../src/CSharpGit.Application/CSharpGit.Application.csproj" />
-    <Compile Include="../../src/CSharpGit.Infrastructure/JsonAppSettingsService.cs" Link="Infrastructure/JsonAppSettingsService.cs" />
-    <Compile Include="../../src/CSharpGit.Infrastructure/ExternalToolProcessService.cs" Link="Infrastructure/ExternalToolProcessService.cs" />
-    <Compile Include="../../src/CSharpGit.Infrastructure/ApplicationUpdateServices.cs" Link="Infrastructure/ApplicationUpdateServices.cs" />
-    <Compile Include="../../src/CSharpGit.Infrastructure/AuthorAvatarService.cs" Link="Infrastructure/AuthorAvatarService.cs" />
-    <Compile Include="../../src/CSharpGit.Infrastructure/RepositoryImageService.cs" Link="Infrastructure/RepositoryImageService.cs" />
-    <Compile Include="../../src/CSharpGit.Infrastructure/RepositoryImageService.Cache.cs" Link="Infrastructure/RepositoryImageService.Cache.cs" />
-    <Compile Include="../../src/CSharpGit.Infrastructure/RepositoryImageService.Utilities.cs" Link="Infrastructure/RepositoryImageService.Utilities.cs" />
-    <Compile Include="../../src/CSharpGit.Infrastructure/RepositoryImageInternals.cs" Link="Infrastructure/RepositoryImageInternals.cs" />
-    <Compile Include="../../src/CSharpGit.Infrastructure/LocalRepositoryImageProvider.cs" Link="Infrastructure/LocalRepositoryImageProvider.cs" />
-    <Compile Include="../../src/CSharpGit.Infrastructure/GitHubRepositoryImageProvider.cs" Link="Infrastructure/GitHubRepositoryImageProvider.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Threading/IUiDispatcher.cs" Link="Presentation/Threading/IUiDispatcher.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/TagsViewModel.cs" Link="Presentation/TagsViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/AsyncCommand.cs" Link="Presentation/AsyncCommand.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BulkObservableCollection.cs" Link="Presentation/BulkObservableCollection.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BranchFolderInfo.cs" Link="Presentation/BranchFolderInfo.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BranchFolderDeletionPlanning.cs" Link="Presentation/BranchFolderDeletionPlanning.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BranchesViewModel.cs" Link="Presentation/BranchesViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositorySyncViewModel.cs" Link="Presentation/RepositorySyncViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CommitActionsViewModel.cs" Link="Presentation/CommitActionsViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryHistoryRewriteViewModel.cs" Link="Presentation/RepositoryHistoryRewriteViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryOperationsViewModel.cs" Link="Presentation/RepositoryOperationsViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/InteractiveRebaseViewModel.cs" Link="Presentation/InteractiveRebaseViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorktreesViewModel.cs" Link="Presentation/WorktreesViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/SettingsViewModel.cs" Link="Presentation/SettingsViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryIdentitySettingsViewModel.cs" Link="Presentation/RepositoryIdentitySettingsViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CloneRepositoryViewModel.cs" Link="Presentation/CloneRepositoryViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RecentRepositoriesProjection.cs" Link="Presentation/RecentRepositoriesProjection.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Controls/RepositoryTileGridMetrics.cs" Link="Presentation/RepositoryTileGridMetrics.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Controls/GitOutputDisplayBuffer.cs" Link="Presentation/GitOutputDisplayBuffer.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Controls/GitConsoleClipboardText.cs" Link="Presentation/GitConsoleClipboardText.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Controls/GitCommandConsoleItem.cs" Link="Presentation/GitCommandConsoleItem.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Controls/GitCommandConsoleState.cs" Link="Presentation/GitCommandConsoleState.cs" />
+    <ProjectReference Include="../../src/CSharpGit.Infrastructure.Core/CSharpGit.Infrastructure.Core.csproj" />
+    <ProjectReference Include="../../src/CSharpGit.Presentation.Core/CSharpGit.Presentation.Core.csproj" />
   </ItemGroup>
 </Project>

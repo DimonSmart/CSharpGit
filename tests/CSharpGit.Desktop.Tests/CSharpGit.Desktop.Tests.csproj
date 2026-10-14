@@ -13,71 +13,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/CSharpGit.Application/CSharpGit.Application.csproj" />
+    <ProjectReference Include="../../src/CSharpGit.Presentation.Core/CSharpGit.Presentation.Core.csproj" />
     <ProjectReference Include="../../src/CSharpGit.Domain/CSharpGit.Domain.csproj" />
-    <Compile Include="../../src/CSharpGit.Presentation/RepositoryChangeMonitor.cs" Link="RepositoryChangeMonitor.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/RepositoryRefreshLifecycleState.cs" Link="RepositoryRefreshLifecycleState.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/DisplayedWorkingTreeBaseline.cs" Link="DisplayedWorkingTreeBaseline.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/WorkingTreeInvalidationEvaluator.cs" Link="WorkingTreeInvalidationEvaluator.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/MainWindowTitleFormatter.cs" Link="MainWindowTitleFormatter.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitTimeFormatter.cs" Link="CommitTime/CommitTimeFormatter.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Controls/AuthorAvatarFallback.cs" Link="Avatars/AuthorAvatarFallback.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Controls/AuthorAvatarRequestGate.cs" Link="Avatars/AuthorAvatarRequestGate.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Controls/AuthorAvatarLifecycleState.cs" Link="Avatars/AuthorAvatarLifecycleState.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphRowVisual.cs" Link="CommitGraph/CommitGraphRowVisual.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphMetrics.cs" Link="CommitGraph/CommitGraphMetrics.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphGeometryKey.cs" Link="CommitGraph/CommitGraphGeometryKey.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphGeometryCache.cs" Link="CommitGraph/CommitGraphGeometryCache.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphLayoutState.cs" Link="CommitGraph/CommitGraphLayoutState.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphGeometryBuilder.cs" Link="CommitGraph/CommitGraphGeometryBuilder.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Controls/CommitGraph/CommitGraphTrackPresentation.cs" Link="CommitGraph/CommitGraphTrackPresentation.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeGuideLayout.cs" Link="RepositoryTree/RepositoryTreeGuideLayout.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/TreeHierarchyGuideBuilder.cs" Link="RepositoryTree/TreeHierarchyGuideBuilder.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeNodeKind.cs" Link="RepositoryTree/RepositoryTreeNodeKind.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/MiddleEllipsis.cs" Link="RepositoryTree/MiddleEllipsis.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorktreePresentation.cs" Link="RepositoryTree/WorktreePresentation.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BranchFolderInfo.cs" Link="RepositoryTree/BranchFolderInfo.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BranchMovePlanning.cs" Link="RepositoryTree/BranchMovePlanning.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BranchFolderDeletionPlanning.cs" Link="RepositoryTree/BranchFolderDeletionPlanning.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeDescriptor.cs" Link="RepositoryTree/RepositoryTreeDescriptor.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/IncrementalTreeReconciler.cs" Link="RepositoryTree/IncrementalTreeReconciler.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeExpansion.cs" Link="RepositoryTree/RepositoryTreeExpansion.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryTreeSelection.cs" Link="RepositoryTree/RepositoryTreeSelection.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/PathTreeBuilder.cs" Link="Trees/PathTreeBuilder.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/FileTreeExpansionPolicy.cs" Link="Trees/FileTreeExpansionPolicy.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/ChangedFileTreeNode.cs" Link="Changes/ChangedFileTreeNode.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorkingTreeTreeNode.cs" Link="WorkingTree/WorkingTreeTreeNode.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorkingTreeTreeExpansionState.cs" Link="WorkingTree/WorkingTreeTreeExpansionState.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorkingTreeTreeSelection.cs" Link="WorkingTree/WorkingTreeTreeSelection.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/BulkObservableCollection.cs" Link="WorkingTree/BulkObservableCollection.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/AsyncCommand.cs" Link="WorkingTree/AsyncCommand.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositorySessionLifetime.cs" Link="WorkingTree/RepositorySessionLifetime.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryMaintenanceContext.cs" Link="Features/RepositoryMaintenanceContext.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryMaintenanceViewModel.cs" Link="Features/RepositoryMaintenanceViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/FileActionsContext.cs" Link="Features/FileActionsContext.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/FileActionsViewModel.cs" Link="Features/FileActionsViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Previewing/DiffFileVersionPathResolver.cs" Link="Features/DiffFileVersionPathResolver.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/UiChoice.cs" Link="History/UiChoice.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Threading/IUiDispatcher.cs" Link="History/IUiDispatcher.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/HistoryViewModel.cs" Link="History/HistoryViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/StashesViewModel.cs" Link="Stashes/StashesViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CommitDetailsViewModel.cs" Link="Changes/CommitDetailsViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/WorkingTreeViewModel.cs" Link="WorkingTree/WorkingTreeViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CommitCreationViewModel.cs" Link="CommitCreation/CommitCreationViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/CompactDiffLine.cs" Link="Changes/CompactDiffLine.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/DiffLogicalText.cs" Link="Changes/DiffLogicalText.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Controls/DiffViewportResetGate.cs" Link="Changes/DiffViewportResetGate.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/DiffPresentationResolver.cs" Link="Changes/DiffPresentationResolver.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositorySnapshotTreeNode.cs" Link="RepositoryFiles/RepositorySnapshotTreeNode.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/ViewModels/RepositoryFilesViewModel.cs" Link="RepositoryFiles/RepositoryFilesViewModel.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/RepositoryFilesTreeSelectionRouter.cs" Link="RepositoryFiles/RepositoryFilesTreeSelectionRouter.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Previewing/FilePreviewModels.cs" Link="RepositoryFiles/Previewing/FilePreviewModels.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Previewing/ImageMetadataReader.cs" Link="RepositoryFiles/Previewing/ImageMetadataReader.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Previewing/ImageDiffPreviewModels.cs" Link="RepositoryFiles/Previewing/ImageDiffPreviewModels.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Previewing/FileLanguageClassifier.cs" Link="RepositoryFiles/Previewing/FileLanguageClassifier.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Previewing/FilePreviewService.cs" Link="RepositoryFiles/Previewing/FilePreviewService.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Previewing/ImageFilePreviewProvider.cs" Link="RepositoryFiles/Previewing/ImageFilePreviewProvider.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Previewing/TextFilePreviewProvider.cs" Link="RepositoryFiles/Previewing/TextFilePreviewProvider.cs" />
-    <Compile Include="../../src/CSharpGit.Presentation/Previewing/PreviewPublicationGate.cs" Link="RepositoryFiles/Previewing/PreviewPublicationGate.cs" />
   </ItemGroup>
   <!-- The test launches the binary, so build it without creating a TFM-incompatible assembly reference. -->
   <Target Name="BuildDesktopApplication" BeforeTargets="Build">

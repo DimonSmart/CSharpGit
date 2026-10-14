@@ -3,7 +3,9 @@
     <Project Path="src/CSharpGit.Domain/CSharpGit.Domain.csproj" />
     <Project Path="src/CSharpGit.Application/CSharpGit.Application.csproj" />
     <Project Path="src/CSharpGit.Git/CSharpGit.Git.csproj" />
+    <Project Path="src/CSharpGit.Infrastructure.Core/CSharpGit.Infrastructure.Core.csproj" />
     <Project Path="src/CSharpGit.Infrastructure/CSharpGit.Infrastructure.csproj" />
+    <Project Path="src/CSharpGit.Presentation.Core/CSharpGit.Presentation.Core.csproj" />
     <Project Path="src/CSharpGit.Presentation/CSharpGit.Presentation.csproj" />
   </Folder>
   <Folder Name="/tests/">
