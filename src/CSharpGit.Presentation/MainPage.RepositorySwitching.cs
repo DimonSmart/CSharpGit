@@ -202,7 +202,7 @@ public sealed partial class MainPage
             return false;
         }
 
-        if (!opened) return false;
+        if (!opened || IsShuttingDown) return false;
 
         if (discardDraft)
             _viewModel.CommitCreation.CommitMessage = string.Empty;

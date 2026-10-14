@@ -247,8 +247,11 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         }
         finally
         {
-            ExitBusy();
-            _openRepositoryCommand.RaiseCanExecuteChanged();
+            if (Volatile.Read(ref _disposed) == 0)
+            {
+                ExitBusy();
+                _openRepositoryCommand.RaiseCanExecuteChanged();
+            }
         }
     }
 
@@ -335,12 +338,15 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         }
         finally
         {
-            ExitBusy();
             _mutationGate.Release();
             Interlocked.Exchange(ref _repositoryChangeInProgress, 0);
-            Notify(nameof(CanChangeRepository));
-            RaiseCommands();
-            _openRepositoryCommand.RaiseCanExecuteChanged();
+            if (Volatile.Read(ref _disposed) == 0)
+            {
+                ExitBusy();
+                Notify(nameof(CanChangeRepository));
+                RaiseCommands();
+                _openRepositoryCommand.RaiseCanExecuteChanged();
+            }
         }
     }
 
@@ -566,7 +572,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             try
             {
                 await mutation();
-                afterSuccessfulMutation?.Invoke();
+                if (Volatile.Read(ref _disposed) == 0)
+                    afterSuccessfulMutation?.Invoke();
             }
             catch (OperationCanceledException exception) { cancellation = exception; }
             catch (Exception exception) { failure = exception; }
@@ -580,17 +587,20 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             catch (Exception exception) when (exception is not OperationCanceledException) { failure ??= exception; }
             if (cancellation is not null)
                 System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(cancellation).Throw();
-            if (failure is not null)
+            if (failure is not null && Volatile.Read(ref _disposed) == 0)
                 ErrorMessage = errorContext is null ? $"Git: {failure.Message}" : $"{errorContext}\nGit: {failure.Message}";
-            succeeded = failure is null;
+            succeeded = failure is null && Volatile.Read(ref _disposed) == 0;
         }
         finally
         {
             _isMutating = false;
-            Notify(nameof(CanChangeRepository));
-            ExitBusy();
             _mutationGate.Release();
-            RaiseCommands();
+            if (Volatile.Read(ref _disposed) == 0)
+            {
+                Notify(nameof(CanChangeRepository));
+                ExitBusy();
+                RaiseCommands();
+            }
         }
         return succeeded;
     }
