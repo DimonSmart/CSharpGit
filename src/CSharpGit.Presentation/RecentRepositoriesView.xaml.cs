@@ -182,9 +182,8 @@ public sealed partial class RecentRepositoriesView : UserControl
         return await dialog.ShowAsync() == ContentDialogResult.Primary ? input.Text : null;
     }
 
-    private async void NewGroup_Click(object sender, RoutedEventArgs e)
+    private async Task CreateGroupAsync(RecentRepositoriesViewModel vm)
     {
-        if (Model is not { } vm) return;
         var name = await RequestNameAsync("New repository group", "", "Create");
         if (name is null) return;
         await RunActionAsync("Could not create group", async () =>
@@ -218,6 +217,8 @@ public sealed partial class RecentRepositoriesView : UserControl
         if (Model is not { } vm
             || sender is not Button { DataContext: RepositoryGroupViewModel group } button) return;
         var flyout = new MenuFlyout();
+        flyout.Items.Add(MenuAction("New group", true, () => _ = CreateGroupAsync(vm)));
+        flyout.Items.Add(new MenuFlyoutSeparator());
         flyout.Items.Add(MenuAction("Rename group", true, () => _ = RenameGroupAsync(vm, group)));
         flyout.Items.Add(MenuAction("Move group up", group.CanMoveUp,
             () => _ = RunActionAsync("Could not move group", () => vm.MoveGroupAsync(group.Id, group.Order - 1))));
