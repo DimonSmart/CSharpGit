@@ -123,6 +123,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 services.AddTransient<InteractiveRebaseViewModel>();
                 services.AddTransient<WorktreesViewModel>();
                 services.AddTransient<RepositoryMaintenanceViewModel>();
+                services.AddTransient<FileActionsViewModel>();
                 services.AddTransient<RepositoryFilesViewModel>();
                 services.AddTransient<WorkingTreeViewModel>();
                 services.AddTransient<OpenRepositoryViewModel>();
