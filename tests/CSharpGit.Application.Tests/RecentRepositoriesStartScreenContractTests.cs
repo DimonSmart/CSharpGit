@@ -225,7 +225,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("Folder not found", recentViewModel);
         Assert.Contains("INotifyPropertyChanged", recentViewModel);
         Assert.Contains("CommitTimeFormatter.Format", recentViewModel);
-        Assert.Contains("_settings.CommitTimeDisplayMode", recentViewModel);
+        Assert.Contains("_appearanceSettings.CommitTimeDisplayMode", recentViewModel);
         Assert.DoesNotContain("Last opened {localOpened:g}", recentViewModel);
         Assert.Contains("RepositoryPreview", recentViewModel);
         Assert.DoesNotContain("_repositoryPreview is null ? 1 : 2", recentViewModel);
