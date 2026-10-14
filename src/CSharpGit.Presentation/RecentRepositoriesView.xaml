@@ -262,8 +262,22 @@
 
         <StackPanel Spacing="{StaticResource Spacing.S}"
                     Visibility="{Binding HasRecentRepositories, Converter={StaticResource BooleanToVisibilityConverter}}">
-          <TextBlock Text="Recent" Style="{StaticResource BodyStrongTextStyle}" />
+          <ToggleButton Click="RecentExpand_Click"
+                        IsChecked="{Binding EffectiveIsRecentExpanded, Mode=OneWay}"
+                        IsEnabled="{Binding CanToggleRecentExpanded}"
+                        HorizontalAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        UseSystemFocusVisuals="True"
+                        AutomationProperties.Name="{Binding RecentExpansionActionLabel}">
+            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+              <FontIcon Glyph="{Binding RecentExpandGlyph}" FontSize="{StaticResource Icon.Small}" />
+              <TextBlock Text="{Binding RecentHeading}"
+                         Style="{StaticResource BodyStrongTextStyle}" />
+            </StackPanel>
+          </ToggleButton>
           <controls:RepositoryTileGridView x:Name="RecentRepositoriesGridView"
+                                               Visibility="{Binding EffectiveIsRecentExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                ItemsSource="{Binding RecentRepositories}"
                                                SelectionMode="None"
                                                IsItemClickEnabled="False"
