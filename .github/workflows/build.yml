@@ -59,6 +59,28 @@ jobs:
           CSHARPGIT_TEST_METRICS_DIR: ${{ github.workspace }}/TestDiagnostics
         run: dotnet test CSharpGit.slnx --configuration Release --no-build --verbosity minimal --logger "trx;LogFilePrefix=test-results"
 
+      - name: Publish smoke and verify Core assemblies (Linux x64)
+        if: runner.os == 'Linux'
+        shell: pwsh
+        run: |
+          $publishDir = Join-Path $env:RUNNER_TEMP "csharpgit-core-publish-smoke"
+          dotnet publish src/CSharpGit.Presentation/CSharpGit.Presentation.csproj `
+            --configuration Release `
+            -f net10.0-desktop `
+            -r linux-x64 `
+            --self-contained false `
+            -p:PublishTrimmed=false `
+            --output $publishDir
+          if ($LASTEXITCODE -ne 0) { throw "Desktop publish failed." }
+          foreach ($name in @("CSharpGit", "CSharpGit.Infrastructure.Core", "CSharpGit.Presentation.Core")) {
+            if (-not (Test-Path (Join-Path $publishDir "$name.dll") -PathType Leaf)) {
+              throw "Published application is missing $name.dll."
+            }
+          }
+          if (-not (Test-Path (Join-Path $publishDir "CSharpGit") -PathType Leaf)) {
+            throw "Published application is missing the CSharpGit executable."
+          }
+
       - name: Report test timings
         if: always()
         shell: pwsh
