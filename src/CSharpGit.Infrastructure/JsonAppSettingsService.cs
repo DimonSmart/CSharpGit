@@ -70,6 +70,11 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     public IReadOnlyList<RecentRepositorySettings> RecentRepositories => Volatile.Read(ref _state).RecentRepositories;
 
     public IReadOnlyList<RepositoryGroupSettings> RepositoryGroups => Volatile.Read(ref _state).RepositoryGroups;
+    public bool RecentRepositoriesExpanded => Volatile.Read(ref _state).RecentRepositoriesExpanded;
+
+    public Task SetRecentRepositoriesExpandedAsync(bool expanded, CancellationToken cancellationToken = default) =>
+        UpdateAsync(current => current.RecentRepositoriesExpanded == expanded
+            ? current : current with { RecentRepositoriesExpanded = expanded }, cancellationToken);
 
     public RepositoryLauncherSettingsSnapshot RepositoryLauncherSnapshot
     {
@@ -571,7 +576,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 historyRenderingMode,
                 defaultRepositoriesDirectory,
                 recentRepositories,
-                repositoryGroups);
+                repositoryGroups,
+                document.RecentRepositoriesExpanded);
         }
         catch (JsonException)
         {
@@ -611,7 +617,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             HistoryRenderingMode = state.HistoryRenderingMode,
             DefaultRepositoriesDirectory = state.DefaultRepositoriesDirectory,
             RecentRepositories = JsonSerializer.SerializeToElement(state.RecentRepositories, SerializerOptions),
-            RepositoryGroups = JsonSerializer.SerializeToElement(state.RepositoryGroups, SerializerOptions)
+            RepositoryGroups = JsonSerializer.SerializeToElement(state.RepositoryGroups, SerializerOptions),
+            RecentRepositoriesExpanded = state.RecentRepositoriesExpanded
         };
         var json = JsonSerializer.Serialize(document, SerializerOptions);
         var temporaryPath = _filePath + ".tmp";
@@ -932,7 +939,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         HistoryRenderingMode HistoryRenderingMode,
         string DefaultRepositoriesDirectory,
         IReadOnlyList<RecentRepositorySettings> RecentRepositories,
-        IReadOnlyList<RepositoryGroupSettings> RepositoryGroups)
+        IReadOnlyList<RepositoryGroupSettings> RepositoryGroups,
+        bool RecentRepositoriesExpanded)
     {
         public static SettingsState Default { get; } = new(
             ApplicationThemeMode.System,
@@ -950,7 +958,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             HistoryRenderingMode.Full,
             GetDefaultRepositoriesDirectory(),
             Array.AsReadOnly(Array.Empty<RecentRepositorySettings>()),
-            Array.AsReadOnly(new[] { new RepositoryGroupSettings(FavoritesId, "Favorites", 0, true) }));
+            Array.AsReadOnly(new[] { new RepositoryGroupSettings(FavoritesId, "Favorites", 0, true) }),
+            true);
     }
 
     private sealed class SettingsDocument
@@ -973,6 +982,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         public bool? HistorySimplifiedRenderingEnabled { get; init; }
         public JsonElement RecentRepositories { get; init; }
         public JsonElement RepositoryGroups { get; init; }
+        public bool RecentRepositoriesExpanded { get; init; } = true;
     }
 
     private sealed class TolerantPullStrategyConverter : JsonConverter<PullStrategy>
