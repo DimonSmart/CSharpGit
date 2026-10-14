@@ -66,6 +66,7 @@ public interface IAppSettingsService
     string DefaultRepositoriesDirectory { get; }
     IReadOnlyList<RecentRepositorySettings> RecentRepositories { get; }
     IReadOnlyList<RepositoryGroupSettings> RepositoryGroups { get; }
+    bool RecentRepositoriesExpanded { get; }
     RepositoryLauncherSettingsSnapshot RepositoryLauncherSnapshot { get; }
 
     /// <summary>
@@ -75,6 +76,8 @@ public interface IAppSettingsService
     /// this service instead of relying on event payload state.
     /// </summary>
     event EventHandler? Changed;
+
+    Task SetRecentRepositoriesExpandedAsync(bool expanded, CancellationToken cancellationToken = default);
 
     Task SetThemeModeAsync(
         ApplicationThemeMode mode,
