@@ -88,6 +88,8 @@ public sealed partial class MainPage
             return;
 
         var preparation = await _viewModel.RepositoryHistoryRewrite.PreparePathRemovalAsync(repository, entry.Path);
+        if (IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository))
+            return;
         switch (preparation.Status)
         {
             case PathRemovalPreparationStatus.ToolUnavailable:
@@ -112,7 +114,9 @@ public sealed partial class MainPage
         }
 
         var analysis = preparation.Analysis!;
-        if (!await ConfirmPathHistoryRemovalAsync(analysis)) return;
+        if (!await ConfirmPathHistoryRemovalAsync(analysis)
+            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository))
+            return;
         var execution = await _viewModel.RepositoryHistoryRewrite.RemovePathAsync(
             repository, entry.Path, InvalidateHistoryRewritePresentation);
         switch (execution.Status)
@@ -179,7 +183,7 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Close
         };
 
-        return await dialog.ShowAsync() == ContentDialogResult.Primary;
+        return await ShowPageDialogAsync(dialog) == ContentDialogResult.Primary;
     }
 
     private async Task ShowHistoryRewriteSuccessAsync(
@@ -225,6 +229,6 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Close
         };
 
-        await dialog.ShowAsync();
+        await ShowPageDialogAsync(dialog);
     }
 }
