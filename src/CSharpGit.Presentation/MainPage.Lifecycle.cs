@@ -11,6 +11,15 @@ public sealed partial class MainPage
 
     public bool RequiresCloseConfirmation => _viewModel.CommitCreation.HasUnappliedCommitMessage;
 
+    // Only operations with Git or filesystem side effects make shutdown unsafe.
+    public bool IsUnsafeToClose =>
+        _viewModel.IsMutating
+        || IsHistoryRewriteInProgress
+        || IsRepositoryMaintenanceInProgress
+        || IsApplicationUpdateInProgress
+        || _cloneRepositoryViewModel.IsBusy
+        || _createRepositoryViewModel.IsBusy;
+
     private void MainPage_Loaded(object sender, RoutedEventArgs args)
     {
         InitializeCommitDetailsSurface();
