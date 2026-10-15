@@ -13,14 +13,14 @@ public sealed partial class MainPage
     public bool RequiresCloseConfirmation => _viewModel.CommitCreation.HasUnappliedCommitMessage;
 
     // Only operations with Git or filesystem side effects make shutdown unsafe.
-    public bool IsUnsafeToClose =>
-        _viewModel.IsMutating
-        || _viewModel.IsChangingRepository
-        || IsHistoryRewriteInProgress
-        || IsRepositoryMaintenanceInProgress
-        || IsApplicationUpdateInProgress
-        || _cloneRepositoryViewModel.IsBusy
-        || _createRepositoryViewModel.IsBusy;
+    public bool IsUnsafeToClose => new WindowCloseSafetyState(
+        IsMutating: _viewModel.IsMutating,
+        IsChangingRepository: _viewModel.IsChangingRepository,
+        IsHistoryRewriteRunning: IsHistoryRewriteInProgress,
+        IsMaintenanceRunning: IsRepositoryMaintenanceInProgress,
+        IsUpdateRunning: IsApplicationUpdateInProgress,
+        IsCloneRunning: _cloneRepositoryViewModel.IsBusy,
+        IsCreateRunning: _createRepositoryViewModel.IsBusy).IsUnsafeToClose;
 
     private void MainPage_Loaded(object sender, RoutedEventArgs args)
     {
