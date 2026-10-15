@@ -12,6 +12,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using Uno.UI.Xaml;
 
 namespace CSharpGit.Presentation;
 
@@ -337,13 +338,34 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 var window = _window;
                 if (window is not null)
                 {
-                    if (window.DispatcherQueue.HasThreadAccess) window.Close();
-                    else if (!window.DispatcherQueue.TryEnqueue(window.Close))
+                    if (window.DispatcherQueue.HasThreadAccess) CloseAuthorizedWindow();
+                    else if (!window.DispatcherQueue.TryEnqueue(CloseAuthorizedWindow))
                         LogUiFailure(new InvalidOperationException("Window dispatcher rejected final close."), "Final window close");
                 }
             }
             catch (Exception exception) { LogUiFailure(exception, "Final window close"); }
         }
+    }
+
+    private void CloseAuthorizedWindow()
+    {
+        var window = _window;
+        if (window is null) return;
+
+        if (OperatingSystem.IsWindows())
+        {
+            // Direct Window.Close bypasses Win32 WM_CLOSE's cancelable route and
+            // can leave Uno's native message loop running after WindowClosed.
+            // We already completed shutdown and authorized this final WM_CLOSE.
+            if (window.GetNativeWindow() is Uno.UI.NativeElementHosting.Win32NativeWindow native
+                && PostMessageW(native.Hwnd, 0x0010, 0, 0))
+                return;
+
+            LogUiFailure(new InvalidOperationException("Could not dispatch the authorized WM_CLOSE."),
+                "Final window close");
+        }
+
+        window.Close();
     }
 
     internal void CompleteApplicationUpdateRestart(MainPage page)
