@@ -108,6 +108,10 @@ public sealed class RepositoryCloningUiContractTests
         Assert.Contains("Cloning {_cloneRepositoryViewModel.RepositoryDisplayName}…", workflow);
         Assert.Contains("repositoryUrlBox.IsEnabled = !busy", workflow);
         Assert.Contains("localDirectoryBox.IsEnabled = !busy", workflow);
+        Assert.Contains("await ShowPageDialogAsync(dialog);", workflow);
+        Assert.DoesNotContain("await dialog.ShowAsync()", workflow);
+        Assert.Contains("return succeeded && !IsShuttingDown;", workflow);
+        Assert.Contains("if (!cloned || IsShuttingDown)", workflow);
     }
 
     [Fact]

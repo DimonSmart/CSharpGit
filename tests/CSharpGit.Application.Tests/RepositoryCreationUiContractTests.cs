@@ -48,6 +48,9 @@ public sealed class RepositoryCreationUiContractTests
         Assert.Contains("CloseButtonText = \"Cancel\"", workflow);
         Assert.Contains("DefaultButton = ContentDialogButton.Primary", workflow);
         Assert.Contains("IsPrimaryButtonEnabled", workflow);
+        Assert.Contains("await ShowPageDialogAsync(dialog) == ContentDialogResult.Primary", workflow);
+        Assert.DoesNotContain("await dialog.ShowAsync()", workflow);
+        Assert.Contains("if (IsShuttingDown) return;", workflow);
 
         Assert.Contains(
             "RepositoryCreationKind.WorkingTree",
