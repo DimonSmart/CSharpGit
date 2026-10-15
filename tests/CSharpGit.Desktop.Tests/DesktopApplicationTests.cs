@@ -209,11 +209,11 @@ public sealed class DesktopApplicationTests
 
             // A real B snapshot is read, then a presentation subscriber fails;
             // A must be restored and the draft cannot be discarded.
-            using (var d = await CommandAsync("SetDraft\\trollback draft"))
+            using (var d = await CommandAsync("SetDraft\trollback draft"))
                 Assert.Equal("rollback draft", d.RootElement.GetProperty("Draft").GetString());
-            using (var d = await CommandAsync("FailNextPublication\\t" + worktree + "\\tInjected B publication failure"))
+            using (var d = await CommandAsync("FailNextPublication\t" + worktree + "\tInjected B publication failure"))
                 Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
-            using (var d = await CommandAsync("Switch\\t" + worktree))
+            using (var d = await CommandAsync("Switch\t" + worktree))
             {
                 Assert.False(d.RootElement.GetProperty("Success").GetBoolean());
                 AssertOpenedSnapshotPath(d.RootElement, original);
@@ -226,11 +226,11 @@ public sealed class DesktopApplicationTests
 
             // Both the B publication and A recovery fail. This must report
             // both causes and clear any partly published state from B.
-            using (var d = await CommandAsync("FailNextPublication\\t" + worktree + "\\tInjected B double failure"))
+            using (var d = await CommandAsync("FailNextPublication\t" + worktree + "\tInjected B double failure"))
                 Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
-            using (var d = await CommandAsync("FailNextPublication\\t" + original + "\\tInjected A rollback failure"))
+            using (var d = await CommandAsync("FailNextPublication\t" + original + "\tInjected A rollback failure"))
                 Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
-            using (var d = await CommandAsync("Switch\\t" + worktree))
+            using (var d = await CommandAsync("Switch\t" + worktree))
             {
                 Assert.False(d.RootElement.GetProperty("Success").GetBoolean());
                 AssertOpenedSnapshotPath(d.RootElement, original);
@@ -249,14 +249,14 @@ public sealed class DesktopApplicationTests
 
             // Cancellation after the new Repository was assigned is rolled back
             // and releases the switch gate, preserving the old draft.
-            using (var d = await CommandAsync("CancelOpenAfterAssignment\\t" + worktree))
+            using (var d = await CommandAsync("CancelOpenAfterAssignment\t" + worktree))
             {
                 Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
                 AssertOpenedSnapshotPath(d.RootElement, original);
                 Assert.Equal("rollback draft", d.RootElement.GetProperty("Draft").GetString());
                 Assert.True(d.RootElement.GetProperty("CanChangeRepository").GetBoolean());
             }
-            using (var d = await CommandAsync("SetDraft\\t"))
+            using (var d = await CommandAsync("SetDraft\t"))
                 Assert.Equal(string.Empty, d.RootElement.GetProperty("Draft").GetString());
 
             using (var d = await CommandAsync("FailMutation"))
