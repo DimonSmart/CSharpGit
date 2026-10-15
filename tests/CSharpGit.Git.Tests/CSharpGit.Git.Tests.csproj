@@ -10,5 +10,6 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
     <ProjectReference Include="../../src/CSharpGit.Git/CSharpGit.Git.csproj" />
+    <ProjectReference Include="../../src/CSharpGit.Presentation.Core/CSharpGit.Presentation.Core.csproj" />
   </ItemGroup>
 </Project>
