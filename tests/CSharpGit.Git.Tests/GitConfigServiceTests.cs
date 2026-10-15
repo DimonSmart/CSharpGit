@@ -51,18 +51,22 @@ public sealed class GitConfigServiceTests : IClassFixture<GitToolsEmptyFixture>,
         var executor = GitTestServices.CreateExecutor(activitySink: history);
         var config = new GitConfigService(executor);
         var stateService = new GitRepositoryStateService(executor);
-        const string secret = "very-unusual-key-value-872612";
+        const string secret = "very-unusual-key-value-872612\nsecond-secret-line\n";
         const string urlSecret = "url-credential-872612";
 
         await config.SetValueAsync(_repository, GitConfigScope.Repository, "demo.misc", secret, true);
         await config.SetValueAsync(_repository, GitConfigScope.Repository, "remote.origin.url",
             $"https://user:{urlSecret}@example.invalid/repo.git", true);
         var direct = await config.ReadDirectValuesAsync(_repository, "demo.misc", GitConfigScope.Repository);
+        var last = await config.ReadDirectScopeAsync(_repository, "demo.misc", GitConfigScope.Repository);
+        var scoped = await config.ReadScopeAsync(_repository, "demo.misc", GitConfigScope.Repository);
         var effective = await config.ReadEffectiveAsync(_repository, "demo.misc");
         var snapshot = await config.ReadSnapshotAsync(_repository);
         var state = await stateService.ReadAsync(_repository);
 
         Assert.Equal(secret, Assert.Single(direct).Value);
+        Assert.Equal(secret, last?.Value);
+        Assert.Equal(secret, scoped?.Value);
         Assert.Equal(secret, effective?.Value);
         Assert.Equal(secret, snapshot.Effective("demo.misc")?.Value);
         Assert.Equal(secret, state.LocalConfiguration["demo.misc"]);
@@ -323,6 +327,247 @@ public sealed class GitConfigServiceTests : IClassFixture<GitToolsEmptyFixture>,
         cancelled.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => _service.ReadSnapshotAsync(_repository, cancelled.Token));
+    }
+
+
+    [Fact]
+    public async Task MultilineSingleKeyIsPreservedThroughAllFourReadMethods()
+    {
+        const string key = "difftool.MyTool.cmd";
+        const string value = "first line\nsecond line\nthird line";
+        RunGit(_repositoryPath, "config", "--local", key, value);
+        var expected = Assert.Single(ReadGitRecords("--local", "--get", key)).Value;
+
+        var effective = await _service.ReadEffectiveAsync(_repository, key);
+        var scoped = await _service.ReadScopeAsync(_repository, key, GitConfigScope.Repository);
+        var direct = await _service.ReadDirectValuesAsync(_repository, key, GitConfigScope.Repository);
+        var last = await _service.ReadDirectScopeAsync(_repository, key, GitConfigScope.Repository);
+
+        Assert.Equal(expected, effective?.Value);
+        Assert.Equal(expected, scoped?.Value);
+        Assert.Equal(expected, Assert.Single(direct).Value);
+        Assert.Equal(expected, last?.Value);
+    }
+
+    [Fact]
+    public async Task DirectValuesPreserveDuplicatesAndEmbeddedLineBreaks()
+    {
+        const string key = "demo.multi";
+        var values = new[] { "first", "second\ncontinued", "second\ncontinued", "third" };
+        foreach (var value in values)
+            RunGit(_repositoryPath, "config", "--local", "--add", key, value);
+
+        var cli = ReadGitRecords("--local", "--get-all", key);
+        var direct = await _service.ReadDirectValuesAsync(_repository, key, GitConfigScope.Repository);
+        var last = await _service.ReadDirectScopeAsync(_repository, key, GitConfigScope.Repository);
+        var effective = await _service.ReadEffectiveAsync(_repository, key);
+
+        Assert.Equal(values, cli.Select(item => item.Value));
+        Assert.Equal(values, direct.Select(item => item.Value));
+        Assert.Equal(cli.Select(item => item.Origin), direct.Select(item => item.Origin));
+        Assert.All(direct, item => Assert.Equal(GitConfigSource.Repository, item.Source));
+        Assert.Equal("third", last?.Value);
+        Assert.Equal(Assert.Single(ReadGitRecords("--get", key)).Value, effective?.Value);
+    }
+
+    [Fact]
+    public async Task EmptyValueIsDifferentFromMissingKeyEvenWhenRemoving()
+    {
+        const string key = "demo.empty";
+        Assert.Null(await _service.ReadEffectiveAsync(_repository, key));
+        Assert.Null(await _service.ReadScopeAsync(_repository, key, GitConfigScope.Repository));
+        Assert.Null(await _service.ReadDirectScopeAsync(_repository, key, GitConfigScope.Repository));
+        Assert.Empty(await _service.ReadDirectValuesAsync(_repository, key, GitConfigScope.Repository));
+
+        RunGit(_repositoryPath, "config", "--local", key, "");
+        Assert.Equal("", (await _service.ReadEffectiveAsync(_repository, key))?.Value);
+        Assert.Equal("", (await _service.ReadScopeAsync(_repository, key, GitConfigScope.Repository))?.Value);
+        Assert.Equal("", (await _service.ReadDirectScopeAsync(_repository, key, GitConfigScope.Repository))?.Value);
+        Assert.Equal("", Assert.Single(await _service.ReadDirectValuesAsync(
+            _repository, key, GitConfigScope.Repository)).Value);
+
+        await _service.UnsetAllAsync(_repository, GitConfigScope.Repository, key);
+        Assert.Empty(await _service.ReadDirectValuesAsync(_repository, key, GitConfigScope.Repository));
+    }
+
+    [Theory]
+    [InlineData("value\n")]
+    [InlineData("\nvalue")]
+    [InlineData("value\n\n")]
+    [InlineData("first\r\nsecond")]
+    [InlineData("first\rsecond")]
+    [InlineData(" value ")]
+    [InlineData("\tvalue\t")]
+    [InlineData("quoted ' \" slash \\ русский 🚀")]
+    public async Task ValuesPreserveExactlyWhatGitReturns(string input)
+    {
+        const string key = "demo.boundary";
+        RunGit(_repositoryPath, "config", "--local", key, input);
+        var cli = Assert.Single(ReadGitRecords("--local", "--get", key));
+
+        Assert.Equal(cli.Value, (await _service.ReadEffectiveAsync(_repository, key))?.Value);
+        Assert.Equal(cli.Value, (await _service.ReadScopeAsync(
+            _repository, key, GitConfigScope.Repository))?.Value);
+        var direct = Assert.Single(await _service.ReadDirectValuesAsync(
+            _repository, key, GitConfigScope.Repository));
+        Assert.Equal(cli.Value, direct.Value);
+        Assert.Equal(cli.Origin, direct.Origin);
+        Assert.Equal(cli.Value, (await _service.ReadDirectScopeAsync(
+            _repository, key, GitConfigScope.Repository))?.Value);
+    }
+
+    [Fact]
+    public async Task ScopedWorktreeSourceUsesRequestedScopeRatherThanReportedGitScope()
+    {
+        const string key = "demo.worktree";
+        RunGit(_repositoryPath, "config", "--local", "extensions.worktreeConfig", "true");
+        RunGit(_repositoryPath, "config", "--worktree", key, "worktree\nvalue");
+
+        var gitRecord = Assert.Single(ReadGitRecords("--worktree", "--get", key));
+        var scoped = await _service.ReadScopeAsync(_repository, key, GitConfigScope.Worktree);
+        var direct = Assert.Single(await _service.ReadDirectValuesAsync(
+            _repository, key, GitConfigScope.Worktree));
+        var effective = await _service.ReadEffectiveAsync(_repository, key);
+
+        Assert.Equal(gitRecord.Value, scoped?.Value);
+        Assert.Equal(gitRecord.Value, direct.Value);
+        Assert.Equal(gitRecord.Origin, scoped?.Origin);
+        Assert.Equal(gitRecord.Origin, direct.Origin);
+        Assert.Equal(GitConfigSource.Worktree, scoped?.Source);
+        Assert.Equal(GitConfigSource.Worktree, direct.Source);
+        Assert.Equal(GitConfigSource.Worktree, effective?.Source);
+        Assert.Equal(gitRecord.Value, effective?.Value);
+    }
+
+    [Fact]
+    public async Task IncludedConfigPreservesOriginalPathAndDirectReadsSkipIncludes()
+    {
+        const string key = "demo.shared";
+        var name = OperatingSystem.IsWindows()
+            ? "included file with spaces.gitconfig"
+            : "included file\twith newline\nand spaces.gitconfig";
+        var included = Path.Combine(_root, name);
+        File.WriteAllText(included, "[demo]\n\tshared = from include\n");
+        RunGit(_repositoryPath, "config", "--local", "include.path", included);
+
+        var cli = Assert.Single(ReadGitRecords("--includes", "--local", "--get", key));
+        var scoped = await _service.ReadScopeAsync(_repository, key, GitConfigScope.Repository);
+        var effective = await _service.ReadEffectiveAsync(_repository, key);
+
+        Assert.Equal("from include", scoped?.Value);
+        Assert.Equal(cli.Value, effective?.Value);
+        Assert.Equal(cli.Origin, scoped?.Origin);
+        Assert.Equal(cli.Origin, effective?.Origin);
+        Assert.Equal(GitConfigSource.Repository, scoped?.Source);
+        Assert.Equal(GitConfigSource.Repository, effective?.Source);
+        Assert.Contains("with", scoped?.Origin ?? string.Empty);
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Contains('\t', scoped!.Origin!);
+            Assert.Contains('\n', scoped.Origin!);
+        }
+        Assert.Empty(await _service.ReadDirectValuesAsync(_repository, key, GitConfigScope.Repository));
+        Assert.Null(await _service.ReadDirectScopeAsync(_repository, key, GitConfigScope.Repository));
+
+        RunGit(_repositoryPath, "config", "--local", "--add", key, "direct");
+        var direct = Assert.Single(await _service.ReadDirectValuesAsync(
+            _repository, key, GitConfigScope.Repository));
+        Assert.Equal("direct", direct.Value);
+        Assert.Equal(Assert.Single(ReadGitRecords("--includes", "--local", "--get", key)).Value,
+            (await _service.ReadScopeAsync(_repository, key, GitConfigScope.Repository))?.Value);
+    }
+
+    [Fact]
+    public async Task GlobalScopedReadsPreserveSourceAndActualIncludedOrigin()
+    {
+        const string key = "demo.global";
+        var included = Path.Combine(_root, "global included.gitconfig");
+        File.WriteAllText(included, "[demo]\n\tglobal = global include\n");
+        RunGit(_repositoryPath, "config", "--global", "include.path", included);
+
+        var scoped = await _service.ReadScopeAsync(_repository, key, GitConfigScope.Global);
+        var effective = await _service.ReadEffectiveAsync(_repository, key);
+        Assert.Equal("global include", scoped?.Value);
+        Assert.Equal(GitConfigSource.Global, scoped?.Source);
+        Assert.Equal(GitConfigSource.Global, effective?.Source);
+        Assert.Equal(Assert.Single(ReadGitRecords("--includes", "--global", "--get", key)).Origin,
+            scoped?.Origin);
+        Assert.Null(await _service.ReadDirectScopeAsync(_repository, key, GitConfigScope.Global));
+        Assert.Empty(await _service.ReadDirectValuesAsync(_repository, key, GitConfigScope.Global));
+    }
+
+    [Fact]
+    public async Task ReplacingAndRemovingMultilineDuplicatesDoesNotLoseEntries()
+    {
+        const string key = "demo.rewrite";
+        RunGit(_repositoryPath, "config", "--local", "--add", key, "first\nsecond\n");
+        RunGit(_repositoryPath, "config", "--local", "--add", key, "last\nline\n");
+        var before = await _service.ReadDirectValuesAsync(_repository, key, GitConfigScope.Repository);
+        Assert.Equal(2, before.Count);
+        Assert.Equal(Assert.Single(ReadGitRecords("--local", "--get", key)).Value,
+            (await _service.ReadDirectScopeAsync(_repository, key, GitConfigScope.Repository))?.Value);
+
+        await _service.SetValueAsync(_repository, GitConfigScope.Repository, key, "replacement\n", replaceAll: true);
+        Assert.Equal(Assert.Single(ReadGitRecords("--local", "--get", key)).Value,
+            Assert.Single(await _service.ReadDirectValuesAsync(_repository, key, GitConfigScope.Repository)).Value);
+
+        await _service.UnsetAllAsync(_repository, GitConfigScope.Repository, key);
+        Assert.Null(await _service.ReadDirectScopeAsync(_repository, key, GitConfigScope.Repository));
+        Assert.Empty(await _service.ReadDirectValuesAsync(_repository, key, GitConfigScope.Repository));
+    }
+
+    [Fact]
+    public async Task ScopedReadsPreserveGitFailureAndCancellationContracts()
+    {
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => _service.ReadEffectiveAsync(_repository, "demo.key", cancelled.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => _service.ReadScopeAsync(_repository, "demo.key", GitConfigScope.Repository, cancelled.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => _service.ReadDirectValuesAsync(_repository, "demo.key", GitConfigScope.Repository, cancelled.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => _service.ReadDirectScopeAsync(_repository, "demo.key", GitConfigScope.Repository, cancelled.Token));
+
+        File.AppendAllText(Path.Combine(_repositoryPath, ".git", "config"), "\n[bad section\n");
+        Assert.Null(await _service.ReadScopeAsync(_repository, "demo.key", GitConfigScope.Repository));
+        Assert.Empty(await _service.ReadDirectValuesAsync(_repository, "demo.key", GitConfigScope.Repository));
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.ReadEffectiveAsync(_repository, "demo.key"));
+        Assert.Contains("sensitive diagnostics omitted", error.Message);
+    }
+
+    // Independent --null Git CLI oracle: the test deliberately does not use the production parser.
+    private IReadOnlyList<(string Scope, string Origin, string Value)> ReadGitRecords(
+        params string[] arguments)
+    {
+        var startInfo = new ProcessStartInfo("git")
+        {
+            WorkingDirectory = _repositoryPath,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        startInfo.ArgumentList.Add("config");
+        startInfo.ArgumentList.Add("--null");
+        startInfo.ArgumentList.Add("--show-scope");
+        startInfo.ArgumentList.Add("--show-origin");
+        foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
+        using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Git did not start.");
+        var output = process.StandardOutput.ReadToEnd();
+        var error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        Assert.True(process.ExitCode == 0, $"Git CLI read failed (exit {process.ExitCode}).");
+        Assert.Equal('\0', output[^1]);
+
+        var fields = output.Split('\0');
+        Assert.Equal(0, (fields.Length - 1) % 3);
+        var entries = new List<(string Scope, string Origin, string Value)>();
+        for (var i = 0; i < fields.Length - 1; i += 3)
+            entries.Add((fields[i], fields[i + 1], fields[i + 2]));
+        return entries;
     }
 
     public void Dispose()
