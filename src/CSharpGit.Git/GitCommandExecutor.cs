@@ -10,6 +10,7 @@ internal sealed class GitCommandExecutor
 {
     private const string BinaryOutputOmitted = "[binary output omitted]";
     private const int TextReadBufferSize = 4096;
+    private const int MaximumStandardErrorBytes = 4 * 1024 * 1024;
 
     private readonly string _gitExecutable;
     private readonly IGitCommandActivitySink _activitySink;
@@ -229,7 +230,9 @@ internal sealed class GitCommandExecutor
                 process.StandardError,
                 activityId,
                 GitOutputStream.StandardError,
-                _activitySink);
+                _activitySink,
+                maxOutputBytes: MaximumStandardErrorBytes,
+                outputLimitExceeded: () => KillProcessTree(process));
             copyTask = process.StandardOutput.BaseStream.CopyToAsync(file, CancellationToken.None);
 
             await WaitForProcessAndPumpsAsync(process, cancellationToken, copyTask, errorTask);
@@ -318,7 +321,9 @@ internal sealed class GitCommandExecutor
                 process.StandardError,
                 sensitive ? null : activityId,
                 GitOutputStream.StandardError,
-                sensitive ? null : activitySink);
+                sensitive ? null : activitySink,
+                maxOutputBytes: MaximumStandardErrorBytes,
+                outputLimitExceeded: () => KillProcessTree(process));
 
             await WaitForProcessAndPumpsAsync(process, cancellationToken, outputTask, errorTask);
             cancellationToken.ThrowIfCancellationRequested();
@@ -412,10 +417,9 @@ internal sealed class GitCommandExecutor
                 outputBytes += chunkBytes;
             }
 
-            var chunk = new string(buffer, 0, read);
-            result.Append(chunk);
+            result.Append(buffer, 0, read);
             if (activityId is { } id)
-                activitySink!.OutputReceived(id, stream, chunk);
+                activitySink!.OutputReceived(id, stream, new string(buffer, 0, read));
         }
 
         if (maxOutputBytes is { } finalLimit)
