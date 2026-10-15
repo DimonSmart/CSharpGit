@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Application;
 using CSharpGit.Git;
@@ -208,6 +209,23 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             _ = ConfirmAndCloseAsync(page);
         }
         return false;
+    }
+
+    internal void LogUiFailure(Exception exception, string operation)
+    {
+        try
+        {
+            _host.Services.GetService<ILoggerFactory>()?
+                .CreateLogger("CSharpGit.UiLifecycle")
+                .LogError(exception, "UI operation failed: {Operation}", operation);
+        }
+        catch (Exception loggerFailure)
+        {
+            Trace.TraceError($"UI logger failed: {loggerFailure}");
+        }
+
+        // Trace remains available even when application logging is disabled.
+        Trace.TraceError($"UI operation '{operation}' failed: {exception}");
     }
 
     private void MainPage_WindowTitleChanged(string title)
