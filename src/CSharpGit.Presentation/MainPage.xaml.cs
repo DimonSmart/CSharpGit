@@ -751,35 +751,42 @@ public sealed partial class MainPage : Page
         e.Handled = true;
     }
 
-    private async void Page_KeyDown(object sender, KeyRoutedEventArgs e)
+    private void Page_KeyDown(object sender, KeyRoutedEventArgs e)
     {
+        if (IsShuttingDown) return;
         var control = IsControlDown();
         if (control && e.Key == VirtualKey.O)
         {
-            await OpenRepositoryPickerAsync();
             e.Handled = true;
+            RunPageUiOperation(OpenRepositoryPickerAsync, "Open repository shortcut");
         }
         else if (control && e.Key == VirtualKey.F)
         {
-            if (WorkingTreePane.Visibility == Visibility.Visible)
-                await ShowAllHistoryAsync();
-            HistoryFilter.Focus(FocusState.Programmatic);
             e.Handled = true;
+            RunPageUiOperation(async () =>
+            {
+                if (WorkingTreePane.Visibility == Visibility.Visible)
+                    await ShowAllHistoryAsync();
+                if (!IsShuttingDown)
+                    HistoryFilter.Focus(FocusState.Programmatic);
+            }, "History search shortcut");
         }
         else if (e.Key == VirtualKey.F5)
         {
-            await RefreshRepositoryFromUiAsync();
             e.Handled = true;
+            RunPageUiOperation(RefreshRepositoryFromUiAsync, "Refresh shortcut");
         }
         else if (control && e.Key == VirtualKey.Enter && WorkingTreePane.Visibility == Visibility.Visible)
         {
-            await ExecuteCommandAsync(_viewModel.CommitCreation.CommitCommand);
             e.Handled = true;
+            RunPageUiOperation(
+                () => ExecuteCommandAsync(_viewModel.CommitCreation.CommitCommand),
+                "Commit shortcut");
         }
         else if (e.Key == VirtualKey.Escape && WorkingTreePane.Visibility == Visibility.Visible)
         {
-            await ShowAllHistoryAsync();
             e.Handled = true;
+            RunPageUiOperation(ShowAllHistoryAsync, "Back to history shortcut");
         }
     }
 
