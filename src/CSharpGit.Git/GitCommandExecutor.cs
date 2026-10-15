@@ -213,6 +213,7 @@ internal sealed class GitCommandExecutor
         await using var file = _destinationStreamFactory?.Invoke(destination)
             ?? new FileStream(destination, FileMode.CreateNew, FileAccess.Write,
                 FileShare.None, 81920, FileOptions.Asynchronous);
+        var sensitive = RequiresSensitiveDiagnostics(arguments);
         var startInfo = CreateStartInfo(_gitExecutable, workingDirectory, arguments, null);
         using var process = new Process { StartInfo = startInfo };
         var stopwatch = Stopwatch.StartNew();
@@ -223,14 +224,17 @@ internal sealed class GitCommandExecutor
         var finished = false;
         try
         {
-            activityId = _activitySink.Started(_gitExecutable, workingDirectory, arguments, GitCommandKind.Internal);
-            _activitySink.OutputReceived(activityId.Value, GitOutputStream.StandardOutput, BinaryOutputOmitted);
+            activityId = _activitySink.Started(
+                _gitExecutable, workingDirectory,
+                sensitive ? ["[sensitive Git arguments omitted]"] : arguments, GitCommandKind.Internal);
+            if (!sensitive)
+                _activitySink.OutputReceived(activityId.Value, GitOutputStream.StandardOutput, BinaryOutputOmitted);
             _processStarted?.Invoke(process.Id);
             errorTask = PumpTextAsync(
                 process.StandardError,
-                activityId,
+                sensitive ? null : activityId,
                 GitOutputStream.StandardError,
-                _activitySink,
+                sensitive ? null : _activitySink,
                 maxOutputBytes: MaximumStandardErrorBytes,
                 outputLimitExceeded: () => KillProcessTree(process));
             copyTask = process.StandardOutput.BaseStream.CopyToAsync(file, CancellationToken.None);
@@ -240,7 +244,9 @@ internal sealed class GitCommandExecutor
             cancellationToken.ThrowIfCancellationRequested();
 
             var error = errorTask.Result.TrimEnd('\r', '\n');
-            var result = new GitCommandResult(process.ExitCode, BinaryOutputOmitted, error);
+            var result = sensitive
+                ? new GitCommandResult(process.ExitCode, BinaryOutputOmitted, string.Empty)
+                : new GitCommandResult(process.ExitCode, BinaryOutputOmitted, error);
             stopwatch.Stop();
             _activitySink.Completed(activityId.Value, result.ExitCode);
             finished = true;
