@@ -86,6 +86,27 @@ public sealed class GitCommandExecutorStreamingTests
     }
 
     [Fact]
+    public async Task Utf8OutputLimitCountsSplitSurrogatePairAsFourBytes()
+    {
+        if (OperatingSystem.IsWindows()) return; // This fixture uses POSIX printf formatting.
+
+        var executor = CreateShellExecutor(new GitCommandActivityHistory());
+        var command = new[] { "-c", "printf '%04095d😀' 0" };
+
+        var complete = await executor.ExecuteForResultPreservingOutputEndingsAsync(
+            Path.GetTempPath(), "Utf8Boundary", GitCommandKind.Internal,
+            CancellationToken.None, null, command, maxStandardOutputBytes: 4099);
+        Assert.Equal(4095 + 2, complete.StandardOutput.Length);
+        Assert.EndsWith("😀", complete.StandardOutput, StringComparison.Ordinal);
+
+        var exception = await Assert.ThrowsAsync<GitCommandOutputLimitExceededException>(
+            () => executor.ExecuteForResultPreservingOutputEndingsAsync(
+                Path.GetTempPath(), "Utf8Boundary", GitCommandKind.Internal,
+                CancellationToken.None, null, command, maxStandardOutputBytes: 4098));
+        Assert.Equal(4098, exception.LimitBytes);
+    }
+
+    [Fact]
     public async Task CancellationPreservesPartialStreamingOutput()
     {
         var history = new GitCommandActivityHistory();
