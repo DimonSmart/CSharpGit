@@ -195,9 +195,9 @@ public sealed partial class App
                     () => throw new InvalidOperationException("Rejected mutation must not execute."));
                 await RespondAsync(!attempted && vm.IsMutating);
             }
-            else if (command.StartsWith("FailNextPublication\\t", StringComparison.Ordinal))
+            else if (command.StartsWith("FailNextPublication\t", StringComparison.Ordinal))
             {
-                var parts = command.Split('\\t', 3);
+                var parts = command.Split('\t', 3);
                 if (parts.Length != 3) throw new InvalidOperationException("Expected repository path and failure message.");
                 var path = Path.GetFullPath(parts[1]);
                 var message = parts[2];
@@ -256,9 +256,9 @@ public sealed partial class App
                 await vm.RefreshAsyncForDesktopCheck();
                 await RespondAsync(true);
             }
-            else if (command.StartsWith("CancelOpenAfterAssignment\\t", StringComparison.Ordinal))
+            else if (command.StartsWith("CancelOpenAfterAssignment\t", StringComparison.Ordinal))
             {
-                var target = command["CancelOpenAfterAssignment\\t".Length..];
+                var target = command["CancelOpenAfterAssignment\t".Length..];
                 using var cancel = new CancellationTokenSource();
                 PropertyChangedEventHandler handler = null!;
                 handler = (_, args) =>
