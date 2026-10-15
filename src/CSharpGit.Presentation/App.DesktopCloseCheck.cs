@@ -76,6 +76,7 @@ public sealed partial class App
     {
         TaskCompletionSource? release = null;
         Task<bool>? mutation = null;
+        Action? delayedMonitorDelivery = null;
 
         Task RespondAsync(bool success)
         {
@@ -93,6 +94,7 @@ public sealed partial class App
                 Draft = vm.CommitCreation.CommitMessage,
                 UnsafeToClose = page.IsUnsafeToClose,
                 IsBusy = vm.IsBusy,
+                RefreshRequired = page.IsRefreshRequired,
                 Error = vm.ErrorMessage
             });
             return writer.WriteLineAsync(response.AsMemory(), token).AsTask();
@@ -111,6 +113,18 @@ public sealed partial class App
             else if (command.StartsWith("SetDraft\t", StringComparison.Ordinal))
             {
                 vm.CommitCreation.CommitMessage = command["SetDraft\t".Length..];
+                await RespondAsync(true);
+            }
+            else if (command == "CaptureMonitorDelivery")
+            {
+                delayedMonitorDelivery = page.CapturePendingMonitorDeliveryForDesktopCheck();
+                await RespondAsync(true);
+            }
+            else if (command == "DeliverCapturedMonitor")
+            {
+                if (delayedMonitorDelivery is null)
+                    throw new InvalidOperationException("No monitor callback was captured.");
+                delayedMonitorDelivery();
                 await RespondAsync(true);
             }
             else if (command == "CloseRepository")
