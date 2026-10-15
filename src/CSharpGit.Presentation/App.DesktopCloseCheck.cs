@@ -138,6 +138,15 @@ public sealed partial class App
                 delayedMonitorDelivery();
                 await RespondAsync(true);
             }
+            else if (command.StartsWith("ConfirmedSwitch\t", StringComparison.Ordinal))
+            {
+                await RespondAsync(await page.ConfirmedSwitchForDesktopCheckAsync(
+                    command["ConfirmedSwitch\t".Length..]));
+            }
+            else if (command == "ConfirmedClose")
+            {
+                await RespondAsync(page.ConfirmedCloseForDesktopCheck());
+            }
             else if (command == "CloseRepository")
             {
                 await RespondAsync(vm.CloseRepository());
