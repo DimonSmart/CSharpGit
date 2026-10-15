@@ -103,7 +103,9 @@ availability, error message and commit draft.
 | LIFE-04 | Real monitor callback captured from A then delivered after B and new A; the refresh-required indicator stays clear | `CaptureMonitorDelivery`, `DeliverCapturedMonitor` |
 | LIFE-05 | Running mutation rejects switch, close and competing mutation; failure/cancellation and callback faults return gate to idle | `BeginMutation`, `AttemptSwitchDuringMutation`, `FailMutation`, `FailBeforeMutation`, `FailAfterSuccessfulMutation`, `CancelMutation`, `RetryMutation` |
 | LIFE-05/09 | Actual `git commit --allow-empty` executes once, after which refresh callback fails; error identifies completed Git operation, manual refresh exposes changed HEAD | `CommitWithFailedRefresh` and independent `git rev-list --count HEAD` verification |
-| LIFE-06 | Cancelable real normal window close, protected mutation close rejection; approved close reaches host shutdown | `RunNormalCloseCheckAsync`, extended desktop lifecycle |
+| LIFE-06 | Cancelable normal window close and protected mutation close rejection; approved close reaches host shutdown | `RunNormalCloseCheckAsync`, extended desktop lifecycle |
+| LIFE-06 Clone/Create/Maintenance | Real Git clone, init and maintenance run in production VM with close rejection during busy notification; Clone/Create failures also return to idle | `VerifyCloneCloseSafety`, `VerifyCreateCloseSafety`, `VerifyCloneFailureReleasesClose`, `VerifyCreateFailureReleasesClose`, `VerifyMaintenanceCloseSafety` |
+| LIFE-06 flags | Production close policy is independently tested for all seven operation types and overlapping operations | `WindowCloseSafetyTests` |
 | LIFE-07 | Session disposal, delayed old completions, history cancellation and stale watcher callback fences | `RepositorySessionLifetimeTests`, `HistoryViewModelTests`, `RepositoryChangeMonitorTests`, desktop callback tests |
 | LIFE-08/10 | Actual Core and Uno production components; no copied refresh/switch/mutation algorithm | source/behavior tests and CI matrix |
 
@@ -143,6 +145,8 @@ already accepted discarding a draft, not dialog accessibility.
 
 Desktop smoke now executes real Git Clone/Create success and failure paths,
 checking the production close guard during the busy transition and after exit.
+Real Git maintenance with GC now also runs through the desktop test host,
+including rejection of a close attempt while maintenance is running.
 Long-running History Rewrite/Maintenance/Update and native dialog interactions
 are still platform-dependent manual acceptance scenarios. Their respective production
 `IsBusy`/in-progress flags are included in `MainPage.IsUnsafeToClose`,
