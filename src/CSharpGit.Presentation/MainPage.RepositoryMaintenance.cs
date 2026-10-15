@@ -102,7 +102,10 @@ public sealed partial class MainPage
     private void UpdateOptimizeRepositoryAvailability() =>
         OptimizeRepositoryMenuItem.IsEnabled = _repositoryMaintenance.CanStart;
 
-    private async void OptimizeRepository_Click(object sender, RoutedEventArgs e)
+    private void OptimizeRepository_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(OptimizeRepositoryAsync, "Optimize repository");
+
+    private async Task OptimizeRepositoryAsync()
     {
         if (!_repositoryMaintenance.CanStart
             || _viewModel.Repository is not { } repository)
@@ -132,13 +135,20 @@ public sealed partial class MainPage
 
             await dialog.ShowAsync(_repositoryMaintenance, repository);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (IsShuttingDown)
         {
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            ReportUiFailure(exception, "Repository optimization");
             if (!IsShuttingDown && ReferenceEquals(repository, _viewModel.Repository))
-                await dialog.ShowMessageAsync("Optimization not started", exception.Message);
+            {
+                try { await dialog.ShowMessageAsync("Optimization not started", exception.Message); }
+                catch (Exception notificationError)
+                {
+                    ReportUiFailure(notificationError, "Repository optimization error dialog");
+                }
+            }
         }
     }
 }
