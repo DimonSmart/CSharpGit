@@ -547,10 +547,17 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                 },
                 () =>
                 {
-                    if (IsCurrentSession(lifetime, repository))
-                        RepositoryStateRefreshCompleted?.Invoke(repository);
-                    if (Volatile.Read(ref _disposed) == 0)
-                        ExitBusy();
+                    try
+                    {
+                        if (IsCurrentSession(lifetime, repository))
+                            RepositoryStateRefreshCompleted?.Invoke(repository);
+                    }
+                    finally
+                    {
+                        // An observer error must never leak an active Busy lease.
+                        if (Volatile.Read(ref _disposed) == 0)
+                            ExitBusy();
+                    }
                 });
 
             _ = task.ContinueWith(
