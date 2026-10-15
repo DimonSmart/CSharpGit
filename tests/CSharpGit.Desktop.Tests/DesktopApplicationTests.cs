@@ -211,6 +211,29 @@ public sealed class DesktopApplicationTests
             // A must be restored and the draft cannot be discarded.
             using (var d = await CommandAsync("SetDraft\trollback draft"))
                 Assert.Equal("rollback draft", d.RootElement.GetProperty("Draft").GetString());
+            using (var d = await CommandAsync("Switch\t" + isolatedHome))
+            {
+                Assert.False(d.RootElement.GetProperty("Success").GetBoolean());
+                AssertOpenedSnapshotPath(d.RootElement, original);
+                Assert.Equal("rollback draft", d.RootElement.GetProperty("Draft").GetString());
+            }
+            using (var d = await CommandAsync("CancelOpenBeforeAssignment\t" + worktree))
+            {
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+                AssertOpenedSnapshotPath(d.RootElement, original);
+                Assert.Equal("rollback draft", d.RootElement.GetProperty("Draft").GetString());
+                Assert.True(d.RootElement.GetProperty("CanChangeRepository").GetBoolean());
+            }
+            using (var d = await CommandAsync("ReadFailureAfterAssignment\t" + worktree))
+            {
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+                AssertOpenedSnapshotPath(d.RootElement, original);
+                Assert.Equal("rollback draft", d.RootElement.GetProperty("Draft").GetString());
+                Assert.True(d.RootElement.GetProperty("HasBaseline").GetBoolean());
+                Assert.False(d.RootElement.GetProperty("IsBusy").GetBoolean());
+                Assert.True(d.RootElement.GetProperty("CanChangeRepository").GetBoolean());
+                Assert.NotNull(d.RootElement.GetProperty("Error").GetString());
+            }
             using (var d = await CommandAsync("FailNextPublication\t" + worktree + "\tInjected B publication failure"))
                 Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
             using (var d = await CommandAsync("Switch\t" + worktree))
