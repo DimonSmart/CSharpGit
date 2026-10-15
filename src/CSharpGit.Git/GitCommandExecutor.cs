@@ -65,23 +65,28 @@ internal sealed class GitCommandExecutor
         return result.StandardOutput;
     }
 
-    public Task<GitCommandResult> ExecuteForResultAsync(
+    public async Task<GitCommandResult> ExecuteForResultAsync(
         string workingDirectory,
         string operation,
         GitCommandKind commandKind,
         CancellationToken cancellationToken,
         IReadOnlyDictionary<string, string?>? environment,
-        IReadOnlyList<string> arguments) =>
-        ExecuteProcessCoreAsync(
-            _gitExecutable,
-            workingDirectory,
-            operation,
-            commandKind,
-            cancellationToken,
-            arguments,
-            _activitySink,
-            environment,
-            _processStarted);
+        IReadOnlyList<string> arguments)
+    {
+        try
+        {
+            return await ExecuteProcessCoreAsync(
+                _gitExecutable, workingDirectory, operation, commandKind,
+                cancellationToken, arguments, _activitySink, environment, _processStarted);
+        }
+        catch (Exception) when (
+            !cancellationToken.IsCancellationRequested &&
+            RequiresSensitiveDiagnostics(arguments))
+        {
+            // Never attach the original exception: process-start errors may include arguments.
+            throw new InvalidOperationException($"Git {operation} failed; sensitive diagnostics omitted.");
+        }
+    }
 
     internal async Task<string> ExecuteAsyncPreservingOutputEndings(
         string workingDirectory,
@@ -142,23 +147,25 @@ internal sealed class GitCommandExecutor
 
     // Config snapshots can contain arbitrary user secrets. Retain the process
     // lifecycle for diagnostics, but never forward its stdout/stderr to the activity sink.
-    internal Task<GitCommandResult> ExecuteForResultSensitiveAsync(
+    internal async Task<GitCommandResult> ExecuteForResultSensitiveAsync(
         string workingDirectory,
         string operation,
         CancellationToken cancellationToken,
-        IReadOnlyList<string> arguments) =>
-        ExecuteProcessCoreAsync(
-            _gitExecutable,
-            workingDirectory,
-            operation,
-            GitCommandKind.Internal,
-            cancellationToken,
-            arguments,
-            _activitySink,
-            null,
-            _processStarted,
-            trimOutputEndings: false,
-            suppressOutputEvents: true);
+        IReadOnlyList<string> arguments)
+    {
+        try
+        {
+            return await ExecuteProcessCoreAsync(
+                _gitExecutable, workingDirectory, operation, GitCommandKind.Internal,
+                cancellationToken, arguments, _activitySink, null, _processStarted,
+                trimOutputEndings: false, suppressOutputEvents: true);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception)
+        {
+            throw new InvalidOperationException($"Git {operation} failed; sensitive diagnostics omitted.");
+        }
+    }
 
     internal Task<GitCommandResult> ExecuteForResultPreservingGitEditorAsync(
         string workingDirectory,
@@ -247,7 +254,7 @@ internal sealed class GitCommandExecutor
                 if (activityId is { } id)
                 {
                     try { _activitySink.Cancelled(id, TryGetExitCode(process)); }
-                    catch (Exception exception) { Trace.WriteLine($"Git activity cleanup failed: {exception}"); }
+                    catch (Exception) { Trace.WriteLine("Git activity cleanup failed."); }
                 }
             }
             throw;
@@ -274,6 +281,9 @@ internal sealed class GitCommandExecutor
         bool suppressOutputEvents = false)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (maxStandardOutputBytes is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maxStandardOutputBytes));
+        var sensitive = suppressOutputEvents || RequiresSensitiveDiagnostics(arguments);
         var effectiveArguments = GitProgressPolicy.Apply(arguments, commandKind);
         var startInfo = CreateStartInfo(executable, workingDirectory, effectiveArguments, environment, installNoOpGitEditor);
 
@@ -287,21 +297,24 @@ internal sealed class GitCommandExecutor
         var finished = false;
         try
         {
-            activityId = activitySink?.Started(executable, workingDirectory, effectiveArguments, commandKind);
+            activityId = activitySink?.Started(
+                executable, workingDirectory,
+                sensitive ? ["[sensitive Git arguments omitted]"] : effectiveArguments,
+                commandKind);
             processStarted?.Invoke(process.Id);
 
             outputTask = PumpTextAsync(
                 process.StandardOutput,
-                suppressOutputEvents ? null : activityId,
+                sensitive ? null : activityId,
                 GitOutputStream.StandardOutput,
-                suppressOutputEvents ? null : activitySink,
+                sensitive ? null : activitySink,
                 maxStandardOutputBytes,
                 () => KillProcessTree(process));
             errorTask = PumpTextAsync(
                 process.StandardError,
-                suppressOutputEvents ? null : activityId,
+                sensitive ? null : activityId,
                 GitOutputStream.StandardError,
-                suppressOutputEvents ? null : activitySink);
+                sensitive ? null : activitySink);
 
             await WaitForProcessAndPumpsAsync(process, cancellationToken, outputTask, errorTask);
             cancellationToken.ThrowIfCancellationRequested();
@@ -312,7 +325,12 @@ internal sealed class GitCommandExecutor
             stopwatch.Stop();
             Trace.WriteLine($"Git command operation={operation} duration={stopwatch.ElapsedMilliseconds}ms");
 
-            var result = new GitCommandResult(process.ExitCode, output, error);
+            var result = sensitive
+                ? new GitCommandResult(
+                    process.ExitCode,
+                    process.ExitCode == 0 ? output : string.Empty,
+                    string.Empty)
+                : new GitCommandResult(process.ExitCode, output, error);
             if (activityId is { } completedId)
                 activitySink!.Completed(completedId, result.ExitCode);
             finished = true;
@@ -370,6 +388,7 @@ internal sealed class GitCommandExecutor
         var result = new StringBuilder();
         var buffer = new char[TextReadBufferSize];
         var outputBytes = 0;
+        var utf8Encoder = Encoding.UTF8.GetEncoder();
 
         while (true)
         {
@@ -379,7 +398,8 @@ internal sealed class GitCommandExecutor
             if (read == 0) break;
             if (maxOutputBytes is { } limit)
             {
-                var chunkBytes = Encoding.UTF8.GetByteCount(buffer.AsSpan(0, read));
+                // Encoder preserves a surrogate pair across successive ReadAsync calls.
+                var chunkBytes = utf8Encoder.GetByteCount(buffer.AsSpan(0, read), flush: false);
                 if (outputBytes > limit - chunkBytes)
                 {
                     outputLimitExceeded?.Invoke();
@@ -394,7 +414,44 @@ internal sealed class GitCommandExecutor
                 activitySink!.OutputReceived(id, stream, chunk);
         }
 
+        if (maxOutputBytes is { } finalLimit)
+        {
+            var remainingBytes = utf8Encoder.GetByteCount(ReadOnlySpan<char>.Empty, flush: true);
+            if (outputBytes > finalLimit - remainingBytes)
+            {
+                outputLimitExceeded?.Invoke();
+                throw new GitCommandOutputLimitExceededException(finalLimit);
+            }
+        }
         return result.ToString();
+    }
+
+    // Unknown config keys and URL authentication schemes cannot be protected by regex.
+    // This guard applies to every entry point using ExecuteProcessCoreAsync.
+    private static bool RequiresSensitiveDiagnostics(IReadOnlyList<string> arguments)
+    {
+        for (var index = 0; index < arguments.Count; index++)
+        {
+            var argument = arguments[index];
+            if (argument is "-c" or "--config-env" ||
+                argument.StartsWith("--config-env=", StringComparison.Ordinal) ||
+                (argument.StartsWith("-c", StringComparison.Ordinal) && argument.Length > 2))
+                return true;
+        }
+
+        var commandIndex = 0;
+        while (commandIndex < arguments.Count && arguments[commandIndex].StartsWith("-", StringComparison.Ordinal))
+        {
+            var argument = arguments[commandIndex++];
+            if (argument is "-C" or "--git-dir" or "--work-tree" or "-c" or "--config-env")
+                commandIndex++;
+        }
+
+        if (commandIndex >= arguments.Count) return false;
+        var command = arguments[commandIndex];
+        return command == "config"
+            || (command == "remote" && commandIndex + 1 < arguments.Count &&
+                arguments.Skip(commandIndex + 1).Any(value => value is "-v" or "--verbose"));
     }
 
     private static ProcessStartInfo CreateStartInfo(

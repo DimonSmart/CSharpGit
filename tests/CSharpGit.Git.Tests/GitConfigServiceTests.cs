@@ -38,6 +38,56 @@ public sealed class GitConfigServiceTests : IClassFixture<GitToolsEmptyFixture>,
     }
 
     [Fact]
+    public async Task SensitiveConfigurationOperationsNeverPublishArbitraryValues()
+    {
+        var history = new GitCommandActivityHistory();
+        var executor = GitTestServices.CreateExecutor(activitySink: history);
+        var config = new GitConfigService(executor);
+        var stateService = new GitRepositoryStateService(executor);
+        const string secret = "very-unusual-key-value-872612";
+        const string urlSecret = "url-credential-872612";
+
+        await config.SetValueAsync(_repository, GitConfigScope.Repository, "demo.misc", secret, true);
+        await config.SetValueAsync(_repository, GitConfigScope.Repository, "remote.origin.url",
+            $"https://user:{urlSecret}@example.invalid/repo.git", true);
+        var direct = await config.ReadDirectValuesAsync(_repository, "demo.misc", GitConfigScope.Repository);
+        var effective = await config.ReadEffectiveAsync(_repository, "demo.misc");
+        var snapshot = await config.ReadSnapshotAsync(_repository);
+        var state = await stateService.ReadAsync(_repository);
+
+        Assert.Equal(secret, Assert.Single(direct).Value);
+        Assert.Equal(secret, effective?.Value);
+        Assert.Equal(secret, snapshot.Effective("demo.misc")?.Value);
+        Assert.Equal(secret, state.LocalConfiguration["demo.misc"]);
+        Assert.Contains(state.Refs.Remotes, remote => remote.FetchUrl.Contains(urlSecret, StringComparison.Ordinal));
+
+        await config.UnsetAllWithoutReadAsync(_repository, GitConfigScope.Repository, "demo.misc");
+        var activities = history.GetSnapshot(GitCommandFilter.AllCommands);
+        Assert.NotEmpty(activities);
+        var diagnostics = string.Join("\n", activities.Select(a =>
+            a.DisplayCommand + "\n" + a.StandardOutput + "\n" + a.StandardError));
+        Assert.DoesNotContain(secret, diagnostics, StringComparison.Ordinal);
+        Assert.DoesNotContain(urlSecret, diagnostics, StringComparison.Ordinal);
+        Assert.Contains(activities, a => a.DisplayCommand.Contains("sensitive Git arguments omitted", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task FailedSensitiveCommandNeverExposesStderrOrInputValue()
+    {
+        var history = new GitCommandActivityHistory();
+        var config = new GitConfigService(GitTestServices.CreateExecutor(activitySink: history));
+        const string secret = "private-arbitrary-value-44917";
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => config.SetValueAsync(_repository, GitConfigScope.Repository,
+                "invalid-key", secret, true));
+        Assert.DoesNotContain(secret, exception.ToString(), StringComparison.Ordinal);
+        Assert.Contains("code", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(secret, string.Join("\n",
+            history.GetSnapshot(GitCommandFilter.AllCommands).Select(x =>
+                x.DisplayCommand + x.StandardOutput + x.StandardError)), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task EffectiveGlobalReportsGlobalSource()
     {
         RunGit(_repositoryPath, "config", "--global", "user.name", "Global User");

@@ -120,7 +120,7 @@ internal sealed class GitConfigService
         arguments.Add(value);
 
         var result = await RunAsync(repository, "GitConfigWrite", GitCommandKind.User, cancellationToken, arguments);
-        if (result.ExitCode != 0) throw Failure($"Could not save {key}", result);
+        if (result.ExitCode != 0) throw Failure("Could not save Git configuration", result);
     }
 
     internal async Task UnsetAllAsync(
@@ -150,7 +150,7 @@ internal sealed class GitConfigService
             cancellationToken,
             ["config", ScopeArgument(scope), "--unset-all", key]);
         if (result.ExitCode is 0 or 1 or 5) return;
-        throw Failure($"Could not remove {key}", result);
+        throw Failure("Could not remove Git configuration", result);
     }
 
     private Task<GitCommandResult> RunAsync(
@@ -159,12 +159,10 @@ internal sealed class GitConfigService
         GitCommandKind kind,
         CancellationToken cancellationToken,
         IReadOnlyList<string> arguments) =>
-        _executor.ExecuteForResultAsync(
+        _executor.ExecuteForResultSensitiveAsync(
             repository?.WorkingDirectory ?? Environment.CurrentDirectory,
             operation,
-            kind,
             cancellationToken,
-            null,
             arguments);
 
     private static GitConfigValue? ParseEffective(string key, string output)
@@ -241,9 +239,6 @@ internal sealed class GitConfigService
 
     private static InvalidOperationException Failure(string prefix, GitCommandResult result)
     {
-        var detail = string.IsNullOrWhiteSpace(result.StandardError)
-            ? $"Git exited with code {result.ExitCode}."
-            : $"Git exited with code {result.ExitCode}. {result.StandardError.Trim()}";
-        return new InvalidOperationException($"{prefix}. {detail}");
+        return new InvalidOperationException($"{prefix}. Git exited with code {result.ExitCode}; sensitive diagnostics omitted.");
     }
 }
