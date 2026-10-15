@@ -14,6 +14,7 @@ public sealed partial class MainPage
 
     internal CSharpGit.Presentation.ViewModels.CloneRepositoryViewModel DesktopCloneForCheck => _cloneRepositoryViewModel;
     internal CSharpGit.Presentation.ViewModels.CreateRepositoryViewModel DesktopCreateForCheck => _createRepositoryViewModel;
+    internal CSharpGit.Presentation.ViewModels.RepositoryMaintenanceViewModel DesktopMaintenanceForCheck => _repositoryMaintenance;
 
     // Only operations with Git or filesystem side effects make shutdown unsafe.
     public bool IsUnsafeToClose => new WindowCloseSafetyState(

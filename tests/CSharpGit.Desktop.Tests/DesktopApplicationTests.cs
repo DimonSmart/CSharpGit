@@ -414,6 +414,13 @@ public sealed class DesktopApplicationTests
                 AssertOpenedSnapshotPath(d.RootElement, original);
                 Assert.False(d.RootElement.GetProperty("UnsafeToClose").GetBoolean());
             }
+            using (var d = await CommandAsync("VerifyMaintenanceCloseSafety"))
+            {
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean(),
+                    d.RootElement.GetProperty("Error").GetString());
+                AssertOpenedSnapshotPath(d.RootElement, original);
+                Assert.False(d.RootElement.GetProperty("UnsafeToClose").GetBoolean());
+            }
             using (var d = await CommandAsync("CloseRepository"))
             {
                 Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
