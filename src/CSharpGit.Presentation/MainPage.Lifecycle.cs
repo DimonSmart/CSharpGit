@@ -12,6 +12,9 @@ public sealed partial class MainPage
 
     public bool RequiresCloseConfirmation => _viewModel.CommitCreation.HasUnappliedCommitMessage;
 
+    internal CSharpGit.Presentation.ViewModels.CloneRepositoryViewModel DesktopCloneForCheck => _cloneRepositoryViewModel;
+    internal CSharpGit.Presentation.ViewModels.CreateRepositoryViewModel DesktopCreateForCheck => _createRepositoryViewModel;
+
     // Only operations with Git or filesystem side effects make shutdown unsafe.
     public bool IsUnsafeToClose => new WindowCloseSafetyState(
         IsMutating: _viewModel.IsMutating,

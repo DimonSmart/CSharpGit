@@ -386,6 +386,22 @@ public sealed class DesktopApplicationTests
             using (var d = await CommandAsync("Switch\t" + original))
                 AssertOpened(d.RootElement, original, false);
 
+            // Exercise real Git clone and repository creation in this
+            // same MainPage, capturing the actual busy-transition close policy.
+            using (var d = await CommandAsync("VerifyCloneCloseSafety\t" + Path.Combine(isolatedHome, "cloned")))
+            {
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean(),
+                    d.RootElement.GetProperty("Error").GetString());
+                AssertOpenedSnapshotPath(d.RootElement, original);
+                Assert.False(d.RootElement.GetProperty("UnsafeToClose").GetBoolean());
+            }
+            using (var d = await CommandAsync("VerifyCreateCloseSafety\t" + Path.Combine(isolatedHome, "created")))
+            {
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean(),
+                    d.RootElement.GetProperty("Error").GetString());
+                AssertOpenedSnapshotPath(d.RootElement, original);
+                Assert.False(d.RootElement.GetProperty("UnsafeToClose").GetBoolean());
+            }
             using (var d = await CommandAsync("CloseRepository"))
             {
                 Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
