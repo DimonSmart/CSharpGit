@@ -112,6 +112,20 @@ public sealed class PresentationLifecycleContractTests
     }
 
     [Fact]
+    public void MacOsDoesNotSynchronouslyStopHostInWindowClosed()
+    {
+        var root = FindRepositoryRoot();
+        var app = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
+        Assert.Contains("await StopHostAsync();", app, StringComparison.Ordinal);
+        Assert.Contains("_hostStopTask ??= StopHostCoreAsync()", app, StringComparison.Ordinal);
+        Assert.Contains("await _host.StopAsync(timeout.Token)", app, StringComparison.Ordinal);
+        var closed = app.IndexOf("_window.Closed +=", StringComparison.Ordinal);
+        var next = app.IndexOf("if (Environment.GetEnvironmentVariable", closed, StringComparison.Ordinal);
+        Assert.True(closed >= 0 && next > closed);
+        Assert.DoesNotContain("StopHost()", app[closed..next], StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AsyncShutdownIsBoundedAndIdempotent()
     {
         var presentation = Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation");

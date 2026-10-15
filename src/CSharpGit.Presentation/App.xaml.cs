@@ -30,6 +30,8 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     private static readonly TimeSpan DiagnosticsShutdownBudget = TimeSpan.FromSeconds(3);
     private bool _closeCheckStarted;
     private int _hostStopped;
+    private readonly object _hostStopGate = new();
+    private Task? _hostStopTask;
 
     internal double MainWindowClientWidth => _window?.AppWindow.ClientSize.Width ?? 0;
 
@@ -190,14 +192,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 eventArgs.Cancel = true;
         };
 
-        _window.Closed += (_, _) =>
-        {
-            ReportDesktopCloseCheck("WindowClosed");
-            // macOS may terminate its native host loop before Program's finally
-            // observes shutdown. Stop the managed host before that boundary.
-            if (OperatingSystem.IsMacOS() && _shutdownRequested)
-                StopHost();
-        };
+        _window.Closed += (_, _) => ReportDesktopCloseCheck("WindowClosed");
         if (Environment.GetEnvironmentVariable("CSHARPGIT_CLOSE_CHECK") == "1")
             mainPage.Loaded += RunDesktopCloseCheckWhenLoaded;
         _window.Content = mainPage;
@@ -339,6 +334,10 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         catch (Exception exception) { LogUiFailure(exception, "Final window cleanup"); }
         finally
         {
+            // On macOS the native loop can exit as soon as the window closes.
+            // Complete managed shutdown asynchronously before that boundary.
+            if (OperatingSystem.IsMacOS())
+                await StopHostAsync();
             _finalCloseAuthorized = true;
             try
             {
@@ -384,32 +383,31 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         BeginShutdown(page);
     }
 
-    internal void StopHost()
+    // Program's synchronous join occurs only after UnoPlatformHost.RunAsync exits.
+    internal void StopHost() => StopHostAsync().GetAwaiter().GetResult();
+
+    private Task StopHostAsync()
+    {
+        lock (_hostStopGate)
+            return _hostStopTask ??= StopHostCoreAsync();
+    }
+
+    private async Task StopHostCoreAsync()
     {
         if (Interlocked.Exchange(ref _hostStopped, 1) != 0) return;
         ReportDesktopCloseCheck("HostStopping");
         _appSettings.Changed -= AppSettings_Changed;
-        try
-        {
-            _mainThemeRegistration?.Dispose();
-        }
+        try { _mainThemeRegistration?.Dispose(); }
         catch (Exception exception) { LogUiFailure(exception, "Theme cleanup"); }
         finally { _mainThemeRegistration = null; }
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-        try
-        {
-            // Program calls StopHost only after the Uno event loop has exited.
-            _host.StopAsync(timeout.Token).GetAwaiter().GetResult();
-        }
+        try { await _host.StopAsync(timeout.Token); }
         catch (OperationCanceledException) when (timeout.IsCancellationRequested)
         {
             ReportDesktopCloseCheck("HostStopTimedOut");
         }
-        catch (Exception exception)
-        {
-            LogUiFailure(exception, "Host stop");
-        }
+        catch (Exception exception) { LogUiFailure(exception, "Host stop"); }
         finally
         {
             try { _host.Dispose(); }
