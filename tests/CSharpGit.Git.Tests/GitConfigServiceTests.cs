@@ -2,6 +2,7 @@ using System.Diagnostics;
 using CSharpGit.Application;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
+using CSharpGit.Presentation.Controls;
 
 namespace CSharpGit.Git.Tests;
 
@@ -41,6 +42,12 @@ public sealed class GitConfigServiceTests : IClassFixture<GitToolsEmptyFixture>,
     public async Task SensitiveConfigurationOperationsNeverPublishArbitraryValues()
     {
         var history = new GitCommandActivityHistory();
+        var publishedEvents = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        history.Changed += (_, args) => publishedEvents.Enqueue(
+            (args.Activity?.DisplayCommand ?? string.Empty) +
+            (args.Activity?.StandardOutput ?? string.Empty) +
+            (args.Activity?.StandardError ?? string.Empty) +
+            (args.OutputChunk ?? string.Empty));
         var executor = GitTestServices.CreateExecutor(activitySink: history);
         var config = new GitConfigService(executor);
         var stateService = new GitRepositoryStateService(executor);
@@ -68,6 +75,12 @@ public sealed class GitConfigServiceTests : IClassFixture<GitToolsEmptyFixture>,
             a.DisplayCommand + "\n" + a.StandardOutput + "\n" + a.StandardError));
         Assert.DoesNotContain(secret, diagnostics, StringComparison.Ordinal);
         Assert.DoesNotContain(urlSecret, diagnostics, StringComparison.Ordinal);
+        var changed = string.Join("\n", publishedEvents);
+        Assert.DoesNotContain(secret, changed, StringComparison.Ordinal);
+        Assert.DoesNotContain(urlSecret, changed, StringComparison.Ordinal);
+        var clipboard = string.Join("\n", activities.Select(GitConsoleClipboardText.Build));
+        Assert.DoesNotContain(secret, clipboard, StringComparison.Ordinal);
+        Assert.DoesNotContain(urlSecret, clipboard, StringComparison.Ordinal);
         Assert.Contains(activities, a => a.DisplayCommand.Contains("sensitive Git arguments omitted", StringComparison.Ordinal));
     }
 
