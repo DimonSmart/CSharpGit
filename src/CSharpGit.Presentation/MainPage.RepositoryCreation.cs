@@ -19,7 +19,7 @@ public sealed partial class MainPage
 
     private async Task ShowCreateRepositoryAsync()
     {
-        if (_repositoryCreationWorkflowActive
+        if (IsShuttingDown || _repositoryCreationWorkflowActive
             || _repositoryCloningWorkflowActive
             || _viewModel.IsBusy)
             return;
@@ -28,7 +28,7 @@ public sealed partial class MainPage
         try
         {
             _createRepositoryViewModel.Reset();
-            if (!await ShowCreateRepositoryDialogAsync())
+            if (!await ShowCreateRepositoryDialogAsync() || IsShuttingDown)
                 return;
 
             var opensWorkspace =
@@ -41,10 +41,11 @@ public sealed partial class MainPage
             {
                 discardDraft =
                     await ConfirmDiscardCommitMessageAsync(closing: false);
-                if (!discardDraft)
+                if (!discardDraft || IsShuttingDown)
                     return;
             }
 
+            if (IsShuttingDown) return;
             bool created;
             try
             {
@@ -55,6 +56,7 @@ public sealed partial class MainPage
                 return;
             }
 
+            if (IsShuttingDown) return;
             if (!created)
             {
                 await ShowRepositoryCreationMessageAsync(
@@ -237,7 +239,8 @@ public sealed partial class MainPage
         try
         {
             Synchronize();
-            return await dialog.ShowAsync() == ContentDialogResult.Primary;
+            return await ShowPageDialogAsync(dialog) == ContentDialogResult.Primary
+                && !IsShuttingDown;
         }
         finally
         {
@@ -262,6 +265,6 @@ public sealed partial class MainPage
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close
         };
-        await dialog.ShowAsync();
+        await ShowPageDialogAsync(dialog);
     }
 }

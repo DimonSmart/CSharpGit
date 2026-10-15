@@ -19,7 +19,7 @@ public sealed partial class MainPage
 
     private async Task ShowCloneRepositoryAsync()
     {
-        if (_repositoryCloningWorkflowActive
+        if (IsShuttingDown || _repositoryCloningWorkflowActive
             || _repositoryCreationWorkflowActive
             || _viewModel.IsBusy
             || !_viewModel.CanChangeRepository)
@@ -37,14 +37,15 @@ public sealed partial class MainPage
                     return;
             }
 
+            if (IsShuttingDown) return;
             _cloneRepositoryViewModel.Reset();
             var cloned = await ShowCloneRepositoryDialogAsync();
-            if (!cloned)
+            if (!cloned || IsShuttingDown)
                 return;
 
             var path = _cloneRepositoryViewModel.ClonedPath!;
             var opened = await SwitchRepositoryCoreAsync(path, discardDraft);
-            if (opened)
+            if (opened || IsShuttingDown)
                 return;
 
             await ShowRepositoryCloneMessageAsync(
@@ -261,8 +262,8 @@ public sealed partial class MainPage
         try
         {
             Synchronize();
-            await dialog.ShowAsync();
-            return succeeded;
+            await ShowPageDialogAsync(dialog);
+            return succeeded && !IsShuttingDown;
         }
         finally
         {
@@ -284,6 +285,6 @@ public sealed partial class MainPage
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close
         };
-        await dialog.ShowAsync();
+        await ShowPageDialogAsync(dialog);
     }
 }
