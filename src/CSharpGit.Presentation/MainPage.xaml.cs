@@ -542,7 +542,9 @@ public sealed partial class MainPage : Page
             {
                 ReportUiFailure(exception, description);
                 if (showError && !IsShuttingDown)
-                    _ = ShowErrorAsync("Could not complete action", "The requested action could not be completed.");
+                    RunPageUiOperation(
+                        () => ShowErrorAsync("Could not complete action", "The requested action could not be completed."),
+                        "UI error notification");
             },
             () => IsShuttingDown);
     }
