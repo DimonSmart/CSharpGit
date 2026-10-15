@@ -11,7 +11,10 @@ public sealed partial class MainPage
     private readonly CloneRepositoryViewModel _cloneRepositoryViewModel = null!;
     private bool _repositoryCloningWorkflowActive;
 
-    private async void CloneRepository_Click(object sender, RoutedEventArgs e) =>
+    private void CloneRepository_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(() => CloneRepository_ClickCoreAsync(sender, e), "CloneRepository_Click");
+
+    private async Task CloneRepository_ClickCoreAsync(object sender, RoutedEventArgs e) =>
         await ShowCloneRepositoryAsync();
 
     private async Task ShowCloneRepositoryAsync()

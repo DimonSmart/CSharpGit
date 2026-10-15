@@ -11,7 +11,10 @@ public sealed partial class MainPage
     private readonly CreateRepositoryViewModel _createRepositoryViewModel = null!;
     private bool _repositoryCreationWorkflowActive;
 
-    private async void CreateRepository_Click(object sender, RoutedEventArgs e) =>
+    private void CreateRepository_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(() => CreateRepository_ClickCoreAsync(sender, e), "CreateRepository_Click");
+
+    private async Task CreateRepository_ClickCoreAsync(object sender, RoutedEventArgs e) =>
         await ShowCreateRepositoryAsync();
 
     private async Task ShowCreateRepositoryAsync()
