@@ -19,7 +19,7 @@ Legend: **fixed** means updated under UI Async Lifecycle Hardening; **retain** m
 | `MainPage.xaml.cs` / AddMenuItem | Page / menu actions | UiAsyncOperationRunner; Trace/ILogger; safe error presenter | Reject after shutdown; underlying command's CanExecute governs re-entry | Fixed |
 | `MainPage.xaml.cs` / ExecuteCommandAsync | Page / direct AsyncCommand | Observe exceptions from direct ExecuteAsync and log once | Preserve command _isExecuting/CanExecute and VM mutation gate | Fixed |
 | `MainPage.xaml.cs` / ShowErrorAsync | Dialog / notifications | Catch dialog failures, including a concurrent dialog | Skip after shutdown and without XamlRoot; nonrecursive logging | Fixed |
-| `MainPage.xaml.cs` / XAML async void click handlers | Page / commands | Direct ExecuteCommandAsync path guarded; other callbacks audited per feature | Check source operation lifetime | Review remaining |
+| `MainPage.xaml.cs` / XAML async void click handlers | Page / commands | Direct ExecuteCommandAsync path guarded; feature-specific callbacks use own fences | Remaining direct XAML event handlers still require error injection | Review remaining |
 | `MainPage.Dialogs.cs` / ShowPageDialogAsync | Page / dialogs | Semaphore wait observes shutdown cancellation, finally releases | One modal at a time per page; no new modal after shutdown | Fixed for migrated call sites |
 | `MainPage.ConfirmationDialogs.cs` / empty index | Dialog / mutation confirmation | Error observed through runner; safe cancellation cleanup | Per-type single-flight, capture repo identity | Fixed |
 | `MainPage.ConfirmationDialogs.cs` / batch discard | Dialog / mutation confirmation | Same, no duplicated command in finally after successful cleanup | Per-type single-flight, identity check after ShowAsync | Fixed |
@@ -27,7 +27,7 @@ Legend: **fixed** means updated under UI Async Lifecycle Hardening; **retain** m
 | `MainPage.About.cs` / About and update click | Page / network read and updater | Main event boundary runner; update check catches cancellation/errors | About dialog scoped to page; update gate remains in VM | Fixed main handlers |
 | `MainPage.About.cs` / Dialog_Opened | Dialog / version lookup | Existing try/catch and token cancellation on close | Result shown only while dialog active | Retain |
 | `MainPage.FileOpening.cs` / file action state refresh | Page / read | Observe no-await task; FileActionsViewModel owns state | Current-request check and cancel by VM | Fixed |
-| `MainPage.FileOpening.cs` / file menu | Page / file request | Existing catch and error presentation | IsCurrent and selection check before flyout | Retain with shutdown fence |
+| `MainPage.FileOpening.cs` / file menu | Page / file request | UI event runner + existing catch and error presentation | IsCurrent and selection check before flyout | Fixed |
 | `MainPage.RepositoryFiles.cs` / activation and deactivation | Page / repository files reading | Async runner observes errors | Activation revision and selected-tab guard | Fixed |
 | `MainPage.RepositoryFiles.cs` / search/open events | Page / content search/file open | Async runner owns error boundary | VM selection/session fences; page lifetime | Fixed |
 | `MainPage.RepositoryFilePreview.cs` / LoadRepositoryFilePreviewAsync | Selection / canceled file read | Expected cancellation filtered; unexpected errors logged | PreviewPublicationGate plus repository/commit/path and IsShuttingDown | Fixed |
@@ -40,11 +40,16 @@ Legend: **fixed** means updated under UI Async Lifecycle Hardening; **retain** m
 | `Diagnostics/HistoryPerformanceDiagnostics.cs` / session writer | Capture / file write | Writer failure observed and output marked Partial/Failed | First stop reason wins; all same session stop callers await same task | Fixed |
 | `Diagnostics/HistoryPerformanceDiagnostics.cs` / capture facade | App / diagnostics ownership | Start excluded while previous stop pending | Same Task for overlapping stops, detached callbacks before wait | Fixed |
 | `MainPage.Lifecycle.cs` / PrepareForShutdown + BeginShutdown | Page / two-phase cleanup | Diagnostics Task awaited by App with 3s budget | Single early and final stages, no repeated Dispose | Fixed |
-| `MainPage.RepositorySwitching.cs` / click handlers | Repository session / navigation + Git flows | Existing VM validations and dialog steps | IsChangingRepository, session guards | Review remaining async void boundaries |
+| `MainPage.RepositorySwitching.cs` / click handlers | Repository session / navigation + Git flows | UI runner observes event failures; repository identity rechecked after draft confirmation | IsChangingRepository and active-session guards; modal serialized | Fixed |
 | `MainPage.CommitActions.cs` / short dialogs | Dialog / optional Git mutation | Serialized confirmation and repo recheck | RunPageUiOperation + VM mutation gate | Fixed |
-| `MainPage.BranchDragDrop.cs` / Drop | Page / Git mutation | Existing command result and mutation checks | Underlying branch protections | Review async void boundary |
-| `MainPage.HistoryInfiniteScroll.cs` / page load | Repository session / history read | Existing ViewModel async command and page lifecycle | Selection and generation guards | Retain |
+| `MainPage.BranchDragDrop.cs` / Drop | Page / Git mutation | UI runner observes callback failures | Existing branch protections and shutdown gate | Fixed |
+| `MainPage.HistoryInfiniteScroll.cs` / page load | Repository session / history read | UI runner observes event failure; finally clears pending flag | Scroll threshold and loading gate; shutdown guard | Fixed |
 | `Controls/AuthorAvatarLifecycleState.cs` / avatar changes | Control / cancelable image requests | Existing cancellation and version token | Stale response ignored | Retain |
+
+| `MainPage.RepositoryCloning.cs` / CloneRepository_Click | Dialog / clone workflow | UI runner observes event errors; dialog lifetime still local to workflow | Clone/create/VM mutation gates | Fixed entry point |
+| `MainPage.RepositoryCreation.cs` / CreateRepository_Click | Dialog / create workflow | UI runner observes event errors; workflow dialog retains its internal lifecycle | Create/clone/VM mutation gates | Fixed entry point |
+| `MainPage.ForcePush.cs` / PushTo + ForcePushWithLease | Page / high-risk Git push | UI runner observes event errors, confirmation uses page dialog gate | Existing expected-remote-commit lease and mutation restrictions remain | Fixed entry points |
+| `MainPage.EditCommitMessage.cs` / EditCommitMessage_Click | Page / history rewrite | UI runner observes event errors; dialog serialized | Existing rewrite safety checks | Fixed entry point |
 
 ## Confirmed defects addressed
 
@@ -70,4 +75,4 @@ First normal Close checks protected operations; if necessary, confirms unsaved d
 
 GitHub Actions builds and unit/contract suites provide automated validation. Local dotnet and manual Windows/macOS/Linux desktop test sessions are unavailable to this executor. Record platform-specific CI outcomes from the commit's Actions run, not from unrelated or earlier commits.
 
-Residual work: Several older async-void event handlers and standalone ContentDialogs elsewhere in MainPage partials have not yet been individually converted; they require follow-up failure-injection testing. Close/confirmation behavior needs real Uno desktop validation on each supported platform; a compiling CI run is **not** proof of window close behavior. These gaps must not be reported as accepted without execution evidence.
+Residual work: Several older async-void event handlers and standalone ContentDialogs elsewhere in MainPage partials have not yet been individually converted; they require follow-up failure-injection testing. Dialogs actively driving clone/create workflows intentionally retain their local ShowAsync lifetime to avoid deadlocking nested workflow callbacks; coordinate any further migration with existing button deferrals. Close/confirmation behavior needs real Uno desktop validation on each supported platform; a compiling CI run is **not** proof of window close behavior. These gaps must not be reported as accepted without execution evidence.
