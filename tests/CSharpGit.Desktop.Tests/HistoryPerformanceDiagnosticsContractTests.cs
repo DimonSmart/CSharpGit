@@ -178,6 +178,18 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
         Assert.DoesNotContain("[\"avatarIdentity\"]", session, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void CaptureStopUsesSingleFlightAndReportsIncompleteOutput()
+    {
+        var source = Read("src", "CSharpGit.Presentation", "Diagnostics", "HistoryPerformanceDiagnostics.cs");
+        Assert.Contains("return _stopTask ??= StopCoreAsync(reason);", source, StringComparison.Ordinal);
+        Assert.Contains("if (_activeSession is not null || _stopTask is not null) return false;", source, StringComparison.Ordinal);
+        Assert.Contains("if (_stopTask is not null) return _stopTask;", source, StringComparison.Ordinal);
+        Assert.Contains("HistoryPerformanceCaptureOutcome.Partial", source, StringComparison.Ordinal);
+        Assert.Contains("HistoryPerformanceCaptureOutcome.Failed", source, StringComparison.Ordinal);
+        Assert.Contains("finally\n        {\n            // Always unblock the writer", source, StringComparison.Ordinal);
+    }
+
     private static string Read(params string[] path) =>
         File.ReadAllText(Path.Combine(new[] { FindRepositoryRoot() }.Concat(path).ToArray()));
 
