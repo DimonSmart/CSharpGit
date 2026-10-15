@@ -11,8 +11,7 @@ internal sealed class GitConfigService
     internal GitConfigService(GitCommandExecutor executor) =>
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
 
-    // A fresh Git-resolved view for each configuration operation. -z preserves embedded
-    // whitespace, newlines and duplicate entries, unlike line-based --get parsing.
+    // --list uses a different NUL record format from --get and --get-all.
     internal async Task<GitConfigSnapshot> ReadSnapshotAsync(
         Repository? repository,
         CancellationToken cancellationToken = default,
@@ -43,10 +42,11 @@ internal sealed class GitConfigService
             "GitConfigRead",
             GitCommandKind.Internal,
             cancellationToken,
-            ["config", "--includes", "--show-scope", "--show-origin", "--get", key]);
+            ["config", "--null", "--includes", "--show-scope", "--show-origin", "--get", key]);
         if (result.ExitCode == 1) return null;
         if (result.ExitCode != 0) throw Failure("Could not read Git configuration", result);
-        return ParseEffective(key, result.StandardOutput);
+        var entry = GitConfigGetParser.ParseOne(result.StandardOutput);
+        return new GitConfigValue(key, entry.Value, entry.Scope, entry.Origin);
     }
 
     internal async Task<GitConfigValue?> ReadScopeAsync(
@@ -62,10 +62,11 @@ internal sealed class GitConfigService
             "GitConfigReadScope",
             GitCommandKind.Internal,
             cancellationToken,
-            ["config", "--includes", ScopeArgument(scope), "--show-origin", "--get", key]);
+            ["config", "--null", "--includes", ScopeArgument(scope), "--show-scope", "--show-origin", "--get", key]);
         if (result.ExitCode is 1 or 5 or 128) return null;
         if (result.ExitCode != 0) throw Failure("Could not read Git configuration", result);
-        return ParseScoped(key, result.StandardOutput, SourceFor(scope));
+        var entry = GitConfigGetParser.ParseOne(result.StandardOutput);
+        return new GitConfigValue(key, entry.Value, SourceFor(scope), entry.Origin);
     }
 
     internal async Task<GitConfigValue?> ReadDirectScopeAsync(
@@ -91,14 +92,13 @@ internal sealed class GitConfigService
             "GitConfigReadDirectScope",
             GitCommandKind.Internal,
             cancellationToken,
-            ["config", "--no-includes", ScopeArgument(scope), "--show-origin", "--get-all", key]);
+            ["config", "--null", "--no-includes", ScopeArgument(scope), "--show-scope", "--show-origin", "--get-all", key]);
         if (result.ExitCode is 1 or 5 or 128) return [];
         if (result.ExitCode != 0) throw Failure("Could not read Git configuration", result);
 
         var source = SourceFor(scope);
-        return result.StandardOutput
-            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => ParseScopedLine(key, line, source))
+        return GitConfigGetParser.ParseAll(result.StandardOutput)
+            .Select(entry => new GitConfigValue(key, entry.Value, source, entry.Origin))
             .ToArray();
     }
 
@@ -164,49 +164,6 @@ internal sealed class GitConfigService
             operation,
             cancellationToken,
             arguments);
-
-    private static GitConfigValue? ParseEffective(string key, string output)
-    {
-        var line = LastLine(output);
-        if (line is null) return null;
-        var parts = line.Split('\t');
-        if (parts.Length >= 3)
-            return new GitConfigValue(key, string.Join('\t', parts.Skip(2)), ParseSource(parts[0]), parts[1]);
-
-        if (parts.Length == 2)
-        {
-            var prefix = parts[0].Trim();
-            var separator = prefix.IndexOfAny([' ', '\t']);
-            if (separator > 0)
-                return new GitConfigValue(key, parts[1], ParseSource(prefix[..separator]), prefix[(separator + 1)..].Trim());
-        }
-
-        return new GitConfigValue(key, line, GitConfigSource.NotConfigured, null);
-    }
-
-    private static GitConfigValue ParseScoped(string key, string output, GitConfigSource source) =>
-        ParseScopedLine(key, LastLine(output) ?? string.Empty, source);
-
-    private static GitConfigValue ParseScopedLine(string key, string line, GitConfigSource source)
-    {
-        var separator = line.IndexOf('\t');
-        return separator < 0
-            ? new GitConfigValue(key, line, source, null)
-            : new GitConfigValue(key, line[(separator + 1)..], source, line[..separator].Trim());
-    }
-
-    private static string? LastLine(string output) =>
-        output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
-
-    private static GitConfigSource ParseSource(string value) => value.Trim().ToLowerInvariant() switch
-    {
-        "command" => GitConfigSource.Command,
-        "worktree" => GitConfigSource.Worktree,
-        "local" => GitConfigSource.Repository,
-        "global" => GitConfigSource.Global,
-        "system" => GitConfigSource.System,
-        _ => GitConfigSource.NotConfigured
-    };
 
     private static GitConfigSource SourceFor(GitConfigScope scope) => scope switch
     {
