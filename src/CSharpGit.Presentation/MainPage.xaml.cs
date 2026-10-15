@@ -567,7 +567,8 @@ public sealed partial class MainPage : Page
 
     private async Task CreateBranchFromAsync(string startPoint)
     {
-        if (_viewModel.Repository is null || _viewModel.IsBusy) return;
+        var originalRepository = _viewModel.Repository;
+        if (originalRepository is null || _viewModel.IsBusy || IsShuttingDown) return;
         var input = new TextBox { Header = $"New branch from {startPoint}", PlaceholderText = "branch/name" };
         var dialog = new ContentDialog
         {
@@ -578,9 +579,12 @@ public sealed partial class MainPage : Page
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary || string.IsNullOrWhiteSpace(input.Text)) return;
-        var repository = _viewModel.Repository;
-        if (repository is null) return;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
+            || string.IsNullOrWhiteSpace(input.Text)
+            || IsShuttingDown
+            || !ReferenceEquals(originalRepository, _viewModel.Repository)
+            || _viewModel.IsBusy) return;
+        var repository = originalRepository;
 
         if (!await _viewModel.Branches.CreateBranchAsync(
                 repository,
