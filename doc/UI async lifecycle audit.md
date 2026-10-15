@@ -100,3 +100,32 @@ Final verification policy: for a newer commit, report acceptance only if **its o
 Known safe exceptions: `App.OnLaunched` is a framework-required `async void` boundary with its own try/catch; the desktop-only check harness is similarly guarded. Native folder picker cancellations are intentionally silent. Already-running Git mutations are not canceled by window-close requests. No new global command infrastructure, cancellation service or independent mutation gate was introduced.
 
 Acceptance evidence for UI-01 through UI-08: inventory rows above; deterministic behavioral tests (`UiAsyncOperationRunnerTests`, `UiPageDialogGateTests`, `UiBoundedTaskWaitTests`, `AsyncFirstStopTests`, `UiDispatchCompletionTests`, `WindowCloseSafetyTests`), updated contract tests, and actual desktop end-to-end checks. Clone/create dialogs now use `ShowPageDialogAsync` rather than bypassing the page gate. All remaining limitations are platform validation limitations, not accepted proof of untested execution.
+
+## Final exception-boundary sweep (2026-10-15)
+
+After the first audit, a follow-up search inspected all 44 `MainPage.*.cs` partials, 25 `Controls/*.cs` files, and 20 presentation `ViewModels/*.cs` files for `async void`, async event lambdas, unobserved `_ = ...Async`, `Task.Run` and blocking waits. The findings below were resolved without adding a command framework or new scheduler:
+
+| File / entry point | Ownership | Error / cancellation policy | Re-entry and lifetime policy | Disposition |
+|---|---|---|---|---|
+| `MainPage.FileOpening.cs` / context actions | Selected file request | Runner observes menu callbacks; unexpected cancellation logs and is reported, stale-request cancellation is silent | File request identity, page shutdown and original VM gates checked | Fixed |
+| `MainPage.RefreshIndicator.cs` / Refresh click | Page + active repository | Runner handles failure; cancellation silent only after repository loss/shutdown | Prevents duplicate refresh; old repository cannot publish after await | Fixed |
+| `Controls/AuthorAvatar.xaml.cs` / resolve and invalidate | Avatar image request + control lifetime | Runner observes both background tasks; synchronous provider errors caught; diagnostics omit private author identity | Existing request gate and IsLoaded checks retained; no stale UI publication | Fixed |
+| `Controls/CommitDetailsView.xaml.cs` / Copy click | Individual UI control | Thin void handler, runner observes clipboard/delay faults | Restores visual glyph only while button loaded/current | Fixed |
+| `ViewModels/OpenRepositoryViewModel.DetailsComposition.cs` / stash selection | Active repository + commit details | Runner observes task failure, including dispose races | Detail VM's selection revision fences reused | Fixed |
+| `Presentation.Core/ViewModels/CommitDetailsViewModel.cs` / changed files, stash, diff | Active selection | Background loads observed with existing logger; original request cancellation retained | Existing generation, repository and selected-file checks; no extra global CTS | Fixed |
+| `ViewModels/RecentRepositoriesViewModel.cs` / image refresh | Recent repository item | Runner observes task failure; unexpected cancellation logged | Existing image request cancellation and current-item identity | Fixed |
+
+The remaining framework-mandated asynchronous void entry points are protected by explicit catch/error boundaries (startup and desktop test harness). No user-facing modal is initiated from these background image/diff observers during shutdown.
+
+### Acceptance and platform evidence
+
+- UI-01, UI-02, UI-03: inventory and exception policies recorded above; no known unchecked MainPage async event boundary after the follow-up sweep. `AsyncCommand` semantics retained.
+- UI-04: page modal gate prevents concurrent ordinary ContentDialogs, rejects queued dialogs on shutdown, and invalidates late accepted answers; clone/create and branch creation now use it.
+- UI-05: previews, image requests, watcher dispatch and recent item loading have cancellation/identity fences and observed faults.
+- UI-06: single-flight async shutdown, UI no longer blocks on diagnostics writer; protected mutations veto close; stop is bounded.
+- UI-07: diagnostics first-stop coordination, writer errors, timeout and late failure observation covered.
+- UI-08: deterministic tests and desktop integration suites added or updated; source-based contract checks do not substitute for behavioral tests.
+
+Last complete successful matrix **prior to these final sweep changes**: commit `65a8933bf5c4c11c5c290b3b8972a0f466504916`, build run `38740708941`, successful Windows, macOS and Ubuntu jobs. For final acceptance, use the CI run corresponding to the eventual final `main` commit, not this checkpoint.
+
+Platform caveat: Linux desktop e2e remains skipped in headless GitHub Actions (no DISPLAY or WAYLAND_DISPLAY), while Windows/macOS desktop e2e runs with a real UI session. This is a documented validation limit, not evidence of Linux interactive behavior. The Ubuntu build, unit tests and Linux publish smoke are part of its CI job.
