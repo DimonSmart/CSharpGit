@@ -995,14 +995,6 @@ public sealed partial class MainPage : Page
 
 internal static class DispatcherQueueExtensions
 {
-    public static Task EnqueueAsync(this DispatcherQueue queue, Action action)
-    {
-        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        if (!queue.TryEnqueue(() =>
-        {
-            try { action(); completion.SetResult(); }
-            catch (Exception exception) { completion.SetException(exception); }
-        })) completion.SetException(new InvalidOperationException("The UI dispatcher rejected the check."));
-        return completion.Task;
-    }
+    public static Task EnqueueAsync(this DispatcherQueue queue, Action action) =>
+        UiDispatchCompletion.EnqueueAsync(callback => queue.TryEnqueue(() => callback()), action);
 }
