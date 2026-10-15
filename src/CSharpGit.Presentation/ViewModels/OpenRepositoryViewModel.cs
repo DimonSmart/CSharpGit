@@ -209,6 +209,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
     public bool HasRepository => Repository is not null;
     public bool CanChangeRepository => !_isMutating && Volatile.Read(ref _repositoryChangeInProgress) == 0;
+    public bool IsMutating => _isMutating;
     public string RepositoryKind => Repository?.IsWorktree == true ? "Git worktree" : "Git repository";
     public bool HasSelectedCommit => History.SelectedRow is not null;
     public string HeadDisplay => _headDisplay;
