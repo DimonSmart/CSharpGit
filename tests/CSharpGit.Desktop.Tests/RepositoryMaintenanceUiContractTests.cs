@@ -64,7 +64,9 @@ public sealed class RepositoryMaintenanceUiContractTests
         Assert.Contains("args.GetDeferral()", dialog, StringComparison.Ordinal);
         Assert.Contains("if (workflow.IsRunning)", dialog, StringComparison.Ordinal);
         Assert.Contains("=> _repositoryMaintenance.IsRunning", source, StringComparison.Ordinal);
-        Assert.Contains("page?.IsRepositoryMaintenanceInProgress == true", app, StringComparison.Ordinal);
+        var lifecycle = ReadSource("src/CSharpGit.Presentation/MainPage.Lifecycle.cs");
+        Assert.Contains("page?.IsUnsafeToClose == true", app, StringComparison.Ordinal);
+        Assert.Contains("|| IsRepositoryMaintenanceInProgress", lifecycle, StringComparison.Ordinal);
         Assert.Contains("eventArgs.Cancel = true", app, StringComparison.Ordinal);
     }
 
