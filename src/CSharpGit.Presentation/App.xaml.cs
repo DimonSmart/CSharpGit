@@ -190,7 +190,14 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 eventArgs.Cancel = true;
         };
 
-        _window.Closed += (_, _) => ReportDesktopCloseCheck("WindowClosed");
+        _window.Closed += (_, _) =>
+        {
+            ReportDesktopCloseCheck("WindowClosed");
+            // macOS may terminate its native host loop before Program's finally
+            // observes shutdown. Stop the managed host before that boundary.
+            if (OperatingSystem.IsMacOS() && _shutdownRequested)
+                StopHost();
+        };
         if (Environment.GetEnvironmentVariable("CSHARPGIT_CLOSE_CHECK") == "1")
             mainPage.Loaded += RunDesktopCloseCheckWhenLoaded;
         _window.Content = mainPage;
