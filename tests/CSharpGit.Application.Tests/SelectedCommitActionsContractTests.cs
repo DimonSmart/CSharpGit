@@ -57,9 +57,11 @@ public sealed class SelectedCommitActionsContractTests
         Assert.Contains("Mainline parent", actions);
         Assert.Contains("Uncommitted tracked changes will be lost", actions);
         Assert.Contains("Untracked files will not be deleted", actions);
-        var fixup = ExtractMethod(actions, "FixupIntoPreviousCommit_Click");
+        var fixupHandler = ExtractMethod(actions, "FixupIntoPreviousCommit_Click");
+        Assert.Contains("RunPageUiOperation(FixupIntoPreviousCommitAsync", fixupHandler);
+        var fixup = ExtractMethod(actions, "FixupIntoPreviousCommitAsync");
         Assert.Contains("_viewModel.CommitActions.FixupAsync", fixup);
-        Assert.DoesNotContain("FixupIntoPreviousCommitAsync", fixup);
+        Assert.Contains("CanExecuteCapturedCommitAction", fixup);
         Assert.Contains("_commitActionService.FixupIntoPreviousCommitAsync", commitActions);
         Assert.Contains("RunCommitHistoryRewriteMutationAsync", commitActions);
         Assert.Contains("RunHistoryRewriteMutationAsync", contextAdapter);

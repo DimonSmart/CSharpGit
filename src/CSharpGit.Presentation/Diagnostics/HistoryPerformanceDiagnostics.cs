@@ -1508,7 +1508,7 @@ internal static class HistoryPerformanceDiagnostics
             if (session is null) return Task.FromResult<HistoryPerformanceCaptureFiles?>(null);
             Volatile.Write(ref _activeSession, null);
 
-            // Subscription cleanup is immediate and must remain on the UI thread.
+            // Unsubscribe synchronously on the UI thread, while the session is still owned.
             CompositionTarget.Rendering -= CompositionTarget_Rendering;
             if (_gitActivitySource is { } source)
                 source.Changed -= GitActivitySource_Changed;
@@ -1517,22 +1517,36 @@ internal static class HistoryPerformanceDiagnostics
                 avatarSource.DiagnosticActivity -= AvatarDiagnosticSource_DiagnosticActivity;
             _avatarDiagnosticSource = null;
 
-            return _stopTask = CompleteStopAsync(session, reason);
+            // Publish the flight before running it: a synchronously completed stop
+            // must not leave an already-completed Task stuck in _stopTask.
+            var completion = new TaskCompletionSource<HistoryPerformanceCaptureFiles?>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            _stopTask = completion.Task;
+            _ = CompleteStopAsync(session, reason, completion);
+            return completion.Task;
         }
     }
 
-    private static async Task<HistoryPerformanceCaptureFiles?> CompleteStopAsync(
+    private static async Task CompleteStopAsync(
         HistoryPerformanceSession session,
-        HistoryPerformanceStopReason reason)
+        HistoryPerformanceStopReason reason,
+        TaskCompletionSource<HistoryPerformanceCaptureFiles?> completion)
     {
         try
         {
-            return await session.StopAsync(reason).ConfigureAwait(false);
+            completion.TrySetResult(await session.StopAsync(reason).ConfigureAwait(false));
+        }
+        catch (Exception exception)
+        {
+            completion.TrySetException(exception);
         }
         finally
         {
             lock (SessionGate)
-                _stopTask = null;
+            {
+                if (ReferenceEquals(_stopTask, completion.Task))
+                    _stopTask = null;
+            }
         }
     }
 
