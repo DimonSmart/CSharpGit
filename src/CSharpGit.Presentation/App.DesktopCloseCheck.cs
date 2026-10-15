@@ -49,7 +49,9 @@ public sealed partial class App
                 ApplicationDataRoot = ApplicationDataPaths.Root
             }).AsMemory(), timeout.Token);
 
-            if (await reader.ReadLineAsync(timeout.Token) != "Close")
+            if (Environment.GetEnvironmentVariable("CSHARPGIT_CLOSE_CHECK_EXTENDED") == "1")
+                await RunDesktopLifecycleCommandsAsync(page, viewModel, reader, writer, timeout.Token);
+            else if (await reader.ReadLineAsync(timeout.Token) != "Close")
                 throw new InvalidOperationException("The desktop close-check pipe did not receive a Close command.");
 
             ReportDesktopCloseCheck("CloseRequested");
@@ -63,6 +65,88 @@ public sealed partial class App
         catch (Exception exception)
         {
             ReportDesktopCloseCheck($"Failed: {exception}");
+        }
+    }
+
+
+    // Runs inside the real desktop UI, sharing the production ViewModel and MainPage.
+    private async Task RunDesktopLifecycleCommandsAsync(
+        MainPage page, OpenRepositoryViewModel vm,
+        StreamReader reader, StreamWriter writer, CancellationToken token)
+    {
+        TaskCompletionSource? release = null;
+        Task<bool>? mutation = null;
+
+        Task RespondAsync(bool success)
+        {
+            var repo = vm.Repository;
+            var response = JsonSerializer.Serialize(new
+            {
+                State = "Snapshot",
+                Success = success,
+                Path = repo?.WorkingDirectory,
+                IsWorktree = repo?.IsWorktree,
+                Branch = vm.CurrentBranchName,
+                Head = vm.CurrentHeadCommit,
+                HasBaseline = vm.DisplayedWorkingTreeStatusSnapshot is not null,
+                HistoryCount = vm.History.Rows.Count,
+                Draft = vm.CommitCreation.CommitMessage,
+                UnsafeToClose = page.IsUnsafeToClose,
+                Error = vm.ErrorMessage
+            });
+            return writer.WriteLineAsync(response.AsMemory(), token).AsTask();
+        }
+
+        while (true)
+        {
+            var command = await reader.ReadLineAsync(token)
+                ?? throw new EndOfStreamException("Desktop lifecycle check disconnected.");
+            if (command == "Close") return;
+
+            if (command.StartsWith("Switch\t", StringComparison.Ordinal))
+            {
+                await RespondAsync(await vm.OpenRepositoryPathAsync(command["Switch\t".Length..], token));
+            }
+            else if (command.StartsWith("SetDraft\t", StringComparison.Ordinal))
+            {
+                vm.CommitCreation.CommitMessage = command["SetDraft\t".Length..];
+                await RespondAsync(true);
+            }
+            else if (command == "CloseRepository")
+            {
+                await RespondAsync(vm.CloseRepository());
+            }
+            else if (command == "BeginMutation")
+            {
+                if (mutation is not null) throw new InvalidOperationException("Mutation already running.");
+                release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var pendingRelease = release;
+                mutation = vm.RunMutationAsync(async () =>
+                {
+                    started.TrySetResult();
+                    await pendingRelease.Task;
+                });
+                await started.Task.WaitAsync(token);
+                await RespondAsync(true);
+            }
+            else if (command == "AttemptCloseDuringMutation")
+            {
+                if (TryBeginNormalShutdown(page))
+                    throw new InvalidOperationException("Close was accepted during a protected mutation.");
+                await RespondAsync(true);
+            }
+            else if (command == "CompleteMutation")
+            {
+                if (mutation is null || release is null)
+                    throw new InvalidOperationException("No mutation is running.");
+                release.TrySetResult();
+                var result = await mutation.WaitAsync(token);
+                mutation = null;
+                release = null;
+                await RespondAsync(result);
+            }
+            else throw new InvalidOperationException($"Unknown desktop lifecycle command: {command}");
         }
     }
 
