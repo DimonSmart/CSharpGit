@@ -360,6 +360,32 @@ public sealed class DesktopApplicationTests
                 Assert.False(d.RootElement.GetProperty("IsBusy").GetBoolean());
             }
 
+            using (var d = await CommandAsync("SetDraft\tkeep draft on failed confirmed switch"))
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+            using (var d = await CommandAsync("ConfirmedSwitch\t" + isolatedHome))
+            {
+                Assert.False(d.RootElement.GetProperty("Success").GetBoolean());
+                AssertOpenedSnapshotPath(d.RootElement, original);
+                Assert.Equal("keep draft on failed confirmed switch", d.RootElement.GetProperty("Draft").GetString());
+            }
+            using (var d = await CommandAsync("SetDraft\tconfirmed switch draft"))
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+            using (var d = await CommandAsync("ConfirmedSwitch\t" + worktree))
+            {
+                AssertOpened(d.RootElement, worktree, true);
+                Assert.Equal(string.Empty, d.RootElement.GetProperty("Draft").GetString());
+            }
+            using (var d = await CommandAsync("SetDraft\tconfirmed close draft"))
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+            using (var d = await CommandAsync("ConfirmedClose"))
+            {
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+                Assert.Equal(JsonValueKind.Null, d.RootElement.GetProperty("Path").ValueKind);
+                Assert.Equal(string.Empty, d.RootElement.GetProperty("Draft").GetString());
+            }
+            using (var d = await CommandAsync("Switch\t" + original))
+                AssertOpened(d.RootElement, original, false);
+
             using (var d = await CommandAsync("CloseRepository"))
             {
                 Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
