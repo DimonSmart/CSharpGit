@@ -247,7 +247,11 @@ public sealed partial class AuthorAvatar : UserControl
 
         var request = _requestGate.Start(effectiveState.LookupKey);
         HistoryRenderDiagnostics.AvatarRequestStarted();
-        _ = ResolveRemoteAsync(request, AuthorName, AuthorEmail);
+        _ = CSharpGit.Presentation.Threading.UiAsyncOperationRunner.RunAsync(
+            () => ResolveRemoteAsync(request, AuthorName, AuthorEmail),
+            exception => System.Diagnostics.Trace.TraceWarning(
+                "Author avatar resolution callback failed ({0}).", exception.GetType().Name),
+            () => request.CancellationToken.IsCancellationRequested);
     }
 
     private async Task ResolveRemoteAsync(
@@ -261,10 +265,10 @@ public sealed partial class AuthorAvatar : UserControl
 
         AuthorAvatarResult result;
         var startedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
-        var resolveTask = service.ResolveAsync(authorName, authorEmail, request.CancellationToken);
-        var completedSynchronously = resolveTask.IsCompleted;
         try
         {
+            var resolveTask = service.ResolveAsync(authorName, authorEmail, request.CancellationToken);
+            var completedSynchronously = resolveTask.IsCompleted;
             result = await resolveTask;
             HistoryRenderDiagnostics.AvatarResolveCompleted(startedAt, completedSynchronously);
         }
@@ -272,8 +276,10 @@ public sealed partial class AuthorAvatar : UserControl
         {
             return;
         }
-        catch
+        catch (Exception exception)
         {
+            System.Diagnostics.Trace.TraceWarning(
+                "Author avatar lookup failed ({0}).", exception.GetType().Name);
             CompleteFaultedRequest(request);
             return;
         }
@@ -380,10 +386,17 @@ public sealed partial class AuthorAvatar : UserControl
         _lifecycleState.TryMarkImageFailed(key);
         ShowInitials();
 
-        if (!_lifecycleState.IsCurrent(key) || _avatarService is null)
+        var service = _avatarService;
+        if (!_lifecycleState.IsCurrent(key) || service is null)
             return;
 
-        _ = _avatarService.InvalidateAsync(AuthorName, AuthorEmail);
+        var name = AuthorName;
+        var email = AuthorEmail;
+        _ = CSharpGit.Presentation.Threading.UiAsyncOperationRunner.RunAsync(
+            () => service.InvalidateAsync(name, email),
+            exception => System.Diagnostics.Trace.TraceWarning(
+                "Author avatar cache invalidation failed ({0}).", exception.GetType().Name),
+            () => !IsLoaded);
     }
 
     private void ShowInitials()
