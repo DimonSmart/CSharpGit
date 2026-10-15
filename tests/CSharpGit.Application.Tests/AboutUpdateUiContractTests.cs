@@ -52,7 +52,8 @@ public sealed class AboutUpdateUiContractTests
         Assert.Contains("page?.IsUnsafeToClose == true", app);
         Assert.Contains("|| IsApplicationUpdateInProgress", lifecycle);
         Assert.Contains("_closeConfirmed = true", app);
-        Assert.Contains("page?.BeginShutdown()", app);
+        Assert.Contains("page.PrepareForShutdown()", app);
+        Assert.Contains("page.BeginShutdown()", app);
 
         Assert.DoesNotContain("brew update", about, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("brew upgrade", about, StringComparison.OrdinalIgnoreCase);
