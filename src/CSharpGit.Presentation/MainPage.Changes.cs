@@ -125,7 +125,7 @@ public sealed partial class MainPage
         {
             case DiffContentPresentation.Binary:
                 CompactDiffViewer.Clear();
-                _ = LoadCommitImageDiffAsync();
+                RunPageUiOperation(LoadCommitImageDiffAsync, "Commit image diff");
                 return;
             case DiffContentPresentation.NoTextualPatch:
                 CompactDiffViewer.Clear();

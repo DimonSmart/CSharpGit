@@ -96,7 +96,7 @@ public sealed partial class MainPage
     {
         var repository = _repositoryFilesViewModel.CurrentRepository;
         var commitHash = _repositoryFilesViewModel.CurrentCommit;
-        if (repository is null
+        if (IsShuttingDown || repository is null
             || string.IsNullOrWhiteSpace(commitHash)
             || selection.Entry is not { Kind: RepositorySnapshotEntryKind.File } entry
             || _fileVersionService is null
@@ -141,11 +141,12 @@ public sealed partial class MainPage
             if (!CanPublishRepositoryPreview(lease)) return;
             _repositoryFilePreviewHost?.Show(content);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (lease.CancellationToken.IsCancellationRequested || IsShuttingDown)
         {
         }
         catch (Exception exception)
         {
+            ReportUiFailure(exception, "Repository file preview");
             if (CanPublishRepositoryPreview(lease))
                 _repositoryFilePreviewHost?.ShowError(UserFacingFileError(exception));
         }
@@ -153,7 +154,7 @@ public sealed partial class MainPage
 
     private bool CanPublishRepositoryPreview(PreviewLease<RepositoryPreviewContext> lease)
     {
-        if (!IsRepositoryFilesActive
+        if (IsShuttingDown || !IsRepositoryFilesActive
             || _repositoryFilesViewModel.SelectedPath is not { } path)
         {
             return false;
@@ -161,7 +162,7 @@ public sealed partial class MainPage
 
         var repository = _repositoryFilesViewModel.CurrentRepository;
         var commitHash = _repositoryFilesViewModel.CurrentCommit;
-        if (repository is null
+        if (IsShuttingDown || repository is null
             || string.IsNullOrWhiteSpace(commitHash)
             || !_repositoryFilesViewModel.SnapshotMatchesSelection)
         {
