@@ -299,7 +299,11 @@ internal sealed class GitCommandExecutor
         {
             activityId = activitySink?.Started(
                 executable, workingDirectory,
-                sensitive ? ["[sensitive Git arguments omitted]"] : effectiveArguments,
+                sensitive
+                    ? (arguments.Count > 0 && arguments[0] is "config" or "remote"
+                        ? [arguments[0], "[sensitive Git arguments omitted]"]
+                        : ["[sensitive Git arguments omitted]"])
+                    : effectiveArguments,
                 commandKind);
             processStarted?.Invoke(process.Id);
 
@@ -329,7 +333,7 @@ internal sealed class GitCommandExecutor
                 ? new GitCommandResult(
                     process.ExitCode,
                     process.ExitCode == 0 ? output : string.Empty,
-                    string.Empty)
+                    process.ExitCode == 0 ? string.Empty : SafeSensitiveFailure(error, output, arguments))
                 : new GitCommandResult(process.ExitCode, output, error);
             if (activityId is { } completedId)
                 activitySink!.Completed(completedId, result.ExitCode);
@@ -430,28 +434,42 @@ internal sealed class GitCommandExecutor
     // This guard applies to every entry point using ExecuteProcessCoreAsync.
     private static bool RequiresSensitiveDiagnostics(IReadOnlyList<string> arguments)
     {
-        for (var index = 0; index < arguments.Count; index++)
-        {
-            var argument = arguments[index];
-            if (argument is "-c" or "--config-env" ||
-                argument.StartsWith("--config-env=", StringComparison.Ordinal) ||
-                (argument.StartsWith("-c", StringComparison.Ordinal) && argument.Length > 2))
-                return true;
-        }
-
         var commandIndex = 0;
+        var hasInlineConfiguration = false;
         while (commandIndex < arguments.Count && arguments[commandIndex].StartsWith("-", StringComparison.Ordinal))
         {
             var argument = arguments[commandIndex++];
+            if (argument is "-c" or "--config-env"
+                || argument.StartsWith("--config-env=", StringComparison.Ordinal)
+                || (argument.StartsWith("-c", StringComparison.Ordinal) && argument.Length > 2))
+                hasInlineConfiguration = true;
             if (argument is "-C" or "--git-dir" or "--work-tree" or "-c" or "--config-env")
                 commandIndex++;
         }
 
+        // A shell used by executable tests also uses -c, but has no Git subcommand.
         if (commandIndex >= arguments.Count) return false;
         var command = arguments[commandIndex];
-        return command == "config"
+        return hasInlineConfiguration
+            || command == "config"
             || (command == "remote" && commandIndex + 1 < arguments.Count &&
                 arguments.Skip(commandIndex + 1).Any(value => value is "-v" or "--verbose"));
+    }
+
+    private static string SafeSensitiveFailure(
+        string stderr, string stdout, IReadOnlyList<string> arguments)
+    {
+        // The raw diagnostic is used only for classification. Never copy any portion of it.
+        if (!arguments.Contains("push", StringComparer.Ordinal))
+            return string.Empty;
+        var diagnostic = stderr + "\n" + stdout;
+        if (diagnostic.Contains("no configured push destination", StringComparison.OrdinalIgnoreCase))
+            return "no configured push destination";
+        if (diagnostic.Contains("has no upstream branch", StringComparison.OrdinalIgnoreCase))
+            return "has no upstream branch";
+        if (diagnostic.Contains("upstream branch of your current branch does not match", StringComparison.OrdinalIgnoreCase))
+            return "upstream branch of your current branch does not match";
+        return string.Empty;
     }
 
     private static ProcessStartInfo CreateStartInfo(
