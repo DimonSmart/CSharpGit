@@ -225,8 +225,14 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     internal Task RefreshAsyncForDesktopCheck() => RefreshAllAsync();
 
-    internal Task<bool> RunMutationAsync(Func<Task> mutation, string? errorContext = null, bool includeHistory = true) =>
-        MutateAsync(mutation, errorContext, includeHistory: includeHistory);
+    internal Task<bool> RunMutationAsync(
+        Func<Task> mutation,
+        string? errorContext = null,
+        bool includeHistory = true,
+        Action? beforeMutation = null,
+        Action? afterSuccessfulMutation = null) =>
+        MutateAsync(mutation, errorContext, beforeMutation: beforeMutation,
+            includeHistory: includeHistory, afterSuccessfulMutation: afterSuccessfulMutation);
 
     private async Task OpenRepositoryAsync()
     {
