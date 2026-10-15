@@ -32,10 +32,17 @@ public sealed class DesktopApplicationTests
         using var process = Process.Start(start) ?? throw new InvalidOperationException("Desktop application could not be started.");
         var standardOutput = process.StandardOutput.ReadToEndAsync();
         var standardError = process.StandardError.ReadToEndAsync();
+        string? timeoutFailure = null;
         try
         {
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+            // A shared Windows CI runner can spend most of the old 45-second
+            // budget in first-time native UI initialization under heavy load.
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
             await process.WaitForExitAsync(timeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            timeoutFailure = "Desktop smoke process did not complete within 90 seconds.";
         }
         finally
         {
@@ -46,7 +53,11 @@ public sealed class DesktopApplicationTests
             }
         }
 
-        Assert.True(File.Exists(result), $"Desktop application exited with {process.ExitCode} without a result.{Environment.NewLine}{await standardOutput}{Environment.NewLine}{await standardError}");
+        var output = await standardOutput;
+        var error = await standardError;
+        Assert.True(timeoutFailure is null,
+            $"{timeoutFailure}{Environment.NewLine}{output}{Environment.NewLine}{error}");
+        Assert.True(File.Exists(result), $"Desktop application exited with {process.ExitCode} without a result.{Environment.NewLine}{output}{Environment.NewLine}{error}");
         using var document = JsonDocument.Parse(await File.ReadAllTextAsync(result));
         var failures = document.RootElement.GetProperty("Failures").EnumerateArray().Select(item => item.GetString()).ToArray();
         Assert.True(document.RootElement.GetProperty("Passed").GetBoolean(), string.Join(Environment.NewLine, failures));
@@ -70,7 +81,7 @@ public sealed class DesktopApplicationTests
         string? failure = null;
         try
         {
-            using (var startupTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(45)))
+            using (var startupTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(90)))
             {
                 var readiness = WaitForCloseReadinessAsync(pipe, repository,
                     start.Environment["CSHARPGIT_APP_DATA_ROOT"]!, startupTimeout.Token);
