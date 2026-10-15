@@ -210,7 +210,16 @@ public sealed partial class MainPage
                 _cloneRepositoryViewModel.LocalDirectory = localDirectoryBox.Text;
         };
         browseButton.Click += (_, _) =>
-            RunPageUiOperation(_cloneRepositoryViewModel.BrowseAsync, "Clone repository folder picker");
+            RunPageUiOperation(BrowseForCloneAsync, "Clone repository folder picker");
+
+        async Task BrowseForCloneAsync()
+        {
+            try { await _cloneRepositoryViewModel.BrowseAsync(); }
+            catch (OperationCanceledException)
+            {
+                // Closing the native folder picker is expected user cancellation.
+            }
+        }
         cancelButton.Click += (_, _) =>
         {
             if (_cloneRepositoryViewModel.IsBusy)
@@ -234,7 +243,7 @@ public sealed partial class MainPage
                     dialog.Hide();
                 }
             }
-            catch (OperationCanceledException) when (_cloneRepositoryViewModel.IsBusy || IsShuttingDown)
+            catch (OperationCanceledException)
             {
                 if (!IsShuttingDown)
                     dialog.Hide();
