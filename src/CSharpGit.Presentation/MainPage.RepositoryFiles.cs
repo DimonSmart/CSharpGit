@@ -214,7 +214,8 @@ public sealed partial class MainPage
         {
             ++_repositoryFilesActivationRevision;
             CancelRepositoryFilePreview();
-            _ = _repositoryFilesViewModel.SetActiveAsync(false);
+            RunPageUiOperation(() => _repositoryFilesViewModel.SetActiveAsync(false),
+                "Repository files deactivation");
             return;
         }
 
@@ -222,13 +223,14 @@ public sealed partial class MainPage
             return;
 
         var activation = ++_repositoryFilesActivationRevision;
-        _ = ActivateRepositoryFilesAsync(activation);
+        RunPageUiOperation(() => ActivateRepositoryFilesAsync(activation),
+            "Repository files activation");
     }
 
     private async Task ActivateRepositoryFilesAsync(long activation)
     {
         await _repositoryFilesViewModel.SetActiveAsync(true);
-        if (!IsRepositoryFilesActive
+        if (IsShuttingDown || !IsRepositoryFilesActive
             || !_repositoryFilesViewModel.IsActive
             || activation != _repositoryFilesActivationRevision)
             return;
@@ -318,7 +320,7 @@ public sealed partial class MainPage
         _repositoryFilesViewModel.SetNameQuery(_repositoryFilesSearch.Text);
     }
 
-    private async void RepositoryFilesSearch_KeyDown(object sender, KeyRoutedEventArgs args)
+    private void RepositoryFilesSearch_KeyDown(object sender, KeyRoutedEventArgs args)
     {
         if (args.Key != VirtualKey.Enter
             || !_repositoryFilesViewModel.IsContentSearchMode
@@ -328,7 +330,8 @@ public sealed partial class MainPage
         }
 
         args.Handled = true;
-        await _repositoryFilesViewModel.SearchContentAsync(_repositoryFilesSearch.Text);
+        var query = _repositoryFilesSearch.Text;
+        RunPageUiOperation(() => _repositoryFilesViewModel.SearchContentAsync(query), "Repository content search");
     }
 
     private void RepositoryFilesSearchMode_SelectionChanged(object sender, SelectionChangedEventArgs args)
@@ -422,12 +425,12 @@ public sealed partial class MainPage
             _ => null
         };
 
-    private async void RepositoryFilesTree_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
+    private void RepositoryFilesTree_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
     {
         if (SelectedRepositorySnapshotEntry() is not { Kind: RepositorySnapshotEntryKind.File } entry)
             return;
 
-        await OpenRepositorySnapshotFileAsync(entry, openInEditor: false);
+        RunPageUiOperation(() => OpenRepositorySnapshotFileAsync(entry, openInEditor: false), "Repository file opening");
         args.Handled = true;
     }
 
@@ -466,16 +469,16 @@ public sealed partial class MainPage
             _repositoryContentResults?.SelectedItem as RepositoryContentSearchRow);
     }
 
-    private async void RepositoryContentResults_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
+    private void RepositoryContentResults_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
     {
         if (_repositoryContentResults?.SelectedItem is not RepositoryContentSearchRow row)
             return;
 
-        await OpenRepositoryContentMatchAsync(row, openInEditor: false);
+        RunPageUiOperation(() => OpenRepositoryContentMatchAsync(row, openInEditor: false), "Repository content opening");
         args.Handled = true;
     }
 
-    private async void RepositoryContentResults_KeyDown(object sender, KeyRoutedEventArgs args)
+    private void RepositoryContentResults_KeyDown(object sender, KeyRoutedEventArgs args)
     {
         if (args.Key != VirtualKey.Enter
             || _repositoryContentResults?.SelectedItem is not RepositoryContentSearchRow row)
@@ -484,7 +487,7 @@ public sealed partial class MainPage
         }
 
         args.Handled = true;
-        await OpenRepositoryContentMatchAsync(row, openInEditor: false);
+        RunPageUiOperation(() => OpenRepositoryContentMatchAsync(row, openInEditor: false), "Repository content opening");
     }
 
     private void RepositoryContentResults_RightTapped(object sender, RightTappedRoutedEventArgs args)

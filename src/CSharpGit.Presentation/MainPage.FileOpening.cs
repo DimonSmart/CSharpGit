@@ -45,8 +45,8 @@ public sealed partial class MainPage
         _viewModel.WorkingTree.PropertyChanged += WorkingTreeFileOpening_PropertyChanged;
         _fileActions.PropertyChanged += FileActions_PropertyChanged;
 
-        _ = RefreshCommitFileActionStateAsync();
-        _ = RefreshWorkingTreeFileActionStateAsync();
+        RunPageUiOperation(RefreshCommitFileActionStateAsync, "Commit file action state");
+        RunPageUiOperation(RefreshWorkingTreeFileActionStateAsync, "Working-tree file action state");
     }
 
     private void FileActions_PropertyChanged(object? sender, PropertyChangedEventArgs args)
@@ -65,17 +65,17 @@ public sealed partial class MainPage
         if (args.PropertyName is nameof(CommitDetailsViewModel.SelectedFile)
             or nameof(HistoryViewModel.SelectedRow)
             or nameof(OpenRepositoryViewModel.Repository))
-            _ = RefreshCommitFileActionStateAsync();
+            RunPageUiOperation(RefreshCommitFileActionStateAsync, "Commit file action state");
 
         if (args.PropertyName == nameof(OpenRepositoryViewModel.Repository))
-            _ = RefreshWorkingTreeFileActionStateAsync();
+            RunPageUiOperation(RefreshWorkingTreeFileActionStateAsync, "Working-tree file action state");
     }
 
     private void WorkingTreeFileOpening_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (args.PropertyName is nameof(WorkingTreeViewModel.SelectedChange)
             or nameof(WorkingTreeViewModel.SelectedDiffKind))
-            _ = RefreshWorkingTreeFileActionStateAsync();
+            RunPageUiOperation(RefreshWorkingTreeFileActionStateAsync, "Working-tree file action state");
     }
 
     private CommitFileActionRequest? CaptureCommitRequest(string? path = null)
@@ -306,7 +306,7 @@ public sealed partial class MainPage
         try
         {
             var prepared = await _fileActions.PrepareAsync(request);
-            if (prepared is null || !_fileActions.IsCurrent(request) || source.XamlRoot is null
+            if (IsShuttingDown || prepared is null || !_fileActions.IsCurrent(request) || source.XamlRoot is null
                 || !IsMenuSelectionCurrent(request))
                 return;
 
