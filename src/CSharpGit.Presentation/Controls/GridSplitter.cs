@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CSharpGit.Infrastructure;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -338,7 +339,7 @@ public sealed class GridSplitter : UserControl
     }
 
     private static string SettingsPath() => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        ApplicationDataPaths.Root,
         "CSharpGit",
         "layout.json");
 

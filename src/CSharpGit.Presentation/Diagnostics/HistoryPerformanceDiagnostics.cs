@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
 using CSharpGit.Application.Abstractions;
+using CSharpGit.Infrastructure;
 using Microsoft.UI.Xaml.Media;
 
 namespace CSharpGit.Presentation.Diagnostics;
@@ -1388,9 +1389,7 @@ internal static class HistoryPerformanceDiagnostics
     {
         get
         {
-            var root = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            if (string.IsNullOrWhiteSpace(root)) root = AppContext.BaseDirectory;
-            return Path.Combine(root, "CSharpGit", "Diagnostics", "HistoryPerformance");
+            return Path.Combine(ApplicationDataPaths.Root, "CSharpGit", "Diagnostics", "HistoryPerformance");
         }
     }
 

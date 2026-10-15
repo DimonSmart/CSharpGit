@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO.Pipes;
 using System.Text.Json;
 
 namespace CSharpGit.Desktop.Tests;
@@ -9,13 +10,14 @@ public sealed class DesktopApplicationTests
     public async Task LaunchesRealApplicationForRepositoryAndLinkedWorktree()
     {
         var application = FindApplication();
-        if (!HasDesktopSession() || !CanUseDesktopApplicationData()) return;
+        if (!HasDesktopSession()) return;
         Assert.True(application is not null, "Build CSharpGit.Presentation first, or set CSHARPGIT_DESKTOP_APP to its executable.");
 
         await using var fixture = await GitFixture.CreateAsync();
         await RunCheckAsync(application!, fixture.Repository, false, fixture.Home);
         await RunCheckAsync(application!, fixture.Worktree, true, fixture.Home);
         await RunNormalCloseCheckAsync(application!, fixture.Repository, fixture.Home);
+        await RunNormalCloseCheckAsync(application!, fixture.Worktree, fixture.Home);
     }
 
     private static async Task RunCheckAsync(string application, string repository, bool worktree, string isolatedHome)
@@ -52,25 +54,48 @@ public sealed class DesktopApplicationTests
 
     private static async Task RunNormalCloseCheckAsync(string application, string repository, string isolatedHome)
     {
+        var pipeName = $"csharpgit-close-{Guid.NewGuid():N}";
+        using var pipe = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
         var start = CreateStartInfo(application, repository, isolatedHome);
         start.Environment["CSHARPGIT_UI_CHECK_REPOSITORY"] = repository;
         start.Environment["CSHARPGIT_CLOSE_CHECK"] = "1";
+        start.Environment["CSHARPGIT_CLOSE_CHECK_PIPE"] = pipeName;
 
         using var process = Process.Start(start) ?? throw new InvalidOperationException("Desktop application could not be started for the close check.");
         var standardOutput = process.StandardOutput.ReadToEndAsync();
         var standardError = process.StandardError.ReadToEndAsync();
-        var timedOut = false;
+        var phase = "startup/readiness";
+        string? failure = null;
         try
         {
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-            try
+            using (var startupTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(45)))
             {
-                await process.WaitForExitAsync(timeout.Token);
+                var readiness = WaitForCloseReadinessAsync(pipe, repository,
+                    start.Environment["CSHARPGIT_APP_DATA_ROOT"]!, startupTimeout.Token);
+                var exit = process.WaitForExitAsync(startupTimeout.Token);
+                if (await Task.WhenAny(readiness, exit) == exit && !readiness.IsCompleted)
+                {
+                    startupTimeout.Cancel();
+                    try { await readiness; } catch (OperationCanceledException) { }
+                    throw new InvalidOperationException("Desktop application exited before reporting readiness.");
+                }
+                await readiness;
             }
-            catch (OperationCanceledException)
-            {
-                timedOut = true;
-            }
+
+            phase = "normal shutdown after readiness";
+            using var shutdownTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            using var writer = new StreamWriter(pipe, leaveOpen: true) { AutoFlush = true };
+            await writer.WriteLineAsync("Close".AsMemory(), shutdownTimeout.Token);
+            await process.WaitForExitAsync(shutdownTimeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            failure = $"Timed out during {phase}.";
+        }
+        catch (Exception exception)
+        {
+            failure = exception.ToString();
         }
         finally
         {
@@ -83,8 +108,33 @@ public sealed class DesktopApplicationTests
 
         var output = await standardOutput;
         var error = await standardError;
-        Assert.False(timedOut, $"Desktop application hung while closing normally.{Environment.NewLine}{output}{Environment.NewLine}{error}");
+        Assert.True(failure is null, $"Desktop close check failed during {phase}: {failure}{Environment.NewLine}{output}{Environment.NewLine}{error}");
         Assert.Equal(0, process.ExitCode);
+        Assert.Contains("DesktopCloseCheck: CloseDispatched", output, StringComparison.Ordinal);
+        Assert.Contains("DesktopCloseCheck: CloseAccepted", output, StringComparison.Ordinal);
+        Assert.Contains("DesktopCloseCheck: WindowClosed", output, StringComparison.Ordinal);
+        Assert.Contains("DesktopCloseCheck: HostStopped", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("DesktopCloseCheck: Failed", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("DesktopCloseCheck: CloseCanceled", output, StringComparison.Ordinal);
+    }
+
+    private static async Task WaitForCloseReadinessAsync(
+        NamedPipeServerStream pipe, string repository, string applicationDataRoot, CancellationToken cancellationToken)
+    {
+        await pipe.WaitForConnectionAsync(cancellationToken);
+        using var reader = new StreamReader(pipe, leaveOpen: true);
+        var message = await reader.ReadLineAsync(cancellationToken)
+            ?? throw new InvalidOperationException("Desktop application disconnected before reporting readiness.");
+        using var ready = JsonDocument.Parse(message);
+        if (ready.RootElement.GetProperty("State").GetString() != "Ready")
+            throw new InvalidOperationException($"Unexpected desktop readiness message: {message}");
+
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        if (!string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(repository)),
+                Path.TrimEndingDirectorySeparator(ready.RootElement.GetProperty("Repository").GetString()!), comparison)
+            || !string.Equals(Path.GetFullPath(applicationDataRoot),
+                ready.RootElement.GetProperty("ApplicationDataRoot").GetString(), comparison))
+            throw new InvalidOperationException($"Desktop application reported an unexpected repository or app-data root: {message}");
     }
 
     private static ProcessStartInfo CreateStartInfo(string application, string repository, string isolatedHome)
@@ -102,6 +152,10 @@ public sealed class DesktopApplicationTests
         start.Environment["XDG_CONFIG_HOME"] = isolatedHome;
         start.Environment["LOCALAPPDATA"] = isolatedHome;
         start.Environment["APPDATA"] = isolatedHome;
+        start.Environment["CSHARPGIT_APP_DATA_ROOT"] = Path.Combine(isolatedHome, "appdata");
+        foreach (var name in new[] { "CSHARPGIT_UI_CHECK_REPOSITORY", "CSHARPGIT_UI_CHECK_RESULT",
+                     "CSHARPGIT_UI_CHECK_WORKTREE", "CSHARPGIT_CLOSE_CHECK", "CSHARPGIT_CLOSE_CHECK_PIPE" })
+            start.Environment.Remove(name);
         return start;
     }
 
@@ -126,23 +180,6 @@ public sealed class DesktopApplicationTests
     private static bool HasDesktopSession() =>
         OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ||
         (OperatingSystem.IsLinux() && (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("DISPLAY")) || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY"))));
-
-    private static bool CanUseDesktopApplicationData()
-    {
-        if (!OperatingSystem.IsWindows()) return true;
-
-        var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CSharpGit.Presentation");
-        var probe = Path.Combine(directory, $"ui-check-{Guid.NewGuid():N}.tmp");
-        try
-        {
-            Directory.CreateDirectory(directory);
-            File.WriteAllText(probe, string.Empty);
-            File.Delete(probe);
-            return true;
-        }
-        catch (IOException) { return false; }
-        catch (UnauthorizedAccessException) { return false; }
-    }
 
     private static string FindRepositoryRoot()
     {

@@ -29,7 +29,7 @@ public sealed partial class RepositoryImageService : IRepositoryImageService
     public RepositoryImageService()
         : this(
             Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                ApplicationDataPaths.Root,
                 "CSharpGit",
                 "cache",
                 "repository-images"),

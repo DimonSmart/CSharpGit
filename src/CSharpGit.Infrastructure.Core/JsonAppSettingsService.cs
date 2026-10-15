@@ -918,9 +918,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
 
     private static string GetDefaultFilePath()
     {
-        var root = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        if (string.IsNullOrWhiteSpace(root)) root = AppContext.BaseDirectory;
-        return Path.Combine(root, "CSharpGit.Presentation", "settings.json");
+        return Path.Combine(ApplicationDataPaths.Root, "CSharpGit.Presentation", "settings.json");
     }
 
     private sealed record SettingsState(

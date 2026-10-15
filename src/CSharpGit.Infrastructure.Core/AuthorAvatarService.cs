@@ -31,7 +31,7 @@ public sealed class AuthorAvatarService : IAuthorAvatarService, IAuthorAvatarDia
     public AuthorAvatarService()
         : this(
             Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                ApplicationDataPaths.Root,
                 "CSharpGit",
                 "cache",
                 "author-avatars"),
