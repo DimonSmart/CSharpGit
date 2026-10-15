@@ -296,7 +296,7 @@ public sealed partial class MainPage
             return;
 
         _workingTreeStatusRunning = true;
-        _ = RunWorkingTreeStatusLoopAsync();
+        RunPageUiOperation(RunWorkingTreeStatusLoopAsync, "Background working-tree status probe");
     }
 
     private async Task RunWorkingTreeStatusLoopAsync()
