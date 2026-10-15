@@ -22,6 +22,7 @@ public sealed partial class MainPage
     private async Task ShowAboutAsync()
     {
         using var cancellation = new CancellationTokenSource();
+        var dialogLifetime = cancellation.Token;
 
         var statusText = new TextBlock
         {
@@ -64,19 +65,21 @@ public sealed partial class MainPage
         Uri? releasePageUri = null;
         ReleaseVersion? availableVersion = null;
 
-        releaseButton.Click += async (_, _) =>
-        {
-            if (releasePageUri is null) return;
+        releaseButton.Click += (_, _) =>
+            RunPageUiOperation(OpenReleasePageAsync, "Open release page");
 
-            try
+        async Task OpenReleasePageAsync()
+        {
+            var uri = releasePageUri;
+            if (uri is null || dialogLifetime.IsCancellationRequested || IsShuttingDown) return;
+            try { await _systemUriLauncher.OpenUriAsync(uri); }
+            catch (Exception exception)
             {
-                await _systemUriLauncher.OpenUriAsync(releasePageUri);
+                ReportUiFailure(exception, "Open release page");
+                if (!dialogLifetime.IsCancellationRequested && !IsShuttingDown)
+                    statusText.Text = "Unable to open release page.";
             }
-            catch (Exception)
-            {
-                statusText.Text = "Unable to open release page.";
-            }
-        };
+        }
 
         updateButton.Click += (_, _) => RunPageUiOperation(async () =>
         {
@@ -86,12 +89,15 @@ public sealed partial class MainPage
             await RunApplicationUpdateAsync(version);
         }, "Application update");
 
-        async void Dialog_Opened(ContentDialog sender, ContentDialogOpenedEventArgs args)
+        void Dialog_Opened(ContentDialog sender, ContentDialogOpenedEventArgs args) =>
+            RunPageUiOperation(CheckUpdateOnDialogOpenAsync, "Check for application updates");
+
+        async Task CheckUpdateOnDialogOpenAsync()
         {
             try
             {
-                var result = await _updateCheckService.CheckAsync(cancellation.Token);
-                cancellation.Token.ThrowIfCancellationRequested();
+                var result = await _updateCheckService.CheckAsync(dialogLifetime);
+                if (dialogLifetime.IsCancellationRequested || IsShuttingDown) return;
 
                 switch (result.Status)
                 {
@@ -110,8 +116,8 @@ public sealed partial class MainPage
                             : Visibility.Visible;
 
                         var availability = await _applicationUpdateInstaller.GetAvailabilityAsync(
-                            cancellation.Token);
-                        cancellation.Token.ThrowIfCancellationRequested();
+                            dialogLifetime);
+                        if (dialogLifetime.IsCancellationRequested || IsShuttingDown) return;
                         updateButton.Visibility = availability.IsAvailable
                             ? Visibility.Visible
                             : Visibility.Collapsed;
@@ -122,18 +128,29 @@ public sealed partial class MainPage
                         break;
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (dialogLifetime.IsCancellationRequested || IsShuttingDown)
             {
             }
-            catch (Exception)
+            catch (Exception exception)
             {
-                statusText.Text = "Unable to check for updates.";
+                ReportUiFailure(exception, "Check for application updates");
+                if (!dialogLifetime.IsCancellationRequested && !IsShuttingDown)
+                    statusText.Text = "Unable to check for updates.";
             }
         }
 
+        void Dialog_Closed(ContentDialog sender, ContentDialogClosedEventArgs args) =>
+            cancellation.Cancel();
+
         dialog.Opened += Dialog_Opened;
-        dialog.Closed += (_, _) => cancellation.Cancel();
-        await ShowPageDialogAsync(dialog);
+        dialog.Closed += Dialog_Closed;
+        try { await ShowPageDialogAsync(dialog); }
+        finally
+        {
+            dialog.Opened -= Dialog_Opened;
+            dialog.Closed -= Dialog_Closed;
+            cancellation.Cancel();
+        }
     }
 
     private async Task RunApplicationUpdateAsync(ReleaseVersion expectedVersion)

@@ -38,6 +38,10 @@ public sealed class AboutUpdateUiContractTests
         Assert.Contains("Unable to check for updates.", about);
         Assert.Contains("Update now", about);
         Assert.Contains("Open release page", about);
+        Assert.Contains("RunPageUiOperation(CheckUpdateOnDialogOpenAsync", about);
+        Assert.Contains("dialogLifetime.IsCancellationRequested || IsShuttingDown", about);
+        Assert.DoesNotContain("async void Dialog_Opened", about);
+        Assert.Contains("dialog.Opened -= Dialog_Opened", about);
         Assert.Contains("_applicationVersionProvider.DisplayVersion", about);
         Assert.Contains("IsHistoryRewriteInProgress", about);
         Assert.Contains("IsRepositoryMaintenanceInProgress", about);
