@@ -303,11 +303,11 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
         var detached = false;
         var changes = new List<WorkingTreeChange>();
         var statusEntries = new List<WorkingTreeStatusEntry>();
-        var records = output.Split('\0', StringSplitOptions.RemoveEmptyEntries);
+        using var records = EnumerateSeparatedRecords(output, '\0').GetEnumerator();
 
-        for (var index = 0; index < records.Length; index++)
+        while (records.MoveNext())
         {
-            var record = records[index];
+            var record = records.Current;
             if (record.StartsWith("# branch.oid ", StringComparison.Ordinal))
             {
                 var value = record[13..];
@@ -340,7 +340,7 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
             if (record.StartsWith("2 ", StringComparison.Ordinal))
             {
                 var fields = record.Split(' ', 10, StringSplitOptions.None);
-                var originalPath = index + 1 < records.Length ? records[++index] : null;
+                var originalPath = records.MoveNext() ? records.Current : null;
                 if (fields.Length == 10)
                 {
                     changes.Add(CreateChange(fields[9], fields[1], originalPath));
@@ -382,6 +382,23 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
             new WorkingTreeStatusSnapshot(statusEntries));
     }
 
+    // Avoid allocating an array containing every NUL/RS record of a large
+    // repository before processing the first entry. Parsing remains ordered.
+    private static IEnumerable<string> EnumerateSeparatedRecords(string source, char separator)
+    {
+        var start = 0;
+        for (var index = 0; index < source.Length; index++)
+        {
+            if (source[index] != separator) continue;
+            if (index > start)
+                yield return source[start..index];
+            start = index + 1;
+        }
+
+        if (start < source.Length)
+            yield return source[start..];
+    }
+
     private static bool IsSubmodule(string value) =>
         value.Length > 0 && value[0] == 'S';
 
@@ -400,7 +417,7 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
         var remote = new List<GitBranch>();
         var remoteHeads = new Dictionary<string, string>(StringComparer.Ordinal);
 
-        foreach (var record in output.Split('\x1e', StringSplitOptions.RemoveEmptyEntries))
+        foreach (var record in EnumerateSeparatedRecords(output, '\x1e'))
         {
             var fields = record.TrimStart('\r', '\n').Split('\0');
             if (fields.Length < 5) continue;
@@ -491,12 +508,13 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
         var global = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var local = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         string? effectiveTagSort = null;
-        var tokens = output.Split('\0', StringSplitOptions.RemoveEmptyEntries);
+        using var tokens = EnumerateSeparatedRecords(output, '\0').GetEnumerator();
 
-        for (var index = 0; index + 1 < tokens.Length; index += 2)
+        while (tokens.MoveNext())
         {
-            var scope = tokens[index];
-            var entry = tokens[index + 1];
+            var scope = tokens.Current;
+            if (!tokens.MoveNext()) break;
+            var entry = tokens.Current;
             var separator = entry.IndexOf('\n');
             if (separator < 0) separator = entry.IndexOf('=');
 
@@ -537,7 +555,7 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
     private static Dictionary<string, HashSet<int>> ParseUnmergedStages(string output)
     {
         var result = new Dictionary<string, HashSet<int>>(StringComparer.Ordinal);
-        foreach (var entry in output.Split('\0', StringSplitOptions.RemoveEmptyEntries))
+        foreach (var entry in EnumerateSeparatedRecords(output, '\0'))
         {
             var tab = entry.IndexOf('\t');
             if (tab < 0) continue;
