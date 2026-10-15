@@ -501,7 +501,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
                     // One dispatcher continuation, no await between related fields
                     // and the baseline. A pending refresh suppresses this whole pass.
-                    var published = publishIfCurrent(() =>
+                    var published = await PublishRefreshOnUiAsync(() =>
                     {
                         if (!IsCurrentSession(lifetime, repository)) return;
                         var state = read.State;
@@ -525,7 +525,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                             state.Operation, state.CurrentOperation, Branches.LocalBranches);
                         RepositorySync.RefreshAvailability();
                         PublishDisplayedWorkingTreeBaseline(read.WorkingTreeStatus);
-                    });
+                    }, publishIfCurrent, sessionToken);
 
                     if (published && historyRequested && IsCurrentSession(lifetime, repository))
                         await History.RefreshAsync();
@@ -562,6 +562,32 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             // RunAsync can only fail before creating a task on invalid callbacks.
             if (task is null) lifetime.Release();
         }
+    }
+
+    private Task<bool> PublishRefreshOnUiAsync(
+        Action apply,
+        Func<Action, bool> publishIfCurrent,
+        CancellationToken sessionToken)
+    {
+        sessionToken.ThrowIfCancellationRequested();
+        if (_uiDispatcher.HasThreadAccess)
+            return Task.FromResult(publishIfCurrent(apply));
+
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!_uiDispatcher.TryEnqueue(() =>
+            {
+                if (sessionToken.IsCancellationRequested)
+                {
+                    completion.TrySetCanceled(sessionToken);
+                    return;
+                }
+
+                try { completion.TrySetResult(publishIfCurrent(apply)); }
+                catch (Exception exception) { completion.TrySetException(exception); }
+            }))
+            throw new InvalidOperationException("Repository state could not be published to the UI dispatcher.");
+
+        return completion.Task.WaitAsync(sessionToken);
     }
 
     private async Task<bool> MutateAsync(
