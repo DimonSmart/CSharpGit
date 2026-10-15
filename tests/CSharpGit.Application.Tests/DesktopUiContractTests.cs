@@ -193,7 +193,8 @@ public sealed class DesktopUiContractTests
         Assert.Contains("page.RequiresCloseConfirmation", app);
         Assert.Contains("eventArgs.Cancel = true", app);
         Assert.Contains("_closeConfirmationInProgress", app);
-        Assert.Contains("await stopTask.WaitAsync(DiagnosticsShutdownBudget)", app);
+        Assert.Contains("await UiBoundedTaskWait.WaitAsync(", app);
+        Assert.Contains("DiagnosticsShutdownBudget,", app);
         Assert.Contains("page.PrepareForShutdown()", app);
         Assert.Contains("page.BeginShutdown()", app);
         Assert.DoesNotContain("_window.Closed += async", app);

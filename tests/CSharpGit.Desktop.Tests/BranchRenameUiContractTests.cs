@@ -29,7 +29,7 @@ public sealed class BranchRenameUiContractTests
         Assert.Contains("ResolveNode(RepositoryTree.SelectedItem)", workflow, StringComparison.Ordinal);
         Assert.Contains("RepositoryTreeNodeKind.LocalBranch", workflow, StringComparison.Ordinal);
         Assert.Contains("node.Value is not GitBranch branch", workflow, StringComparison.Ordinal);
-        Assert.Contains("await RenameBranchAsync(branch);", workflow, StringComparison.Ordinal);
+        Assert.Contains("RunPageUiOperation(() => RenameBranchAsync(branch)", workflow, StringComparison.Ordinal);
         Assert.Contains("e.Handled = true;", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("_viewModel.SelectedLocalBranch", workflow, StringComparison.Ordinal);
     }
