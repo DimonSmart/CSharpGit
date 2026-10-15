@@ -407,6 +407,43 @@ public sealed partial class App
                 await RespondAsync(succeeded && busyObserved && closeRejected
                     && !page.IsUnsafeToClose && !create.IsBusy && Directory.Exists(Path.Combine(target, ".git")));
             }
+            else if (command == "VerifyCloneFailureReleasesClose")
+            {
+                var clone = page.DesktopCloneForCheck;
+                clone.Reset();
+                clone.RepositoryUrl = Path.Combine(Path.GetTempPath(), "csharpgit-invalid-source-" + Guid.NewGuid().ToString("N"));
+                clone.LocalDirectory = Path.Combine(Path.GetTempPath(), "csharpgit-invalid-target-" + Guid.NewGuid().ToString("N"));
+                var busyObserved = false;
+                PropertyChangedEventHandler observer = (_, args) =>
+                {
+                    if (args.PropertyName == nameof(CloneRepositoryViewModel.IsBusy) && clone.IsBusy)
+                        busyObserved = page.IsUnsafeToClose && !TryBeginNormalShutdown(page);
+                };
+                clone.PropertyChanged += observer;
+                bool result;
+                try { result = await clone.CloneAsync(token); }
+                finally { clone.PropertyChanged -= observer; }
+                await RespondAsync(!result && busyObserved && !clone.IsBusy
+                    && !page.IsUnsafeToClose && !string.IsNullOrWhiteSpace(clone.ErrorMessage));
+            }
+            else if (command == "VerifyCreateFailureReleasesClose")
+            {
+                var create = page.DesktopCreateForCheck;
+                create.Reset();
+                create.Directory = vm.Repository?.WorkingDirectory ?? throw new InvalidOperationException("No active repo");
+                var busyObserved = false;
+                PropertyChangedEventHandler observer = (_, args) =>
+                {
+                    if (args.PropertyName == nameof(CreateRepositoryViewModel.IsBusy) && create.IsBusy)
+                        busyObserved = page.IsUnsafeToClose && !TryBeginNormalShutdown(page);
+                };
+                create.PropertyChanged += observer;
+                bool result;
+                try { result = await create.CreateAsync(token); }
+                finally { create.PropertyChanged -= observer; }
+                await RespondAsync(!result && busyObserved && !create.IsBusy
+                    && !page.IsUnsafeToClose && !string.IsNullOrWhiteSpace(create.ErrorMessage));
+            }
             else if (command == "RetryMutation")
             {
                 await RespondAsync(await vm.RunMutationAsync(() => Task.CompletedTask));
