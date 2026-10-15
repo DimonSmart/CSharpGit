@@ -364,9 +364,8 @@ public sealed class GitToolConfigurationServiceTests : IClassFixture<GitToolsEmp
         var root = FindRepositoryRoot();
         var toolConfiguration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitToolConfigurationService.cs"));
         var execution = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "ExternalGitToolService.cs"));
-        var configSource = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitConfigService.cs"));
-
-        Assert.Contains("\"system\" => GitConfigSource.System", configSource);
+        Assert.Equal(GitConfigSource.System,
+            GitConfigGetParser.ParseOne("system\\0file:/test\\0value\\0").Scope);
         Assert.Contains("\"difftool.trustExitCode\"", toolConfiguration);
         Assert.Contains("\"--gui\", \"--no-prompt\"", execution);
         Assert.DoesNotContain("difftool.prompt", execution);
