@@ -68,7 +68,10 @@ public sealed partial class MainPage
                 out _);
     }
 
-    private async void RepositoryTree_Drop(object sender, DragEventArgs args)
+    private void RepositoryTree_Drop(object sender, DragEventArgs args) =>
+        RunPageUiOperation(() => RepositoryTree_DropCoreAsync(sender, args), "RepositoryTree_Drop");
+
+    private async Task RepositoryTree_DropCoreAsync(object sender, DragEventArgs args)
     {
         var sourceBranch = _branchDragSource;
         var target = ResolveBranchDropTarget(args);
@@ -88,7 +91,7 @@ public sealed partial class MainPage
         if (string.Equals(sourceBranch.Name, newName, StringComparison.Ordinal)) return;
 
         args.AcceptedOperation = DataPackageOperation.Move;
-        await ExecuteBranchRenameAsync(sourceBranch, newName);
+        if (!IsShuttingDown) await ExecuteBranchRenameAsync(sourceBranch, newName);
     }
 
     private void RepositoryTree_DragItemsCompleted(TreeView sender, TreeViewDragItemsCompletedEventArgs args) =>

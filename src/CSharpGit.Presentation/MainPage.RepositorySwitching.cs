@@ -93,7 +93,10 @@ public sealed partial class MainPage
         RepositorySelectorCloseButton.IsEnabled = canChangeRepository;
     }
 
-    private async void RepositorySelectorList_ItemClick(object sender, ItemClickEventArgs args)
+    private void RepositorySelectorList_ItemClick(object sender, ItemClickEventArgs args) =>
+        RunPageUiOperation(() => RepositorySelectorList_ItemClickCoreAsync(sender, args), "RepositorySelectorList_ItemClick");
+
+    private async Task RepositorySelectorList_ItemClickCoreAsync(object sender, ItemClickEventArgs args)
     {
         if (args.ClickedItem is not RepositorySelectorEntry entry) return;
 
@@ -103,7 +106,10 @@ public sealed partial class MainPage
         await TrySwitchRepositoryAsync(entry.Path);
     }
 
-    private async void RepositorySelectorOpenFolder_Click(object sender, RoutedEventArgs args)
+    private void RepositorySelectorOpenFolder_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(() => RepositorySelectorOpenFolder_ClickCoreAsync(sender, args), "RepositorySelectorOpenFolder_Click");
+
+    private async Task RepositorySelectorOpenFolder_ClickCoreAsync(object sender, RoutedEventArgs args)
     {
         var path = _viewModel.Repository?.WorkingDirectory;
         RepositorySelectorFlyout.Hide();
@@ -111,7 +117,10 @@ public sealed partial class MainPage
             await OpenFolderInDesktopShellAsync(path, "Could not open repository folder");
     }
 
-    private async void RepositorySelectorCopyPath_Click(object sender, RoutedEventArgs args)
+    private void RepositorySelectorCopyPath_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(() => RepositorySelectorCopyPath_ClickCoreAsync(sender, args), "RepositorySelectorCopyPath_Click");
+
+    private async Task RepositorySelectorCopyPath_ClickCoreAsync(object sender, RoutedEventArgs args)
     {
         var path = _viewModel.Repository?.WorkingDirectory;
         RepositorySelectorFlyout.Hide();
@@ -119,43 +128,67 @@ public sealed partial class MainPage
             await CopyTextAsync(path);
     }
 
-    private async void RepositorySelectorOpenRepository_Click(object sender, RoutedEventArgs args)
+    private void RepositorySelectorOpenRepository_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(() => RepositorySelectorOpenRepository_ClickCoreAsync(sender, args), "RepositorySelectorOpenRepository_Click");
+
+    private async Task RepositorySelectorOpenRepository_ClickCoreAsync(object sender, RoutedEventArgs args)
     {
         RepositorySelectorFlyout.Hide();
         await OpenRepositoryPickerAsync();
     }
 
-    private async void RepositorySelectorCloneRepository_Click(object sender, RoutedEventArgs args)
+    private void RepositorySelectorCloneRepository_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(() => RepositorySelectorCloneRepository_ClickCoreAsync(sender, args), "RepositorySelectorCloneRepository_Click");
+
+    private async Task RepositorySelectorCloneRepository_ClickCoreAsync(object sender, RoutedEventArgs args)
     {
         RepositorySelectorFlyout.Hide();
         await ShowCloneRepositoryAsync();
     }
 
-    private async void RepositorySelectorCreateRepository_Click(object sender, RoutedEventArgs args)
+    private void RepositorySelectorCreateRepository_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(() => RepositorySelectorCreateRepository_ClickCoreAsync(sender, args), "RepositorySelectorCreateRepository_Click");
+
+    private async Task RepositorySelectorCreateRepository_ClickCoreAsync(object sender, RoutedEventArgs args)
     {
         RepositorySelectorFlyout.Hide();
         await ShowCreateRepositoryAsync();
     }
 
-    private async void RepositorySelectorRepositories_Click(object sender, RoutedEventArgs args)
+    private void RepositorySelectorRepositories_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(() => RepositorySelectorRepositories_ClickCoreAsync(sender, args), "RepositorySelectorRepositories_Click");
+
+    private async Task RepositorySelectorRepositories_ClickCoreAsync(object sender, RoutedEventArgs args)
     {
         RepositorySelectorFlyout.Hide();
         await TryCloseRepositoryAsync();
     }
 
-    private async void RepositorySelectorCloseRepository_Click(object sender, RoutedEventArgs args)
+    private void RepositorySelectorCloseRepository_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(() => RepositorySelectorCloseRepository_ClickCoreAsync(sender, args), "RepositorySelectorCloseRepository_Click");
+
+    private async Task RepositorySelectorCloseRepository_ClickCoreAsync(object sender, RoutedEventArgs args)
     {
         RepositorySelectorFlyout.Hide();
         await TryCloseRepositoryAsync();
     }
 
-    private async void OpenRepository_Click(object sender, RoutedEventArgs args) =>
+    private void OpenRepository_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(() => OpenRepository_ClickCoreAsync(sender, args), "OpenRepository_Click");
+
+    private async Task OpenRepository_ClickCoreAsync(object sender, RoutedEventArgs args) =>
         await OpenRepositoryPickerAsync();
 
-    private async void Repositories_Click(object sender, RoutedEventArgs args) =>
+    private void Repositories_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(() => Repositories_ClickCoreAsync(sender, args), "Repositories_Click");
+
+    private async Task Repositories_ClickCoreAsync(object sender, RoutedEventArgs args) =>
         await TryCloseRepositoryAsync();
 
-    private async void CloseRepository_Click(object sender, RoutedEventArgs args) =>
+    private void CloseRepository_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(() => CloseRepository_ClickCoreAsync(sender, args), "CloseRepository_Click");
+
+    private async Task CloseRepository_ClickCoreAsync(object sender, RoutedEventArgs args) =>
         await TryCloseRepositoryAsync();
 
     private async Task<bool> TrySwitchRepositoryAsync(string path)
@@ -177,12 +210,16 @@ public sealed partial class MainPage
             return false;
         }
 
-        var discardDraft = _viewModel.Repository is not null
+        var originalRepository = _viewModel.Repository;
+        var discardDraft = originalRepository is not null
             && _viewModel.CommitCreation.HasUnappliedCommitMessage;
         if (discardDraft
             && !await ConfirmDiscardCommitMessageAsync(closing: false))
             return false;
 
+        if (IsShuttingDown || !ReferenceEquals(originalRepository, _viewModel.Repository)
+            || !_viewModel.CanChangeRepository)
+            return false;
         return await SwitchRepositoryCoreAsync(path, discardDraft);
     }
 
@@ -190,7 +227,7 @@ public sealed partial class MainPage
         string path,
         bool discardDraft)
     {
-        if (!_viewModel.CanChangeRepository) return false;
+        if (IsShuttingDown || !_viewModel.CanChangeRepository) return false;
 
         bool opened;
         try
@@ -219,9 +256,14 @@ public sealed partial class MainPage
         if (_viewModel.Repository is null) return true;
         if (!_viewModel.CanChangeRepository) return false;
 
+        var originalRepository = _viewModel.Repository;
         var discardDraft = _viewModel.CommitCreation.HasUnappliedCommitMessage;
         if (discardDraft
             && !await ConfirmDiscardCommitMessageAsync(closing: true))
+            return false;
+
+        if (IsShuttingDown || !ReferenceEquals(originalRepository, _viewModel.Repository)
+            || !_viewModel.CanChangeRepository)
             return false;
 
         if (!_viewModel.CloseRepository())
@@ -251,7 +293,7 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Close
         };
 
-        return await dialog.ShowAsync() == ContentDialogResult.Primary;
+        return await ShowPageDialogAsync(dialog) == ContentDialogResult.Primary;
     }
 
     private async Task OpenFolderInDesktopShellAsync(string path, string errorTitle)
@@ -279,7 +321,7 @@ public sealed partial class MainPage
             CloseButtonText = "OK",
             DefaultButton = ContentDialogButton.Close
         };
-        await dialog.ShowAsync();
+        await ShowPageDialogAsync(dialog);
     }
 
     private static string RepositoryBranchDisplay(string? branchName) =>
