@@ -256,6 +256,44 @@ public sealed partial class App
                 await vm.RefreshAsyncForDesktopCheck();
                 await RespondAsync(true);
             }
+            else if (command.StartsWith("ReadFailureAfterAssignment\t", StringComparison.Ordinal))
+            {
+                var target = command["ReadFailureAfterAssignment\t".Length..];
+                var pointerPath = Path.Combine(target, ".git");
+                var originalPointer = File.ReadAllText(pointerPath);
+                var corruptPointer = $"gitdir: {Path.Combine(target, "missing-gitdir-for-lifecycle-test")}\n";
+                PropertyChangedEventHandler handler = null!;
+                var injected = false;
+                handler = (_, args) =>
+                {
+                    if (args.PropertyName != nameof(OpenRepositoryViewModel.Repository)
+                        || !string.Equals(vm.Repository?.WorkingDirectory, target,
+                            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                        return;
+                    vm.PropertyChanged -= handler;
+                    File.WriteAllText(pointerPath, corruptPointer);
+                    injected = true;
+                };
+                vm.PropertyChanged += handler;
+                bool opened;
+                try { opened = await vm.OpenRepositoryPathAsync(target, token); }
+                finally
+                {
+                    vm.PropertyChanged -= handler;
+                    File.WriteAllText(pointerPath, originalPointer);
+                }
+                await RespondAsync(!opened && injected);
+            }
+            else if (command.StartsWith("CancelOpenBeforeAssignment\t", StringComparison.Ordinal))
+            {
+                using var cancellation = new CancellationTokenSource();
+                cancellation.Cancel();
+                var cancelled = false;
+                try { await vm.OpenRepositoryPathAsync(
+                    command["CancelOpenBeforeAssignment\t".Length..], cancellation.Token); }
+                catch (OperationCanceledException) { cancelled = true; }
+                await RespondAsync(cancelled);
+            }
             else if (command.StartsWith("CancelOpenAfterAssignment\t", StringComparison.Ordinal))
             {
                 var target = command["CancelOpenAfterAssignment\t".Length..];
