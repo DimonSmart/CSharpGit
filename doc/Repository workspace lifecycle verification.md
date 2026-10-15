@@ -141,9 +141,10 @@ already accepted discarding a draft, not dialog accessibility.
 
 ### Remaining platform-dependent verification
 
-The desktop harness cannot simulate the complete native dialogs and real
-long-running Clone/Create/History Rewrite/Maintenance/Update operations
-without additional controlled providers. Their respective production
+Desktop smoke now executes real Git Clone/Create success and failure paths,
+checking the production close guard during the busy transition and after exit.
+Long-running History Rewrite/Maintenance/Update and native dialog interactions
+are still platform-dependent manual acceptance scenarios. Their respective production
 `IsBusy`/in-progress flags are included in `MainPage.IsUnsafeToClose`,
 but structural inspection of those flags is not accepted as runtime proof
 by LIFE-06. For each of these workflows, perform the following on a
