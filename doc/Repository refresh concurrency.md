@@ -64,3 +64,5 @@ an additional mutation lock or automatic watcher-triggered full refresh.
 - `OpenRepositoryViewModel` passes both history and full/local requirements into the production flight. It restores the previous repository on failed initial publication and reports any additional rollback-refresh error. A completed Git mutation is distinguished from its failed follow-up presentation refresh.
 - `MainPage` tracks queued watcher deliveries by monitor restart epoch and reference identity, rejecting notifications emitted by an older watcher even when a repository is reopened at the same path. Value equality does not stand in for session identity.
 - Headless tests cover the coalescing strength, reentrant callbacks, and subscriber failure. Desktop tests without a graphical session report SKIP, not PASS. Runtime UI race coverage requires an actual desktop test host.
+
+The desktop test uses `Xunit.SkippableFact` because xUnit v2's standard `[Fact]` does not interpret dynamically raised skip exceptions as skipped test results.
