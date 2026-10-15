@@ -242,4 +242,109 @@ public sealed class RepositoryRefreshFlightTests
         }, () => { }, () => { }).WaitAsync(TimeSpan.FromSeconds(10));
         Assert.Equal(1, reads);
     }
+
+    [Fact]
+    public async Task PendingFullRefreshWinsEvenWhenOriginalLocalReadFails()
+    {
+        var flight = new RepositoryRefreshFlight();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reads = new List<bool>();
+
+        async Task Pass(bool _, bool localOnly, Func<Action, bool> publish)
+        {
+            reads.Add(localOnly);
+            if (reads.Count == 1)
+            {
+                started.SetResult();
+                await resume.Task;
+                throw new IOException("Superseded local read failed");
+            }
+            Assert.True(publish(() => { }));
+        }
+
+        var first = flight.RunAsync(false, true, Pass, () => { }, () => { });
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        var second = flight.RunAsync(false, false, Pass, () => { }, () => { });
+        resume.SetResult();
+        await Task.WhenAll(first, second).WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal([true, false], reads);
+    }
+
+    [Fact]
+    public async Task PublicationSubscriberCanRequestSubsequentPass()
+    {
+        var flight = new RepositoryRefreshFlight();
+        var reads = 0;
+        Task? nested = null;
+        Task Pass(bool _, Func<Action, bool> publish)
+        {
+            reads++;
+            Assert.True(publish(() =>
+            {
+                if (nested is null)
+                    nested = flight.RunAsync(true, Pass, () => { }, () => { });
+            }));
+            return Task.CompletedTask;
+        }
+
+        var first = flight.RunAsync(false, Pass, () => { }, () => { });
+        await first.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Same(first, nested);
+        Assert.Equal(2, reads);
+    }
+
+    [Fact]
+    public async Task FailedStartingSubscriberSettlesAwaitersAndAllowsAnotherFlight()
+    {
+        var flight = new RepositoryRefreshFlight();
+        var ends = 0;
+        var calls = 0;
+        var rejected = flight.RunAsync(false, (_, _) =>
+        {
+            ++calls;
+            return Task.CompletedTask;
+        }, () => throw new InvalidOperationException("starting subscriber"),
+           () => ++ends);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => rejected);
+        await flight.RunAsync(false, (_, _) =>
+        {
+            ++calls;
+            return Task.CompletedTask;
+        }, () => { }, () => ++ends).WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal(1, calls);
+        Assert.Equal(2, ends);
+    }
+
+    [Fact]
+    public async Task CanceledOneCallerWaitDoesNotCancelSharedRefresh()
+    {
+        var flight = new RepositoryRefreshFlight();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reads = 0;
+        async Task Pass(bool _, Func<Action, bool> publish)
+        {
+            ++reads;
+            if (reads == 1)
+            {
+                started.TrySetResult();
+                await resume.Task;
+            }
+            Assert.True(publish(() => { }));
+        }
+
+        var first = flight.RunAsync(false, Pass, () => { }, () => { });
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        using var cancellation = new CancellationTokenSource();
+        var second = flight.RunAsync(true, Pass, () => { }, () => { });
+        var canceledWait = second.WaitAsync(cancellation.Token);
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => canceledWait);
+        resume.SetResult();
+        await first.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(2, reads);
+    }
 }
