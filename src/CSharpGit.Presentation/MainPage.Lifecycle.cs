@@ -5,6 +5,7 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage
 {
     private int _shutdownStarted;
+    private int _shutdownFinalized;
 
     private bool IsShuttingDown =>
         Volatile.Read(ref _shutdownStarted) != 0;
@@ -30,11 +31,17 @@ public sealed partial class MainPage
         InitializeRepositorySwitching();
     }
 
+    // Close admission is decided by App; this phase only shuts down UI requests.
+    public Task PrepareForShutdown()
+    {
+        if (Interlocked.Exchange(ref _shutdownStarted, 1) != 0) return Task.CompletedTask;
+        return StopHistoryPerformanceCaptureOnShutdown();
+    }
+
     public void BeginShutdown()
     {
-        if (Interlocked.Exchange(ref _shutdownStarted, 1) != 0) return;
-
-        StopHistoryPerformanceCaptureOnShutdown();
+        if (Interlocked.Exchange(ref _shutdownFinalized, 1) != 0) return;
+        Volatile.Write(ref _shutdownStarted, 1);
         _cloneRepositoryViewModel.Cancel();
         Loaded -= RunDesktopCheckWhenRequested;
         _viewModel.WorkingTree.Changes.CollectionChanged -= RepositoryPresentationChanges_CollectionChanged;
