@@ -18,6 +18,7 @@ public sealed class DesktopApplicationTests
         await RunCheckAsync(application!, fixture.Worktree, true, fixture.Home);
         await RunNormalCloseCheckAsync(application!, fixture.Repository, fixture.Home);
         await RunNormalCloseCheckAsync(application!, fixture.Worktree, fixture.Home);
+        await RunLifecycleCheckAsync(application!, fixture.Repository, fixture.Worktree, fixture.Home);
     }
 
     private static async Task RunCheckAsync(string application, string repository, bool worktree, string isolatedHome)
@@ -118,6 +119,126 @@ public sealed class DesktopApplicationTests
         Assert.DoesNotContain("DesktopCloseCheck: CloseCanceled", output, StringComparison.Ordinal);
     }
 
+
+    private static async Task RunLifecycleCheckAsync(
+        string application, string original, string worktree, string isolatedHome)
+    {
+        var pipeName = $"csharpgit-lifecycle-{Guid.NewGuid():N}";
+        using var pipe = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        var start = CreateStartInfo(application, original, isolatedHome);
+        start.Environment["CSHARPGIT_UI_CHECK_REPOSITORY"] = original;
+        start.Environment["CSHARPGIT_CLOSE_CHECK"] = "1";
+        start.Environment["CSHARPGIT_CLOSE_CHECK_PIPE"] = pipeName;
+        start.Environment["CSHARPGIT_CLOSE_CHECK_EXTENDED"] = "1";
+
+        using var process = Process.Start(start)
+            ?? throw new InvalidOperationException("Desktop lifecycle test did not start.");
+        var stdout = process.StandardOutput.ReadToEndAsync();
+        var stderr = process.StandardError.ReadToEndAsync();
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(75));
+            await pipe.WaitForConnectionAsync(timeout.Token);
+            using var reader = new StreamReader(pipe, leaveOpen: true);
+            using var writer = new StreamWriter(pipe, leaveOpen: true) { AutoFlush = true };
+            var ready = await reader.ReadLineAsync(timeout.Token);
+            Assert.NotNull(ready);
+            using (var d = JsonDocument.Parse(ready!))
+                Assert.Equal("Ready", d.RootElement.GetProperty("State").GetString());
+
+            async Task<JsonDocument> CommandAsync(string message)
+            {
+                await writer.WriteLineAsync(message.AsMemory(), timeout.Token);
+                var response = await reader.ReadLineAsync(timeout.Token);
+                Assert.NotNull(response);
+                var d = JsonDocument.Parse(response!);
+                Assert.Equal("Snapshot", d.RootElement.GetProperty("State").GetString());
+                return d;
+            }
+
+            static void AssertOpened(JsonElement value, string path, bool isWorktree)
+            {
+                Assert.True(value.GetProperty("Success").GetBoolean(),
+                    value.GetProperty("Error").GetString());
+                Assert.Equal(Path.GetFullPath(path),
+                    Path.GetFullPath(value.GetProperty("Path").GetString()!),
+                    OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+                Assert.Equal(isWorktree, value.GetProperty("IsWorktree").GetBoolean());
+                Assert.False(string.IsNullOrWhiteSpace(value.GetProperty("Head").GetString()));
+                Assert.True(value.GetProperty("HasBaseline").GetBoolean());
+                Assert.True(value.GetProperty("HistoryCount").GetInt32() > 0);
+            }
+
+            using (var d = await CommandAsync("Switch\t" + worktree))
+            {
+                AssertOpened(d.RootElement, worktree, true);
+                Assert.Equal("ui-worktree", d.RootElement.GetProperty("Branch").GetString());
+            }
+
+            using (var d = await CommandAsync("SetDraft\tkeep this draft"))
+                Assert.Equal("keep this draft", d.RootElement.GetProperty("Draft").GetString());
+
+            using (var d = await CommandAsync("Switch\t" + Path.Combine(isolatedHome, "nonexistent-repo")))
+            {
+                Assert.False(d.RootElement.GetProperty("Success").GetBoolean());
+                Assert.Equal("keep this draft", d.RootElement.GetProperty("Draft").GetString());
+                AssertOpenedSnapshotPath(d.RootElement, worktree);
+            }
+
+            using (var d = await CommandAsync("SetDraft\t"))
+                Assert.Equal(string.Empty, d.RootElement.GetProperty("Draft").GetString());
+
+            using (var d = await CommandAsync("Switch\t" + original))
+                AssertOpened(d.RootElement, original, false);
+
+            using (var d = await CommandAsync("BeginMutation"))
+                Assert.True(d.RootElement.GetProperty("UnsafeToClose").GetBoolean());
+            using (var d = await CommandAsync("AttemptCloseDuringMutation"))
+                Assert.True(d.RootElement.GetProperty("UnsafeToClose").GetBoolean());
+            using (var d = await CommandAsync("CompleteMutation"))
+            {
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+                Assert.False(d.RootElement.GetProperty("UnsafeToClose").GetBoolean());
+            }
+
+            using (var d = await CommandAsync("CloseRepository"))
+            {
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+                Assert.Equal(JsonValueKind.Null, d.RootElement.GetProperty("Path").ValueKind);
+                Assert.False(d.RootElement.GetProperty("HasBaseline").GetBoolean());
+            }
+
+            using (var d = await CommandAsync("Switch\t" + original))
+                AssertOpened(d.RootElement, original, false);
+
+            await writer.WriteLineAsync("Close".AsMemory(), timeout.Token);
+            await process.WaitForExitAsync(timeout.Token);
+            Assert.Equal(0, process.ExitCode);
+        }
+        finally
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(true);
+                await process.WaitForExitAsync();
+            }
+        }
+
+        var output = await stdout;
+        Assert.Contains("DesktopCloseCheck: CloseCanceled: protected operation is active", output, StringComparison.Ordinal);
+        Assert.Contains("DesktopCloseCheck: HostStopped", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("DesktopCloseCheck: Failed", output, StringComparison.Ordinal);
+        Assert.True(process.ExitCode == 0, $"{process.ExitCode}: {output}{Environment.NewLine}{await stderr}");
+    }
+
+    private static void AssertOpenedSnapshotPath(JsonElement snapshot, string expected)
+    {
+        var comparison = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        Assert.Equal(Path.GetFullPath(expected),
+            Path.GetFullPath(snapshot.GetProperty("Path").GetString()!), comparison);
+    }
+
     private static async Task WaitForCloseReadinessAsync(
         NamedPipeServerStream pipe, string repository, string applicationDataRoot, CancellationToken cancellationToken)
     {
@@ -154,7 +275,7 @@ public sealed class DesktopApplicationTests
         start.Environment["APPDATA"] = isolatedHome;
         start.Environment["CSHARPGIT_APP_DATA_ROOT"] = Path.Combine(isolatedHome, "appdata");
         foreach (var name in new[] { "CSHARPGIT_UI_CHECK_REPOSITORY", "CSHARPGIT_UI_CHECK_RESULT",
-                     "CSHARPGIT_UI_CHECK_WORKTREE", "CSHARPGIT_CLOSE_CHECK", "CSHARPGIT_CLOSE_CHECK_PIPE" })
+                     "CSHARPGIT_UI_CHECK_WORKTREE", "CSHARPGIT_CLOSE_CHECK", "CSHARPGIT_CLOSE_CHECK_PIPE", "CSHARPGIT_CLOSE_CHECK_EXTENDED" })
             start.Environment.Remove(name);
         return start;
     }
