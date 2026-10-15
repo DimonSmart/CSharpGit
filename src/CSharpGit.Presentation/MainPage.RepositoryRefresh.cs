@@ -101,8 +101,8 @@ public sealed partial class MainPage
 
         _displayedWorkingTreeStatus = baseline;
         _workingTreeStatusPending = null;
-        _repositoryRefreshWindowActive = false;
-        _repositoryRefreshWindowRepository = null;
+        // Do not close this window on baseline publication: a coalesced refresh
+        // can still be reading history or a newer requested state pass.
         _handledInvalidationGeneration = Math.Max(
             _handledInvalidationGeneration,
             refreshStartGeneration);
