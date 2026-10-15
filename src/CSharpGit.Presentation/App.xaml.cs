@@ -162,7 +162,6 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         mainPage.WindowTitleChanged += MainPage_WindowTitleChanged;
         _window.Title = mainPage.CurrentWindowTitle;
         _mainThemeRegistration = themeManager.Register(mainPage);
-        _window.Content = mainPage;
         _window.AppWindow.Changed += (_, eventArgs) =>
         {
             if (eventArgs.DidSizeChange) mainPage.QueueCommitDetailsLayout();
@@ -172,50 +171,43 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
 
         _window.AppWindow.Closing += (sender, eventArgs) =>
         {
-            var page = _window.Content as MainPage;
-            if (page?.IsUnsafeToClose == true)
-            {
+            if (!TryBeginNormalShutdown(_window.Content as MainPage))
                 eventArgs.Cancel = true;
-                return;
-            }
-
-            if (_closeConfirmed)
-            {
-                BeginShutdown(page);
-                return;
-            }
-
-            if (page is null || !page.RequiresCloseConfirmation)
-            {
-                BeginShutdown(page);
-                return;
-            }
-
-            eventArgs.Cancel = true;
-            if (_closeConfirmationInProgress) return;
-            _closeConfirmationInProgress = true;
-            _ = ConfirmAndCloseAsync(page);
         };
 
-        _window.Activated += async (_, _) =>
-        {
-            if (_shutdownRequested) return;
-
-            if (Environment.GetEnvironmentVariable("CSHARPGIT_CLOSE_CHECK") == "1")
-            {
-                if (_closeCheckStarted) return;
-                _closeCheckStarted = true;
-                if (_window.Content is FrameworkElement { DataContext: OpenRepositoryViewModel closeCheckViewModel })
-                    await closeCheckViewModel.OpenRepositoryAsyncForDesktopCheck();
-                _window.DispatcherQueue.TryEnqueue(() => _window?.Close());
-                return;
-            }
-        };
+        _window.Closed += (_, _) => ReportDesktopCloseCheck("WindowClosed");
+        if (Environment.GetEnvironmentVariable("CSHARPGIT_CLOSE_CHECK") == "1")
+            mainPage.Loaded += RunDesktopCloseCheckWhenLoaded;
+        _window.Content = mainPage;
         SetWindowIcon(_window, startupLogger);
         _window.Activate();
 
         if (Program.InitialRepositoryPath is not null)
             await mainPage.OpenInitialRepositoryAsync();
+    }
+
+    private bool TryBeginNormalShutdown(MainPage? page)
+    {
+        ReportDesktopCloseCheck("Closing");
+        if (page?.IsUnsafeToClose == true)
+        {
+            ReportDesktopCloseCheck("CloseCanceled: protected operation is active");
+            return false;
+        }
+
+        if (_closeConfirmed || page is null || !page.RequiresCloseConfirmation)
+        {
+            BeginShutdown(page);
+            return true;
+        }
+
+        ReportDesktopCloseCheck("CloseCanceled: commit draft requires confirmation");
+        if (!_closeConfirmationInProgress)
+        {
+            _closeConfirmationInProgress = true;
+            _ = ConfirmAndCloseAsync(page);
+        }
+        return false;
     }
 
     private void MainPage_WindowTitleChanged(string title)
@@ -279,9 +271,11 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     {
         if (_shutdownRequested) return;
         _shutdownRequested = true;
+        ReportDesktopCloseCheck("CloseAccepted");
         if (page is not null)
             page.WindowTitleChanged -= MainPage_WindowTitleChanged;
         page?.BeginShutdown();
+        ReportDesktopCloseCheck("PageShutdownCompleted");
     }
 
     internal void CompleteApplicationUpdateRestart(MainPage page)
@@ -297,6 +291,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     internal void StopHost()
     {
         if (Interlocked.Exchange(ref _hostStopped, 1) != 0) return;
+        ReportDesktopCloseCheck("HostStopping");
         _appSettings.Changed -= AppSettings_Changed;
         _mainThemeRegistration?.Dispose();
         _mainThemeRegistration = null;
@@ -307,10 +302,12 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         }
         catch (OperationCanceledException)
         {
+            ReportDesktopCloseCheck("HostStopTimedOut");
         }
         finally
         {
             _host.Dispose();
+            ReportDesktopCloseCheck("HostStopped");
         }
     }
 

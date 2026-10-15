@@ -3,6 +3,42 @@ namespace CSharpGit.Application.Tests;
 public sealed class PresentationLifecycleContractTests
 {
     [Fact]
+    public void DesktopCloseCheckWaitsForReadinessAndAnExplicitCloseCommand()
+    {
+        var presentation = Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation");
+        var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
+        var check = File.ReadAllText(Path.Combine(presentation, "App.DesktopCloseCheck.cs"));
+
+        Assert.Contains("mainPage.Loaded += RunDesktopCloseCheckWhenLoaded", app, StringComparison.Ordinal);
+        Assert.DoesNotContain("_window.Activated +=", app, StringComparison.Ordinal);
+        Assert.Contains("page.Loaded -= RunDesktopCloseCheckWhenLoaded", check, StringComparison.Ordinal);
+        Assert.Contains("if (_closeCheckStarted) return;", check, StringComparison.Ordinal);
+        Assert.Contains("if (!await viewModel.OpenRepositoryPathAsync", check, StringComparison.Ordinal);
+        Assert.DoesNotContain("OpenRepositoryAsyncForDesktopCheck", check, StringComparison.Ordinal);
+
+        var opened = check.IndexOf("await viewModel.OpenRepositoryPathAsync", StringComparison.Ordinal);
+        var ready = check.IndexOf("State = \"Ready\"", StringComparison.Ordinal);
+        var command = check.IndexOf("await reader.ReadLineAsync(timeout.Token) != \"Close\"", StringComparison.Ordinal);
+        var dispatch = check.IndexOf("if (!_window!.DispatcherQueue.TryEnqueue", StringComparison.Ordinal);
+        var close = check.IndexOf("RequestNormalWindowCloseForDesktopCheck();", StringComparison.Ordinal);
+        Assert.True(opened >= 0 && ready > opened && command > ready && dispatch > command && close > dispatch);
+        Assert.Contains("PostMessageW(handle, 0x0010, 0, 0)", check, StringComparison.Ordinal);
+        Assert.Contains("else if (TryBeginNormalShutdown", check, StringComparison.Ordinal);
+        Assert.Contains("if (!TryBeginNormalShutdown", app, StringComparison.Ordinal);
+        Assert.DoesNotContain("Environment.Exit", check, StringComparison.Ordinal);
+        Assert.DoesNotContain("_closeConfirmed = true", check, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DesktopCloseCheckReportsNormalLifetimeMilestones()
+    {
+        var app = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "App.xaml.cs"));
+        foreach (var milestone in new[] { "Closing", "CloseCanceled", "CloseAccepted", "WindowClosed",
+                     "PageShutdownCompleted", "HostStopping", "HostStopped" })
+            Assert.Contains($"ReportDesktopCloseCheck(\"{milestone}", app, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void CloseChecksActiveOperationsAndRechecksAfterConfirmation()
     {
         var presentation = Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation");

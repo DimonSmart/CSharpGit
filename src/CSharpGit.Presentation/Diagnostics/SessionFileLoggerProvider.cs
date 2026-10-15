@@ -1,4 +1,5 @@
 using System.Globalization;
+using CSharpGit.Infrastructure;
 using Microsoft.Extensions.Logging;
 
 namespace CSharpGit.Presentation.Diagnostics;
@@ -25,7 +26,7 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
         ValidateLevel(minimumLevel);
 
         _directory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            ApplicationDataPaths.Root,
             "CSharpGit",
             "Logs");
         _filePath = Path.Combine(

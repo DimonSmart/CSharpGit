@@ -18,7 +18,8 @@ public sealed class ManualRefreshUiContractTests
         var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
         var intentIndex = File.ReadAllText(Path.Combine(root, ".idd", "intent", "INDEX.md"));
 
-        Assert.Contains("_window.Activated +=", app);
+        Assert.DoesNotContain("_window.Activated +=", app);
+        Assert.Contains("mainPage.Loaded += RunDesktopCloseCheckWhenLoaded", app);
         Assert.DoesNotContain("RefreshWhenActivatedAsync", app);
         Assert.DoesNotContain("InitializeRepositoryChangeMonitoring()", app);
         Assert.Contains("InitializeRepositoryChangeMonitoring();", composition);
