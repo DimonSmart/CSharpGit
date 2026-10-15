@@ -22,7 +22,7 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         var commitHash = _viewModel.CommitDetails.SelectedDiffCommitHash;
         var file = _viewModel.CommitDetails.SelectedFile;
-        if (repository is null || string.IsNullOrWhiteSpace(commitHash) || file is null || _viewModel.CommitDetails.SelectedDiff?.IsBinary != true)
+        if (IsShuttingDown || repository is null || string.IsNullOrWhiteSpace(commitHash) || file is null || _viewModel.CommitDetails.SelectedDiff?.IsBinary != true)
         {
             SetCommitDiffPresentationState(DiffPresentationState.None);
             return;
@@ -61,8 +61,9 @@ public sealed partial class MainPage
         catch (OperationCanceledException) when (cts.IsCancellationRequested)
         {
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            ReportUiFailure(exception, "Commit image diff");
             if (IsCurrentCommitImageDiffRequest(repository, commitHash, file.Path, generation, cts))
                 SetCommitDiffPresentationState(DiffPresentationState.Unavailable);
         }
@@ -82,7 +83,8 @@ public sealed partial class MainPage
         string path,
         long generation,
         CancellationTokenSource cancellation) =>
-        !cancellation.IsCancellationRequested
+        !IsShuttingDown
+        && !cancellation.IsCancellationRequested
         && generation == Volatile.Read(ref _commitImageDiffGeneration)
         && _viewModel.CommitDetails.IsChangesViewActive
         && ReferenceEquals(repository, _viewModel.Repository)
