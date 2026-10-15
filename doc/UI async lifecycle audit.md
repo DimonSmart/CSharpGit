@@ -20,7 +20,7 @@ Legend: **fixed** means updated under UI Async Lifecycle Hardening; **retain** m
 | `MainPage.xaml.cs` / ExecuteCommandAsync | Page / direct AsyncCommand | Observe exceptions from direct ExecuteAsync and log once | Preserve command _isExecuting/CanExecute and VM mutation gate | Fixed |
 | `MainPage.xaml.cs` / ShowErrorAsync | Dialog / notifications | Catch dialog failures, including a concurrent dialog | Skip after shutdown and without XamlRoot; nonrecursive logging | Fixed |
 | `MainPage.xaml.cs` / XAML async void click handlers | Page / commands | Direct ExecuteCommandAsync path guarded; feature-specific callbacks use own fences | Remaining direct XAML event handlers still require error injection | Review remaining |
-| `MainPage.Dialogs.cs` / ShowPageDialogAsync | Page / dialogs | Semaphore wait observes shutdown cancellation, finally releases | One modal at a time per page; no new modal after shutdown | Fixed for migrated call sites |
+| `MainPage.Dialogs.cs` / ShowPageDialogAsync | Page / dialogs | UiPageDialogGate queues/cancels by page token and propagates failures | One modal at a time; late accepted result invalidated on shutdown | Fixed with behavioral tests |
 | `MainPage.ConfirmationDialogs.cs` / empty index | Dialog / mutation confirmation | Error observed through runner; safe cancellation cleanup | Per-type single-flight, capture repo identity | Fixed |
 | `MainPage.ConfirmationDialogs.cs` / batch discard | Dialog / mutation confirmation | Same, no duplicated command in finally after successful cleanup | Per-type single-flight, identity check after ShowAsync | Fixed |
 | `MainPage.CommitActions.cs` / checkout/reset/cherry-pick/revert/fixup | Page / Git mutations | Async event errors observed via runner; VM owns Git failures | Captured repository and mutation availability checked before execution | Fixed |
@@ -45,11 +45,27 @@ Legend: **fixed** means updated under UI Async Lifecycle Hardening; **retain** m
 | `MainPage.BranchDragDrop.cs` / Drop | Page / Git mutation | UI runner observes callback failures | Existing branch protections and shutdown gate | Fixed |
 | `MainPage.HistoryInfiniteScroll.cs` / page load | Repository session / history read | UI runner observes event failure; finally clears pending flag | Scroll threshold and loading gate; shutdown guard | Fixed |
 | `Controls/AuthorAvatarLifecycleState.cs` / avatar changes | Control / cancelable image requests | Existing cancellation and version token | Stale response ignored | Retain |
-
 | `MainPage.RepositoryCloning.cs` / CloneRepository_Click | Dialog / clone workflow | UI runner observes event errors; dialog lifetime still local to workflow | Clone/create/VM mutation gates | Fixed entry point |
 | `MainPage.RepositoryCreation.cs` / CreateRepository_Click | Dialog / create workflow | UI runner observes event errors; workflow dialog retains its internal lifecycle | Create/clone/VM mutation gates | Fixed entry point |
 | `MainPage.ForcePush.cs` / PushTo + ForcePushWithLease | Page / high-risk Git push | UI runner observes event errors, confirmation uses page dialog gate | Existing expected-remote-commit lease and mutation restrictions remain | Fixed entry points |
 | `MainPage.EditCommitMessage.cs` / EditCommitMessage_Click | Page / history rewrite | UI runner observes event errors; dialog serialized | Existing rewrite safety checks | Fixed entry point |
+ 
+| `MainPage.Stashes.cs` / create/drop dialogs | Repository / destructive changes | Runner for events; page dialog gate | Repo identity, stash commit selection and CanExecute validated after await | Fixed |
+| `MainPage.BranchRename.cs` / F2 confirmation | Repository / branch rename | Runner and serialized modal | Captured repo rechecked before rename | Fixed |
+| `MainPage.BranchDeletion.cs` / delete/checkout | Repository / protected refs | Serialized modal + mutation service | Captured repository and busy guard after modal | Fixed |
+| `MainPage.BranchFolderDeletion.cs` / batch delete | Repository / protected refs | Serialized modal + VM failure handling | Captured repository before modal, rechecked before execution | Fixed |
+| `MainPage.Tags.cs` / tag and remote-tag actions | Repository / Git mutations + network lookup | Runner for menu and remote selector; lookup errors observed | Dialog gate, repo identity and query revision fences late results | Fixed |
+| `MainPage.Worktrees.cs` / worktree actions | Repository / Git mutations | Page gate, existing VM failure messages | Captured repository, busy gate and shutdown recheck | Fixed |
+| `MainPage.HistoryRewrite.cs` / remove path | Repository / destructive rewrite | Serialized confirm, error notification | Repository identity checked after prepare and confirm | Fixed |
+| `MainPage.InteractiveRebaseAuthor.cs` / change author | Dialog / network identity read and todo edit | Runner observes author change/flyout callbacks | Captured repo and page lifetime checked before UI writes | Fixed |
+| `MainPage.WorkingTreeDiff.cs` / selection, binary preview, restore | Repository preview / asynchronous read | Runner observes no-await work; IO failures logged | Selection+generation+repo checks, shutdown fence, dispatcher rejection cleanup | Fixed |
+| `MainPage.RecentRepositories.cs` / settings and metadata | Page / recent item persistence | Runner observes property-change asynchronous writes | Shutdown guard and VM current context | Fixed |
+| `MainPage.RepositoryMaintenance.cs` / optimize | Repository / maintenance | Runner observes outer handler, nested error notification caught | Existing maintenance gate, repo identity check after prepare | Fixed |
+| `MainPage.xaml.cs` / toolbar and shortcuts | Page / event boundaries | Runner observes history, sync and navigation commands | Mark key handled synchronously; no new action after shutdown | Fixed |
+| `DispatcherQueueExtensions.EnqueueAsync` / awaited UI dispatch | UI dispatcher / test or callback | UiDispatchCompletion resolves rejected dispatch, callback exception, and late owner cancellation | One-shot delivery; no permanently waiting TCS | Fixed with behavioral tests |
+| `App.xaml.cs` / macOS close+host stop | Window+process / shutdown | Await managed host StopAsync before final native close | Single shared StopHostAsync flight; Program joins after event loop | Fixed with integration test coverage |
+| `Core/Threading/AsyncFirstStop.cs` / history diagnostics | Capture / writer teardown | TaskCompletionSource published before callbacks; writer faults shared | First stop reason wins, reentrant and concurrent stops share task | Fixed with behavioral tests |
+| `Core/Threading/UiBoundedTaskWait.cs` / teardown budget | Window / asynchronous writer join | 3-second WaitAsync; eventual fault observed; failed reporter contained | No synchronous blocking or UI use after timeout | Fixed with behavioral tests |
 
 ## Confirmed defects addressed
 
@@ -64,7 +80,7 @@ Legend: **fixed** means updated under UI Async Lifecycle Hardening; **retain** m
 
 - `AsyncCommand` remains the command implementation: `ICommand.Execute` catches errors whereas direct `ExecuteAsync` throws to its awaiter.
 - Git mutations are not automatically cancelled by a Close request. Existing mutation gate and protected-close checks take precedence.
-- The process's `StopHost()` blocking join remains after the Uno event loop exits, not inside an active UI callback.
+- `StopHost()` synchronously joins only in `Program.Main` after Uno event loop exits; on macOS the same single-flight managed host shutdown is awaited asynchronously before native final close.
 - Existing repository refresh coalescing/generation, preview publication gate and avatar lifecycle are reused instead of creating a second task scheduler or global CTS.
 
 ## Shutdown and error invariants
@@ -75,4 +91,8 @@ First normal Close checks protected operations; if necessary, confirms unsaved d
 
 GitHub Actions builds and unit/contract suites provide automated validation. Local dotnet and manual Windows/macOS/Linux desktop test sessions are unavailable to this executor. Record platform-specific CI outcomes from the commit's Actions run, not from unrelated or earlier commits.
 
-Residual work: Several older async-void event handlers and standalone ContentDialogs elsewhere in MainPage partials have not yet been individually converted; they require follow-up failure-injection testing. Dialogs actively driving clone/create workflows intentionally retain their local ShowAsync lifetime to avoid deadlocking nested workflow callbacks; coordinate any further migration with existing button deferrals. Close/confirmation behavior needs real Uno desktop validation on each supported platform; a compiling CI run is **not** proof of window close behavior. These gaps must not be reported as accepted without execution evidence.
+Validated checkpoint: commit `08c038f82da1b299ea6c441fc4680163c5c28b51`, GitHub Actions run `38729026925`, finished successfully for `ubuntu-latest`, `macos-latest`, and `windows-latest`. This is an earlier snapshot, **not** proof that every newer commit passed.
+
+Additional deterministic behavioral coverage: `UiAsyncOperationRunnerTests` (sync/async faults, expected cancellation, failing reporter); `UiPageDialogGateTests` (serialized modals, rejected queued dialogs, canceled results); `UiBoundedTaskWaitTests` (completed/faulted/delayed/hung writer, late fault, reporter failure); `AsyncFirstStopTests` (concurrency, original reason, synchronous reentry, faults); `UiDispatchCompletionTests` (rejected dispatch, ignored late callback, callback fault); plus existing presentation, history diagnostics, Git and desktop integration suites.
+
+Residual validation work: new commits after the validated checkpoint need GitHub Actions results from **their own SHA**. Windows lifecycle fault-injection introduced in a concurrent feature branch has previously caused the named desktop end-to-end test to abort; do not treat that as passing until a new successful run. Some legacy feature-local dialogs intentionally retain `ShowAsync` during clone/create because their internal button callbacks require the dialog to remain open; migrating them behind the general gate must not deadlock nested UI. Existing background avatar/refresh lifecycle remains handled by generation and session tests. Asynchronous event entry points should still be monitored for new regressions. Close/confirmation claims are only as strong as the actual Windows, macOS, Linux CI and manual platform evidence.
