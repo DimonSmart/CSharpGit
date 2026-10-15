@@ -202,10 +202,28 @@ public sealed class DesktopApplicationTests
                 Assert.True(d.RootElement.GetProperty("UnsafeToClose").GetBoolean());
             using (var d = await CommandAsync("AttemptCloseDuringMutation"))
                 Assert.True(d.RootElement.GetProperty("UnsafeToClose").GetBoolean());
+            using (var d = await CommandAsync("AttemptSwitchDuringMutation\t" + worktree))
+            {
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+                AssertOpenedSnapshotPath(d.RootElement, original);
+            }
+            using (var d = await CommandAsync("AttemptCloseRepositoryDuringMutation"))
+            {
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+                AssertOpenedSnapshotPath(d.RootElement, original);
+            }
+            using (var d = await CommandAsync("AttemptSecondMutation"))
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
             using (var d = await CommandAsync("CompleteMutation"))
             {
                 Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
                 Assert.False(d.RootElement.GetProperty("UnsafeToClose").GetBoolean());
+            }
+
+            using (var d = await CommandAsync("RetryMutation"))
+            {
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+                Assert.False(d.RootElement.GetProperty("IsBusy").GetBoolean());
             }
 
             using (var d = await CommandAsync("CloseRepository"))
