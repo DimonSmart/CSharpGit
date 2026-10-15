@@ -146,7 +146,7 @@ public sealed class StashUiContractTests
     private static string SliceSelectedDialog(string source)
     {
         var start = source.IndexOf("private async Task ShowCreateSelectedStashDialogAsync", StringComparison.Ordinal);
-        var end = source.IndexOf("private async void DropSelectedStash_Click", start, StringComparison.Ordinal);
+        var end = source.IndexOf("private void DropSelectedStash_Click", start, StringComparison.Ordinal);
         Assert.True(start >= 0 && end > start);
         return source[start..end];
     }

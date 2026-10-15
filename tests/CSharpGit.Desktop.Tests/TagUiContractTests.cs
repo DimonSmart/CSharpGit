@@ -13,7 +13,8 @@ public sealed class TagUiContractTests
 
         Assert.Contains("\"Delete tag…\"", tags, StringComparison.Ordinal);
         Assert.DoesNotContain("\"Delete local tag…\"", tags, StringComparison.Ordinal);
-        Assert.Contains("item.Click += async (_, _) => await DeleteTagFromUiAsync(tag)", tags, StringComparison.Ordinal);
+        Assert.Contains("item.Click += (_, _) =>", tags, StringComparison.Ordinal);
+        Assert.Contains("RunPageUiOperation(() => DeleteTagFromUiAsync(tag)", tags, StringComparison.Ordinal);
         Assert.Contains("() => DeleteTagFromUiAsync(tag)", tags, StringComparison.Ordinal);
 
         Assert.Contains("Content = \"Also delete this tag from remote\"", tags, StringComparison.Ordinal);
