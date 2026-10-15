@@ -319,21 +319,21 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         {
             if (page is not null)
             {
-                var stopTask = page.PrepareForShutdown();
-                try { await stopTask.WaitAsync(DiagnosticsShutdownBudget); }
-                catch (TimeoutException)
+                try
                 {
-                    LogUiFailure(new TimeoutException("History diagnostics exceeded shutdown budget."),
-                        "History diagnostics shutdown timeout");
-                    _ = UiAsyncOperationRunner.RunAsync(
-                        () => stopTask,
-                        exception => LogUiFailure(exception, "Late history diagnostics shutdown"));
+                    await UiBoundedTaskWait.WaitAsync(
+                        page.PrepareForShutdown(),
+                        DiagnosticsShutdownBudget,
+                        exception => LogUiFailure(exception, "History diagnostics shutdown"));
                 }
-                catch (Exception exception) { LogUiFailure(exception, "History diagnostics shutdown"); }
-
-                page.WindowTitleChanged -= MainPage_WindowTitleChanged;
-                page.BeginShutdown();
-                ReportDesktopCloseCheck("PageShutdownCompleted");
+                finally
+                {
+                    // A failed PrepareForShutdown or diagnostics writer must not
+                    // bypass page disposal or authorize an undisposed window.
+                    page.WindowTitleChanged -= MainPage_WindowTitleChanged;
+                    page.BeginShutdown();
+                    ReportDesktopCloseCheck("PageShutdownCompleted");
+                }
             }
         }
         catch (Exception exception) { LogUiFailure(exception, "Final window cleanup"); }
