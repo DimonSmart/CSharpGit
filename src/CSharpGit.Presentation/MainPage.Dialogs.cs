@@ -1,4 +1,5 @@
 using CSharpGit.Presentation.Controls;
+using CSharpGit.Presentation.Threading;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -8,25 +9,21 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage
 {
     private ContentDialog InteractiveRebaseDialog => GetPageDialog("InteractiveRebaseDialog");
-    private readonly SemaphoreSlim _pageDialogGate = new(1, 1);
+    private readonly UiPageDialogGate _pageDialogGate = new();
     private readonly CancellationTokenSource _pageDialogLifetime = new();
 
-    private async Task<ContentDialogResult> ShowPageDialogAsync(ContentDialog dialog)
-    {
-        await _pageDialogGate.WaitAsync(_pageDialogLifetime.Token);
-        try
-        {
-            if (IsShuttingDown || XamlRoot is null)
-                return ContentDialogResult.None;
+    private Task<ContentDialogResult> ShowPageDialogAsync(ContentDialog dialog) =>
+        _pageDialogGate.ExecuteAsync(
+            async () =>
+            {
+                if (IsShuttingDown || XamlRoot is null)
+                    return ContentDialogResult.None;
 
-            dialog.XamlRoot = XamlRoot;
-            return await dialog.ShowAsync();
-        }
-        finally
-        {
-            _pageDialogGate.Release();
-        }
-    }
+                dialog.XamlRoot = XamlRoot;
+                return await dialog.ShowAsync();
+            },
+            ContentDialogResult.None,
+            _pageDialogLifetime.Token);
 
 
 
@@ -60,18 +57,20 @@ public sealed partial class MainPage
             editor.FocusEditor();
         }
 
+        var repository = _viewModel.Repository;
         dialog.Opened += Dialog_Opened;
         ContentDialogResult result;
         try
         {
-            result = await dialog.ShowAsync();
+            result = await ShowPageDialogAsync(dialog);
         }
         finally
         {
             dialog.Opened -= Dialog_Opened;
         }
 
-        if (result != ContentDialogResult.Primary)
+        if (result != ContentDialogResult.Primary || IsShuttingDown
+            || !ReferenceEquals(repository, _viewModel.Repository))
             return;
 
         if (FindNamedDescendant<InteractiveRebaseTodoEditor>(
