@@ -404,6 +404,8 @@ internal sealed class GitCommandExecutor
         var buffer = new char[TextReadBufferSize];
         var outputBytes = 0;
         var utf8Encoder = Encoding.UTF8.GetEncoder();
+        // GetBytes (unlike GetByteCount) advances encoder state across chunk boundaries.
+        var byteCountBuffer = maxOutputBytes is null ? null : new byte[TextReadBufferSize * 4];
 
         while (true)
         {
@@ -414,7 +416,8 @@ internal sealed class GitCommandExecutor
             if (maxOutputBytes is { } limit)
             {
                 // Encoder preserves a surrogate pair across successive ReadAsync calls.
-                var chunkBytes = utf8Encoder.GetByteCount(buffer.AsSpan(0, read), flush: false);
+                var chunkBytes = utf8Encoder.GetBytes(
+                    buffer.AsSpan(0, read), byteCountBuffer!, flush: false);
                 if (outputBytes > limit - chunkBytes)
                 {
                     outputLimitExceeded?.Invoke();
@@ -430,7 +433,8 @@ internal sealed class GitCommandExecutor
 
         if (maxOutputBytes is { } finalLimit)
         {
-            var remainingBytes = utf8Encoder.GetByteCount(ReadOnlySpan<char>.Empty, flush: true);
+            var remainingBytes = utf8Encoder.GetBytes(
+                ReadOnlySpan<char>.Empty, byteCountBuffer!, flush: true);
             if (outputBytes > finalLimit - remainingBytes)
             {
                 outputLimitExceeded?.Invoke();
