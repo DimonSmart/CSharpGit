@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -77,6 +78,7 @@ public sealed partial class App
         TaskCompletionSource? release = null;
         Task<bool>? mutation = null;
         Action? delayedMonitorDelivery = null;
+        var publicationFaults = new List<PropertyChangedEventHandler>();
 
         Task RespondAsync(bool success)
         {
@@ -91,9 +93,13 @@ public sealed partial class App
                 Head = vm.CurrentHeadCommit,
                 HasBaseline = vm.DisplayedWorkingTreeStatusSnapshot is not null,
                 HistoryCount = vm.History.Rows.Count,
+                BranchCount = vm.Branches.LocalBranches.Count,
+                TagCount = vm.Tags.Items.Count,
+                StashCount = vm.Stashes.Items.Count,
                 Draft = vm.CommitCreation.CommitMessage,
                 UnsafeToClose = page.IsUnsafeToClose,
                 IsBusy = vm.IsBusy,
+                CanChangeRepository = vm.CanChangeRepository,
                 RefreshRequired = page.IsRefreshRequired,
                 Error = vm.ErrorMessage
             });
@@ -104,7 +110,11 @@ public sealed partial class App
         {
             var command = await reader.ReadLineAsync(token)
                 ?? throw new EndOfStreamException("Desktop lifecycle check disconnected.");
-            if (command == "Close") return;
+            if (command == "Close")
+            {
+                foreach (var handler in publicationFaults) vm.PropertyChanged -= handler;
+                return;
+            }
 
             if (command.StartsWith("Switch\t", StringComparison.Ordinal))
             {
@@ -184,6 +194,104 @@ public sealed partial class App
                 var attempted = await vm.RunMutationAsync(
                     () => throw new InvalidOperationException("Rejected mutation must not execute."));
                 await RespondAsync(!attempted && vm.IsMutating);
+            }
+            else if (command.StartsWith("FailNextPublication\\t", StringComparison.Ordinal))
+            {
+                var parts = command.Split('\\t', 3);
+                if (parts.Length != 3) throw new InvalidOperationException("Expected repository path and failure message.");
+                var path = Path.GetFullPath(parts[1]);
+                var message = parts[2];
+                PropertyChangedEventHandler handler = null!;
+                handler = (_, args) =>
+                {
+                    if (args.PropertyName != nameof(OpenRepositoryViewModel.CurrentBranchName)
+                        || string.IsNullOrWhiteSpace(vm.CurrentBranchName)
+                        || !string.Equals(Path.GetFullPath(vm.Repository?.WorkingDirectory ?? ""),
+                            path, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                        return;
+                    vm.PropertyChanged -= handler;
+                    publicationFaults.Remove(handler);
+                    throw new InvalidOperationException(message);
+                };
+                publicationFaults.Add(handler);
+                vm.PropertyChanged += handler;
+                await RespondAsync(true);
+            }
+            else if (command == "CommitWithFailedRefresh")
+            {
+                var repository = vm.Repository ?? throw new InvalidOperationException("No selected repository.");
+                PropertyChangedEventHandler handler = null!;
+                handler = (_, args) =>
+                {
+                    if (args.PropertyName != nameof(OpenRepositoryViewModel.CurrentHeadCommit)) return;
+                    vm.PropertyChanged -= handler;
+                    publicationFaults.Remove(handler);
+                    throw new InvalidOperationException("Injected post-commit refresh failure");
+                };
+                publicationFaults.Add(handler);
+                vm.PropertyChanged += handler;
+                var result = await vm.RunMutationAsync(async () =>
+                {
+                    var start = new ProcessStartInfo("git")
+                    {
+                        WorkingDirectory = repository.WorkingDirectory,
+                        UseShellExecute = false,
+                        RedirectStandardError = true
+                    };
+                    foreach (var argument in new[] {
+                        "-c", "commit.gpgsign=false",
+                        "-c", "core.hooksPath=/nonexistent-csharpgit-hooks",
+                        "commit", "--allow-empty", "-m", "Lifecycle integration test commit"
+                    }) start.ArgumentList.Add(argument);
+                    using var process = Process.Start(start)
+                        ?? throw new InvalidOperationException("Git commit did not start.");
+                    var stderr = await process.StandardError.ReadToEndAsync();
+                    await process.WaitForExitAsync(token);
+                    if (process.ExitCode != 0) throw new IOException($"Git commit failed: {stderr}");
+                });
+                await RespondAsync(result);
+            }
+            else if (command == "Refresh")
+            {
+                await vm.RefreshAsyncForDesktopCheck();
+                await RespondAsync(true);
+            }
+            else if (command.StartsWith("CancelOpenAfterAssignment\\t", StringComparison.Ordinal))
+            {
+                var target = command["CancelOpenAfterAssignment\\t".Length..];
+                using var cancel = new CancellationTokenSource();
+                PropertyChangedEventHandler handler = null!;
+                handler = (_, args) =>
+                {
+                    if (args.PropertyName != nameof(OpenRepositoryViewModel.Repository)
+                        || !string.Equals(vm.Repository?.WorkingDirectory, target,
+                            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                        return;
+                    vm.PropertyChanged -= handler;
+                    cancel.Cancel();
+                };
+                vm.PropertyChanged += handler;
+                var cancelled = false;
+                try { await vm.OpenRepositoryPathAsync(target, cancel.Token); }
+                catch (OperationCanceledException) when (cancel.IsCancellationRequested) { cancelled = true; }
+                finally { vm.PropertyChanged -= handler; }
+                await RespondAsync(cancelled);
+            }
+            else if (command == "FailMutation")
+            {
+                await RespondAsync(await vm.RunMutationAsync(() =>
+                    throw new IOException("Injected Git mutation failure")));
+            }
+            else if (command == "CancelMutation")
+            {
+                var cancelled = false;
+                try
+                {
+                    await vm.RunMutationAsync(() =>
+                        throw new OperationCanceledException("Injected Git mutation cancellation"));
+                }
+                catch (OperationCanceledException) { cancelled = true; }
+                await RespondAsync(cancelled);
             }
             else if (command == "RetryMutation")
             {
