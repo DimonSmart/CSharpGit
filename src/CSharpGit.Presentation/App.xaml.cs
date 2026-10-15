@@ -204,12 +204,12 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     {
         ReportDesktopCloseCheck("Closing");
         if (_finalCloseAuthorized) return true;
-        if (_shutdownRequested || _closeConfirmationInProgress) return false;
         if (page?.IsUnsafeToClose == true)
         {
             ReportDesktopCloseCheck("CloseCanceled: protected operation is active");
             return false;
         }
+        if (_shutdownRequested || _closeConfirmationInProgress) return false;
 
         if (!_closeConfirmed && page is not null && page.RequiresCloseConfirmation)
         {
