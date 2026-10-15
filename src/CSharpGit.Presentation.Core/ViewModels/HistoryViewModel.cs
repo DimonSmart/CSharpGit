@@ -322,8 +322,8 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
         }
 
         var request = BeginRequest(repository);
-        _context.EnterHistoryBusy();
         IsLoading = true;
+        _context.EnterHistoryBusy();
         try
         {
             var reflogSessionId = Interlocked.Increment(ref _reflogSessionId);
@@ -340,7 +340,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
                 query,
                 commitHash,
                 trailingCount,
-                request.Cancellation.Token);
+                request.Token);
 
             if (!CanPublish(request)) return null;
 
@@ -463,7 +463,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
             var page = await _historyService.ReadHistoryAsync(
                 repository,
                 query,
-                request.Cancellation.Token);
+                request.Token);
 
             if (!CanPublish(request)) return;
 
@@ -557,6 +557,8 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
     {
         var generation = Interlocked.Increment(ref _loadGeneration);
         var cancellation = new CancellationTokenSource();
+        // Cache Token before exposing the source to Invalidate/Dispose.
+        var token = cancellation.Token;
         var previous = Interlocked.Exchange(ref _loadCts, cancellation);
         if (previous is not null)
         {
@@ -564,7 +566,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
             previous.Dispose();
         }
 
-        return new HistoryLoadRequest(repository, generation, cancellation);
+        return new HistoryLoadRequest(repository, generation, cancellation, token);
     }
 
     private bool CanPublish(HistoryLoadRequest request) =>
@@ -674,5 +676,5 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
     private sealed record HistoryLoadRequest(
         Repository Repository,
         long Generation,
-        CancellationTokenSource Cancellation);
+        CancellationTokenSource Cancellation, CancellationToken Token);
 }

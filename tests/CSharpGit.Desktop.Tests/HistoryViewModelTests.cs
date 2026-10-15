@@ -131,6 +131,23 @@ public sealed class HistoryViewModelTests
     }
 
     [Fact]
+    public async Task InvalidationDuringBusyCallbackDoesNotAccessDisposedTokenOrRetainLoading()
+    {
+        using var fixture = new Fixture(controlled: true);
+        fixture.Context.OnEnterHistoryBusy = fixture.ViewModel.Invalidate;
+
+        var load = fixture.ViewModel.RefreshAsync();
+        var read = Assert.Single(fixture.Service.Reads);
+        Assert.True(read.Token.IsCancellationRequested);
+        fixture.Service.CompleteRead(0, new HistoryPage([Row("discarded")], HasMore: false));
+        await load.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.False(fixture.ViewModel.IsLoading);
+        Assert.Empty(fixture.ViewModel.Rows);
+        Assert.Equal(0, fixture.Context.BusyCount);
+    }
+
+    [Fact]
     public async Task ReflogFlowsIntoNormalQueryAndReferenceScopeDisablesIt()
     {
         using var fixture = new Fixture(showReflog: true);
@@ -208,9 +225,14 @@ public sealed class HistoryViewModelTests
         public IReadOnlyList<GitTag> Tags { get; set; } = [];
         public bool CanUpdateHistorySelection { get; set; } = true;
         public int BusyCount { get; private set; }
+        public Action? OnEnterHistoryBusy { get; set; }
         public string? Error { get; private set; }
 
-        public void EnterHistoryBusy() => BusyCount++;
+        public void EnterHistoryBusy()
+        {
+            BusyCount++;
+            OnEnterHistoryBusy?.Invoke();
+        }
         public void ExitHistoryBusy() => BusyCount--;
         public void ReportHistoryError(string message) => Error = message;
     }
