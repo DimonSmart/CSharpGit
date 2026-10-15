@@ -14,6 +14,7 @@ public sealed partial class MainPage
     // Only operations with Git or filesystem side effects make shutdown unsafe.
     public bool IsUnsafeToClose =>
         _viewModel.IsMutating
+        || _viewModel.IsChangingRepository
         || IsHistoryRewriteInProgress
         || IsRepositoryMaintenanceInProgress
         || IsApplicationUpdateInProgress
