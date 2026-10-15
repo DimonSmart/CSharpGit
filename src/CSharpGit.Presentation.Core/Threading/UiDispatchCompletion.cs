@@ -11,11 +11,14 @@ internal static class UiDispatchCompletion
         ArgumentNullException.ThrowIfNull(tryEnqueue);
         ArgumentNullException.ThrowIfNull(callback);
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var delivered = 0;
 
         try
         {
             if (!tryEnqueue(() =>
             {
+                // Queues can race with rejection and teardown; never execute twice.
+                if (Interlocked.Exchange(ref delivered, 1) != 0) return;
                 try
                 {
                     if (isOwnerCurrent is not null && !isOwnerCurrent())
@@ -32,7 +35,10 @@ internal static class UiDispatchCompletion
                     completion.TrySetException(exception);
                 }
             }))
+            {
+                Interlocked.Exchange(ref delivered, 1);
                 completion.TrySetException(new InvalidOperationException("The UI dispatcher rejected the check."));
+            }
         }
         catch (Exception exception)
         {
