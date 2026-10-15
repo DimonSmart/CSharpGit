@@ -7,23 +7,30 @@ public sealed partial class MainPage
 {
     private ProgressRing BusyIndicator => RefreshProgressRing;
 
-    private async void RefreshIndicator_Click(object sender, RoutedEventArgs e)
+    private void RefreshIndicator_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(RefreshIndicatorAsync, "Repository refresh indicator");
+
+    private async Task RefreshIndicatorAsync()
     {
-        if (_isRefreshInProgress || _viewModel.Repository is null) return;
+        var repository = _viewModel.Repository;
+        if (IsShuttingDown || _isRefreshInProgress || repository is null) return;
 
         SetRefreshInProgress(true);
         try
         {
             await _viewModel.RefreshAsyncForDesktopCheck();
-            if (!IsShuttingDown)
+            if (!IsShuttingDown && ReferenceEquals(repository, _viewModel.Repository))
                 RefreshPresentationCollections();
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (
+            IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository))
         {
         }
         catch (Exception exception)
         {
-            if (!IsShuttingDown && !_viewModel.HasError)
+            ReportUiFailure(exception, "Repository refresh");
+            if (!IsShuttingDown && ReferenceEquals(repository, _viewModel.Repository)
+                && !_viewModel.HasError)
                 await ShowErrorAsync("Refresh failed", exception.Message);
         }
         finally
