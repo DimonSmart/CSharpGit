@@ -134,7 +134,8 @@ public sealed partial class MainPage : Page
             _wasBusy = _viewModel.IsBusy;
             UpdateStatusBar();
             if (becameIdle && ShouldRestorePendingEditedCommitSelection)
-                _ = RestorePendingEditedCommitSelectionAsync();
+                RunPageUiOperation(RestorePendingEditedCommitSelectionAsync,
+                    "Restore edited commit selection");
         }
     }
 
@@ -148,7 +149,7 @@ public sealed partial class MainPage : Page
     private void CommitDetailsViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
         if (eventArgs.PropertyName == nameof(CommitDetailsViewModel.ChangedFiles))
-            _ = RefreshCommitFilesAsync();
+            RunPageUiOperation(RefreshCommitFilesAsync, "Refresh commit file list");
         else if (eventArgs.PropertyName is nameof(CommitDetailsViewModel.SelectedStashDetails)
                  or nameof(CommitDetailsViewModel.HasSelectedStash))
             UpdateStashPresentation();
@@ -360,9 +361,10 @@ public sealed partial class MainPage : Page
             ? "Back to history"
             : $"Commit ({_viewModel.WorkingTree.Changes.Count})";
 
-    private async void RepositoryTree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
+    private void RepositoryTree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
     {
-        if (ResolveNode(args.InvokedItem) is { } node) await SelectRepositoryNodeAsync(node);
+        if (ResolveNode(args.InvokedItem) is { } node)
+            RunPageUiOperation(() => SelectRepositoryNodeAsync(node), "Repository tree navigation");
     }
 
     private async Task SelectRepositoryNodeAsync(RepositoryTreeNode node)
@@ -392,13 +394,15 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private async void RepositoryTree_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
+    private void RepositoryTree_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
     {
+        if (IsShuttingDown) return;
         var node = ResolveNode((args.OriginalSource as FrameworkElement)?.DataContext);
         if (node?.Kind != RepositoryTreeNodeKind.LocalBranch || node.Value is not GitBranch branch) return;
         _viewModel.Branches.SelectedLocalBranch = branch;
-        await ExecuteCommandAsync(_viewModel.Branches.SwitchBranchCommand);
         args.Handled = true;
+        RunPageUiOperation(
+            () => ExecuteCommandAsync(_viewModel.Branches.SwitchBranchCommand), "Switch branch");
     }
 
     private void RepositoryTree_RightTapped(object sender, RightTappedRoutedEventArgs args)
@@ -617,11 +621,16 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private async void Fetch_Click(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(_viewModel.RepositorySync.FetchCommand);
-    private async void Pull_Click(object sender, RoutedEventArgs e)
+    private void Fetch_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(() => ExecuteCommandAsync(_viewModel.RepositorySync.FetchCommand), "Fetch");
+
+    private void Pull_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(PullDefaultAsync, "Pull");
+
+    private async Task PullDefaultAsync()
     {
         await ExecuteCommandAsync(_viewModel.RepositorySync.PullCommand);
-        if (_viewModel.RepositorySync.LastPullResult is { } result)
+        if (!IsShuttingDown && _viewModel.RepositorySync.LastPullResult is { } result)
             await ShowPullResultAsync(result);
     }
 
@@ -647,19 +656,18 @@ public sealed partial class MainPage : Page
         await ShowPullResultAsync(result);
     }
 
-    private async void PullMerge_Click(object sender, RoutedEventArgs e) =>
-        await PullOnceFromUiAsync(PullStrategy.Merge);
-    private async void PullRebase_Click(object sender, RoutedEventArgs e) =>
-        await PullOnceFromUiAsync(PullStrategy.Rebase);
-    private async void PullFastForwardOnly_Click(object sender, RoutedEventArgs e) =>
-        await PullOnceFromUiAsync(PullStrategy.FastForwardOnly);
+    private void PullMerge_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(() => PullOnceFromUiAsync(PullStrategy.Merge), "Merge pull");
+    private void PullRebase_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(() => PullOnceFromUiAsync(PullStrategy.Rebase), "Rebase pull");
+    private void PullFastForwardOnly_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(() => PullOnceFromUiAsync(PullStrategy.FastForwardOnly), "Fast-forward pull");
 
-    private async void Push_Click(object sender, RoutedEventArgs e) => await PushFromUiAsync();
+    private void Push_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(PushFromUiAsync, "Push");
 
-    private async void RefreshAll_Click(object sender, RoutedEventArgs e)
-    {
-        await RefreshRepositoryFromUiAsync();
-    }
+    private void RefreshAll_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(RefreshRepositoryFromUiAsync, "Refresh repository");
 
     private async Task RefreshRepositoryFromUiAsync()
     {
@@ -682,33 +690,35 @@ public sealed partial class MainPage : Page
 
 
 
-    private async void ApplyHistoryFilter_Click(object sender, RoutedEventArgs e) => await RefreshVisibleHistoryAsync();
-    private async void RefreshHistory_Click(object sender, RoutedEventArgs e) => await RefreshVisibleHistoryAsync();
+    private void ApplyHistoryFilter_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(RefreshVisibleHistoryAsync, "Apply history filter");
+    private void RefreshHistory_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(RefreshVisibleHistoryAsync, "Refresh history");
 
     private Task RefreshVisibleHistoryAsync() =>
         _viewModel.History.RefreshAsync();
 
-    private async void HistoryFilter_KeyDown(object sender, KeyRoutedEventArgs e)
+    private void HistoryFilter_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key != VirtualKey.Enter) return;
         e.Handled = true;
-        await RefreshVisibleHistoryAsync();
+        RunPageUiOperation(RefreshVisibleHistoryAsync, "Apply history filter");
     }
 
-    private async void LoadMoreHistory_Click(object sender, RoutedEventArgs e)
+    private void LoadMoreHistory_Click(object sender, RoutedEventArgs e)
     {
         HistoryRenderDiagnostics.PageLoadStarted();
-        await _viewModel.History.LoadMoreAsync();
+        RunPageUiOperation(() => _viewModel.History.LoadMoreAsync(), "Load more history");
     }
 
-    private async void ClearReference_Click(object sender, RoutedEventArgs e) =>
-        await ShowAllHistoryAsync();
+    private void ClearReference_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(ShowAllHistoryAsync, "Clear history reference");
 
-    private async void CommitNavigation_Click(object sender, RoutedEventArgs e)
+    private void CommitNavigation_Click(object sender, RoutedEventArgs e)
     {
         if (WorkingTreePane.Visibility == Visibility.Visible)
-            await ShowAllHistoryAsync();
-        else
+            RunPageUiOperation(ShowAllHistoryAsync, "Back to history");
+        else if (!IsShuttingDown)
             ShowWorkingTree();
     }
 
