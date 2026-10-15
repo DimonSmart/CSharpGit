@@ -8,7 +8,9 @@ Each repository session owns one production `RepositoryRefreshFlight` in
 `IRepositoryStateService.ReadWithWorkingTreeStatusAsync` pass runs per session.
 Additional requests are coalesced into one pending pass, not an unbounded queue.
 `includeHistory` is sticky: if any request requires history, the newest pass
-also refreshes it.
+also refreshes it. A full refresh is stronger than `localOnly`; a pending
+full request upgrades the next pass, and a local-only request cannot downgrade
+an already-full flight.
 
 A request arriving while an older pass is still reading suppresses that older
 pass's publication. Only the newest successful pass may apply the related HEAD,
@@ -55,3 +57,10 @@ The Uno adapter owns only mapping a successfully read repository state to view
 models, the dispatcher callback and the existing mutation gate. It does not
 implement another concurrent refresh queue. This design does not introduce
 an additional mutation lock or automatic watcher-triggered full refresh.
+
+## Lifecycle integration hardening (2026-10-15)
+
+- `RepositoryRefreshFlight` detaches the finished task under its lock before invoking `completed` outside the lock. Callback reentry starts a new flight; subscriber failures fault only the old flight without stranding awaiters. Publication callbacks also execute outside the lock; a request arriving during a synchronous apply receives a subsequent pass.
+- `OpenRepositoryViewModel` passes both history and full/local requirements into the production flight. It restores the previous repository on failed initial publication and reports any additional rollback-refresh error. A completed Git mutation is distinguished from its failed follow-up presentation refresh.
+- `MainPage` tracks queued watcher deliveries by monitor restart epoch and reference identity, rejecting notifications emitted by an older watcher even when a repository is reopened at the same path. Value equality does not stand in for session identity.
+- Headless tests cover the coalescing strength, reentrant callbacks, and subscriber failure. Desktop tests without a graphical session report SKIP, not PASS. Runtime UI race coverage requires an actual desktop test host.

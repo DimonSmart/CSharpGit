@@ -112,4 +112,134 @@ public sealed class RepositoryRefreshFlightTests
         }, () => { }, () => { });
         Assert.Equal(["head", "branches", "baseline"], publications);
     }
+
+    [Fact]
+    public async Task CompletedCallbackCanReenterWithoutLosingNewFlight()
+    {
+        var flight = new RepositoryRefreshFlight();
+        Task? followUp = null;
+        var reads = 0;
+        var completions = 0;
+
+        var first = flight.RunAsync(false, (_, publish) =>
+        {
+            ++reads;
+            Assert.True(publish(() => { }));
+            return Task.CompletedTask;
+        }, () => { }, () =>
+        {
+            ++completions;
+            followUp = flight.RunAsync(false, (_, publish) =>
+            {
+                ++reads;
+                Assert.True(publish(() => { }));
+                return Task.CompletedTask;
+            }, () => { }, () => ++completions);
+        });
+
+        await first.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.NotNull(followUp);
+        Assert.NotSame(first, followUp);
+        await followUp!.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(2, reads);
+        Assert.Equal(2, completions);
+    }
+
+    [Fact]
+    public async Task ReentrantStartingAndPublicationSubscribersDoNotDeadlock()
+    {
+        var flight = new RepositoryRefreshFlight();
+        var reads = 0;
+        Task? nested = null;
+        async Task Pass(bool _, Func<Action, bool> publish)
+        {
+            ++reads;
+            Assert.True(publish(() => { }));
+            await Task.CompletedTask;
+        }
+
+        var first = flight.RunAsync(false, Pass,
+            () => nested = flight.RunAsync(true, Pass, () => { }, () => { }),
+            () => { });
+        await first.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Same(first, nested);
+        Assert.Equal(2, reads);
+    }
+
+    [Fact]
+    public async Task CoalescesFullAndHistoryRequirementsFromLaterRequests()
+    {
+        var flight = new RepositoryRefreshFlight();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var passes = new List<(bool History, bool LocalOnly)>();
+        var published = 0;
+        async Task Pass(bool history, bool localOnly, Func<Action, bool> publish)
+        {
+            passes.Add((history, localOnly));
+            if (passes.Count == 1)
+            {
+                entered.TrySetResult();
+                await release.Task;
+            }
+            publish(() => published = passes.Count);
+        }
+
+        var first = flight.RunAsync(false, true, Pass, () => { }, () => { });
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        var full = flight.RunAsync(false, false, Pass, () => { }, () => { });
+        var history = flight.RunAsync(true, true, Pass, () => { }, () => { });
+        Assert.Same(first, full);
+        Assert.Same(first, history);
+        release.SetResult();
+        await Task.WhenAll(first, full, history).WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal([(false, true), (true, false)], passes);
+        Assert.Equal(2, published);
+    }
+
+    [Fact]
+    public async Task LocalRequestCannotDowngradeAnActiveFullRefresh()
+    {
+        var flight = new RepositoryRefreshFlight();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var passes = new List<(bool History, bool LocalOnly)>();
+        async Task Pass(bool history, bool localOnly, Func<Action, bool> publish)
+        {
+            passes.Add((history, localOnly));
+            if (passes.Count == 1)
+            {
+                entered.SetResult();
+                await release.Task;
+            }
+            publish(() => { });
+        }
+
+        var first = flight.RunAsync(true, false, Pass, () => { }, () => { });
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        var second = flight.RunAsync(false, true, Pass, () => { }, () => { });
+        release.SetResult();
+        await Task.WhenAll(first, second).WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal([(true, false), (true, false)], passes);
+    }
+
+    [Fact]
+    public async Task CompletedHandlerFailureDoesNotStrandAwaitersOrNextFlight()
+    {
+        var flight = new RepositoryRefreshFlight();
+        var first = flight.RunAsync(false, (_, _) => Task.CompletedTask,
+            () => { }, () => throw new InvalidOperationException("event handler"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => first);
+        var reads = 0;
+        await flight.RunAsync(false, (_, _) =>
+        {
+            ++reads;
+            return Task.CompletedTask;
+        }, () => { }, () => { }).WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(1, reads);
+    }
 }

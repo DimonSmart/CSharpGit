@@ -10,7 +10,7 @@ public sealed class DesktopApplicationTests
     public async Task LaunchesRealApplicationForRepositoryAndLinkedWorktree()
     {
         var application = FindApplication();
-        if (!HasDesktopSession()) return;
+        if (!HasDesktopSession()) throw Xunit.Sdk.SkipException.ForSkip("No supported desktop session is available.");
         Assert.True(application is not null, "Build CSharpGit.Presentation first, or set CSHARPGIT_DESKTOP_APP to its executable.");
 
         await using var fixture = await GitFixture.CreateAsync();
