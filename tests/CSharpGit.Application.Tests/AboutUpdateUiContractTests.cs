@@ -50,7 +50,7 @@ public sealed class AboutUpdateUiContractTests
         var lifecycle = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
         Assert.Contains("page?.IsUnsafeToClose == true", app);
-        Assert.Contains("|| IsApplicationUpdateInProgress", lifecycle);
+        Assert.Contains("IsUpdateRunning: IsApplicationUpdateInProgress", lifecycle);
         Assert.Contains("_closeConfirmed = true", app);
         Assert.Contains("page.PrepareForShutdown()", app);
         Assert.Contains("page.BeginShutdown()", app);
