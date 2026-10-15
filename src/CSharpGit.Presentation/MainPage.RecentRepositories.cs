@@ -47,7 +47,7 @@ public sealed partial class MainPage
         UpdateStartScreenVisibility();
     }
 
-    private async void RecentRepositoryHost_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+    private void RecentRepositoryHost_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
         if (IsShuttingDown || _recentRepositoriesShutdown) return;
 
@@ -58,13 +58,14 @@ public sealed partial class MainPage
         }
 
         if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.CurrentBranchName))
-            await UpdateRecentRepositoryBranchMetadataAsync();
+            RunPageUiOperation(UpdateRecentRepositoryBranchMetadataAsync, "Recent repository branch metadata");
 
         if (eventArgs.PropertyName != nameof(OpenRepositoryViewModel.IsBusy)) return;
 
         var becameIdle = _recentRepositoryWasBusy && !_viewModel.IsBusy;
         _recentRepositoryWasBusy = _viewModel.IsBusy;
-        if (becameIdle) await RecordOpenedRepositoryAsync();
+        if (becameIdle)
+            RunPageUiOperation(RecordOpenedRepositoryAsync, "Record recent repository");
     }
 
     private void RecentRepositorySettings_Changed(object? sender, EventArgs e)

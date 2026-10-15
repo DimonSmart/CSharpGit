@@ -214,16 +214,8 @@ public sealed partial class MainPage
 
         directoryBox.TextChanged += (_, _) =>
             _createRepositoryViewModel.Directory = directoryBox.Text;
-        browseButton.Click += async (_, _) =>
-        {
-            try
-            {
-                await _createRepositoryViewModel.BrowseAsync();
-            }
-            catch (OperationCanceledException)
-            {
-            }
-        };
+        browseButton.Click += (_, _) =>
+            RunPageUiOperation(_createRepositoryViewModel.BrowseAsync, "Create repository folder picker");
         personal.Checked += (_, _) =>
             _createRepositoryViewModel.RepositoryType =
                 RepositoryCreationKind.WorkingTree;

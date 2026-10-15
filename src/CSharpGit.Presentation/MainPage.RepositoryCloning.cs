@@ -209,16 +209,8 @@ public sealed partial class MainPage
             if (!synchronizing)
                 _cloneRepositoryViewModel.LocalDirectory = localDirectoryBox.Text;
         };
-        browseButton.Click += async (_, _) =>
-        {
-            try
-            {
-                await _cloneRepositoryViewModel.BrowseAsync();
-            }
-            catch (OperationCanceledException)
-            {
-            }
-        };
+        browseButton.Click += (_, _) =>
+            RunPageUiOperation(_cloneRepositoryViewModel.BrowseAsync, "Clone repository folder picker");
         cancelButton.Click += (_, _) =>
         {
             if (_cloneRepositoryViewModel.IsBusy)
@@ -226,24 +218,28 @@ public sealed partial class MainPage
             else
                 dialog.Hide();
         };
-        cloneButton.Click += async (_, _) =>
+        cloneButton.Click += (_, _) =>
+            RunPageUiOperation(CloneFromDialogAsync, "Clone repository");
+
+        async Task CloneFromDialogAsync()
         {
-            if (!_cloneRepositoryViewModel.CanClone)
+            if (!_cloneRepositoryViewModel.CanClone || IsShuttingDown)
                 return;
 
             try
             {
-                if (await _cloneRepositoryViewModel.CloneAsync())
+                if (await _cloneRepositoryViewModel.CloneAsync() && !IsShuttingDown)
                 {
                     succeeded = true;
                     dialog.Hide();
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (_cloneRepositoryViewModel.IsBusy || IsShuttingDown)
             {
-                dialog.Hide();
+                if (!IsShuttingDown)
+                    dialog.Hide();
             }
-        };
+        }
         dialog.Closing += (_, args) =>
         {
             if (!_cloneRepositoryViewModel.IsBusy)
