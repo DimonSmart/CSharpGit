@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Infrastructure;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
@@ -443,6 +444,33 @@ public sealed partial class App
                 finally { create.PropertyChanged -= observer; }
                 await RespondAsync(!result && busyObserved && !create.IsBusy
                     && !page.IsUnsafeToClose && !string.IsNullOrWhiteSpace(create.ErrorMessage));
+            }
+            else if (command == "VerifyMaintenanceCloseSafety")
+            {
+                var repository = vm.Repository
+                    ?? throw new InvalidOperationException("A Git repository must be open.");
+                var maintenance = page.DesktopMaintenanceForCheck;
+                var prepared = await maintenance.PrepareAsync(repository);
+                var sawRunning = false;
+                var rejectedClose = false;
+                PropertyChangedEventHandler observer = (_, args) =>
+                {
+                    if (args.PropertyName != nameof(RepositoryMaintenanceViewModel.IsRunning)
+                        || !maintenance.IsRunning) return;
+                    sawRunning = true;
+                    rejectedClose = page.IsUnsafeToClose && !TryBeginNormalShutdown(page);
+                };
+                maintenance.PropertyChanged += observer;
+                RepositoryMaintenanceResultKind? resultKind = null;
+                try
+                {
+                    if (prepared)
+                        resultKind = (await maintenance.ExecuteAsync(repository, new RepositoryGcOptions())).Kind;
+                }
+                finally { maintenance.PropertyChanged -= observer; }
+                await RespondAsync(prepared && sawRunning && rejectedClose
+                    && resultKind == RepositoryMaintenanceResultKind.Completed
+                    && !maintenance.IsRunning && !page.IsUnsafeToClose);
             }
             else if (command == "RetryMutation")
             {
