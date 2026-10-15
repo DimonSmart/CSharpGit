@@ -389,21 +389,32 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         if (Interlocked.Exchange(ref _hostStopped, 1) != 0) return;
         ReportDesktopCloseCheck("HostStopping");
         _appSettings.Changed -= AppSettings_Changed;
-        _mainThemeRegistration?.Dispose();
-        _mainThemeRegistration = null;
+        try
+        {
+            _mainThemeRegistration?.Dispose();
+        }
+        catch (Exception exception) { LogUiFailure(exception, "Theme cleanup"); }
+        finally { _mainThemeRegistration = null; }
+
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
         try
         {
+            // Program calls StopHost only after the Uno event loop has exited.
             _host.StopAsync(timeout.Token).GetAwaiter().GetResult();
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
         {
             ReportDesktopCloseCheck("HostStopTimedOut");
         }
+        catch (Exception exception)
+        {
+            LogUiFailure(exception, "Host stop");
+        }
         finally
         {
-            _host.Dispose();
-            ReportDesktopCloseCheck("HostStopped");
+            try { _host.Dispose(); }
+            catch (Exception exception) { LogUiFailure(exception, "Host dispose"); }
+            finally { ReportDesktopCloseCheck("HostStopped"); }
         }
     }
 
