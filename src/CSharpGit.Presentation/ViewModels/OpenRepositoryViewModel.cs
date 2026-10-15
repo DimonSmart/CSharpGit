@@ -311,6 +311,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                     catch (Exception restoreException)
                     {
                         rollbackFailure = restoreException;
+                        ClearRepositoryPresentation();
                         _logger.LogError(
                             restoreException,
                             "Could not refresh the previous repository after a failed workspace switch; opening failed: {OpeningFailure}",
