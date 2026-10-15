@@ -54,7 +54,7 @@ public sealed partial class MainPage
         int? lineNumber,
         RepositorySnapshotEntry? entry)
     {
-        if (_repositoryFilePreviewHost is null) return;
+        if (IsShuttingDown || _repositoryFilePreviewHost is null) return;
 
         if (entry is null)
         {
@@ -66,8 +66,10 @@ public sealed partial class MainPage
         switch (entry.Kind)
         {
             case RepositorySnapshotEntryKind.File:
-                _ = LoadRepositoryFilePreviewAsync(
-                    new RepositoryFileSelection(path, lineNumber, entry));
+                RunPageUiOperation(
+                    () => LoadRepositoryFilePreviewAsync(
+                        new RepositoryFileSelection(path, lineNumber, entry)),
+                    "Repository file preview");
                 break;
             case RepositorySnapshotEntryKind.Symlink:
                 _repositoryPreviewGate.Cancel();
