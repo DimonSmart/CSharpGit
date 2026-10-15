@@ -13,7 +13,10 @@ public sealed partial class MainPage
         _pendingOriginalEditedCommitHash is not null &&
         _viewModel.RepositoryOperations.CurrentOperation == RepositoryOperation.None;
 
-    private async void EditCommitMessage_Click(object sender, RoutedEventArgs e)
+    private void EditCommitMessage_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(() => EditCommitMessage_ClickCoreAsync(sender, e), "EditCommitMessage_Click");
+
+    private async Task EditCommitMessage_ClickCoreAsync(object sender, RoutedEventArgs e)
     {
         if (!TryGetCommitActionContext(out var repository, out var commit)) return;
 
@@ -68,7 +71,7 @@ public sealed partial class MainPage
         messageBox.TextChanged += (_, _) => UpdatePrimaryButton();
         UpdatePrimaryButton();
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary) return;
 
         var newMessage = messageBox.Text;
         if (string.IsNullOrWhiteSpace(newMessage) ||

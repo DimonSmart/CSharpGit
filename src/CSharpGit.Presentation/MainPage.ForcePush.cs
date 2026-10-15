@@ -47,7 +47,7 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Primary
         };
 
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        if (await ShowPageDialogAsync(dialog) == ContentDialogResult.Primary)
             await ShowPublishBranchDialogAsync();
     }
 
@@ -179,7 +179,7 @@ public sealed partial class MainPage
         remoteBranchBox.TextChanged += (_, _) => UpdatePrimaryState();
         UpdatePrimaryState();
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return null;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary) return null;
         if (remoteCombo.SelectedItem is not GitRemote selectedRemote) return null;
 
         return new PushTargetDialogResult(
@@ -239,7 +239,7 @@ public sealed partial class MainPage
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close
         };
-        var result = await dialog.ShowAsync();
+        var result = await ShowPageDialogAsync(dialog);
         if (result == ContentDialogResult.Secondary)
         {
             await _viewModel.RepositorySync.FetchAllAsync(repository);
@@ -322,7 +322,7 @@ public sealed partial class MainPage
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary) return;
 
         var execution = await _viewModel.RepositorySync.ForcePushWithLeaseAsync(repository, snapshot);
         RefreshPresentationCollections();
@@ -362,7 +362,7 @@ public sealed partial class MainPage
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await rejection.ShowAsync() == ContentDialogResult.Primary)
+        if (await ShowPageDialogAsync(rejection) == ContentDialogResult.Primary)
         {
             await _viewModel.RepositorySync.FetchAsync(repository, snapshot.Remote);
             RefreshPresentationCollections();
@@ -420,7 +420,7 @@ public sealed partial class MainPage
         remoteBranchBox.TextChanged += (_, _) => UpdatePrimaryState();
         UpdatePrimaryState();
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return null;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary) return null;
         if (remoteCombo.SelectedItem is not GitRemote selectedRemote) return null;
 
         return (selectedRemote.Name, remoteBranchBox.Text.Trim());
@@ -445,12 +445,18 @@ public sealed partial class MainPage
     private static string ShortOid(string oid) => oid[..Math.Min(10, oid.Length)];
     private static string FormatSubject(string? subject) => string.IsNullOrWhiteSpace(subject) ? string.Empty : $"  {subject}";
 
-    private async void PushTo_Click(object sender, RoutedEventArgs e)
+    private void PushTo_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(() => PushTo_ClickCoreAsync(sender, e), "PushTo_Click");
+
+    private async Task PushTo_ClickCoreAsync(object sender, RoutedEventArgs e)
     {
         await ShowPushToDialogAsync();
     }
 
-    private async void ForcePushWithLease_Click(object sender, RoutedEventArgs e)
+    private void ForcePushWithLease_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(() => ForcePushWithLease_ClickCoreAsync(sender, e), "ForcePushWithLease_Click");
+
+    private async Task ForcePushWithLease_ClickCoreAsync(object sender, RoutedEventArgs e)
     {
         await RunForcePushWithLeaseAsync();
     }
