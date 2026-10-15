@@ -26,7 +26,8 @@ public sealed partial class App
             if (string.IsNullOrWhiteSpace(pipeName))
                 throw new InvalidOperationException("The desktop close-check pipe was not configured.");
 
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(
+                Environment.GetEnvironmentVariable("CSHARPGIT_CLOSE_CHECK_EXTENDED") == "1" ? 180 : 45));
             using var pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
             await pipe.ConnectAsync(timeout.Token);
             using var reader = new StreamReader(pipe, leaveOpen: true);
