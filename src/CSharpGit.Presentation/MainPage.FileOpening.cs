@@ -198,12 +198,13 @@ public sealed partial class MainPage
                     break;
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (IsShuttingDown || !_fileActions.IsCurrent(request))
         {
         }
         catch (Exception exception)
         {
-            if (_fileActions.IsCurrent(request))
+            ReportUiFailure(exception, "File action");
+            if (!IsShuttingDown && _fileActions.IsCurrent(request))
                 await ShowErrorAsync(errorTitle, FileActionsViewModel.UserFacingFileError(exception));
         }
     }
@@ -457,8 +458,10 @@ public sealed partial class MainPage
         };
         ToolTipService.SetToolTip(externalItem, prepared.CanExternalDiff
             ? externalItem.Text : FileActionsViewModel.ExternalDiffUnavailableReason(pair));
-        externalItem.Click += async (_, _) => await ExecuteFileActionAsync(
-            request, FileActionKind.ExternalDiff, "Could not open external diff tool", prepared);
+        externalItem.Click += (_, _) => RunPageUiOperation(
+            () => ExecuteFileActionAsync(
+                request, FileActionKind.ExternalDiff, "Could not open external diff tool", prepared),
+            "External file diff");
         flyout.Items.Add(externalItem);
         if (separateReveal) flyout.Items.Add(new MenuFlyoutSeparator());
         var revealItem = new MenuFlyoutItem
@@ -468,18 +471,20 @@ public sealed partial class MainPage
         };
         ToolTipService.SetToolTip(revealItem, prepared.CanReveal
             ? revealItem.Text : "The file is not present in the current working tree.");
-        revealItem.Click += async (_, _) => await ExecuteFileActionAsync(
-            request, FileActionKind.Reveal, "Could not reveal file", prepared);
+        revealItem.Click += (_, _) => RunPageUiOperation(
+            () => ExecuteFileActionAsync(
+                request, FileActionKind.Reveal, "Could not reveal file", prepared),
+            "Reveal file");
         flyout.Items.Add(revealItem);
         return flyout;
     }
 
-    private static MenuFlyoutItem CreateMenuItem(string text, DiffFileVersion version, Func<Task> action)
+    private MenuFlyoutItem CreateMenuItem(string text, DiffFileVersion version, Func<Task> action)
     {
         var item = new MenuFlyoutItem { Text = text, IsEnabled = version.CanOpen };
         ToolTipService.SetToolTip(item, version.CanOpen ? text
             : version.UnavailableReason ?? "This version is unavailable.");
-        item.Click += async (_, _) => await action();
+        item.Click += (_, _) => RunPageUiOperation(action, "File menu action");
         return item;
     }
 
