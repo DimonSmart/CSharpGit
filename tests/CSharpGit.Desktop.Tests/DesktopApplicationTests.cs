@@ -170,11 +170,18 @@ public sealed class DesktopApplicationTests
                 Assert.True(value.GetProperty("HistoryCount").GetInt32() > 0);
             }
 
+            // Queue a real production monitor callback for the old session.
+            using (var d = await CommandAsync("CaptureMonitorDelivery"))
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+
             using (var d = await CommandAsync("Switch\t" + worktree))
             {
                 AssertOpened(d.RootElement, worktree, true);
                 Assert.Equal("ui-worktree", d.RootElement.GetProperty("Branch").GetString());
             }
+
+            using (var d = await CommandAsync("DeliverCapturedMonitor"))
+                Assert.False(d.RootElement.GetProperty("RefreshRequired").GetBoolean());
 
             using (var d = await CommandAsync("SetDraft\tkeep this draft"))
                 Assert.Equal("keep this draft", d.RootElement.GetProperty("Draft").GetString());
@@ -191,6 +198,13 @@ public sealed class DesktopApplicationTests
 
             using (var d = await CommandAsync("Switch\t" + original))
                 AssertOpened(d.RootElement, original, false);
+
+            // Same path as the original session, new Repository instance.
+            using (var d = await CommandAsync("DeliverCapturedMonitor"))
+            {
+                AssertOpenedSnapshotPath(d.RootElement, original);
+                Assert.False(d.RootElement.GetProperty("RefreshRequired").GetBoolean());
+            }
 
             using (var d = await CommandAsync("ThrowCompletedHandler"))
             {

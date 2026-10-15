@@ -214,6 +214,23 @@ public sealed partial class MainPage
             HandleInvalidationIfCurrent(owner, deliveryEpoch, batch));
     }
 
+    // A deterministic desktop check can retain the *actual* monitor delivery
+    // callback, deliver it after A→B→A and verify its session fence.
+    internal Action CapturePendingMonitorDeliveryForDesktopCheck()
+    {
+        if (!_repositoryChangeMonitoringInitialized || _monitoredRepository is null)
+            throw new InvalidOperationException("Repository monitoring is not initialized.");
+        var owner = _monitoredRepository;
+        var deliveryEpoch = _monitorDeliveryEpoch;
+        var batch = new RepositoryInvalidationBatch(
+            _repositoryChangeMonitor.Generation + 1,
+            hasWorkingTreeChanges: false,
+            hasRelevantMetadataChanges: true,
+            hasUnknownOrOverflow: false,
+            metadataPaths: ["HEAD"]);
+        return () => HandleInvalidationIfCurrent(owner, deliveryEpoch, batch);
+    }
+
     private void HandleInvalidationIfCurrent(
         Repository? owner,
         long deliveryEpoch,
