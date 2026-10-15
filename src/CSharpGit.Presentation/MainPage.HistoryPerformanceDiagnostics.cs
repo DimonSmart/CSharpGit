@@ -20,7 +20,10 @@ public sealed partial class MainPage
         UpdateHistoryPerformanceDiagnosticsAvailability();
     }
 
-    private async void StartHistoryPerformanceCapture_Click(object sender, RoutedEventArgs e)
+    private void StartHistoryPerformanceCapture_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(StartHistoryPerformanceCaptureAsync, "Start history diagnostics");
+
+    private async Task StartHistoryPerformanceCaptureAsync()
     {
         if (!_recentRepositorySettings.HistoryPerformanceDiagnosticsEnabled
             || _viewModel.Repository is null
@@ -73,7 +76,10 @@ public sealed partial class MainPage
             () => StopHistoryPerformanceCaptureAsync(HistoryPerformanceStopReason.Manual, showResult: true),
             "Manual history capture stop");
 
-    private async void OpenHistoryPerformanceDiagnosticsFolder_Click(object sender, RoutedEventArgs e)
+    private void OpenHistoryPerformanceDiagnosticsFolder_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(OpenHistoryPerformanceDiagnosticsFolderAsync, "Open diagnostics folder");
+
+    private async Task OpenHistoryPerformanceDiagnosticsFolderAsync()
     {
         try
         {
