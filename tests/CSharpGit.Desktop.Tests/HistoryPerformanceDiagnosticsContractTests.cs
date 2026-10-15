@@ -182,7 +182,7 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
     public void CaptureStopUsesSingleFlightAndReportsIncompleteOutput()
     {
         var source = Read("src", "CSharpGit.Presentation", "Diagnostics", "HistoryPerformanceDiagnostics.cs");
-        Assert.Contains("return _stopTask ??= StopCoreAsync(reason);", source, StringComparison.Ordinal);
+        Assert.Contains("_stop.StopAsync(reason, StopCoreAsync)", source, StringComparison.Ordinal);
         Assert.Contains("if (_activeSession is not null || _stopTask is not null) return false;", source, StringComparison.Ordinal);
         Assert.Contains("if (_stopTask is not null) return _stopTask;", source, StringComparison.Ordinal);
         Assert.Contains("HistoryPerformanceCaptureOutcome.Partial", source, StringComparison.Ordinal);
