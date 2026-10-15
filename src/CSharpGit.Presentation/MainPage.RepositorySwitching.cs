@@ -262,11 +262,15 @@ public sealed partial class MainPage
             && !await ConfirmDiscardCommitMessageAsync(closing: true))
             return false;
 
-        if (IsShuttingDown || !ReferenceEquals(originalRepository, _viewModel.Repository)
-            || !_viewModel.CanChangeRepository)
-            return false;
+        return CloseRepositoryCore(originalRepository, discardDraft);
+    }
 
-        if (!_viewModel.CloseRepository())
+    // The UI confirmation dialog is owned by TryCloseRepositoryAsync. The
+    // core applies the already-approved choice and can be tested separately.
+    private bool CloseRepositoryCore(CSharpGit.Domain.Repository expectedRepository, bool discardDraft)
+    {
+        if (IsShuttingDown || !ReferenceEquals(expectedRepository, _viewModel.Repository)
+            || !_viewModel.CanChangeRepository || !_viewModel.CloseRepository())
             return false;
 
         if (discardDraft)
@@ -276,6 +280,12 @@ public sealed partial class MainPage
         UpdateRepositorySelectorPresentation();
         return true;
     }
+
+    internal Task<bool> ConfirmedSwitchForDesktopCheckAsync(string path) =>
+        SwitchRepositoryCoreAsync(path, discardDraft: true);
+
+    internal bool ConfirmedCloseForDesktopCheck() =>
+        _viewModel.Repository is { } repository && CloseRepositoryCore(repository, discardDraft: true);
 
     private async Task<bool> ConfirmDiscardCommitMessageAsync(bool closing)
     {
