@@ -456,8 +456,8 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
             includeReflog);
 
         var request = BeginRequest(repository);
-        _context.EnterHistoryBusy();
         IsLoading = true;
+        _context.EnterHistoryBusy();
         try
         {
             var page = await _historyService.ReadHistoryAsync(
