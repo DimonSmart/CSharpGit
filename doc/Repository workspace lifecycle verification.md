@@ -59,23 +59,31 @@ on `ubuntu-latest`, `windows-latest` and `macos-latest`.
 A CI run is only a successful *desktop* smoke if the named-pipe UI protocol
 finishes and asserts the lifecycle milestones; a TRX SKIP is **not** a PASS.
 
-At the first evaluation of this hardening, Ubuntu completed the headless
-Core test classes and reported desktop smoke as SKIP
-([CI run 38725087498](https://github.com/DimonSmart/CSharpGit/actions/runs/38725087498)).
-On a later version, an added history invalidation test exposed a stuck
-loading flag; the implementation was corrected subsequently.
-The final CI result for the newest commit must be verified independently;
-earlier green runs do not establish success for later commits.
+Observed platform evidence on commit `5af204e`
+([CI run 38725442714](https://github.com/DimonSmart/CSharpGit/actions/runs/38725442714)):
+Ubuntu and macOS jobs passed, including the history invalidation regression
+and a real macOS UI lifecycle smoke. Windows ran the real desktop lifecycle
+test successfully, but the job failed on a platform-sensitive diagnostic
+source-contract assertion (newline formatting).
+That separate source-contract check was subsequently made newline-independent
+in `bb48fa4`. Commit `38a3802`
+([CI run 38725929841](https://github.com/DimonSmart/CSharpGit/actions/runs/38725929841))
+also completed Ubuntu and macOS jobs successfully, including the extended
+mutation contention protocol. Windows again executed the desktop smoke but
+retained the preexisting source-contract assertion issue.
 
 | Test layer / environment | Linux headless | Windows GUI CI | macOS GUI CI |
 | --- | --- | --- | --- |
-| Core unit/integration and real Git tests | PASS on the pre-history-fix run; final revision requires retest | NOT RUN/awaiting latest run | NOT RUN/awaiting latest run |
-| Single-flight callback and full/local regression | PASS on earlier Ubuntu CI | NOT RUN/awaiting latest run | NOT RUN/awaiting latest run |
-| History invalidation regression | FAIL before latest fix, latest NOT RUN | NOT RUN | NOT RUN |
-| Real UI A→B→A, open error, protected close | SKIP: no supported compositor | NOT RUN/awaiting latest run | NOT RUN/awaiting latest run |
+| Real Core and Git tests on `38a3802` | PASS | PASS for behavioral tests; one unrelated source-contract FAIL | PASS |
+| Single-flight callback and full/local regressions on `38a3802` | PASS | PASS | PASS |
+| History invalidation regression on `38a3802` | PASS | PASS | PASS |
+| Real UI A→B→A, open error, protected close, mutation-gate retries on `38a3802` | SKIP: no supported compositor | PASS | PASS |
+| Added delayed watcher A→B→A delivery check on `4037113` | NOT RUN: current run pending | NOT RUN: current run pending | NOT RUN: current run pending |
 
-All statuses describe observed outcomes at the time of writing, not
-predictions of a running workflow.
+A later run cannot be inferred from an earlier successful job.
+The newest change has its own
+[CI run 38726705090](https://github.com/DimonSmart/CSharpGit/actions/runs/38726705090);
+check its conclusion and TRX before declaring a final acceptance.
 
 ## Residual gaps / manual verification
 
