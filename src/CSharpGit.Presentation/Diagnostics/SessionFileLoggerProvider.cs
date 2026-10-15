@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 
@@ -6,17 +7,28 @@ namespace CSharpGit.Presentation.Diagnostics;
 
 internal sealed class SessionFileLoggerProvider : ILoggerProvider
 {
-    private readonly Channel<string> _lines = Channel.CreateUnbounded<string>(new UnboundedChannelOptions
+    // Maximum retained payload is approximately 512 * 16 KiB = 8 MiB (plus object overhead).
+    internal const int MaximumQueuedEntries = 512;
+    internal const int MaximumEntryBytes = 16 * 1024;
+    private readonly Channel<string> _lines = Channel.CreateBounded<string>(new BoundedChannelOptions(MaximumQueuedEntries)
     {
         SingleReader = true,
         SingleWriter = false,
+        FullMode = BoundedChannelFullMode.Wait,
         AllowSynchronousContinuations = false
     });
+    private readonly CancellationTokenSource _shutdown = new();
     private readonly string _directory;
     private readonly string _filePath;
     private readonly Task _writerTask;
     private int _enabled;
     private int _minimumLevel;
+    private long _droppedEntries;
+    private int _disposed;
+    private int _failed;
+
+    internal long DroppedEntries => Interlocked.Read(ref _droppedEntries);
+    internal bool HasFailed => Volatile.Read(ref _failed) != 0;
 
     public SessionFileLoggerProvider(
         bool enabled = false,
@@ -58,8 +70,13 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
 
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
         _lines.Writer.TryComplete();
-        try { _writerTask.Wait(TimeSpan.FromSeconds(2)); }
+        try
+        {
+            if (!_writerTask.Wait(TimeSpan.FromSeconds(2)))
+                _shutdown.Cancel();
+        }
         catch (AggregateException) { }
     }
 
@@ -76,13 +93,35 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
         var eventText = eventId.Id == 0 && string.IsNullOrWhiteSpace(eventId.Name)
             ? string.Empty
             : $" event={eventId.Id}:{eventId.Name}";
-        _lines.Writer.TryWrite(
-            $"{timestamp} [{level}] [tid={Environment.CurrentManagedThreadId}] [{category}]{eventText} {message}");
+        Enqueue($"{timestamp} [{level}] [tid={Environment.CurrentManagedThreadId}] [{category}]{eventText} {message}");
 
         if (exception is not null)
+            Enqueue(exception.ToString());
+    }
+
+    private void Enqueue(string line)
+    {
+        if (Volatile.Read(ref _disposed) != 0 || Volatile.Read(ref _failed) != 0
+            || !_lines.Writer.TryWrite(LimitEntry(line)))
+            Interlocked.Increment(ref _droppedEntries);
+    }
+
+    private static string LimitEntry(string text)
+    {
+        if (Encoding.UTF8.GetByteCount(text) <= MaximumEntryBytes) return text;
+        const string marker = " [log entry truncated]";
+        var budget = MaximumEntryBytes - Encoding.UTF8.GetByteCount(marker);
+        var bytes = 0;
+        var end = 0;
+        while (end < text.Length)
         {
-            _lines.Writer.TryWrite(exception.ToString());
+            if (!Rune.TryGetRuneAt(text, end, out var rune))
+                rune = Rune.ReplacementChar;
+            if (bytes + rune.Utf8SequenceLength > budget) break;
+            bytes += rune.Utf8SequenceLength;
+            end += rune.Utf16SequenceLength;
         }
+        return string.Concat(text.AsSpan(0, end), marker);
     }
 
     private async Task WriteLoopAsync()
@@ -91,7 +130,7 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
         StreamWriter? writer = null;
         try
         {
-            await foreach (var line in _lines.Reader.ReadAllAsync())
+            await foreach (var line in _lines.Reader.ReadAllAsync(_shutdown.Token))
             {
                 if (writer is null)
                 {
@@ -107,15 +146,52 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
                     writer = new StreamWriter(stream) { AutoFlush = true };
                 }
 
-                await writer.WriteLineAsync(line);
+                var dropped = Interlocked.Exchange(ref _droppedEntries, 0);
+                if (dropped > 0)
+                {
+                    try { await writer.WriteLineAsync($"{dropped} log entries dropped".AsMemory(), _shutdown.Token); }
+                    catch
+                    {
+                        Interlocked.Add(ref _droppedEntries, dropped);
+                        throw;
+                    }
+                }
+                await writer.WriteLineAsync(line.AsMemory(), _shutdown.Token);
             }
+
+            if (writer is not null)
+            {
+                var dropped = Interlocked.Exchange(ref _droppedEntries, 0);
+                if (dropped > 0)
+                    await writer.WriteLineAsync($"{dropped} log entries dropped".AsMemory(), _shutdown.Token);
+            }
+        }
+        catch (OperationCanceledException) when (_shutdown.IsCancellationRequested)
+        {
+        }
+        catch (Exception)
+        {
+            Volatile.Write(ref _failed, 1);
+            _lines.Writer.TryComplete();
+            System.Diagnostics.Trace.WriteLine("CSharpGit file logger stopped after a write failure.");
         }
         finally
         {
-            if (writer is not null)
-                await writer.DisposeAsync();
-            else if (stream is not null)
-                await stream.DisposeAsync();
+            try
+            {
+                if (writer is not null)
+                    await writer.DisposeAsync();
+                else if (stream is not null)
+                    await stream.DisposeAsync();
+            }
+            catch (IOException)
+            {
+                Volatile.Write(ref _failed, 1);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                Volatile.Write(ref _failed, 1);
+            }
         }
     }
 
