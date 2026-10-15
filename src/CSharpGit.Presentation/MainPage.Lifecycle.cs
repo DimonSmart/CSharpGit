@@ -36,6 +36,12 @@ public sealed partial class MainPage
     {
         if (Interlocked.Exchange(ref _shutdownStarted, 1) != 0) return Task.CompletedTask;
         _pageDialogLifetime.Cancel();
+        // Stop page-owned cancelable previews before waiting for diagnostics.
+        // Do not cancel Git mutations: close admission already protects them.
+        CancelRepositoryFilePreview();
+        CancelCommitImageDiff(clearSurface: false);
+        CancelWorkingTreeImageDiff();
+        _cloneRepositoryViewModel.Cancel();
         return StopHistoryPerformanceCaptureOnShutdown();
     }
 
