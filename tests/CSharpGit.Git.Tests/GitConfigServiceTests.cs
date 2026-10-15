@@ -547,6 +547,8 @@ public sealed class GitConfigServiceTests : IClassFixture<GitToolsEmptyFixture>,
             WorkingDirectory = _repositoryPath,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            StandardOutputEncoding = System.Text.Encoding.UTF8,
+            StandardErrorEncoding = System.Text.Encoding.UTF8,
             UseShellExecute = false,
             CreateNoWindow = true
         };
