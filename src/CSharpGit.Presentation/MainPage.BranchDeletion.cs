@@ -106,7 +106,8 @@ public sealed partial class MainPage
 
     private async Task ConfirmCheckoutTagDetachedAsync(GitTag tag)
     {
-        if (_viewModel.Repository is null || _viewModel.IsBusy)
+        var originalRepository = _viewModel.Repository;
+        if (originalRepository is null || _viewModel.IsBusy)
         {
             return;
         }
@@ -121,18 +122,21 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Close
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary)
         {
             return;
         }
 
+        if (IsShuttingDown || !ReferenceEquals(originalRepository, _viewModel.Repository)
+            || _viewModel.IsBusy) return;
         _viewModel.Tags.SelectedTag = tag;
         await ExecuteCommandAsync(_viewModel.Tags.CheckoutTagCommand);
     }
 
     private async Task ConfirmDeleteLocalBranchAsync(GitBranch branch)
     {
-        if (_viewModel.Repository is null || branch.IsCurrent || _viewModel.IsBusy)
+        var originalRepository = _viewModel.Repository;
+        if (originalRepository is null || branch.IsCurrent || _viewModel.IsBusy)
         {
             return;
         }
@@ -180,13 +184,14 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Close
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary)
         {
             return;
         }
 
-        var repository = _viewModel.Repository;
-        if (repository is null) return;
+        if (IsShuttingDown || !ReferenceEquals(originalRepository, _viewModel.Repository)
+            || _viewModel.IsBusy || branch.IsCurrent) return;
+        var repository = originalRepository;
 
         var deletionMode = forceDeleteCheckBox.IsChecked == true
             ? BranchDeletionMode.Force
@@ -217,6 +222,7 @@ public sealed partial class MainPage
 
     private async Task ConfirmDeleteRemoteBranchAsync(GitBranch remoteBranch)
     {
+        var originalRepository = _viewModel.Repository;
         if (_viewModel.Repository is null || _viewModel.IsBusy)
         {
             return;
@@ -294,13 +300,14 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Close
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary)
         {
             return;
         }
 
-        var repository = _viewModel.Repository;
-        if (repository is null) return;
+        if (IsShuttingDown || !ReferenceEquals(originalRepository, _viewModel.Repository)
+            || _viewModel.IsBusy) return;
+        var repository = originalRepository;
 
         _viewModel.Branches.SelectedRemoteBranch = remoteBranch;
         var deleteLocal = deleteLocalCheckBox?.IsChecked == true && target.LocalBranch is { IsCurrent: false };

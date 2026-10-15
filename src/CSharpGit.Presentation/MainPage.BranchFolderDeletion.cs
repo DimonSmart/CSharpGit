@@ -28,6 +28,8 @@ public sealed partial class MainPage
         RepositoryTreeNode folderNode,
         BranchFolderInfo folderInfo)
     {
+        var originalRepository = _viewModel.Repository;
+        if (originalRepository is null) return;
         var snapshot = CollectBranchFolderCandidates(folderNode, RepositoryTreeNodeKind.LocalBranch);
         var plan = _viewModel.Branches.CreateLocalFolderDeletionPlan(snapshot);
         if (plan.Attempted == 0)
@@ -83,14 +85,15 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Close
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary)
             return;
 
         var deletionMode = forceDeleteCheckBox.IsChecked == true
             ? BranchDeletionMode.Force
             : BranchDeletionMode.Safe;
-        var repository = _viewModel.Repository;
-        if (repository is null) return;
+        if (IsShuttingDown || !ReferenceEquals(originalRepository, _viewModel.Repository)
+            || _viewModel.IsBusy) return;
+        var repository = originalRepository;
 
         var executionResult = await _viewModel.Branches.DeleteLocalFolderAsync(
             repository,
@@ -120,6 +123,8 @@ public sealed partial class MainPage
         RepositoryTreeNode folderNode,
         BranchFolderInfo folderInfo)
     {
+        var originalRepository = _viewModel.Repository;
+        if (originalRepository is null) return;
         var snapshot = CollectBranchFolderCandidates(folderNode, RepositoryTreeNodeKind.RemoteBranch);
         IReadOnlyList<RemoteBranchFolderDeletionTarget> targets;
         try
@@ -164,11 +169,12 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Close
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary)
             return;
 
-        var repository = _viewModel.Repository;
-        if (repository is null) return;
+        if (IsShuttingDown || !ReferenceEquals(originalRepository, _viewModel.Repository)
+            || _viewModel.IsBusy) return;
+        var repository = originalRepository;
 
         var completedResult = await _viewModel.Branches.DeleteRemoteFolderAsync(
             repository,
@@ -227,7 +233,7 @@ public sealed partial class MainPage
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close
         };
-        await dialog.ShowAsync();
+        await ShowPageDialogAsync(dialog);
     }
 
     private async Task ShowBranchFolderDeletionFailuresAsync(
@@ -281,7 +287,7 @@ public sealed partial class MainPage
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close
         };
-        await dialog.ShowAsync();
+        await ShowPageDialogAsync(dialog);
     }
 
     private static ScrollViewer CreateBoundedBranchList(UIElement content) =>
