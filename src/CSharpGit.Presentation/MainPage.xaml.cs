@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using CSharpGit.Presentation.Threading;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Text.Json;
@@ -512,17 +514,49 @@ public sealed partial class MainPage : Page
         _ => null
     };
 
-    private static void AddMenuItem(MenuFlyout flyout, string text, bool enabled, Func<Task> action)
+    private void AddMenuItem(MenuFlyout flyout, string text, bool enabled, Func<Task> action)
     {
         var item = new MenuFlyoutItem { Text = text, IsEnabled = enabled };
-        item.Click += async (_, _) => await action();
+        item.Click += (_, _) => RunPageUiOperation(action, "Menu action", showError: true);
         flyout.Items.Add(item);
+    }
+
+    private void ReportUiFailure(Exception exception, string operation)
+    {
+        if (Microsoft.UI.Xaml.Application.Current is App app)
+            app.LogUiFailure(exception, operation);
+        else
+            Trace.TraceError($"{operation} failed: {exception}");
+    }
+
+    private void RunPageUiOperation(Func<Task> operation, string description, bool showError = false)
+    {
+        if (IsShuttingDown) return;
+        _ = UiAsyncOperationRunner.RunAsync(
+            operation,
+            exception =>
+            {
+                ReportUiFailure(exception, description);
+                if (showError && !IsShuttingDown)
+                    _ = ShowErrorAsync("Could not complete action", "The requested action could not be completed.");
+            },
+            () => IsShuttingDown);
     }
 
     private async Task ExecuteCommandAsync(ICommand command)
     {
-        if (command is AsyncCommand asyncCommand) await asyncCommand.ExecuteAsync();
-        else if (command.CanExecute(null)) command.Execute(null);
+        if (IsShuttingDown) return;
+        // ExecuteAsync deliberately propagates; this XAML boundary owns observation.
+        await UiAsyncOperationRunner.RunAsync(
+            async () =>
+            {
+                if (command is AsyncCommand asyncCommand)
+                    await asyncCommand.ExecuteAsync();
+                else if (command.CanExecute(null))
+                    command.Execute(null);
+            },
+            exception => ReportUiFailure(exception, "UI command"),
+            () => IsShuttingDown);
     }
 
     private async Task CreateBranchFromAsync(string startPoint)
@@ -563,15 +597,24 @@ public sealed partial class MainPage : Page
 
     private async Task ShowErrorAsync(string title, string message)
     {
-        var dialog = new ContentDialog
+        if (IsShuttingDown || XamlRoot is null) return;
+        try
         {
-            XamlRoot = XamlRoot,
-            Title = title,
-            Content = message,
-            CloseButtonText = "Close",
-            DefaultButton = ContentDialogButton.Close
-        };
-        await dialog.ShowAsync();
+            var dialog = new ContentDialog
+            {
+                XamlRoot = XamlRoot,
+                Title = title,
+                Content = message,
+                CloseButtonText = "Close",
+                DefaultButton = ContentDialogButton.Close
+            };
+            await dialog.ShowAsync();
+        }
+        catch (Exception exception)
+        {
+            // Showing an error can itself fail (concurrent dialog/disposed XamlRoot).
+            ReportUiFailure(exception, "Error notification");
+        }
     }
 
     private async void Fetch_Click(object sender, RoutedEventArgs e) => await ExecuteCommandAsync(_viewModel.RepositorySync.FetchCommand);
