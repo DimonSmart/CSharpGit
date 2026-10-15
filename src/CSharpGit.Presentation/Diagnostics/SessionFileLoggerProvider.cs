@@ -1,34 +1,22 @@
 using System.Globalization;
-using System.Text;
-using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 
 namespace CSharpGit.Presentation.Diagnostics;
 
 internal sealed class SessionFileLoggerProvider : ILoggerProvider
 {
-    // Maximum retained payload is approximately 512 * 16 KiB = 8 MiB (plus object overhead).
-    internal const int MaximumQueuedEntries = 512;
-    internal const int MaximumEntryBytes = 16 * 1024;
-    private readonly Channel<string> _lines = Channel.CreateBounded<string>(new BoundedChannelOptions(MaximumQueuedEntries)
-    {
-        SingleReader = true,
-        SingleWriter = false,
-        FullMode = BoundedChannelFullMode.Wait,
-        AllowSynchronousContinuations = false
-    });
+    // Approximately 8 MiB maximum retained queue payload, plus object overhead.
+    private readonly BoundedDiagnosticQueue _queue = new();
     private readonly CancellationTokenSource _shutdown = new();
     private readonly string _directory;
     private readonly string _filePath;
     private readonly Task _writerTask;
     private int _enabled;
     private int _minimumLevel;
-    private long _droppedEntries;
     private int _disposed;
-    private int _failed;
 
-    internal long DroppedEntries => Interlocked.Read(ref _droppedEntries);
-    internal bool HasFailed => Volatile.Read(ref _failed) != 0;
+    internal long DroppedEntries => _queue.TotalDropped;
+    internal bool HasFailed => _queue.HasFailed;
 
     public SessionFileLoggerProvider(
         bool enabled = false,
@@ -71,7 +59,7 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
-        _lines.Writer.TryComplete();
+        _queue.Complete();
         try
         {
             if (!_writerTask.Wait(TimeSpan.FromSeconds(2)))
@@ -101,27 +89,7 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
 
     private void Enqueue(string line)
     {
-        if (Volatile.Read(ref _disposed) != 0 || Volatile.Read(ref _failed) != 0
-            || !_lines.Writer.TryWrite(LimitEntry(line)))
-            Interlocked.Increment(ref _droppedEntries);
-    }
-
-    private static string LimitEntry(string text)
-    {
-        if (Encoding.UTF8.GetByteCount(text) <= MaximumEntryBytes) return text;
-        const string marker = " [log entry truncated]";
-        var budget = MaximumEntryBytes - Encoding.UTF8.GetByteCount(marker);
-        var bytes = 0;
-        var end = 0;
-        while (end < text.Length)
-        {
-            if (!Rune.TryGetRuneAt(text, end, out var rune))
-                rune = Rune.ReplacementChar;
-            if (bytes + rune.Utf8SequenceLength > budget) break;
-            bytes += rune.Utf8SequenceLength;
-            end += rune.Utf16SequenceLength;
-        }
-        return string.Concat(text.AsSpan(0, end), marker);
+        _queue.TryWrite(line);
     }
 
     private async Task WriteLoopAsync()
@@ -130,7 +98,7 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
         StreamWriter? writer = null;
         try
         {
-            await foreach (var line in _lines.Reader.ReadAllAsync(_shutdown.Token))
+            await foreach (var line in _queue.Reader.ReadAllAsync(_shutdown.Token))
             {
                 if (writer is null)
                 {
@@ -146,13 +114,13 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
                     writer = new StreamWriter(stream) { AutoFlush = true };
                 }
 
-                var dropped = Interlocked.Exchange(ref _droppedEntries, 0);
+                var dropped = _queue.TakePendingDropped();
                 if (dropped > 0)
                 {
                     try { await writer.WriteLineAsync($"{dropped} log entries dropped".AsMemory(), _shutdown.Token); }
                     catch
                     {
-                        Interlocked.Add(ref _droppedEntries, dropped);
+                        _queue.RestorePendingDropped(dropped);
                         throw;
                     }
                 }
@@ -161,7 +129,7 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
 
             if (writer is not null)
             {
-                var dropped = Interlocked.Exchange(ref _droppedEntries, 0);
+                var dropped = _queue.TakePendingDropped();
                 if (dropped > 0)
                     await writer.WriteLineAsync($"{dropped} log entries dropped".AsMemory(), _shutdown.Token);
             }
@@ -171,8 +139,7 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
         }
         catch (Exception)
         {
-            Volatile.Write(ref _failed, 1);
-            _lines.Writer.TryComplete();
+            _queue.Fail();
             System.Diagnostics.Trace.WriteLine("CSharpGit file logger stopped after a write failure.");
         }
         finally
@@ -186,11 +153,11 @@ internal sealed class SessionFileLoggerProvider : ILoggerProvider
             }
             catch (IOException)
             {
-                Volatile.Write(ref _failed, 1);
+                _queue.Fail();
             }
             catch (UnauthorizedAccessException)
             {
-                Volatile.Write(ref _failed, 1);
+                _queue.Fail();
             }
         }
     }
