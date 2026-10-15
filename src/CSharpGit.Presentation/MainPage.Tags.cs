@@ -19,10 +19,10 @@ public sealed partial class MainPage
 
         if (_commitActionsFlyout is null) return;
         _createTagHereItem = new MenuFlyoutItem { Text = "Create tag here…" };
-        _createTagHereItem.Click += async (_, _) =>
+        _createTagHereItem.Click += (_, _) =>
         {
             if (_viewModel.History.SelectedRow?.Commit.Hash is { } hash)
-                await ShowCreateTagDialogAsync(hash, selectedCommit: true);
+                RunPageUiOperation(() => ShowCreateTagDialogAsync(hash, selectedCommit: true), "Create tag here");
         };
         _commitActionsFlyout.Items.Insert(3, _createTagHereItem);
 
@@ -61,7 +61,8 @@ public sealed partial class MainPage
                 Text = tag.Name,
                 IsEnabled = canMutate
             };
-            item.Click += async (_, _) => await DeleteTagFromUiAsync(tag);
+            item.Click += (_, _) =>
+                RunPageUiOperation(() => DeleteTagFromUiAsync(tag), "Delete tag");
             _deleteTagSubItem.Items.Add(item);
         }
 
@@ -160,7 +161,9 @@ public sealed partial class MainPage
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
+            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+            || !CanMutateTags()) return;
 
         var kind = type.SelectedItem is GitTagKind selectedKind ? selectedKind : GitTagKind.Annotated;
         if (string.IsNullOrWhiteSpace(name.Text))
@@ -217,7 +220,7 @@ public sealed partial class MainPage
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close
         };
-        await dialog.ShowAsync();
+        await ShowPageDialogAsync(dialog);
     }
 
     private async Task DeleteTagFromUiAsync(GitTag tag)
@@ -277,7 +280,9 @@ public sealed partial class MainPage
         remoteSelector.SelectionChanged += (_, _) => UpdateDeleteAvailability();
         UpdateDeleteAvailability();
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
+            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+            || !CanMutateTags()) return;
 
         var selectedRemote = deleteRemote.IsChecked == true
             ? remoteSelector.SelectedItem as GitRemote
@@ -296,7 +301,8 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         if (repository is null) return;
         var remote = await SelectTagRemoteAsync("Push tag", $"Push '{tag.Name}' to remote");
-        if (remote is null) return;
+        if (remote is null || IsShuttingDown
+            || !ReferenceEquals(repository, _viewModel.Repository) || !CanMutateTags()) return;
 
         var result = await _viewModel.Tags.PushTagAsync(repository, tag, remote);
         if (result is null) return;
@@ -331,7 +337,9 @@ public sealed partial class MainPage
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
+            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+            || !CanMutateTags()) return;
 
         await _viewModel.Tags.ForceUpdateRemoteTagAsync(repository, snapshot);
     }
@@ -341,9 +349,12 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         if (repository is null || !CanMutateTags()) return;
         var remote = await SelectTagRemoteAsync("Delete remote tag", $"Delete '{tag.Name}' from remote");
-        if (remote is null) return;
+        if (remote is null || IsShuttingDown
+            || !ReferenceEquals(repository, _viewModel.Repository) || !CanMutateTags()) return;
 
         var lookup = await _viewModel.Tags.ReadRemoteTagAsync(repository, remote, tag.Name);
+        if (IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository))
+            return;
         if (!lookup.Succeeded)
         {
             await ShowErrorAsync("Could not read remote tag", lookup.ErrorMessage ?? "Unknown error.");
@@ -371,7 +382,9 @@ public sealed partial class MainPage
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
+            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+            || !CanMutateTags()) return;
 
         await _viewModel.Tags.DeleteRemoteTagAsync(repository, remoteTag);
     }
@@ -388,7 +401,7 @@ public sealed partial class MainPage
 
         var selectedRemote = GetPreferredTagRemote();
 
-        while (true)
+        while (!IsShuttingDown && ReferenceEquals(repository, _viewModel.Repository))
         {
             IReadOnlyList<RemoteTagInfo> remoteTags = [];
             var remoteSelector = new ComboBox
@@ -428,8 +441,13 @@ public sealed partial class MainPage
                     list.SelectedIndex >= 0 &&
                     list.SelectedIndex < remoteTags.Count;
 
+            var dialogActive = true;
+            var lookupRevision = 0;
             async Task LoadRemoteTagsAsync()
             {
+                var revision = ++lookupRevision;
+                if (!dialogActive || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository))
+                    return;
                 if (remoteSelector.SelectedItem is not GitRemote remote)
                 {
                     remoteTags = [];
@@ -447,6 +465,8 @@ public sealed partial class MainPage
                 try
                 {
                     var query = await _viewModel.Tags.ReadRemoteTagsAsync(repository, remote);
+                    if (!dialogActive || IsShuttingDown || revision != lookupRevision
+                        || !ReferenceEquals(repository, _viewModel.Repository)) return;
                     if (!query.Succeeded)
                     {
                         remoteTags = [];
@@ -464,20 +484,39 @@ public sealed partial class MainPage
                     list.SelectedIndex = remoteTags.Count > 0 ? 0 : -1;
                     status.Text = remoteTags.Count == 0 ? "No tags on this remote." : $"{remoteTags.Count} tag(s).";
                 }
+                catch (OperationCanceledException) when (IsShuttingDown || !dialogActive)
+                {
+                }
+                catch (Exception exception)
+                {
+                    ReportUiFailure(exception, "Remote tag lookup");
+                    if (dialogActive && !IsShuttingDown && revision == lookupRevision
+                        && ReferenceEquals(repository, _viewModel.Repository))
+                        status.Text = "Could not read remote tags.";
+                }
                 finally
                 {
-                    remoteSelector.IsEnabled = true;
-                    list.IsEnabled = true;
-                    UpdateDeleteAvailability();
+                    if (dialogActive && !IsShuttingDown && revision == lookupRevision
+                        && ReferenceEquals(repository, _viewModel.Repository))
+                    {
+                        remoteSelector.IsEnabled = true;
+                        list.IsEnabled = true;
+                        UpdateDeleteAvailability();
+                    }
                 }
             }
 
-            remoteSelector.SelectionChanged += async (_, _) => await LoadRemoteTagsAsync();
+            remoteSelector.SelectionChanged += (_, _) =>
+                RunPageUiOperation(LoadRemoteTagsAsync, "Remote tag lookup");
             list.SelectionChanged += (_, _) => UpdateDeleteAvailability();
             if (selectedRemote is not null) await LoadRemoteTagsAsync();
             else status.Text = "Select a remote.";
 
-            var result = await dialog.ShowAsync();
+            ContentDialogResult result;
+            try { result = await ShowPageDialogAsync(dialog); }
+            finally { dialogActive = false; }
+
+            if (IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)) return;
             selectedRemote = remoteSelector.SelectedItem as GitRemote;
             if (result != ContentDialogResult.Primary) return;
             if (list.SelectedIndex < 0 || list.SelectedIndex >= remoteTags.Count) continue;
@@ -496,7 +535,9 @@ public sealed partial class MainPage
                 CloseButtonText = "Cancel",
                 DefaultButton = ContentDialogButton.Close
             };
-            if (await confirmation.ShowAsync() != ContentDialogResult.Primary) continue;
+            if (await ShowPageDialogAsync(confirmation) != ContentDialogResult.Primary) continue;
+            if (IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository) || !CanMutateTags())
+                return;
 
             await _viewModel.Tags.DeleteRemoteTagAsync(repository, selectedTag);
         }
@@ -507,7 +548,8 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         if (repository is null) return;
         var remote = await SelectTagRemoteAsync("Fetch tags", "Fetch tags from remote");
-        if (remote is null) return;
+        if (remote is null || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository))
+            return;
         await _viewModel.Tags.FetchTagsAsync(repository, remote);
     }
 
@@ -516,7 +558,8 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         if (repository is null) return;
         var remote = await SelectTagRemoteAsync("Push all tags", "Push all local tags to remote");
-        if (remote is null) return;
+        if (remote is null || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository))
+            return;
         await _viewModel.Tags.PushAllTagsAsync(repository, remote);
     }
 
@@ -552,7 +595,7 @@ public sealed partial class MainPage
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return null;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary) return null;
         if (selector.SelectedItem is GitRemote remote) return remote;
 
         await ShowErrorAsync("Remote required", "Select the remote explicitly.");
@@ -569,6 +612,6 @@ public sealed partial class MainPage
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close
         };
-        await dialog.ShowAsync();
+        await ShowPageDialogAsync(dialog);
     }
 }
