@@ -1,4 +1,6 @@
 using CSharpGit.Domain;
+using CSharpGit.Presentation.Threading;
+using System.Diagnostics;
 
 namespace CSharpGit.Presentation.ViewModels;
 
@@ -65,6 +67,9 @@ public sealed partial class OpenRepositoryViewModel :
             }
         }
 
-        _ = CommitDetails.ShowStashAsync(stash);
+        _ = UiAsyncOperationRunner.RunAsync(
+            () => CommitDetails.ShowStashAsync(stash),
+            exception => Trace.TraceError("Stash detail selection failed: {0}", exception.GetType().Name),
+            () => Volatile.Read(ref _disposed) != 0);
     }
 }
