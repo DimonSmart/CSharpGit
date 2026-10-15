@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading.Channels;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Infrastructure;
+using CSharpGit.Presentation.Threading;
 using Microsoft.UI.Xaml.Media;
 
 namespace CSharpGit.Presentation.Diagnostics;
@@ -226,8 +227,7 @@ internal sealed partial class HistoryPerformanceSession
     private long _lastViewChangedTimestamp;
     private long _maxViewChangedIntervalTicks;
     private int _slowOperationCount;
-    private readonly object _stopGate = new();
-    private Task<HistoryPerformanceCaptureFiles>? _stopTask;
+    private readonly AsyncFirstStop<HistoryPerformanceStopReason, HistoryPerformanceCaptureFiles> _stop = new();
     private Exception? _writerFailure;
 
     internal long GraphControlsCreated;
@@ -707,14 +707,8 @@ internal sealed partial class HistoryPerformanceSession
             historyItems);
     }
 
-    internal Task<HistoryPerformanceCaptureFiles> StopAsync(HistoryPerformanceStopReason reason)
-    {
-        lock (_stopGate)
-        {
-            // First accepted stop reason wins; all callers observe the same completion.
-            return _stopTask ??= StopCoreAsync(reason);
-        }
-    }
+    internal Task<HistoryPerformanceCaptureFiles> StopAsync(HistoryPerformanceStopReason reason) =>
+        _stop.StopAsync(reason, StopCoreAsync);
 
     private async Task<HistoryPerformanceCaptureFiles> StopCoreAsync(
         HistoryPerformanceStopReason reason)
