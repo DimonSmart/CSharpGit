@@ -59,7 +59,7 @@ public sealed class UiPageDialogGateTests
         Assert.False(await queued.WaitAsync(TimeSpan.FromSeconds(5)));
         Assert.Equal(0, showCount);
         release.SetResult();
-        Assert.True(await first);
+        Assert.False(await first);
         Assert.False(await gate.ExecuteAsync(() =>
         {
             showCount++;

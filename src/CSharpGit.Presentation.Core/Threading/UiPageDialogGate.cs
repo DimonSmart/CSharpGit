@@ -31,7 +31,10 @@ internal sealed class UiPageDialogGate
 
             // Keep the semaphore throughout ShowAsync: concurrent dialogs sharing
             // a XamlRoot cannot be shown on Uno/WinUI.
-            return await show();
+            var result = await show();
+            // Even if the modal completed successfully, closing the owner in
+            // the meantime invalidates any accepted answer.
+            return pageLifetime.IsCancellationRequested ? canceledResult : result;
         }
         finally
         {
