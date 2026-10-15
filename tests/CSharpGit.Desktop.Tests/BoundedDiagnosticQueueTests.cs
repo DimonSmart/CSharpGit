@@ -38,7 +38,8 @@ public sealed class BoundedDiagnosticQueueTests
         Assert.DoesNotContain("\uFFFD", limited, StringComparison.Ordinal);
         var prefix = limited[..^" [log entry truncated]".Length];
         Assert.Equal(0, prefix.Length % 2);
-        Assert.All(prefix.EnumerateRunes(), rune => Assert.Equal(0x1F600, rune.Value));
+        foreach (var rune in prefix.EnumerateRunes())
+            Assert.Equal(0x1F600, rune.Value);
     }
 
     [Fact]
