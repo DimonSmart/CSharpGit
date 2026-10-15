@@ -85,32 +85,96 @@ The newest change has its own
 [CI run 38726705090](https://github.com/DimonSmart/CSharpGit/actions/runs/38726705090);
 check its conclusion and TRX before declaring a final acceptance.
 
-## Residual gaps / manual verification
+## Finalization pass: executable scenarios (2026-10-15)
 
-1. Force a real UI dispatcher callback for A to be delivered *after* B and
-   then after a new A instance. Check indicator, watcher ownership and baseline.
-   The owner/epoch fence is present, but an automated queued-dispatcher
-   end-to-end race has not been demonstrated.
-2. Inject failure into the initial `IRepositoryStateService` snapshot after B
-   was assigned; also fail A rollback refresh, confirm both errors are shown
-   and A's draft is retained. A missing folder is covered by real UI smoke,
-   but not every injection boundary.
-3. Test a sustained mutation with a real Git side effect (commit/maintenance),
-   failed post-mutation refresh, and a second user command. Synthetic held
-   mutation currently proves window-close mutual exclusion.
-4. Validate cancellation during history load and after a queued UI callback
-   with a real desktop dispatcher, not only Core tests.
-5. Repeat desktop smoke in a valid macOS session and Windows graphics session.
-   If an environment cannot launch Uno normally, report SKIP/FAIL with reason
-   and do not replace it with a successful headless assertion.
+The desktop lifecycle protocol is executed by
+`DesktopApplicationTests.LaunchesRealApplicationForRepositoryAndLinkedWorktree`
+inside the actual production Uno process. It uses an isolated temporary Git
+repository and linked worktree. Its snapshot reply includes the real
+`OpenRepositoryViewModel` fields, child lists, baseline, busy and close
+availability, error message and commit draft.
 
-To run manually:
+| Requirement | Behavior exercised | Evidence |
+| --- | --- | --- |
+| LIFE-01 | Initial A/worktree load, B→A, reopening same path, coherent HEAD/history/baseline | `RunCheckAsync`, `RunLifecycleCheckAsync` |
+| LIFE-02 | Invalid folder, nonexistent target, cancellation before and after assigning B; actual `git status` failure after assigning B, failing B publication, and failing A recovery | `ReadFailureAfterAssignment`, `CancelOpenBeforeAssignment`, `CancelOpenAfterAssignment`, `FailNextPublication` desktop commands |
+| LIFE-02 commit drafts | Failed confirmed switch retains draft; successful confirmed switch and close discard it only after success | `ConfirmedSwitch`, `ConfirmedClose` through the real `MainPage` core |
+| LIFE-03 | One flight, sticky history/full read, reentrant publication/completion, startup handler exceptions, canceled independent waiter | `RepositoryRefreshFlightTests` |
+| LIFE-04 | Real monitor callback captured from A then delivered after B and new A; the refresh-required indicator stays clear | `CaptureMonitorDelivery`, `DeliverCapturedMonitor` |
+| LIFE-05 | Running mutation rejects switch, close and competing mutation; failure/cancellation and callback faults return gate to idle | `BeginMutation`, `AttemptSwitchDuringMutation`, `FailMutation`, `FailBeforeMutation`, `FailAfterSuccessfulMutation`, `CancelMutation`, `RetryMutation` |
+| LIFE-05/09 | Actual `git commit --allow-empty` executes once, after which refresh callback fails; error identifies completed Git operation, manual refresh exposes changed HEAD | `CommitWithFailedRefresh` and independent `git rev-list --count HEAD` verification |
+| LIFE-06 | Cancelable real normal window close, protected mutation close rejection; approved close reaches host shutdown | `RunNormalCloseCheckAsync`, extended desktop lifecycle |
+| LIFE-07 | Session disposal, delayed old completions, history cancellation and stale watcher callback fences | `RepositorySessionLifetimeTests`, `HistoryViewModelTests`, `RepositoryChangeMonitorTests`, desktop callback tests |
+| LIFE-08/10 | Actual Core and Uno production components; no copied refresh/switch/mutation algorithm | source/behavior tests and CI matrix |
+
+**Fault injection boundaries.** The mandatory Git-state-read failure is
+reproduced after the new repository has been assigned by temporarily setting
+`GIT_DIR` to a nonexistent directory inside the test process. Its original
+value is restored before the rollback read and again in a `finally` block.
+The Git worktree's `.git` metadata is not modified. The callback failure
+happens in an actual `OpenRepositoryViewModel.PropertyChanged` publication
+event, and the two failures from B and A are asserted separately. Failure of
+both reads/publications clears the inconsistent B presentation while keeping
+A selected and retaining the draft.
+
+The confirmed-choice helper in `MainPage.RepositorySwitching` executes the
+same production post-dialog switch/close core. The dialog itself is not
+automatically clicked; this test validates the effect *after* the user has
+already accepted discarding a draft, not dialog accessibility.
+
+### Verified and pending platform outcomes
+
+- [CI run 38729054250](https://github.com/DimonSmart/CSharpGit/actions/runs/38729054250):
+  Linux headless PASS with graphical smoke SKIP; macOS complete PASS including
+  real Git fault injection, rollback, commit and lifecycle close.
+  Windows executed the UI test but disconnected in the test harness when the
+  earlier injection modified a linked worktree's `.git` file. The production
+  reader logic was not identified as the cause.
+- [Commit 8d580736](https://github.com/DimonSmart/CSharpGit/commit/8d580736435cdc79128922598b1ce2018bb2b2c7)
+  replaced that file modification with reversible `GIT_DIR` process
+  environment injection. Its own
+  [CI run 38730356561](https://github.com/DimonSmart/CSharpGit/actions/runs/38730356561)
+  must be checked independently before claiming all three platforms pass.
+- Later confirmed switch/close and pre-/post-mutation hooks are covered by
+  their own follow-up runs; outcomes must be tied to the *tested commit*,
+  not inferred from an earlier success.
+
+### Remaining platform-dependent verification
+
+The desktop harness cannot simulate the complete native dialogs and real
+long-running Clone/Create/History Rewrite/Maintenance/Update operations
+without additional controlled providers. Their respective production
+`IsBusy`/in-progress flags are included in `MainPage.IsUnsafeToClose`,
+but structural inspection of those flags is not accepted as runtime proof
+by LIFE-06. For each of these workflows, perform the following on a
+temporary repository in a graphical Windows or macOS session:
+
+1. Start the real operation, with a sufficiently long-running fixture (large
+   local clone, create while awaiting completion, deliberately slow rebase,
+   maintenance job, or staged application update).
+2. While the operation is active, request normal title-bar close and a switch
+   to another repository. Confirm both are rejected where required, without
+   terminating the Git process or losing commit drafts.
+3. Complete or cancel the operation and verify both normal close and a fresh
+   valid operation work again. Review app logs for unobserved exceptions.
+4. Re-run the same check for an error path (invalid clone URL, failed create,
+   failed rewrite/maintenance, rejected update). Do not use a real user repo.
+
+This manual verification has **not** been performed through the available
+desktop tool environment. It is a separately recorded acceptance gap, not
+an implicitly passing test. Real dispatcher-queue rejection at shutdown is
+also not fault-injected directly; the implemented callback exception path
+and stale-session fences are tested instead.
+
+To run the automated tests locally:
+
 ```sh
 dotnet restore CSharpGit.slnx
 dotnet build CSharpGit.slnx --configuration Release
-dotnet test CSharpGit.slnx --configuration Release --logger "trx;LogFilePrefix=lifecycle"
+dotnet test CSharpGit.slnx --configuration Release --no-build --logger "trx;LogFilePrefix=lifecycle"
 ```
 
-A complete LIFE-01..10 sign-off requires all remaining real VM/desktop
-failure-injection and watcher races to be demonstrated; the current code
-and tests should not be described as full proof until they are.
+**Sign-off rule:** LIFE-01..10 may be described as fully accepted only
+after the newest CI run succeeds for all supported platforms and the
+unautomated protected-operation scenarios above are either executed and
+recorded or explicitly accepted as residual risk. Never count SKIP as PASS.
