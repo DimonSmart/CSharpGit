@@ -173,9 +173,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         _window.AppWindow.Closing += (sender, eventArgs) =>
         {
             var page = _window.Content as MainPage;
-            if (page?.IsHistoryRewriteInProgress == true
-                || page?.IsRepositoryMaintenanceInProgress == true
-                || page?.IsApplicationUpdateInProgress == true)
+            if (page?.IsUnsafeToClose == true)
             {
                 eventArgs.Cancel = true;
                 return;
@@ -264,9 +262,12 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         try
         {
             if (!await page.ConfirmCloseAsync()) return;
+            // A protected operation might have started while the dialog was open.
+            if (_shutdownRequested || !ReferenceEquals(_window?.Content, page) || page.IsUnsafeToClose)
+                return;
             _closeConfirmed = true;
             BeginShutdown(page);
-            page.DispatcherQueue.TryEnqueue(() => _window?.Close());
+            _window?.Close();
         }
         finally
         {
