@@ -105,7 +105,7 @@ public sealed partial class MainPage : Page
             CloseButtonText = "Keep editing",
             DefaultButton = ContentDialogButton.Close
         };
-        return await dialog.ShowAsync() == ContentDialogResult.Primary;
+        return !IsShuttingDown && await ShowPageDialogAsync(dialog) == ContentDialogResult.Primary;
     }
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
@@ -608,7 +608,7 @@ public sealed partial class MainPage : Page
                 CloseButtonText = "Close",
                 DefaultButton = ContentDialogButton.Close
             };
-            await dialog.ShowAsync();
+            await ShowPageDialogAsync(dialog);
         }
         catch (Exception exception)
         {

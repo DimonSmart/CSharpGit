@@ -25,7 +25,7 @@ public sealed partial class MainPage
         if (args.PropertyName == nameof(CommitCreationViewModel.IsEmptyIndexChoiceOpen) &&
             _viewModel.CommitCreation.IsEmptyIndexChoiceOpen)
         {
-            _ = ShowEmptyIndexChoiceAsync();
+            RunPageUiOperation(ShowEmptyIndexChoiceAsync, "Empty index confirmation");
         }
     }
 
@@ -34,16 +34,17 @@ public sealed partial class MainPage
         if (args.PropertyName == nameof(WorkingTreeViewModel.BatchDiscardConfirmationMessage) &&
             !string.IsNullOrWhiteSpace(_viewModel.WorkingTree.BatchDiscardConfirmationMessage))
         {
-            _ = ShowDiscardConfirmationAsync();
+            RunPageUiOperation(ShowDiscardConfirmationAsync, "Discard confirmation");
         }
     }
 
     private async Task ShowDiscardConfirmationAsync()
     {
-        if (_discardConfirmationOpen) return;
+        if (IsShuttingDown || _discardConfirmationOpen) return;
         var message = _viewModel.WorkingTree.BatchDiscardConfirmationMessage;
         if (string.IsNullOrWhiteSpace(message)) return;
 
+        var repository = _viewModel.Repository;
         _discardConfirmationOpen = true;
         try
         {
@@ -74,23 +75,29 @@ public sealed partial class MainPage
                 DefaultButton = ContentDialogButton.Close
             };
 
-            var result = await dialog.ShowAsync();
-            await ExecuteCommandAsync(result == ContentDialogResult.Primary
-                ? _viewModel.WorkingTree.ConfirmBatchDiscardCommand
-                : _viewModel.WorkingTree.CancelBatchDiscardCommand);
+            var result = await ShowPageDialogAsync(dialog);
+            if (!IsShuttingDown && ReferenceEquals(repository, _viewModel.Repository))
+                await ExecuteCommandAsync(result == ContentDialogResult.Primary
+                    ? _viewModel.WorkingTree.ConfirmBatchDiscardCommand
+                    : _viewModel.WorkingTree.CancelBatchDiscardCommand);
         }
         finally
         {
-            _discardConfirmationOpen = false;
-            if (!string.IsNullOrWhiteSpace(_viewModel.WorkingTree.BatchDiscardConfirmationMessage))
-                await ExecuteCommandAsync(_viewModel.WorkingTree.CancelBatchDiscardCommand);
+            try
+            {
+                if (!IsShuttingDown && ReferenceEquals(repository, _viewModel.Repository)
+                    && !string.IsNullOrWhiteSpace(_viewModel.WorkingTree.BatchDiscardConfirmationMessage))
+                    await ExecuteCommandAsync(_viewModel.WorkingTree.CancelBatchDiscardCommand);
+            }
+            finally { _discardConfirmationOpen = false; }
         }
     }
 
     private async Task ShowEmptyIndexChoiceAsync()
     {
-        if (_emptyIndexConfirmationOpen || !_viewModel.CommitCreation.IsEmptyIndexChoiceOpen) return;
+        if (IsShuttingDown || _emptyIndexConfirmationOpen || !_viewModel.CommitCreation.IsEmptyIndexChoiceOpen) return;
 
+        var repository = _viewModel.Repository;
         _emptyIndexConfirmationOpen = true;
         try
         {
@@ -105,19 +112,27 @@ public sealed partial class MainPage
                 DefaultButton = ContentDialogButton.Close
             };
 
-            var command = (await dialog.ShowAsync()) switch
+            var result = await ShowPageDialogAsync(dialog);
+            if (!IsShuttingDown && ReferenceEquals(repository, _viewModel.Repository))
             {
-                ContentDialogResult.Primary => _viewModel.CommitCreation.StageAllAndCommitCommand,
-                ContentDialogResult.Secondary => _viewModel.CommitCreation.ConfirmEmptyCommitCommand,
-                _ => _viewModel.CommitCreation.CancelCommitCommand
-            };
-            await ExecuteCommandAsync(command);
+                var command = result switch
+                {
+                    ContentDialogResult.Primary => _viewModel.CommitCreation.StageAllAndCommitCommand,
+                    ContentDialogResult.Secondary => _viewModel.CommitCreation.ConfirmEmptyCommitCommand,
+                    _ => _viewModel.CommitCreation.CancelCommitCommand
+                };
+                await ExecuteCommandAsync(command);
+            }
         }
         finally
         {
-            _emptyIndexConfirmationOpen = false;
-            if (_viewModel.CommitCreation.IsEmptyIndexChoiceOpen)
-                await ExecuteCommandAsync(_viewModel.CommitCreation.CancelCommitCommand);
+            try
+            {
+                if (!IsShuttingDown && ReferenceEquals(repository, _viewModel.Repository)
+                    && _viewModel.CommitCreation.IsEmptyIndexChoiceOpen)
+                    await ExecuteCommandAsync(_viewModel.CommitCreation.CancelCommitCommand);
+            }
+            finally { _emptyIndexConfirmationOpen = false; }
         }
     }
 }

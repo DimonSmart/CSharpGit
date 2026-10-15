@@ -16,8 +16,8 @@ public sealed partial class MainPage
     internal bool IsApplicationUpdateInProgress =>
         Volatile.Read(ref _applicationUpdateInProgress) != 0;
 
-    private async void About_Click(object sender, RoutedEventArgs e) =>
-        await ShowAboutAsync();
+    private void About_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(ShowAboutAsync, "About dialog");
 
     private async Task ShowAboutAsync()
     {
@@ -78,14 +78,13 @@ public sealed partial class MainPage
             }
         };
 
-        updateButton.Click += async (_, _) =>
+        updateButton.Click += (_, _) => RunPageUiOperation(async () =>
         {
             if (availableVersion is not { } version) return;
-
             dialog.Hide();
             await Task.Delay(20);
             await RunApplicationUpdateAsync(version);
-        };
+        }, "Application update");
 
         async void Dialog_Opened(ContentDialog sender, ContentDialogOpenedEventArgs args)
         {
@@ -134,7 +133,7 @@ public sealed partial class MainPage
 
         dialog.Opened += Dialog_Opened;
         dialog.Closed += (_, _) => cancellation.Cancel();
-        await dialog.ShowAsync();
+        await ShowPageDialogAsync(dialog);
     }
 
     private async Task RunApplicationUpdateAsync(ReleaseVersion expectedVersion)
@@ -259,6 +258,6 @@ public sealed partial class MainPage
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close
         };
-        await dialog.ShowAsync();
+        await ShowPageDialogAsync(dialog);
     }
 }

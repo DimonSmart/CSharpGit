@@ -68,8 +68,10 @@ public sealed partial class MainPage
         }
     }
 
-    private async void StopHistoryPerformanceCapture_Click(object sender, RoutedEventArgs e) =>
-        await StopHistoryPerformanceCaptureAsync(HistoryPerformanceStopReason.Manual, showResult: true);
+    private void StopHistoryPerformanceCapture_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(
+            () => StopHistoryPerformanceCaptureAsync(HistoryPerformanceStopReason.Manual, showResult: true),
+            "Manual history capture stop");
 
     private async void OpenHistoryPerformanceDiagnosticsFolder_Click(object sender, RoutedEventArgs e)
     {
@@ -152,8 +154,10 @@ public sealed partial class MainPage
     private void HistoryPerformanceStatusTimer_Tick(DispatcherQueueTimer sender, object args) =>
         UpdateHistoryPerformanceStatus();
 
-    private async void HistoryPerformanceTimeoutTimer_Tick(DispatcherQueueTimer sender, object args) =>
-        await StopHistoryPerformanceCaptureAsync(HistoryPerformanceStopReason.Timeout, showResult: false);
+    private void HistoryPerformanceTimeoutTimer_Tick(DispatcherQueueTimer sender, object args) =>
+        RunPageUiOperation(
+            () => StopHistoryPerformanceCaptureAsync(HistoryPerformanceStopReason.Timeout, showResult: false),
+            "History capture timeout");
 
     private void UpdateHistoryPerformanceStatus()
     {
@@ -172,29 +176,49 @@ public sealed partial class MainPage
         HistoryPerformanceStopReason reason,
         bool showResult)
     {
-        if (!HistoryPerformanceDiagnostics.IsCaptureActive)
+        if (!HistoryPerformanceDiagnostics.IsCaptureBusy)
         {
-            UpdateHistoryPerformanceDiagnosticsAvailability();
+            if (!IsShuttingDown) UpdateHistoryPerformanceDiagnosticsAvailability();
             return;
         }
 
         DetachHistoryPerformanceSubscriptions();
         StopHistoryPerformanceTimers();
-        var result = await HistoryPerformanceDiagnostics.StopAsync(reason);
-        UpdateHistoryPerformanceDiagnosticsAvailability();
 
-        if (!showResult || result is null || XamlRoot is null)
+        HistoryPerformanceCaptureFiles? result;
+        try
+        {
+            result = await HistoryPerformanceDiagnostics.StopAsync(reason);
+        }
+        catch (Exception exception)
+        {
+            ReportUiFailure(exception, "History capture stop");
+            if (showResult && !IsShuttingDown)
+                await ShowErrorAsync("Could not save History performance capture",
+                    "The diagnostics capture could not be saved.");
             return;
+        }
 
+        if (IsShuttingDown) return;
+        UpdateHistoryPerformanceDiagnosticsAvailability();
+        if (!showResult || result is null || XamlRoot is null) return;
+
+        var succeeded = result.Value.Outcome == HistoryPerformanceCaptureOutcome.Success;
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
-            Title = "History performance capture saved",
-            Content = result.Value.SummaryPath,
+            Title = succeeded ? "History performance capture saved" : "History performance capture incomplete",
+            Content = succeeded
+                ? result.Value.SummaryPath
+                : "The capture could not be fully saved. Check the diagnostics folder for partial files.",
             CloseButtonText = "OK",
             DefaultButton = ContentDialogButton.Close
         };
-        await dialog.ShowAsync();
+        try { await ShowPageDialogAsync(dialog); }
+        catch (Exception exception)
+        {
+            ReportUiFailure(exception, "History capture result notification");
+        }
     }
 
     private void HandleHistoryPerformanceSettingsChanged()
@@ -204,9 +228,9 @@ public sealed partial class MainPage
         if (!_recentRepositorySettings.HistoryPerformanceDiagnosticsEnabled
             && HistoryPerformanceDiagnostics.IsCaptureActive)
         {
-            _ = StopHistoryPerformanceCaptureAsync(
-                HistoryPerformanceStopReason.DiagnosticsDisabled,
-                showResult: false);
+            RunPageUiOperation(
+                () => StopHistoryPerformanceCaptureAsync(HistoryPerformanceStopReason.DiagnosticsDisabled, showResult: false),
+                "Disabled history diagnostics");
         }
 
         UpdateHistoryPerformanceDiagnosticsAvailability();
@@ -219,11 +243,13 @@ public sealed partial class MainPage
             return;
 
         HistoryRenderDiagnostics.RepositoryChanged();
-        _ = StopHistoryPerformanceCaptureAsync(
-            _viewModel.Repository is null
-                ? HistoryPerformanceStopReason.RepositoryClosed
-                : HistoryPerformanceStopReason.RepositoryChanged,
-            showResult: false);
+        RunPageUiOperation(
+            () => StopHistoryPerformanceCaptureAsync(
+                _viewModel.Repository is null
+                    ? HistoryPerformanceStopReason.RepositoryClosed
+                    : HistoryPerformanceStopReason.RepositoryChanged,
+                showResult: false),
+            "Repository history capture stop");
     }
 
     private Task StopHistoryPerformanceCaptureOnShutdown()
