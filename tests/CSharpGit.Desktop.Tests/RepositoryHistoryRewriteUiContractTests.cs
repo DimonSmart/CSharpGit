@@ -40,7 +40,7 @@ public sealed class RepositoryHistoryRewriteUiContractTests
 
         var lifecycle = ReadSource("src/CSharpGit.Presentation/MainPage.Lifecycle.cs");
         Assert.Contains("page?.IsUnsafeToClose == true", source, StringComparison.Ordinal);
-        Assert.Contains("|| IsHistoryRewriteInProgress", lifecycle, StringComparison.Ordinal);
+        Assert.Contains("IsHistoryRewriteRunning: IsHistoryRewriteInProgress", lifecycle, StringComparison.Ordinal);
         Assert.Contains("eventArgs.Cancel = true", source, StringComparison.Ordinal);
     }
 
