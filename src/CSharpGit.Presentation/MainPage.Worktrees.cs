@@ -73,8 +73,10 @@ public sealed partial class MainPage
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary
         };
-        var result = await dialog.ShowAsync();
-        if (result is not ContentDialogResult.Primary and not ContentDialogResult.Secondary) return;
+        var result = await ShowPageDialogAsync(dialog);
+        if (result is not ContentDialogResult.Primary and not ContentDialogResult.Secondary
+            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+            || !_worktreesViewModel.CanMutate) return;
 
         var operation = await _worktreesViewModel.CreateFromBranchAsync(
             repository,
@@ -135,8 +137,10 @@ public sealed partial class MainPage
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary
         };
-        var result = await dialog.ShowAsync();
-        if (result is not ContentDialogResult.Primary and not ContentDialogResult.Secondary) return;
+        var result = await ShowPageDialogAsync(dialog);
+        if (result is not ContentDialogResult.Primary and not ContentDialogResult.Secondary
+            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+            || !_worktreesViewModel.CanMutate) return;
 
         var operation = await _worktreesViewModel.CreateNewBranchAsync(
             repository,
@@ -214,7 +218,9 @@ public sealed partial class MainPage
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
+            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+            || !_worktreesViewModel.CanMutate) return;
 
         var operation = await _worktreesViewModel.LockAsync(repository, worktree, reason.Text);
         await ShowWorktreeOperationErrorAsync(operation, "Could not lock worktree");
@@ -243,7 +249,9 @@ public sealed partial class MainPage
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
+            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+            || !_worktreesViewModel.CanMutate) return;
 
         var operation = await _worktreesViewModel.RemoveAsync(repository, worktree);
         if (operation.Succeeded || operation.Canceled) return;
@@ -257,7 +265,9 @@ public sealed partial class MainPage
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await forceDialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await ShowPageDialogAsync(forceDialog) != ContentDialogResult.Primary
+            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+            || !_worktreesViewModel.CanRemove(worktree)) return;
 
         var forced = await _worktreesViewModel.RemoveAsync(repository, worktree, force: true);
         await ShowWorktreeOperationErrorAsync(forced, "Could not force remove worktree");
@@ -277,7 +287,9 @@ public sealed partial class MainPage
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
+            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+            || !_worktreesViewModel.CanMutate) return;
 
         var operation = await _worktreesViewModel.PruneAsync(repository);
         await ShowWorktreeOperationErrorAsync(operation, "Could not prune worktrees");

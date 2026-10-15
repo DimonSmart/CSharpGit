@@ -16,7 +16,7 @@ public sealed partial class MainPage
 
     private bool CanRenameBranch() => _viewModel.Branches.CanRename;
 
-    private async void RepositoryTree_KeyDown(object sender, KeyRoutedEventArgs e)
+    private void RepositoryTree_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key != VirtualKey.F2) return;
 
@@ -26,13 +26,14 @@ public sealed partial class MainPage
         e.Handled = true;
         if (!CanRenameBranch()) return;
 
-        await RenameBranchAsync(branch);
+        RunPageUiOperation(() => RenameBranchAsync(branch), "Rename branch");
     }
 
     private async Task RenameBranchAsync(GitBranch branch)
     {
         ArgumentNullException.ThrowIfNull(branch);
         if (!CanRenameBranch()) return;
+        var repository = _viewModel.Repository;
 
         var oldName = branch.Name;
         var nameBox = new TextBox
@@ -61,7 +62,9 @@ public sealed partial class MainPage
         nameBox.TextChanged += (_, _) => UpdatePrimaryButton();
         UpdatePrimaryButton();
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
+            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+            || !CanRenameBranch()) return;
 
         var newName = nameBox.Text.Trim();
         if (newName.Length == 0 || string.Equals(oldName, newName, StringComparison.Ordinal)) return;

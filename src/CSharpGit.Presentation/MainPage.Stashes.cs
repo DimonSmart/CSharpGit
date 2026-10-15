@@ -7,12 +7,13 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private async void CreateStash_Click(object sender, RoutedEventArgs args) =>
-        await ShowCreateStashDialogAsync();
+    private void CreateStash_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(ShowCreateStashDialogAsync, "Create stash");
 
     private async Task ShowCreateStashDialogAsync()
     {
-        if (!_viewModel.Stashes.CanCreateStash) return;
+        var repository = _viewModel.Repository;
+        if (repository is null || !_viewModel.Stashes.CanCreateStash) return;
 
         var message = new TextBox
         { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"),
@@ -78,7 +79,9 @@ public sealed partial class MainPage
         includeUntracked.Unchecked += (_, _) => UpdateState();
         UpdateState();
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
+            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+            || !_viewModel.Stashes.CanCreateStash) return;
 
         var selectedScope = stagedOnly.IsChecked == true
             ? StashScope.StagedChangesOnly
@@ -93,6 +96,7 @@ public sealed partial class MainPage
     private async Task ShowCreateSelectedStashDialogAsync(
         IReadOnlyCollection<WorkingTreeChange> changes)
     {
+        var repository = _viewModel.Repository;
         var snapshot = changes.ToArray();
         if (!_viewModel.Stashes.CanCreateSelectedStash(snapshot)) return;
 
@@ -134,19 +138,22 @@ public sealed partial class MainPage
             IsPrimaryButtonEnabled = snapshot.Length > 0
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
+            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+            || !_viewModel.Stashes.CanCreateSelectedStash(snapshot)) return;
         await _viewModel.Stashes.CreateSelectedStashAsync(snapshot, message.Text);
     }
 
-    private async void DropSelectedStash_Click(object sender, RoutedEventArgs args)
+    private void DropSelectedStash_Click(object sender, RoutedEventArgs args)
     {
         if (_viewModel.Stashes.SelectedStash is { } stash)
-            await ConfirmDropStashAsync(stash);
+            RunPageUiOperation(() => ConfirmDropStashAsync(stash), "Drop stash");
     }
 
     private async Task ConfirmDropStashAsync(GitStash stash)
     {
-        if (!_viewModel.Stashes.DropCommand.CanExecute(null)) return;
+        var repository = _viewModel.Repository;
+        if (repository is null || !_viewModel.Stashes.DropCommand.CanExecute(null)) return;
 
         var content = new StackPanel { Spacing = UiStyles.Resolve<double>("Spacing.L") };
         content.Children.Add(new TextBlock
@@ -175,7 +182,12 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Close
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
+            || IsShuttingDown
+            || !ReferenceEquals(repository, _viewModel.Repository)
+            || !string.Equals(stash.Commit, _viewModel.Stashes.SelectedStash?.Commit, StringComparison.Ordinal)
+            || !_viewModel.Stashes.DropCommand.CanExecute(null))
+            return;
         await ExecuteCommandAsync(_viewModel.Stashes.DropCommand);
     }
 }
