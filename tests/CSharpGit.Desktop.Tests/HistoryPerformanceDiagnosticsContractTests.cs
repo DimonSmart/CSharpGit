@@ -187,7 +187,7 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
         Assert.Contains("if (_stopTask is not null) return _stopTask;", source, StringComparison.Ordinal);
         Assert.Contains("HistoryPerformanceCaptureOutcome.Partial", source, StringComparison.Ordinal);
         Assert.Contains("HistoryPerformanceCaptureOutcome.Failed", source, StringComparison.Ordinal);
-        Assert.Contains("finally\n        {\n            // Always unblock the writer", source, StringComparison.Ordinal);
+        Assert.Contains("_writerChannel.Writer.TryComplete();", source, StringComparison.Ordinal);
     }
 
     private static string Read(params string[] path) =>
