@@ -41,6 +41,7 @@ public sealed partial class MainPage
         _viewModel.WorkingTree.PropertyChanged += WorkingTreeViewModel_PropertyChanged;
         WorkingTreePane.RegisterPropertyChangedCallback(VisibilityProperty, (_, _) =>
         {
+            if (IsShuttingDown) return;
             if (WorkingTreePane.Visibility == Visibility.Visible)
                 EnsureWorkingTreeActivePreview();
             else
@@ -53,13 +54,19 @@ public sealed partial class MainPage
 
     private void WorkingTreePresentationSourceChanged(object? sender, NotifyCollectionChangedEventArgs args)
     {
-        if (_workingTreeTreeRefreshQueued) return;
+        if (IsShuttingDown || _workingTreeTreeRefreshQueued) return;
         _workingTreeTreeRefreshQueued = true;
         ScheduleWorkingTreeTreeRefreshIfNeeded();
     }
 
     private void ScheduleWorkingTreeTreeRefreshIfNeeded()
     {
+        if (IsShuttingDown)
+        {
+            _workingTreeTreeRefreshQueued = false;
+            _workingTreeTreeRefreshScheduled = false;
+            return;
+        }
         if (!_workingTreeTreeRefreshQueued ||
             _workingTreeTreeRefreshScheduled ||
             _workingTreeSelectionSync)
@@ -69,18 +76,24 @@ public sealed partial class MainPage
         if (DispatcherQueue.TryEnqueue(() =>
         {
             _workingTreeTreeRefreshScheduled = false;
-            if (!_workingTreeTreeRefreshQueued) return;
+            if (IsShuttingDown || !_workingTreeTreeRefreshQueued)
+            {
+                _workingTreeTreeRefreshQueued = false;
+                return;
+            }
             _workingTreeTreeRefreshQueued = false;
             RebuildWorkingTreeTrees();
         })) return;
 
         _workingTreeTreeRefreshScheduled = false;
         _workingTreeTreeRefreshQueued = false;
-        RebuildWorkingTreeTrees();
+        if (!IsShuttingDown && DispatcherQueue.HasThreadAccess)
+            RebuildWorkingTreeTrees();
     }
 
     private void RebuildWorkingTreeTrees()
     {
+        if (IsShuttingDown) return;
         var repositoryIdentity = _viewModel.Repository?.GitDirectory;
         if (string.Equals(repositoryIdentity, _workingTreeExpansionRepositoryIdentity, StringComparison.Ordinal))
         {
@@ -172,11 +185,14 @@ public sealed partial class MainPage
     {
         _desiredWorkingTreePath = change.Path;
         UpdateWorkingTreeDiffHeader(change, kind);
-        _ = _viewModel.WorkingTree.SelectChangeAsync(change, kind);
+        RunPageUiOperation(
+            () => _viewModel.WorkingTree.SelectChangeAsync(change, kind),
+            "Working-tree file selection");
     }
 
     private void WorkingTreeViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
+        if (IsShuttingDown) return;
         var workingTree = _viewModel.WorkingTree;
         if (args.PropertyName is nameof(WorkingTreeViewModel.SelectedChange)
             or nameof(WorkingTreeViewModel.SelectedDiffKind))
@@ -214,7 +230,9 @@ public sealed partial class MainPage
                 CancelWorkingTreeImageDiff();
                 WorkingTreeDiffViewer.Clear();
                 SetWorkingTreeDiffPresentationState(DiffPresentationState.Error);
-                _ = ShowErrorAsync("Could not read working tree diff", workingTree.DiffLoadErrorMessage);
+                RunPageUiOperation(
+                    () => ShowErrorAsync("Could not read working tree diff", workingTree.DiffLoadErrorMessage),
+                    "Working-tree diff error");
             }
             return;
         }
@@ -263,7 +281,9 @@ public sealed partial class MainPage
         if (diff.IsBinary)
         {
             WorkingTreeDiffViewer.Clear();
-            _ = LoadWorkingTreeImageDiffAsync(change, kind.Value);
+            RunPageUiOperation(
+                () => LoadWorkingTreeImageDiffAsync(change, kind.Value),
+                "Working-tree image diff");
             return;
         }
 
@@ -293,6 +313,7 @@ public sealed partial class MainPage
         WorkingTreeChange change,
         WorkingTreeDiffKind kind)
     {
+        if (IsShuttingDown) return;
         CancelWorkingTreeImageDiff();
         var repository = _viewModel.Repository;
         if (repository is null) return;
@@ -328,8 +349,9 @@ public sealed partial class MainPage
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            ReportUiFailure(exception, "Working-tree image diff");
             if (IsCurrentWorkingTreeImageRequest(repository, change, kind, generation, CancellationToken.None))
                 SetWorkingTreeDiffPresentationState(DiffPresentationState.Unavailable);
         }
@@ -349,31 +371,36 @@ public sealed partial class MainPage
         WorkingTreeDiffKind kind,
         long generation,
         CancellationToken cancellationToken) =>
+        !IsShuttingDown &&
         !cancellationToken.IsCancellationRequested &&
         generation == _workingTreeImageDiffGeneration &&
         ReferenceEquals(repository, _viewModel.Repository) &&
         _viewModel.WorkingTree.IsActive(change, kind);
 
     private void WorkingTreeLargeDiffButton_Click(object sender, RoutedEventArgs args) =>
-        _ = _viewModel.WorkingTree.LoadSelectedDiffAnywayAsync();
+        RunPageUiOperation(
+            () => _viewModel.WorkingTree.LoadSelectedDiffAnywayAsync(),
+            "Working-tree large diff");
 
     private void QueueWorkingTreePreviewRestore()
     {
-        if (_workingTreePreviewRestoreQueued) return;
+        if (IsShuttingDown || _workingTreePreviewRestoreQueued) return;
         _workingTreePreviewRestoreQueued = true;
         if (DispatcherQueue.TryEnqueue(() =>
         {
             _workingTreePreviewRestoreQueued = false;
-            EnsureWorkingTreeActivePreview();
+            if (!IsShuttingDown)
+                EnsureWorkingTreeActivePreview();
         })) return;
 
         _workingTreePreviewRestoreQueued = false;
-        EnsureWorkingTreeActivePreview();
+        if (!IsShuttingDown && DispatcherQueue.HasThreadAccess)
+            EnsureWorkingTreeActivePreview();
     }
 
     private void EnsureWorkingTreeActivePreview()
     {
-        if (WorkingTreePane.Visibility != Visibility.Visible) return;
+        if (IsShuttingDown || WorkingTreePane.Visibility != Visibility.Visible) return;
         if (_workingTreeTreeRefreshQueued && !_workingTreeSelectionSync)
         {
             _workingTreeTreeRefreshQueued = false;
