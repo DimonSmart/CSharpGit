@@ -279,6 +279,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         }
 
         var previousRepository = Repository;
+        Exception? rollbackFailure = null;
         ErrorMessage = null;
         EnterBusy();
         try
@@ -290,12 +291,12 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             if (Volatile.Read(ref _disposed) != 0) return false;
 
             History.Invalidate();
-            Repository = openedRepository;
             try
             {
+                Repository = openedRepository;
                 await RefreshStateCoreAsync(includeHistory: true, localOnly: false, cancellationToken);
             }
-            catch
+            catch (Exception openingFailure)
             {
                 History.Invalidate();
                 Repository = previousRepository;
@@ -307,12 +308,13 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                     {
                         await RefreshAllAsync();
                     }
-                    catch (Exception restoreException) when (
-                        restoreException is not OperationCanceledException)
+                    catch (Exception restoreException)
                     {
+                        rollbackFailure = restoreException;
                         _logger.LogError(
                             restoreException,
-                            "Could not refresh the previous repository after a failed workspace switch");
+                            "Could not refresh the previous repository after a failed workspace switch; opening failed: {OpeningFailure}",
+                            openingFailure);
                     }
                 }
 
@@ -326,17 +328,19 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         }
         catch (RepositoryOpenException exception)
         {
-            ErrorMessage = exception.Message;
+            ErrorMessage = exception.Message + RollbackErrorSuffix(rollbackFailure);
             _logger.LogWarning(exception, "Repository selection failed");
             return false;
         }
         catch (OperationCanceledException)
         {
+            if (rollbackFailure is not null)
+                ErrorMessage = "Repository opening was canceled." + RollbackErrorSuffix(rollbackFailure);
             throw;
         }
         catch (Exception exception)
         {
-            ErrorMessage = $"The repository could not be opened: {exception.Message}";
+            ErrorMessage = $"The repository could not be opened: {exception.Message}" + RollbackErrorSuffix(rollbackFailure);
             _logger.LogError(exception, "Repository opening failed");
             return false;
         }
@@ -353,6 +357,10 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             }
         }
     }
+
+    private static string RollbackErrorSuffix(Exception? exception) =>
+        exception is null ? string.Empty :
+            $" The previous repository remains selected, but its state could not be refreshed: {exception.Message}. Please refresh it manually.";
 
     internal bool CloseRepository()
     {
@@ -493,10 +501,11 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         {
             task = flight.RunAsync(
                 includeHistory,
-                async (historyRequested, publishIfCurrent) =>
+                localOnly,
+                async (historyRequested, passLocalOnly, publishIfCurrent) =>
                 {
                     var read = await _stateService.ReadWithWorkingTreeStatusAsync(
-                        repository, localOnly, sessionToken);
+                        repository, passLocalOnly, sessionToken);
                     sessionToken.ThrowIfCancellationRequested();
 
                     // One dispatcher continuation, no await between related fields
@@ -623,12 +632,14 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         ErrorMessage = null;
         try
         {
-            beforeMutation?.Invoke();
             Exception? failure = null;
             OperationCanceledException? cancellation = null;
+            var gitMutationCompleted = false;
             try
             {
+                beforeMutation?.Invoke();
                 await mutation();
+                gitMutationCompleted = true;
                 if (Volatile.Read(ref _disposed) == 0)
                     afterSuccessfulMutation?.Invoke();
             }
@@ -645,7 +656,12 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             if (cancellation is not null)
                 System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(cancellation).Throw();
             if (failure is not null && Volatile.Read(ref _disposed) == 0)
-                ErrorMessage = errorContext is null ? $"Git: {failure.Message}" : $"{errorContext}\nGit: {failure.Message}";
+            {
+                var description = gitMutationCompleted
+                    ? $"The Git operation completed, but its follow-up update failed: {failure.Message}. Refresh the view before retrying."
+                    : $"Git: {failure.Message}";
+                ErrorMessage = errorContext is null ? description : $"{errorContext}\n{description}";
+            }
             succeeded = failure is null && Volatile.Read(ref _disposed) == 0;
         }
         finally

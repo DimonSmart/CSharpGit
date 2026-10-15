@@ -23,6 +23,8 @@ public sealed partial class MainPage
     private bool _repositoryChangeMonitoringInitialized;
     private bool _isRefreshInProgress;
     private Repository? _monitoredRepository;
+    // Delivery epoch for queued UI notifications, tied to watcher restarts.
+    private long _monitorDeliveryEpoch;
     private WorkingTreeStatusSnapshot? _displayedWorkingTreeStatus;
     private bool _workingTreeStatusRunning;
     private RepositoryInvalidationBatch? _workingTreeStatusPending;
@@ -55,6 +57,7 @@ public sealed partial class MainPage
     {
         if (!_repositoryChangeMonitoringInitialized) return;
         _repositoryChangeMonitoringInitialized = false;
+        _monitorDeliveryEpoch++;
         _workingTreeStatusPending = null;
         _repositoryRefreshWindowActive = false;
         _repositoryRefreshWindowRepository = null;
@@ -157,6 +160,7 @@ public sealed partial class MainPage
         var repository = _viewModel.Repository;
         if (!ReferenceEquals(repository, _monitoredRepository))
         {
+            _monitorDeliveryEpoch++;
             _repositoryStatusStop?.Cancel();
             _repositoryStatusStop?.Dispose();
             _repositoryStatusStop = CancellationTokenSource.CreateLinkedTokenSource(_workingTreeStatusToken);
@@ -175,7 +179,7 @@ public sealed partial class MainPage
             return;
         }
 
-        if (Equals(repository, _monitoredRepository)) return;
+        if (ReferenceEquals(repository, _monitoredRepository)) return;
 
         _monitoredRepository = repository;
         _displayedWorkingTreeStatus = _viewModel.DisplayedWorkingTreeStatusSnapshot;
@@ -195,16 +199,32 @@ public sealed partial class MainPage
         if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
 
         var batch = eventArgs.Batch;
+        var owner = _monitoredRepository;
+        var deliveryEpoch = _monitorDeliveryEpoch;
         Trace.WriteLine(
             $"Repository monitor invalidated: generation={batch.Generation} workingTree={batch.HasWorkingTreeChanges} metadata={batch.HasRelevantMetadataChanges} unknown={batch.HasUnknownOrOverflow} workingPaths={string.Join(",", batch.WorkingTreePaths)} metadataPaths={string.Join(",", batch.MetadataPaths)}");
 
         if (DispatcherQueue.HasThreadAccess)
         {
-            HandleInvalidationBatch(batch);
+            HandleInvalidationIfCurrent(owner, deliveryEpoch, batch);
             return;
         }
 
-        DispatcherQueue.TryEnqueue(() => HandleInvalidationBatch(batch));
+        DispatcherQueue.TryEnqueue(() =>
+            HandleInvalidationIfCurrent(owner, deliveryEpoch, batch));
+    }
+
+    private void HandleInvalidationIfCurrent(
+        Repository? owner,
+        long deliveryEpoch,
+        RepositoryInvalidationBatch batch)
+    {
+        if (deliveryEpoch != _monitorDeliveryEpoch
+            || !ReferenceEquals(owner, _monitoredRepository)
+            || !ReferenceEquals(owner, _viewModel.Repository))
+            return;
+
+        HandleInvalidationBatch(batch);
     }
 
     private void HandleInvalidationBatch(RepositoryInvalidationBatch batch)
