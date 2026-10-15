@@ -138,7 +138,7 @@ public sealed class DesktopApplicationTests
         var stderr = process.StandardError.ReadToEndAsync();
         try
         {
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(75));
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(180));
             await pipe.WaitForConnectionAsync(timeout.Token);
             using var reader = new StreamReader(pipe, leaveOpen: true);
             using var writer = new StreamWriter(pipe, leaveOpen: true) { AutoFlush = true };
@@ -206,6 +206,85 @@ public sealed class DesktopApplicationTests
                 Assert.False(d.RootElement.GetProperty("RefreshRequired").GetBoolean());
             }
 
+
+            // A real B snapshot is read, then a presentation subscriber fails;
+            // A must be restored and the draft cannot be discarded.
+            using (var d = await CommandAsync("SetDraft\\trollback draft"))
+                Assert.Equal("rollback draft", d.RootElement.GetProperty("Draft").GetString());
+            using (var d = await CommandAsync("FailNextPublication\\t" + worktree + "\\tInjected B publication failure"))
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+            using (var d = await CommandAsync("Switch\\t" + worktree))
+            {
+                Assert.False(d.RootElement.GetProperty("Success").GetBoolean());
+                AssertOpenedSnapshotPath(d.RootElement, original);
+                Assert.Contains("Injected B publication failure", d.RootElement.GetProperty("Error").GetString());
+                Assert.Equal("rollback draft", d.RootElement.GetProperty("Draft").GetString());
+                Assert.True(d.RootElement.GetProperty("HasBaseline").GetBoolean());
+                Assert.True(d.RootElement.GetProperty("CanChangeRepository").GetBoolean());
+                Assert.False(d.RootElement.GetProperty("IsBusy").GetBoolean());
+            }
+
+            // Both the B publication and A recovery fail. This must report
+            // both causes and clear any partly published state from B.
+            using (var d = await CommandAsync("FailNextPublication\\t" + worktree + "\\tInjected B double failure"))
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+            using (var d = await CommandAsync("FailNextPublication\\t" + original + "\\tInjected A rollback failure"))
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+            using (var d = await CommandAsync("Switch\\t" + worktree))
+            {
+                Assert.False(d.RootElement.GetProperty("Success").GetBoolean());
+                AssertOpenedSnapshotPath(d.RootElement, original);
+                Assert.Equal("rollback draft", d.RootElement.GetProperty("Draft").GetString());
+                Assert.Contains("Injected B double failure", d.RootElement.GetProperty("Error").GetString());
+                Assert.Contains("Injected A rollback failure", d.RootElement.GetProperty("Error").GetString());
+                Assert.False(d.RootElement.GetProperty("HasBaseline").GetBoolean());
+                Assert.Equal(0, d.RootElement.GetProperty("BranchCount").GetInt32());
+                Assert.Equal(0, d.RootElement.GetProperty("TagCount").GetInt32());
+                Assert.Equal(0, d.RootElement.GetProperty("StashCount").GetInt32());
+                Assert.False(d.RootElement.GetProperty("IsBusy").GetBoolean());
+                Assert.True(d.RootElement.GetProperty("CanChangeRepository").GetBoolean());
+            }
+            using (var d = await CommandAsync("Refresh"))
+                AssertOpened(d.RootElement, original, false);
+
+            // Cancellation after the new Repository was assigned is rolled back
+            // and releases the switch gate, preserving the old draft.
+            using (var d = await CommandAsync("CancelOpenAfterAssignment\\t" + worktree))
+            {
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+                AssertOpenedSnapshotPath(d.RootElement, original);
+                Assert.Equal("rollback draft", d.RootElement.GetProperty("Draft").GetString());
+                Assert.True(d.RootElement.GetProperty("CanChangeRepository").GetBoolean());
+            }
+            using (var d = await CommandAsync("SetDraft\\t"))
+                Assert.Equal(string.Empty, d.RootElement.GetProperty("Draft").GetString());
+
+            using (var d = await CommandAsync("FailMutation"))
+            {
+                Assert.False(d.RootElement.GetProperty("Success").GetBoolean());
+                Assert.Contains("Injected Git mutation failure", d.RootElement.GetProperty("Error").GetString());
+                Assert.True(d.RootElement.GetProperty("CanChangeRepository").GetBoolean());
+            }
+            using (var d = await CommandAsync("CancelMutation"))
+            {
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+                Assert.True(d.RootElement.GetProperty("CanChangeRepository").GetBoolean());
+            }
+
+            var beforeCommitCount = await GetCommitCountAsync(original, isolatedHome);
+            using (var d = await CommandAsync("CommitWithFailedRefresh"))
+            {
+                Assert.False(d.RootElement.GetProperty("Success").GetBoolean());
+                Assert.Contains("The Git operation completed", d.RootElement.GetProperty("Error").GetString());
+                Assert.Contains("Injected post-commit refresh failure", d.RootElement.GetProperty("Error").GetString());
+                Assert.True(d.RootElement.GetProperty("CanChangeRepository").GetBoolean());
+                Assert.False(d.RootElement.GetProperty("IsBusy").GetBoolean());
+            }
+            Assert.Equal(beforeCommitCount + 1, await GetCommitCountAsync(original, isolatedHome));
+            using (var d = await CommandAsync("Refresh"))
+                AssertOpened(d.RootElement, original, false);
+            Assert.Equal(beforeCommitCount + 1, await GetCommitCountAsync(original, isolatedHome));
+
             using (var d = await CommandAsync("ThrowCompletedHandler"))
             {
                 Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
@@ -268,6 +347,30 @@ public sealed class DesktopApplicationTests
         Assert.Contains("DesktopCloseCheck: HostStopped", output, StringComparison.Ordinal);
         Assert.DoesNotContain("DesktopCloseCheck: Failed", output, StringComparison.Ordinal);
         Assert.True(process.ExitCode == 0, $"{process.ExitCode}: {output}{Environment.NewLine}{await stderr}");
+    }
+
+    private static async Task<int> GetCommitCountAsync(string repository, string isolatedHome)
+    {
+        var start = new ProcessStartInfo("git")
+        {
+            WorkingDirectory = repository,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+        start.Environment["GIT_CONFIG_GLOBAL"] = Path.Combine(isolatedHome, ".gitconfig");
+        start.Environment["GIT_CONFIG_NOSYSTEM"] = "1";
+        start.Environment["HOME"] = isolatedHome;
+        start.ArgumentList.Add("rev-list");
+        start.ArgumentList.Add("--count");
+        start.ArgumentList.Add("HEAD");
+        using var process = Process.Start(start)
+            ?? throw new InvalidOperationException("Git commit count failed to start.");
+        var output = await process.StandardOutput.ReadToEndAsync();
+        var error = await process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        Assert.True(process.ExitCode == 0, error);
+        return int.Parse(output.Trim(), System.Globalization.CultureInfo.InvariantCulture);
     }
 
     private static void AssertOpenedSnapshotPath(JsonElement snapshot, string expected)
