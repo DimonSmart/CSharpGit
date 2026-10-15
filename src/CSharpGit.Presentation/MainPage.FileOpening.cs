@@ -208,28 +208,52 @@ public sealed partial class MainPage
         }
     }
 
-    private async void CommitOpenOriginal_Click(object sender, RoutedEventArgs args) =>
+    private void CommitOpenOriginal_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(() => CommitOpenOriginal_ClickCoreAsync(sender, args), "CommitOpenOriginal_Click");
+
+    private async Task CommitOpenOriginal_ClickCoreAsync(object sender, RoutedEventArgs args) =>
         await ExecuteFileActionAsync(CaptureCommitRequest(), FileActionKind.Original, "Could not open original version");
 
-    private async void CommitOpenChanged_Click(object sender, RoutedEventArgs args) =>
+    private void CommitOpenChanged_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(() => CommitOpenChanged_ClickCoreAsync(sender, args), "CommitOpenChanged_Click");
+
+    private async Task CommitOpenChanged_ClickCoreAsync(object sender, RoutedEventArgs args) =>
         await ExecuteFileActionAsync(CaptureCommitRequest(), FileActionKind.Changed, "Could not open changed version");
 
-    private async void CommitExternalDiff_Click(object sender, RoutedEventArgs args) =>
+    private void CommitExternalDiff_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(() => CommitExternalDiff_ClickCoreAsync(sender, args), "CommitExternalDiff_Click");
+
+    private async Task CommitExternalDiff_ClickCoreAsync(object sender, RoutedEventArgs args) =>
         await ExecuteFileActionAsync(CaptureCommitRequest(), FileActionKind.ExternalDiff, "Could not open external diff tool");
 
-    private async void CommitReveal_Click(object sender, RoutedEventArgs args) =>
+    private void CommitReveal_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(() => CommitReveal_ClickCoreAsync(sender, args), "CommitReveal_Click");
+
+    private async Task CommitReveal_ClickCoreAsync(object sender, RoutedEventArgs args) =>
         await ExecuteFileActionAsync(CaptureCommitRequest(), FileActionKind.Reveal, "Could not reveal file");
 
-    private async void WorkingTreeOpenOriginal_Click(object sender, RoutedEventArgs args) =>
+    private void WorkingTreeOpenOriginal_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(() => WorkingTreeOpenOriginal_ClickCoreAsync(sender, args), "WorkingTreeOpenOriginal_Click");
+
+    private async Task WorkingTreeOpenOriginal_ClickCoreAsync(object sender, RoutedEventArgs args) =>
         await ExecuteFileActionAsync(CaptureWorkingTreeRequest(), FileActionKind.Original, "Could not open original version");
 
-    private async void WorkingTreeOpenChanged_Click(object sender, RoutedEventArgs args) =>
+    private void WorkingTreeOpenChanged_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(() => WorkingTreeOpenChanged_ClickCoreAsync(sender, args), "WorkingTreeOpenChanged_Click");
+
+    private async Task WorkingTreeOpenChanged_ClickCoreAsync(object sender, RoutedEventArgs args) =>
         await ExecuteFileActionAsync(CaptureWorkingTreeRequest(), FileActionKind.Changed, "Could not open changed version");
 
-    private async void WorkingTreeExternalDiff_Click(object sender, RoutedEventArgs args) =>
+    private void WorkingTreeExternalDiff_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(() => WorkingTreeExternalDiff_ClickCoreAsync(sender, args), "WorkingTreeExternalDiff_Click");
+
+    private async Task WorkingTreeExternalDiff_ClickCoreAsync(object sender, RoutedEventArgs args) =>
         await ExecuteFileActionAsync(CaptureWorkingTreeRequest(), FileActionKind.ExternalDiff, "Could not open external diff tool");
 
-    private async void WorkingTreeReveal_Click(object sender, RoutedEventArgs args) =>
+    private void WorkingTreeReveal_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(() => WorkingTreeReveal_ClickCoreAsync(sender, args), "WorkingTreeReveal_Click");
+
+    private async Task WorkingTreeReveal_ClickCoreAsync(object sender, RoutedEventArgs args) =>
         await ExecuteFileActionAsync(CaptureWorkingTreeRequest(), FileActionKind.Reveal, "Could not reveal file");
 
     private async Task ShowDiffToolNotConfiguredAsync()
@@ -243,11 +267,14 @@ public sealed partial class MainPage
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Primary
         };
-        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        if (await ShowPageDialogAsync(dialog) == ContentDialogResult.Primary)
             OpenSettingsWindow(SettingsSection.GitTools);
     }
 
-    private async void ChangedFilesTree_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
+    private void ChangedFilesTree_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args) =>
+        RunPageUiOperation(() => ChangedFilesTree_DoubleTappedCoreAsync(sender, args), "ChangedFilesTree_DoubleTapped");
+
+    private async Task ChangedFilesTree_DoubleTappedCoreAsync(object sender, DoubleTappedRoutedEventArgs args)
     {
         var source = args.OriginalSource as FrameworkElement;
         var node = ResolveChangedFileNode(source?.DataContext);
@@ -259,7 +286,10 @@ public sealed partial class MainPage
         await ExecuteFileActionAsync(request, FileActionKind.Preferred, "Could not open file");
     }
 
-    private async void WorkingTreeChanges_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
+    private void WorkingTreeChanges_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args) =>
+        RunPageUiOperation(() => WorkingTreeChanges_DoubleTappedCoreAsync(sender, args), "WorkingTreeChanges_DoubleTapped");
+
+    private async Task WorkingTreeChanges_DoubleTappedCoreAsync(object sender, DoubleTappedRoutedEventArgs args)
     {
         if (sender is not ListView list
             || args.OriginalSource is not FrameworkElement element
@@ -274,7 +304,10 @@ public sealed partial class MainPage
         await ExecuteFileActionAsync(request, FileActionKind.Preferred, "Could not open file");
     }
 
-    private async void ChangedFilesTree_RightTapped(object sender, RightTappedRoutedEventArgs args)
+    private void ChangedFilesTree_RightTapped(object sender, RightTappedRoutedEventArgs args) =>
+        RunPageUiOperation(() => ChangedFilesTree_RightTappedCoreAsync(sender, args), "ChangedFilesTree_RightTapped");
+
+    private async Task ChangedFilesTree_RightTappedCoreAsync(object sender, RightTappedRoutedEventArgs args)
     {
         var source = args.OriginalSource as FrameworkElement;
         var node = ResolveChangedFileNode(source?.DataContext);
@@ -286,7 +319,10 @@ public sealed partial class MainPage
         await ShowFileMenuAsync(source, request);
     }
 
-    private async void WorkingTreeChanges_RightTapped(object sender, RightTappedRoutedEventArgs args)
+    private void WorkingTreeChanges_RightTapped(object sender, RightTappedRoutedEventArgs args) =>
+        RunPageUiOperation(() => WorkingTreeChanges_RightTappedCoreAsync(sender, args), "WorkingTreeChanges_RightTapped");
+
+    private async Task WorkingTreeChanges_RightTappedCoreAsync(object sender, RightTappedRoutedEventArgs args)
     {
         var source = args.OriginalSource as FrameworkElement;
         if (source is null || sender is not ListView list
