@@ -3,6 +3,21 @@ namespace CSharpGit.Application.Tests;
 public sealed class PresentationLifecycleContractTests
 {
     [Fact]
+    public void CloseChecksActiveOperationsAndRechecksAfterConfirmation()
+    {
+        var presentation = Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation");
+        var lifecycle = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
+        var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
+        Assert.Contains("_viewModel.IsMutating", lifecycle, StringComparison.Ordinal);
+        Assert.Contains("_cloneRepositoryViewModel.IsBusy", lifecycle, StringComparison.Ordinal);
+        Assert.Contains("_createRepositoryViewModel.IsBusy", lifecycle, StringComparison.Ordinal);
+        Assert.Contains("page?.IsUnsafeToClose == true", app, StringComparison.Ordinal);
+        var recheck = app.IndexOf("|| page.IsUnsafeToClose", StringComparison.Ordinal);
+        var shutdown = app.IndexOf("BeginShutdown(page);", recheck, StringComparison.Ordinal);
+        Assert.True(recheck >= 0 && shutdown > recheck);
+    }
+
+    [Fact]
     public void SettingsAndMainPageCallbacksHaveThreadAndShutdownFences()
     {
         var root = FindRepositoryRoot();
