@@ -20,9 +20,9 @@ The History toolbar shows a **Perf** menu while the setting is enabled. Merely e
 4. Scroll an already loaded range up and down.
 5. Use **Perf → Stop performance capture**.
 
-Only one History performance session can run at a time. A session stops automatically after 10 minutes.
+Only one History performance session can run at a time. Start is disabled while the previous session is finishing its writer/summary stop. A session stops automatically after 10 minutes.
 
-A capture also stops when the repository is closed or changed, the diagnostic setting is disabled, or the application shuts down.
+A capture also stops when the repository is closed or changed, the diagnostic setting is disabled, or the application shuts down. On shutdown the UI waits asynchronously for the writer with a three-second budget. A timeout is logged; the application does not block UI close indefinitely or guarantee finished output.
 
 ## Output files
 
@@ -41,7 +41,7 @@ history-perf-YYYYMMDD-HHMMSS-p<process>-<session>.summary.txt
 
 Use **Perf → Open diagnostics folder** to open the directory.
 
-The JSONL file is structured telemetry. Every line is an independent JSON object and a normal stop ends with a `sessionSummary` record. Periodic aggregate snapshots are written approximately once per second. Slow operations at or above 8 ms are retained in a bounded buffer and written without blocking the UI thread.
+The JSONL file is structured telemetry. Every line is an independent JSON object and a **successful** stop ends with a `sessionSummary` record. If the background writer or text-summary save fails, the manual-stop notification reports an incomplete capture rather than claiming it was saved. The files that exist may be partial. Periodic aggregate snapshots are written approximately once per second. Slow operations at or above 8 ms are retained in a bounded buffer and written without blocking the UI thread.
 
 The text summary is intended for first-pass comparison and bug reports.
 
