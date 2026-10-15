@@ -1,4 +1,6 @@
 using CSharpGit.Application.Abstractions;
+using CSharpGit.Presentation.Threading;
+using System.Diagnostics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel.DataTransfer;
@@ -14,7 +16,12 @@ public sealed partial class CommitDetailsView : UserControl
         IAppSettingsService settings) =>
         CommitAuthorAvatar.Configure(avatarService, settings);
 
-    private async void CopyText_Click(object sender, RoutedEventArgs args)
+    private void CopyText_Click(object sender, RoutedEventArgs args) =>
+        _ = UiAsyncOperationRunner.RunAsync(
+            () => CopyTextCoreAsync(sender),
+            exception => Trace.TraceError("Copy commit details failed: {0}", exception.GetType().Name));
+
+    private static async Task CopyTextCoreAsync(object sender)
     {
         if (sender is not Button { Tag: string text } button || string.IsNullOrEmpty(text)) return;
 
@@ -31,7 +38,8 @@ public sealed partial class CommitDetailsView : UserControl
         }
         finally
         {
-            if (ReferenceEquals(button.Content, icon)) icon.Glyph = originalGlyph;
+            if (button.IsLoaded && ReferenceEquals(button.Content, icon))
+                icon.Glyph = originalGlyph;
         }
     }
 }
