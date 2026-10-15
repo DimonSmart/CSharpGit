@@ -117,7 +117,10 @@ public sealed partial class MainPage
         Clipboard.SetContent(package);
     }
 
-    private async void CreateBranchHere_Click(object sender, RoutedEventArgs e)
+    private void CreateBranchHere_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(CreateBranchHereAsync, "CreateBranchHere");
+
+    private async Task CreateBranchHereAsync()
     {
         if (!TryGetCommitActionContext(out _, out var commit)) return;
         await CreateBranchFromReferenceAsync(commit.Hash, commit.Hash);
@@ -141,7 +144,10 @@ public sealed partial class MainPage
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        var originalRepository = _viewModel.Repository;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
+            || IsShuttingDown || !ReferenceEquals(originalRepository, _viewModel.Repository)
+            || _viewModel.IsBusy) return;
         if (string.IsNullOrWhiteSpace(branchName.Text))
         {
             await ShowErrorAsync("Branch name required", "Enter a branch name.");
@@ -160,7 +166,10 @@ public sealed partial class MainPage
             await RestoreCommitActionSelectionAsync(restoreSelectionCommit);
     }
 
-    private async void CheckoutCommit_Click(object sender, RoutedEventArgs e)
+    private void CheckoutCommit_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(CheckoutCommitAsync, "CheckoutCommit");
+
+    private async Task CheckoutCommitAsync()
     {
         if (!TryGetCommitActionContext(out var repository, out var commit)) return;
         var hash = commit.Hash;
@@ -173,17 +182,22 @@ public sealed partial class MainPage
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
+            || !CanExecuteCapturedCommitAction(repository, commit)) return;
 
         var result = await _viewModel.CommitActions.CheckoutAsync(repository, commit);
         await HandleCommitActionExecutionResultAsync(result);
     }
 
-    private async void CherryPickCommit_Click(object sender, RoutedEventArgs e)
+    private void CherryPickCommit_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(CherryPickCommitAsync, "CherryPickCommit");
+
+    private async Task CherryPickCommitAsync()
     {
         if (!TryGetCommitActionContext(out var repository, out var commit)) return;
         var mainline = await SelectMainlineParentAsync(commit, "Cherry-pick merge commit");
-        if (commit.Parents.Count > 1 && mainline is null) return;
+        if ((commit.Parents.Count > 1 && mainline is null)
+            || !CanExecuteCapturedCommitAction(repository, commit)) return;
 
         var result = await _viewModel.CommitActions.CherryPickAsync(
             repository,
@@ -192,11 +206,15 @@ public sealed partial class MainPage
         await HandleCommitActionExecutionResultAsync(result);
     }
 
-    private async void RevertCommit_Click(object sender, RoutedEventArgs e)
+    private void RevertCommit_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(RevertCommitAsync, "RevertCommit");
+
+    private async Task RevertCommitAsync()
     {
         if (!TryGetCommitActionContext(out var repository, out var commit)) return;
         var mainline = await SelectMainlineParentAsync(commit, "Revert merge commit");
-        if (commit.Parents.Count > 1 && mainline is null) return;
+        if ((commit.Parents.Count > 1 && mainline is null)
+            || !CanExecuteCapturedCommitAction(repository, commit)) return;
 
         var result = await _viewModel.CommitActions.RevertAsync(
             repository,
@@ -205,15 +223,22 @@ public sealed partial class MainPage
         await HandleCommitActionExecutionResultAsync(result);
     }
 
-    private async void FixupIntoPreviousCommit_Click(object sender, RoutedEventArgs e)
+    private void FixupIntoPreviousCommit_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(FixupIntoPreviousCommitAsync, "FixupIntoPreviousCommit");
+
+    private async Task FixupIntoPreviousCommitAsync()
     {
         if (!TryGetCommitActionContext(out var repository, out var commit)) return;
 
+        if (!CanExecuteCapturedCommitAction(repository, commit)) return;
         var result = await _viewModel.CommitActions.FixupAsync(repository, commit);
         await HandleCommitActionExecutionResultAsync(result);
     }
 
-    private async void InteractiveRebaseFromHere_Click(object sender, RoutedEventArgs e)
+    private void InteractiveRebaseFromHere_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(InteractiveRebaseFromHereAsync, "InteractiveRebaseFromHere");
+
+    private async Task InteractiveRebaseFromHereAsync()
     {
         if (!TryGetCommitActionContext(out _, out var commit)) return;
 
@@ -223,7 +248,10 @@ public sealed partial class MainPage
 
         await ShowInteractiveRebaseEditorAsync();
     }
-    private async void ResetCommit_Click(object sender, RoutedEventArgs e)
+    private void ResetCommit_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(() => ResetCommitAsync(sender), "Reset commit");
+
+    private async Task ResetCommitAsync(object sender)
     {
         if (sender is not MenuFlyoutItem { Tag: ResetMode mode }) return;
         if (!TryGetCommitActionContext(out var repository, out var commit)) return;
@@ -255,7 +283,8 @@ public sealed partial class MainPage
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
+            || !CanExecuteCapturedCommitAction(repository, commit)) return;
 
         var result = await _viewModel.CommitActions.ResetAsync(
             repository,
@@ -264,11 +293,17 @@ public sealed partial class MainPage
         await HandleCommitActionExecutionResultAsync(result);
     }
 
+    private bool CanExecuteCapturedCommitAction(Repository repository, CommitHistoryItem commit) =>
+        !IsShuttingDown
+        && ReferenceEquals(repository, _viewModel.Repository)
+        && _viewModel.CommitActions.CanMutateCommit(commit);
+
     private bool TryGetCommitActionContext(out Repository repository, out CommitHistoryItem commit)
     {
         repository = _viewModel.Repository!;
         commit = _viewModel.History.SelectedRow?.Commit!;
-        return repository is not null &&
+        return !IsShuttingDown &&
+               repository is not null &&
                commit is not null &&
                _viewModel.CommitActions.CanMutateCommit(commit);
     }
@@ -318,7 +353,7 @@ public sealed partial class MainPage
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary
         };
-        return await dialog.ShowAsync() == ContentDialogResult.Primary && selector.SelectedItem is MainlineChoice choice
+        return await ShowPageDialogAsync(dialog) == ContentDialogResult.Primary && selector.SelectedItem is MainlineChoice choice
             ? choice.Number
             : null;
     }
@@ -327,8 +362,10 @@ public sealed partial class MainPage
     {
         if (string.IsNullOrWhiteSpace(hash)) return false;
 
+        var repository = _viewModel.Repository;
         var row = await _viewModel.History.NavigateToCommitAsync(hash);
-        if (row is null) return false;
+        if (IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository) || row is null)
+            return false;
 
         HistoryList.SelectedItem = row;
         HistoryList.ScrollIntoView(row);
