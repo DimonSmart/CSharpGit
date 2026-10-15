@@ -8,6 +8,25 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage
 {
     private ContentDialog InteractiveRebaseDialog => GetPageDialog("InteractiveRebaseDialog");
+    private readonly SemaphoreSlim _pageDialogGate = new(1, 1);
+    private readonly CancellationTokenSource _pageDialogLifetime = new();
+
+    private async Task<ContentDialogResult> ShowPageDialogAsync(ContentDialog dialog)
+    {
+        await _pageDialogGate.WaitAsync(_pageDialogLifetime.Token);
+        try
+        {
+            if (IsShuttingDown || XamlRoot is null)
+                return ContentDialogResult.None;
+
+            dialog.XamlRoot = XamlRoot;
+            return await dialog.ShowAsync();
+        }
+        finally
+        {
+            _pageDialogGate.Release();
+        }
+    }
 
 
 

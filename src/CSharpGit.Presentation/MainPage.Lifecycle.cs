@@ -35,6 +35,7 @@ public sealed partial class MainPage
     public Task PrepareForShutdown()
     {
         if (Interlocked.Exchange(ref _shutdownStarted, 1) != 0) return Task.CompletedTask;
+        _pageDialogLifetime.Cancel();
         return StopHistoryPerformanceCaptureOnShutdown();
     }
 
@@ -42,6 +43,7 @@ public sealed partial class MainPage
     {
         if (Interlocked.Exchange(ref _shutdownFinalized, 1) != 0) return;
         Volatile.Write(ref _shutdownStarted, 1);
+        _pageDialogLifetime.Cancel();
         _cloneRepositoryViewModel.Cancel();
         Loaded -= RunDesktopCheckWhenRequested;
         _viewModel.WorkingTree.Changes.CollectionChanged -= RepositoryPresentationChanges_CollectionChanged;
