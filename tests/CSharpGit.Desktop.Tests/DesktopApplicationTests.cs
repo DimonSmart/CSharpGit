@@ -282,6 +282,24 @@ public sealed class DesktopApplicationTests
             using (var d = await CommandAsync("SetDraft\t"))
                 Assert.Equal(string.Empty, d.RootElement.GetProperty("Draft").GetString());
 
+            using (var d = await CommandAsync("FailBeforeMutation"))
+            {
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+                Assert.Contains("Injected pre-mutation failure", d.RootElement.GetProperty("Error").GetString());
+                Assert.False(d.RootElement.GetProperty("IsBusy").GetBoolean());
+            }
+            using (var d = await CommandAsync("FailAfterSuccessfulMutation"))
+            {
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+                Assert.Contains("The Git operation completed", d.RootElement.GetProperty("Error").GetString());
+                Assert.Contains("Injected post-mutation hook failure", d.RootElement.GetProperty("Error").GetString());
+                Assert.False(d.RootElement.GetProperty("IsBusy").GetBoolean());
+            }
+            using (var d = await CommandAsync("RetryMutation"))
+            {
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+                Assert.True(d.RootElement.GetProperty("CanChangeRepository").GetBoolean());
+            }
             using (var d = await CommandAsync("FailMutation"))
             {
                 Assert.False(d.RootElement.GetProperty("Success").GetBoolean());
