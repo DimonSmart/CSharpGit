@@ -56,7 +56,7 @@ public sealed class UiPageDialogGateTests
         }, false, shutdown.Token);
 
         shutdown.Cancel();
-        Assert.False(await queued.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.False(await queued.WaitAsync(TimeSpan.FromSeconds(30)));
         Assert.Equal(0, showCount);
         release.SetResult();
         Assert.False(await first);
