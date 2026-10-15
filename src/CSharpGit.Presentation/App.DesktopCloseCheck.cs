@@ -269,20 +269,24 @@ public sealed partial class App
             else if (command.StartsWith("ReadFailureAfterAssignment\t", StringComparison.Ordinal))
             {
                 var target = command["ReadFailureAfterAssignment\t".Length..];
-                var pointerPath = Path.Combine(target, ".git");
-                var originalPointer = File.ReadAllText(pointerPath);
-                var corruptPointer = $"gitdir: {Path.Combine(target, "missing-gitdir-for-lifecycle-test")}\n";
-                PropertyChangedEventHandler handler = null!;
+                var previousGitDirectory = Environment.GetEnvironmentVariable("GIT_DIR");
+                var invalidGitDirectory = Path.Combine(target, "missing-gitdir-for-lifecycle-test");
                 var injected = false;
-                handler = (_, args) =>
+                PropertyChangedEventHandler handler = (_, args) =>
                 {
-                    if (args.PropertyName != nameof(OpenRepositoryViewModel.Repository)
-                        || !string.Equals(vm.Repository?.WorkingDirectory, target,
+                    if (args.PropertyName != nameof(OpenRepositoryViewModel.Repository)) return;
+
+                    if (!injected && string.Equals(vm.Repository?.WorkingDirectory, target,
                             OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
-                        return;
-                    vm.PropertyChanged -= handler;
-                    File.WriteAllText(pointerPath, corruptPointer);
-                    injected = true;
+                    {
+                        Environment.SetEnvironmentVariable("GIT_DIR", invalidGitDirectory);
+                        injected = true;
+                    }
+                    else if (injected)
+                    {
+                        // Restore before attempting A's mandatory rollback read.
+                        Environment.SetEnvironmentVariable("GIT_DIR", previousGitDirectory);
+                    }
                 };
                 vm.PropertyChanged += handler;
                 bool opened;
@@ -290,7 +294,7 @@ public sealed partial class App
                 finally
                 {
                     vm.PropertyChanged -= handler;
-                    File.WriteAllText(pointerPath, originalPointer);
+                    Environment.SetEnvironmentVariable("GIT_DIR", previousGitDirectory);
                 }
                 await RespondAsync(!opened && injected);
             }
