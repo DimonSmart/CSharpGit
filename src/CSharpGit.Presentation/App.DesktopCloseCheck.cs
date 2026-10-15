@@ -92,6 +92,7 @@ public sealed partial class App
                 HistoryCount = vm.History.Rows.Count,
                 Draft = vm.CommitCreation.CommitMessage,
                 UnsafeToClose = page.IsUnsafeToClose,
+                IsBusy = vm.IsBusy,
                 Error = vm.ErrorMessage
             });
             return writer.WriteLineAsync(response.AsMemory(), token).AsTask();
@@ -135,6 +136,24 @@ public sealed partial class App
                 if (TryBeginNormalShutdown(page))
                     throw new InvalidOperationException("Close was accepted during a protected mutation.");
                 await RespondAsync(true);
+            }
+            else if (command == "ThrowCompletedHandler")
+            {
+                Action<CSharpGit.Domain.Repository> thrower = _ =>
+                    throw new InvalidOperationException("Lifecycle subscriber failure");
+                vm.RepositoryStateRefreshCompleted += thrower;
+                var reported = false;
+                try
+                {
+                    await vm.RefreshAsyncForDesktopCheck();
+                }
+                catch (InvalidOperationException exception) when (
+                    exception.Message == "Lifecycle subscriber failure")
+                {
+                    reported = true;
+                }
+                finally { vm.RepositoryStateRefreshCompleted -= thrower; }
+                await RespondAsync(reported && !vm.IsBusy);
             }
             else if (command == "CompleteMutation")
             {

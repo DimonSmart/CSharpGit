@@ -192,6 +192,12 @@ public sealed class DesktopApplicationTests
             using (var d = await CommandAsync("Switch\t" + original))
                 AssertOpened(d.RootElement, original, false);
 
+            using (var d = await CommandAsync("ThrowCompletedHandler"))
+            {
+                Assert.True(d.RootElement.GetProperty("Success").GetBoolean());
+                Assert.False(d.RootElement.GetProperty("IsBusy").GetBoolean());
+            }
+
             using (var d = await CommandAsync("BeginMutation"))
                 Assert.True(d.RootElement.GetProperty("UnsafeToClose").GetBoolean());
             using (var d = await CommandAsync("AttemptCloseDuringMutation"))
