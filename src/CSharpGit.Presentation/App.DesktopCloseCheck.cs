@@ -362,6 +362,51 @@ public sealed partial class App
                 catch (OperationCanceledException) { cancelled = true; }
                 await RespondAsync(cancelled);
             }
+            else if (command.StartsWith("VerifyCloneCloseSafety\t", StringComparison.Ordinal))
+            {
+                var source = vm.Repository?.WorkingDirectory
+                    ?? throw new InvalidOperationException("A source Git repository is required.");
+                var target = command["VerifyCloneCloseSafety\t".Length..];
+                var clone = page.DesktopCloneForCheck;
+                clone.Reset();
+                clone.RepositoryUrl = source;
+                clone.LocalDirectory = target;
+                var busyObserved = false;
+                var closeRejected = false;
+                PropertyChangedEventHandler observer = (_, args) =>
+                {
+                    if (args.PropertyName != nameof(CloneRepositoryViewModel.IsBusy) || !clone.IsBusy) return;
+                    busyObserved = true;
+                    closeRejected = page.IsUnsafeToClose && !TryBeginNormalShutdown(page);
+                };
+                clone.PropertyChanged += observer;
+                bool succeeded;
+                try { succeeded = await clone.CloneAsync(token); }
+                finally { clone.PropertyChanged -= observer; }
+                await RespondAsync(succeeded && busyObserved && closeRejected
+                    && !page.IsUnsafeToClose && !clone.IsBusy && Directory.Exists(Path.Combine(target, ".git")));
+            }
+            else if (command.StartsWith("VerifyCreateCloseSafety\t", StringComparison.Ordinal))
+            {
+                var target = command["VerifyCreateCloseSafety\t".Length..];
+                var create = page.DesktopCreateForCheck;
+                create.Reset();
+                create.Directory = target;
+                var busyObserved = false;
+                var closeRejected = false;
+                PropertyChangedEventHandler observer = (_, args) =>
+                {
+                    if (args.PropertyName != nameof(CreateRepositoryViewModel.IsBusy) || !create.IsBusy) return;
+                    busyObserved = true;
+                    closeRejected = page.IsUnsafeToClose && !TryBeginNormalShutdown(page);
+                };
+                create.PropertyChanged += observer;
+                bool succeeded;
+                try { succeeded = await create.CreateAsync(token); }
+                finally { create.PropertyChanged -= observer; }
+                await RespondAsync(succeeded && busyObserved && closeRejected
+                    && !page.IsUnsafeToClose && !create.IsBusy && Directory.Exists(Path.Combine(target, ".git")));
+            }
             else if (command == "RetryMutation")
             {
                 await RespondAsync(await vm.RunMutationAsync(() => Task.CompletedTask));
