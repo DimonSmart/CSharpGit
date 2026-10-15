@@ -25,7 +25,7 @@ internal static class UiBoundedTaskWait
             await operation.WaitAsync(budget);
             return UiBoundedWaitOutcome.Completed;
         }
-        catch (TimeoutException exception)
+        catch (TimeoutException exception) when (!operation.IsCompleted)
         {
             SafeReport(reportFailure, exception);
             // The writer may complete or fail after this UI no longer exists.

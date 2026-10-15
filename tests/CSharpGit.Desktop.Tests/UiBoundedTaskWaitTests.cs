@@ -60,6 +60,17 @@ public sealed class UiBoundedTaskWaitTests
     }
 
     [Fact]
+    public async Task WriterThrowingItsOwnTimeoutIsReportedAsFaultNotBudgetExpiration()
+    {
+        var original = new TimeoutException("writer timed out internally");
+        var reported = new List<Exception>();
+        var outcome = await UiBoundedTaskWait.WaitAsync(
+            Task.FromException(original), TimeSpan.FromSeconds(2), reported.Add);
+        Assert.Equal(UiBoundedWaitOutcome.Faulted, outcome);
+        Assert.Same(original, Assert.Single(reported));
+    }
+
+    [Fact]
     public async Task ErrorReporterFailureCannotPreventShutdown()
     {
         var fault = new InvalidOperationException("writer");
