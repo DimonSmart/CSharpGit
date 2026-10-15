@@ -62,10 +62,18 @@ internal sealed record HistoryPerformanceStartContext(
     double WindowHeight,
     double? RasterizationScale);
 
+internal enum HistoryPerformanceCaptureOutcome
+{
+    Success,
+    Partial,
+    Failed
+}
+
 internal readonly record struct HistoryPerformanceCaptureFiles(
     string JsonlPath,
     string SummaryPath,
-    HistoryPerformanceStopReason StopReason);
+    HistoryPerformanceStopReason StopReason,
+    HistoryPerformanceCaptureOutcome Outcome);
 
 internal readonly record struct HistorySlowOperation(
     long ElapsedTicks,
@@ -218,7 +226,8 @@ internal sealed partial class HistoryPerformanceSession
     private long _lastViewChangedTimestamp;
     private long _maxViewChangedIntervalTicks;
     private int _slowOperationCount;
-    private int _stopped;
+    private readonly object _stopGate = new();
+    private Task<HistoryPerformanceCaptureFiles>? _stopTask;
     private Exception? _writerFailure;
 
     internal long GraphControlsCreated;
@@ -698,58 +707,94 @@ internal sealed partial class HistoryPerformanceSession
             historyItems);
     }
 
-    internal async Task<HistoryPerformanceCaptureFiles> StopAsync(
+    internal Task<HistoryPerformanceCaptureFiles> StopAsync(HistoryPerformanceStopReason reason)
+    {
+        lock (_stopGate)
+        {
+            // First accepted stop reason wins; all callers observe the same completion.
+            return _stopTask ??= StopCoreAsync(reason);
+        }
+    }
+
+    private async Task<HistoryPerformanceCaptureFiles> StopCoreAsync(
         HistoryPerformanceStopReason reason)
     {
-        if (Interlocked.Exchange(ref _stopped, 1) != 0)
-            return new HistoryPerformanceCaptureFiles(JsonlPath, SummaryPath, reason);
-
-        _snapshotCts.Cancel();
-        if (_snapshotTask is not null)
+        Exception? stopFailure = null;
+        try
         {
-            try { await _snapshotTask.ConfigureAwait(false); }
-            catch (OperationCanceledException) { }
-        }
-
-        var slowCount = Math.Min(Volatile.Read(ref _slowOperationCount), _slowOperations.Length);
-        for (var index = 0; index < slowCount; index++)
-        {
-            var item = _slowOperations[index];
-            var durationMs = HistoryAtomicDurationHistogram.TicksToMilliseconds(item.DurationTicks);
-            await WriteRequiredAsync(Serialize(new Dictionary<string, object?>
+            _snapshotCts.Cancel();
+            if (_snapshotTask is not null)
             {
-                ["schemaVersion"] = 1,
-                ["type"] = "slowOperation",
-                ["elapsedMs"] = HistoryAtomicDurationHistogram.TicksToMilliseconds(item.ElapsedTicks),
-                ["operation"] = item.Operation,
-                ["durationMs"] = durationMs,
-                ["severity"] = durationMs >= 50 ? "critical" : durationMs >= 16 ? "verySlow" : "slow",
-                ["laneCount"] = item.LaneCount == 0 ? null : item.LaneCount,
-                ["reason"] = item.Reason,
-                ["historyItems"] = item.HistoryItems
-            })).ConfigureAwait(false);
+                try { await _snapshotTask.ConfigureAwait(false); }
+                catch (OperationCanceledException) when (_snapshotCts.IsCancellationRequested) { }
+            }
+
+            var slowCount = Math.Min(Volatile.Read(ref _slowOperationCount), _slowOperations.Length);
+            for (var index = 0; index < slowCount; index++)
+            {
+                var item = _slowOperations[index];
+                var durationMs = HistoryAtomicDurationHistogram.TicksToMilliseconds(item.DurationTicks);
+                await WriteRequiredAsync(Serialize(new Dictionary<string, object?>
+                {
+                    ["schemaVersion"] = 1,
+                    ["type"] = "slowOperation",
+                    ["elapsedMs"] = HistoryAtomicDurationHistogram.TicksToMilliseconds(item.ElapsedTicks),
+                    ["operation"] = item.Operation,
+                    ["durationMs"] = durationMs,
+                    ["severity"] = durationMs >= 50 ? "critical" : durationMs >= 16 ? "verySlow" : "slow",
+                    ["laneCount"] = item.LaneCount == 0 ? null : item.LaneCount,
+                    ["reason"] = item.Reason,
+                    ["historyItems"] = item.HistoryItems
+                })).ConfigureAwait(false);
+            }
+
+            // This must be the final JSONL record after a successful writer flush.
+            await WriteRequiredAsync(Serialize(CreateSummaryRecord(reason))).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            stopFailure = exception;
+            Trace.TraceError($"History performance capture stop failed: {exception}");
+        }
+        finally
+        {
+            // Always unblock the writer, even when snapshot collection or serialization fails.
+            _writerChannel.Writer.TryComplete();
         }
 
-        var summaryRecord = CreateSummaryRecord(reason);
-        await WriteRequiredAsync(Serialize(summaryRecord)).ConfigureAwait(false);
-        _writerChannel.Writer.TryComplete();
         try { await _writerTask.ConfigureAwait(false); }
-        catch { }
+        catch (Exception exception)
+        {
+            _writerFailure ??= exception;
+            Trace.TraceError($"History performance capture writer failed: {exception}");
+        }
 
+        var writerSucceeded = stopFailure is null
+            && _writerFailure is null
+            && Volatile.Read(ref DroppedDiagnosticRecords) == 0;
+        var summarySucceeded = false;
         try
         {
             await File.WriteAllTextAsync(
-                    SummaryPath,
-                    CreateTextSummary(reason),
-                    Encoding.UTF8)
-                .ConfigureAwait(false);
+                SummaryPath,
+                CreateTextSummary(reason),
+                Encoding.UTF8).ConfigureAwait(false);
+            summarySucceeded = true;
         }
-        catch
+        catch (Exception exception)
         {
-            // Diagnostics must never take down the application.
+            Trace.TraceError($"History performance capture summary write failed: {exception}");
         }
 
-        return new HistoryPerformanceCaptureFiles(JsonlPath, SummaryPath, reason);
+        var outcome = writerSucceeded && summarySucceeded
+            ? HistoryPerformanceCaptureOutcome.Success
+            : writerSucceeded || summarySucceeded
+                ? HistoryPerformanceCaptureOutcome.Partial
+                : HistoryPerformanceCaptureOutcome.Failed;
+        if (outcome != HistoryPerformanceCaptureOutcome.Success)
+            Trace.TraceError($"History performance capture incomplete: {outcome}; recordsDropped={Volatile.Read(ref DroppedDiagnosticRecords)}; writerFailed={_writerFailure is not null}.");
+
+        return new HistoryPerformanceCaptureFiles(JsonlPath, SummaryPath, reason, outcome);
     }
 
     private async Task SnapshotLoopAsync()
@@ -1272,6 +1317,7 @@ internal sealed partial class HistoryPerformanceSession
         catch (Exception exception)
         {
             _writerFailure = exception;
+            Trace.TraceError($"History performance writer fault: {exception}");
             _writerReady.TrySetException(exception);
             _writerChannel.Writer.TryComplete(exception);
         }
@@ -1379,11 +1425,19 @@ internal static class HistoryPerformanceDiagnostics
 {
     private static readonly object SessionGate = new();
     private static HistoryPerformanceSession? _activeSession;
+    private static Task<HistoryPerformanceCaptureFiles?>? _stopTask;
     private static IGitCommandActivitySource? _gitActivitySource;
     private static IAuthorAvatarDiagnosticSource? _avatarDiagnosticSource;
 
     internal static HistoryPerformanceSession? ActiveSession => Volatile.Read(ref _activeSession);
     internal static bool IsCaptureActive => ActiveSession is not null;
+    internal static bool IsCaptureBusy
+    {
+        get
+        {
+            lock (SessionGate) return _activeSession is not null || _stopTask is not null;
+        }
+    }
 
     internal static string DiagnosticsDirectory
     {
@@ -1407,7 +1461,7 @@ internal static class HistoryPerformanceDiagnostics
         HistoryPerformanceSession session;
         lock (SessionGate)
         {
-            if (_activeSession is not null) return false;
+            if (_activeSession is not null || _stopTask is not null) return false;
             session = new HistoryPerformanceSession(context, DiagnosticsDirectory);
             Volatile.Write(ref _activeSession, session);
         }
@@ -1443,26 +1497,43 @@ internal static class HistoryPerformanceDiagnostics
         }
     }
 
-    internal static async Task<HistoryPerformanceCaptureFiles?> StopAsync(
+    internal static Task<HistoryPerformanceCaptureFiles?> StopAsync(
         HistoryPerformanceStopReason reason)
     {
-        HistoryPerformanceSession? session;
         lock (SessionGate)
         {
-            session = _activeSession;
-            if (session is null) return null;
+            if (_stopTask is not null) return _stopTask;
+
+            var session = _activeSession;
+            if (session is null) return Task.FromResult<HistoryPerformanceCaptureFiles?>(null);
             Volatile.Write(ref _activeSession, null);
+
+            // Subscription cleanup is immediate and must remain on the UI thread.
+            CompositionTarget.Rendering -= CompositionTarget_Rendering;
+            if (_gitActivitySource is { } source)
+                source.Changed -= GitActivitySource_Changed;
+            _gitActivitySource = null;
+            if (_avatarDiagnosticSource is { } avatarSource)
+                avatarSource.DiagnosticActivity -= AvatarDiagnosticSource_DiagnosticActivity;
+            _avatarDiagnosticSource = null;
+
+            return _stopTask = CompleteStopAsync(session, reason);
         }
+    }
 
-        CompositionTarget.Rendering -= CompositionTarget_Rendering;
-        if (_gitActivitySource is { } source)
-            source.Changed -= GitActivitySource_Changed;
-        _gitActivitySource = null;
-        if (_avatarDiagnosticSource is { } avatarSource)
-            avatarSource.DiagnosticActivity -= AvatarDiagnosticSource_DiagnosticActivity;
-        _avatarDiagnosticSource = null;
-
-        return await session.StopAsync(reason).ConfigureAwait(false);
+    private static async Task<HistoryPerformanceCaptureFiles?> CompleteStopAsync(
+        HistoryPerformanceSession session,
+        HistoryPerformanceStopReason reason)
+    {
+        try
+        {
+            return await session.StopAsync(reason).ConfigureAwait(false);
+        }
+        finally
+        {
+            lock (SessionGate)
+                _stopTask = null;
+        }
     }
 
     private static void CompositionTarget_Rendering(object? sender, object args) =>
