@@ -87,7 +87,7 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("ShowUnavailableRepositoryAsync", switching);
 
         Assert.Contains("e.Key == VirtualKey.O", page);
-        Assert.Contains("await OpenRepositoryPickerAsync();", page);
+        Assert.Contains("RunPageUiOperation(OpenRepositoryPickerAsync, \"Open repository shortcut\")", page);
     }
 
 
