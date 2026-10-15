@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
+using CSharpGit.Presentation.Threading;
 using Microsoft.Extensions.Logging;
 
 namespace CSharpGit.Presentation.ViewModels;
@@ -262,7 +263,7 @@ public sealed class CommitDetailsViewModel :
         NotifySelectionState();
 
         if (_isChangesViewActive && row is not null)
-            _ = EnsureChangedFilesLoadedAsync(debounce: true);
+            ObserveBackgroundLoad(() => EnsureChangedFilesLoadedAsync(debounce: true), "changed files");
     }
 
     public async Task ShowStashAsync(GitStash? stash)
@@ -330,16 +331,18 @@ public sealed class CommitDetailsViewModel :
             return;
         }
 
-        _ = _selectedStash is null
-            ? EnsureChangedFilesLoadedAsync(debounce: false)
-            : EnsureSelectedStashDetailsLoadedAsync();
+        ObserveBackgroundLoad(
+            () => _selectedStash is null
+                ? EnsureChangedFilesLoadedAsync(debounce: false)
+                : EnsureSelectedStashDetailsLoadedAsync(),
+            "selection details");
     }
 
     public void LoadSelectedDiffAnyway()
     {
         if (!_isChangesViewActive || SelectedFile is null || IsDiffLoading) return;
         ClearDiffPreviewDeferred();
-        _ = LoadSelectedDiffAsync(DiffLoadMode.Full);
+        ObserveBackgroundLoad(() => LoadSelectedDiffAsync(DiffLoadMode.Full), "full diff");
     }
 
     public void Invalidate() =>
@@ -384,7 +387,15 @@ public sealed class CommitDetailsViewModel :
     {
         if (!_isChangesViewActive || SelectedFile is not { } file) return;
         if (TryDeferLargeHistoricalDiff(file)) return;
-        _ = LoadSelectedDiffAsync(DiffLoadMode.Preview);
+        ObserveBackgroundLoad(() => LoadSelectedDiffAsync(DiffLoadMode.Preview), "diff preview");
+    }
+
+    private void ObserveBackgroundLoad(Func<Task> operation, string kind)
+    {
+        _ = UiAsyncOperationRunner.RunAsync(
+            operation,
+            exception => _logger.LogError(exception, "Commit-details {Kind} background operation failed.", kind),
+            () => Volatile.Read(ref _disposed) != 0);
     }
 
     private async Task EnsureChangedFilesLoadedAsync(bool debounce)
