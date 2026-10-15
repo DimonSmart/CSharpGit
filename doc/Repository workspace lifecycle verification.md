@@ -150,19 +150,19 @@ but structural inspection of those flags is not accepted as runtime proof
 by LIFE-06. For each of these workflows, perform the following on a
 temporary repository in a graphical Windows or macOS session:
 
-1. Start the real operation, with a sufficiently long-running fixture (large
-   local clone, create while awaiting completion, deliberately slow rebase,
-   maintenance job, or staged application update).
+1. Start the real operation, using a deliberately slow rebase,
+   maintenance job, or staged application update on a disposable repository.
 2. While the operation is active, request normal title-bar close and a switch
    to another repository. Confirm both are rejected where required, without
    terminating the Git process or losing commit drafts.
 3. Complete or cancel the operation and verify both normal close and a fresh
    valid operation work again. Review app logs for unobserved exceptions.
-4. Re-run the same check for an error path (invalid clone URL, failed create,
-   failed rewrite/maintenance, rejected update). Do not use a real user repo.
+4. Re-run for an error path (failed rewrite/maintenance or rejected update).
+   Clone/Create success and failure are covered by desktop smoke.
+   Do not use a real user repository.
 
-This manual verification has **not** been performed through the available
-desktop tool environment. It is a separately recorded acceptance gap, not
+The remaining History Rewrite/Maintenance/Update and native-dialog manual
+verification has **not** been performed through the available desktop environment. It is a separately recorded acceptance gap, not
 an implicitly passing test. Real dispatcher-queue rejection at shutdown is
 also not fault-injected directly; the implemented callback exception path
 and stale-session fences are tested instead.
