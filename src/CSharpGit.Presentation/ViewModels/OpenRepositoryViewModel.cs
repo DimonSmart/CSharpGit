@@ -21,6 +21,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private readonly AsyncCommand _openRepositoryCommand;
     private Repository? _repository;
     private RepositorySessionLifetime? _repositoryLifetime;
+    private RepositoryRefreshFlight? _repositoryRefreshFlight;
     private long _repositoryGeneration;
     private string? _errorMessage;
     private bool _isBusy;
@@ -188,6 +189,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             _repositoryLifetime = value is null || Volatile.Read(ref _disposed) != 0
                 ? null
                 : new RepositorySessionLifetime(Interlocked.Increment(ref _repositoryGeneration));
+            _repositoryRefreshFlight = _repositoryLifetime is null ? null : new RepositoryRefreshFlight();
             SetHeadPresentationState(null, null, false, string.Empty);
             _repository = value;
             History.OnRepositoryChanged(value);
@@ -478,59 +480,86 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     {
         var repository = Repository;
         var lifetime = _repositoryLifetime;
-        if (repository is null || lifetime is null || !lifetime.TryAcquire(out var sessionToken))
+        var flight = _repositoryRefreshFlight;
+        if (repository is null || lifetime is null || flight is null
+            || !lifetime.TryAcquire(out var sessionToken))
             return;
 
-        EnterBusy();
-        RepositoryStateRefreshStarting?.Invoke(repository);
+        // Each caller retains its session lease until the shared flight finishes,
+        // even if that individual caller stops waiting.
+        Task? task = null;
         try
         {
-            using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(
-                sessionToken, cancellationToken);
-            var stateRead = await _stateService.ReadWithWorkingTreeStatusAsync(
-                repository,
-                localOnly,
-                linkedCancellation.Token);
-            if (!IsCurrentSession(lifetime, repository)) return;
+            task = flight.RunAsync(
+                includeHistory,
+                async (historyRequested, publishIfCurrent) =>
+                {
+                    var read = await _stateService.ReadWithWorkingTreeStatusAsync(
+                        repository, localOnly, sessionToken);
+                    sessionToken.ThrowIfCancellationRequested();
 
-            var state = stateRead.State;
-            var workingTreeStatus = stateRead.WorkingTreeStatus;
-            _headExists = state.HeadCommit is not null;
-            var shortHead = state.HeadCommit is { } commit ? commit[..Math.Min(10, commit.Length)] : "no commit";
-            SetHeadPresentationState(
-                state.IsDetached ? null : state.HeadReference,
-                state.HeadCommit,
-                state.IsDetached,
-                state.IsDetached ? $"Detached HEAD: {shortHead}" : $"Current branch: {state.HeadReference}");
-            WorkingTree.ApplyRepositoryState(repository, state.Changes);
-            Branches.ApplyRepositoryState(
-                state.Refs.LocalBranches,
-                state.Refs.RemoteBranches);
-            RepositorySync.ApplyRepositoryState(state.Refs.Remotes);
-            Tags.ApplyRepositoryState(state.Refs.Tags);
-            Stashes.ApplyRepositoryState(state.Stashes);
-            RepositoryOperations.ApplyRepositoryState(
-                state.Operation,
-                state.CurrentOperation,
-                Branches.LocalBranches);
-            RepositorySync.RefreshAvailability();
-            if (includeHistory && IsCurrentSession(lifetime, repository))
-                await History.RefreshAsync();
+                    // One dispatcher continuation, no await between related fields
+                    // and the baseline. A pending refresh suppresses this whole pass.
+                    var published = publishIfCurrent(() =>
+                    {
+                        if (!IsCurrentSession(lifetime, repository)) return;
+                        var state = read.State;
+                        _headExists = state.HeadCommit is not null;
+                        var shortHead = state.HeadCommit is { } commit
+                            ? commit[..Math.Min(10, commit.Length)]
+                            : "no commit";
+                        SetHeadPresentationState(
+                            state.IsDetached ? null : state.HeadReference,
+                            state.HeadCommit,
+                            state.IsDetached,
+                            state.IsDetached
+                                ? $"Detached HEAD: {shortHead}"
+                                : $"Current branch: {state.HeadReference}");
+                        WorkingTree.ApplyRepositoryState(repository, state.Changes);
+                        Branches.ApplyRepositoryState(state.Refs.LocalBranches, state.Refs.RemoteBranches);
+                        RepositorySync.ApplyRepositoryState(state.Refs.Remotes);
+                        Tags.ApplyRepositoryState(state.Refs.Tags);
+                        Stashes.ApplyRepositoryState(state.Stashes);
+                        RepositoryOperations.ApplyRepositoryState(
+                            state.Operation, state.CurrentOperation, Branches.LocalBranches);
+                        RepositorySync.RefreshAvailability();
+                        PublishDisplayedWorkingTreeBaseline(read.WorkingTreeStatus);
+                    });
 
-            if (IsCurrentSession(lifetime, repository))
-                PublishDisplayedWorkingTreeBaseline(workingTreeStatus);
+                    if (published && historyRequested && IsCurrentSession(lifetime, repository))
+                        await History.RefreshAsync();
+                },
+                () =>
+                {
+                    EnterBusy();
+                    if (IsCurrentSession(lifetime, repository))
+                        RepositoryStateRefreshStarting?.Invoke(repository);
+                },
+                () =>
+                {
+                    if (IsCurrentSession(lifetime, repository))
+                        RepositoryStateRefreshCompleted?.Invoke(repository);
+                    if (Volatile.Read(ref _disposed) == 0)
+                        ExitBusy();
+                });
+
+            _ = task.ContinueWith(
+                static (_, state) => ((RepositorySessionLifetime)state!).Release(),
+                lifetime,
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+            await task.WaitAsync(cancellationToken);
         }
-        catch (OperationCanceledException) when (sessionToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (
+            sessionToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
-            // Repository switch or application shutdown owns this cancellation.
+            // Stale repository sessions are intentionally discarded.
         }
         finally
         {
-            if (IsCurrentSession(lifetime, repository))
-                RepositoryStateRefreshCompleted?.Invoke(repository);
-            lifetime.Release();
-            if (Volatile.Read(ref _disposed) == 0)
-                ExitBusy();
+            // RunAsync can only fail before creating a task on invalid callbacks.
+            if (task is null) lifetime.Release();
         }
     }
 
