@@ -316,6 +316,23 @@ public sealed partial class App
                 finally { vm.PropertyChanged -= handler; }
                 await RespondAsync(cancelled);
             }
+            else if (command == "FailBeforeMutation")
+            {
+                var executed = 0;
+                var result = await vm.RunMutationAsync(
+                    () => { executed++; return Task.CompletedTask; },
+                    beforeMutation: () => throw new IOException("Injected pre-mutation failure"));
+                await RespondAsync(!result && executed == 0 && vm.CanChangeRepository);
+            }
+            else if (command == "FailAfterSuccessfulMutation")
+            {
+                var executed = 0;
+                var result = await vm.RunMutationAsync(
+                    () => { executed++; return Task.CompletedTask; },
+                    afterSuccessfulMutation: () =>
+                        throw new IOException("Injected post-mutation hook failure"));
+                await RespondAsync(!result && executed == 1 && vm.CanChangeRepository);
+            }
             else if (command == "FailMutation")
             {
                 await RespondAsync(await vm.RunMutationAsync(() =>
