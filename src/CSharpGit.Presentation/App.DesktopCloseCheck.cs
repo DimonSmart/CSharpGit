@@ -155,6 +155,26 @@ public sealed partial class App
                 finally { vm.RepositoryStateRefreshCompleted -= thrower; }
                 await RespondAsync(reported && !vm.IsBusy);
             }
+            else if (command.StartsWith("AttemptSwitchDuringMutation\t", StringComparison.Ordinal))
+            {
+                var attempted = await vm.OpenRepositoryPathAsync(
+                    command["AttemptSwitchDuringMutation\t".Length..], token);
+                await RespondAsync(!attempted && vm.IsMutating);
+            }
+            else if (command == "AttemptCloseRepositoryDuringMutation")
+            {
+                await RespondAsync(!vm.CloseRepository() && vm.IsMutating);
+            }
+            else if (command == "AttemptSecondMutation")
+            {
+                var attempted = await vm.RunMutationAsync(
+                    () => throw new InvalidOperationException("Rejected mutation must not execute."));
+                await RespondAsync(!attempted && vm.IsMutating);
+            }
+            else if (command == "RetryMutation")
+            {
+                await RespondAsync(await vm.RunMutationAsync(() => Task.CompletedTask));
+            }
             else if (command == "CompleteMutation")
             {
                 if (mutation is null || release is null)
