@@ -226,17 +226,12 @@ public sealed partial class MainPage
             showResult: false);
     }
 
-    private void StopHistoryPerformanceCaptureOnShutdown()
+    private Task StopHistoryPerformanceCaptureOnShutdown()
     {
-        if (!HistoryPerformanceDiagnostics.IsCaptureActive)
-            return;
-
+        if (!HistoryPerformanceDiagnostics.IsCaptureBusy) return Task.CompletedTask;
         DetachHistoryPerformanceSubscriptions();
         StopHistoryPerformanceTimers();
-        HistoryPerformanceDiagnostics
-            .StopAsync(HistoryPerformanceStopReason.ApplicationShutdown)
-            .GetAwaiter()
-            .GetResult();
+        return HistoryPerformanceDiagnostics.StopAsync(HistoryPerformanceStopReason.ApplicationShutdown);
     }
 
     private void UpdateHistoryRenderingMode()
@@ -264,9 +259,10 @@ public sealed partial class MainPage
 
         var enabled = _recentRepositorySettings.HistoryPerformanceDiagnosticsEnabled;
         var active = HistoryPerformanceDiagnostics.IsCaptureActive;
+        var busy = HistoryPerformanceDiagnostics.IsCaptureBusy;
         HistoryPerformanceControls.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         StartHistoryPerformanceCaptureMenuItem.IsEnabled =
-            enabled && !active && _viewModel.Repository is not null;
+            enabled && !busy && !IsShuttingDown && _viewModel.Repository is not null;
         StopHistoryPerformanceCaptureMenuItem.IsEnabled = enabled && active;
         OpenHistoryPerformanceDiagnosticsFolderMenuItem.IsEnabled = enabled;
         UpdateHistoryPerformanceStatus();

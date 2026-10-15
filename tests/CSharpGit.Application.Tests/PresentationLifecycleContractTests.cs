@@ -111,6 +111,19 @@ public sealed class PresentationLifecycleContractTests
         Assert.True(restartFenceIndex > finallyIndex);
     }
 
+    [Fact]
+    public void AsyncShutdownIsBoundedAndIdempotent()
+    {
+        var presentation = Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation");
+        var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
+        var lifecycle = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
+        var perf = File.ReadAllText(Path.Combine(presentation, "MainPage.HistoryPerformanceDiagnostics.cs"));
+        Assert.Contains("await stopTask.WaitAsync(DiagnosticsShutdownBudget)", app, StringComparison.Ordinal);
+        Assert.Contains("if (_finalCloseAuthorized) return true;", app, StringComparison.Ordinal);
+        Assert.Contains("Interlocked.Exchange(ref _shutdownFinalized, 1)", lifecycle, StringComparison.Ordinal);
+        Assert.DoesNotContain(".GetAwaiter()\n            .GetResult()", perf, StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

@@ -25,6 +25,8 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     private bool _closeConfirmed;
     private bool _closeConfirmationInProgress;
     private bool _shutdownRequested;
+    private bool _finalCloseAuthorized;
+    private static readonly TimeSpan DiagnosticsShutdownBudget = TimeSpan.FromSeconds(3);
     private bool _closeCheckStarted;
     private int _hostStopped;
 
@@ -142,6 +144,17 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
+        try { await LaunchCoreAsync(args); }
+        catch (Exception exception)
+        {
+            LogUiFailure(exception, "Application startup");
+            try { _window?.Close(); }
+            catch (Exception closeFailure) { LogUiFailure(closeFailure, "Failed startup cleanup"); }
+        }
+    }
+
+    private async Task LaunchCoreAsync(LaunchActivatedEventArgs args)
+    {
         _sessionFileLoggerProvider.WriteDirect(
             "CSharpGit.Startup",
             "ApplicationLaunching",
@@ -190,24 +203,25 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     private bool TryBeginNormalShutdown(MainPage? page)
     {
         ReportDesktopCloseCheck("Closing");
+        if (_finalCloseAuthorized) return true;
+        if (_shutdownRequested || _closeConfirmationInProgress) return false;
         if (page?.IsUnsafeToClose == true)
         {
             ReportDesktopCloseCheck("CloseCanceled: protected operation is active");
             return false;
         }
 
-        if (_closeConfirmed || page is null || !page.RequiresCloseConfirmation)
+        if (!_closeConfirmed && page is not null && page.RequiresCloseConfirmation)
         {
-            BeginShutdown(page);
-            return true;
+            ReportDesktopCloseCheck("CloseCanceled: commit draft requires confirmation");
+            _closeConfirmationInProgress = true;
+            _ = UiAsyncOperationRunner.RunAsync(
+                () => ConfirmAndCloseAsync(page),
+                exception => LogUiFailure(exception, "Close confirmation"));
+            return false;
         }
 
-        ReportDesktopCloseCheck("CloseCanceled: commit draft requires confirmation");
-        if (!_closeConfirmationInProgress)
-        {
-            _closeConfirmationInProgress = true;
-            _ = ConfirmAndCloseAsync(page);
-        }
+        BeginShutdown(page);
         return false;
     }
 
@@ -272,17 +286,13 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         try
         {
             if (!await page.ConfirmCloseAsync()) return;
-            // A protected operation might have started while the dialog was open.
             if (_shutdownRequested || !ReferenceEquals(_window?.Content, page) || page.IsUnsafeToClose)
                 return;
             _closeConfirmed = true;
             BeginShutdown(page);
-            _window?.Close();
         }
-        finally
-        {
-            _closeConfirmationInProgress = false;
-        }
+        catch (Exception exception) { LogUiFailure(exception, "Close confirmation"); }
+        finally { _closeConfirmationInProgress = false; }
     }
 
     private void BeginShutdown(MainPage? page)
@@ -290,20 +300,59 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         if (_shutdownRequested) return;
         _shutdownRequested = true;
         ReportDesktopCloseCheck("CloseAccepted");
-        if (page is not null)
-            page.WindowTitleChanged -= MainPage_WindowTitleChanged;
-        page?.BeginShutdown();
-        ReportDesktopCloseCheck("PageShutdownCompleted");
+        _ = UiAsyncOperationRunner.RunAsync(
+            () => FinalizeWindowShutdownAsync(page),
+            exception => LogUiFailure(exception, "Window shutdown"));
+    }
+
+    private async Task FinalizeWindowShutdownAsync(MainPage? page)
+    {
+        try
+        {
+            if (page is not null)
+            {
+                var stopTask = page.PrepareForShutdown();
+                try { await stopTask.WaitAsync(DiagnosticsShutdownBudget); }
+                catch (TimeoutException)
+                {
+                    LogUiFailure(new TimeoutException("History diagnostics exceeded shutdown budget."),
+                        "History diagnostics shutdown timeout");
+                    _ = UiAsyncOperationRunner.RunAsync(
+                        () => stopTask,
+                        exception => LogUiFailure(exception, "Late history diagnostics shutdown"));
+                }
+                catch (Exception exception) { LogUiFailure(exception, "History diagnostics shutdown"); }
+
+                page.WindowTitleChanged -= MainPage_WindowTitleChanged;
+                page.BeginShutdown();
+                ReportDesktopCloseCheck("PageShutdownCompleted");
+            }
+        }
+        catch (Exception exception) { LogUiFailure(exception, "Final window cleanup"); }
+        finally
+        {
+            _finalCloseAuthorized = true;
+            try
+            {
+                var window = _window;
+                if (window is not null)
+                {
+                    if (window.DispatcherQueue.HasThreadAccess) window.Close();
+                    else if (!window.DispatcherQueue.TryEnqueue(window.Close))
+                        LogUiFailure(new InvalidOperationException("Window dispatcher rejected final close."), "Final window close");
+                }
+            }
+            catch (Exception exception) { LogUiFailure(exception, "Final window close"); }
+        }
     }
 
     internal void CompleteApplicationUpdateRestart(MainPage page)
     {
         ArgumentNullException.ThrowIfNull(page);
-        if (_shutdownRequested) return;
-
+        if (_shutdownRequested || !ReferenceEquals(_window?.Content, page) || page.IsUnsafeToClose)
+            return;
         _closeConfirmed = true;
         BeginShutdown(page);
-        page.DispatcherQueue.TryEnqueue(() => _window?.Close());
     }
 
     internal void StopHost()
