@@ -36,8 +36,12 @@ public sealed partial class MainPage
             _historyScrollViewer.ViewChanged += HistoryScrollViewer_ViewChanged;
     }
 
-    private async void HistoryScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
+    private void HistoryScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e) =>
+        RunPageUiOperation(() => HistoryScrollViewer_ViewChangedCoreAsync(sender, e), "HistoryScrollViewer_ViewChanged");
+
+    private async Task HistoryScrollViewer_ViewChangedCoreAsync(object? sender, ScrollViewerViewChangedEventArgs e)
     {
+        if (IsShuttingDown) return;
         HistoryRenderDiagnostics.HistoryViewChanged(Stopwatch.GetTimestamp(), e.IsIntermediate);
         if (sender is not ScrollViewer scrollViewer
             || _isInfiniteHistoryLoading
