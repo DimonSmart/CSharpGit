@@ -736,7 +736,11 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
                 if (!_imageLoadsInProgress.Add(item.Path)) continue;
             }
 
-            _ = LoadImageAsync(item, cancellationToken);
+            _ = CSharpGit.Presentation.Threading.UiAsyncOperationRunner.RunAsync(
+                () => LoadImageAsync(item, cancellationToken),
+                exception => System.Diagnostics.Trace.TraceError(
+                    "Recent repository image callback failed: {0}", exception.GetType().Name),
+                () => _disposed || cancellationToken.IsCancellationRequested);
         }
     }
 
@@ -762,13 +766,13 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
             item.NeedsImageRefresh = false;
             item.SetRepositoryVisual(resolved);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (_disposed || cancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception exception)
         {
-            System.Diagnostics.Debug.WriteLine(
-                $"Could not resolve repository image for '{item.Path}': {exception}");
+            System.Diagnostics.Trace.TraceWarning(
+                "Could not resolve recent repository image: {0}", exception.GetType().Name);
         }
         finally
         {
