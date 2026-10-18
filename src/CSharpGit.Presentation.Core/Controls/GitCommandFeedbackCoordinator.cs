@@ -39,7 +39,8 @@ internal sealed record GitCommandFeedbackSnapshot(
 internal sealed class GitCommandFeedbackCoordinator
 {
     internal const int ShowDelayMilliseconds = 150;
-    internal const int AutoCloseMilliseconds = 2000;
+    internal const int DefaultSuccessDurationSeconds = 5;
+    internal const int MaximumSuccessDurationSeconds = 30;
     internal const int MaximumPreviewBytes = 32 * 1024;
 
     private readonly object _gate = new();
@@ -51,6 +52,7 @@ internal sealed class GitCommandFeedbackCoordinator
     private GitCommandFeedbackOwner _owner;
     private bool _enabled;
     private bool _autoClose;
+    private int _successDurationSeconds = DefaultSuccessDurationSeconds;
     private bool _visible;
     private bool _dismissed;
     private bool _hovered;
@@ -59,7 +61,7 @@ internal sealed class GitCommandFeedbackCoordinator
     private bool _listedInConsole;
     private DateTimeOffset _showAt;
     private DateTimeOffset _lastCloseTick;
-    private TimeSpan _closeRemaining = TimeSpan.FromMilliseconds(AutoCloseMilliseconds);
+    private TimeSpan _closeRemaining = TimeSpan.FromSeconds(DefaultSuccessDurationSeconds);
 
     public GitCommandFeedbackCoordinator(IGitCommandActivitySource source, Func<DateTimeOffset>? clock = null)
     {
@@ -67,8 +69,10 @@ internal sealed class GitCommandFeedbackCoordinator
         _clock = clock ?? (() => DateTimeOffset.UtcNow);
     }
 
-    public void Configure(bool enabled, bool autoClose)
+    public void Configure(bool enabled, bool autoClose, int successDurationSeconds = DefaultSuccessDurationSeconds)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(successDurationSeconds);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(successDurationSeconds, MaximumSuccessDurationSeconds);
         lock (_gate)
         {
             if (!enabled)
@@ -81,13 +85,14 @@ internal sealed class GitCommandFeedbackCoordinator
                 return;
             }
 
-            if (_autoClose != autoClose)
+            if (_autoClose != autoClose || _successDurationSeconds != successDurationSeconds)
             {
-                _closeRemaining = TimeSpan.FromMilliseconds(AutoCloseMilliseconds);
+                _closeRemaining = TimeSpan.FromSeconds(successDurationSeconds);
                 _lastCloseTick = _clock();
             }
             _enabled = enabled;
             _autoClose = autoClose;
+            _successDurationSeconds = successDurationSeconds;
         }
     }
 
@@ -148,7 +153,7 @@ internal sealed class GitCommandFeedbackCoordinator
                 ResetOutput(activity); // Includes the last flushed sanitized stream fragments.
                 if (activity.Status == GitCommandStatus.Succeeded)
                 {
-                    _closeRemaining = TimeSpan.FromMilliseconds(AutoCloseMilliseconds);
+                    _closeRemaining = TimeSpan.FromSeconds(_successDurationSeconds);
                     _lastCloseTick = _clock();
                 }
                 return true;
@@ -181,7 +186,7 @@ internal sealed class GitCommandFeedbackCoordinator
             {
                 _visible = true;
                 _lastCloseTick = now;
-                _closeRemaining = TimeSpan.FromMilliseconds(AutoCloseMilliseconds);
+                _closeRemaining = TimeSpan.FromSeconds(_successDurationSeconds);
             }
 
             if (_visible && _autoClose && _current.Status == GitCommandStatus.Succeeded)
@@ -259,7 +264,7 @@ internal sealed class GitCommandFeedbackCoordinator
         _focused = false;
         _truncated = false;
         _showAt = _clock().AddMilliseconds(ShowDelayMilliseconds);
-        _closeRemaining = TimeSpan.FromMilliseconds(AutoCloseMilliseconds);
+        _closeRemaining = TimeSpan.FromSeconds(_successDurationSeconds);
         _lastCloseTick = _clock();
         ResetOutput(activity);
     }
