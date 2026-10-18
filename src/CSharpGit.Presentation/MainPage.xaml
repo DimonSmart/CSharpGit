@@ -1049,8 +1049,10 @@
     <Grid x:Name="GitCommandFeedbackModalHost"
           Visibility="Collapsed"
           Background="#99000000"
+          TabFocusNavigation="Cycle"
           AutomationProperties.Name="Git command progress dialog">
       <controls:GitCommandFeedbackView x:Name="FloatingGitCommandFeedbackView"
+                                       IsTabStop="True"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        MaxHeight="340"
