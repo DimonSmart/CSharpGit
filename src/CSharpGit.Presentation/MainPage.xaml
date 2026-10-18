@@ -251,14 +251,14 @@
             <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.XS}" VerticalAlignment="Center">
             <Button x:Name="CommitNavigationButton"
                     Click="CommitNavigation_Click"
-                    Style="{StaticResource ToolbarButtonStyle}"
+                    Style="{StaticResource PrimaryActionButtonStyle}"
                     AutomationProperties.Name="Commit changes">
               <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                 <FontIcon Glyph="{StaticResource Icon.Glyph.Commit}" FontSize="{StaticResource Icon.Small}" />
                 <TextBlock x:Name="CommitNavigationText" Text="Commit (0)" Style="{StaticResource BodyTextStyle}" />
               </StackPanel>
             </Button>
-            <Button Click="Fetch_Click" Style="{StaticResource ToolbarButtonStyle}">
+            <Button Click="Fetch_Click" Style="{StaticResource SecondaryActionButtonStyle}">
               <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                 <FontIcon Glyph="{StaticResource Icon.Glyph.Fetch}" FontSize="{StaticResource Icon.Small}" />
                 <TextBlock Text="Fetch" Style="{StaticResource BodyTextStyle}" />
@@ -270,7 +270,7 @@
               <Button x:Name="PullPrimaryButton"
                       Click="Pull_Click"
                       IsEnabled="{Binding RepositorySync.CanPull}"
-                      Style="{StaticResource ToolbarButtonStyle}"
+                      Style="{StaticResource SecondaryActionButtonStyle}"
                       AutomationProperties.Name="{Binding RepositorySync.PullAccessibleName}">
                 <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                   <FontIcon Glyph="{StaticResource Icon.Glyph.Pull}" FontSize="{StaticResource Icon.Small}" />
@@ -320,7 +320,7 @@
                 </Button.Flyout>
               </Button>
             </StackPanel>
-            <Button Style="{StaticResource ToolbarButtonStyle}">
+            <Button Style="{StaticResource SecondaryActionButtonStyle}">
               <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                 <FontIcon Glyph="{StaticResource Icon.Glyph.Push}" FontSize="{StaticResource Icon.Small}" />
                 <TextBlock Text="{Binding Branches.SelectedLocalBranch, Converter={StaticResource BranchTrackingActionTextConverter}, ConverterParameter=Push}"
