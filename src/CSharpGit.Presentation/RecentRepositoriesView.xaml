@@ -234,6 +234,7 @@
                   <Button Grid.Column="1"
                           Content="&#x2026;"
                           Click="GroupActions_Click"
+                          Style="{StaticResource IconButtonStyle}"
                           AutomationProperties.Name="{Binding ActionsLabel}"
                           ToolTipService.ToolTip="{Binding ActionsLabel}"
                           VerticalAlignment="Center" />
@@ -304,6 +305,7 @@
                   Width="240" Height="82"
                   Margin="0,0,12,12"
                   Padding="{StaticResource Padding.Form}"
+                  Style="{StaticResource PrimaryActionButtonStyle}"
                   HorizontalContentAlignment="Stretch">
             <Grid ColumnDefinitions="42,*" ColumnSpacing="{StaticResource Spacing.XL}">
               <FontIcon Glyph="{StaticResource Icon.Glyph.Open}" FontSize="24" VerticalAlignment="Center" />
@@ -318,6 +320,7 @@
                   Width="240" Height="82"
                   Margin="0,0,12,12"
                   Padding="{StaticResource Padding.Form}"
+                  Style="{StaticResource SecondaryActionButtonStyle}"
                   HorizontalContentAlignment="Stretch">
             <Grid ColumnDefinitions="42,*" ColumnSpacing="{StaticResource Spacing.XL}">
               <FontIcon Glyph="{StaticResource Icon.Glyph.Clone}" FontSize="24" VerticalAlignment="Center" />
@@ -332,6 +335,7 @@
                   Width="240" Height="82"
                   Margin="0,0,12,12"
                   Padding="{StaticResource Padding.Form}"
+                  Style="{StaticResource SecondaryActionButtonStyle}"
                   HorizontalContentAlignment="Stretch">
             <Grid ColumnDefinitions="42,*" ColumnSpacing="{StaticResource Spacing.XL}">
               <FontIcon Glyph="{StaticResource Icon.Glyph.Create}" FontSize="24" VerticalAlignment="Center" />
@@ -347,6 +351,7 @@
                   Width="240" Height="82"
                   Margin="0,0,12,12"
                   Padding="{StaticResource Padding.Form}"
+                  Style="{StaticResource DestructiveActionButtonStyle}"
                   HorizontalContentAlignment="Stretch">
             <Grid ColumnDefinitions="42,*" ColumnSpacing="{StaticResource Spacing.XL}">
               <FontIcon Glyph="{StaticResource Icon.Glyph.Discard}" FontSize="24" VerticalAlignment="Center" />

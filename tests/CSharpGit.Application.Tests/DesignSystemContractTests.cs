@@ -300,7 +300,10 @@ public sealed class DesignSystemContractTests
             "<ScrollViewer x:Name=\"DiagnosticsSettingsPanel\"");
         Assert.Equal(6, Count(gitTools, "Style=\"{StaticResource CompactComboBoxStyle}\""));
         Assert.Equal(7, Count(gitTools, "Style=\"{StaticResource TechnicalTextBoxStyle}\""));
-        Assert.Equal(9, Count(gitTools, "Style=\"{StaticResource CompactButtonStyle}\""));
+        Assert.Equal(0, Count(gitTools, "Style=\"{StaticResource CompactButtonStyle}\""));
+        Assert.Equal(3, Count(gitTools, "Style=\"{StaticResource PrimaryActionButtonStyle}\""));
+        Assert.Equal(3, Count(gitTools, "Style=\"{StaticResource SecondaryActionButtonStyle}\""));
+        Assert.Equal(3, Count(gitTools, "Style=\"{StaticResource DestructiveActionButtonStyle}\""));
         Assert.Equal(3, Count(gitTools, "Style=\"{StaticResource CompactCheckBoxStyle}\""));
         Assert.True(Count(gitTools, "Style=\"{StaticResource TechnicalTextStyle}\"") >= 15);
     }
@@ -312,7 +315,9 @@ public sealed class DesignSystemContractTests
         var banner = Read(root, "src", "CSharpGit.Presentation", "Controls", "OperationBanner.xaml");
         var console = Read(root, "src", "CSharpGit.Presentation", "Controls", "GitConsoleView.xaml");
 
-        Assert.True(Count(banner, "Style=\"{StaticResource CompactButtonStyle}\"") >= 10);
+        Assert.True(Count(banner, "Style=\"{StaticResource CompactButtonStyle}\"") >= 7);
+        Assert.Contains("Style=\"{StaticResource PrimaryActionButtonStyle}\"", banner);
+        Assert.Contains("Style=\"{StaticResource DestructiveActionButtonStyle}\"", banner);
         Assert.Contains("ItemContainerStyle=\"{StaticResource DenseListItemStyle}\"", banner);
         Assert.Contains("BodyStrongTextStyle", banner);
         Assert.DoesNotContain("FontWeight=\"SemiBold\"", banner);
@@ -356,7 +361,10 @@ public sealed class DesignSystemContractTests
             {
                 var button = Assert.Single(buttons, element =>
                     ((string?)element.Attribute("Command"))?.Contains(command, StringComparison.Ordinal) == true);
-                Assert.Equal("{StaticResource CompactButtonStyle}", (string?)button.Attribute("Style"));
+                var expectedStyle = command == "RequestDiscardAllCommand"
+                    ? "{StaticResource DestructiveActionButtonStyle}"
+                    : "{StaticResource CompactButtonStyle}";
+                Assert.Equal(expectedStyle, (string?)button.Attribute("Style"));
                 Assert.NotNull(button.Attribute("AutomationProperties.Name"));
                 Assert.Single(button.Descendants(), element => element.Name.LocalName == "FontIcon");
             }
@@ -384,6 +392,30 @@ public sealed class DesignSystemContractTests
         Assert.Contains("WorkingTree.UnstageSelectedCommand", menu);
         Assert.Contains("WorkingTree.RequestDiscardSelectedCommand", menu);
         Assert.Contains("Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(button)", code);
+    }
+
+    [Fact]
+    public void ActionAndFeedbackRolesUseCanonicalResourcesAcrossWorkspaceSurfaces()
+    {
+        var root = FindRepositoryRoot();
+        var controls = Read(root, "src", "CSharpGit.Presentation", "Styles", "Controls.xaml");
+        var workspace = Read(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml");
+        var main = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
+        var recent = Read(root, "src", "CSharpGit.Presentation", "RecentRepositoriesView.xaml");
+        var feedback = Read(root, "src", "CSharpGit.Presentation", "Controls", "GitCommandFeedbackView.xaml");
+
+        Assert.Contains("x:Key=\"DestructiveActionButtonStyle\"", controls);
+        Assert.Contains("x:Key=\"FormActionRowStyle\"", controls);
+        Assert.Contains("x:Key=\"ContentSurfaceStyle\"", workspace);
+        Assert.Contains("x:Key=\"FeedbackSurfaceStyle\"", workspace);
+        Assert.Contains("Style=\"{StaticResource DestructiveActionButtonStyle}\"", main);
+        Assert.Contains("Style=\"{StaticResource PrimaryActionButtonStyle}\"", recent);
+        Assert.Contains("Style=\"{StaticResource SecondaryActionButtonStyle}\"", recent);
+        Assert.Contains("Style=\"{StaticResource DestructiveActionButtonStyle}\"", recent);
+        Assert.Contains("Style=\"{StaticResource FeedbackSurfaceStyle}\"", feedback);
+        Assert.Contains("Style=\"{StaticResource FormActionRowStyle}\"", feedback);
+        Assert.DoesNotContain("CornerRadius=\"8\"", feedback);
+        Assert.DoesNotContain("Padding=\"12\"", feedback);
     }
 
     [Fact]

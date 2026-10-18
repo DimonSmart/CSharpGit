@@ -295,7 +295,7 @@
                           Content="Remove override"
                           IsEnabled="{Binding CanRemoveNameOverride}"
                           Click="IdentityNameRemove_Click"
-                          Style="{StaticResource CompactButtonStyle}" />
+                          Style="{StaticResource DestructiveActionButtonStyle}" />
                 </Grid>
               </StackPanel>
             </Border>
@@ -328,7 +328,7 @@
                           Content="Remove override"
                           IsEnabled="{Binding CanRemoveEmailOverride}"
                           Click="IdentityEmailRemove_Click"
-                          Style="{StaticResource CompactButtonStyle}" />
+                          Style="{StaticResource DestructiveActionButtonStyle}" />
                 </Grid>
               </StackPanel>
             </Border>
@@ -400,9 +400,9 @@
                 <TextBlock Text="{Binding Editor.ResolvedExecutableDisplay}" Style="{StaticResource TechnicalTextStyle}" TextWrapping="Wrap" />
                 <TextBlock Text="{Binding Editor.ValidationDisplay}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
                 <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.M}">
-                  <Button Content="Save" Click="EditorSave_Click" Style="{StaticResource CompactButtonStyle}" />
-                  <Button Content="Open Test File" Click="EditorTest_Click" Style="{StaticResource CompactButtonStyle}" />
-                  <Button Content="Remove override" IsEnabled="{Binding Editor.CanRemoveOverride}" Click="EditorRemove_Click" Style="{StaticResource CompactButtonStyle}" />
+                  <Button Content="Save" Click="EditorSave_Click" Style="{StaticResource PrimaryActionButtonStyle}" />
+                  <Button Content="Open Test File" Click="EditorTest_Click" Style="{StaticResource SecondaryActionButtonStyle}" />
+                  <Button Content="Remove override" IsEnabled="{Binding Editor.CanRemoveOverride}" Click="EditorRemove_Click" Style="{StaticResource DestructiveActionButtonStyle}" />
                 </StackPanel>
               </StackPanel>
             </Border>
@@ -459,9 +459,9 @@
                 <TextBlock Text="{Binding Diff.ResolvedExecutableDisplay}" Style="{StaticResource TechnicalTextStyle}" TextWrapping="Wrap" />
                 <TextBlock Text="{Binding Diff.ValidationDisplay}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
                 <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.M}">
-                  <Button Content="Save" Click="DiffSave_Click" Style="{StaticResource CompactButtonStyle}" />
-                  <Button Content="Test Diff Tool" Click="DiffTest_Click" Style="{StaticResource CompactButtonStyle}" />
-                  <Button Content="Remove override" IsEnabled="{Binding Diff.CanRemoveOverride}" Click="DiffRemove_Click" Style="{StaticResource CompactButtonStyle}" />
+                  <Button Content="Save" Click="DiffSave_Click" Style="{StaticResource PrimaryActionButtonStyle}" />
+                  <Button Content="Test Diff Tool" Click="DiffTest_Click" Style="{StaticResource SecondaryActionButtonStyle}" />
+                  <Button Content="Remove override" IsEnabled="{Binding Diff.CanRemoveOverride}" Click="DiffRemove_Click" Style="{StaticResource DestructiveActionButtonStyle}" />
                 </StackPanel>
               </StackPanel>
             </Border>
@@ -522,9 +522,9 @@
                 <TextBlock Text="{Binding Merge.ResolvedExecutableDisplay}" Style="{StaticResource TechnicalTextStyle}" TextWrapping="Wrap" />
                 <TextBlock Text="{Binding Merge.ValidationDisplay}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
                 <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.M}">
-                  <Button Content="Save" Click="MergeSave_Click" Style="{StaticResource CompactButtonStyle}" />
-                  <Button Content="Test Merge Tool" Click="MergeTest_Click" Style="{StaticResource CompactButtonStyle}" />
-                  <Button Content="Remove override" IsEnabled="{Binding Merge.CanRemoveOverride}" Click="MergeRemove_Click" Style="{StaticResource CompactButtonStyle}" />
+                  <Button Content="Save" Click="MergeSave_Click" Style="{StaticResource PrimaryActionButtonStyle}" />
+                  <Button Content="Test Merge Tool" Click="MergeTest_Click" Style="{StaticResource SecondaryActionButtonStyle}" />
+                  <Button Content="Remove override" IsEnabled="{Binding Merge.CanRemoveOverride}" Click="MergeRemove_Click" Style="{StaticResource DestructiveActionButtonStyle}" />
                 </StackPanel>
               </StackPanel>
             </Border>
