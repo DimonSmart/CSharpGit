@@ -29,6 +29,13 @@
     <Setter Property="BorderBrush" Value="{ThemeResource ControlStrongStrokeColorDefaultBrush}" />
   </Style>
 
+  <Style x:Key="DestructiveActionButtonStyle"
+         TargetType="Button"
+         BasedOn="{StaticResource CompactButtonStyle}">
+    <Setter Property="Foreground" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+    <Setter Property="BorderBrush" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+  </Style>
+
   <Style x:Key="IconButtonStyle" TargetType="Button" BasedOn="{StaticResource CompactButtonStyle}">
     <Setter Property="Width" Value="{StaticResource Height.Control}" />
     <Setter Property="Height" Value="{StaticResource Height.Control}" />
@@ -140,5 +147,11 @@
     <Setter Property="CornerRadius" Value="6" />
     <Setter Property="Padding" Value="{StaticResource Padding.Form}" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
+  </Style>
+
+  <Style x:Key="FormActionRowStyle" TargetType="StackPanel">
+    <Setter Property="Orientation" Value="Horizontal" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="Spacing" Value="{StaticResource Spacing.S}" />
   </Style>
 </ResourceDictionary>

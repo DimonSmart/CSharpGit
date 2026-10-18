@@ -52,19 +52,19 @@
         <StackPanel Orientation="Horizontal"
                     HorizontalAlignment="Center"
                     Spacing="{StaticResource Spacing.M}">
-          <Button Click="OpenRepository_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Select folder…">
+          <Button Click="OpenRepository_Click" Style="{StaticResource PrimaryActionButtonStyle}" AutomationProperties.Name="Select folder…">
             <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
               <FontIcon Glyph="{StaticResource Icon.Glyph.Open}" FontSize="{StaticResource Icon.Small}" />
               <TextBlock Text="Select folder…" Style="{StaticResource BodyTextStyle}" />
             </StackPanel>
           </Button>
-          <Button Click="CloneRepository_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Clone repository…">
+          <Button Click="CloneRepository_Click" Style="{StaticResource SecondaryActionButtonStyle}" AutomationProperties.Name="Clone repository…">
             <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
               <FontIcon Glyph="{StaticResource Icon.Glyph.Clone}" FontSize="{StaticResource Icon.Small}" />
               <TextBlock Text="Clone repository…" Style="{StaticResource BodyTextStyle}" />
             </StackPanel>
           </Button>
-          <Button Click="CreateRepository_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Create repository…">
+          <Button Click="CreateRepository_Click" Style="{StaticResource SecondaryActionButtonStyle}" AutomationProperties.Name="Create repository…">
             <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
               <FontIcon Glyph="{StaticResource Icon.Glyph.Create}" FontSize="{StaticResource Icon.Small}" />
               <TextBlock Text="Create repository…" Style="{StaticResource BodyTextStyle}" />
@@ -789,7 +789,7 @@
                           <TextBlock Text="Stage all" Style="{StaticResource BodyTextStyle}" />
                         </StackPanel>
                       </Button>
-                      <Button Command="{Binding WorkingTree.RequestDiscardAllCommand}" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Discard all" ToolTipService.ToolTip="Discard all…" Foreground="{ThemeResource SystemFillColorCriticalBrush}">
+                      <Button Command="{Binding WorkingTree.RequestDiscardAllCommand}" Style="{StaticResource DestructiveActionButtonStyle}" AutomationProperties.Name="Discard all" ToolTipService.ToolTip="Discard all…">
                         <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                           <FontIcon Glyph="{StaticResource Icon.Glyph.Discard}" FontSize="{StaticResource Icon.Small}" />
                           <TextBlock Text="Discard all" Style="{StaticResource BodyTextStyle}" />
@@ -989,9 +989,9 @@
                          MinHeight="{StaticResource Height.CommitEditor}"
                          AutomationProperties.Name="Commit message" />
                 <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
-                  <Button Content="Commit" Command="{Binding CommitCreation.CommitCommand}" Style="{StaticResource CompactButtonStyle}" />
-                  <Button Content="Amend" Command="{Binding CommitCreation.AmendCommand}" Style="{StaticResource CompactButtonStyle}" />
-                  <Button Click="CreateStash_Click" IsEnabled="{Binding Stashes.CanCreateStash}" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Stash changes">
+                  <Button Content="Commit" Command="{Binding CommitCreation.CommitCommand}" Style="{StaticResource PrimaryActionButtonStyle}" />
+                  <Button Content="Amend" Command="{Binding CommitCreation.AmendCommand}" Style="{StaticResource SecondaryActionButtonStyle}" />
+                  <Button Click="CreateStash_Click" IsEnabled="{Binding Stashes.CanCreateStash}" Style="{StaticResource SecondaryActionButtonStyle}" AutomationProperties.Name="Stash changes">
                     <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                       <FontIcon Glyph="{StaticResource Icon.Glyph.Stash}" FontSize="{StaticResource Icon.Small}" />
                       <TextBlock Text="Stash…" Style="{StaticResource BodyTextStyle}" />
