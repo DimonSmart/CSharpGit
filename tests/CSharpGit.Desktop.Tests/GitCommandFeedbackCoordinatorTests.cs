@@ -22,7 +22,7 @@ public sealed class GitCommandFeedbackCoordinatorTests
         var shown = coordinator.Capture()!;
         Assert.True(shown.IsVisible);
         Assert.Equal(GitCommandStatus.Succeeded, shown.Status);
-        now += TimeSpan.FromMilliseconds(1999);
+        now += TimeSpan.FromMilliseconds(4999);
         Assert.True(coordinator.Capture()!.IsVisible);
         now += TimeSpan.FromMilliseconds(1);
         Assert.False(coordinator.Capture()!.IsVisible);
@@ -48,7 +48,7 @@ public sealed class GitCommandFeedbackCoordinatorTests
         now += TimeSpan.FromSeconds(5);
         Assert.True(coordinator.Capture()!.IsVisible);
         coordinator.Interacting(hovered: false, focused: false);
-        now += TimeSpan.FromMilliseconds(1199);
+        now += TimeSpan.FromMilliseconds(4199);
         Assert.True(coordinator.Capture()!.IsVisible);
         now += TimeSpan.FromMilliseconds(1);
         Assert.False(coordinator.Capture()!.IsVisible);
@@ -145,14 +145,54 @@ public sealed class GitCommandFeedbackCoordinatorTests
         Assert.True(history.Get(id)!.StandardOutput.Length > snapshot.PreviewText.Length);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(30)]
+    public void ConfiguredSuccessDurationControlsDismissal(int seconds)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = Create(history, () => now, autoClose: true, durationSeconds: seconds);
+        var id = history.Started("git", "/repo", ["fetch"], GitCommandKind.User);
+        history.Completed(id, 0);
+        now += TimeSpan.FromMilliseconds(150);
+        Assert.Equal(seconds != 0, coordinator.Capture()!.IsVisible);
+        if (seconds == 0) return;
+        now += TimeSpan.FromSeconds(seconds).Subtract(TimeSpan.FromMilliseconds(1));
+        Assert.True(coordinator.Capture()!.IsVisible);
+        now += TimeSpan.FromMilliseconds(1);
+        Assert.False(coordinator.Capture()!.IsVisible);
+    }
+
+    [Fact]
+    public void ChangingDurationRestartsCountdownForVisibleSuccess()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = Create(history, () => now, autoClose: true);
+        var id = history.Started("git", "/repo", ["pull"], GitCommandKind.User);
+        history.Completed(id, 0);
+        now += TimeSpan.FromMilliseconds(150);
+        Assert.True(coordinator.Capture()!.IsVisible);
+        now += TimeSpan.FromSeconds(4);
+        Assert.True(coordinator.Capture()!.IsVisible);
+        coordinator.Configure(true, true, 10);
+        now += TimeSpan.FromSeconds(9);
+        Assert.True(coordinator.Capture()!.IsVisible);
+        now += TimeSpan.FromSeconds(1);
+        Assert.False(coordinator.Capture()!.IsVisible);
+    }
+
     private static GitCommandFeedbackCoordinator Create(
         GitCommandActivityHistory history,
         Func<DateTimeOffset> clock,
         bool autoClose = false,
-        bool cloneDialogActive = false)
+        bool cloneDialogActive = false,
+        int durationSeconds = 5)
     {
         var coordinator = new GitCommandFeedbackCoordinator(history, clock);
-        coordinator.Configure(true, autoClose);
+        coordinator.Configure(true, autoClose, durationSeconds);
         history.Changed += (_, args) => coordinator.Handle(args, cloneDialogActive);
         return coordinator;
     }
