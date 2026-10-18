@@ -120,6 +120,11 @@ public sealed class GitCommandStreamingActivityTests
 
         Assert.Equal(first, evicted);
         Assert.Equal(GitCommandKind.User, evictedKind);
+        Assert.NotNull(history.Get(first));
+        Assert.DoesNotContain(history.GetSnapshot(GitCommandFilter.AllCommands),
+            entry => entry.Id == first);
+        history.OutputReceived(first, GitOutputStream.StandardError, "progress\r");
+        history.Completed(first, 0);
         Assert.Null(history.Get(first));
     }
 

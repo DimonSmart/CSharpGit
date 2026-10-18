@@ -81,7 +81,7 @@ public sealed class GitCommandExecutorStreamingTests
         Assert.Equal(4096, exception.LimitBytes);
         var activity = history.GetLatest(GitCommandFilter.AllCommands);
         Assert.NotNull(activity);
-        Assert.Equal(GitCommandStatus.Cancelled, activity.Status);
+        Assert.Equal(GitCommandStatus.Failed, activity.Status);
         Assert.True(activity.StandardOutput.Length < 100_000);
     }
 
