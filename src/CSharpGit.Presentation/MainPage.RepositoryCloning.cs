@@ -148,6 +148,9 @@ public sealed partial class MainPage
         content.Children.Add(repositoryUrlBox);
         content.Children.Add(localDirectoryRow);
         content.Children.Add(progressRow);
+        var cloneFeedback = CreateCloneGitCommandFeedback();
+        if (cloneFeedback is not null)
+            content.Children.Add(cloneFeedback);
         content.Children.Add(error);
         content.Children.Add(actions);
 
@@ -259,6 +262,7 @@ public sealed partial class MainPage
         };
 
         _cloneRepositoryViewModel.PropertyChanged += changed;
+        _cloneDialogFeedbackActive = cloneFeedback is not null;
         try
         {
             Synchronize();
@@ -267,7 +271,13 @@ public sealed partial class MainPage
         }
         finally
         {
+            _cloneDialogFeedbackActive = false;
             _cloneRepositoryViewModel.PropertyChanged -= changed;
+            if (cloneFeedback is not null)
+            {
+                _cloneFeedbackView = null;
+                cloneFeedback.Visibility = Visibility.Collapsed;
+            }
         }
     }
 

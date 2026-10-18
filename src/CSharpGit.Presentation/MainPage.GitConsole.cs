@@ -35,6 +35,7 @@ public sealed partial class MainPage
         _gitCommandActivitySource.Changed += GitCommandActivitySource_Changed;
         RootLayout.KeyDown += GitConsole_KeyDown;
         UpdateGitCommandStatus();
+        InitializeGitCommandFeedback();
     }
 
     private void BuildGitConsoleLayout()
@@ -102,6 +103,7 @@ public sealed partial class MainPage
     private void GitCommandActivitySource_Changed(object? sender, GitCommandActivityChangedEventArgs e)
     {
         if (IsShuttingDown || !_gitConsoleInitialized) return;
+        var compactServed = RouteGitCommandFeedback(e);
         if (e.ChangeKind == GitCommandActivityChangeKind.Output)
         {
             if (!_gitConsoleOpen || _gitConsoleView is null || e.OutputStream is not { } stream)
@@ -117,14 +119,14 @@ public sealed partial class MainPage
 
         if (DispatcherQueue.HasThreadAccess)
         {
-            ApplyGitCommandLifecycleChange(e);
+            ApplyGitCommandLifecycleChange(e, compactServed);
             return;
         }
 
-        DispatcherQueue.TryEnqueue(() => ApplyGitCommandLifecycleChange(e));
+        DispatcherQueue.TryEnqueue(() => ApplyGitCommandLifecycleChange(e, compactServed));
     }
 
-    private void ApplyGitCommandLifecycleChange(GitCommandActivityChangedEventArgs e)
+    private void ApplyGitCommandLifecycleChange(GitCommandActivityChangedEventArgs e, bool compactServed)
     {
         if (IsShuttingDown || !_gitConsoleInitialized || e.Activity is not { } activity) return;
 
@@ -145,7 +147,7 @@ public sealed partial class MainPage
              e.ChangeKind == GitCommandActivityChangeKind.Started) ||
             (_gitConsoleSettings.GitConsoleAutoOpenMode == GitConsoleAutoOpenMode.OnErrors &&
              activity.Status == GitCommandStatus.Failed);
-        if (shouldOpen)
+        if (shouldOpen && !compactServed)
             OpenGitConsole(activity.Id, manualOpen: false);
     }
 
@@ -282,6 +284,7 @@ public sealed partial class MainPage
         if (!_gitConsoleInitialized) return;
         _gitConsoleInitialized = false;
         _gitCommandActivitySource.Changed -= GitCommandActivitySource_Changed;
+        ShutdownGitCommandFeedback();
         RootLayout.KeyDown -= GitConsole_KeyDown;
         _gitConsoleOpen = false;
         _gitConsoleView?.SetActive(false);

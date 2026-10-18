@@ -479,6 +479,22 @@ public sealed partial class SettingsPage : Page
         }
     }
 
+    private async void ShowGitCommandProgressDialogToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_selectionReady || _viewModel.IsSynchronizingFromSettings) return;
+        SettingsMessage.IsOpen = false;
+        try { await _viewModel.ApplyShowGitCommandProgressDialogAsync(ShowGitCommandProgressDialogToggle.IsOn); }
+        catch (Exception exception) { ShowSettingsError(exception); }
+    }
+
+    private async void AutoCloseSuccessfulGitCommandFeedbackToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_selectionReady || _viewModel.IsSynchronizingFromSettings) return;
+        SettingsMessage.IsOpen = false;
+        try { await _viewModel.ApplyAutoCloseSuccessfulGitCommandFeedbackAsync(AutoCloseSuccessfulGitCommandFeedbackToggle.IsOn); }
+        catch (Exception exception) { ShowSettingsError(exception); }
+    }
+
     private async void GitConsoleAutoOpenComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!_selectionReady || _viewModel.IsSynchronizingFromSettings || GitConsoleAutoOpenComboBox.SelectedItem is not GitConsoleAutoOpenOption option) return;

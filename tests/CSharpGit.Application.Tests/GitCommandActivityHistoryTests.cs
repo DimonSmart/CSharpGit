@@ -6,6 +6,35 @@ namespace CSharpGit.Application.Tests;
 
 public sealed class GitCommandActivityHistoryTests
 {
+
+    [Fact]
+    public void EvictedRunningActivityRetainsLifecycleUntilCompletionWithoutReenteringHistory()
+    {
+        var history = new GitCommandActivityHistory();
+        var detached = history.Started("git", "/repo", ["clone"], GitCommandKind.User);
+        GitCommandActivity? terminal = null;
+        history.Changed += (_, args) =>
+        {
+            if (args.ActivityId == detached && args.ChangeKind == GitCommandActivityChangeKind.Completed)
+                terminal = args.Activity;
+        };
+        for (var i = 0; i < 100; i++)
+            history.Started("git", "/repo", ["status", i.ToString()], GitCommandKind.Internal);
+
+        Assert.Equal(100, history.GetSnapshot(GitCommandFilter.AllCommands).Count);
+        Assert.DoesNotContain(history.GetSnapshot(GitCommandFilter.AllCommands), item => item.Id == detached);
+        Assert.Equal(GitCommandStatus.Running, history.Get(detached)!.Status);
+
+        history.OutputReceived(detached, GitOutputStream.StandardError, "Receiving objects: 100%\r");
+        history.Failed(detached, null);
+
+        Assert.Equal(GitCommandStatus.Failed, terminal!.Status);
+        Assert.Null(terminal.ExitCode);
+        Assert.Contains("Receiving objects", terminal.StandardError);
+        Assert.Null(history.Get(detached));
+        Assert.Equal(100, history.GetSnapshot(GitCommandFilter.AllCommands).Count);
+    }
+
     [Fact]
     public void HistoryKeepsOnlyLatestOneHundredCommands()
     {

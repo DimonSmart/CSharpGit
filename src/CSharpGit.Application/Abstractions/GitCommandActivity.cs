@@ -120,6 +120,12 @@ public interface IGitCommandActivitySink
         int? exitCode);
 }
 
+// Optional extension: report an execution fault whose exit code may be unavailable.
+public interface IGitCommandFailureSink
+{
+    void Failed(Guid id, int? exitCode);
+}
+
 public interface IGitCommandActivitySource
 {
     event EventHandler<GitCommandActivityChangedEventArgs>? Changed;

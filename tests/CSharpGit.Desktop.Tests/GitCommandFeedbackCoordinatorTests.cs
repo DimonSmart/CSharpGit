@@ -1,0 +1,159 @@
+using System.Text;
+using CSharpGit.Application;
+using CSharpGit.Application.Abstractions;
+using CSharpGit.Presentation.Controls;
+
+namespace CSharpGit.Desktop.Tests;
+
+public sealed class GitCommandFeedbackCoordinatorTests
+{
+    [Fact]
+    public void FastSuccessfulCommandShowsFinalOnlyAfterDelayThenAutoCloses()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = Create(history, () => now, autoClose: true);
+        var id = history.Started("git", "/repo", ["pull"], GitCommandKind.User);
+        history.Completed(id, 0);
+
+        now += TimeSpan.FromMilliseconds(149);
+        Assert.False(coordinator.Capture()!.IsVisible);
+        now += TimeSpan.FromMilliseconds(1);
+        var shown = coordinator.Capture()!;
+        Assert.True(shown.IsVisible);
+        Assert.Equal(GitCommandStatus.Succeeded, shown.Status);
+        now += TimeSpan.FromMilliseconds(1999);
+        Assert.True(coordinator.Capture()!.IsVisible);
+        now += TimeSpan.FromMilliseconds(1);
+        Assert.False(coordinator.Capture()!.IsVisible);
+    }
+
+    [Fact]
+    public void PausesAutoCloseWhileHoveredOrFocusedAndKeepsRemainingTime()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = Create(history, () => now, autoClose: true);
+        var id = history.Started("git", "/repo", ["fetch"], GitCommandKind.User);
+        history.Completed(id, 0);
+        now += TimeSpan.FromMilliseconds(150);
+        Assert.True(coordinator.Capture()!.IsVisible);
+
+        now += TimeSpan.FromMilliseconds(800);
+        Assert.True(coordinator.Capture()!.IsVisible);
+        coordinator.Interacting(hovered: true, focused: false);
+        now += TimeSpan.FromSeconds(5);
+        Assert.True(coordinator.Capture()!.IsVisible);
+        coordinator.Interacting(hovered: false, focused: true);
+        now += TimeSpan.FromSeconds(5);
+        Assert.True(coordinator.Capture()!.IsVisible);
+        coordinator.Interacting(hovered: false, focused: false);
+        now += TimeSpan.FromMilliseconds(1199);
+        Assert.True(coordinator.Capture()!.IsVisible);
+        now += TimeSpan.FromMilliseconds(1);
+        Assert.False(coordinator.Capture()!.IsVisible);
+    }
+
+    [Fact]
+    public void DismissedActivityCannotReopenButNextInvocationCan()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = Create(history, () => now);
+        var old = history.Started("git", "/repo", ["fetch"], GitCommandKind.User);
+        coordinator.Dismiss(old);
+        history.OutputReceived(old, GitOutputStream.StandardError, "progress\r");
+        history.Completed(old, 0);
+        now += TimeSpan.FromSeconds(1);
+        Assert.Null(coordinator.Capture());
+
+        var next = history.Started("git", "/repo", ["push"], GitCommandKind.User);
+        now += TimeSpan.FromMilliseconds(150);
+        Assert.Equal(next, coordinator.Capture()!.ActivityId);
+    }
+
+    [Fact]
+    public void UnreadFailureIsStickyUntilNewFailureReplacesIt()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = Create(history, () => now);
+        var first = history.Started("git", "/repo", ["push"], GitCommandKind.User);
+        history.Completed(first, 1);
+        now += TimeSpan.FromMilliseconds(150);
+        Assert.Equal(first, coordinator.Capture()!.ActivityId);
+
+        var second = history.Started("git", "/repo", ["fetch"], GitCommandKind.User);
+        history.Completed(second, 0);
+        Assert.Equal(first, coordinator.Capture()!.ActivityId);
+
+        var third = history.Started("git", "/repo", ["pull"], GitCommandKind.User);
+        history.Completed(third, 1);
+        now += TimeSpan.FromMilliseconds(150);
+        Assert.Equal(third, coordinator.Capture()!.ActivityId);
+        Assert.Equal(GitCommandStatus.Failed, coordinator.Capture()!.Status);
+    }
+
+    [Fact]
+    public void InternalActivityDoesNotReplaceUserCommandAndCloneUsesEmbeddedOwner()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = Create(history, () => now, cloneDialogActive: true);
+        var id = history.Started("git", "/repo", ["clone", "--", "origin", "target"], GitCommandKind.User);
+        history.Started("git", "/repo", ["status"], GitCommandKind.Internal);
+        now += TimeSpan.FromMilliseconds(150);
+        var snapshot = coordinator.Capture()!;
+        Assert.Equal(id, snapshot.ActivityId);
+        Assert.Equal(GitCommandFeedbackOwner.EmbeddedClone, snapshot.Owner);
+    }
+
+    [Fact]
+    public void ProgressCarriageReturnReplacesLineAndUnsafeControlsAreEscaped()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = Create(history, () => now);
+        history.Started("git", "/repo", ["fetch"], GitCommandKind.User);
+        now += TimeSpan.FromMilliseconds(150);
+        history.OutputReceived(history.GetLatest()!.Id, GitOutputStream.StandardError, "5%\r");
+        history.OutputReceived(history.GetLatest()!.Id, GitOutputStream.StandardError, "90%\r");
+        history.OutputReceived(history.GetLatest()!.Id, GitOutputStream.StandardError, "100%\n");
+        history.OutputReceived(history.GetLatest()!.Id, GitOutputStream.StandardOutput, "safe\0");
+        var output = coordinator.Capture()!.PreviewText;
+        Assert.Contains("100%", output);
+        Assert.DoesNotContain("5%", output);
+        Assert.Contains("\\0", output);
+        Assert.DoesNotContain('\0', output);
+    }
+
+    [Fact]
+    public void PreviewIsBoundedWhileOriginalCaptureRemainsAvailable()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = Create(history, () => now);
+        var id = history.Started("git", "/repo", ["log"], GitCommandKind.User);
+        now += TimeSpan.FromMilliseconds(150);
+        for (var n = 0; n < 100; n++)
+            history.OutputReceived(id, GitOutputStream.StandardOutput, new string('X', 1000) + "\n");
+
+        var snapshot = coordinator.Capture()!;
+        Assert.True(snapshot.PreviewTruncated);
+        Assert.True(Encoding.UTF8.GetByteCount(snapshot.PreviewText) <=
+            GitCommandFeedbackCoordinator.MaximumPreviewBytes + 128);
+        Assert.True(history.Get(id)!.StandardOutput.Length > snapshot.PreviewText.Length);
+    }
+
+    private static GitCommandFeedbackCoordinator Create(
+        GitCommandActivityHistory history,
+        Func<DateTimeOffset> clock,
+        bool autoClose = false,
+        bool cloneDialogActive = false)
+    {
+        var coordinator = new GitCommandFeedbackCoordinator(history, clock);
+        coordinator.Configure(true, autoClose);
+        history.Changed += (_, args) => coordinator.Handle(args, cloneDialogActive);
+        return coordinator;
+    }
+}

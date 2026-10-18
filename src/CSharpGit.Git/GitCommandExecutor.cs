@@ -253,7 +253,7 @@ internal sealed class GitCommandExecutor
             Trace.WriteLine($"Git command operation={operation} duration={stopwatch.ElapsedMilliseconds}ms");
             ThrowIfFailed(result);
         }
-        catch
+        catch (Exception failure)
         {
             // Include failures in activity callbacks, stream copy, flush and
             // process coordination, not just cancellation.
@@ -262,7 +262,13 @@ internal sealed class GitCommandExecutor
                 await CleanupAfterFailureAsync(process, copyTask, errorTask);
                 if (activityId is { } id)
                 {
-                    try { _activitySink.Cancelled(id, TryGetExitCode(process)); }
+                    try
+                    {
+                        if (failure is OperationCanceledException || cancellationToken.IsCancellationRequested)
+                            _activitySink.Cancelled(id, TryGetExitCode(process));
+                        else if (_activitySink is IGitCommandFailureSink failureSink)
+                            failureSink.Failed(id, TryGetExitCode(process));
+                    }
                     catch (Exception) { Trace.WriteLine("Git activity cleanup failed."); }
                 }
             }
@@ -351,14 +357,20 @@ internal sealed class GitCommandExecutor
             finished = true;
             return result;
         }
-        catch
+        catch (Exception failure)
         {
             if (!finished)
             {
                 await CleanupAfterFailureAsync(process, outputTask, errorTask);
                 if (activityId is { } cancelledId)
                 {
-                    try { activitySink!.Cancelled(cancelledId, TryGetExitCode(process)); }
+                    try
+                    {
+                        if (failure is OperationCanceledException || cancellationToken.IsCancellationRequested)
+                            activitySink!.Cancelled(cancelledId, TryGetExitCode(process));
+                        else if (activitySink is IGitCommandFailureSink failureSink)
+                            failureSink.Failed(cancelledId, TryGetExitCode(process));
+                    }
                     catch (Exception exception) { Trace.WriteLine($"Git activity cleanup failed: {exception}"); }
                 }
             }

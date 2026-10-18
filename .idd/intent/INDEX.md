@@ -64,3 +64,4 @@ opened.
 | IDD-0042 | ADR | Repository sync presentation boundary | RepositorySyncViewModel owns remote synchronization/publication while MainPage owns dialogs and Branches keeps branch lifecycle | — |
 | IDD-0043 | ADR | Presentation feature boundaries | Independent maintenance and file actions workflows, captured requests and shared session/mutation ownership | — |
 | IDD-0044 | ADR | Settings contracts and testable Core | One settings state and event, four facets, Uno-free testable assembly owners, no direct production source compilation in tests | — |
+| IDD-0045 | Spec | Compact Git command feedback | Opt-in command, live output and result in floating or embedded UI; existing Console retained | — |
