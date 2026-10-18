@@ -8,11 +8,13 @@ public interface IDiagnosticsSettings : IAppSettingsChangeSource
     GitConsoleAutoOpenMode GitConsoleAutoOpenMode { get; }
     bool ShowGitCommandProgressDialog { get; }
     bool AutoCloseSuccessfulGitCommandFeedback { get; }
+    int SuccessfulGitCommandFeedbackDurationSeconds { get; }
     bool HistoryPerformanceDiagnosticsEnabled { get; }
 
     Task SetLoggingSettingsAsync(bool enabled, ApplicationLogLevel level, CancellationToken cancellationToken = default);
     Task SetShowGitCommandProgressDialogAsync(bool value, CancellationToken cancellationToken = default);
     Task SetAutoCloseSuccessfulGitCommandFeedbackAsync(bool value, CancellationToken cancellationToken = default);
+    Task SetSuccessfulGitCommandFeedbackDurationSecondsAsync(int seconds, CancellationToken cancellationToken = default);
     Task SetGitConsoleAutoOpenModeAsync(GitConsoleAutoOpenMode mode, CancellationToken cancellationToken = default);
     Task SetHistoryPerformanceDiagnosticsEnabledAsync(bool value, CancellationToken cancellationToken = default);
 }

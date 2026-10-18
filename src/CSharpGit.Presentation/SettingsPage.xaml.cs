@@ -495,6 +495,16 @@ public sealed partial class SettingsPage : Page
         catch (Exception exception) { ShowSettingsError(exception); }
     }
 
+    private async void SuccessfulGitCommandFeedbackDurationNumberBox_ValueChanged(
+        NumberBox sender, NumberBoxValueChangedEventArgs e)
+    {
+        if (!_selectionReady || _viewModel.IsSynchronizingFromSettings || double.IsNaN(e.NewValue)) return;
+        SettingsMessage.IsOpen = false;
+        var seconds = (int)Math.Clamp(Math.Round(e.NewValue), 0, 30);
+        try { await _viewModel.ApplySuccessfulGitCommandFeedbackDurationSecondsAsync(seconds); }
+        catch (Exception exception) { ShowSettingsError(exception); }
+    }
+
     private async void GitConsoleAutoOpenComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!_selectionReady || _viewModel.IsSynchronizingFromSettings || GitConsoleAutoOpenComboBox.SelectedItem is not GitConsoleAutoOpenOption option) return;

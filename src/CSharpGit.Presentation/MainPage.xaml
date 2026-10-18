@@ -1047,5 +1047,18 @@
              CloseButtonCommand="{Binding DismissErrorCommand}"
              VerticalAlignment="Bottom"
              Margin="16,0,16,26" />
+    <!-- Full-window modal layer must be last so graph visuals and notifications stay behind it. -->
+    <Grid x:Name="GitCommandFeedbackModalHost"
+          Visibility="Collapsed"
+          Background="#99000000"
+          TabFocusNavigation="Cycle"
+          AutomationProperties.Name="Git command progress dialog">
+      <controls:GitCommandFeedbackView x:Name="FloatingGitCommandFeedbackView"
+                                       IsTabStop="True"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       MaxHeight="340"
+                                       Margin="16" />
+    </Grid>
   </Grid>
 </Page>
