@@ -759,7 +759,7 @@ public sealed partial class MainPage : Page
 
     private void Page_KeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (IsShuttingDown) return;
+        if (IsShuttingDown || GitCommandFeedbackModalHost.Visibility == Visibility.Visible) return;
         var control = IsControlDown();
         if (control && e.Key == VirtualKey.O)
         {

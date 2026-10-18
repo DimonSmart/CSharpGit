@@ -95,8 +95,13 @@ public sealed partial class MainPage
         if (_floatingFeedbackView is null) return;
         _floatingFeedbackView.Width = Math.Min(480, Math.Max(180, RootLayout.ActualWidth - 32));
         _floatingFeedbackView.Apply(state);
-        // Last RootLayout child supplies the modal dimmer and blocks workspace input.
-        GitCommandFeedbackModalHost.Visibility = Visibility.Visible;
+        // Focus the modal host itself, not a text box: merely opening the dialog
+        // must not pause the success countdown as though the user interacted.
+        if (GitCommandFeedbackModalHost.Visibility != Visibility.Visible)
+        {
+            GitCommandFeedbackModalHost.Visibility = Visibility.Visible;
+            _floatingFeedbackView.Focus(FocusState.Programmatic);
+        }
     }
 
     private void WireGitCommandFeedback(GitCommandFeedbackView view)
