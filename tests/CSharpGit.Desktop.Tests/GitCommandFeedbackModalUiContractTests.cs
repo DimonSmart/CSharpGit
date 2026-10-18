@@ -14,6 +14,11 @@ public sealed class GitCommandFeedbackModalUiContractTests
         Assert.Contains("TabFocusNavigation=\"Cycle\"", xaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"FloatingGitCommandFeedbackView\"", xaml, StringComparison.Ordinal);
 
+        var settingsXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml"));
+        Assert.Contains("x:Name=\"SuccessfulGitCommandFeedbackDurationNumberBox\"", settingsXaml, StringComparison.Ordinal);
+        Assert.Contains("Minimum=\"0\"", settingsXaml, StringComparison.Ordinal);
+        Assert.Contains("Maximum=\"30\"", settingsXaml, StringComparison.Ordinal);
+
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var feedback = File.ReadAllText(Path.Combine(presentation, "MainPage.GitCommandFeedback.cs"));
         Assert.DoesNotContain("RootLayout.Children.Insert(", feedback, StringComparison.Ordinal);
