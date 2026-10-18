@@ -73,6 +73,29 @@ public sealed class UnoXamlCompatibilityContractTests
         Assert.Equal(3, CountOccurrences(productionTemplate, "Margin=\"{StaticResource Margin.HistoryColumnGap}\""));
     }
 
+    [Fact]
+    public void MainWorkspaceUsesSemanticActionStylesAndAFlatTonalToolbarSurface()
+    {
+        var controls = ReadStyle("Controls.xaml");
+        var workspace = ReadStyle("Workspace.xaml");
+        var mainPage = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(), "src", "CSharpGit.Presentation", "MainPage.xaml"));
+
+        var primary = Slice(controls, "<Style x:Key=\"PrimaryActionButtonStyle\"", "</Style>");
+        var secondary = Slice(controls, "<Style x:Key=\"SecondaryActionButtonStyle\"", "</Style>");
+        var toolbar = Slice(workspace, "<Style x:Key=\"ToolbarSurfaceStyle\"", "</Style>");
+
+        Assert.Contains("BasedOn=\"{StaticResource CompactButtonStyle}\"", primary);
+        Assert.Contains("AccentFillColorDefaultBrush", primary);
+        Assert.Contains("BasedOn=\"{StaticResource CompactButtonStyle}\"", secondary);
+        Assert.Contains("ControlFillColorDefaultBrush", secondary);
+        Assert.Contains("CardBackgroundFillColorDefaultBrush", toolbar);
+        Assert.DoesNotContain("Shadow", toolbar);
+        Assert.Contains("x:Name=\"CommitNavigationButton\"", mainPage);
+        Assert.Contains("Style=\"{StaticResource PrimaryActionButtonStyle}\"", mainPage);
+        Assert.Contains("Style=\"{StaticResource SecondaryActionButtonStyle}\"", mainPage);
+    }
+
     private static string ReadStyle(string fileName)
     {
         var root = FindRepositoryRoot();
