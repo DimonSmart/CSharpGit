@@ -16,6 +16,8 @@ public sealed partial class MainPage
     private void InitializeGitCommandFeedback()
     {
         _commandFeedback = new GitCommandFeedbackCoordinator(_gitCommandActivitySource);
+        _floatingFeedbackView = FloatingGitCommandFeedbackView;
+        WireGitCommandFeedback(_floatingFeedbackView);
         _commandFeedbackTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(75)
@@ -39,7 +41,8 @@ public sealed partial class MainPage
         if (IsShuttingDown || _commandFeedback is null) return;
         var enabled = _gitConsoleSettings.ShowGitCommandProgressDialog;
         _commandFeedback.Configure(
-            enabled, _gitConsoleSettings.AutoCloseSuccessfulGitCommandFeedback);
+            enabled, _gitConsoleSettings.AutoCloseSuccessfulGitCommandFeedback,
+            _gitConsoleSettings.SuccessfulGitCommandFeedbackDurationSeconds);
 
         if (enabled)
             _commandFeedbackTimer?.Start();
@@ -62,8 +65,7 @@ public sealed partial class MainPage
         var state = _commandFeedback?.Capture();
         if (state is not { IsVisible: true })
         {
-            if (_floatingFeedbackView is not null)
-                _floatingFeedbackView.Visibility = Visibility.Collapsed;
+            GitCommandFeedbackModalHost.Visibility = Visibility.Collapsed;
             if (_cloneFeedbackView is not null)
                 _cloneFeedbackView.Visibility = Visibility.Collapsed;
             return;
@@ -71,8 +73,7 @@ public sealed partial class MainPage
 
         if (state.Owner == GitCommandFeedbackOwner.EmbeddedClone)
         {
-            if (_floatingFeedbackView is not null)
-                _floatingFeedbackView.Visibility = Visibility.Collapsed;
+            GitCommandFeedbackModalHost.Visibility = Visibility.Collapsed;
             if (_cloneFeedbackView is not null && _cloneDialogFeedbackActive)
             {
                 _cloneFeedbackView.Apply(state);
@@ -83,31 +84,19 @@ public sealed partial class MainPage
 
         if (_cloneFeedbackView is not null)
             _cloneFeedbackView.Visibility = Visibility.Collapsed;
-        // An explicitly opened Console takes precedence over the floating card.
+
+        // Git Console remains the explicit destination for this activity.
         if (_gitConsoleOpen)
         {
-            if (_floatingFeedbackView is not null)
-                _floatingFeedbackView.Visibility = Visibility.Collapsed;
+            GitCommandFeedbackModalHost.Visibility = Visibility.Collapsed;
             return;
         }
 
-        if (_floatingFeedbackView is null)
-        {
-            _floatingFeedbackView = new GitCommandFeedbackView
-            {
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Bottom,
-                MaxHeight = 280
-            };
-            WireGitCommandFeedback(_floatingFeedbackView);
-            RootLayout.Children.Insert(Math.Max(0, RootLayout.Children.Count - 1),
-                _floatingFeedbackView);
-        }
-
-        _floatingFeedbackView.Width = Math.Min(420, Math.Max(180, RootLayout.ActualWidth - 24));
-        _floatingFeedbackView.Margin = new Thickness(12, 12, 12, 40);
+        if (_floatingFeedbackView is null) return;
+        _floatingFeedbackView.Width = Math.Min(480, Math.Max(180, RootLayout.ActualWidth - 32));
         _floatingFeedbackView.Apply(state);
-        _floatingFeedbackView.Visibility = Visibility.Visible;
+        // Last RootLayout child supplies the modal dimmer and blocks workspace input.
+        GitCommandFeedbackModalHost.Visibility = Visibility.Visible;
     }
 
     private void WireGitCommandFeedback(GitCommandFeedbackView view)
@@ -152,9 +141,7 @@ public sealed partial class MainPage
 
     private void RemoveFloatingGitCommandFeedback()
     {
-        if (_floatingFeedbackView is null) return;
-        RootLayout.Children.Remove(_floatingFeedbackView);
-        _floatingFeedbackView = null;
+        GitCommandFeedbackModalHost.Visibility = Visibility.Collapsed;
     }
 
     private void ShutdownGitCommandFeedback()
