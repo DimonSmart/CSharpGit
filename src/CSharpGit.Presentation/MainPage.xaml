@@ -721,6 +721,7 @@
                         <Button x:Name="CommitLargeDiffButton"
                                 Content="Load diff"
                                 HorizontalAlignment="Left"
+                                Style="{StaticResource PrimaryActionButtonStyle}"
                                 Click="CommitLargeDiffButton_Click" />
                       </StackPanel>
                       <InfoBar x:Name="CommitBinaryInfo"
@@ -926,6 +927,7 @@
                     <Button x:Name="WorkingTreeLargeDiffButton"
                             Content="Load diff"
                             HorizontalAlignment="Left"
+                            Style="{StaticResource PrimaryActionButtonStyle}"
                             Click="WorkingTreeLargeDiffButton_Click" />
                   </StackPanel>
                   <StackPanel x:Name="WorkingTreeDiffLoading"

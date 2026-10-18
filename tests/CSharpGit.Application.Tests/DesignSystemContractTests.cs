@@ -68,6 +68,7 @@ public sealed class DesignSystemContractTests
 
         Assert.Contains("BasedOn=\"{StaticResource TechnicalTextStyle}\"", typography);
         Assert.Contains("BasedOn=\"{StaticResource CompactButtonStyle}\"", controls);
+        Assert.Contains("Property=\"CornerRadius\" Value=\"4\"", controls);
         Assert.Contains("<Style x:Key=\"DenseListItemStyle\"", workspace);
         Assert.Contains("BasedOn=\"{StaticResource ListViewItemExpanded}\"", workspace);
         Assert.Contains("BasedOn=\"{StaticResource DenseTreeItemStyle}\"", repositoryTree);
@@ -409,6 +410,10 @@ public sealed class DesignSystemContractTests
         Assert.Contains("x:Key=\"ContentSurfaceStyle\"", workspace);
         Assert.Contains("x:Key=\"FeedbackSurfaceStyle\"", workspace);
         Assert.Contains("Style=\"{StaticResource DestructiveActionButtonStyle}\"", main);
+        Assert.Contains("x:Name=\"PullPrimaryButton\"", main);
+        Assert.Contains("x:Name=\"PullMenuButton\"", main);
+        Assert.Contains("Style=\"{StaticResource SecondaryActionButtonStyle}\"", main);
+        Assert.Contains("Style=\"{StaticResource ToolbarButtonStyle}\"", main);
         Assert.Contains("Style=\"{StaticResource PrimaryActionButtonStyle}\"", recent);
         Assert.Contains("Style=\"{StaticResource SecondaryActionButtonStyle}\"", recent);
         Assert.Contains("Style=\"{StaticResource DestructiveActionButtonStyle}\"", recent);
