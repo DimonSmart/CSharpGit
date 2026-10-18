@@ -581,7 +581,19 @@
                               IsEnabled="{Binding ShowGitCommandProgressDialog}"
                               IsOn="{Binding AutoCloseSuccessfulGitCommandFeedback, Mode=TwoWay}"
                               Toggled="AutoCloseSuccessfulGitCommandFeedbackToggle_Toggled" />
-                <TextBlock Text="Close the panel 2 seconds after a successful Git command, unless you are interacting with it."
+
+                <NumberBox x:Name="SuccessfulGitCommandFeedbackDurationNumberBox"
+                           Header="Display duration after success (seconds)"
+                           Minimum="0"
+                           Maximum="30"
+                           SmallChange="1"
+                           SpinButtonPlacementMode="Compact"
+                           Width="240"
+                           HorizontalAlignment="Left"
+                           IsEnabled="{Binding AutoCloseSuccessfulGitCommandFeedback}"
+                           Value="{Binding SuccessfulGitCommandFeedbackDurationSeconds}"
+                           ValueChanged="SuccessfulGitCommandFeedbackDurationNumberBox_ValueChanged" />
+                <TextBlock Text="0 closes immediately; 1–30 seconds keeps a successful result visible. The countdown pauses while you interact with the dialog. Failed and cancelled commands stay open."
                            Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
               </StackPanel>
             </Border>

@@ -264,6 +264,7 @@ public sealed partial class MainPage
 
     private void GitConsole_KeyDown(object sender, KeyRoutedEventArgs e)
     {
+        if (GitCommandFeedbackModalHost.Visibility == Visibility.Visible) return;
         if (e.Key != GitConsoleShortcutKey || !IsGitConsoleModifierDown()) return;
         ToggleGitConsoleFromKeyboard();
         e.Handled = true;

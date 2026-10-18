@@ -269,6 +269,7 @@ public sealed class SettingsViewModelTests
         public GitConsoleAutoOpenMode GitConsoleAutoOpenMode { get; set; } = GitConsoleAutoOpenMode.OnErrors;
         public bool ShowGitCommandProgressDialog { get; set; }
         public bool AutoCloseSuccessfulGitCommandFeedback { get; set; }
+        public int SuccessfulGitCommandFeedbackDurationSeconds { get; set; } = 5;
         public bool ShowReflog { get; set; }
         public bool AutoSetupRemoteOnPush { get; set; }
         public PullStrategy DefaultPullStrategy { get; set; } = PullStrategy.FastForwardOnly;
@@ -364,6 +365,14 @@ public sealed class SettingsViewModelTests
         {
             ThrowIfWriteFails(cancellationToken);
             AutoCloseSuccessfulGitCommandFeedback = value;
+            _changed?.Invoke(this, EventArgs.Empty);
+            return Task.CompletedTask;
+        }
+
+        public Task SetSuccessfulGitCommandFeedbackDurationSecondsAsync(int seconds, CancellationToken cancellationToken = default)
+        {
+            ThrowIfWriteFails(cancellationToken);
+            SuccessfulGitCommandFeedbackDurationSeconds = seconds;
             _changed?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
         }
