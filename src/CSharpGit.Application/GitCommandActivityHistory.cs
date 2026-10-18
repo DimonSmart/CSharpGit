@@ -4,7 +4,7 @@ using CSharpGit.Application.Abstractions;
 
 namespace CSharpGit.Application;
 
-public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCommandActivitySource
+public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCommandFailureSink, IGitCommandActivitySource
 {
     public const int MaximumHistoryEntries = 100;
     public const int MaximumOutputBytes = 1024 * 1024;
@@ -46,7 +46,10 @@ public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCom
             {
                 evicted = _entries[0];
                 _entries.RemoveAt(0);
-                _byId.Remove(evicted.Id);
+                if (evicted.Status == GitCommandStatus.Running)
+                    evicted.Detached = true;
+                else
+                    _byId.Remove(evicted.Id);
             }
 
             snapshot = CreateSnapshot(state);
@@ -89,6 +92,9 @@ public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCom
 
     public void Completed(Guid id, int exitCode) =>
         Finish(id, exitCode, exitCode == 0 ? GitCommandStatus.Succeeded : GitCommandStatus.Failed);
+
+    public void Failed(Guid id, int? exitCode) =>
+        Finish(id, exitCode, GitCommandStatus.Failed);
 
     public void Cancelled(Guid id, int? exitCode) =>
         Finish(id, exitCode, GitCommandStatus.Cancelled);
@@ -143,6 +149,8 @@ public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCom
             state.ExitCode = exitCode;
             state.Status = status;
             snapshot = CreateSnapshot(state);
+            if (state.Detached)
+                _byId.Remove(id);
         }
 
         if (stdoutFinal.Changed)
@@ -206,6 +214,7 @@ public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCom
 
         public Guid Id { get; }
         public DateTimeOffset StartedAt { get; }
+        public bool Detached { get; set; }
         public DateTimeOffset? CompletedAt { get; set; }
         public TimeSpan Duration { get; set; }
         public string WorkingDirectory { get; }

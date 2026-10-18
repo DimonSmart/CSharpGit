@@ -48,6 +48,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     public ApplicationLogLevel LogLevel => Volatile.Read(ref _state).LogLevel;
 
     public GitConsoleAutoOpenMode GitConsoleAutoOpenMode => Volatile.Read(ref _state).GitConsoleAutoOpenMode;
+    public bool ShowGitCommandProgressDialog => Volatile.Read(ref _state).ShowGitCommandProgressDialog;
+    public bool AutoCloseSuccessfulGitCommandFeedback => Volatile.Read(ref _state).AutoCloseSuccessfulGitCommandFeedback;
 
     public bool ShowReflog => Volatile.Read(ref _state).ShowReflog;
 
@@ -127,6 +129,14 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 : current with { LoggingEnabled = enabled, LogLevel = level },
             cancellationToken);
     }
+
+    public Task SetShowGitCommandProgressDialogAsync(bool value, CancellationToken cancellationToken = default) =>
+        UpdateAsync(current => current.ShowGitCommandProgressDialog == value
+            ? current : current with { ShowGitCommandProgressDialog = value }, cancellationToken);
+
+    public Task SetAutoCloseSuccessfulGitCommandFeedbackAsync(bool value, CancellationToken cancellationToken = default) =>
+        UpdateAsync(current => current.AutoCloseSuccessfulGitCommandFeedback == value
+            ? current : current with { AutoCloseSuccessfulGitCommandFeedback = value }, cancellationToken);
 
     public Task SetGitConsoleAutoOpenModeAsync(
         GitConsoleAutoOpenMode mode,
@@ -566,6 +576,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 document.LoggingEnabled,
                 logLevel,
                 gitConsoleAutoOpenMode,
+                document.ShowGitCommandProgressDialog,
+                document.AutoCloseSuccessfulGitCommandFeedback,
                 document.ShowReflog,
                 document.AutoSetupRemoteOnPush,
                 document.DefaultPullStrategy,
@@ -607,6 +619,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             LoggingEnabled = state.LoggingEnabled,
             LogLevel = state.LogLevel,
             GitConsoleAutoOpenMode = state.GitConsoleAutoOpenMode,
+            ShowGitCommandProgressDialog = state.ShowGitCommandProgressDialog,
+            AutoCloseSuccessfulGitCommandFeedback = state.AutoCloseSuccessfulGitCommandFeedback,
             ShowReflog = state.ShowReflog,
             AutoSetupRemoteOnPush = state.AutoSetupRemoteOnPush,
             DefaultPullStrategy = state.DefaultPullStrategy,
@@ -927,6 +941,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         bool LoggingEnabled,
         ApplicationLogLevel LogLevel,
         GitConsoleAutoOpenMode GitConsoleAutoOpenMode,
+        bool ShowGitCommandProgressDialog,
+        bool AutoCloseSuccessfulGitCommandFeedback,
         bool ShowReflog,
         bool AutoSetupRemoteOnPush,
         PullStrategy DefaultPullStrategy,
@@ -948,6 +964,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             GitConsoleAutoOpenMode.OnErrors,
             false,
             false,
+            false,
+            false,
             PullStrategy.FastForwardOnly,
             false,
             true,
@@ -967,6 +985,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         public bool LoggingEnabled { get; init; }
         public ApplicationLogLevel? LogLevel { get; init; }
         public GitConsoleAutoOpenMode? GitConsoleAutoOpenMode { get; init; }
+        public bool ShowGitCommandProgressDialog { get; init; }
+        public bool AutoCloseSuccessfulGitCommandFeedback { get; init; }
         public bool ShowReflog { get; init; }
         public bool AutoSetupRemoteOnPush { get; init; }
         public PullStrategy DefaultPullStrategy { get; init; } = PullStrategy.FastForwardOnly;

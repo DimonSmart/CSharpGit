@@ -565,6 +565,27 @@
               </StackPanel>
             </Border>
 
+            <TextBlock Text="Git Command Feedback"
+                       Style="{StaticResource SectionHeaderTextStyle}"
+                       Margin="{StaticResource Margin.Section}" />
+            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
+              <StackPanel Spacing="{StaticResource Spacing.M}">
+                <ToggleSwitch x:Name="ShowGitCommandProgressDialogToggle"
+                              Header="Show Git command progress dialog"
+                              IsOn="{Binding ShowGitCommandProgressDialog, Mode=TwoWay}"
+                              Toggled="ShowGitCommandProgressDialogToggle_Toggled" />
+                <TextBlock Text="Show a compact panel with the actual Git command, live output, and execution result."
+                           Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                <ToggleSwitch x:Name="AutoCloseSuccessfulGitCommandFeedbackToggle"
+                              Header="Automatically close after successful completion"
+                              IsEnabled="{Binding ShowGitCommandProgressDialog}"
+                              IsOn="{Binding AutoCloseSuccessfulGitCommandFeedback, Mode=TwoWay}"
+                              Toggled="AutoCloseSuccessfulGitCommandFeedbackToggle_Toggled" />
+                <TextBlock Text="Close the panel 2 seconds after a successful Git command, unless you are interacting with it."
+                           Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
+
             <TextBlock Text="History performance capture"
                        Style="{StaticResource SectionHeaderTextStyle}"
                        Margin="{StaticResource Margin.Section}" />

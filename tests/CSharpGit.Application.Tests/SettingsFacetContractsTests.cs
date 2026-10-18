@@ -31,7 +31,7 @@ public sealed class SettingsFacetContractsTests
             new[] { "AutoSetupRemoteOnPush", "DefaultPullStrategy", "ForcePullAutoStash" },
             typeof(IGitWorkflowSettings).GetProperties().Select(property => property.Name).OrderBy(name => name).ToArray());
         Assert.Equal(
-            new[] { "GitConsoleAutoOpenMode", "HistoryPerformanceDiagnosticsEnabled", "LoggingEnabled", "LogLevel" },
+            new[] { "AutoCloseSuccessfulGitCommandFeedback", "GitConsoleAutoOpenMode", "HistoryPerformanceDiagnosticsEnabled", "LoggingEnabled", "LogLevel", "ShowGitCommandProgressDialog" },
             typeof(IDiagnosticsSettings).GetProperties().Select(property => property.Name).OrderBy(name => name).ToArray());
         Assert.Equal(5, typeof(IRepositoryLauncherSettings).GetProperties().Length);
         Assert.DoesNotContain(typeof(IGitWorkflowSettings).GetMethods(), method => method.Name.Contains("Reflog", StringComparison.Ordinal));

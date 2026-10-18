@@ -267,6 +267,8 @@ public sealed class SettingsViewModelTests
         public bool LoggingEnabled { get; set; }
         public ApplicationLogLevel LogLevel { get; set; } = ApplicationLogLevel.Information;
         public GitConsoleAutoOpenMode GitConsoleAutoOpenMode { get; set; } = GitConsoleAutoOpenMode.OnErrors;
+        public bool ShowGitCommandProgressDialog { get; set; }
+        public bool AutoCloseSuccessfulGitCommandFeedback { get; set; }
         public bool ShowReflog { get; set; }
         public bool AutoSetupRemoteOnPush { get; set; }
         public PullStrategy DefaultPullStrategy { get; set; } = PullStrategy.FastForwardOnly;
@@ -346,6 +348,22 @@ public sealed class SettingsViewModelTests
             ThrowIfWriteFails(cancellationToken);
             if (GitConsoleAutoOpenMode == mode) return Task.CompletedTask;
             GitConsoleAutoOpenMode = mode;
+            _changed?.Invoke(this, EventArgs.Empty);
+            return Task.CompletedTask;
+        }
+
+        public Task SetShowGitCommandProgressDialogAsync(bool value, CancellationToken cancellationToken = default)
+        {
+            ThrowIfWriteFails(cancellationToken);
+            ShowGitCommandProgressDialog = value;
+            _changed?.Invoke(this, EventArgs.Empty);
+            return Task.CompletedTask;
+        }
+
+        public Task SetAutoCloseSuccessfulGitCommandFeedbackAsync(bool value, CancellationToken cancellationToken = default)
+        {
+            ThrowIfWriteFails(cancellationToken);
+            AutoCloseSuccessfulGitCommandFeedback = value;
             _changed?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
         }
