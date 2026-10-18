@@ -50,6 +50,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     public GitConsoleAutoOpenMode GitConsoleAutoOpenMode => Volatile.Read(ref _state).GitConsoleAutoOpenMode;
     public bool ShowGitCommandProgressDialog => Volatile.Read(ref _state).ShowGitCommandProgressDialog;
     public bool AutoCloseSuccessfulGitCommandFeedback => Volatile.Read(ref _state).AutoCloseSuccessfulGitCommandFeedback;
+    public int SuccessfulGitCommandFeedbackDurationSeconds => Volatile.Read(ref _state).SuccessfulGitCommandFeedbackDurationSeconds;
 
     public bool ShowReflog => Volatile.Read(ref _state).ShowReflog;
 
@@ -137,6 +138,14 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     public Task SetAutoCloseSuccessfulGitCommandFeedbackAsync(bool value, CancellationToken cancellationToken = default) =>
         UpdateAsync(current => current.AutoCloseSuccessfulGitCommandFeedback == value
             ? current : current with { AutoCloseSuccessfulGitCommandFeedback = value }, cancellationToken);
+
+    public Task SetSuccessfulGitCommandFeedbackDurationSecondsAsync(int seconds, CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(seconds);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(seconds, 30);
+        return UpdateAsync(current => current.SuccessfulGitCommandFeedbackDurationSeconds == seconds
+            ? current : current with { SuccessfulGitCommandFeedbackDurationSeconds = seconds }, cancellationToken);
+    }
 
     public Task SetGitConsoleAutoOpenModeAsync(
         GitConsoleAutoOpenMode mode,
@@ -578,6 +587,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 gitConsoleAutoOpenMode,
                 document.ShowGitCommandProgressDialog,
                 document.AutoCloseSuccessfulGitCommandFeedback,
+                document.SuccessfulGitCommandFeedbackDurationSeconds is int seconds && seconds is >= 0 and <= 30 ? seconds : 5,
                 document.ShowReflog,
                 document.AutoSetupRemoteOnPush,
                 document.DefaultPullStrategy,
@@ -621,6 +631,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             GitConsoleAutoOpenMode = state.GitConsoleAutoOpenMode,
             ShowGitCommandProgressDialog = state.ShowGitCommandProgressDialog,
             AutoCloseSuccessfulGitCommandFeedback = state.AutoCloseSuccessfulGitCommandFeedback,
+            SuccessfulGitCommandFeedbackDurationSeconds = state.SuccessfulGitCommandFeedbackDurationSeconds,
             ShowReflog = state.ShowReflog,
             AutoSetupRemoteOnPush = state.AutoSetupRemoteOnPush,
             DefaultPullStrategy = state.DefaultPullStrategy,
@@ -943,6 +954,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         GitConsoleAutoOpenMode GitConsoleAutoOpenMode,
         bool ShowGitCommandProgressDialog,
         bool AutoCloseSuccessfulGitCommandFeedback,
+        int SuccessfulGitCommandFeedbackDurationSeconds,
         bool ShowReflog,
         bool AutoSetupRemoteOnPush,
         PullStrategy DefaultPullStrategy,
@@ -964,6 +976,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             GitConsoleAutoOpenMode.OnErrors,
             false,
             false,
+            5,
             false,
             false,
             PullStrategy.FastForwardOnly,
@@ -987,6 +1000,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         public GitConsoleAutoOpenMode? GitConsoleAutoOpenMode { get; init; }
         public bool ShowGitCommandProgressDialog { get; init; }
         public bool AutoCloseSuccessfulGitCommandFeedback { get; init; }
+        public int? SuccessfulGitCommandFeedbackDurationSeconds { get; init; }
         public bool ShowReflog { get; init; }
         public bool AutoSetupRemoteOnPush { get; init; }
         public PullStrategy DefaultPullStrategy { get; init; } = PullStrategy.FastForwardOnly;

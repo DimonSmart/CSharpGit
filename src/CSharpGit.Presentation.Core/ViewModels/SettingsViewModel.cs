@@ -43,6 +43,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
     private GitConsoleAutoOpenOption _selectedGitConsoleAutoOpenMode;
     private bool _showGitCommandProgressDialog;
     private bool _autoCloseSuccessfulGitCommandFeedback;
+    private double _successfulGitCommandFeedbackDurationSeconds;
     private bool _autoSetupRemoteOnPush;
     private PullStrategyOption _selectedPullStrategy;
     private bool _forcePullAutoStash;
@@ -129,6 +130,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
         _selectedGitConsoleAutoOpenMode = FindGitConsoleMode(_settings.GitConsoleAutoOpenMode);
         _showGitCommandProgressDialog = _settings.ShowGitCommandProgressDialog;
         _autoCloseSuccessfulGitCommandFeedback = _settings.AutoCloseSuccessfulGitCommandFeedback;
+        _successfulGitCommandFeedbackDurationSeconds = _settings.SuccessfulGitCommandFeedbackDurationSeconds;
         _autoSetupRemoteOnPush = _settings.AutoSetupRemoteOnPush;
         _showAuthorAvatars = _settings.ShowAuthorAvatars;
         _onlineAvatarLookupEnabled = _settings.OnlineAvatarLookupEnabled;
@@ -214,6 +216,12 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
     {
         get => _autoCloseSuccessfulGitCommandFeedback;
         set { if (_autoCloseSuccessfulGitCommandFeedback == value) return; _autoCloseSuccessfulGitCommandFeedback = value; Notify(); }
+    }
+
+    public double SuccessfulGitCommandFeedbackDurationSeconds
+    {
+        get => _successfulGitCommandFeedbackDurationSeconds;
+        set { if (_successfulGitCommandFeedbackDurationSeconds == value) return; _successfulGitCommandFeedbackDurationSeconds = value; Notify(); }
     }
 
     public IReadOnlyList<PullStrategyOption> PullStrategies { get; }
@@ -377,6 +385,13 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
     {
         AutoCloseSuccessfulGitCommandFeedback = value;
         try { await _settings.SetAutoCloseSuccessfulGitCommandFeedbackAsync(value, cancellationToken); }
+        catch { await SyncFromSettingsAfterFailureAsync(); throw; }
+    }
+
+    public async Task ApplySuccessfulGitCommandFeedbackDurationSecondsAsync(int seconds, CancellationToken cancellationToken = default)
+    {
+        SuccessfulGitCommandFeedbackDurationSeconds = seconds;
+        try { await _settings.SetSuccessfulGitCommandFeedbackDurationSecondsAsync(seconds, cancellationToken); }
         catch { await SyncFromSettingsAfterFailureAsync(); throw; }
     }
 
@@ -560,6 +575,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
             SelectedGitConsoleAutoOpenMode = FindGitConsoleMode(_settings.GitConsoleAutoOpenMode);
             ShowGitCommandProgressDialog = _settings.ShowGitCommandProgressDialog;
             AutoCloseSuccessfulGitCommandFeedback = _settings.AutoCloseSuccessfulGitCommandFeedback;
+            SuccessfulGitCommandFeedbackDurationSeconds = _settings.SuccessfulGitCommandFeedbackDurationSeconds;
             AutoSetupRemoteOnPush = _settings.AutoSetupRemoteOnPush;
             SelectedPullStrategy = FindPullStrategy(_settings.DefaultPullStrategy);
             ForcePullAutoStash = _settings.ForcePullAutoStash;
