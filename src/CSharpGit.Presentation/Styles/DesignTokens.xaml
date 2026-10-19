@@ -29,6 +29,8 @@
 
   <Thickness x:Key="Padding.DenseRow">4,0</Thickness>
   <Thickness x:Key="Padding.Control">6,0</Thickness>
+  <Thickness x:Key="Padding.CompactTextBox">6,6</Thickness>
+  <Thickness x:Key="Padding.CompactSelectorBarItem">6,6,6,0</Thickness>
   <Thickness x:Key="Padding.Toolbar">8,0</Thickness>
   <Thickness x:Key="Padding.PaneHeader">8,0</Thickness>
   <Thickness x:Key="Padding.Workspace">8</Thickness>
