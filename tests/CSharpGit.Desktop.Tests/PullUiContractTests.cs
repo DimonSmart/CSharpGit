@@ -40,6 +40,23 @@ public sealed class PullUiContractTests
     }
 
     [Fact]
+    public void CompletedPullNavigatesHistoryWithoutAddingHeadToolbarActions()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var ui = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
+        var view = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+
+        Assert.Contains("PullDefaultAsync() => PullFromUiAsync(null)", view, StringComparison.Ordinal);
+        Assert.Contains("PullOnceFromUiAsync(PullStrategy strategy) => PullFromUiAsync(strategy)", view, StringComparison.Ordinal);
+        Assert.Contains("result.Kind == PullExecutionKind.Completed", view, StringComparison.Ordinal);
+        Assert.Contains("history.SelectionIntentVersion == selectionIntentVersion", view, StringComparison.Ordinal);
+        Assert.Contains("history.SelectCommitInCurrentHistoryAsync(", view, StringComparison.Ordinal);
+        Assert.Contains("HistoryList.ScrollIntoView(target, ScrollIntoViewAlignment.Leading)", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("Go to HEAD", ui, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void PullSettingsNavigateToExistingGeneralPageEvenWhenPullUnavailable()
     {
         var root = FindRepositoryRoot();

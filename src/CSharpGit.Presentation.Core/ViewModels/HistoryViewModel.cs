@@ -47,6 +47,8 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
     private string _filterText = string.Empty;
     private UiChoice<HistoryScope> _selectedScope;
     private HistoryRow? _selectedRow;
+    private long _selectionIntentVersion;
+    private bool _isApplyingHistoryRows;
     private string? _activeReference;
     private string? _activeReferenceLabel;
     private bool _hasMore;
@@ -79,6 +81,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
     internal event Action<long, int>? CommitLookupCompleted;
 
     public ObservableCollection<HistoryRow> Rows => _rows;
+    public long SelectionIntentVersion => _selectionIntentVersion;
 
     public IReadOnlyList<UiChoice<HistoryScope>> Scopes { get; } =
     [
@@ -97,6 +100,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
             value ??= string.Empty;
             if (string.Equals(_filterText, value, StringComparison.Ordinal)) return;
             _filterText = value;
+            _selectionIntentVersion++;
             Notify();
             Invalidate();
         }
@@ -111,6 +115,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
             if (_selectedScope == value) return;
 
             _selectedScope = value;
+            _selectionIntentVersion++;
             Notify();
             if (value.Value != HistoryScope.AllReferences)
                 SetShowReflogCore(false, persist: true);
@@ -127,6 +132,8 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
             if (ReferenceEquals(_selectedRow, value)) return;
             var previous = _selectedRow;
             _selectedRow = value;
+            if (!_isApplyingHistoryRows)
+                _selectionIntentVersion++;
             Notify();
             SelectedRowChanged?.Invoke(previous);
         }
@@ -139,6 +146,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
         {
             if (_showReflog == value) return;
 
+            _selectionIntentVersion++;
             if (value && _selectedScope != Scopes[0])
             {
                 _selectedScope = Scopes[0];
@@ -228,6 +236,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
 
         _selectedScope = scope;
         _showReflog = showReflog;
+        _selectionIntentVersion++;
 
         if (scopeChanged) Notify(nameof(SelectedScope));
         if (reflogChanged)
@@ -281,12 +290,38 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
         await LoadAsync(reset: true);
     }
 
-    public async Task<HistoryRow?> NavigateToCommitAsync(
+    // Keep the current history context intact when following an updated commit.
+    public Task<HistoryRow?> SelectCommitInCurrentHistoryAsync(
         string commitHash,
-        int trailingCount = 100)
+        long expectedSelectionIntentVersion)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(commitHash);
-        if (_context?.Repository is not { } repository) return null;
+        if (_selectionIntentVersion != expectedSelectionIntentVersion
+            || IsReferenceScoped
+            || !string.IsNullOrWhiteSpace(_filterText)
+            || _context?.CanUpdateHistorySelection != true)
+            return Task.FromResult<HistoryRow?>(null);
+
+        if (_selectedScope == Scopes[0])
+            return NavigateToCommitAsync(
+                commitHash, expectedSelectionIntentVersion: expectedSelectionIntentVersion);
+
+        var row = _rows.FirstOrDefault(item =>
+            string.Equals(item.Commit.Hash, commitHash, StringComparison.Ordinal));
+        if (row is not null)
+            SelectedRow = row;
+        return Task.FromResult(row);
+    }
+
+    public async Task<HistoryRow?> NavigateToCommitAsync(
+        string commitHash,
+        int trailingCount = 100,
+        long? expectedSelectionIntentVersion = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(commitHash);
+        if (_context?.Repository is not { } repository
+            || (expectedSelectionIntentVersion.HasValue
+                && _selectionIntentVersion != expectedSelectionIntentVersion.Value)) return null;
 
         var requiresReload =
             IsReferenceScoped
@@ -342,7 +377,9 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
                 trailingCount,
                 request.Token);
 
-            if (!CanPublish(request)) return null;
+            if (!CanPublish(request)
+                || (expectedSelectionIntentVersion.HasValue
+                    && _selectionIntentVersion != expectedSelectionIntentVersion.Value)) return null;
 
             _rows.ReplaceAll(page.Rows);
             HasMore = page.HasMore;
@@ -467,33 +504,43 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
 
             if (!CanPublish(request)) return;
 
-            if (reset)
-                _rows.ReplaceAll(page.Rows);
-            else
-                foreach (var row in page.Rows)
-                    _rows.Add(row);
-
-            HasMore = page.HasMore;
-
-            if (reset)
+            // Row replacement may transiently clear ListView's two-way selection.
+            // Neither that nor selection restoration is a new navigation intent.
+            _isApplyingHistoryRows = true;
+            try
             {
-                if (_context.CanUpdateHistorySelection)
+                if (reset)
+                    _rows.ReplaceAll(page.Rows);
+                else
+                    foreach (var row in page.Rows)
+                        _rows.Add(row);
+
+                HasMore = page.HasMore;
+
+                if (reset)
                 {
-                    var lookupStartedAt = Stopwatch.GetTimestamp();
-                    var restored = selectedHash is null
-                        ? _rows.FirstOrDefault()
-                        : _rows.FirstOrDefault(row =>
-                            string.Equals(row.Commit.Hash, selectedHash, StringComparison.Ordinal))
-                          ?? _rows.FirstOrDefault();
-                    CommitLookupCompleted?.Invoke(lookupStartedAt, _rows.Count);
-                    SelectedRow = restored;
+                    if (_context.CanUpdateHistorySelection)
+                    {
+                        var lookupStartedAt = Stopwatch.GetTimestamp();
+                        var restored = selectedHash is null
+                            ? _rows.FirstOrDefault()
+                            : _rows.FirstOrDefault(row =>
+                                string.Equals(row.Commit.Hash, selectedHash, StringComparison.Ordinal))
+                              ?? _rows.FirstOrDefault();
+                        CommitLookupCompleted?.Invoke(lookupStartedAt, _rows.Count);
+                        SelectedRow = restored;
+                    }
+                }
+                else if (_context.CanUpdateHistorySelection
+                         && SelectedRow is null
+                         && _rows.FirstOrDefault() is { } first)
+                {
+                    SelectedRow = first;
                 }
             }
-            else if (_context.CanUpdateHistorySelection
-                     && SelectedRow is null
-                     && _rows.FirstOrDefault() is { } first)
+            finally
             {
-                SelectedRow = first;
+                _isApplyingHistoryRows = false;
             }
         }
         catch (OperationCanceledException) when (request.Cancellation.IsCancellationRequested)
@@ -600,6 +647,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
 
         _activeReference = reference;
         _activeReferenceLabel = label;
+        _selectionIntentVersion++;
         if (referenceChanged)
         {
             Notify(nameof(ActiveReference));
