@@ -51,7 +51,7 @@
               IsHitTestVisible="False" />
       <controls:CommitGraphControl Graph="{x:Bind Topology, Mode=OneWay, Converter={StaticResource CommitTopologyToGraphVisualConverter}}" IsReflogOnly="{x:Bind IsReflogOnly, Mode=OneWay}"
                                    VerticalAlignment="Stretch" />
-      <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,Auto,*" MinWidth="120">
+      <controls:HistorySubjectReferencesPanel Grid.Column="1" MinWidth="120">
         <TextBlock Text="{x:Bind Commit.Subject, Mode=OneWay}"
                    Style="{StaticResource BodyStrongTextStyle}"
                    TextTrimming="CharacterEllipsis"
@@ -66,6 +66,7 @@
         <TextBlock Grid.Column="2"
                    Text="{x:Bind ReflogGhostDisplay, Mode=OneWay}"
                    Style="{StaticResource HistoryReflogGhostTextStyle}"
+                   TextTrimming="CharacterEllipsis"
                    Margin="{StaticResource Margin.ReferenceList}"
                    Visibility="{x:Bind IsReflogOnly, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
                    ToolTipService.ToolTip="{x:Bind ReflogToolTip, Mode=OneWay}" />
@@ -73,7 +74,7 @@
                                              References="{x:Bind ReferenceDetails, Mode=OneWay}"
                                              Margin="{StaticResource Margin.ReferenceList}"
                                              VerticalAlignment="Center" />
-      </Grid>
+      </controls:HistorySubjectReferencesPanel>
       <Grid Grid.Column="2"
             ColumnDefinitions="Auto,*"
             Margin="{StaticResource Margin.HistoryColumnGap}"
@@ -159,7 +160,7 @@
       <Border Grid.ColumnSpan="5" Background="{ThemeResource AccentFillColorDefaultBrush}" Opacity="0.06"
               Visibility="{x:Bind IsReflogOnly, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" IsHitTestVisible="False" />
       <controls:CommitGraphControl Graph="{x:Bind Topology, Mode=OneWay, Converter={StaticResource CommitTopologyToGraphVisualConverter}}" IsReflogOnly="{x:Bind IsReflogOnly, Mode=OneWay}" VerticalAlignment="Stretch" />
-      <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,*" MinWidth="120">
+      <controls:HistorySubjectReferencesPanel Grid.Column="1" MinWidth="120">
         <TextBlock Text="{x:Bind Commit.Subject, Mode=OneWay}" Style="{StaticResource BodyStrongTextStyle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
         <Border Grid.Column="1" Style="{StaticResource ReferenceBadgeStyle}" Margin="{StaticResource Margin.ReferenceList}"
                 Visibility="{x:Bind IsReflogOnly, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
@@ -167,10 +168,10 @@
           <TextBlock Text="reflog" Style="{StaticResource ReferenceBadgeTextStyle}" />
         </Border>
         <controls:HistoryReferencesPresenter Grid.Column="2"
-                                             References="{x:Bind Commit.References, Mode=OneWay}"
+                                             References="{x:Bind ReferenceDetails, Mode=OneWay}"
                                              Margin="{StaticResource Margin.ReferenceList}"
                                              VerticalAlignment="Center" />
-      </Grid>
+      </controls:HistorySubjectReferencesPanel>
       <TextBlock Grid.Column="2" Text="{x:Bind Commit.Author, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
       <TextBlock Grid.Column="3" Text="{Binding Commit.AuthoredAt}" Style="{StaticResource SecondaryTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
       <TextBlock Grid.Column="4" Text="{x:Bind Commit.ShortHash, Mode=OneWay}" Style="{StaticResource TechnicalSecondaryTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" VerticalAlignment="Center" />
