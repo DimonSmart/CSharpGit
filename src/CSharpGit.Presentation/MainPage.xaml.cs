@@ -633,11 +633,41 @@ public sealed partial class MainPage : Page
     private void Pull_Click(object sender, RoutedEventArgs e) =>
         RunPageUiOperation(PullDefaultAsync, "Pull");
 
-    private async Task PullDefaultAsync()
+    private Task PullDefaultAsync() => PullFromUiAsync(null);
+
+    private async Task PullFromUiAsync(PullStrategy? strategy)
     {
-        await ExecuteCommandAsync(_viewModel.RepositorySync.PullCommand);
-        if (!IsShuttingDown && _viewModel.RepositorySync.LastPullResult is { } result)
-            await ShowPullResultAsync(result);
+        var repository = _viewModel.Repository;
+        if (IsShuttingDown || repository is null || !_viewModel.RepositorySync.CanPull)
+            return;
+
+        var previousHead = _viewModel.CurrentHeadCommit;
+        var history = _viewModel.History;
+        var selectionIntentVersion = history.SelectionIntentVersion;
+        var result = strategy is { } requestedStrategy
+            ? await _viewModel.RepositorySync.PullAsync(repository, requestedStrategy)
+            : await _viewModel.RepositorySync.PullAsync(repository);
+
+        var currentHead = _viewModel.CurrentHeadCommit;
+        if (!IsShuttingDown
+            && ReferenceEquals(_viewModel.Repository, repository)
+            && result.Kind == PullExecutionKind.Completed
+            && currentHead is not null
+            && !string.Equals(previousHead, currentHead, StringComparison.Ordinal)
+            && history.SelectionIntentVersion == selectionIntentVersion
+            && _viewModel.Stashes.SelectedStash is null
+            && HistoryPane.Visibility == Visibility.Visible)
+        {
+            var target = await history.SelectCommitInCurrentHistoryAsync(
+                currentHead, selectionIntentVersion);
+            if (!IsShuttingDown
+                && ReferenceEquals(_viewModel.Repository, repository)
+                && target is not null
+                && ReferenceEquals(target, history.SelectedRow))
+                HistoryList.ScrollIntoView(target, ScrollIntoViewAlignment.Leading);
+        }
+
+        await ShowPullResultAsync(result);
     }
 
     private async Task ShowPullResultAsync(PullExecutionResult result)
@@ -654,13 +684,7 @@ public sealed partial class MainPage : Page
         await ShowErrorAsync(title, result.Message);
     }
 
-    private async Task PullOnceFromUiAsync(PullStrategy strategy)
-    {
-        var repository = _viewModel.Repository;
-        if (repository is null || !_viewModel.RepositorySync.CanPull) return;
-        var result = await _viewModel.RepositorySync.PullAsync(repository, strategy);
-        await ShowPullResultAsync(result);
-    }
+    private Task PullOnceFromUiAsync(PullStrategy strategy) => PullFromUiAsync(strategy);
 
     private void PullMerge_Click(object sender, RoutedEventArgs e) =>
         RunPageUiOperation(() => PullOnceFromUiAsync(PullStrategy.Merge), "Merge pull");

@@ -31,6 +31,95 @@ public sealed class HistoryViewModelTests
     }
 
     [Fact]
+    public async Task PullNavigationSelectsHeadWithinCurrentBranchWithoutChangingScope()
+    {
+        using var fixture = new Fixture();
+        fixture.Service.Enqueue(new HistoryPage([Row("new-head"), Row("old-head")], HasMore: false));
+        fixture.ViewModel.SelectedScope = fixture.ViewModel.Scopes[1];
+        await fixture.ViewModel.RefreshAsync();
+        fixture.ViewModel.SelectedRow = fixture.ViewModel.Rows[1];
+        var selectionVersion = fixture.ViewModel.SelectionIntentVersion;
+
+        var target = await fixture.ViewModel.SelectCommitInCurrentHistoryAsync("new-head", selectionVersion);
+
+        Assert.Same(fixture.ViewModel.Rows[0], target);
+        Assert.Same(target, fixture.ViewModel.SelectedRow);
+        Assert.Equal(HistoryScope.CurrentBranch, fixture.ViewModel.SelectedScope.Value);
+        Assert.Empty(fixture.Service.ThroughReads);
+    }
+
+    [Fact]
+    public async Task PullNavigationFindsHeadOutsideInitialAllReferencesPage()
+    {
+        using var fixture = new Fixture();
+        fixture.Service.Enqueue(new HistoryPage([Row("other")], HasMore: true));
+        await fixture.ViewModel.RefreshAsync();
+        var version = fixture.ViewModel.SelectionIntentVersion;
+        var head = Row("new-head");
+        fixture.Service.EnqueueThrough(new HistoryPage([Row("other"), head], HasMore: true));
+
+        var target = await fixture.ViewModel.SelectCommitInCurrentHistoryAsync("new-head", version);
+
+        Assert.Same(head, target);
+        Assert.Same(target, fixture.ViewModel.SelectedRow);
+        Assert.Equal(HistoryScope.AllReferences, fixture.ViewModel.SelectedScope.Value);
+        Assert.Equal("new-head", Assert.Single(fixture.Service.ThroughReads).Hash);
+    }
+
+    [Fact]
+    public async Task PullNavigationDoesNotOverrideNewSelectionOrFilteredHistory()
+    {
+        using var fixture = new Fixture();
+        fixture.Service.Enqueue(new HistoryPage([Row("new-head"), Row("old-head")], HasMore: false));
+        await fixture.ViewModel.RefreshAsync();
+        var version = fixture.ViewModel.SelectionIntentVersion;
+        fixture.ViewModel.SelectedRow = fixture.ViewModel.Rows[1];
+
+        Assert.Null(await fixture.ViewModel.SelectCommitInCurrentHistoryAsync("new-head", version));
+        Assert.Same(fixture.ViewModel.Rows[1], fixture.ViewModel.SelectedRow);
+
+        fixture.ViewModel.FilterText = "needle";
+        var filteredVersion = fixture.ViewModel.SelectionIntentVersion;
+        Assert.Null(await fixture.ViewModel.SelectCommitInCurrentHistoryAsync("new-head", filteredVersion));
+        Assert.Empty(fixture.Service.ThroughReads);
+    }
+
+    [Fact]
+    public async Task RefreshRestorationDoesNotCountAsUserSelectionIntent()
+    {
+        using var fixture = new Fixture();
+        fixture.Service.Enqueue(new HistoryPage([Row("old"), Row("selected")], HasMore: false));
+        await fixture.ViewModel.RefreshAsync();
+        fixture.ViewModel.SelectedRow = fixture.ViewModel.Rows[1];
+        var version = fixture.ViewModel.SelectionIntentVersion;
+
+        fixture.Service.Enqueue(new HistoryPage([Row("new"), Row("selected")], HasMore: false));
+        await fixture.ViewModel.RefreshAsync();
+
+        Assert.Equal(version, fixture.ViewModel.SelectionIntentVersion);
+        Assert.Equal("selected", fixture.ViewModel.SelectedRow?.Commit.Hash);
+    }
+
+    [Fact]
+    public async Task PullNavigationDoesNotOverrideSelectionChangedDuringHistoryLookup()
+    {
+        using var fixture = new Fixture(controlled: true);
+        var refresh = fixture.ViewModel.RefreshAsync();
+        fixture.Service.CompleteRead(0, new HistoryPage([Row("other"), Row("user-target")], HasMore: true));
+        await refresh;
+        var version = fixture.ViewModel.SelectionIntentVersion;
+
+        var navigation = fixture.ViewModel.SelectCommitInCurrentHistoryAsync("new-head", version);
+        Assert.Single(fixture.Service.ThroughReads);
+        fixture.ViewModel.SelectedRow = fixture.ViewModel.Rows[1];
+        fixture.Service.CompleteThroughRead(0, new HistoryPage([Row("new-head")], HasMore: false));
+
+        Assert.Null(await navigation);
+        Assert.Equal(["other", "user-target"], fixture.ViewModel.Rows.Select(row => row.Commit.Hash));
+        Assert.Equal("user-target", fixture.ViewModel.SelectedRow?.Commit.Hash);
+    }
+
+    [Fact]
     public async Task ReferenceScopeAndShowAllReuseOneRowsCollection()
     {
         using var fixture = new Fixture();
@@ -253,6 +342,7 @@ public sealed class HistoryViewModelTests
         private readonly Queue<HistoryPage> _pages = new();
         private readonly Queue<HistoryPage> _throughPages = new();
         private readonly List<TaskCompletionSource<HistoryPage>> _controlledReads = [];
+        private readonly List<TaskCompletionSource<HistoryPage>> _controlledThroughReads = [];
 
         public List<(Repository Repository, HistoryQuery Query, CancellationToken Token)> Reads { get; } = [];
         public List<(Repository Repository, HistoryQuery Query, string Hash, CancellationToken Token)> ThroughReads { get; } = [];
@@ -262,6 +352,9 @@ public sealed class HistoryViewModelTests
 
         public void CompleteRead(int index, HistoryPage page) =>
             _controlledReads[index].TrySetResult(page);
+
+        public void CompleteThroughRead(int index, HistoryPage page) =>
+            _controlledThroughReads[index].TrySetResult(page);
 
         public Task<HistoryPage> ReadHistoryAsync(
             Repository repository,
@@ -294,7 +387,13 @@ public sealed class HistoryViewModelTests
             CancellationToken cancellationToken = default)
         {
             ThroughReads.Add((repository, query, targetHash, cancellationToken));
-            return Task.FromResult(_throughPages.Dequeue());
+            if (!controlled)
+                return Task.FromResult(_throughPages.Dequeue());
+
+            var source = new TaskCompletionSource<HistoryPage>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            _controlledThroughReads.Add(source);
+            return source.Task;
         }
 
         public Task<CommitDetails> ReadCommitAsync(
