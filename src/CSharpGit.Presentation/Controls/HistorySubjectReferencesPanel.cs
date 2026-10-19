@@ -26,6 +26,8 @@ public sealed class HistorySubjectReferencesPanel : Panel
         {
             Children[i].Measure(unconstrained);
             _naturalWidths[i] = Children[i].DesiredSize.Width;
+            if (i == 3 && Children[i] is HistoryReferencesPresenter { References: null or { Count: 0 } })
+                _naturalWidths[i] = 0;
             height = Math.Max(height, Children[i].DesiredSize.Height);
         }
 
