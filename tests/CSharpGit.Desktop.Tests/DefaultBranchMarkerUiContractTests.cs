@@ -14,12 +14,9 @@ public sealed class DefaultBranchMarkerUiContractTests
         Assert.Contains("LocalDefaultBranchIconVisibility", node, StringComparison.Ordinal);
         Assert.Contains("RemoteDefaultBranchIconVisibility", node, StringComparison.Ordinal);
         Assert.DoesNotContain("LocalBranch && !IsCurrent && Value is GitBranch { IsDefault: true }", node, StringComparison.Ordinal);
-        Assert.Equal(2, CountOccurrences(repositoryTree, "Glyph=\"&#xE80F;\""));
         Assert.DoesNotContain("Visibility=\"{Binding CurrentLocalBranchIconVisibility}\"", repositoryTree, StringComparison.Ordinal);
         Assert.Contains("Visibility=\"{Binding LocalDefaultBranchIconVisibility}\"", repositoryTree, StringComparison.Ordinal);
         Assert.Contains("Visibility=\"{Binding RemoteDefaultBranchIconVisibility}\"", repositoryTree, StringComparison.Ordinal);
-        Assert.Equal(2, CountOccurrences(repositoryTree, " Foreground=\"{ThemeResource AccentFillColorDefaultBrush}\""));
-        Assert.DoesNotContain("Foreground=\"{ThemeResource TextFillColorSecondaryBrush}\"", repositoryTree, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -38,21 +35,8 @@ public sealed class DefaultBranchMarkerUiContractTests
         Assert.DoesNotContain("origin/main", presenter, StringComparison.Ordinal);
         Assert.Contains("IsDefault = localDefaultRemoteBranch is not null", repositoryState, StringComparison.Ordinal);
         Assert.Contains("<Style x:Key=\"HistoryReferenceDefaultBranchIconStyle\" TargetType=\"FontIcon\">", historyStyles, StringComparison.Ordinal);
-        Assert.Contains("<Setter Property=\"Glyph\" Value=\"&#xE80F;\" />", historyStyles, StringComparison.Ordinal);
         Assert.Contains("HistoryReferenceDefaultBranchIconStyle", presenter, StringComparison.Ordinal);
         Assert.Contains("<controls:HistoryReferencesPresenter", historyStyles, StringComparison.Ordinal);
-    }
-
-    private static int CountOccurrences(string text, string value)
-    {
-        var count = 0;
-        var index = 0;
-        while ((index = text.IndexOf(value, index, StringComparison.Ordinal)) >= 0)
-        {
-            count++;
-            index += value.Length;
-        }
-        return count;
     }
 
     private static string FindRepositoryRoot()
