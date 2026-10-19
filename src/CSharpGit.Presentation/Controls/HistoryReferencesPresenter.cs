@@ -306,12 +306,13 @@ public sealed class HistoryReferencesPresenter : Panel
         visual.DefaultBranchIcon.Visibility = reference.IsDefault
             ? Visibility.Visible : Visibility.Collapsed;
 
-        var counters = BuildTrackingCounters(reference);
+        var annotations = HistoryReferenceBadgeContent.Create(reference);
+        var counters = annotations.Counters;
         visual.CountersText.Text = counters;
         visual.CountersText.Visibility = string.IsNullOrEmpty(counters)
             ? Visibility.Collapsed : Visibility.Visible;
 
-        var upstream = BuildUpstreamAnnotation(reference);
+        var upstream = annotations.Upstream;
         visual.UpstreamText.Text = upstream;
         visual.UpstreamText.Visibility = string.IsNullOrEmpty(upstream)
             ? Visibility.Collapsed : Visibility.Visible;
@@ -324,26 +325,6 @@ public sealed class HistoryReferencesPresenter : Panel
         ToolTipService.SetToolTip(visual.Border, tooltip);
         AutomationProperties.SetName(visual.Border, tooltip.Replace('\n', ' '));
     }
-
-    private static string BuildTrackingCounters(HistoryReferenceDecoration reference)
-    {
-        if (reference.Kind != HistoryReferenceKind.CurrentLocalBranch
-            || string.IsNullOrWhiteSpace(reference.Upstream))
-            return string.Empty;
-
-        if (reference.Ahead > 0 && reference.Behind > 0)
-            return $"↑{reference.Ahead} ↓{reference.Behind}";
-        if (reference.Ahead > 0)
-            return $"↑{reference.Ahead}";
-        return reference.Behind > 0 ? $"↓{reference.Behind}" : string.Empty;
-    }
-
-    private static string BuildUpstreamAnnotation(HistoryReferenceDecoration reference) =>
-        reference.Kind == HistoryReferenceKind.CurrentLocalBranch
-        && !reference.IsSameNameRemoteUpstream
-        && !string.IsNullOrWhiteSpace(reference.Upstream)
-            ? $"· upstream {reference.Upstream}"
-            : string.Empty;
 
     private static string BuildToolTip(HistoryReferenceDecoration reference) =>
         reference.Kind switch
