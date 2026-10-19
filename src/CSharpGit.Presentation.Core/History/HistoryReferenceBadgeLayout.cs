@@ -55,8 +55,11 @@ public static class HistoryReferenceBadgeLayout
                 continue;
 
             var required = overflow;
+            // Existing visible names must not become shorter as the panel
+            // grows enough to introduce another badge. All but the last
+            // visible name therefore have their full compact width.
             for (var i = 0; i < count; i++)
-                required += badges[i].Minimum;
+                required += i < count - 1 ? badges[i].Compact : badges[i].Minimum;
             if (required > available + 0.01)
                 continue;
 
@@ -67,13 +70,15 @@ public static class HistoryReferenceBadgeLayout
             var upstreams = new bool[count];
             for (var i = 0; i < count; i++)
             {
-                widths[i] = badges[i].Minimum;
-                names[i] = badges[i].MinimumName;
+                var established = i < count - 1;
+                widths[i] = established ? badges[i].Compact : badges[i].Minimum;
+                names[i] = established ? badges[i].FullName : badges[i].MinimumName;
+                counters[i] = established && badges[i].HasCounters;
             }
 
             // Tracking counts take precedence over growing names. The upstream
             // name is lower priority than either of them.
-            for (var i = 0; i < count; i++)
+            for (var i = Math.Max(0, count - 1); i < count; i++)
             {
                 var addition = Math.Max(0, badges[i].WithCounters - badges[i].Minimum);
                 if (addition > remaining + 0.01)
@@ -85,7 +90,7 @@ public static class HistoryReferenceBadgeLayout
 
             // WinUI performs character ellipsis on the allocated name width;
             // never split a grapheme or manufacture an abbreviated Git name.
-            for (var i = 0; i < count; i++)
+            for (var i = Math.Max(0, count - 1); i < count; i++)
             {
                 var capacity = Math.Max(0, badges[i].FullName - badges[i].MinimumName);
                 var addition = Math.Min(remaining, capacity);
