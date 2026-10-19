@@ -89,6 +89,24 @@ public sealed class UnoXamlCompatibilityContractTests
     }
 
     [Fact]
+    public void GitCommandSuccessUsesSemanticThemeBrushAndRestoresNeutralStatusStyle()
+    {
+        var typography = ReadStyle("Typography.xaml");
+        var success = Slice(typography, "<Style x:Key=\"SuccessStatusTextStyle\"", "</Style>");
+        var presentation = Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation");
+        var view = File.ReadAllText(Path.Combine(presentation, "Controls", "GitCommandFeedbackView.xaml"));
+        var code = File.ReadAllText(Path.Combine(presentation, "Controls", "GitCommandFeedbackView.xaml.cs"));
+
+        Assert.Contains("BasedOn=\"{StaticResource BodyTextStyle}\"", success, StringComparison.Ordinal);
+        Assert.Contains("Property=\"Foreground\" Value=\"{ThemeResource SystemFillColorSuccessBrush}\"", success, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"StatusText\"", view, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.LiveSetting=\"Polite\"", view, StringComparison.Ordinal);
+        Assert.Contains("var changedStatus = _current?.Status != state.Status;", code, StringComparison.Ordinal);
+        Assert.Contains("state.Status == GitCommandStatus.Succeeded ? \"SuccessStatusTextStyle\" : \"BodyTextStyle\"", code, StringComparison.Ordinal);
+        Assert.Contains("StatusText.Text = state.StatusText;", code, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MainWorkspaceUsesSemanticActionStylesAndAFlatTonalToolbarSurface()
     {
         var controls = ReadStyle("Controls.xaml");
