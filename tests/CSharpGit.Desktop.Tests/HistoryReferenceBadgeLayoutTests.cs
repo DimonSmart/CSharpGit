@@ -91,7 +91,9 @@ public sealed class HistoryReferenceBadgeLayoutTests
         {
             var plan = HistoryReferenceBadgeLayout.Calculate(badges, width, Overflow);
             var again = HistoryReferenceBadgeLayout.Calculate(badges, width, Overflow);
-            Assert.Equal(plan, again);
+            Assert.Equal(plan.Visible.ToArray(), again.Visible.ToArray());
+            Assert.Equal(plan.HiddenCount, again.HiddenCount);
+            Assert.Equal(plan.OverflowWidth, again.OverflowWidth);
             Assert.True(plan.Visible.Count >= previousCount);
             previousCount = plan.Visible.Count;
         }
@@ -114,7 +116,7 @@ public sealed class HistoryReferenceBadgeLayoutTests
         {
             new HistoryReferenceBadgeLayout.Metrics(18, 18, 18, 18, 8, 8),
             Long,
-            new HistoryReferenceBadgeLayout.Metrics(20, 20, 40, 40, 10, 30)
+            new HistoryReferenceBadgeLayout.Metrics(60, 60, 75, 75, 12, 27)
         };
         var plan = HistoryReferenceBadgeLayout.Calculate(badges, 80, Overflow);
 
