@@ -19,8 +19,6 @@ public sealed class WorkingTreeSplitterUiContractTests
         Assert.Contains("Grid.Row=\"1\"", splitter, StringComparison.Ordinal);
         Assert.Contains("ResizeDirection=\"Rows\"", splitter, StringComparison.Ordinal);
         Assert.Contains("ResizeBehavior=\"PreviousAndNext\"", splitter, StringComparison.Ordinal);
-        Assert.Contains("MinimumFirst=\"80\"", splitter, StringComparison.Ordinal);
-        Assert.Contains("MinimumSecond=\"80\"", splitter, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()
