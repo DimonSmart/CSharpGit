@@ -10,11 +10,12 @@ public static class GitReferenceSemantics
         IReadOnlyList<GitRemote> configuredRemotes)
     {
         if (string.IsNullOrEmpty(branch.Name)
-            || string.IsNullOrEmpty(branch.UpstreamReference))
+            || string.IsNullOrEmpty(branch.UpstreamReference)
+            || string.IsNullOrEmpty(branch.UpstreamRemoteName))
             return false;
 
         return configuredRemotes.Any(remote =>
-            !string.IsNullOrEmpty(remote.Name)
+            string.Equals(remote.Name, branch.UpstreamRemoteName, StringComparison.Ordinal)
             && string.Equals(
                 branch.UpstreamReference,
                 $"refs/remotes/{remote.Name}/{branch.Name}",
