@@ -85,7 +85,7 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
             repository,
             cancellationToken,
             "for-each-ref",
-            "--format=%(refname)%00%(objectname)%00%(upstream:short)%00%(upstream:track)%00%(symref:short)%1e",
+            "--format=%(refname)%00%(objectname)%00%(upstream:short)%00%(upstream:track)%00%(symref:short)%00%(upstream)%00%(upstream:remotename)%1e",
             "refs/heads",
             "refs/remotes");
         var referenceRead = ParseReferences(referenceOutput, status.HeadReference);
@@ -433,7 +433,11 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
                     string.Equals(name, currentBranch, StringComparison.Ordinal),
                     EmptyToNull(fields[2]),
                     ahead,
-                    behind));
+                    behind)
+                {
+                    UpstreamReference = fields.Length > 5 ? EmptyToNull(fields[5]) : null,
+                    UpstreamRemoteName = fields.Length > 6 ? EmptyToNull(fields[6]) : null
+                });
                 continue;
             }
 

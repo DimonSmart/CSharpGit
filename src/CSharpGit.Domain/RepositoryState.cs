@@ -50,6 +50,9 @@ public sealed record GitBranch(
     int Behind = 0)
 {
     public bool IsDefault { get; init; }
+    // Full Git refname from %(upstream), distinct from the human-readable upstream:short.
+    public string? UpstreamReference { get; init; }
+    public string? UpstreamRemoteName { get; init; }
 }
 
 public sealed record GitRemote(string Name, string FetchUrl, string PushUrl);

@@ -414,7 +414,11 @@ internal GitCommitHistoryReader(GitCommandExecutor executor)
                         branch.IsDefault,
                         branch.Upstream,
                         branch.Ahead,
-                        branch.Behind));
+                        branch.Behind)
+                    {
+                        IsSameNameRemoteUpstream = isCurrent
+                            && GitReferenceSemantics.IsSameNameRemoteUpstream(branch, references.Remotes)
+                    });
             }
 
             foreach (var branch in references.RemoteBranches)
