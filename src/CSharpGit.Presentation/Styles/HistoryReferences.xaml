@@ -167,7 +167,14 @@
                 ToolTipService.ToolTip="This commit is not reachable from normal repository refs and is currently reachable through Git reflog.">
           <TextBlock Text="reflog" Style="{StaticResource ReferenceBadgeTextStyle}" />
         </Border>
-        <controls:HistoryReferencesPresenter Grid.Column="2"
+        <TextBlock Grid.Column="2"
+                   Text="{x:Bind ReflogGhostDisplay, Mode=OneWay}"
+                   Style="{StaticResource HistoryReflogGhostTextStyle}"
+                   TextTrimming="CharacterEllipsis"
+                   Margin="{StaticResource Margin.ReferenceList}"
+                   Visibility="{x:Bind IsReflogOnly, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
+                   ToolTipService.ToolTip="{x:Bind ReflogToolTip, Mode=OneWay}" />
+        <controls:HistoryReferencesPresenter Grid.Column="3"
                                              References="{x:Bind ReferenceDetails, Mode=OneWay}"
                                              Margin="{StaticResource Margin.ReferenceList}"
                                              VerticalAlignment="Center" />
