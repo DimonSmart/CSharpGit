@@ -19,6 +19,7 @@ public sealed class HistoryReferencesPresenter : Panel
     private readonly Border _overflowMeasureBorder;
     private readonly TextBlock _overflowMeasureText;
     private readonly TextBlock _minimumNameMeasureText;
+    private readonly ReferenceVisual _measureVisual;
     private HistoryReferenceBadgeLayout.Plan _plan = HistoryReferenceBadgeLayout.Plan.Empty;
     private int _activeCount;
     private int _overflowVisibleCount = -1;
@@ -34,6 +35,7 @@ public sealed class HistoryReferencesPresenter : Panel
     {
         (_overflowBorder, _overflowText) = CreateOverflowVisual();
         (_overflowMeasureBorder, _overflowMeasureText) = CreateOverflowVisual();
+        _measureVisual = CreateVisual();
         _minimumNameMeasureText = new TextBlock { Text = "mmmm…" };
         if (Microsoft.UI.Xaml.Application.Current.Resources["ReferenceBadgeTextStyle"] is Style style)
             _minimumNameMeasureText.Style = style;
@@ -58,7 +60,13 @@ public sealed class HistoryReferencesPresenter : Panel
 
         for (var i = 0; i < _activeCount; i++)
         {
-            var visual = _visuals[i];
+            // Measure an unattached reusable probe. Changing Width/Visibility on
+            // live visual children during Measure would invalidate their layout
+            // repeatedly and can cause oscillation during fast resize.
+            var visual = _measureVisual;
+            var reference = References![i];
+            visual.Text.Text = reference.DisplayName;
+            UpdatePresentation(visual, reference, updateAccessibility: false);
             ResetBadgeSizing(visual);
             visual.Border.Measure(unrestricted);
             var full = visual.Border.DesiredSize.Width;
@@ -289,7 +297,8 @@ public sealed class HistoryReferencesPresenter : Panel
         InvalidateMeasure();
     }
 
-    private static void UpdatePresentation(ReferenceVisual visual, HistoryReferenceDecoration reference)
+    private static void UpdatePresentation(
+        ReferenceVisual visual, HistoryReferenceDecoration reference, bool updateAccessibility = true)
     {
         var marker = reference.Kind switch
         {
@@ -321,9 +330,12 @@ public sealed class HistoryReferencesPresenter : Panel
             or HistoryReferenceKind.DetachedHead
             ? new Thickness(2) : new Thickness(1);
 
-        var tooltip = BuildToolTip(reference);
-        ToolTipService.SetToolTip(visual.Border, tooltip);
-        AutomationProperties.SetName(visual.Border, tooltip.Replace('\n', ' '));
+        if (updateAccessibility)
+        {
+            var tooltip = BuildToolTip(reference);
+            ToolTipService.SetToolTip(visual.Border, tooltip);
+            AutomationProperties.SetName(visual.Border, tooltip.Replace('\n', ' '));
+        }
     }
 
     private static string BuildToolTip(HistoryReferenceDecoration reference) =>
