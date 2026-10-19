@@ -74,6 +74,21 @@ public sealed class UnoXamlCompatibilityContractTests
     }
 
     [Fact]
+    public void GitCommandFeedbackUsesOpaqueThemeSurfaceInsideModalOverlay()
+    {
+        var workspace = ReadStyle("Workspace.xaml");
+        var feedbackStyle = Slice(workspace,
+            "<Style x:Key=\"FeedbackSurfaceStyle\"",
+            "</Style>");
+        var feedbackView = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Controls", "GitCommandFeedbackView.xaml"));
+
+        Assert.Contains("SolidBackgroundFillColorTertiaryBrush", feedbackStyle, StringComparison.Ordinal);
+        Assert.DoesNotContain("CardBackgroundFillColorDefaultBrush", feedbackStyle, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{StaticResource FeedbackSurfaceStyle}\"", feedbackView, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MainWorkspaceUsesSemanticActionStylesAndAFlatTonalToolbarSurface()
     {
         var controls = ReadStyle("Controls.xaml");
