@@ -32,7 +32,10 @@ public sealed record HistoryReferenceDecoration(
     bool IsDefault = false,
     string? Upstream = null,
     int Ahead = 0,
-    int Behind = 0);
+    int Behind = 0)
+{
+    public bool IsSameNameRemoteUpstream { get; init; }
+}
 
 public sealed record ReflogPresentation(
     string? Selector,
