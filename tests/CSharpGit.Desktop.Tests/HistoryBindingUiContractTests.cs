@@ -23,7 +23,7 @@ public sealed class HistoryBindingUiContractTests
         Assert.Contains("Value=\"{x:Bind Commit.AuthoredAt, Mode=OneWay}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Graph=\"{x:Bind Topology, Mode=OneWay, Converter={StaticResource CommitTopologyToGraphVisualConverter}}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Visibility=\"{x:Bind IsReflogOnly, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("References=\"{x:Bind Commit.References, Mode=OneWay}\"", xaml, StringComparison.Ordinal);
+        Assert.Equal(2, CountOccurrences(xaml, "References=\"{x:Bind ReferenceDetails, Mode=OneWay}\""));
 
         Assert.DoesNotContain("{Binding Commit.Subject}", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("{Binding Commit.Author}", xaml, StringComparison.Ordinal);
