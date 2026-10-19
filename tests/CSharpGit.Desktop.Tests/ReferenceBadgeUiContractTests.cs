@@ -45,21 +45,27 @@ public sealed class ReferenceBadgeUiContractTests
     }
 
     [Fact]
-    public void HistoryReferencesPresenterKeepsBadgesInsideMessageColumnAndSummarizesOverflow()
+    public void HistoryReferencesPresenterUsesMeasuredAdaptiveLayoutAndExactOverflow()
     {
         var root = FindRepositoryRoot();
         var presenter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferencesPresenter.cs"));
+        var planner = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "History", "HistoryReferenceBadgeLayout.cs"));
+        var layout = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistorySubjectReferencesPanel.cs"));
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml"));
 
         Assert.Contains("private readonly RectangleGeometry _clip = new()", presenter, StringComparison.Ordinal);
         Assert.Contains("Clip = _clip;", presenter, StringComparison.Ordinal);
-        Assert.Contains("_overflowMeasureText.Text = maximumOverflowText", presenter, StringComparison.Ordinal);
-        Assert.Contains("totalWidth > finalSize.Width", presenter, StringComparison.Ordinal);
-        Assert.Contains("Math.Max(0, finalSize.Width - overflowWidth)", presenter, StringComparison.Ordinal);
-        Assert.Contains("GetVisibleReferenceCount(availableForReferences)", presenter, StringComparison.Ordinal);
+        Assert.Contains("TextTrimming = TextTrimming.CharacterEllipsis", presenter, StringComparison.Ordinal);
+        Assert.Contains("HistoryReferenceBadgeLayout.Calculate", presenter, StringComparison.Ordinal);
+        Assert.Contains("BuildOverflowToolTip(visibleCount)", presenter, StringComparison.Ordinal);
         Assert.Contains("_overflowText.Text = $\"+{hiddenCount}\"", presenter, StringComparison.Ordinal);
         Assert.Contains("references[index].DisplayName", presenter, StringComparison.Ordinal);
         Assert.Contains("child.Arrange(new Rect(0, 0, 0, 0))", presenter, StringComparison.Ordinal);
         Assert.Contains("SetReferenceVisibility(child, false)", presenter, StringComparison.Ordinal);
+        Assert.Contains("measureOverflow(hidden)", planner, StringComparison.Ordinal);
+        Assert.Contains("HistorySubjectReferencesPanel : Panel", layout, StringComparison.Ordinal);
+        Assert.Equal(2, xaml.Split("<controls:HistorySubjectReferencesPanel").Length - 1);
+        Assert.Equal(2, xaml.Split("References=\"{x:Bind ReferenceDetails, Mode=OneWay}\"").Length - 1);
     }
 
     private static string FindRepositoryRoot()
