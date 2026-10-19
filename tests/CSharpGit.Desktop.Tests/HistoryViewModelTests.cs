@@ -36,7 +36,8 @@ public sealed class HistoryViewModelTests
         using var fixture = new Fixture();
         fixture.Service.Enqueue(new HistoryPage([Row("new-head"), Row("old-head")], HasMore: false));
         fixture.ViewModel.SelectedScope = fixture.ViewModel.Scopes[1];
-        await fixture.ViewModel.RefreshAsync();
+        // Changing scope already initiates the history read.
+        Assert.Equal(2, fixture.ViewModel.Rows.Count);
         fixture.ViewModel.SelectedRow = fixture.ViewModel.Rows[1];
         var selectionVersion = fixture.ViewModel.SelectionIntentVersion;
 
