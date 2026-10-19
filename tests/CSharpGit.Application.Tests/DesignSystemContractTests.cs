@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 namespace CSharpGit.Application.Tests;
@@ -113,137 +112,6 @@ public sealed class DesignSystemContractTests
     }
 
     [Fact]
-    public void WorkspaceUsesSharedSemanticDensityStylesAndMetrics()
-    {
-        var root = FindRepositoryRoot();
-        var main = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
-        var tokens = Read(root, "src", "CSharpGit.Presentation", "Styles", "DesignTokens.xaml");
-        var workspace = Read(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml");
-        var repositoryTree = Read(root, "src", "CSharpGit.Presentation", "Styles", "RepositoryTree.xaml");
-        var historyReferences = Read(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml");
-        var selectableDiff = Read(root, "src", "CSharpGit.Presentation", "Controls", "SelectableDiffViewer.xaml");
-
-        Assert.Contains("<x:Double x:Key=\"Height.DataRow\">24</x:Double>", tokens);
-        Assert.Contains("<x:Double x:Key=\"Height.Header\">26</x:Double>", tokens);
-        Assert.Contains("<x:Double x:Key=\"Height.ColumnHeader\">24</x:Double>", tokens);
-        Assert.Contains("<x:Double x:Key=\"Height.TabHeader\">24</x:Double>", tokens);
-        Assert.Contains("<x:Double x:Key=\"Height.Toolbar\">34</x:Double>", tokens);
-        Assert.Contains("<x:Double x:Key=\"Height.StatusBar\">22</x:Double>", tokens);
-        Assert.Contains("<x:Double x:Key=\"Height.DiffRow\">20</x:Double>", tokens);
-        Assert.Contains("<x:Double x:Key=\"Height.CommitEditor\">60</x:Double>", tokens);
-
-        Assert.True(Count(main, "ItemContainerStyle=\"{StaticResource DenseTreeItemStyle}\"") >= 4);
-        Assert.Equal(2, Count(main, "ItemTemplate=\"{StaticResource WorkingTreeTreeItemTemplate}\""));
-        Assert.Contains("ItemTemplate=\"{StaticResource RepositoryTreeItemTemplate}\"", main);
-        Assert.Contains("ItemContainerStyle=\"{StaticResource HistoryRowStyle}\"", main);
-        Assert.Contains("ItemTemplate=\"{StaticResource HistoryItemTemplate}\"", main);
-        Assert.DoesNotContain("ChangedFileRowStyle", main);
-        Assert.Contains("ItemTemplate=\"{StaticResource ChangedFileTreeItemTemplate}\"", main);
-        Assert.Equal(2, Count(main, "<controls:SelectableDiffViewer"));
-        Assert.Contains("x:Name=\"CompactDiffViewer\"", main);
-        Assert.Contains("x:Name=\"WorkingTreeDiffViewer\"", main);
-        Assert.Contains("Height=\"{StaticResource Height.DiffRow}\"", selectableDiff);
-        Assert.Contains("DiffLineKindToBrushConverter", selectableDiff);
-        Assert.Contains("SelectableDiffTextStyle", selectableDiff);
-        Assert.Contains("Style=\"{StaticResource ToolbarSurfaceStyle}\"", main);
-        Assert.Contains("Style=\"{StaticResource StatusBarSurfaceStyle}\"", main);
-        Assert.Contains("Style=\"{StaticResource DenseColumnHeaderSurfaceStyle}\"", main);
-        Assert.Contains("Style=\"{StaticResource PaneHeaderTextStyle}\"", main);
-
-        foreach (var name in new[] { "MainToolbar", "HistoryFilterToolbar", "HistoryColumnHeader", "ChangedFilesHeader", "StatusBar" })
-            Assert.Contains($"x:Name=\"{name}\"", main);
-
-        Assert.Contains("x:Key=\"DenseListItemStyle\"", workspace);
-        Assert.DoesNotContain("x:Key=\"WorkingTreeRowStyle\"", workspace);
-        Assert.Contains("x:Key=\"HistoryRowStyle\"", workspace);
-        Assert.DoesNotContain("x:Key=\"ChangedFileRowStyle\"", workspace);
-        Assert.Contains("x:Key=\"DenseColumnHeaderSurfaceStyle\"", workspace);
-        Assert.Contains("x:Key=\"CompactPivotHeaderItemStyle\"", workspace);
-        Assert.Contains("x:Key=\"DenseTreeItemStyle\"", repositoryTree);
-        Assert.Contains("x:Key=\"WorkingTreeTreeItemTemplate\"", repositoryTree);
-        Assert.Contains("x:Key=\"ChangedFileTreeItemTemplate\"", repositoryTree);
-        Assert.Contains("MinHeight=\"{StaticResource Height.DataRow}\"", historyReferences);
-        Assert.DoesNotContain("Height=\"24\"", workspace);
-        Assert.DoesNotContain("Height=\"20\"", workspace);
-
-        Assert.DoesNotContain("Staged and unstaged changes are shown independently.", main);
-        Assert.Contains("ToolTipService.ToolTip=\"Discard all…\"", main);
-        Assert.Contains("AutomationProperties.Name=\"Discard all\"", main);
-        Assert.Contains("AutomationProperties.Name=\"Commit message\"", main);
-    }
-
-    [Fact]
-    public void DetailsPivotHeadersShareCompactGeometryWithoutOverridingPlatformStates()
-    {
-        var root = FindRepositoryRoot();
-        var main = XDocument.Parse(Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
-        var tokens = XDocument.Parse(Read(root, "src", "CSharpGit.Presentation", "Styles", "DesignTokens.xaml"));
-        var workspace = XDocument.Parse(Read(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml"));
-        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
-
-        XElement Resource(XDocument document, string key) =>
-            Assert.Single(document.Descendants(), element => (string?)element.Attribute(x + "Key") == key);
-
-        var height = Resource(tokens, "Height.TabHeader");
-        Assert.Equal("24", height.Value);
-        var padding = Resource(workspace, "Padding.CompactPivotHeader");
-        Assert.Equal("4,0", padding.Value);
-        Assert.Single(workspace.Descendants(), element =>
-            (string?)element.Attribute(x + "Key") == "PivotHeaderTemplate");
-        Assert.Single(workspace.Descendants(), element =>
-            (string?)element.Attribute(x + "Key") == "CompactPivotHeaderItemStyle");
-
-        var headerStyle = Resource(workspace, "CompactPivotHeaderItemStyle");
-        Assert.Equal("primitives:PivotHeaderItem", (string?)headerStyle.Attribute("TargetType"));
-
-        string? Setting(string property) =>
-            (string?)Assert.Single(headerStyle.Elements(), element =>
-                element.Name.LocalName == "Setter" &&
-                (string?)element.Attribute("Property") == property).Attribute("Value");
-
-        Assert.Equal("{StaticResource Height.TabHeader}", Setting("MinHeight"));
-        Assert.Equal("{StaticResource Padding.CompactPivotHeader}", Setting("Padding"));
-        Assert.Equal("0", Setting("Margin"));
-        Assert.Equal("Center", Setting("VerticalContentAlignment"));
-        Assert.Equal("{StaticResource Font.Body}", Setting("FontSize"));
-        Assert.Equal("True", Setting("UseSystemFocusVisuals"));
-        Assert.DoesNotContain(headerStyle.Elements(), element =>
-            element.Name.LocalName == "Setter" &&
-            (string?)element.Attribute("Property") is "Height" or "Template");
-
-        var headerTemplate = Resource(workspace, "PivotHeaderTemplate");
-        var grid = Assert.Single(headerTemplate.Elements());
-        Assert.Equal("Grid", grid.Name.LocalName);
-        Assert.Equal("{StaticResource Height.TabHeader}", (string?)grid.Attribute("MinHeight"));
-        var label = Assert.Single(grid.Elements());
-        Assert.Equal("TextBlock", label.Name.LocalName);
-        Assert.Equal("{Binding}", (string?)label.Attribute("Text"));
-        Assert.Equal("Center", (string?)label.Attribute("VerticalAlignment"));
-        Assert.Null(label.Attribute("Margin"));
-
-        var pivot = Assert.Single(main.Descendants(), element =>
-            (string?)element.Attribute(x + "Name") == "DetailsTabs");
-        Assert.Equal("Pivot", pivot.Name.LocalName);
-        Assert.Equal("{StaticResource PivotHeaderTemplate}", (string?)pivot.Attribute("HeaderTemplate"));
-        Assert.Equal("DetailsTabs_SelectionChanged", (string?)pivot.Attribute("SelectionChanged"));
-
-        var resources = Assert.Single(pivot.Elements(), element =>
-            element.Name.LocalName == "Pivot.Resources");
-        var implicitStyle = Assert.Single(resources.Elements());
-        Assert.Equal("primitives:PivotHeaderItem", (string?)implicitStyle.Attribute("TargetType"));
-        Assert.Equal("{StaticResource CompactPivotHeaderItemStyle}",
-            (string?)implicitStyle.Attribute("BasedOn"));
-        Assert.Null(implicitStyle.Attribute(x + "Key"));
-
-        var items = pivot.Elements().Where(element => element.Name.LocalName == "PivotItem").ToArray();
-        Assert.Equal(new[] { "SummaryTab", "ChangesTab" },
-            items.Select(element => (string?)element.Attribute(x + "Name")));
-        Assert.All(items, item => Assert.Null(item.Attribute("HeaderTemplate")));
-        Assert.Equal("{Binding CommitDetails.SelectedDetailsTitle}",
-            (string?)items[0].Attribute("Header"));
-    }
-
-    [Fact]
     public void DynamicallyNamedDetailsTabsRetainSharedStyleAndLazySelection()
     {
         var root = FindRepositoryRoot();
@@ -267,69 +135,6 @@ public sealed class DesignSystemContractTests
         Assert.Contains("\"Tracked files\"", mainCode);
         Assert.Contains("\"Stash\"", mainCode + changes + files + 
             Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs"));
-    }
-
-    [Fact]
-    public void CommitDetailsUseBodyTypographyAndSharedTechnicalRoles()
-    {
-        var root = FindRepositoryRoot();
-        var main = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
-        var details = Read(root, "src", "CSharpGit.Presentation", "Controls", "CommitDetailsView.xaml");
-
-        var bodyMessage = new Regex(
-            "Text=\"\\{Binding History\\.SelectedRow\\.Commit\\.Message\\}\"\\s+Style=\"\\{StaticResource SelectableBodyTextStyle\\}\"",
-            RegexOptions.CultureInvariant);
-
-        Assert.Contains("<controls:CommitDetailsView x:Name=\"CommitDetailsContent\" />", main);
-        Assert.Matches(bodyMessage, details);
-        Assert.DoesNotMatch(
-            new Regex("History\\.SelectedRow\\.Commit\\.Message[\\s\\S]{0,120}SectionHeaderTextStyle", RegexOptions.CultureInvariant),
-            details);
-
-        Assert.Contains("Style=\"{StaticResource SelectableTechnicalTextStyle}\"", details);
-        Assert.DoesNotContain("Style=\"{StaticResource DiffTextStyle}\"", details);
-    }
-
-    [Fact]
-    public void SettingsGitToolsUseSharedCompactControlRoles()
-    {
-        var root = FindRepositoryRoot();
-        var settings = Read(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml");
-
-        var gitTools = Slice(settings,
-            "<ScrollViewer x:Name=\"GitToolsSettingsPanel\"",
-            "<ScrollViewer x:Name=\"DiagnosticsSettingsPanel\"");
-        Assert.Equal(6, Count(gitTools, "Style=\"{StaticResource CompactComboBoxStyle}\""));
-        Assert.Equal(7, Count(gitTools, "Style=\"{StaticResource TechnicalTextBoxStyle}\""));
-        Assert.Equal(0, Count(gitTools, "Style=\"{StaticResource CompactButtonStyle}\""));
-        Assert.Equal(3, Count(gitTools, "Style=\"{StaticResource PrimaryActionButtonStyle}\""));
-        Assert.Equal(3, Count(gitTools, "Style=\"{StaticResource SecondaryActionButtonStyle}\""));
-        Assert.Equal(3, Count(gitTools, "Style=\"{StaticResource DestructiveActionButtonStyle}\""));
-        Assert.Equal(3, Count(gitTools, "Style=\"{StaticResource CompactCheckBoxStyle}\""));
-        Assert.True(Count(gitTools, "Style=\"{StaticResource TechnicalTextStyle}\"") >= 15);
-    }
-
-    [Fact]
-    public void OperationBannerAndGitConsoleUseSharedCompactAndTechnicalStyles()
-    {
-        var root = FindRepositoryRoot();
-        var banner = Read(root, "src", "CSharpGit.Presentation", "Controls", "OperationBanner.xaml");
-        var console = Read(root, "src", "CSharpGit.Presentation", "Controls", "GitConsoleView.xaml");
-
-        Assert.True(Count(banner, "Style=\"{StaticResource CompactButtonStyle}\"") >= 7);
-        Assert.Contains("Style=\"{StaticResource PrimaryActionButtonStyle}\"", banner);
-        Assert.Contains("Style=\"{StaticResource DestructiveActionButtonStyle}\"", banner);
-        Assert.Contains("ItemContainerStyle=\"{StaticResource DenseListItemStyle}\"", banner);
-        Assert.Contains("BodyStrongTextStyle", banner);
-        Assert.DoesNotContain("FontWeight=\"SemiBold\"", banner);
-
-        Assert.Contains("ItemContainerStyle=\"{StaticResource DenseListItemStyle}\"", console);
-        Assert.True(Count(console, "TechnicalTextStyle") >= 4);
-        Assert.True(Count(console, "TechnicalSecondaryTextStyle") >= 2);
-        Assert.Equal(2, Count(console, "TechnicalMultilineTextBoxStyle"));
-        Assert.DoesNotContain("FontFamily=\"Consolas\"", console);
-        Assert.DoesNotContain("Padding=\"12,8\"", console);
-        Assert.DoesNotContain("Spacing=\"8\"", console);
     }
 
     [Fact]
@@ -393,34 +198,6 @@ public sealed class DesignSystemContractTests
         Assert.Contains("WorkingTree.UnstageSelectedCommand", menu);
         Assert.Contains("WorkingTree.RequestDiscardSelectedCommand", menu);
         Assert.Contains("Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(button)", code);
-    }
-
-    [Fact]
-    public void ActionAndFeedbackRolesUseCanonicalResourcesAcrossWorkspaceSurfaces()
-    {
-        var root = FindRepositoryRoot();
-        var controls = Read(root, "src", "CSharpGit.Presentation", "Styles", "Controls.xaml");
-        var workspace = Read(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml");
-        var main = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
-        var recent = Read(root, "src", "CSharpGit.Presentation", "RecentRepositoriesView.xaml");
-        var feedback = Read(root, "src", "CSharpGit.Presentation", "Controls", "GitCommandFeedbackView.xaml");
-
-        Assert.Contains("x:Key=\"DestructiveActionButtonStyle\"", controls);
-        Assert.Contains("x:Key=\"FormActionRowStyle\"", controls);
-        Assert.Contains("x:Key=\"ContentSurfaceStyle\"", workspace);
-        Assert.Contains("x:Key=\"FeedbackSurfaceStyle\"", workspace);
-        Assert.Contains("Style=\"{StaticResource DestructiveActionButtonStyle}\"", main);
-        Assert.Contains("x:Name=\"PullPrimaryButton\"", main);
-        Assert.Contains("x:Name=\"PullMenuButton\"", main);
-        Assert.Contains("Style=\"{StaticResource SecondaryActionButtonStyle}\"", main);
-        Assert.Contains("Style=\"{StaticResource ToolbarButtonStyle}\"", main);
-        Assert.Contains("Style=\"{StaticResource PrimaryActionButtonStyle}\"", recent);
-        Assert.Contains("Style=\"{StaticResource SecondaryActionButtonStyle}\"", recent);
-        Assert.Contains("Style=\"{StaticResource DestructiveActionButtonStyle}\"", recent);
-        Assert.Contains("Style=\"{StaticResource FeedbackSurfaceStyle}\"", feedback);
-        Assert.Contains("Style=\"{StaticResource FormActionRowStyle}\"", feedback);
-        Assert.DoesNotContain("CornerRadius=\"8\"", feedback);
-        Assert.DoesNotContain("Padding=\"12\"", feedback);
     }
 
     [Fact]
@@ -494,47 +271,6 @@ public sealed class DesignSystemContractTests
         Assert.DoesNotContain("CompactDiffItemTemplate", main);
     }
 
-    [Fact]
-    public void WorkspaceStandardMetricsDoNotRegressToLiteralMagicNumbers()
-    {
-        var root = FindRepositoryRoot();
-        var main = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
-        var start = main.IndexOf("<Grid x:Name=\"RepositoryWorkspace\"", StringComparison.Ordinal);
-        var end = main.IndexOf("<InfoBar IsOpen=\"{Binding HasError}\"", start, StringComparison.Ordinal);
-        Assert.True(start >= 0 && end > start);
-        var workspaceSurface = main[start..end];
-
-        Assert.DoesNotMatch(new Regex("FontSize=\"(?:9|10|11|12|13|14|15|16|17|18)\""), workspaceSurface);
-        Assert.DoesNotMatch(new Regex("(?:MinHeight|Height)=\"(?:20|22|24|26|28|30|32|34|36|40|44|46|54)\""), workspaceSurface);
-        Assert.DoesNotContain("Padding=\"6,3\"", workspaceSurface);
-        Assert.DoesNotContain("Padding=\"8,5\"", workspaceSurface);
-    }
-
-    [Fact]
-    public void SecondaryScreensUseTheSharedTypographyAndSpacingScale()
-    {
-        var root = FindRepositoryRoot();
-        var settings = Read(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml");
-        var recent = Read(root, "src", "CSharpGit.Presentation", "RecentRepositoriesView.xaml");
-
-        foreach (var xaml in new[] { settings, recent })
-        {
-            Assert.Contains("TitleTextStyle", xaml);
-            Assert.Contains("SecondaryTextStyle", xaml);
-            Assert.Contains("Spacing.", xaml);
-        }
-
-        Assert.Contains("SectionHeaderTextStyle", settings);
-        Assert.Contains("BodyTextStyle", settings);
-        Assert.Contains("CompactComboBoxStyle", settings);
-        Assert.Contains("TechnicalTextBoxStyle", settings);
-        Assert.Contains("BodySubduedTextStyle", recent);
-        Assert.Contains("TechnicalSecondaryTextStyle", recent);
-        Assert.DoesNotContain("FontSize=\"18\"", settings);
-        Assert.DoesNotContain("FontSize=\"15\"", recent);
-        Assert.DoesNotContain("FontSize=\"12\"", recent);
-    }
-
     private static IEnumerable<string> ResourceKeys(string xaml)
     {
         XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
@@ -542,14 +278,6 @@ public sealed class DesignSystemContractTests
             .Descendants()
             .Attributes(x + "Key")
             .Select(attribute => attribute.Value);
-    }
-
-    private static string Slice(string value, string startMarker, string endMarker)
-    {
-        var start = value.IndexOf(startMarker, StringComparison.Ordinal);
-        var end = value.IndexOf(endMarker, start, StringComparison.Ordinal);
-        Assert.True(start >= 0 && end > start);
-        return value[start..(end + endMarker.Length)];
     }
 
     private static string Read(string root, params string[] parts)

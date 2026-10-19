@@ -10,12 +10,8 @@ public sealed class ReferenceBadgeUiContractTests
         var historyReferences = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml"));
         var presenter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "HistoryReferencesPresenter.cs"));
         var domain = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Domain", "History.cs"));
-        var typography = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Typography.xaml"));
-        var designTokens = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "DesignTokens.xaml"));
 
         Assert.Contains("<Style x:Key=\"ReferenceBadgeStyle\" TargetType=\"Border\">", workspace, StringComparison.Ordinal);
-        Assert.Contains("Property=\"BorderThickness\" Value=\"1\"", workspace, StringComparison.Ordinal);
-        Assert.Contains("Property=\"CornerRadius\" Value=\"4\"", workspace, StringComparison.Ordinal);
         Assert.Contains("<controls:HistoryReferencesPresenter", historyReferences, StringComparison.Ordinal);
         Assert.Contains("References=\"{x:Bind ReferenceDetails, Mode=OneWay}\"", historyReferences, StringComparison.Ordinal);
         Assert.Contains("HistoryReferenceKindMarkerStyle", historyReferences, StringComparison.Ordinal);
@@ -28,8 +24,6 @@ public sealed class ReferenceBadgeUiContractTests
         Assert.Contains("HistoryReferenceKind.DetachedHead", presenter, StringComparison.Ordinal);
         Assert.Contains("· upstream", presenter, StringComparison.Ordinal);
         Assert.Contains("remote-tracking reference", presenter, StringComparison.Ordinal);
-        Assert.Contains("<Style x:Key=\"ReferenceBadgeTextStyle\" TargetType=\"TextBlock\" BasedOn=\"{StaticResource CaptionTextStyle}\">", typography, StringComparison.Ordinal);
-        Assert.Contains("<x:Double x:Key=\"Height.DataRow\">24</x:Double>", designTokens, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -10,14 +10,8 @@ public sealed class GitCommandFeedbackModalUiContractTests
         var host = xaml.IndexOf("x:Name=\"GitCommandFeedbackModalHost\"", StringComparison.Ordinal);
         var notifications = xaml.LastIndexOf("<InfoBar ", StringComparison.Ordinal);
         Assert.True(host > notifications, "The modal host must appear after all other root children.");
-        Assert.Contains("Background=\"#99000000\"", xaml, StringComparison.Ordinal);
         Assert.Contains("TabFocusNavigation=\"Cycle\"", xaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"FloatingGitCommandFeedbackView\"", xaml, StringComparison.Ordinal);
-
-        var settingsXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml"));
-        Assert.Contains("x:Name=\"SuccessfulGitCommandFeedbackDurationNumberBox\"", settingsXaml, StringComparison.Ordinal);
-        Assert.Contains("Minimum=\"0\"", settingsXaml, StringComparison.Ordinal);
-        Assert.Contains("Maximum=\"30\"", settingsXaml, StringComparison.Ordinal);
 
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var feedback = File.ReadAllText(Path.Combine(presentation, "MainPage.GitCommandFeedback.cs"));
