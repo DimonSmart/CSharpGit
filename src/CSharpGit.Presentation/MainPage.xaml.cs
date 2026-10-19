@@ -644,9 +644,20 @@ public sealed partial class MainPage : Page
         var previousHead = _viewModel.CurrentHeadCommit;
         var history = _viewModel.History;
         var selectionIntentVersion = history.SelectionIntentVersion;
-        var result = strategy is { } requestedStrategy
-            ? await _viewModel.RepositorySync.PullAsync(repository, requestedStrategy)
-            : await _viewModel.RepositorySync.PullAsync(repository);
+        PullExecutionResult result;
+        if (strategy is { } requestedStrategy)
+        {
+            result = await _viewModel.RepositorySync.PullAsync(repository, requestedStrategy);
+        }
+        else
+        {
+            var previousResult = _viewModel.RepositorySync.LastPullResult;
+            await ExecuteCommandAsync(_viewModel.RepositorySync.PullCommand);
+            if (_viewModel.RepositorySync.LastPullResult is not { } completedResult
+                || ReferenceEquals(previousResult, completedResult))
+                return;
+            result = completedResult;
+        }
 
         var currentHead = _viewModel.CurrentHeadCommit;
         if (!IsShuttingDown
