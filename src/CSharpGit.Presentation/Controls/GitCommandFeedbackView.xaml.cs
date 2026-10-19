@@ -25,8 +25,12 @@ public sealed partial class GitCommandFeedbackView : UserControl
     {
         if (_current == state) return;
         var changedActivity = _current?.ActivityId != state.ActivityId;
+        var changedStatus = _current?.Status != state.Status;
         _current = state;
 
+        if (changedStatus)
+            StatusText.Style = UiStyles.Resolve<Style>(
+                state.Status == GitCommandStatus.Succeeded ? "SuccessStatusTextStyle" : "BodyTextStyle");
         StatusText.Text = state.StatusText;
         RunningRing.IsActive = state.Status == GitCommandStatus.Running;
         RunningRing.Visibility = RunningRing.IsActive ? Visibility.Visible : Visibility.Collapsed;
