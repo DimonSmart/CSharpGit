@@ -26,7 +26,12 @@ public sealed class GitReferenceSemanticsTests
     {
         var branch = new GitBranch(name, "commit", Upstream: "presentation-only")
         {
-            UpstreamReference = fullUpstreamRef
+            UpstreamReference = fullUpstreamRef,
+            UpstreamRemoteName = fullUpstreamRef.StartsWith("refs/remotes/team/nested/", StringComparison.Ordinal)
+                ? "team/nested"
+                : fullUpstreamRef.StartsWith("refs/remotes/team/", StringComparison.Ordinal)
+                    ? "team"
+                    : "origin"
         };
 
         Assert.Equal(redundant,
@@ -42,11 +47,23 @@ public sealed class GitReferenceSemanticsTests
     }
 
     [Fact]
+    public void FullRefAloneIsNotEnoughWhenRemotePathIsAmbiguous()
+    {
+        var branch = new GitBranch("feature/login", "commit")
+        {
+            UpstreamReference = "refs/remotes/team/nested/feature/login",
+            UpstreamRemoteName = "team"
+        };
+        Assert.False(GitReferenceSemantics.IsSameNameRemoteUpstream(branch, Remotes));
+    }
+
+    [Fact]
     public void SimilarRemoteNameCannotBeTreatedAsAnIdenticalBranch()
     {
         var branch = new GitBranch("feature/login", "commit")
         {
-            UpstreamReference = "refs/remotes/team/nested/other"
+            UpstreamReference = "refs/remotes/team/nested/other",
+            UpstreamRemoteName = "team"
         };
 
         Assert.False(GitReferenceSemantics.IsSameNameRemoteUpstream(branch, Remotes));
