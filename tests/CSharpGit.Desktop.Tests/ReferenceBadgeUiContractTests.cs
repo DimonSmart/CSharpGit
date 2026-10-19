@@ -22,7 +22,8 @@ public sealed class ReferenceBadgeUiContractTests
         Assert.Contains("HistoryReferenceKind.RemoteTrackingBranch", presenter, StringComparison.Ordinal);
         Assert.Contains("HistoryReferenceKind.Tag", presenter, StringComparison.Ordinal);
         Assert.Contains("HistoryReferenceKind.DetachedHead", presenter, StringComparison.Ordinal);
-        Assert.Contains("· upstream", presenter, StringComparison.Ordinal);
+        var badgeContent = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "History", "HistoryReferenceBadgeContent.cs"));
+        Assert.Contains("· upstream", badgeContent, StringComparison.Ordinal);
         Assert.Contains("remote-tracking reference", presenter, StringComparison.Ordinal);
     }
 
