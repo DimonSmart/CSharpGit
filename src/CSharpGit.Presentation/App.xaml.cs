@@ -185,11 +185,16 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
 
         _window.AppWindow.Closing += (sender, eventArgs) =>
         {
+            LogCloseLifecycle("AppWindow.Closing");
             if (!TryBeginNormalShutdown(_window.Content as MainPage))
                 eventArgs.Cancel = true;
         };
 
-        _window.Closed += (_, _) => ReportDesktopCloseCheck("WindowClosed");
+        _window.Closed += (_, _) =>
+        {
+            ReportDesktopCloseCheck("WindowClosed");
+            LogCloseLifecycle("Window.Closed");
+        };
         if (Environment.GetEnvironmentVariable("CSHARPGIT_CLOSE_CHECK") == "1")
             mainPage.Loaded += RunDesktopCloseCheckWhenLoaded;
         _window.Content = mainPage;
@@ -222,6 +227,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
 
             case WindowCloseDecision.Confirm:
                 ReportDesktopCloseCheck("CloseCanceled: commit draft requires confirmation");
+                LogCloseLifecycle("ConfirmationRequired");
                 _ = UiAsyncOperationRunner.RunAsync(
                     () => ConfirmAndCloseAsync(page!),
                     exception =>
@@ -237,9 +243,19 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
 
             default:
                 if (page?.IsUnsafeToClose == true)
+                {
                     ReportDesktopCloseCheck("CloseCanceled: protected operation is active");
+                    LogCloseLifecycle("ProtectedOperationRejected");
+                }
                 return false;
         }
+    }
+
+    private void LogCloseLifecycle(string phase)
+    {
+        _sessionFileLoggerProvider.WriteDirect(
+            "CSharpGit.UiLifecycle", "WindowClose",
+            $"phase={phase} state={_closeCoordinator.Stage}", LogLevel.Information);
     }
 
     internal void LogUiFailure(Exception exception, string operation)
@@ -310,10 +326,12 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             if (!accepted)
             {
                 ReportDesktopCloseCheck("CloseConfirmationCanceled");
+                LogCloseLifecycle("ConfirmationCanceled");
                 return;
             }
 
             ReportDesktopCloseCheck("CloseConfirmed");
+            LogCloseLifecycle("ConfirmationAccepted");
             ScheduleShutdown(page);
         }
         catch (Exception exception)
@@ -345,6 +363,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             if (!scheduled)
             {
                 ReportDesktopCloseCheck("CloseSchedulingRejected");
+                LogCloseLifecycle("ScheduleRejected");
                 LogUiFailure(
                     new InvalidOperationException("Window dispatcher rejected shutdown scheduling."),
                     "Window shutdown scheduling");
@@ -352,6 +371,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             }
 
             ReportDesktopCloseCheck("CloseScheduled");
+            LogCloseLifecycle("Scheduled");
         }
         catch (Exception exception)
         {
@@ -365,6 +385,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         if (!_closeCoordinator.BeginShutdown()) return;
         ReportDesktopCloseCheck("CloseAccepted");
         ReportDesktopCloseCheck("ShutdownStarted");
+        LogCloseLifecycle("CleanupStarted");
         _ = UiAsyncOperationRunner.RunAsync(
             () => FinalizeWindowShutdownAsync(page),
             exception => LogUiFailure(exception, "Window shutdown"));
@@ -390,6 +411,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                     page.WindowTitleChanged -= MainPage_WindowTitleChanged;
                     page.BeginShutdown();
                     ReportDesktopCloseCheck("PageShutdownCompleted");
+                    LogCloseLifecycle("PageShutdownCompleted");
                 }
             }
         }
@@ -405,6 +427,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             }
 
             _closeCoordinator.AuthorizeFinalClose();
+            LogCloseLifecycle("FinalCloseAuthorized");
             try
             {
                 var window = _window;
@@ -483,6 +506,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     {
         if (Interlocked.Exchange(ref _hostStopped, 1) != 0) return;
         ReportDesktopCloseCheck("HostStopping");
+        LogCloseLifecycle("HostStopping");
         _appSettings.Changed -= AppSettings_Changed;
         try { _mainThemeRegistration?.Dispose(); }
         catch (Exception exception) { LogUiFailure(exception, "Theme cleanup"); }
