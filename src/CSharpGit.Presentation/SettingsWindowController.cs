@@ -110,12 +110,13 @@ public sealed class SettingsWindowController : IDisposable
 
     private void Cleanup(Window? window, SettingsPage page, IDisposable themeRegistration)
     {
-        themeRegistration.Dispose();
-        page.DetachSettings();
-        if (!ReferenceEquals(_window, window)) return;
-
+        // Closing can be observed both through the native event and main-window
+        // shutdown. Detach the tracked window before disposing either resource.
+        if (!ReferenceEquals(_window, window) || !ReferenceEquals(_page, page)) return;
         _themeRegistration = null;
         _page = null;
         _window = null;
+        try { themeRegistration.Dispose(); }
+        finally { page.DetachSettings(); }
     }
 }
