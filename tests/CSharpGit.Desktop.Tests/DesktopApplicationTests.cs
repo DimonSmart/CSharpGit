@@ -18,6 +18,8 @@ public sealed class DesktopApplicationTests
         await RunCheckAsync(application!, fixture.Worktree, true, fixture.Home);
         await RunNormalCloseCheckAsync(application!, fixture.Repository, fixture.Home);
         await RunNormalCloseCheckAsync(application!, fixture.Worktree, fixture.Home);
+        if (OperatingSystem.IsMacOS())
+            await RunNormalCloseCheckAsync(application!, fixture.Repository, fixture.Home, "AppRequest");
         await RunLifecycleCheckAsync(application!, fixture.Repository, fixture.Worktree, fixture.Home);
     }
 
@@ -64,7 +66,8 @@ public sealed class DesktopApplicationTests
         Assert.Equal(worktree, document.RootElement.GetProperty("IsWorktree").GetBoolean());
     }
 
-    private static async Task RunNormalCloseCheckAsync(string application, string repository, string isolatedHome)
+    private static async Task RunNormalCloseCheckAsync(
+        string application, string repository, string isolatedHome, string? mode = null)
     {
         var pipeName = $"csharpgit-close-{Guid.NewGuid():N}";
         using var pipe = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1,
@@ -73,6 +76,7 @@ public sealed class DesktopApplicationTests
         start.Environment["CSHARPGIT_UI_CHECK_REPOSITORY"] = repository;
         start.Environment["CSHARPGIT_CLOSE_CHECK"] = "1";
         start.Environment["CSHARPGIT_CLOSE_CHECK_PIPE"] = pipeName;
+        if (mode is not null) start.Environment["CSHARPGIT_CLOSE_CHECK_MODE"] = mode;
 
         using var process = Process.Start(start) ?? throw new InvalidOperationException("Desktop application could not be started for the close check.");
         var standardOutput = process.StandardOutput.ReadToEndAsync();
@@ -124,7 +128,11 @@ public sealed class DesktopApplicationTests
         Assert.Equal(0, process.ExitCode);
         Assert.Contains("DesktopCloseCheck: CloseDispatched", output, StringComparison.Ordinal);
         Assert.Contains("DesktopCloseCheck: CloseAccepted", output, StringComparison.Ordinal);
+        Assert.Contains("DesktopCloseCheck: CloseScheduled", output, StringComparison.Ordinal);
+        Assert.Contains("DesktopCloseCheck: FinalCloseInvoked", output, StringComparison.Ordinal);
         Assert.Contains("DesktopCloseCheck: WindowClosed", output, StringComparison.Ordinal);
+        Assert.Equal(1, output.Split("DesktopCloseCheck: CloseAccepted").Length - 1);
+        Assert.Equal(1, output.Split("DesktopCloseCheck: HostStopping").Length - 1);
         Assert.Contains("DesktopCloseCheck: HostStopped", output, StringComparison.Ordinal);
         Assert.DoesNotContain("DesktopCloseCheck: Failed", output, StringComparison.Ordinal);
         Assert.DoesNotContain("DesktopCloseCheck: CloseCanceled", output, StringComparison.Ordinal);
@@ -529,7 +537,7 @@ public sealed class DesktopApplicationTests
         start.Environment["APPDATA"] = isolatedHome;
         start.Environment["CSHARPGIT_APP_DATA_ROOT"] = Path.Combine(isolatedHome, "appdata");
         foreach (var name in new[] { "CSHARPGIT_UI_CHECK_REPOSITORY", "CSHARPGIT_UI_CHECK_RESULT",
-                     "CSHARPGIT_UI_CHECK_WORKTREE", "CSHARPGIT_CLOSE_CHECK", "CSHARPGIT_CLOSE_CHECK_PIPE", "CSHARPGIT_CLOSE_CHECK_EXTENDED" })
+                     "CSHARPGIT_UI_CHECK_WORKTREE", "CSHARPGIT_CLOSE_CHECK", "CSHARPGIT_CLOSE_CHECK_PIPE", "CSHARPGIT_CLOSE_CHECK_EXTENDED", "CSHARPGIT_CLOSE_CHECK_MODE" })
             start.Environment.Remove(name);
         return start;
     }
