@@ -55,7 +55,8 @@ public sealed class AboutUpdateUiContractTests
             root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
         Assert.Contains("page?.IsUnsafeToClose == true", app);
         Assert.Contains("IsUpdateRunning: IsApplicationUpdateInProgress", lifecycle);
-        Assert.Contains("_closeConfirmed = true", app);
+        Assert.Contains("_closeCoordinator.Stage != WindowCloseStage.Idle", app);
+        Assert.Contains("ScheduleShutdown(page);", app);
         Assert.Contains("page.PrepareForShutdown()", app);
         Assert.Contains("page.BeginShutdown()", app);
 
