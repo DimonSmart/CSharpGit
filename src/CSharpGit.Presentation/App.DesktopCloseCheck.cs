@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
+using System.Reflection;
 using System.Text.Json;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Infrastructure;
@@ -61,7 +62,18 @@ public sealed partial class App
             if (!_window!.DispatcherQueue.TryEnqueue(() =>
                 {
                     ReportDesktopCloseCheck("CloseDispatched");
-                    RequestNormalWindowCloseForDesktopCheck();
+                    try
+                    {
+                        RequestNormalWindowCloseForDesktopCheck();
+                    }
+                    catch (Exception exception)
+                    {
+                        // A dispatcher callback is not observed by the surrounding
+                        // async pipe operation. Surface native invocation failures
+                        // instead of reporting only a process-exit timeout.
+                        ReportDesktopCloseCheck($"Failed: native close request: {exception}");
+                        LogUiFailure(exception, "Desktop native close-check");
+                    }
                 }))
                 throw new InvalidOperationException("The UI dispatcher rejected the desktop close request.");
         }
@@ -534,10 +546,15 @@ public sealed partial class App
     {
         var nativeWindow = _window?.GetNativeWindow()
             ?? throw new InvalidOperationException("Uno did not provide a native macOS window.");
-        var handle = nativeWindow.GetType().GetProperty("Handle")?.GetValue(nativeWindow);
+        // Uno's MacOSWindowNative.Handle is internal, not a public property.
+        // Its value is the NSWindow* used by the native AppKit host.
+        var nativeType = nativeWindow.GetType();
+        var handleProperty = nativeType.GetProperty("Handle",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        var handle = handleProperty?.GetValue(nativeWindow);
         if (handle is not nint window || window == 0)
             throw new InvalidOperationException(
-                $"The native macOS window ({nativeWindow.GetType().FullName}) did not expose an AppKit handle.");
+                $"The native macOS window ({nativeType.FullName}) did not expose a valid AppKit handle.");
 
         ReportDesktopCloseCheck($"NativeCloseTarget: {nativeWindow.GetType().FullName}");
         ObjcSendVoid(window, ObjcSelector("performClose:"), 0);
