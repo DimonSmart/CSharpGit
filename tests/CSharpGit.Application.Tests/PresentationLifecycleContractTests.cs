@@ -23,6 +23,9 @@ public sealed class PresentationLifecycleContractTests
         var close = check.IndexOf("RequestNormalWindowCloseForDesktopCheck();", StringComparison.Ordinal);
         Assert.True(opened >= 0 && ready > opened && command > ready && dispatch > command && close > dispatch);
         Assert.Contains("PostMessageW(handle, 0x0010, 0, 0)", check, StringComparison.Ordinal);
+        Assert.Contains("RequestMacOsNativeClose();", check, StringComparison.Ordinal);
+        Assert.Contains("ObjcSelector(\"performClose:\")", check, StringComparison.Ordinal);
+        Assert.Contains("if (OperatingSystem.IsMacOS())", app, StringComparison.Ordinal);
         Assert.Contains("else if (TryBeginNormalShutdown", check, StringComparison.Ordinal);
         Assert.Contains("if (!TryBeginNormalShutdown", app, StringComparison.Ordinal);
         Assert.DoesNotContain("Environment.Exit", check, StringComparison.Ordinal);
@@ -48,9 +51,9 @@ public sealed class PresentationLifecycleContractTests
         Assert.Contains("_cloneRepositoryViewModel.IsBusy", lifecycle, StringComparison.Ordinal);
         Assert.Contains("_createRepositoryViewModel.IsBusy", lifecycle, StringComparison.Ordinal);
         Assert.Contains("page?.IsUnsafeToClose == true", app, StringComparison.Ordinal);
-        var recheck = app.IndexOf("|| page.IsUnsafeToClose", StringComparison.Ordinal);
-        var shutdown = app.IndexOf("BeginShutdown(page);", recheck, StringComparison.Ordinal);
-        Assert.True(recheck >= 0 && shutdown > recheck);
+        var recheck = app.IndexOf("page.IsUnsafeToClose || !ReferenceEquals", StringComparison.Ordinal);
+        var scheduling = app.IndexOf("ScheduleShutdown(page);", recheck, StringComparison.Ordinal);
+        Assert.True(recheck >= 0 && scheduling > recheck);
     }
 
     [Fact]
@@ -134,9 +137,29 @@ public sealed class PresentationLifecycleContractTests
         var perf = File.ReadAllText(Path.Combine(presentation, "MainPage.HistoryPerformanceDiagnostics.cs"));
         Assert.Contains("await UiBoundedTaskWait.WaitAsync(", app, StringComparison.Ordinal);
         Assert.Contains("DiagnosticsShutdownBudget,", app, StringComparison.Ordinal);
-        Assert.Contains("if (_finalCloseAuthorized) return true;", app, StringComparison.Ordinal);
+        Assert.Contains("WindowCloseStage.FinalClose", app, StringComparison.Ordinal);
+        Assert.Contains("_closeCoordinator.AuthorizeFinalClose();", app, StringComparison.Ordinal);
+        Assert.Contains("window.DispatcherQueue.TryEnqueue(() => BeginShutdown(page))", app, StringComparison.Ordinal);
+        Assert.Contains("CloseSchedulingRejected", app, StringComparison.Ordinal);
         Assert.Contains("Interlocked.Exchange(ref _shutdownFinalized, 1)", lifecycle, StringComparison.Ordinal);
         Assert.DoesNotContain(".GetAwaiter()\n            .GetResult()", perf, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MacOsShutdownIsScheduledBeforeAnyResourceCleanup()
+    {
+        var presentation = Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation");
+        var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
+        var scheduleStart = app.IndexOf("private void ScheduleShutdown", StringComparison.Ordinal);
+        var queue = app.IndexOf("window.DispatcherQueue.TryEnqueue(() => BeginShutdown(page))", scheduleStart, StringComparison.Ordinal);
+        var shutdown = app.IndexOf("private void BeginShutdown", queue, StringComparison.Ordinal);
+        var cleanup = app.IndexOf("private async Task FinalizeWindowShutdownAsync", shutdown, StringComparison.Ordinal);
+
+        Assert.True(scheduleStart >= 0 && queue > scheduleStart && shutdown > queue && cleanup > shutdown);
+        Assert.Contains("_closeCoordinator.TrySchedule", app, StringComparison.Ordinal);
+        Assert.Contains("if (!_closeCoordinator.BeginShutdown()) return;", app, StringComparison.Ordinal);
+        Assert.DoesNotContain("if (window.DispatcherQueue.HasThreadAccess) CloseAuthorizedWindow();", app,
+            StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()
