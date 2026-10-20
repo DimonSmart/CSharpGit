@@ -203,6 +203,13 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     private bool TryBeginNormalShutdown(MainPage? page)
     {
         ReportDesktopCloseCheck("Closing");
+        // The final native request can arrive after MainPage was disposed.
+        if (_closeCoordinator.Stage == WindowCloseStage.FinalClose)
+        {
+            ReportDesktopCloseCheck("FinalCloseAllowed");
+            return true;
+        }
+
         var decision = _closeCoordinator.Request(
             page?.IsUnsafeToClose == true,
             page?.RequiresCloseConfirmation == true);
@@ -401,17 +408,18 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             try
             {
                 var window = _window;
-                if (window is null) return;
-
-                // On macOS this always runs after the *earlier* queued shutdown
-                // callback, never inside the original windowShouldClose stack.
-                if (window.DispatcherQueue.HasThreadAccess)
-                    CloseAuthorizedWindow();
-                else if (!window.DispatcherQueue.TryEnqueue(CloseAuthorizedWindow))
+                if (window is not null)
                 {
-                    LogUiFailure(new InvalidOperationException(
-                        "Window dispatcher rejected final close after cleanup."), "Final window close");
-                    FailFinalMacOsClose();
+                    // macOS shutdown started in a separate UI queue callback,
+                    // after the original windowShouldClose stack returned.
+                    if (window.DispatcherQueue.HasThreadAccess)
+                        CloseAuthorizedWindow();
+                    else if (!window.DispatcherQueue.TryEnqueue(CloseAuthorizedWindow))
+                    {
+                        LogUiFailure(new InvalidOperationException(
+                            "Window dispatcher rejected final close after cleanup."), "Final window close");
+                        FailFinalMacOsClose();
+                    }
                 }
             }
             catch (Exception exception)
