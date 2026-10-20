@@ -190,9 +190,10 @@ public sealed class DesktopUiContractTests
         Assert.Contains("HasUnappliedCommitMessage", page);
         Assert.Contains("Keep editing", page);
         Assert.Contains("RequiresCloseConfirmation", lifecycle);
-        Assert.Contains("page.RequiresCloseConfirmation", app);
+        Assert.Contains("page?.RequiresCloseConfirmation == true", app);
         Assert.Contains("eventArgs.Cancel = true", app);
-        Assert.Contains("_closeConfirmationInProgress", app);
+        Assert.Contains("WindowCloseDecision.Confirm", app);
+        Assert.Contains("_closeCoordinator.CancelConfirmation()", app);
         Assert.Contains("await UiBoundedTaskWait.WaitAsync(", app);
         Assert.Contains("DiagnosticsShutdownBudget,", app);
         Assert.Contains("page.PrepareForShutdown()", app);
