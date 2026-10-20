@@ -492,6 +492,21 @@ public sealed partial class App
 
     private void RequestNormalWindowCloseForDesktopCheck()
     {
+        var mode = Environment.GetEnvironmentVariable("CSHARPGIT_CLOSE_CHECK_MODE");
+        if (mode == "WindowClose")
+        {
+            // Explicitly check Window.Close separately from an OS close request.
+            _window!.Close();
+            return;
+        }
+
+        if (mode == "AppRequest")
+        {
+            if (TryBeginNormalShutdown(_window!.Content as MainPage))
+                _window.Close();
+            return;
+        }
+
         if (OperatingSystem.IsWindows())
         {
             // Uno's Window.Close destroys the Win32 window without raising AppWindow.Closing.
@@ -502,11 +517,44 @@ public sealed partial class App
             if (!PostMessageW(handle, 0x0010, 0, 0))
                 throw new Win32Exception(Marshal.GetLastWin32Error());
         }
+        else if (OperatingSystem.IsMacOS())
+        {
+            RequestMacOsNativeClose();
+        }
         else if (TryBeginNormalShutdown(_window!.Content as MainPage))
         {
             _window.Close();
         }
     }
+
+    // performClose: is the AppKit equivalent of pressing the red title-bar button.
+    // Unlike NSWindow.close, it calls windowShouldClose: and exercises Uno's
+    // real, synchronously cancelable AppWindow.Closing callback.
+    private static void RequestMacOsNativeClose()
+    {
+        var applicationClass = ObjcGetClass("NSApplication");
+        if (applicationClass == 0)
+            throw new InvalidOperationException("Could not resolve NSApplication.");
+        var application = ObjcSendObject(applicationClass, ObjcSelector("sharedApplication"));
+        var window = ObjcSendObject(application, ObjcSelector("mainWindow"));
+        if (window == 0)
+            window = ObjcSendObject(application, ObjcSelector("keyWindow"));
+        if (window == 0)
+            throw new InvalidOperationException("AppKit does not have an active main window.");
+        ObjcSendVoid(window, ObjcSelector("performClose:"), 0);
+    }
+
+    [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_getClass")]
+    private static extern nint ObjcGetClass(string name);
+
+    [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "sel_registerName")]
+    private static extern nint ObjcSelector(string name);
+
+    [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")]
+    private static extern nint ObjcSendObject(nint target, nint selector);
+
+    [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")]
+    private static extern void ObjcSendVoid(nint target, nint selector, nint sender);
 
     [DllImport("user32.dll", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
