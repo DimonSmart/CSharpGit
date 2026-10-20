@@ -527,31 +527,24 @@ public sealed partial class App
         }
     }
 
-    // performClose: is the AppKit equivalent of pressing the red title-bar button.
-    // Unlike NSWindow.close, it calls windowShouldClose: and exercises Uno's
-    // real, synchronously cancelable AppWindow.Closing callback.
-    private static void RequestMacOsNativeClose()
+    // AppKit performClose: simulates the red title-bar button and calls
+    // windowShouldClose:. Target this Uno window, not NSApplication.mainWindow
+    // (which may refer to another window or be unset on a CI runner).
+    private void RequestMacOsNativeClose()
     {
-        var applicationClass = ObjcGetClass("NSApplication");
-        if (applicationClass == 0)
-            throw new InvalidOperationException("Could not resolve NSApplication.");
-        var application = ObjcSendObject(applicationClass, ObjcSelector("sharedApplication"));
-        var window = ObjcSendObject(application, ObjcSelector("mainWindow"));
-        if (window == 0)
-            window = ObjcSendObject(application, ObjcSelector("keyWindow"));
-        if (window == 0)
-            throw new InvalidOperationException("AppKit does not have an active main window.");
+        var nativeWindow = _window?.GetNativeWindow()
+            ?? throw new InvalidOperationException("Uno did not provide a native macOS window.");
+        var handle = nativeWindow.GetType().GetProperty("Handle")?.GetValue(nativeWindow);
+        if (handle is not nint window || window == 0)
+            throw new InvalidOperationException(
+                $"The native macOS window ({nativeWindow.GetType().FullName}) did not expose an AppKit handle.");
+
+        ReportDesktopCloseCheck($"NativeCloseTarget: {nativeWindow.GetType().FullName}");
         ObjcSendVoid(window, ObjcSelector("performClose:"), 0);
     }
 
-    [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_getClass")]
-    private static extern nint ObjcGetClass(string name);
-
     [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "sel_registerName")]
     private static extern nint ObjcSelector(string name);
-
-    [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")]
-    private static extern nint ObjcSendObject(nint target, nint selector);
 
     [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")]
     private static extern void ObjcSendVoid(nint target, nint selector, nint sender);
