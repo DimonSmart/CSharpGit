@@ -57,6 +57,22 @@ public sealed class RepositoryTreeExpanderTests
         Assert.Contains("public bool HasChildren => Children.Count > 0;", workingTreeNode, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void RepositoryTreeCompensatesTheRootInsetWithoutChangingItemIndentation()
+    {
+        var root = FindRepositoryRoot();
+        var page = System.Xml.Linq.XDocument.Load(Path.Combine(
+            root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var tree = Assert.Single(page.Descendants().Where(element =>
+            element.Name.LocalName == "TreeView"
+            && (string?)element.Attribute(System.Xml.Linq.XName.Get(
+                "Name", "http://schemas.microsoft.com/winfx/2006/xaml")) == "RepositoryTree"));
+
+        Assert.Equal("-16,0,0,0", (string?)tree.Attribute("Margin"));
+        Assert.Equal("{StaticResource DenseTreeViewStyle}", (string?)tree.Attribute("Style"));
+        Assert.Equal("{StaticResource DenseTreeItemStyle}", (string?)tree.Attribute("ItemContainerStyle"));
+    }
+
     private static int CountOccurrences(string text, string value)
     {
         var count = 0;
