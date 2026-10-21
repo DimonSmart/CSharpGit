@@ -412,8 +412,10 @@
               Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
               BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
               BorderThickness="0,0,1,0">
+        <!-- Compensate the reserved root expander slot once; keep native child indentation. -->
         <TreeView x:Name="RepositoryTree"
                   Style="{StaticResource DenseTreeViewStyle}"
+                  Margin="-16,0,0,0"
                   ItemContainerStyle="{StaticResource DenseTreeItemStyle}"
                   ItemTemplate="{StaticResource RepositoryTreeItemTemplate}"
                   SelectionMode="Single"
