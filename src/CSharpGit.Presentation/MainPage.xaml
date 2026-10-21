@@ -115,9 +115,6 @@
               Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
               BorderThickness="0,0,1,1">
         <StackPanel HorizontalAlignment="Stretch" Spacing="{StaticResource Spacing.XS}">
-          <TextBlock Text="Repository"
-                     Style="{StaticResource PaneHeaderTextStyle}"
-                     VerticalAlignment="Center" />
           <DropDownButton x:Name="RepositorySelectorButton"
                           Style="{StaticResource ToolbarButtonStyle}"
                           HorizontalAlignment="Stretch"
