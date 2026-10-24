@@ -4,9 +4,11 @@ using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.System;
 
 namespace CSharpGit.Presentation;
 
@@ -27,6 +29,17 @@ public sealed partial class RecentRepositoriesView : UserControl
 
     private void RecentRepositoriesView_Loaded(object sender, RoutedEventArgs e) =>
         Model?.StartImageLoading();
+
+    private void RepositorySearch_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key != VirtualKey.Enter
+            || Model?.GetSingleSearchResult() is not { } repository
+            || !repository.OpenCommand.CanExecute(null))
+            return;
+
+        e.Handled = true;
+        repository.OpenCommand.Execute(null);
+    }
 
     private void RepositoryTileLayout_Loaded(object sender, RoutedEventArgs e)
     {

@@ -78,6 +78,10 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.DoesNotContain("Continue with a repository you opened recently", recentView);
         Assert.DoesNotContain("Recent repositories", recentView);
         Assert.Contains("SearchText", recentView);
+        Assert.Contains("KeyDown=\"RepositorySearch_KeyDown\"", recentView);
+        Assert.Contains("GetSingleSearchResult()", recentViewCodeBehind);
+        Assert.Contains("repository.OpenCommand.Execute(null)", recentViewCodeBehind);
+        Assert.Contains("FindSingleSearchMatch(", recentViewModel);
         Assert.Contains("ItemsSource=\"{Binding Groups}\"", recentView);
         Assert.DoesNotContain("+ New group", recentView);
         Assert.DoesNotContain("NewGroup_Click", recentView);
