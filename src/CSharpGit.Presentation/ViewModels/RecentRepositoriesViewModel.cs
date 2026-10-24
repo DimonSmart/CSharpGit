@@ -540,6 +540,15 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
 
     public bool ShowNoSearchResults => IsSearchActive && !HasSearchResults;
 
+    internal RecentRepositoryItem? GetSingleSearchResult()
+    {
+        if (_disposed || !IsSearchActive) return null;
+        var match = RecentRepositoriesProjectionBuilder.FindSingleSearchMatch(
+            _reconciledSnapshot.Groups, _reconciledSnapshot.Repositories, SearchText);
+        return match is not null && _itemsByPath.TryGetValue(match.Path, out var item)
+            ? item : null;
+    }
+
     public bool HasUnavailableRepositories => _itemsByPath.Values.Any(item => !item.IsAvailable);
 
     internal void StartImageLoading()

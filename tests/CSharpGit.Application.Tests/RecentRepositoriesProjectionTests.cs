@@ -26,6 +26,39 @@ public sealed class RecentRepositoriesProjectionTests
     }
 
     [Fact]
+    public void EnterTargetCoversPinnedGroupsAndRecentOnlyIfUnique()
+    {
+        var groups = new[]
+        {
+            new RepositoryGroupSettings("favorites", "Favorites", 0, true),
+            new RepositoryGroupSettings("work", "Work", 1, false)
+        };
+        var repositories = new[]
+        {
+            new RecentRepositorySettings("/repos/favorite", "Favorite", DateTimeOffset.UnixEpoch,
+                null, true, 0, "favorites"),
+            new RecentRepositorySettings("/repos/hidden-work", "Unique pinned", DateTimeOffset.UnixEpoch,
+                "feature", true, 0, "work"),
+            Repository("Recent", "/repos/recent", "feature", false, null, 1)
+        };
+
+        Assert.Equal("/repos/hidden-work",
+            RecentRepositoriesProjectionBuilder.FindSingleSearchMatch(
+                groups, repositories, "unique")?.Path);
+        Assert.Equal("/repos/recent",
+            RecentRepositoriesProjectionBuilder.FindSingleSearchMatch(
+                groups, repositories, "recent")?.Path);
+        Assert.Null(RecentRepositoriesProjectionBuilder.FindSingleSearchMatch(
+            groups, repositories, "feature"));
+        Assert.Null(RecentRepositoriesProjectionBuilder.FindSingleSearchMatch(
+            groups, repositories, "missing"));
+        Assert.Null(RecentRepositoriesProjectionBuilder.FindSingleSearchMatch(
+            groups, repositories, "  "));
+        Assert.Null(RecentRepositoriesProjectionBuilder.FindSingleSearchMatch(
+            groups, [repositories[0]], ""));
+    }
+
+    [Fact]
     public void WhitespaceSearchIsEquivalentToEmptySearch()
     {
         var repositories = new[]

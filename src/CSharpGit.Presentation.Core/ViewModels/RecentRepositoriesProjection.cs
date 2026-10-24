@@ -52,6 +52,21 @@ internal static class RecentRepositoriesProjectionBuilder
         return new RecentRepositoriesProjection(pinned, recent);
     }
 
+    internal static RecentRepositorySettings? FindSingleSearchMatch(
+        IReadOnlyList<RepositoryGroupSettings> groups,
+        IReadOnlyList<RecentRepositorySettings> repositories,
+        string? searchText)
+    {
+        if (string.IsNullOrWhiteSpace(searchText)) return null;
+
+        var projection = Build(groups, repositories, searchText);
+        var matches = projection.Groups.SelectMany(group => group.Repositories)
+            .Concat(projection.Recent)
+            .Take(2)
+            .ToArray();
+        return matches.Length == 1 ? matches[0] : null;
+    }
+
     public static IReadOnlyList<RecentRepositorySettings> BuildQuickList(
         IReadOnlyList<RecentRepositorySettings> repositories,
         string? currentRepositoryPath,

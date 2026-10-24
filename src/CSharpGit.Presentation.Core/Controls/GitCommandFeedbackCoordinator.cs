@@ -60,6 +60,7 @@ internal sealed class GitCommandFeedbackCoordinator
     private bool _truncated;
     private bool _listedInConsole;
     private DateTimeOffset _showAt;
+    private DateTimeOffset _nextReconciliationAt;
     private DateTimeOffset _lastCloseTick;
     private TimeSpan _closeRemaining = TimeSpan.FromSeconds(DefaultSuccessDurationSeconds);
 
@@ -149,13 +150,7 @@ internal sealed class GitCommandFeedbackCoordinator
                 // Terminal state is irreversible even if a delayed event arrives.
                 if (_current.Status != GitCommandStatus.Running)
                     return true;
-                _current = activity;
-                ResetOutput(activity); // Includes the last flushed sanitized stream fragments.
-                if (activity.Status == GitCommandStatus.Succeeded)
-                {
-                    _closeRemaining = TimeSpan.FromSeconds(_successDurationSeconds);
-                    _lastCloseTick = _clock();
-                }
+                ApplyLifecycle(activity);
                 return true;
             }
 
@@ -178,10 +173,13 @@ internal sealed class GitCommandFeedbackCoordinator
     {
         lock (_gate)
         {
-            if (!_enabled || _current is null || _dismissed)
+            if (!_enabled || _dismissed)
                 return null;
 
             var now = _clock();
+            ReconcileTerminalState(now);
+            if (_current is null)
+                return null;
             if (!_visible && now >= _showAt)
             {
                 _visible = true;
@@ -248,6 +246,39 @@ internal sealed class GitCommandFeedbackCoordinator
         }
     }
 
+    // A delayed Started event or a missed terminal notification must not
+    // leave Running visible after the authoritative command has completed.
+    private void ReconcileTerminalState(DateTimeOffset now)
+    {
+        if (_current is not { Status: GitCommandStatus.Running } running
+            || now < _nextReconciliationAt)
+            return;
+
+        _nextReconciliationAt = now.AddSeconds(1);
+        var latest = _source.Get(running.Id);
+        if (latest is null)
+        {
+            // An evicted activity has no trustworthy terminal status.
+            _current = null;
+            _visible = false;
+            return;
+        }
+
+        if (latest.Status != GitCommandStatus.Running)
+            ApplyLifecycle(latest);
+    }
+
+    private void ApplyLifecycle(GitCommandActivity activity)
+    {
+        _current = activity;
+        ResetOutput(activity); // Includes the final sanitized stream fragments.
+        if (activity.Status == GitCommandStatus.Succeeded)
+        {
+            _closeRemaining = TimeSpan.FromSeconds(_successDurationSeconds);
+            _lastCloseTick = _clock();
+        }
+    }
+
     private static bool IsClone(GitCommandActivity activity) =>
         activity.Arguments.Count > 0 &&
         string.Equals(activity.Arguments[0], "clone", StringComparison.Ordinal);
@@ -264,6 +295,7 @@ internal sealed class GitCommandFeedbackCoordinator
         _focused = false;
         _truncated = false;
         _showAt = _clock().AddMilliseconds(ShowDelayMilliseconds);
+        _nextReconciliationAt = _clock();
         _closeRemaining = TimeSpan.FromSeconds(_successDurationSeconds);
         _lastCloseTick = _clock();
         ResetOutput(activity);

@@ -29,6 +29,53 @@ public sealed class GitCommandFeedbackCoordinatorTests
     }
 
     [Fact]
+    public void MissingCompletionNotificationIsRecoveredFromActivitySource()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = new GitCommandFeedbackCoordinator(history, () => now);
+        coordinator.Configure(true, false);
+
+        var id = history.Started("git", "/repo", ["pull"], GitCommandKind.User);
+        coordinator.Handle(new GitCommandActivityChangedEventArgs(
+            history.Get(id)!, GitCommandActivityChangeKind.Started), false);
+
+        now += TimeSpan.FromMilliseconds(150);
+        Assert.Equal(GitCommandStatus.Running, coordinator.Capture()!.Status);
+
+        // The history knows the command finished, but the coordinator
+        // deliberately does not receive its terminal notification.
+        history.OutputReceived(id, GitOutputStream.StandardError, "done\r");
+        history.Completed(id, 0);
+        now += TimeSpan.FromSeconds(1);
+
+        var final = coordinator.Capture()!;
+        Assert.Equal(id, final.ActivityId);
+        Assert.Equal(GitCommandStatus.Succeeded, final.Status);
+        Assert.Equal(0, final.ExitCode);
+        Assert.Contains("done", final.PreviewText);
+    }
+
+    [Fact]
+    public void DelayedStartedAfterCompletionDoesNotRestoreRunning()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = new GitCommandFeedbackCoordinator(history, () => now);
+        coordinator.Configure(true, false);
+
+        var id = history.Started("git", "/repo", ["fetch"], GitCommandKind.User);
+        var staleStarted = history.Get(id)!;
+        history.Completed(id, 0);
+
+        coordinator.Handle(new GitCommandActivityChangedEventArgs(
+            staleStarted, GitCommandActivityChangeKind.Started), false);
+        now += TimeSpan.FromMilliseconds(150);
+
+        Assert.Equal(GitCommandStatus.Succeeded, coordinator.Capture()!.Status);
+    }
+
+    [Fact]
     public void PausesAutoCloseWhileHoveredOrFocusedAndKeepsRemainingTime()
     {
         var now = DateTimeOffset.UtcNow;

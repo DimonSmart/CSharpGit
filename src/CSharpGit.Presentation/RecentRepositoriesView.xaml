@@ -201,6 +201,7 @@
         <TextBlock Text="Repositories" Style="{StaticResource TitleTextStyle}" />
 
         <TextBox Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 KeyDown="RepositorySearch_KeyDown"
                  PlaceholderText="Search by name or path…"
                  Style="{StaticResource CompactTextBoxStyle}"
                  AutomationProperties.Name="Search repositories by name or path" />
