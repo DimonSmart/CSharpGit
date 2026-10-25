@@ -231,7 +231,6 @@ public sealed class GitCommandActivityHistoryTests
             <= GitCommandActivityHistory.MaximumOutputBytes);
     }
 
-
     [Fact]
     public void ThrowingActivityObserverDoesNotStrandRunningStateOrSilenceLaterObservers()
     {
@@ -241,7 +240,7 @@ public sealed class GitCommandActivityHistoryTests
         history.Changed += (_, args) => changes.Add(args.ChangeKind);
 
         var id = history.Started("git", "/repo", ["pull"], GitCommandKind.User);
-        history.OutputReceived(id, GitOutputStream.StandardError, "progress\\r".Replace("\\r", "\r"));
+        history.OutputReceived(id, GitOutputStream.StandardError, "progress\r");
         history.Completed(id, 0);
 
         var final = history.Get(id)!;
