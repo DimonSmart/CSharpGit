@@ -78,7 +78,7 @@ internal sealed class GitCommandExecutor
         {
             return await ExecuteProcessCoreAsync(
                 _gitExecutable, workingDirectory, operation, commandKind,
-                cancellationToken, arguments, _activitySink, environment, _processStarted);
+                cancellationToken, arguments, _activitySink, environment, _processStarted).ConfigureAwait(false);
         }
         catch (Exception) when (
             !cancellationToken.IsCancellationRequested &&
@@ -230,14 +230,15 @@ internal sealed class GitCommandExecutor
             if (!sensitive)
                 _activitySink.OutputReceived(activityId.Value, GitOutputStream.StandardOutput, BinaryOutputOmitted);
             _processStarted?.Invoke(process.Id);
-            errorTask = PumpTextAsync(
+            errorTask = Task.Run(() => PumpTextAsync(
                 process.StandardError,
                 sensitive ? null : activityId,
                 GitOutputStream.StandardError,
                 sensitive ? null : _activitySink,
                 maxOutputBytes: MaximumStandardErrorBytes,
-                outputLimitExceeded: () => KillProcessTree(process));
-            copyTask = process.StandardOutput.BaseStream.CopyToAsync(file, CancellationToken.None);
+                outputLimitExceeded: () => KillProcessTree(process),
+                cancellationToken: cancellationToken));
+            copyTask = process.StandardOutput.BaseStream.CopyToAsync(file, cancellationToken);
 
             await WaitForProcessAndPumpsAsync(process, cancellationToken, copyTask, errorTask);
             await file.FlushAsync(cancellationToken);
@@ -322,22 +323,27 @@ internal sealed class GitCommandExecutor
                 commandKind);
             processStarted?.Invoke(process.Id);
 
-            outputTask = PumpTextAsync(
+            // Never run stream pumps on the caller's UI SynchronizationContext.
+            // Stream callbacks and their potentially large output remain off the UI thread.
+            outputTask = Task.Run(() => PumpTextAsync(
                 process.StandardOutput,
                 sensitive ? null : activityId,
                 GitOutputStream.StandardOutput,
                 sensitive ? null : activitySink,
                 maxStandardOutputBytes,
-                () => KillProcessTree(process));
-            errorTask = PumpTextAsync(
+                () => KillProcessTree(process),
+                cancellationToken));
+            errorTask = Task.Run(() => PumpTextAsync(
                 process.StandardError,
                 sensitive ? null : activityId,
                 GitOutputStream.StandardError,
                 sensitive ? null : activitySink,
                 maxOutputBytes: MaximumStandardErrorBytes,
-                outputLimitExceeded: () => KillProcessTree(process));
+                outputLimitExceeded: () => KillProcessTree(process),
+                cancellationToken: cancellationToken));
 
-            await WaitForProcessAndPumpsAsync(process, cancellationToken, outputTask, errorTask);
+            await WaitForProcessAndPumpsAsync(process, cancellationToken, outputTask, errorTask)
+                .ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
 
             var rawOutput = outputTask.Result;
@@ -389,8 +395,8 @@ internal sealed class GitCommandExecutor
         pending.AddRange(pumps);
         while (pending.Count > 0)
         {
-            var completed = await Task.WhenAny(pending);
-            await completed; // Propagate pump errors immediately; otherwise Git may block on its pipes.
+            var completed = await Task.WhenAny(pending).ConfigureAwait(false);
+            await completed.ConfigureAwait(false); // Propagate pump errors immediately; otherwise Git may block on its pipes.
             pending.Remove(completed);
         }
     }
@@ -410,7 +416,8 @@ internal sealed class GitCommandExecutor
         GitOutputStream stream,
         IGitCommandActivitySink? activitySink,
         int? maxOutputBytes = null,
-        Action? outputLimitExceeded = null)
+        Action? outputLimitExceeded = null,
+        CancellationToken cancellationToken = default)
     {
         var result = new StringBuilder();
         var buffer = new char[TextReadBufferSize];
@@ -422,7 +429,8 @@ internal sealed class GitCommandExecutor
         while (true)
         {
             int read;
-            read = await reader.ReadAsync(buffer.AsMemory(0, buffer.Length), CancellationToken.None);
+            read = await reader.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken)
+                .ConfigureAwait(false);
 
             if (read == 0) break;
             if (maxOutputBytes is { } limit)
