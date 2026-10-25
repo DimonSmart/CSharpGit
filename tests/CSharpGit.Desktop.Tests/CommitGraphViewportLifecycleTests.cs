@@ -119,6 +119,8 @@ public sealed class CommitGraphViewportLifecycleTests
         await File.WriteAllTextAsync(Path.Combine(repository, "side.txt"), "side\n");
         await GitAsync(repository, home, "add", "side.txt");
         await GitAsync(repository, home, "commit", "-m", "Graph side tip");
+        await GitAsync(repository, home, "tag", "graph-side-long-reference-for-constrained-history-layout-a");
+        await GitAsync(repository, home, "tag", "graph-side-long-reference-for-constrained-history-layout-b");
         await GitAsync(repository, home, "switch", "main");
 
         await File.WriteAllTextAsync(Path.Combine(repository, "stash.txt"), "stash\n");

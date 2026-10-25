@@ -23,7 +23,9 @@ public sealed class HistoryReferencesPresenter : Panel
     private HistoryReferenceBadgeLayout.Plan _plan = HistoryReferenceBadgeLayout.Plan.Empty;
     private int _activeCount;
     private int _overflowVisibleCount = -1;
-    private double _measuredBudget;
+    private bool _metricsValid;
+    private double _naturalWidth;
+    private double _naturalHeight;
 
     public static readonly DependencyProperty ReferencesProperty = DependencyProperty.Register(
         nameof(References),
@@ -41,6 +43,11 @@ public sealed class HistoryReferencesPresenter : Panel
             _minimumNameMeasureText.Style = style;
         Children.Add(_overflowBorder);
         Clip = _clip;
+        ActualThemeChanged += (_, _) =>
+        {
+            _metricsValid = false;
+            InvalidateMeasure();
+        };
     }
 
     public IReadOnlyList<HistoryReferenceDecoration>? References
@@ -51,7 +58,21 @@ public sealed class HistoryReferencesPresenter : Panel
 
     protected override Size MeasureOverride(Size availableSize)
     {
-        var unrestricted = new Size(double.PositiveInfinity, availableSize.Height);
+        if (!_metricsValid)
+            MeasureNaturalBadges();
+
+        // The parent measures natural and allocated widths in the same pass.
+        // Only Arrange may apply the final allocation to attached children;
+        // changing their Width/Visibility in both measures never settles.
+        var width = double.IsFinite(availableSize.Width)
+            ? Math.Max(0, availableSize.Width)
+            : _naturalWidth;
+        return new Size(Math.Min(_naturalWidth, width), Math.Min(_naturalHeight, availableSize.Height));
+    }
+
+    private void MeasureNaturalBadges()
+    {
+        var unrestricted = new Size(double.PositiveInfinity, double.PositiveInfinity);
         _minimumNameMeasureText.Measure(unrestricted);
         var minimumUsefulName = _minimumNameMeasureText.DesiredSize.Width;
         var naturalWidth = 0d;
@@ -98,22 +119,16 @@ public sealed class HistoryReferencesPresenter : Panel
             height = Math.Max(height, _overflowMeasureBorder.DesiredSize.Height);
         }
 
-        _measuredBudget = double.IsFinite(availableSize.Width)
-            ? Math.Max(0, availableSize.Width)
-            : naturalWidth;
-        _plan = HistoryReferenceBadgeLayout.Calculate(_metrics, _measuredBudget, MeasureOverflow);
-        ApplyPlan(availableSize.Height);
-        var desiredWidth = Math.Min(naturalWidth, _measuredBudget);
-        return new Size(desiredWidth, Math.Min(height, availableSize.Height));
+        _naturalWidth = naturalWidth;
+        _naturalHeight = height;
+        _metricsValid = true;
     }
 
     protected override Size ArrangeOverride(Size finalSize)
     {
         _clip.Rect = new Rect(0, 0, Math.Max(0, finalSize.Width), Math.Max(0, finalSize.Height));
 
-        // In normal layout the final width equals the measured constraint. A
-        // different arrange width still reuses measurements and the same plan.
-        if (Math.Abs(_measuredBudget - finalSize.Width) > 0.01 && double.IsFinite(finalSize.Width))
+        if (double.IsFinite(finalSize.Width))
         {
             _plan = HistoryReferenceBadgeLayout.Calculate(_metrics, Math.Max(0, finalSize.Width), MeasureOverflow);
             ApplyPlan(finalSize.Height);
@@ -293,6 +308,7 @@ public sealed class HistoryReferencesPresenter : Panel
         _activeCount = count;
         _plan = HistoryReferenceBadgeLayout.Plan.Empty;
         _metrics.Clear();
+        _metricsValid = false;
         HideOverflow();
         InvalidateMeasure();
     }

@@ -142,6 +142,7 @@ public sealed partial class MainPage
             UpdateGitCommandStatus();
 
         if (activity.CommandKind != GitCommandKind.User || _gitConsoleSettings is null) return;
+        RenderGitCommandFeedback();
         var shouldOpen =
             (_gitConsoleSettings.GitConsoleAutoOpenMode == GitConsoleAutoOpenMode.Always &&
              e.ChangeKind == GitCommandActivityChangeKind.Started) ||
