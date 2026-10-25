@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using CSharpGit.Application.Abstractions;
@@ -55,7 +56,7 @@ public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCom
             snapshot = CreateSnapshot(state);
         }
 
-        Changed?.Invoke(this, new GitCommandActivityChangedEventArgs(
+        PublishChanged(new GitCommandActivityChangedEventArgs(
             snapshot,
             GitCommandActivityChangeKind.Started,
             evicted?.Id,
@@ -87,7 +88,7 @@ public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCom
         }
 
         if (eventArgs is not null)
-            Changed?.Invoke(this, eventArgs);
+            PublishChanged(eventArgs);
     }
 
     public void Completed(Guid id, int exitCode) =>
@@ -131,6 +132,26 @@ public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCom
         }
     }
 
+    // Observer failures must not abort an already started Git process or leave
+    // its activity permanently Running. Keep notifying the remaining observers.
+    private void PublishChanged(GitCommandActivityChangedEventArgs args)
+    {
+        var handlers = Changed;
+        if (handlers is null) return;
+        foreach (EventHandler<GitCommandActivityChangedEventArgs> handler in handlers.GetInvocationList())
+        {
+            try
+            {
+                handler(this, args);
+            }
+            catch (Exception exception)
+            {
+                // External exception messages may include sensitive paths or arguments.
+                Trace.WriteLine($"Git activity observer failed: {exception.GetType().Name}");
+            }
+        }
+    }
+
     private void Finish(Guid id, int? exitCode, GitCommandStatus status)
     {
         GitCommandActivity snapshot;
@@ -154,14 +175,14 @@ public sealed class GitCommandActivityHistory : IGitCommandActivitySink, IGitCom
         }
 
         if (stdoutFinal.Changed)
-            Changed?.Invoke(this, new GitCommandActivityChangedEventArgs(
+            PublishChanged(new GitCommandActivityChangedEventArgs(
                 id, snapshot.CommandKind, GitOutputStream.StandardOutput,
                 stdoutFinal.PublishedChunk, stdoutFinal.RequiresResync));
         if (stderrFinal.Changed)
-            Changed?.Invoke(this, new GitCommandActivityChangedEventArgs(
+            PublishChanged(new GitCommandActivityChangedEventArgs(
                 id, snapshot.CommandKind, GitOutputStream.StandardError,
                 stderrFinal.PublishedChunk, stderrFinal.RequiresResync));
-        Changed?.Invoke(this, new GitCommandActivityChangedEventArgs(
+        PublishChanged(new GitCommandActivityChangedEventArgs(
             snapshot,
             status == GitCommandStatus.Cancelled
                 ? GitCommandActivityChangeKind.Cancelled
