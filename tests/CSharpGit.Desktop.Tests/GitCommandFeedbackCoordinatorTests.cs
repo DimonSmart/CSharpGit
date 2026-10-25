@@ -29,6 +29,44 @@ public sealed class GitCommandFeedbackCoordinatorTests
     }
 
     [Fact]
+    public void DelayedUiStillShowsSuccessForTheFullConfiguredDuration()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = Create(history, () => now, autoClose: true);
+        var id = history.Started("git", "/repo", ["pull"], GitCommandKind.User);
+        now += TimeSpan.FromMilliseconds(150);
+        Assert.Equal(GitCommandStatus.Running, coordinator.Capture()!.Status);
+
+        history.Completed(id, 0);
+        now += TimeSpan.FromSeconds(10); // UI was busy with the repository refresh.
+        var success = coordinator.Capture()!;
+        Assert.Equal(GitCommandStatus.Succeeded, success.Status);
+        Assert.True(success.IsVisible);
+        now += TimeSpan.FromSeconds(5).Subtract(TimeSpan.FromMilliseconds(1));
+        Assert.True(coordinator.Capture()!.IsVisible);
+        now += TimeSpan.FromMilliseconds(1);
+        Assert.False(coordinator.Capture()!.IsVisible);
+    }
+
+    [Fact]
+    public void HiddenPresentationDoesNotConsumeSuccessCountdown()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = Create(history, () => now, autoClose: true);
+        var id = history.Started("git", "/repo", ["pull"], GitCommandKind.User);
+        history.Completed(id, 0);
+        now += TimeSpan.FromSeconds(10);
+        coordinator.Capture(presentationAvailable: false);
+        now += TimeSpan.FromSeconds(10);
+        coordinator.Capture(presentationAvailable: false);
+        Assert.True(coordinator.Capture()!.IsVisible);
+        now += TimeSpan.FromSeconds(5);
+        Assert.False(coordinator.Capture()!.IsVisible);
+    }
+
+    [Fact]
     public void MissingCompletionNotificationIsRecoveredFromActivitySource()
     {
         var now = DateTimeOffset.UtcNow;

@@ -41,6 +41,7 @@ public sealed class CommitGraphControl : SKCanvasElement
         CommitGraphPresentationContext.Current.GeometryCache;
     private CommitGraphMetrics _metrics = CommitGraphMetrics.Default;
     private CommitGraphGeometryKey? _renderedGeometryKey;
+    private CommitGraphGeometryKey? _paintedGeometryKey;
     private long _renderCount;
     private bool _hasRenderedState;
     private bool _presentationContextSubscribed;
@@ -390,6 +391,7 @@ public sealed class CommitGraphControl : SKCanvasElement
             paint.Color = GetTrackColor(node.TrackId);
             canvas.DrawCircle((float)node.Center.X, (float)node.Center.Y, (float)node.Radius, paint);
         }
+        _paintedGeometryKey = _renderedGeometryKey;
     }
 
     private static HistoryGeometryBuildCause DetermineBuildCause(
@@ -436,7 +438,7 @@ public sealed class CommitGraphControl : SKCanvasElement
         if (currentKey != renderedKey)
             return false;
 
-        return _geometry is not null;
+        return _geometry is not null && _paintedGeometryKey == renderedKey;
     }
 
     internal bool HasCurrentClipForCheck()

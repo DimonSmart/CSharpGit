@@ -62,7 +62,8 @@ public sealed partial class MainPage
     private void RenderGitCommandFeedback()
     {
         if (IsShuttingDown) return;
-        var state = _commandFeedback?.Capture();
+        var state = _commandFeedback?.Capture(
+            presentationAvailable: !_gitConsoleOpen || _cloneDialogFeedbackActive);
         if (state is not { IsVisible: true })
         {
             GitCommandFeedbackModalHost.Visibility = Visibility.Collapsed;

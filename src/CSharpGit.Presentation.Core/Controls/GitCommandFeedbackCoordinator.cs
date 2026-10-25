@@ -63,6 +63,7 @@ internal sealed class GitCommandFeedbackCoordinator
     private DateTimeOffset _nextReconciliationAt;
     private DateTimeOffset _lastCloseTick;
     private TimeSpan _closeRemaining = TimeSpan.FromSeconds(DefaultSuccessDurationSeconds);
+    private bool _successPresented;
 
     public GitCommandFeedbackCoordinator(IGitCommandActivitySource source, Func<DateTimeOffset>? clock = null)
     {
@@ -169,7 +170,7 @@ internal sealed class GitCommandFeedbackCoordinator
         }
     }
 
-    public GitCommandFeedbackSnapshot? Capture()
+    public GitCommandFeedbackSnapshot? Capture(bool presentationAvailable = true)
     {
         lock (_gate)
         {
@@ -187,8 +188,13 @@ internal sealed class GitCommandFeedbackCoordinator
                 _closeRemaining = TimeSpan.FromSeconds(_successDurationSeconds);
             }
 
-            if (_visible && _autoClose && _current.Status == GitCommandStatus.Succeeded)
+            if (_visible && presentationAvailable && _autoClose && _current.Status == GitCommandStatus.Succeeded)
             {
+                if (!_successPresented)
+                {
+                    _successPresented = true;
+                    _lastCloseTick = now;
+                }
                 if (!_hovered && !_focused)
                     _closeRemaining -= now - _lastCloseTick;
                 _lastCloseTick = now;
@@ -274,6 +280,7 @@ internal sealed class GitCommandFeedbackCoordinator
         ResetOutput(activity); // Includes the final sanitized stream fragments.
         if (activity.Status == GitCommandStatus.Succeeded)
         {
+            _successPresented = false;
             _closeRemaining = TimeSpan.FromSeconds(_successDurationSeconds);
             _lastCloseTick = _clock();
         }
@@ -293,6 +300,7 @@ internal sealed class GitCommandFeedbackCoordinator
         _visible = false;
         _hovered = false;
         _focused = false;
+        _successPresented = false;
         _truncated = false;
         _showAt = _clock().AddMilliseconds(ShowDelayMilliseconds);
         _nextReconciliationAt = _clock();

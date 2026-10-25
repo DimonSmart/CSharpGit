@@ -21,6 +21,7 @@ public sealed partial class MainPage
         var originalItemTemplate = HistoryList.ItemTemplate;
         try
         {
+            await CheckInitialHistoryGraphAsync(failures);
             HistoryList.ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["HistoryTextGraphItemTemplate"];
             while (_viewModel.History.Rows.Count < 300 && _viewModel.History.HasMore)
             {
@@ -69,7 +70,7 @@ public sealed partial class MainPage
                     var graph = FindDescendant<CommitGraphControl>(container);
                     Check(graph is not null, $"history row {index} has no commit graph control", failures);
                     Check(graph?.HasCurrentRenderForCheck() == true,
-                        $"history row {index} did not paint its current graph after viewport recycle", failures);
+                        $"history row {index} did not paint its current graph after viewport recycle: size={graph?.ActualWidth}x{graph?.ActualHeight}, graph={graph?.Graph is not null}", failures);
                     Check(graph?.HasCurrentClipForCheck() == true,
                         $"history row {index} graph clip does not match its render area", failures);
                     if (graph is not null)
@@ -139,6 +140,40 @@ public sealed partial class MainPage
         {
             HistoryPane.RowDefinitions[3].Height = originalDetailsHeight;
             HistoryList.ItemTemplate = originalItemTemplate;
+        }
+    }
+
+    private async Task CheckInitialHistoryGraphAsync(ICollection<string> failures)
+    {
+        if (_viewModel.History.Rows.FirstOrDefault() is not { } first)
+            return;
+
+        var app = Microsoft.UI.Xaml.Application.Current as App;
+        app?.ResizeMainWindowForCheck(1000, 900);
+        try
+        {
+            // Exercise both production templates at a constrained width with
+            // multiple long refs: natural and allocated badge plans differ.
+            foreach (var templateKey in new[] { "HistoryItemTemplate", "HistoryTextGraphReferencesItemTemplate" })
+            {
+                HistoryList.ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources[templateKey];
+                HistoryList.ScrollIntoView(first);
+                await WaitUntilAsync(() =>
+                    HistoryList.ContainerFromItem(first) is ListViewItem container
+                    && FindDescendant<CommitGraphControl>(container)?.HasCurrentRenderForCheck() == true,
+                    TimeSpan.FromSeconds(5));
+
+                var graph = HistoryList.ContainerFromItem(first) is ListViewItem item
+                    ? FindDescendant<CommitGraphControl>(item) : null;
+                Check(graph?.HasCurrentRenderForCheck() == true,
+                    $"{templateKey} did not paint the initial graph after reference layout settled", failures);
+                Check(graph?.ActualWidth == ActiveCommitGraphLayout.GraphWidth,
+                    $"{templateKey} lost the initial graph column width", failures);
+            }
+        }
+        finally
+        {
+            app?.ResizeMainWindowForCheck(1400, 900);
         }
     }
 
