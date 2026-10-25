@@ -139,6 +139,47 @@ public sealed class GitCommandExecutorStreamingTests
         Assert.Contains("partial", activity.StandardOutput, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task StreamCompletionDoesNotRequirePumpingCallerSynchronizationContext()
+    {
+        var history = new GitCommandActivityHistory();
+        var executor = CreateShellExecutor(history);
+        var original = SynchronizationContext.Current;
+        Task<GitCommandResult> running;
+
+        try
+        {
+            // Simulate an overloaded UI dispatcher: completion must not be
+            // dependent on an output pump continuation being posted here.
+            SynchronizationContext.SetSynchronizationContext(new NonPumpingSynchronizationContext());
+            running = executor.ExecuteForResultAsync(
+                Path.GetTempPath(),
+                "OffUiStream",
+                GitCommandKind.User,
+                CancellationToken.None,
+                null,
+                CommandsThenDelayShellArguments("echo out", "echo err 1>&2", 2));
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(original);
+        }
+
+        var result = await running.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("out", result.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("err", result.StandardError, StringComparison.Ordinal);
+        Assert.Equal(GitCommandStatus.Succeeded, history.GetLatest()!.Status);
+    }
+
+    private sealed class NonPumpingSynchronizationContext : SynchronizationContext
+    {
+        public override void Post(SendOrPostCallback callback, object? state)
+        {
+            // Intentionally never dispatch callbacks.
+        }
+    }
+
     private static GitCommandExecutor CreateShellExecutor(IGitCommandActivitySink sink) =>
         new(new GitCliOptions { ExecutablePath = ShellExecutable() }, sink);
 
