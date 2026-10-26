@@ -17,6 +17,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         {
             new TolerantApplicationThemeModeConverter(),
             new TolerantPullStrategyConverter(),
+            new TolerantPushToolbarActionConverter(),
             new JsonStringEnumConverter()
         }
     };
@@ -57,6 +58,8 @@ public sealed class JsonAppSettingsService : IAppSettingsService
     public bool AutoSetupRemoteOnPush => Volatile.Read(ref _state).AutoSetupRemoteOnPush;
 
     public PullStrategy DefaultPullStrategy => Volatile.Read(ref _state).DefaultPullStrategy;
+
+    public PushToolbarAction DefaultPushAction => Volatile.Read(ref _state).DefaultPushAction;
 
     public bool ForcePullAutoStash => Volatile.Read(ref _state).ForcePullAutoStash;
 
@@ -189,6 +192,19 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             current => current.DefaultPullStrategy == strategy
                 ? current
                 : current with { DefaultPullStrategy = strategy },
+            cancellationToken);
+    }
+
+    public Task SetDefaultPushActionAsync(
+        PushToolbarAction action,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Enum.IsDefined(action))
+            throw new ArgumentOutOfRangeException(nameof(action));
+        return UpdateAsync(
+            current => current.DefaultPushAction == action
+                ? current
+                : current with { DefaultPushAction = action },
             cancellationToken);
     }
 
@@ -591,6 +607,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 document.ShowReflog,
                 document.AutoSetupRemoteOnPush,
                 document.DefaultPullStrategy,
+                document.DefaultPushAction,
                 document.ForcePullAutoStash,
                 document.ShowAuthorAvatars ?? true,
                 document.OnlineAvatarLookupEnabled ?? true,
@@ -635,6 +652,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             ShowReflog = state.ShowReflog,
             AutoSetupRemoteOnPush = state.AutoSetupRemoteOnPush,
             DefaultPullStrategy = state.DefaultPullStrategy,
+            DefaultPushAction = state.DefaultPushAction,
             ForcePullAutoStash = state.ForcePullAutoStash,
             ShowAuthorAvatars = state.ShowAuthorAvatars,
             OnlineAvatarLookupEnabled = state.OnlineAvatarLookupEnabled,
@@ -958,6 +976,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         bool ShowReflog,
         bool AutoSetupRemoteOnPush,
         PullStrategy DefaultPullStrategy,
+        PushToolbarAction DefaultPushAction,
         bool ForcePullAutoStash,
         bool ShowAuthorAvatars,
         bool OnlineAvatarLookupEnabled,
@@ -980,6 +999,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             false,
             false,
             PullStrategy.FastForwardOnly,
+            PushToolbarAction.Push,
             false,
             true,
             true,
@@ -1004,6 +1024,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         public bool ShowReflog { get; init; }
         public bool AutoSetupRemoteOnPush { get; init; }
         public PullStrategy DefaultPullStrategy { get; init; } = PullStrategy.FastForwardOnly;
+        public PushToolbarAction DefaultPushAction { get; init; } = PushToolbarAction.Push;
         public bool ForcePullAutoStash { get; init; }
         public bool? ShowAuthorAvatars { get; init; }
         public bool? OnlineAvatarLookupEnabled { get; init; }
@@ -1049,6 +1070,35 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             PullStrategy value,
             JsonSerializerOptions options) =>
             writer.WriteStringValue((Enum.IsDefined(value) ? value : PullStrategy.FastForwardOnly).ToString());
+    }
+
+    private sealed class TolerantPushToolbarActionConverter : JsonConverter<PushToolbarAction>
+    {
+        public override PushToolbarAction Read(
+            ref Utf8JsonReader reader,
+            Type typeToConvert,
+            JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.String
+                && Enum.TryParse<PushToolbarAction>(reader.GetString(), false, out var action)
+                && Enum.IsDefined(action))
+                return action;
+            if (reader.TokenType == JsonTokenType.Number
+                && reader.TryGetInt32(out var value)
+                && Enum.IsDefined(typeof(PushToolbarAction), value))
+                return (PushToolbarAction)value;
+            if (reader.TokenType is not JsonTokenType.String and not JsonTokenType.Number and not JsonTokenType.Null)
+            {
+                using var _ = JsonDocument.ParseValue(ref reader);
+            }
+            return PushToolbarAction.Push;
+        }
+
+        public override void Write(
+            Utf8JsonWriter writer,
+            PushToolbarAction value,
+            JsonSerializerOptions options) =>
+            writer.WriteStringValue((Enum.IsDefined(value) ? value : PushToolbarAction.Push).ToString());
     }
 
     private sealed class TolerantApplicationThemeModeConverter : JsonConverter<ApplicationThemeMode>
