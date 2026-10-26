@@ -273,6 +273,7 @@ public sealed class SettingsViewModelTests
         public bool ShowReflog { get; set; }
         public bool AutoSetupRemoteOnPush { get; set; }
         public PullStrategy DefaultPullStrategy { get; set; } = PullStrategy.FastForwardOnly;
+        public PushToolbarAction DefaultPushAction { get; set; } = PushToolbarAction.Push;
         public bool ForcePullAutoStash { get; set; }
         public bool ShowAuthorAvatars { get; set; } = true;
         public bool OnlineAvatarLookupEnabled { get; set; } = true;
@@ -397,6 +398,15 @@ public sealed class SettingsViewModelTests
         {
             ThrowIfWriteFails(cancellationToken);
             DefaultPullStrategy = strategy;
+            _changed?.Invoke(this, EventArgs.Empty);
+            return Task.CompletedTask;
+        }
+
+        public Task SetDefaultPushActionAsync(PushToolbarAction action, CancellationToken cancellationToken = default)
+        {
+            ThrowIfWriteFails(cancellationToken);
+            if (DefaultPushAction == action) return Task.CompletedTask;
+            DefaultPushAction = action;
             _changed?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
         }
