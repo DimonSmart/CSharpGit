@@ -27,8 +27,22 @@ public sealed partial class RecentRepositoriesView : UserControl
 
     private RecentRepositoriesViewModel? Model => DataContext as RecentRepositoriesViewModel;
 
-    private void RecentRepositoriesView_Loaded(object sender, RoutedEventArgs e) =>
+    private void RecentRepositoriesView_Loaded(object sender, RoutedEventArgs e)
+    {
         Model?.StartImageLoading();
+        FocusSearch();
+    }
+
+    internal void FocusSearch()
+    {
+        if (!IsLoaded) return;
+
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (IsLoaded)
+                RepositorySearchTextBox.Focus(FocusState.Programmatic);
+        });
+    }
 
     private void RepositorySearch_KeyDown(object sender, KeyRoutedEventArgs e)
     {

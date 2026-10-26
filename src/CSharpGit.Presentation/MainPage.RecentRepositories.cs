@@ -99,9 +99,13 @@ public sealed partial class MainPage
         EmptyStartScreen.Visibility = !repositoryOpen && !hasRecentRepositories
             ? Visibility.Visible
             : Visibility.Collapsed;
-        RecentRepositoriesHost.Visibility = !repositoryOpen && hasRecentRepositories
+        var showRecentRepositories = !repositoryOpen && hasRecentRepositories;
+        var wasRecentRepositoriesVisible = RecentRepositoriesHost.Visibility == Visibility.Visible;
+        RecentRepositoriesHost.Visibility = showRecentRepositories
             ? Visibility.Visible
             : Visibility.Collapsed;
+        if (showRecentRepositories && !wasRecentRepositoriesVisible)
+            _recentRepositoriesView.FocusSearch();
     }
 
     private async Task OpenRecentRepositoryAsync(RecentRepositoryItem item)
