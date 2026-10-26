@@ -200,7 +200,8 @@
                   HorizontalAlignment="Stretch">
         <TextBlock Text="Repositories" Style="{StaticResource TitleTextStyle}" />
 
-        <TextBox Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+        <TextBox x:Name="RepositorySearchTextBox"
+                 Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                  KeyDown="RepositorySearch_KeyDown"
                  PlaceholderText="Search by name or path…"
                  Style="{StaticResource CompactTextBoxStyle}"
