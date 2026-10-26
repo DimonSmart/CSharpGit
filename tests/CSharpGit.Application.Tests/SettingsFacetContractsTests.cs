@@ -28,7 +28,7 @@ public sealed class SettingsFacetContractsTests
             new[] { "CommitTimeDisplayMode", "HistoryRenderingMode", "OnlineAvatarLookupEnabled", "ShowAuthorAvatars", "ShowReflog", "ThemeMode" },
             typeof(IAppearanceSettings).GetProperties().Select(property => property.Name).OrderBy(name => name).ToArray());
         Assert.Equal(
-            new[] { "AutoSetupRemoteOnPush", "DefaultPullStrategy", "ForcePullAutoStash" },
+            new[] { "AutoSetupRemoteOnPush", "DefaultPullStrategy", "DefaultPushAction", "ForcePullAutoStash" },
             typeof(IGitWorkflowSettings).GetProperties().Select(property => property.Name).OrderBy(name => name).ToArray());
         Assert.Equal(
             new[] { "AutoCloseSuccessfulGitCommandFeedback", "GitConsoleAutoOpenMode", "HistoryPerformanceDiagnosticsEnabled", "LoggingEnabled", "LogLevel", "ShowGitCommandProgressDialog", "SuccessfulGitCommandFeedbackDurationSeconds" },
