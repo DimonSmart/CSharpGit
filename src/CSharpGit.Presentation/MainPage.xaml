@@ -324,21 +324,62 @@
                 </Button.Flyout>
               </Button>
             </StackPanel>
-            <Button Style="{StaticResource SecondaryActionButtonStyle}">
-              <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
-                <FontIcon Glyph="{StaticResource Icon.Glyph.Push}" FontSize="{StaticResource Icon.Small}" />
-                <TextBlock Text="{Binding Branches.SelectedLocalBranch, Converter={StaticResource BranchTrackingActionTextConverter}, ConverterParameter=Push}"
-                           Style="{StaticResource BodyTextStyle}" />
-              </StackPanel>
-              <Button.Flyout>
-                <MenuFlyout>
-                  <MenuFlyoutItem Text="{Binding Branches.SelectedLocalBranch, Converter={StaticResource BranchTrackingActionTextConverter}, ConverterParameter=PushMenu}" Click="Push_Click" />
-                  <MenuFlyoutItem Text="Push to…" Click="PushTo_Click" IsEnabled="{Binding RepositorySync.CanPushTo}" />
-                  <MenuFlyoutSeparator />
-                  <MenuFlyoutItem Text="Force push with lease…" Click="ForcePushWithLease_Click" IsEnabled="{Binding RepositorySync.CanForcePushWithLease}" />
-                </MenuFlyout>
-              </Button.Flyout>
-            </Button>
+            <StackPanel Orientation="Horizontal"
+                        Spacing="0"
+                        ToolTipService.ToolTip="{Binding RepositorySync.PushTooltip}">
+              <Button x:Name="PushPrimaryButton"
+                      Click="PushPrimary_Click"
+                      IsEnabled="{Binding RepositorySync.CanPrimaryPush}"
+                      Style="{StaticResource SecondaryActionButtonStyle}"
+                      AutomationProperties.Name="{Binding RepositorySync.PushAccessibleName}">
+                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                  <FontIcon Glyph="{StaticResource Icon.Glyph.Push}" FontSize="{StaticResource Icon.Small}" />
+                  <TextBlock Text="{Binding RepositorySync.PushButtonText}"
+                             Style="{StaticResource BodyTextStyle}" />
+                </StackPanel>
+              </Button>
+              <Button x:Name="PushMenuButton"
+                      Style="{StaticResource ToolbarButtonStyle}"
+                      Padding="6,0"
+                      AutomationProperties.Name="Push actions and default action">
+                <FontIcon Glyph="&#xE70D;" FontSize="{StaticResource Icon.Small}" />
+                <Button.Flyout>
+                  <MenuFlyout>
+                    <MenuFlyoutItem Text="{Binding Branches.SelectedLocalBranch, Converter={StaticResource BranchTrackingActionTextConverter}, ConverterParameter=PushMenu}"
+                                    Click="Push_Click"
+                                    IsEnabled="{Binding RepositorySync.CanPush}" />
+                    <MenuFlyoutItem Text="Push to…"
+                                    Click="PushTo_Click"
+                                    IsEnabled="{Binding RepositorySync.CanPushTo}" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Force push with lease…"
+                                    Click="ForcePushWithLease_Click"
+                                    IsEnabled="{Binding RepositorySync.CanForcePushWithLease}" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutSubItem Text="Default action">
+                      <MenuFlyoutItem Text="Push" Click="PushSetDefault_Click">
+                        <MenuFlyoutItem.Icon>
+                          <FontIcon Glyph="&#xE73E;"
+                                    Visibility="{Binding RepositorySync.IsPushDefault, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        </MenuFlyoutItem.Icon>
+                      </MenuFlyoutItem>
+                      <MenuFlyoutItem Text="Push to…" Click="PushToSetDefault_Click">
+                        <MenuFlyoutItem.Icon>
+                          <FontIcon Glyph="&#xE73E;"
+                                    Visibility="{Binding RepositorySync.IsPushToDefault, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        </MenuFlyoutItem.Icon>
+                      </MenuFlyoutItem>
+                      <MenuFlyoutItem Text="Force push with lease…" Click="ForcePushWithLeaseSetDefault_Click">
+                        <MenuFlyoutItem.Icon>
+                          <FontIcon Glyph="&#xE73E;"
+                                    Visibility="{Binding RepositorySync.IsForcePushWithLeaseDefault, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        </MenuFlyoutItem.Icon>
+                      </MenuFlyoutItem>
+                    </MenuFlyoutSubItem>
+                  </MenuFlyout>
+                </Button.Flyout>
+              </Button>
+            </StackPanel>
             <Button x:Name="RefreshButton"
                     Click="RefreshIndicator_Click"
                     Style="{StaticResource IconButtonStyle}"
