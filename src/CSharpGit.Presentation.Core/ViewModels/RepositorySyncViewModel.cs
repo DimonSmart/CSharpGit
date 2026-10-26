@@ -213,7 +213,8 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
     {
         PushToolbarAction.PushTo => "Push to…",
         PushToolbarAction.ForcePushWithLease => "Force push with lease…",
-        _ when string.IsNullOrWhiteSpace(_context?.CurrentLocalBranch?.Upstream) => "Publish branch…",
+        _ when _context?.CurrentLocalBranch is null => "Push",
+        _ when string.IsNullOrWhiteSpace(_context.CurrentLocalBranch.Upstream) => "Publish branch…",
         _ when _context?.CurrentLocalBranch is { Ahead: > 0 } branch => $"Push ↑{branch.Ahead}",
         _ => "Push"
     };
@@ -297,6 +298,8 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
         Notify(nameof(PullButtonText));
         Notify(nameof(PullTooltip));
         Notify(nameof(PushButtonText));
+        Notify(nameof(PushAccessibleName));
+        Notify(nameof(PushTooltip));
         Notify(nameof(CanPrimaryPush));
         Notify(nameof(CanPush));
         Notify(nameof(CanPushTo));
