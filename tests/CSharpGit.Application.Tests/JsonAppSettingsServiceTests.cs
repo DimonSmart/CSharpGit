@@ -7,6 +7,22 @@ namespace CSharpGit.Application.Tests;
 public sealed class JsonAppSettingsServiceTests
 {
     [Fact]
+    public async Task DefaultPushActionIsPersistedAndUnknownValuesFallbackSafely()
+    {
+        using var fixture = new SettingsFixture();
+        var settings = fixture.CreateService();
+        Assert.Equal(PushToolbarAction.Push, settings.DefaultPushAction);
+        await settings.SetDefaultPushActionAsync(PushToolbarAction.PushTo);
+        Assert.Equal(PushToolbarAction.PushTo, fixture.CreateService().DefaultPushAction);
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+            () => settings.SetDefaultPushActionAsync((PushToolbarAction)123));
+        fixture.WriteSettings("{ \"DefaultPushAction\": \"Unrecognized\", \"LoggingEnabled\": true }");
+        var restored = fixture.CreateService();
+        Assert.Equal(PushToolbarAction.Push, restored.DefaultPushAction);
+        Assert.True(restored.LoggingEnabled);
+    }
+
+    [Fact]
     public async Task PullPreferencesRoundTripAndOldDocumentDefaults()
     {
         using var fixture = new SettingsFixture();
