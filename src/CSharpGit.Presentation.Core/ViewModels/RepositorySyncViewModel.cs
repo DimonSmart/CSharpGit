@@ -152,6 +152,11 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
 
     public PullStrategy DefaultPullStrategy => _settings.DefaultPullStrategy;
     public bool ForcePullAutoStash => _settings.ForcePullAutoStash;
+    public PushToolbarAction DefaultPushAction => _settings.DefaultPushAction;
+    public Task SetDefaultPushActionAsync(PushToolbarAction action) => _settings.SetDefaultPushActionAsync(action);
+    public bool IsPushDefault => DefaultPushAction == PushToolbarAction.Push;
+    public bool IsPushToDefault => DefaultPushAction == PushToolbarAction.PushTo;
+    public bool IsForcePushWithLeaseDefault => DefaultPushAction == PushToolbarAction.ForcePushWithLease;
     public bool IsMergeDefault => DefaultPullStrategy == PullStrategy.Merge;
     public bool IsRebaseDefault => DefaultPullStrategy == PullStrategy.Rebase;
     public bool IsFastForwardOnlyDefault => DefaultPullStrategy == PullStrategy.FastForwardOnly;
@@ -203,6 +208,25 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
             return $"{status}\nStrategy: {PullStrategyLabel(DefaultPullStrategy)}\nAutostash: {(ForcePullAutoStash ? "Forced" : "Git configuration")}";
         }
     }
+
+    public string PushButtonText => DefaultPushAction switch
+    {
+        PushToolbarAction.PushTo => "Push to…",
+        PushToolbarAction.ForcePushWithLease => "Force push with lease…",
+        _ when string.IsNullOrWhiteSpace(_context?.CurrentLocalBranch?.Upstream) => "Publish branch…",
+        _ when _context?.CurrentLocalBranch is { Ahead: > 0 } branch => $"Push ↑{branch.Ahead}",
+        _ => "Push"
+    };
+
+    public string PushAccessibleName => $"{PushButtonText} (default push action)";
+    public string PushTooltip => $"{PushButtonText}. Use the arrow for other push actions and to change the default.";
+
+    public bool CanPrimaryPush => DefaultPushAction switch
+    {
+        PushToolbarAction.PushTo => CanPushTo,
+        PushToolbarAction.ForcePushWithLease => CanForcePushWithLease,
+        _ => CanPush
+    };
 
     public bool CanPush =>
         _context is { Repository: not null, CanRunSyncMutation: true, IsBusy: false }
@@ -272,6 +296,8 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
         Notify(nameof(CurrentPullBranch));
         Notify(nameof(PullButtonText));
         Notify(nameof(PullTooltip));
+        Notify(nameof(PushButtonText));
+        Notify(nameof(CanPrimaryPush));
         Notify(nameof(CanPush));
         Notify(nameof(CanPushTo));
         Notify(nameof(CanForcePushWithLease));
@@ -399,6 +425,14 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
         Notify(nameof(IsRebaseDefault));
         Notify(nameof(IsFastForwardOnlyDefault));
         Notify(nameof(PullTooltip));
+        Notify(nameof(DefaultPushAction));
+        Notify(nameof(PushButtonText));
+        Notify(nameof(PushAccessibleName));
+        Notify(nameof(PushTooltip));
+        Notify(nameof(CanPrimaryPush));
+        Notify(nameof(IsPushDefault));
+        Notify(nameof(IsPushToDefault));
+        Notify(nameof(IsForcePushWithLeaseDefault));
     }
 
     public async Task<PushExecutionResult> PushAsync(Repository repository)
