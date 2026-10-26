@@ -10,6 +10,25 @@ namespace CSharpGit.Application.Tests;
 public sealed class RepositorySyncViewModelTests
 {
     [Fact]
+    public async Task PushDefaultUpdatesButtonAndAvailabilityWithoutExecutingAnAction()
+    {
+        var settings = new FakeSettingsService();
+        using var vm = CreateViewModel(
+            new FakeSyncService(),
+            settings,
+            Context(Repository("push-default"), new GitBranch("main", "local", true, "origin/main", 2)));
+        Assert.Equal("Push ↑2", vm.PushButtonText);
+        Assert.True(vm.IsPushDefault);
+        Assert.True(vm.CanPrimaryPush);
+
+        await vm.SetDefaultPushActionAsync(PushToolbarAction.PushTo);
+
+        Assert.Equal("Push to…", vm.PushButtonText);
+        Assert.True(vm.IsPushToDefault);
+        Assert.False(vm.CanPrimaryPush);
+    }
+
+    [Fact]
     public void RemoteStatePreservesSelectionByNameAndClearsOnRepositoryClose()
     {
         var repository = Repository("repo");
@@ -623,6 +642,7 @@ public sealed class RepositorySyncViewModelTests
     {
         public bool AutoSetupRemoteOnPush { get; set; }
         public PullStrategy DefaultPullStrategy { get; set; } = PullStrategy.FastForwardOnly;
+        public PushToolbarAction DefaultPushAction { get; set; } = PushToolbarAction.Push;
         public bool ForcePullAutoStash { get; set; }
 
         public event EventHandler? Changed;
@@ -639,6 +659,13 @@ public sealed class RepositorySyncViewModelTests
         public Task SetDefaultPullStrategyAsync(PullStrategy strategy, CancellationToken cancellationToken = default)
         {
             DefaultPullStrategy = strategy;
+            PublishChange();
+            return Task.CompletedTask;
+        }
+
+        public Task SetDefaultPushActionAsync(PushToolbarAction action, CancellationToken cancellationToken = default)
+        {
+            DefaultPushAction = action;
             PublishChange();
             return Task.CompletedTask;
         }
