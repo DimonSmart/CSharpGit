@@ -704,8 +704,27 @@ public sealed partial class MainPage : Page
     private void PullFastForwardOnly_Click(object sender, RoutedEventArgs e) =>
         RunPageUiOperation(() => PullOnceFromUiAsync(PullStrategy.FastForwardOnly), "Fast-forward pull");
 
+    private void PushPrimary_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(PushPrimaryAsync, "Push");
+
+    private Task PushPrimaryAsync() => _viewModel.RepositorySync.DefaultPushAction switch
+    {
+        PushToolbarAction.PushTo => ShowPushToDialogAsync(),
+        PushToolbarAction.ForcePushWithLease => RunForcePushWithLeaseAsync(),
+        _ => PushFromUiAsync()
+    };
+
     private void Push_Click(object sender, RoutedEventArgs e) =>
         RunPageUiOperation(PushFromUiAsync, "Push");
+
+    private void PushSetDefault_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(() => _viewModel.RepositorySync.SetDefaultPushActionAsync(PushToolbarAction.Push), "Set default Push");
+
+    private void PushToSetDefault_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(() => _viewModel.RepositorySync.SetDefaultPushActionAsync(PushToolbarAction.PushTo), "Set default Push to");
+
+    private void ForcePushWithLeaseSetDefault_Click(object sender, RoutedEventArgs e) =>
+        RunPageUiOperation(() => _viewModel.RepositorySync.SetDefaultPushActionAsync(PushToolbarAction.ForcePushWithLease), "Set default Force push with lease");
 
     private void RefreshAll_Click(object sender, RoutedEventArgs e) =>
         RunPageUiOperation(RefreshRepositoryFromUiAsync, "Refresh repository");
