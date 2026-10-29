@@ -91,7 +91,9 @@ public sealed class BranchDeletionUiContractTests
         Assert.Contains("!_viewModel.IsBusy", menu, StringComparison.Ordinal);
         Assert.Contains("ConfirmDeleteBranchFolderAsync(node, folderInfo)", menu, StringComparison.Ordinal);
         Assert.DoesNotContain("case RepositoryTreeNodeKind.Group when node.Name == \"Branches\"", menu, StringComparison.Ordinal);
-        Assert.DoesNotContain("case RepositoryTreeNodeKind.Remote when node.Value is GitRemote", menu, StringComparison.Ordinal);
+        Assert.Contains("case RepositoryTreeNodeKind.Remote when node.Value is GitRemote remote:", menu, StringComparison.Ordinal);
+        Assert.Contains("Remove remote…", menu, StringComparison.Ordinal);
+        Assert.Contains("ConfirmRemoveRemoteAsync(remote)", menu, StringComparison.Ordinal);
     }
 
     [Fact]
