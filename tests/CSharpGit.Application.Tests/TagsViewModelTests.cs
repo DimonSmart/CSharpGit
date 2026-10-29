@@ -444,6 +444,12 @@ public sealed class TagsViewModelTests
             CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
+        public Task UnsetUpstreamAsync(
+            Repository repository,
+            string branch,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
         public Task RenameBranchAsync(
             Repository repository,
             string oldName,
