@@ -257,6 +257,8 @@ public sealed class FileActionsViewModelTests
         }
         public Task OpenFolderAsync(string path, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
+        public Task OpenTerminalAsync(string path, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
         public Task RevealFileAsync(string path, CancellationToken cancellationToken = default)
         {
             RevealedPath = path; return Task.CompletedTask;

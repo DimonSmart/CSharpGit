@@ -125,8 +125,15 @@ public sealed partial class MainPage
     {
         var path = _viewModel.Repository?.WorkingDirectory;
         RepositorySelectorFlyout.Hide();
-        if (path is not null && Directory.Exists(path))
+        if (path is null || !Directory.Exists(path)) return;
+        try
+        {
             await _desktopShellService.OpenTerminalAsync(path);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            await ShowErrorAsync("Could not open terminal", exception.Message);
+        }
     }
 
     private void RepositorySelectorCopyPath_Click(object sender, RoutedEventArgs args) =>
