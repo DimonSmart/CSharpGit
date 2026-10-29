@@ -83,6 +83,11 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("Text=\"Copy repository path\"", xaml);
         Assert.Contains("Icon.Glyph.Copy", xaml);
         Assert.Contains("OpenFolderInDesktopShellAsync", switching);
+        Assert.Contains("x:Name=\"RepositorySelectorOpenTerminalButton\"", xaml);
+        Assert.Contains("Click=\"RepositorySelectorOpenTerminal_Click\"", xaml);
+        Assert.Contains("Open Terminal Here", xaml);
+        Assert.Contains("_desktopShellService.OpenTerminalAsync(path)", switching);
+        Assert.Contains("RepositorySelectorOpenTerminalButton.IsEnabled", switching);
         Assert.Contains("ShowCreateRepositoryAsync", switching);
         Assert.Contains("ShowUnavailableRepositoryAsync", switching);
 

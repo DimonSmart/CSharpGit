@@ -85,6 +85,7 @@ public sealed partial class MainPage
         RepositorySelectorList.IsEnabled = canChangeRepository;
         RepositorySelectorOpenFolderButton.IsEnabled =
             currentPath is not null && Directory.Exists(currentPath);
+        RepositorySelectorOpenTerminalButton.IsEnabled = currentPath is not null && Directory.Exists(currentPath);
         RepositorySelectorCopyPathButton.IsEnabled = currentPath is not null;
         RepositorySelectorOpenButton.IsEnabled = canChangeRepository;
         RepositorySelectorCloneButton.IsEnabled = canChangeRepository;
@@ -115,6 +116,17 @@ public sealed partial class MainPage
         RepositorySelectorFlyout.Hide();
         if (path is not null && Directory.Exists(path))
             await OpenFolderInDesktopShellAsync(path, "Could not open repository folder");
+    }
+
+    private void RepositorySelectorOpenTerminal_Click(object sender, RoutedEventArgs args) =>
+        RunPageUiOperation(OpenRepositoryTerminalAsync, "Open repository terminal", showError: true);
+
+    private async Task OpenRepositoryTerminalAsync()
+    {
+        var path = _viewModel.Repository?.WorkingDirectory;
+        RepositorySelectorFlyout.Hide();
+        if (path is not null && Directory.Exists(path))
+            await _desktopShellService.OpenTerminalAsync(path);
     }
 
     private void RepositorySelectorCopyPath_Click(object sender, RoutedEventArgs args) =>

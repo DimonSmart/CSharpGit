@@ -98,6 +98,77 @@ public sealed class DesktopShellService : IDesktopShellService
         return Task.CompletedTask;
     }
 
+    public async Task OpenTerminalAsync(string path, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var fullPath = RequireExistingDirectory(path);
+        var startInfo = CreateTerminalStartInfo(fullPath);
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("Could not launch the system terminal.");
+
+        if (!OperatingSystem.IsMacOS()) return;
+
+        var error = await process.StandardError.ReadToEndAsync(cancellationToken);
+        await process.WaitForExitAsync(cancellationToken);
+        if (process.ExitCode != 0)
+            throw new InvalidOperationException($"Could not open Terminal: {error.Trim()}");
+    }
+
+    private static ProcessStartInfo CreateTerminalStartInfo(string workingDirectory)
+    {
+        if (OperatingSystem.IsWindows())
+            return new ProcessStartInfo("cmd.exe")
+            {
+                WorkingDirectory = workingDirectory,
+                UseShellExecute = false,
+                CreateNoWindow = false
+            };
+
+        if (OperatingSystem.IsMacOS())
+        {
+            const string script = "on run argv\n" +
+                "tell application \"Terminal\"\n" +
+                "activate\n" +
+                "do script (\"cd \" & quoted form of (item 1 of argv))\n" +
+                "end tell\n" +
+                "end run";
+            var startInfo = CreateCommand("/usr/bin/osascript", "-e", script, workingDirectory);
+            startInfo.RedirectStandardError = true;
+            return startInfo;
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            var options = new (string Executable, string[] Arguments)[]
+            {
+                ("gnome-terminal", ["--working-directory=" + workingDirectory]),
+                ("konsole", ["--workdir", workingDirectory]),
+                ("xfce4-terminal", ["--working-directory", workingDirectory]),
+                ("alacritty", ["--working-directory", workingDirectory]),
+                ("kitty", ["--directory", workingDirectory]),
+                ("x-terminal-emulator", []),
+                ("xterm", [])
+            };
+            foreach (var (executable, arguments) in options)
+            {
+                if (!ExecutableOnPath(executable)) continue;
+                var startInfo = CreateCommand(executable, arguments);
+                startInfo.WorkingDirectory = workingDirectory;
+                startInfo.CreateNoWindow = false;
+                return startInfo;
+            }
+            throw new InvalidOperationException("No supported terminal emulator was found in PATH.");
+        }
+
+        throw new PlatformNotSupportedException("Opening a terminal is not supported on this platform.");
+    }
+
+    private static bool ExecutableOnPath(string executable)
+    {
+        var paths = Environment.GetEnvironmentVariable("PATH")?.Split(Path.PathSeparator) ?? [];
+        return paths.Any(path => !string.IsNullOrWhiteSpace(path) && File.Exists(Path.Combine(path, executable)));
+    }
+
     public Task RevealFileAsync(string path, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
