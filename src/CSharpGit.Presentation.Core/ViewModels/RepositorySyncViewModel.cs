@@ -325,6 +325,22 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
             () => _syncService.FetchAsync(repository, remote));
     }
 
+    public Task<bool> RemoveRemoteAsync(Repository repository, GitRemote remote)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
+        ArgumentNullException.ThrowIfNull(remote);
+        var context = _context;
+        if (!CanRunQuery(context, repository)
+            || context!.CanRunSyncMutation != true
+            || !Remotes.Any(item => string.Equals(item.Name, remote.Name, StringComparison.Ordinal)))
+            return Task.FromResult(false);
+
+        return context.RunSyncMutationAsync(
+            repository,
+            () => _syncService.RemoveRemoteAsync(repository, remote.Name),
+            "Could not remove remote");
+    }
+
     public Task<bool> FetchAllAsync(Repository repository)
     {
         ArgumentNullException.ThrowIfNull(repository);

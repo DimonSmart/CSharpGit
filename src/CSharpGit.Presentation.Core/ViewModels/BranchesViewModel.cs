@@ -253,6 +253,20 @@ public sealed class BranchesViewModel : INotifyPropertyChanged, IDisposable
             afterSuccessfulMutation: afterSuccessfulMutation);
     }
 
+    public Task<bool> UnsetUpstreamAsync(Repository repository, GitBranch branch)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
+        ArgumentNullException.ThrowIfNull(branch);
+        if (string.IsNullOrWhiteSpace(branch.Upstream)
+            || !LocalBranches.Any(item => item.Name == branch.Name && item.Upstream is not null))
+            return Task.FromResult(false);
+
+        return RunMutationAsync(
+            repository,
+            () => _referenceService.UnsetUpstreamAsync(repository, branch.Name),
+            "Could not unset branch upstream");
+    }
+
     internal LocalBranchRemoteDeletionTarget? ResolveRemoteDeletionTargetForLocal(
         GitBranch localBranch) =>
         BranchDeletionResolver.ResolveRemoteForLocal(

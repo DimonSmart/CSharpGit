@@ -56,6 +56,21 @@ public sealed class BranchesViewModelTests
     }
 
     [Fact]
+    public async Task UnsetUpstreamUsesBranchMutationLifecycle()
+    {
+        var repository = Repository("repo");
+        var references = new FakeReferenceService();
+        var context = new FakeBranchesRepositoryContext { Repository = repository };
+        var viewModel = CreateViewModel(references, new FakeSyncService(), context);
+        var branch = new GitBranch("main", "a", true, "origin/main");
+        viewModel.ApplyRepositoryState([branch], []);
+
+        Assert.True(await viewModel.UnsetUpstreamAsync(repository, branch));
+        Assert.Equal(["unset-upstream:main"], references.Calls);
+        Assert.Equal(1, context.MutationLifecycleCalls);
+    }
+
+    [Fact]
     public async Task LocalThenRemoteDeletionReportsPartialSuccessAndRefreshesOnce()
     {
         var repository = Repository("repo");
@@ -261,6 +276,15 @@ public sealed class BranchesViewModelTests
             return Task.CompletedTask;
         }
 
+        public Task UnsetUpstreamAsync(
+            Repository repository,
+            string branch,
+            CancellationToken cancellationToken = default)
+        {
+            Calls.Add($"unset-upstream:{branch}");
+            return Task.CompletedTask;
+        }
+
         public Task RenameBranchAsync(
             Repository repository,
             string oldName,
@@ -318,6 +342,15 @@ public sealed class BranchesViewModelTests
             Repository repository,
             CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
+
+        public Task RemoveRemoteAsync(
+            Repository repository,
+            string remote,
+            CancellationToken cancellationToken = default)
+        {
+            Calls.Add($"remove-remote:{remote}");
+            return Task.CompletedTask;
+        }
 
         public Task DeleteRemoteBranchAsync(
             Repository repository,

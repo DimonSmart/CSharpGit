@@ -51,6 +51,7 @@ public interface IRepositorySyncService
     Task FetchAsync(Repository repository, string remote, CancellationToken cancellationToken = default);
     Task FetchAllAsync(Repository repository, CancellationToken cancellationToken = default);
     Task DeleteRemoteBranchAsync(Repository repository, string remote, string branch, CancellationToken cancellationToken = default);
+    Task RemoveRemoteAsync(Repository repository, string remote, CancellationToken cancellationToken = default);
     Task<PullResult> PullAsync(Repository repository, PullOptions options, CancellationToken cancellationToken = default);
     Task PushAsync(Repository repository, PushOptions? options = null, CancellationToken cancellationToken = default);
     Task<PublishBranchPreparation> PreparePublishBranchAsync(Repository repository, CancellationToken cancellationToken = default);

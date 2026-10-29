@@ -80,6 +80,16 @@ private readonly GitRepositoryCommandRunner _runner;
             arguments.ToArray());
     }
 
+    public Task UnsetUpstreamAsync(
+        Repository repository,
+        string branch,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
+        GitRefValidator.Validate(branch, nameof(branch));
+        return _runner.RunMutationAsync(repository, cancellationToken, "branch", "--unset-upstream", branch);
+    }
+
     public Task DeleteBranchAsync(
         Repository repository,
         string branch,

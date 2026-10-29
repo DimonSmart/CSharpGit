@@ -59,6 +59,16 @@ internal sealed partial class GitRepositorySyncService : IRepositorySyncService
             cancellationToken);
     }
 
+    public Task RemoveRemoteAsync(
+        Repository repository,
+        string remote,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(repository);
+        GitRefValidator.Validate(remote, nameof(remote));
+        return _runner.RunMutationAsync(repository, cancellationToken, "remote", "remove", remote);
+    }
+
     public async Task DeleteRemoteBranchAsync(
         Repository repository,
         string remote,
