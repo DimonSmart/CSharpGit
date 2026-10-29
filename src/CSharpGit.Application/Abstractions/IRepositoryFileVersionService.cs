@@ -87,6 +87,10 @@ public interface IDesktopShellService
         string path,
         CancellationToken cancellationToken = default);
 
+    Task OpenTerminalAsync(
+        string path,
+        CancellationToken cancellationToken = default);
+
     Task RevealFileAsync(
         string path,
         CancellationToken cancellationToken = default);

@@ -185,6 +185,15 @@
                       <TextBlock x:Name="RepositorySelectorOpenFolderText" Style="{StaticResource BodyTextStyle}" />
                     </StackPanel>
                   </Button>
+                  <Button x:Name="RepositorySelectorOpenTerminalButton"
+                          Click="RepositorySelectorOpenTerminal_Click"
+                          Style="{StaticResource RepositorySelectorActionButtonStyle}"
+                          AutomationProperties.Name="Open Terminal Here">
+                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                      <FontIcon Glyph="&#xE756;" FontSize="{StaticResource Icon.Small}" />
+                      <TextBlock Text="Open Terminal Here" Style="{StaticResource BodyTextStyle}" />
+                    </StackPanel>
+                  </Button>
                   <Button x:Name="RepositorySelectorCopyPathButton" Click="RepositorySelectorCopyPath_Click" Style="{StaticResource RepositorySelectorActionButtonStyle}" AutomationProperties.Name="Copy repository path">
                       <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                         <FontIcon Glyph="{StaticResource Icon.Glyph.Copy}" FontSize="{StaticResource Icon.Small}" />
