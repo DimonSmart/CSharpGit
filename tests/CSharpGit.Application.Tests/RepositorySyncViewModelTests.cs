@@ -50,6 +50,25 @@ public sealed class RepositorySyncViewModelTests
     }
 
     [Fact]
+    public async Task RemoveRemoteUsesSyncMutationLifecycleAndRejectsStaleRemote()
+    {
+        var repository = Repository("local-only");
+        var sync = new FakeSyncService();
+        var context = Context(repository, Branch("main", "origin/main"));
+        using var vm = CreateViewModel(sync, new FakeSettingsService(), context);
+        var origin = Remote("origin");
+        vm.ApplyRepositoryState([origin]);
+
+        Assert.True(await vm.RemoveRemoteAsync(repository, origin));
+        Assert.Equal(["remove-remote:origin"], sync.Calls);
+        Assert.Equal(1, context.MutationLifecycleCalls);
+
+        vm.ApplyRepositoryState([]);
+        Assert.False(await vm.RemoveRemoteAsync(repository, origin));
+        Assert.Single(sync.Calls);
+    }
+
+    [Fact]
     public async Task PullUsesCommittedDefaultAndOneOffDoesNotPersistIt()
     {
         var repo = Repository("pull-preferences");
@@ -534,6 +553,15 @@ public sealed class RepositorySyncViewModelTests
             CancellationToken cancellationToken = default)
         {
             Calls.Add("fetch-all");
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveRemoteAsync(
+            Repository repository,
+            string remote,
+            CancellationToken cancellationToken = default)
+        {
+            Calls.Add($"remove-remote:{remote}");
             return Task.CompletedTask;
         }
 

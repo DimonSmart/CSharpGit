@@ -160,6 +160,37 @@ public sealed class BranchRenameTests : IDisposable
         Assert.True(LocalBranchExists(work, "feature/same"));
     }
 
+    [Fact]
+    public async Task UnsetUpstreamKeepsLocalAndRemoteBranches()
+    {
+        var (work, remote) = CreateRepositoryWithRemote();
+        var head = RunGitOutput(work, "rev-parse", "HEAD").Trim();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(work);
+
+        await GitTestServices.CreateReferenceService().UnsetUpstreamAsync(repository, "main");
+
+        Assert.Equal(string.Empty, RunGitOutput(work, "for-each-ref", "--format=%(upstream)", "refs/heads/main").Trim());
+        Assert.Equal(head, RunGitOutput(work, "rev-parse", "HEAD").Trim());
+        Assert.True(RemoteRefExists(remote, "refs/heads/main"));
+        Assert.Equal(remote, RunGitOutput(work, "remote", "get-url", "origin").Trim());
+    }
+
+    [Fact]
+    public async Task RemoveRemoteKeepsHistoryAndDoesNotDeleteServerRepository()
+    {
+        var (work, remote) = CreateRepositoryWithRemote();
+        var head = RunGitOutput(work, "rev-parse", "HEAD").Trim();
+        var repository = await GitTestServices.CreateRepositoryService().OpenAsync(work);
+
+        await GitTestServices.CreateRepositorySyncService().RemoveRemoteAsync(repository, "origin");
+
+        Assert.Equal(string.Empty, RunGitOutput(work, "remote").Trim());
+        Assert.Equal(head, RunGitOutput(work, "rev-parse", "HEAD").Trim());
+        Assert.True(LocalBranchExists(work, "main"));
+        Assert.True(RemoteRefExists(remote, "refs/heads/main"));
+        Assert.NotEqual(0, RunGitExitCode(work, "show-ref", "--verify", "refs/remotes/origin/main"));
+    }
+
     public void Dispose() => TestDirectory.Delete(_temporaryDirectory);
 
     private string CreateRepository()

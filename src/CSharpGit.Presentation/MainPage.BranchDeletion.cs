@@ -43,6 +43,9 @@ public sealed partial class MainPage
 
                 AddMenuItem(flyout, "Create branch from here…", !_viewModel.IsBusy, () => CreateBranchFromAsync(branch.Name));
                 AddMenuItem(flyout, "Rename…", CanRenameBranch(), () => RenameBranchAsync(branch));
+                if (!string.IsNullOrWhiteSpace(branch.Upstream))
+                    AddMenuItem(flyout, "Unset upstream", _viewModel.Branches.CanMutate,
+                        () => UnsetBranchUpstreamAsync(branch));
                 AddMenuItem(flyout, "Merge into current branch", !branch.IsCurrent && !_viewModel.IsBusy, async () =>
                 {
                     _viewModel.RepositoryOperations.SelectedMergeBranch = branch;
@@ -80,6 +83,16 @@ public sealed partial class MainPage
                 AddMenuItem(flyout, "Prune Worktrees", _worktreesViewModel.CanMutate, PruneWorktreesAsync);
                 break;
 
+            case RepositoryTreeNodeKind.Remote when node.Value is GitRemote remote:
+                AddMenuItem(flyout, "Fetch", !_viewModel.IsBusy, async () =>
+                {
+                    _viewModel.RepositorySync.SelectedRemote = remote;
+                    await ExecuteCommandAsync(_viewModel.RepositorySync.FetchCommand);
+                });
+                flyout.Items.Add(new MenuFlyoutSeparator());
+                AddMenuItem(flyout, "Remove remote…", !_viewModel.IsBusy, () => ConfirmRemoveRemoteAsync(remote));
+                break;
+
             case RepositoryTreeNodeKind.RemoteBranch when node.Value is GitBranch remoteBranch:
                 AddMenuItem(flyout, "Checkout as tracking branch", !_viewModel.IsBusy, async () =>
                 {
@@ -102,6 +115,35 @@ public sealed partial class MainPage
 
         flyout.ShowAt(source, args.GetPosition(source));
         args.Handled = true;
+    }
+
+    private async Task UnsetBranchUpstreamAsync(GitBranch branch)
+    {
+        var repository = _viewModel.Repository;
+        if (repository is null || IsShuttingDown || !_viewModel.Branches.CanMutate) return;
+        await _viewModel.Branches.UnsetUpstreamAsync(repository, branch);
+    }
+
+    private async Task ConfirmRemoveRemoteAsync(GitRemote remote)
+    {
+        var repository = _viewModel.Repository;
+        if (repository is null || IsShuttingDown || _viewModel.IsBusy) return;
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = $"Remove remote '{remote.Name}'?",
+            Content = "This removes the local remote configuration and its remote-tracking references. Local branches, commits, and the remote server are not deleted. Branches tracking this remote will no longer have a usable upstream.",
+            PrimaryButtonText = "Remove remote",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close
+        };
+
+        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
+            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+            || _viewModel.IsBusy) return;
+
+        await _viewModel.RepositorySync.RemoveRemoteAsync(repository, remote);
     }
 
     private async Task ConfirmCheckoutTagDetachedAsync(GitTag tag)
