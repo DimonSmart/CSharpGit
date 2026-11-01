@@ -5,7 +5,8 @@ namespace CSharpGit.Application;
 public enum WorkingTreeDiscardScope
 {
     Selected,
-    All
+    All,
+    Folder
 }
 
 public enum WorkingTreeDiscardOutcome
@@ -17,7 +18,8 @@ public enum WorkingTreeDiscardOutcome
 
 public sealed record WorkingTreeDiscardRequest(
     WorkingTreeDiscardScope Scope,
-    IReadOnlyList<WorkingTreeChange> Changes)
+    IReadOnlyList<WorkingTreeChange> Changes,
+    string? FolderPath = null)
 {
     public int UntrackedCount => Changes.Count(IsUntracked);
 
@@ -32,6 +34,7 @@ public sealed record WorkingTreeDiscardRequest(
                 WorkingTreeDiscardScope.Selected when count == 1 =>
                     $"Discard unstaged changes in '{Changes[0].Path}'?",
                 WorkingTreeDiscardScope.Selected => $"Discard changes in {count} selected files?",
+                WorkingTreeDiscardScope.Folder => $"Discard unstaged changes in folder '{FolderPath}' ({count} {files})?",
                 _ => $"Discard changes in {count} {files}?"
             };
 
@@ -71,6 +74,18 @@ public static class WorkingTreeDiscard
         var snapshot = changes.ToArray();
         return snapshot.Length > 0 && snapshot.All(IsEligible)
             ? CreateRequest(WorkingTreeDiscardScope.Selected, snapshot)
+            : null;
+    }
+
+    public static WorkingTreeDiscardRequest? CreateFolder(
+        string folderPath,
+        IEnumerable<WorkingTreeChange> changes)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
+        ArgumentNullException.ThrowIfNull(changes);
+        var snapshot = changes.ToArray();
+        return snapshot.Length > 0 && snapshot.All(IsEligible)
+            ? new WorkingTreeDiscardRequest(WorkingTreeDiscardScope.Folder, Array.AsReadOnly(snapshot), folderPath)
             : null;
     }
 
