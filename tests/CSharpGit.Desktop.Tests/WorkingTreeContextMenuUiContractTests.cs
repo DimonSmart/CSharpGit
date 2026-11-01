@@ -42,7 +42,7 @@ public sealed class WorkingTreeContextMenuUiContractTests
     }
 
     [Fact]
-    public void FolderContextMenuDoesNotGainStashFolderAction()
+    public void FolderContextMenuOffersDiscardOnlyOnUnstagedSideWithoutStash()
     {
         var root = FindRepositoryRoot();
         var contextMenu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
@@ -54,8 +54,15 @@ public sealed class WorkingTreeContextMenuUiContractTests
 
         Assert.Contains("_viewModel.WorkingTree.CanStageChanges(changes)", folderMenu, StringComparison.Ordinal);
         Assert.Contains("_viewModel.WorkingTree.CanUnstageChanges(changes)", folderMenu, StringComparison.Ordinal);
+        Assert.Contains("CanDiscardFolderChanges(changes)", folderMenu, StringComparison.Ordinal);
+        Assert.Contains("RequestDiscardFolderAsync(folderPath, changes)", folderMenu, StringComparison.Ordinal);
+        Assert.Contains("Discard changes…", folderMenu, StringComparison.Ordinal);
         Assert.DoesNotContain("Stash", folderMenu, StringComparison.Ordinal);
-        Assert.DoesNotContain("Discard changes…", folderMenu, StringComparison.Ordinal);
+        var unstaged = folderMenu[..folderMenu.IndexOf("else", StringComparison.Ordinal)];
+        var staged = folderMenu[folderMenu.IndexOf("else", StringComparison.Ordinal)..];
+        Assert.Contains("Discard changes…", unstaged, StringComparison.Ordinal);
+        Assert.DoesNotContain("Discard changes…", staged, StringComparison.Ordinal);
+        Assert.Contains("AddWorkingTreeFolderContextMenuItems(flyout, kind, node.Path, changes)", contextMenu, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -77,6 +77,49 @@ public sealed class WorkingTreeViewModelTests
     }
 
     [Fact]
+    public async Task FolderDiscardUsesOnlyDescendantsWithoutChangingSelectionBeforeConfirmation()
+    {
+        var fixture = new Fixture();
+        var selected = new WorkingTreeChange("outside/Selected.cs", ' ', 'M');
+        var first = new WorkingTreeChange("src/A.cs", ' ', 'M');
+        var second = new WorkingTreeChange("src/Nested/B.cs", 'M', 'M');
+        fixture.ViewModel.ApplyRepositoryState(fixture.Repository, [selected, first, second]);
+        fixture.ViewModel.SetSelection(WorkingTreeDiffKind.Unstaged, [selected]);
+        var folderChanges = new List<WorkingTreeChange> { first, second };
+
+        Assert.True(fixture.ViewModel.CanDiscardFolderChanges(folderChanges));
+        await fixture.ViewModel.RequestDiscardFolderAsync("src", folderChanges);
+        folderChanges.Clear();
+
+        Assert.Contains("folder 'src' (2 files)", fixture.ViewModel.BatchDiscardConfirmationMessage);
+        Assert.Equal(new[] { selected }, fixture.ViewModel.SelectedUnstagedChanges);
+        Assert.Equal(0, fixture.Context.MutationCalls);
+
+        await ExecuteAsync(fixture.ViewModel.ConfirmBatchDiscardCommand);
+
+        Assert.Equal(1, fixture.Service.DiscardTrackedFilesCalls);
+        Assert.Equal(new[] { "src/A.cs", "src/Nested/B.cs" },
+            fixture.Service.LastDiscardTrackedFiles.Select(change => change.Path));
+        Assert.Equal(1, fixture.Context.MutationCalls);
+    }
+
+    [Fact]
+    public async Task FolderDiscardDoesNotOpenConfirmationForConflicts()
+    {
+        var fixture = new Fixture();
+        var changes = new[]
+        {
+            new WorkingTreeChange("src/A.cs", ' ', 'M'),
+            new WorkingTreeChange("src/Conflict.cs", 'U', 'U')
+        };
+        fixture.ViewModel.ApplyRepositoryState(fixture.Repository, changes);
+
+        Assert.False(fixture.ViewModel.CanDiscardFolderChanges(changes));
+        await fixture.ViewModel.RequestDiscardFolderAsync("src", changes);
+        Assert.Equal(string.Empty, fixture.ViewModel.BatchDiscardConfirmationMessage);
+    }
+
+    [Fact]
     public async Task StagedAndUnstagedSamePathKeepDistinctDiffContexts()
     {
         var fixture = new Fixture();
@@ -210,6 +253,7 @@ public sealed class WorkingTreeViewModelTests
         public int StageFilesCalls { get; private set; }
         public int UnstageAllCalls { get; private set; }
         public int DiscardTrackedFilesCalls { get; private set; }
+        public IReadOnlyCollection<WorkingTreeChange> LastDiscardTrackedFiles { get; private set; } = [];
         public IReadOnlyCollection<WorkingTreeChange> LastStageFiles { get; private set; } = [];
         public Exception? StageFilesFailure { get; set; }
 
@@ -252,6 +296,7 @@ public sealed class WorkingTreeViewModelTests
             CancellationToken cancellationToken = default)
         {
             DiscardTrackedFilesCalls++;
+            LastDiscardTrackedFiles = changes.ToArray();
             return Task.CompletedTask;
         }
 

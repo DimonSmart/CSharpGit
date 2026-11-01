@@ -31,7 +31,7 @@ public sealed partial class MainPage
         else if (node.IsFolder)
         {
             var changes = node.GetDescendantChanges();
-            AddWorkingTreeFolderContextMenuItems(flyout, kind, changes);
+            AddWorkingTreeFolderContextMenuItems(flyout, kind, node.Path, changes);
         }
         else
         {
@@ -98,6 +98,7 @@ public sealed partial class MainPage
     private void AddWorkingTreeFolderContextMenuItems(
         MenuFlyout flyout,
         WorkingTreeDiffKind kind,
+        string folderPath,
         IReadOnlyList<WorkingTreeChange> changes)
     {
         if (kind == WorkingTreeDiffKind.Unstaged)
@@ -107,6 +108,12 @@ public sealed partial class MainPage
                 "Stage",
                 _viewModel.WorkingTree.CanStageChanges(changes),
                 () => _viewModel.WorkingTree.StageChangesAsync(changes, "Could not stage folder"));
+            flyout.Items.Add(new MenuFlyoutSeparator());
+            AddMenuItem(
+                flyout,
+                "Discard changes…",
+                _viewModel.WorkingTree.CanDiscardFolderChanges(changes),
+                () => _viewModel.WorkingTree.RequestDiscardFolderAsync(folderPath, changes));
         }
         else
         {

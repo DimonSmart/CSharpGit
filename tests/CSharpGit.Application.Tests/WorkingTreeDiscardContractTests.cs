@@ -36,6 +36,43 @@ public sealed class WorkingTreeDiscardContractTests
     }
 
     [Fact]
+    public void FolderDiscardUsesNamedSubtreeAndImmutableSnapshot()
+    {
+        var changes = new List<WorkingTreeChange>
+        {
+            new("src/Foo/A.cs", ' ', 'M'),
+            new("src/Foo/Nested/B.cs", 'M', 'M'),
+            new("src/Foo/New.txt", '?', '?')
+        };
+
+        var request = WorkingTreeDiscard.CreateFolder("src/Foo", changes);
+        changes.Clear();
+
+        Assert.NotNull(request);
+        Assert.Equal(WorkingTreeDiscardScope.Folder, request.Scope);
+        Assert.Equal(3, request.Changes.Count);
+        Assert.Equal("src/Foo", request.FolderPath);
+        Assert.Equal(new[] { "src/Foo/A.cs", "src/Foo/Nested/B.cs", "src/Foo/New.txt" },
+            request.Changes.Select(change => change.Path));
+        Assert.Equal(
+            $"Discard unstaged changes in folder 'src/Foo' (3 files)?{Environment.NewLine}1 untracked file will be permanently deleted.",
+            request.ConfirmationMessage);
+    }
+
+    [Fact]
+    public void FolderDiscardRejectsConflictsWithoutSkippingThem()
+    {
+        var changes = new[]
+        {
+            new WorkingTreeChange("src/A.cs", ' ', 'M'),
+            new WorkingTreeChange("src/Conflict.cs", 'U', 'U')
+        };
+
+        Assert.Null(WorkingTreeDiscard.CreateFolder("src", changes));
+        Assert.Null(WorkingTreeDiscard.CreateFolder("src", []));
+    }
+
+    [Fact]
     public void ConfirmationOmitsPermanentDeletionWarningWithoutUntrackedFiles()
     {
         var request = WorkingTreeDiscard.CreateAll(
