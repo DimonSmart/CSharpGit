@@ -379,6 +379,24 @@ public sealed class WorkingTreeViewModel : INotifyPropertyChanged, IDisposable
             requireBulkEligibility: true);
     }
 
+    public bool CanDiscardFolderChanges(IReadOnlyCollection<WorkingTreeChange> changes)
+    {
+        ArgumentNullException.ThrowIfNull(changes);
+        return CanRunRepositoryMutation && WorkingTreeDiscard.CanDiscardSelected(changes);
+    }
+
+    public Task RequestDiscardFolderAsync(
+        string folderPath,
+        IReadOnlyCollection<WorkingTreeChange> changes)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
+        ArgumentNullException.ThrowIfNull(changes);
+        if (!CanDiscardFolderChanges(changes)) return Task.CompletedTask;
+
+        SetPendingBatchDiscard(WorkingTreeDiscard.CreateFolder(folderPath, changes));
+        return Task.CompletedTask;
+    }
+
     public bool CanDiscardAllFileChanges(WorkingTreeChange change)
     {
         ArgumentNullException.ThrowIfNull(change);
