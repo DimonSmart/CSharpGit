@@ -117,6 +117,24 @@ public sealed class RepositorySwitchingContractTests
         Assert.Equal("{StaticResource DenseListItemStyle}", (string?)list.Attribute("ItemContainerStyle"));
         var row = Assert.Single(list.Descendants(), element => element.Name.LocalName == "Grid");
         Assert.Equal("{StaticResource Height.DataRow}", (string?)row.Attribute("MinHeight"));
+        Assert.Equal("20,*,160", (string?)row.Attribute("ColumnDefinitions"));
+        Assert.Equal("Stretch", (string?)row.Attribute("HorizontalAlignment"));
+
+        var pathText = Assert.Single(row.Elements(),
+            element => element.Name.LocalName == "MiddleEllipsisTextBlock");
+        Assert.Equal("1", (string?)pathText.Attribute("Grid.Column"));
+        Assert.Equal("Stretch", (string?)pathText.Attribute("HorizontalAlignment"));
+        Assert.Equal("True", (string?)pathText.Attribute("UseMiddleEllipsis"));
+
+        var branchText = Assert.Single(row.Elements(),
+            element => element.Name.LocalName == "TextBlock");
+        Assert.Equal("2", (string?)branchText.Attribute("Grid.Column"));
+        Assert.Equal("{Binding Branch}", (string?)branchText.Attribute("Text"));
+        Assert.Equal("Right", (string?)branchText.Attribute("TextAlignment"));
+        Assert.Equal("NoWrap", (string?)branchText.Attribute("TextWrapping"));
+        Assert.Equal("CharacterEllipsis", (string?)branchText.Attribute("TextTrimming"));
+        Assert.Equal("Disabled", (string?)list.Attribute("ScrollViewer.HorizontalScrollMode"));
+        Assert.Equal("Disabled", (string?)list.Attribute("ScrollViewer.HorizontalScrollBarVisibility"));
 
         var buttons = panel.Elements().Where(element => element.Name.LocalName == "Button").ToArray();
         Assert.Equal(8, buttons.Length);

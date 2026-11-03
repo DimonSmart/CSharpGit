@@ -139,12 +139,14 @@
                             IsItemClickEnabled="True"
                             ItemClick="RepositorySelectorList_ItemClick"
                             SelectionMode="None"
+                            ScrollViewer.HorizontalScrollMode="Disabled"
                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                             ScrollViewer.VerticalScrollBarVisibility="Auto">
                     <ListView.ItemTemplate>
                       <DataTemplate>
-                        <Grid ColumnDefinitions="20,*,Auto"
+                        <Grid ColumnDefinitions="20,*,160"
                               MinHeight="{StaticResource Height.DataRow}"
+                              HorizontalAlignment="Stretch"
                               ToolTipService.ToolTip="{Binding ToolTip}"
                               AutomationProperties.Name="{Binding AccessibleName}">
                           <FontIcon Grid.Column="0"
@@ -152,14 +154,16 @@
                                     FontSize="{StaticResource Icon.Small}"
                                     VerticalAlignment="Center" />
                           <controls:MiddleEllipsisTextBlock Grid.Column="1"
+                                                            HorizontalAlignment="Stretch"
                                                             Text="{Binding Path}"
                                                             UseMiddleEllipsis="True"
                                                             TextStyle="{StaticResource BodyTextStyle}" />
                           <TextBlock Grid.Column="2"
                                      Text="{Binding Branch}"
                                      Margin="16,0,4,0"
-                                     MaxWidth="160"
                                      Style="{StaticResource CaptionTextStyle}"
+                                     TextAlignment="Right"
+                                     TextWrapping="NoWrap"
                                      TextTrimming="CharacterEllipsis"
                                      VerticalAlignment="Center" />
                         </Grid>
