@@ -1,3 +1,5 @@
+using System.Xml.Linq;
+
 namespace CSharpGit.Application.Tests;
 
 public sealed class RepositorySwitchingContractTests
@@ -95,6 +97,47 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("RunPageUiOperation(OpenRepositoryPickerAsync, \"Open repository shortcut\")", page);
     }
 
+
+    [Fact]
+    public void RepositorySelectorUsesSharedCompactDensity()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var xaml = XDocument.Load(Path.Combine(presentation, "MainPage.xaml"));
+        var controls = XDocument.Load(Path.Combine(presentation, "Styles", "Controls.xaml"));
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+
+        var flyout = Assert.Single(xaml.Descendants(),
+            element => (string?)element.Attribute(x + "Name") == "RepositorySelectorFlyout");
+        var panel = Assert.Single(flyout.Elements());
+        Assert.Equal("0", (string?)panel.Attribute("Spacing"));
+
+        var list = Assert.Single(panel.Elements(),
+            element => (string?)element.Attribute(x + "Name") == "RepositorySelectorList");
+        Assert.Equal("{StaticResource DenseListItemStyle}", (string?)list.Attribute("ItemContainerStyle"));
+        var row = Assert.Single(list.Descendants(), element => element.Name.LocalName == "Grid");
+        Assert.Equal("{StaticResource Height.DataRow}", (string?)row.Attribute("MinHeight"));
+
+        var buttons = panel.Elements().Where(element => element.Name.LocalName == "Button").ToArray();
+        Assert.Equal(8, buttons.Length);
+        Assert.All(buttons, button => Assert.Equal(
+            "{StaticResource RepositorySelectorActionButtonStyle}", (string?)button.Attribute("Style")));
+
+        var separators = panel.Elements().Where(element => element.Name.LocalName == "Border").ToArray();
+        Assert.Equal(3, separators.Length);
+        Assert.All(separators, separator => Assert.Equal(
+            "{StaticResource Margin.MenuSeparator}", (string?)separator.Attribute("Margin")));
+
+        var style = Assert.Single(controls.Descendants(),
+            element => (string?)element.Attribute(x + "Key") == "RepositorySelectorActionButtonStyle");
+        var setters = style.Elements()
+            .Where(element => element.Name.LocalName == "Setter")
+            .ToDictionary(element => (string)element.Attribute("Property")!,
+                element => (string)element.Attribute("Value")!);
+        Assert.Equal("{StaticResource Height.DataRow}", setters["MinHeight"]);
+        Assert.Equal("{StaticResource Padding.DenseRow}", setters["Padding"]);
+        Assert.Equal("True", setters["UseSystemFocusVisuals"]);
+    }
 
     [Fact]
     public void RepositorySelectorLivesInSidebarHeaderAndToolbarContainsActionsOnly()

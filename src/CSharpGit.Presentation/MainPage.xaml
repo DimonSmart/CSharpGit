@@ -132,25 +132,19 @@
               <Flyout x:Name="RepositorySelectorFlyout"
                       Opening="RepositorySelectorFlyout_Opening"
                       Placement="BottomEdgeAlignedLeft">
-                <StackPanel Width="520" Spacing="2">
+                <StackPanel Width="520" Spacing="0">
                   <ListView x:Name="RepositorySelectorList"
+                            ItemContainerStyle="{StaticResource DenseListItemStyle}"
                             MaxHeight="320"
                             IsItemClickEnabled="True"
                             ItemClick="RepositorySelectorList_ItemClick"
                             SelectionMode="None"
                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                             ScrollViewer.VerticalScrollBarVisibility="Auto">
-                    <ListView.ItemContainerStyle>
-                      <Style TargetType="ListViewItem"
-                             BasedOn="{StaticResource FormNavigationItemStyle}">
-                        <Setter Property="MinHeight" Value="{StaticResource Height.Control}" />
-                        <Setter Property="Padding" Value="8,2" />
-                      </Style>
-                    </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
                       <DataTemplate>
                         <Grid ColumnDefinitions="20,*,Auto"
-                              MinHeight="{StaticResource Height.Control}"
+                              MinHeight="{StaticResource Height.DataRow}"
                               ToolTipService.ToolTip="{Binding ToolTip}"
                               AutomationProperties.Name="{Binding AccessibleName}">
                           <FontIcon Grid.Column="0"
@@ -174,7 +168,7 @@
                   </ListView>
 
                   <Border Height="1"
-                          Margin="0,4"
+                          Margin="{StaticResource Margin.MenuSeparator}"
                           Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                   <Button x:Name="RepositorySelectorOpenFolderButton"
@@ -202,7 +196,7 @@
                     </Button>
 
                   <Border Height="1"
-                          Margin="0,4"
+                          Margin="{StaticResource Margin.MenuSeparator}"
                           Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                   <Button x:Name="RepositorySelectorOpenButton" Click="RepositorySelectorOpenRepository_Click" Style="{StaticResource RepositorySelectorActionButtonStyle}" AutomationProperties.Name="Open repository…">
@@ -229,7 +223,7 @@
                           Click="RepositorySelectorRepositories_Click" />
 
                   <Border Height="1"
-                          Margin="0,4"
+                          Margin="{StaticResource Margin.MenuSeparator}"
                           Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                   <Button x:Name="RepositorySelectorCloseButton"
