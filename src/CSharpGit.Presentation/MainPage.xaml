@@ -151,6 +151,7 @@
                     <ListView.ItemTemplate>
                       <DataTemplate>
                         <Grid ColumnDefinitions="20,*,160"
+                              MaxWidth="480"
                               MinHeight="{StaticResource Height.DataRow}"
                               HorizontalAlignment="Stretch"
                               ToolTipService.ToolTip="{Binding ToolTip}"
