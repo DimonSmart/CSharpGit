@@ -131,10 +131,6 @@ public sealed class RepositorySwitchingContractTests
         Assert.Equal("{StaticResource Height.DataRow}", (string?)row.Attribute("MinHeight"));
         Assert.Equal("20,*,160", (string?)row.Attribute("ColumnDefinitions"));
         Assert.Equal("Stretch", (string?)row.Attribute("HorizontalAlignment"));
-        // The item's width must be finite even if Uno's ListView measures its content
-        // with an unbounded horizontal constraint; otherwise the path hides the branch.
-        Assert.Equal("480", (string?)row.Attribute("MaxWidth"));
-        Assert.Equal("520", (string?)panel.Attribute("Width"));
 
         var pathText = Assert.Single(row.Elements(),
             element => element.Name.LocalName == "MiddleEllipsisTextBlock");

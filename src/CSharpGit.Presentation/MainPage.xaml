@@ -138,7 +138,7 @@
                     <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
                   </Style>
                 </Flyout.FlyoutPresenterStyle>
-                <StackPanel Width="520" Spacing="0">
+                <StackPanel MaxWidth="520" Spacing="0">
                   <ListView x:Name="RepositorySelectorList"
                             ItemContainerStyle="{StaticResource DenseListItemStyle}"
                             MaxHeight="320"
@@ -148,10 +148,14 @@
                             ScrollViewer.HorizontalScrollMode="Disabled"
                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListView.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <StackPanel />
+                      </ItemsPanelTemplate>
+                    </ListView.ItemsPanel>
                     <ListView.ItemTemplate>
                       <DataTemplate>
                         <Grid ColumnDefinitions="20,*,160"
-                              MaxWidth="480"
                               MinHeight="{StaticResource Height.DataRow}"
                               HorizontalAlignment="Stretch"
                               ToolTipService.ToolTip="{Binding ToolTip}"
