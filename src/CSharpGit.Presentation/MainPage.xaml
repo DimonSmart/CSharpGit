@@ -132,6 +132,12 @@
               <Flyout x:Name="RepositorySelectorFlyout"
                       Opening="RepositorySelectorFlyout_Opening"
                       Placement="BottomEdgeAlignedLeft">
+                <Flyout.FlyoutPresenterStyle>
+                  <Style TargetType="FlyoutPresenter">
+                    <Setter Property="ScrollViewer.HorizontalScrollMode" Value="Disabled" />
+                    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+                  </Style>
+                </Flyout.FlyoutPresenterStyle>
                 <StackPanel Width="520" Spacing="0">
                   <ListView x:Name="RepositorySelectorList"
                             ItemContainerStyle="{StaticResource DenseListItemStyle}"

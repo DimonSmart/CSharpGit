@@ -109,7 +109,19 @@ public sealed class RepositorySwitchingContractTests
 
         var flyout = Assert.Single(xaml.Descendants(),
             element => (string?)element.Attribute(x + "Name") == "RepositorySelectorFlyout");
-        var panel = Assert.Single(flyout.Elements());
+        var presenterStyle = Assert.Single(flyout.Elements(),
+            element => element.Name.LocalName == "Flyout.FlyoutPresenterStyle");
+        var style = Assert.Single(presenterStyle.Elements());
+        Assert.Equal("FlyoutPresenter", (string?)style.Attribute("TargetType"));
+        var presenterSetters = style.Elements()
+            .Where(element => element.Name.LocalName == "Setter")
+            .ToDictionary(element => (string)element.Attribute("Property")!,
+                element => (string)element.Attribute("Value")!);
+        Assert.Equal("Disabled", presenterSetters["ScrollViewer.HorizontalScrollMode"]);
+        Assert.Equal("Disabled", presenterSetters["ScrollViewer.HorizontalScrollBarVisibility"]);
+
+        var panel = Assert.Single(flyout.Elements(),
+            element => element.Name.LocalName == "StackPanel");
         Assert.Equal("0", (string?)panel.Attribute("Spacing"));
 
         var list = Assert.Single(panel.Elements(),
@@ -146,9 +158,9 @@ public sealed class RepositorySwitchingContractTests
         Assert.All(separators, separator => Assert.Equal(
             "{StaticResource Margin.MenuSeparator}", (string?)separator.Attribute("Margin")));
 
-        var style = Assert.Single(controls.Descendants(),
+        var actionStyle = Assert.Single(controls.Descendants(),
             element => (string?)element.Attribute(x + "Key") == "RepositorySelectorActionButtonStyle");
-        var setters = style.Elements()
+        var setters = actionStyle.Elements()
             .Where(element => element.Name.LocalName == "Setter")
             .ToDictionary(element => (string)element.Attribute("Property")!,
                 element => (string)element.Attribute("Value")!);
