@@ -144,6 +144,7 @@
                             MaxHeight="320"
                             IsItemClickEnabled="True"
                             ItemClick="RepositorySelectorList_ItemClick"
+                            ContainerContentChanging="RepositorySelectorList_ContainerContentChanging"
                             SelectionMode="None"
                             ScrollViewer.HorizontalScrollMode="Disabled"
                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -162,21 +163,46 @@
                               AutomationProperties.Name="{Binding AccessibleName}">
                           <FontIcon Grid.Column="0"
                                     Glyph="{Binding CurrentGlyph}"
+                                    Visibility="{Binding RepositoryVisibility}"
                                     FontSize="{StaticResource Icon.Small}"
                                     VerticalAlignment="Center" />
                           <controls:MiddleEllipsisTextBlock Grid.Column="1"
                                                             HorizontalAlignment="Stretch"
-                                                            Text="{Binding Path}"
+                                                            Visibility="{Binding RepositoryVisibility}"
+                                                            Text="{Binding DisplayPath}"
                                                             UseMiddleEllipsis="True"
                                                             TextStyle="{StaticResource BodyTextStyle}" />
                           <TextBlock Grid.Column="2"
                                      Text="{Binding Branch}"
+                                     Visibility="{Binding RepositoryVisibility}"
                                      Margin="16,0,4,0"
                                      Style="{StaticResource CaptionTextStyle}"
                                      TextAlignment="Right"
                                      TextWrapping="NoWrap"
                                      TextTrimming="CharacterEllipsis"
                                      VerticalAlignment="Center" />
+                          <Grid Grid.ColumnSpan="3"
+                                ColumnDefinitions="*,Auto,*"
+                                Margin="4,0"
+                                Visibility="{Binding HeaderVisibility}"
+                                VerticalAlignment="Center">
+                            <Border Grid.Column="0"
+                                    Height="1"
+                                    VerticalAlignment="Center"
+                                    Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding DisplayPath}"
+                                       MaxWidth="390"
+                                       Margin="10,0"
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       TextWrapping="NoWrap"
+                                       TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center" />
+                            <Border Grid.Column="2"
+                                    Height="1"
+                                    VerticalAlignment="Center"
+                                    Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                          </Grid>
                         </Grid>
                       </DataTemplate>
                     </ListView.ItemTemplate>

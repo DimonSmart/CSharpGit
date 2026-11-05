@@ -9,14 +9,17 @@ namespace CSharpGit.Presentation;
 internal sealed record RepositorySelectorEntry(
     string Path,
     string Branch,
-    bool IsCurrent)
+    bool IsCurrent,
+    string DisplayPath,
+    bool IsGroupHeader = false)
 {
+    public Visibility HeaderVisibility => IsGroupHeader ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility RepositoryVisibility => IsGroupHeader ? Visibility.Collapsed : Visibility.Visible;
     public string CurrentGlyph => IsCurrent ? "\uE73E" : string.Empty;
-
-    public string ToolTip => $"{Path}\nBranch: {Branch}";
-
-    public string AccessibleName =>
-        IsCurrent
+    public string ToolTip => IsGroupHeader ? Path : $"{Path}\nBranch: {Branch}";
+    public string AccessibleName => IsGroupHeader
+        ? $"Repository group {Path}"
+        : IsCurrent
             ? $"Current repository {Path}, branch {Branch}"
             : $"{Path}, branch {Branch}";
 }
@@ -53,6 +56,7 @@ public sealed partial class MainPage
     private void RepositorySelectorFlyout_Opening(object sender, object args)
     {
         _repositorySelectorItems.Clear();
+        List<RepositorySelectorEntry> entries = [];
 
         var currentPath = _viewModel.Repository?.WorkingDirectory;
         if (currentPath is not null)
@@ -60,10 +64,11 @@ public sealed partial class MainPage
             var currentBranch = _viewModel.IsDetachedHead
                 ? "detached HEAD"
                 : RepositoryBranchDisplay(_viewModel.CurrentBranchName);
-            _repositorySelectorItems.Add(new RepositorySelectorEntry(
+            entries.Add(new RepositorySelectorEntry(
                 currentPath,
                 currentBranch,
-                true));
+                true,
+                currentPath));
         }
 
         var snapshot = _recentRepositorySettings.RepositoryLauncherSnapshot;
@@ -75,10 +80,18 @@ public sealed partial class MainPage
 
         foreach (var repository in quickRepositories)
         {
-            _repositorySelectorItems.Add(new RepositorySelectorEntry(
+            entries.Add(new RepositorySelectorEntry(
                 repository.Path,
                 RepositoryBranchDisplay(repository.LastBranchName),
-                false));
+                false,
+                repository.Path));
+        }
+
+        foreach (var row in RepositorySelectorGrouping.Build(entries.Select(entry => entry.Path).ToArray()))
+        {
+            _repositorySelectorItems.Add(row.RepositoryIndex is { } index
+                ? entries[index] with { DisplayPath = row.DisplayPath }
+                : new RepositorySelectorEntry(row.Path, string.Empty, false, row.DisplayPath, true));
         }
 
         var canChangeRepository = _viewModel.CanChangeRepository;
@@ -94,12 +107,20 @@ public sealed partial class MainPage
         RepositorySelectorCloseButton.IsEnabled = canChangeRepository;
     }
 
+    private static void RepositorySelectorList_ContainerContentChanging(
+        ListViewBase sender,
+        ContainerContentChangingEventArgs args)
+    {
+        if (args.ItemContainer is { } container)
+            container.IsEnabled = args.Item is RepositorySelectorEntry { IsGroupHeader: false };
+    }
+
     private void RepositorySelectorList_ItemClick(object sender, ItemClickEventArgs args) =>
         RunPageUiOperation(() => RepositorySelectorList_ItemClickCoreAsync(sender, args), "RepositorySelectorList_ItemClick");
 
     private async Task RepositorySelectorList_ItemClickCoreAsync(object sender, ItemClickEventArgs args)
     {
-        if (args.ClickedItem is not RepositorySelectorEntry entry) return;
+        if (args.ClickedItem is not RepositorySelectorEntry { IsGroupHeader: false } entry) return;
 
         RepositorySelectorFlyout.Hide();
         if (entry.IsCurrent) return;
