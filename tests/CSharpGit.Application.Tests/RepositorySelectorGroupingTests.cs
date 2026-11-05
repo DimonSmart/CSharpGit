@@ -111,14 +111,15 @@ public sealed class RepositorySelectorGroupingTests
     [Fact]
     public void CommonStringPrefixWithoutSharedDirectoryIsNotGrouped()
     {
-        var root = Path.GetTempPath();
+        var root = Path.GetPathRoot(Path.GetFullPath(Path.GetTempPath()))!;
         var paths = new[] { "repo-one", "repo-two", "repo-three", "repo-four" }
-            .Select(name => Path.Combine(root, name))
+            .Select(name => Path.Combine(root, name, "project"))
             .ToArray();
+
         var rows = RepositorySelectorGrouping.Build(paths);
 
-        Assert.Single(rows.Where(row => row.RepositoryIndex is null));
-        Assert.Equal(Path.TrimEndingDirectorySeparator(root), rows[0].Path);
+        Assert.Equal(paths, rows.Select(row => row.DisplayPath));
+        Assert.All(rows, row => Assert.NotNull(row.RepositoryIndex));
     }
 
     [Fact]

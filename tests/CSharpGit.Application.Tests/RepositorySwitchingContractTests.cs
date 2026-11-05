@@ -130,7 +130,11 @@ public sealed class RepositorySwitchingContractTests
         var list = Assert.Single(panel.Elements(),
             element => (string?)element.Attribute(x + "Name") == "RepositorySelectorList");
         Assert.Equal("{StaticResource DenseListItemStyle}", (string?)list.Attribute("ItemContainerStyle"));
-        var row = Assert.Single(list.Descendants(), element => element.Name.LocalName == "Grid");
+        var row = Assert.Single(list.Descendants(), element => element.Name.LocalName == "Grid"
+            && (string?)element.Attribute("ColumnDefinitions") == "20,*,160");
+        var header = Assert.Single(row.Elements(), element => element.Name.LocalName == "Grid");
+        Assert.Equal("{Binding HeaderVisibility}", (string?)header.Attribute("Visibility"));
+        Assert.Equal("*,Auto,*", (string?)header.Attribute("ColumnDefinitions"));
         Assert.Equal("{StaticResource Height.DataRow}", (string?)row.Attribute("MinHeight"));
         Assert.Equal("20,*,160", (string?)row.Attribute("ColumnDefinitions"));
         Assert.Equal("Stretch", (string?)row.Attribute("HorizontalAlignment"));
