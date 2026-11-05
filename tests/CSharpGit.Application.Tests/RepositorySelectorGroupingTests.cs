@@ -101,7 +101,7 @@ public sealed class RepositorySelectorGroupingTests
 
         var rows = RepositorySelectorGrouping.Build(paths);
 
-        Assert.Single(rows.Where(row => row.RepositoryIndex is null));
+        Assert.Single(rows, row => row.RepositoryIndex is null);
         Assert.Equal(nested, rows[0].Path);
         Assert.Equal(paths[4], rows[^1].DisplayPath);
         Assert.Equal(new[] { "one", "two", "three", "four" },

@@ -107,7 +107,7 @@ public sealed partial class MainPage
         RepositorySelectorCloseButton.IsEnabled = canChangeRepository;
     }
 
-    private static void RepositorySelectorList_ContainerContentChanging(
+    private void RepositorySelectorList_ContainerContentChanging(
         ListViewBase sender,
         ContainerContentChangingEventArgs args)
     {
