@@ -168,7 +168,13 @@ public sealed partial class MainPage
     {
         if (_recentRepositoriesShutdown || _viewModel.Repository is not { } repository) return;
 
-        var branchName = _viewModel.IsDetachedHead ? null : _viewModel.CurrentBranchName;
+        var isDetachedHead = _viewModel.IsDetachedHead;
+        var branchName = isDetachedHead
+            ? null
+            : _viewModel.Branches.LocalBranches.FirstOrDefault(branch => branch.IsCurrent)?.Name
+                ?? _viewModel.CurrentBranchName;
+        if (!isDetachedHead && string.IsNullOrWhiteSpace(branchName)) return;
+
         try
         {
             await _recentRepositorySettings.UpdateRecentRepositoryBranchAsync(
@@ -192,7 +198,10 @@ public sealed partial class MainPage
         _lastRecordedRecentRepositoryPath = repository.WorkingDirectory;
         var displayName = Path.GetFileName(Path.TrimEndingDirectorySeparator(repository.WorkingDirectory));
         if (string.IsNullOrWhiteSpace(displayName)) displayName = repository.WorkingDirectory;
-        var branchName = _viewModel.Branches.LocalBranches.FirstOrDefault(branch => branch.IsCurrent)?.Name;
+        var branchName = _viewModel.IsDetachedHead
+            ? null
+            : _viewModel.Branches.LocalBranches.FirstOrDefault(branch => branch.IsCurrent)?.Name
+                ?? _viewModel.CurrentBranchName;
 
         try
         {
