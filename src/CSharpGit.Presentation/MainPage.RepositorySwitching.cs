@@ -107,14 +107,6 @@ public sealed partial class MainPage
         RepositorySelectorCloseButton.IsEnabled = canChangeRepository;
     }
 
-    private void RepositorySelectorList_ContainerContentChanging(
-        ListViewBase sender,
-        ContainerContentChangingEventArgs args)
-    {
-        if (args.ItemContainer is { } container)
-            container.IsEnabled = args.Item is RepositorySelectorEntry { IsGroupHeader: false };
-    }
-
     private void RepositorySelectorList_ItemClick(object sender, ItemClickEventArgs args) =>
         RunPageUiOperation(() => RepositorySelectorList_ItemClickCoreAsync(sender, args), "RepositorySelectorList_ItemClick");
 

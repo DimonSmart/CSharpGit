@@ -71,7 +71,6 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("Text=\"{Binding Branch}\"", xaml);
         Assert.Contains("Text=\"{Binding DisplayPath}\"", xaml);
         Assert.Contains("Visibility=\"{Binding HeaderVisibility}\"", xaml);
-        Assert.Contains("ContainerContentChanging=\"RepositorySelectorList_ContainerContentChanging\"", xaml);
         Assert.Contains("AutomationProperties.Name=\"Current repository\"", xaml);
         Assert.Contains("Text=\"Open repository…\"", xaml);
         Assert.Contains("Text=\"Repositories…\"", xaml);

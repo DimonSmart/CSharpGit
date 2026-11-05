@@ -144,7 +144,6 @@
                             MaxHeight="320"
                             IsItemClickEnabled="True"
                             ItemClick="RepositorySelectorList_ItemClick"
-                            ContainerContentChanging="RepositorySelectorList_ContainerContentChanging"
                             SelectionMode="None"
                             ScrollViewer.HorizontalScrollMode="Disabled"
                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
