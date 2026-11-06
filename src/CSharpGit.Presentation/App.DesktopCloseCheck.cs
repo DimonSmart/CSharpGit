@@ -180,6 +180,7 @@ public sealed partial class App
             }
             else if (command == "BeginMutation")
             {
+                await WaitForReadyAsync();
                 if (mutation is not null) throw new InvalidOperationException("Mutation already running.");
                 release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -200,6 +201,7 @@ public sealed partial class App
             }
             else if (command == "ThrowCompletedHandler")
             {
+                await WaitForReadyAsync();
                 Action<CSharpGit.Domain.Repository> thrower = _ =>
                     throw new InvalidOperationException("Lifecycle subscriber failure");
                 vm.RepositoryStateRefreshCompleted += thrower;
@@ -256,6 +258,7 @@ public sealed partial class App
             }
             else if (command == "CommitWithFailedRefresh")
             {
+                await WaitForReadyAsync();
                 var repository = vm.Repository ?? throw new InvalidOperationException("No selected repository.");
                 PropertyChangedEventHandler handler = null!;
                 handler = (_, args) =>
@@ -378,28 +381,36 @@ public sealed partial class App
             }
             else if (command == "FailBeforeMutation")
             {
+                await WaitForReadyAsync();
                 var executed = 0;
                 var result = await vm.RunMutationAsync(
                     () => { executed++; return Task.CompletedTask; },
                     beforeMutation: () => throw new IOException("Injected pre-mutation failure"));
+                await WaitForReadyAsync();
                 await RespondAsync(!result && executed == 0 && vm.CanChangeRepository);
             }
             else if (command == "FailAfterSuccessfulMutation")
             {
+                await WaitForReadyAsync();
                 var executed = 0;
                 var result = await vm.RunMutationAsync(
                     () => { executed++; return Task.CompletedTask; },
                     afterSuccessfulMutation: () =>
                         throw new IOException("Injected post-mutation hook failure"));
+                await WaitForReadyAsync();
                 await RespondAsync(!result && executed == 1 && vm.CanChangeRepository);
             }
             else if (command == "FailMutation")
             {
-                await RespondAsync(await vm.RunMutationAsync(() =>
-                    throw new IOException("Injected Git mutation failure")));
+                await WaitForReadyAsync();
+                var succeeded = await vm.RunMutationAsync(() =>
+                    throw new IOException("Injected Git mutation failure"));
+                await WaitForReadyAsync();
+                await RespondAsync(succeeded);
             }
             else if (command == "CancelMutation")
             {
+                await WaitForReadyAsync();
                 var cancelled = false;
                 try
                 {
@@ -407,6 +418,7 @@ public sealed partial class App
                         throw new OperationCanceledException("Injected Git mutation cancellation"));
                 }
                 catch (OperationCanceledException) { cancelled = true; }
+                await WaitForReadyAsync();
                 await RespondAsync(cancelled);
             }
             else if (command.StartsWith("VerifyCloneCloseSafety\t", StringComparison.Ordinal))
@@ -520,7 +532,10 @@ public sealed partial class App
             }
             else if (command == "RetryMutation")
             {
-                await RespondAsync(await vm.RunMutationAsync(() => Task.CompletedTask));
+                await WaitForReadyAsync();
+                var succeeded = await vm.RunMutationAsync(() => Task.CompletedTask);
+                await WaitForReadyAsync();
+                await RespondAsync(succeeded);
             }
             else if (command == "CompleteMutation")
             {
@@ -530,6 +545,7 @@ public sealed partial class App
                 var result = await mutation.WaitAsync(token);
                 mutation = null;
                 release = null;
+                await WaitForReadyAsync();
                 await RespondAsync(result);
             }
             else throw new InvalidOperationException($"Unknown desktop lifecycle command: {command}");
