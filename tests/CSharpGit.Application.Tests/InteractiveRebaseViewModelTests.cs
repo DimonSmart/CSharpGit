@@ -266,6 +266,11 @@ public sealed class InteractiveRebaseViewModelTests
 
     private sealed class FakeContext : IInteractiveRebaseRepositoryContext
     {
+        public bool CanStartUserGitOperation => !IsBusy;
+        public IDisposable? TryBeginUserGitOperation(Repository expectedRepository) =>
+            CanStartUserGitOperation && ReferenceEquals(Repository, expectedRepository) ? new NoopLease() : null;
+        private sealed class NoopLease : IDisposable { public void Dispose() { } }
+
         private Repository? _repository;
 
         public event PropertyChangedEventHandler? PropertyChanged;
