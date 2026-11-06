@@ -82,10 +82,10 @@ public sealed partial class MainPage
         if (node.Kind == RepositoryTreeNodeKind.Group && node.Name == "Tags")
         {
             var flyout = new MenuFlyout();
-            AddMenuItem(flyout, "Create tag…", CanMutateTags(), () => ShowCreateTagDialogAsync("HEAD", selectedCommit: false));
-            AddMenuItem(flyout, "Fetch tags…", CanMutateTags(), FetchTagsFromUiAsync);
-            AddMenuItem(flyout, "Remote tags…", CanMutateTags(), ShowRemoteTagsAsync);
-            AddMenuItem(flyout, "Push all tags…", CanMutateTags(), PushAllTagsFromUiAsync);
+            AddMenuItem(flyout, "Create tag…", () => CanMutateTags(), () => ShowCreateTagDialogAsync("HEAD", selectedCommit: false));
+            AddMenuItem(flyout, "Fetch tags…", () => CanMutateTags(), FetchTagsFromUiAsync);
+            AddMenuItem(flyout, "Remote tags…", () => CanMutateTags(), ShowRemoteTagsAsync);
+            AddMenuItem(flyout, "Push all tags…", () => CanMutateTags(), PushAllTagsFromUiAsync);
             flyout.ShowAt(source, args.GetPosition(source));
             args.Handled = true;
             return true;
@@ -95,15 +95,15 @@ public sealed partial class MainPage
         {
             var flyout = new MenuFlyout();
             AddMenuItem(flyout, "Tag details…", true, () => ShowTagDetailsAsync(tag));
-            AddMenuItem(flyout, "Show history up to tag", !_viewModel.IsBusy,
+            AddMenuItem(flyout, "Show history up to tag", () => _viewModel.CanStartUserGitOperation,
                 () => ShowReferenceHistoryAsync($"refs/tags/{tag.Name}", $"Tag: {tag.Name}"));
-            AddMenuItem(flyout, "Create branch from here…", CanMutateTags(),
+            AddMenuItem(flyout, "Create branch from here…", () => CanMutateTags(),
                 () => CreateBranchFromReferenceAsync($"refs/tags/{tag.Name}", tag.TargetCommit));
-            AddMenuItem(flyout, "Checkout detached", CanMutateTags(), () => ConfirmCheckoutTagDetachedAsync(tag));
+            AddMenuItem(flyout, "Checkout detached", () => CanMutateTags(), () => ConfirmCheckoutTagDetachedAsync(tag));
             flyout.Items.Add(new MenuFlyoutSeparator());
-            AddMenuItem(flyout, "Push tag…", CanMutateTags(), () => PushTagFromUiAsync(tag));
-            AddMenuItem(flyout, "Delete from remote…", CanMutateTags(), () => DeleteRemoteTagFromUiAsync(tag));
-            AddMenuItem(flyout, "Delete tag…", CanMutateTags(), () => DeleteTagFromUiAsync(tag));
+            AddMenuItem(flyout, "Push tag…", () => CanMutateTags(), () => PushTagFromUiAsync(tag));
+            AddMenuItem(flyout, "Delete from remote…", () => CanMutateTags(), () => DeleteRemoteTagFromUiAsync(tag));
+            AddMenuItem(flyout, "Delete tag…", () => CanMutateTags(), () => DeleteTagFromUiAsync(tag));
             flyout.Items.Add(new MenuFlyoutSeparator());
             AddMenuItem(flyout, "Copy tag name", true, () => CopyTextAsync(tag.Name));
             flyout.ShowAt(source, args.GetPosition(source));
