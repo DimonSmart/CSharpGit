@@ -286,7 +286,9 @@ public sealed class DesktopApplicationTests
                 Assert.False(d.RootElement.GetProperty("IsBusy").GetBoolean());
                 Assert.True(d.RootElement.GetProperty("CanChangeRepository").GetBoolean());
             }
-            using (var d = await CommandAsync("Refresh"))
+            // Reactive reads may hold Working immediately after a fault-injected
+            // rollback; the desktop driver retries until the refresh is admitted.
+            using (var d = await CommandAsync("RefreshWhenReady"))
                 AssertOpened(d.RootElement, original, false);
 
             // Cancellation after the new Repository was assigned is rolled back
