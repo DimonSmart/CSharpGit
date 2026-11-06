@@ -546,9 +546,11 @@ public sealed partial class MainPage
         if (repository is null || !_repositoryFilesViewModel.SnapshotMatchesSelection)
             return;
 
+        using var admission = _viewModel.TryBeginUserGitOperation(repository);
+        if (admission is null) return;
         try
         {
-            var version = await _repositoryFilesViewModel.ResolveFileVersionAsync(entry);
+            var version = await _repositoryFilesViewModel.ResolveFileVersionWithinAcceptedOperationAsync(entry);
             if (version is null) return;
             if (!version.CanOpen)
             {
@@ -558,7 +560,7 @@ public sealed partial class MainPage
 
             if (!openInEditor)
             {
-                await _fileActions.OpenResolvedVersionAsync(repository, version, DiffFileSide.Changed);
+                await _fileActions.OpenResolvedVersionWithinAcceptedOperationAsync(repository, version, DiffFileSide.Changed);
                 return;
             }
 
