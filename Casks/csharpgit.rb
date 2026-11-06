@@ -1,10 +1,10 @@
 cask "csharpgit" do
   arch arm: "arm64", intel: "x64"
 
-  version "0.1.44"
+  version "0.1.45"
 
-  sha256 arm: "a52cdeecfb37f82ebd72334bfa78f1f58324ad7b4d5ef979d8371e98725be6c4",
-         intel: "db6367c8dfb7ad81175fdb6e6648a9b8497d3b07da9d27146c14c88dbc68625c"
+  sha256 arm: "10d5931747446027c409219b5b5107ec1897fe80431b84b23c2ff4353ed99f70",
+         intel: "d2dc11b6b7139f56d10ce5980aee7133b0b8b0241362af9911ca05544e24a148"
 
   url "https://github.com/DimonSmart/CSharpGit/releases/download/v#{version}/CSharpGit-v#{version}-osx-#{arch}-app.zip"
 
