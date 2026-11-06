@@ -523,6 +523,23 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         }
     }
 
+    internal IDisposable? TryBeginGitSettingsOperation(Repository? expectedRepository)
+    {
+        if (!CanStartUserGitOperation || !_mutationGate.Wait(0)) return null;
+
+        if (Volatile.Read(ref _disposed) != 0 || IsBusy || _isMutating
+            || Volatile.Read(ref _repositoryChangeInProgress) != 0
+            || !ReferenceEquals(Repository, expectedRepository)
+            || (expectedRepository is not null && _repositoryLifetime?.IsActive != true))
+        {
+            _mutationGate.Release();
+            return null;
+        }
+
+        EnterBusy();
+        return new UserGitOperationLease(this);
+    }
+
     internal UserGitOperationLease? TryBeginRepositoryLifecycle()
     {
         var repository = Repository;
