@@ -405,9 +405,20 @@ public sealed class RepositoryFilesViewModel : INotifyPropertyChanged, IDisposab
             state.ExpandedPaths.Remove(node.Path);
     }
 
-    public async Task<DiffFileVersion?> ResolveFileVersionAsync(
+    public Task<DiffFileVersion?> ResolveFileVersionAsync(
         RepositorySnapshotEntry entry,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        ResolveFileVersionCoreAsync(entry, admittedContinuation: false, cancellationToken);
+
+    internal Task<DiffFileVersion?> ResolveFileVersionWithinAcceptedOperationAsync(
+        RepositorySnapshotEntry entry,
+        CancellationToken cancellationToken = default) =>
+        ResolveFileVersionCoreAsync(entry, admittedContinuation: true, cancellationToken);
+
+    private async Task<DiffFileVersion?> ResolveFileVersionCoreAsync(
+        RepositorySnapshotEntry entry,
+        bool admittedContinuation,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(entry);
         var repository = _snapshotRepository;
@@ -415,8 +426,8 @@ public sealed class RepositoryFilesViewModel : INotifyPropertyChanged, IDisposab
         if (repository is null || string.IsNullOrWhiteSpace(commitHash) || !SnapshotMatchesSelection)
             return null;
 
-        using var admission = _context?.TryBeginUserGitOperation(repository);
-        if (admission is null) return null;
+        using var admission = admittedContinuation ? null : _context?.TryBeginUserGitOperation(repository);
+        if (!admittedContinuation && admission is null) return null;
 
         var version = await _repositorySnapshotService.ResolveFileVersionAsync(
             repository,
