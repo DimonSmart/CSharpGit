@@ -130,7 +130,7 @@ public sealed partial class MainPage : Page
         }
         else if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.IsBusy))
         {
-            var becameIdle = _wasBusy && () => _viewModel.CanStartUserGitOperation;
+            var becameIdle = _wasBusy && !_viewModel.IsBusy;
             _wasBusy = _viewModel.IsBusy;
             UpdateStatusBar();
             if (becameIdle && ShouldRestorePendingEditedCommitSelection)
@@ -1038,7 +1038,7 @@ public sealed partial class MainPage : Page
                 await _viewModel.WorkingTree.SelectChangeAsync(selectedChange, WorkingTreeDiffKind.Unstaged);
             Check(_viewModel.CommitCreation.CommitCommand.CanExecute(null), "Commit must be enabled for a non-empty draft", failures);
             _viewModel.CommitCreation.CommitCommand.Execute(null);
-            await WaitUntilAsync(() => () => _viewModel.CanStartUserGitOperation, TimeSpan.FromSeconds(20));
+            await WaitUntilAsync(() => !_viewModel.IsBusy, TimeSpan.FromSeconds(20));
             Check(_viewModel.CommitCreation.IsEmptyIndexChoiceOpen, "empty index did not present an explicit choice", failures);
             Check(_viewModel.CommitCreation.CommitMessage == "draft retained by close guard", "commit draft was lost", failures);
             Check(busyObserved && !BusyIndicator.IsActive, "busy indication did not transition back to idle", failures);
