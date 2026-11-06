@@ -120,6 +120,19 @@ public sealed partial class App
             return writer.WriteLineAsync(response.AsMemory(), token).AsTask();
         }
 
+        // The lifecycle test is sequential. Reactive previews may hold a read lease
+        // after a command completes; do not mistake that lease for a failed switch.
+        // Explicit competing-operation checks below deliberately skip this wait.
+        async Task WaitForReadyAsync()
+        {
+            using var readyTimeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+            readyTimeout.CancelAfter(TimeSpan.FromSeconds(30));
+            while (!vm.CanChangeRepository || vm.IsBusy)
+            {
+                await Task.Delay(25, readyTimeout.Token);
+            }
+        }
+
         while (true)
         {
             var command = await reader.ReadLineAsync(token)
@@ -132,6 +145,7 @@ public sealed partial class App
 
             if (command.StartsWith("Switch\t", StringComparison.Ordinal))
             {
+                await WaitForReadyAsync();
                 await RespondAsync(await vm.OpenRepositoryPathAsync(command["Switch\t".Length..], token));
             }
             else if (command.StartsWith("SetDraft\t", StringComparison.Ordinal))
@@ -298,6 +312,7 @@ public sealed partial class App
             }
             else if (command.StartsWith("ReadFailureAfterAssignment\t", StringComparison.Ordinal))
             {
+                await WaitForReadyAsync();
                 var target = command["ReadFailureAfterAssignment\t".Length..];
                 var previousGitDirectory = Environment.GetEnvironmentVariable("GIT_DIR");
                 var invalidGitDirectory = Path.Combine(target, "missing-gitdir-for-lifecycle-test");
@@ -330,6 +345,7 @@ public sealed partial class App
             }
             else if (command.StartsWith("CancelOpenBeforeAssignment\t", StringComparison.Ordinal))
             {
+                await WaitForReadyAsync();
                 using var cancellation = new CancellationTokenSource();
                 cancellation.Cancel();
                 var cancelled = false;
@@ -340,6 +356,7 @@ public sealed partial class App
             }
             else if (command.StartsWith("CancelOpenAfterAssignment\t", StringComparison.Ordinal))
             {
+                await WaitForReadyAsync();
                 var target = command["CancelOpenAfterAssignment\t".Length..];
                 using var cancel = new CancellationTokenSource();
                 PropertyChangedEventHandler handler = null!;
