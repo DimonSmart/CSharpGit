@@ -136,6 +136,10 @@ public sealed partial class MainPage : Page
             if (becameIdle && ShouldRestorePendingEditedCommitSelection)
                 RunPageUiOperation(RestorePendingEditedCommitSelectionAsync,
                     "Restore edited commit selection");
+            if (becameIdle && _pendingRepositoryPreviewSelection is not null)
+                RunPageUiOperation(ResumeDeferredRepositoryPreviewAsync, "Resume repository file preview");
+            if (becameIdle && _pendingCommitImageDiff)
+                RunPageUiOperation(ResumeDeferredCommitImageDiffAsync, "Resume commit image preview");
         }
     }
 
