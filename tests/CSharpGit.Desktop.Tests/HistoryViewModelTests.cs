@@ -304,6 +304,20 @@ public sealed class HistoryViewModelTests
 
     private sealed class FakeContext : IHistoryRepositoryContext
     {
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+        public bool CanStartUserGitOperation { get; set; } = true;
+        public IDisposable? TryBeginUserGitOperation(Repository expectedRepository) =>
+            CanStartUserGitOperation && ReferenceEquals(Repository, expectedRepository)
+                ? new ReadLease() : null;
+
+        public void RaiseAvailability() =>
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs("IsBusy"));
+
+        private sealed class ReadLease : IDisposable
+        {
+            public void Dispose() { }
+        }
+
         public Repository? Repository { get; set; }
         public bool? HeadExists { get; set; } = true;
         public string? HeadReference { get; set; } = "main";
