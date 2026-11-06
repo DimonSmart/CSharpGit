@@ -276,8 +276,25 @@ public sealed partial class App
             }
             else if (command == "Refresh")
             {
-                await vm.RefreshAsyncForDesktopCheck();
-                await RespondAsync(true);
+                await RespondAsync(await vm.RefreshAsyncForDesktopCheck());
+            }
+            else if (command == "RefreshWhenReady")
+            {
+                // Only the desktop test driver may retry: ordinary user Refresh
+                // continues to reject competing Git reads without queuing.
+                var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+                while (true)
+                {
+                    token.ThrowIfCancellationRequested();
+                    if (await vm.RefreshAsyncForDesktopCheck())
+                    {
+                        await RespondAsync(true);
+                        break;
+                    }
+                    if (DateTime.UtcNow >= deadline)
+                        throw new TimeoutException("Desktop test refresh did not obtain Git admission.");
+                    await Task.Delay(50, token);
+                }
             }
             else if (command.StartsWith("ReadFailureAfterAssignment\t", StringComparison.Ordinal))
             {
