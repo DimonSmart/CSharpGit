@@ -595,7 +595,10 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         RaiseCommands();
     }
 
-    private async Task RefreshAllAsync() => _ = await TryRefreshAllAsync();
+    private async Task RefreshAllAsync()
+    {
+        _ = await TryRefreshAllAsync();
+    }
 
     private async Task<bool> TryRefreshAllAsync()
     {
