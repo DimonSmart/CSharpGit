@@ -10,6 +10,7 @@ public sealed partial class MainPage
 {
     private readonly CloneRepositoryViewModel _cloneRepositoryViewModel = null!;
     private bool _repositoryCloningWorkflowActive;
+    private OpenRepositoryViewModel.UserGitOperationLease? _cloneWorkflowAdmission;
 
     private void CloneRepository_Click(object sender, RoutedEventArgs e) =>
         RunPageUiOperation(() => CloneRepository_ClickCoreAsync(sender, e), "CloneRepository_Click");
@@ -44,7 +45,7 @@ public sealed partial class MainPage
                 return;
 
             var path = _cloneRepositoryViewModel.ClonedPath!;
-            var opened = await SwitchRepositoryCoreAsync(path, discardDraft);
+            var opened = await SwitchRepositoryCoreAsync(path, discardDraft, _cloneWorkflowAdmission);
             if (opened || IsShuttingDown)
                 return;
 
@@ -58,6 +59,8 @@ public sealed partial class MainPage
         }
         finally
         {
+            _cloneWorkflowAdmission?.Dispose();
+            _cloneWorkflowAdmission = null;
             _repositoryCloningWorkflowActive = false;
         }
     }
@@ -239,10 +242,16 @@ public sealed partial class MainPage
             if (!_cloneRepositoryViewModel.CanClone || IsShuttingDown)
                 return;
 
+            OpenRepositoryViewModel.UserGitOperationLease? admission =
+                _viewModel.TryBeginRepositoryLifecycle();
+            if (admission is null) return;
+
             try
             {
                 if (await _cloneRepositoryViewModel.CloneAsync() && !IsShuttingDown)
                 {
+                    _cloneWorkflowAdmission = admission;
+                    admission = null;
                     succeeded = true;
                     dialog.Hide();
                 }
@@ -251,6 +260,10 @@ public sealed partial class MainPage
             {
                 if (!IsShuttingDown)
                     dialog.Hide();
+            }
+            finally
+            {
+                admission?.Dispose();
             }
         }
         dialog.Closing += (_, args) =>
