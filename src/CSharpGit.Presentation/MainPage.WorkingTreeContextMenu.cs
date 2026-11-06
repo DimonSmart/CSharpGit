@@ -150,7 +150,7 @@ public sealed partial class MainPage
 
     private async Task ConfirmDiscardStagedFileAsync(WorkingTreeChange change)
     {
-        if (!() => CanDiscardStagedFile(change)) return;
+        if (!CanDiscardStagedFile(change)) return;
 
         var content = new StackPanel { Spacing = 8 };
         content.Children.Add(new TextBlock
