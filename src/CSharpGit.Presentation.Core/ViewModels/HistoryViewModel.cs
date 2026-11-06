@@ -16,8 +16,10 @@ internal enum HistoryDisplayMode
     AllReferencesWithReflog
 }
 
-public interface IHistoryRepositoryContext
+public interface IHistoryRepositoryContext : INotifyPropertyChanged
 {
+    bool CanStartUserGitOperation { get; }
+    IDisposable? TryBeginUserGitOperation(Repository expectedRepository);
     Repository? Repository { get; }
     bool? HeadExists { get; }
     string? HeadReference { get; }
@@ -54,6 +56,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
     private bool _hasMore;
     private bool _isLoading;
     private bool _showReflog;
+    private Repository? _pendingReactiveRepository;
     private int _disposed;
 
     public HistoryViewModel(
@@ -70,10 +73,10 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
 
         RefreshCommand = new AsyncCommand(
             RefreshAsync,
-            () => _context?.Repository is not null && !IsLoading);
+            () => _context?.Repository is not null && !IsLoading && _context.CanStartUserGitOperation);
         LoadMoreCommand = new AsyncCommand(
             LoadMoreAsync,
-            () => _context?.Repository is not null && HasMore && !IsLoading);
+            () => _context?.Repository is not null && HasMore && !IsLoading && _context.CanStartUserGitOperation);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -120,7 +123,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
             if (value.Value != HistoryScope.AllReferences)
                 SetShowReflogCore(false, persist: true);
 
-            _ = RefreshAsync();
+            _ = RefreshReactiveAsync();
         }
     }
 
@@ -154,7 +157,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
             }
 
             SetShowReflogCore(value, persist: true);
-            _ = RefreshAsync();
+            _ = RefreshReactiveAsync();
         }
     }
 
@@ -198,11 +201,13 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
         ArgumentNullException.ThrowIfNull(context);
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         _context = context;
+        _context.PropertyChanged += Context_PropertyChanged;
         RefreshAvailability();
     }
 
     internal void OnRepositoryChanged(Repository? repository)
     {
+        _pendingReactiveRepository = null;
         Invalidate();
         SetReferenceScope(null, null);
         _rows.ReplaceAll([]);
@@ -245,10 +250,15 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
             _ = PersistShowReflogAsync(showReflog);
         }
 
-        _ = RefreshAsync();
+        _ = RefreshReactiveAsync();
     }
 
     public Task RefreshAsync() => LoadAsync(reset: true);
+
+    // A state refresh already belongs to the admitted repository operation.
+    internal Task RefreshWithinAcceptedOperationAsync() => LoadAsync(reset: true, continuation: true);
+
+    private Task RefreshReactiveAsync() => LoadAsync(reset: true, reactive: true);
 
     public Task LoadMoreAsync()
     {
@@ -269,14 +279,14 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
         }
 
         SetReferenceScope(reference, label);
-        await LoadAsync(reset: true);
+        await LoadAsync(reset: true, reactive: true);
     }
 
     public async Task ShowAllAsync()
     {
         if (!IsReferenceScoped && _selectedScope == Scopes[0])
         {
-            await RefreshAsync();
+            await RefreshReactiveAsync();
             return;
         }
 
@@ -287,7 +297,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
             Notify(nameof(SelectedScope));
         }
 
-        await LoadAsync(reset: true);
+        await LoadAsync(reset: true, reactive: true);
     }
 
     // Keep the current history context intact when following an updated commit.
@@ -355,6 +365,9 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
                 return existing;
             }
         }
+
+        using var admission = _context.TryBeginUserGitOperation(repository);
+        if (admission is null) return null;
 
         var request = BeginRequest(repository);
         IsLoading = true;
@@ -464,16 +477,31 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
 
         _settings.Changed -= AppSettings_Changed;
+        if (_context is not null)
+            _context.PropertyChanged -= Context_PropertyChanged;
         Invalidate();
         _context = null;
         SelectedRowChanged = null;
         CommitLookupCompleted = null;
     }
 
-    private async Task LoadAsync(bool reset)
+    private async Task LoadAsync(bool reset, bool reactive = false, bool continuation = false)
     {
         if (_context?.Repository is not { } repository) return;
         if (!reset && (!HasMore || IsLoading)) return;
+
+        using var admission = continuation ? null : _context.TryBeginUserGitOperation(repository);
+        if (!continuation && admission is null)
+        {
+            if (reactive)
+            {
+                _pendingReactiveRepository = repository;
+                Invalidate();
+            }
+            return;
+        }
+
+        _pendingReactiveRepository = null;
 
         var selectedHash = reset ? SelectedRow?.Commit.Hash : null;
         var skip = reset ? 0 : _rows.Count;
@@ -562,6 +590,23 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    private void Context_PropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName != nameof(IHistoryRepositoryContext.CanStartUserGitOperation)
+            && args.PropertyName != "IsBusy") return;
+
+        RefreshAvailability();
+        var repository = _pendingReactiveRepository;
+        if (repository is null || _context?.CanStartUserGitOperation != true) return;
+        _pendingReactiveRepository = null;
+        _uiDispatcher.TryEnqueue(() =>
+        {
+            if (ReferenceEquals(repository, _context?.Repository)
+                && Volatile.Read(ref _disposed) == 0)
+                _ = RefreshReactiveAsync();
+        });
+    }
+
     private HistoryQuery CreateHistoryQuery(
         HistoryScope scope,
         string? filter,
@@ -613,7 +658,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
             previous.Dispose();
         }
 
-        return new HistoryLoadRequest(repository, generation, cancellation, token);
+        return new HistoryLoadRequest(repository, generation, cancellation, token, _context!);
     }
 
     private bool CanPublish(HistoryLoadRequest request) =>
@@ -629,7 +674,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
 
     private void CompleteRequest(HistoryLoadRequest request)
     {
-        _context?.ExitHistoryBusy();
+        request.Context.ExitHistoryBusy();
 
         if (request.Generation == Volatile.Read(ref _loadGeneration))
         {
@@ -715,7 +760,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
         }
 
         Notify(nameof(ShowReflog));
-        _ = RefreshAsync();
+        _ = RefreshReactiveAsync();
     }
 
     private void Notify([CallerMemberName] string? propertyName = null) =>
@@ -724,5 +769,6 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
     private sealed record HistoryLoadRequest(
         Repository Repository,
         long Generation,
-        CancellationTokenSource Cancellation, CancellationToken Token);
+        CancellationTokenSource Cancellation, CancellationToken Token,
+        IHistoryRepositoryContext Context);
 }
