@@ -524,12 +524,12 @@ public sealed partial class MainPage
             AddMenuItem(
                 flyout,
                 "Open",
-                true,
+                () => _viewModel.CanStartUserGitOperation,
                 () => OpenRepositorySnapshotFileAsync(entry, openInEditor: false));
             AddMenuItem(
                 flyout,
                 "Open in editor",
-                true,
+                () => _viewModel.CanStartUserGitOperation,
                 () => OpenRepositorySnapshotFileAsync(entry, openInEditor: true));
             flyout.Items.Add(new MenuFlyoutSeparator());
         }
