@@ -172,8 +172,8 @@ public sealed partial class SettingsPage : Page
         SettingsMessage.IsOpen = false;
         try
         {
-            await _gitToolsViewModel.RefreshAsync(_repositoryAccessor());
-            _gitToolsLoaded = true;
+            if (await _gitToolsViewModel.RefreshAsync(_repositoryAccessor()))
+                _gitToolsLoaded = true;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
