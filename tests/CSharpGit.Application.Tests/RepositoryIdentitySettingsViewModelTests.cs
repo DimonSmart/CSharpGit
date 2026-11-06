@@ -201,6 +201,36 @@ public sealed class RepositoryIdentitySettingsViewModelTests
         Assert.Equal(valid, viewModel.CanSave);
     }
 
+    [Fact]
+    public async Task BusyAdmissionRejectsIdentityWritesAndPreservesDirtyReloadBuffer()
+    {
+        var repository = RepositoryAt("repo");
+        var admissionAllowed = true;
+        var reads = 0;
+        var service = new FakeIdentityService
+        {
+            ReadHandler = (_, _) =>
+            {
+                reads++;
+                return Task.FromResult(Snapshot("Global"));
+            }
+        };
+        var viewModel = new RepositoryIdentitySettingsViewModel(
+            service, () => repository, _ => admissionAllowed ? new NoopLease() : null);
+
+        await viewModel.RefreshAsync(force: true);
+        viewModel.NameText = "Pending change";
+        admissionAllowed = false;
+
+        Assert.False(await viewModel.SaveAsync());
+        await viewModel.DiscardChangesAndReloadAsync();
+
+        Assert.Equal("Pending change", viewModel.NameText);
+        Assert.True(viewModel.IsNameDirty);
+        Assert.Empty(service.Saves);
+        Assert.Equal(1, reads);
+    }
+
     private static Repository RepositoryAt(string name)
     {
         var path = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "csharpgit-identity-vm", name));
