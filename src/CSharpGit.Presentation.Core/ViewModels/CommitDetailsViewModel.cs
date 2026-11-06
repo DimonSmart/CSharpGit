@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace CSharpGit.Presentation.ViewModels;
 
-public interface ICommitDetailsRepositoryContext
+public interface ICommitDetailsRepositoryContext : INotifyPropertyChanged, IUserGitOperationAdmission
 {
     Repository? Repository { get; }
     void ReportCommitDetailsError(string message);
@@ -17,6 +17,7 @@ public interface ICommitDetailsRepositoryContext
 public sealed class CommitDetailsViewModel :
     INotifyPropertyChanged,
     IRepositoryFilesContext,
+    IUserGitOperationAdmission,
     IDisposable
 {
     private const int ChangedFilesDebounceMilliseconds = 120;
