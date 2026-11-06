@@ -160,11 +160,11 @@ public sealed partial class MainPage
     private void PopulateWorktreeMenu(MenuFlyout flyout, WorktreeInfo worktree)
     {
         if (!worktree.IsCurrent)
-            AddMenuItem(flyout, "Open", !_worktreesViewModel.IsBusy, () => OpenWorktreeAsync(worktree));
+            AddMenuItem(flyout, "Open", () => !_worktreesViewModel.IsBusy, () => OpenWorktreeAsync(worktree));
         AddMenuItem(
             flyout,
             _desktopShellService.OpenFolderDescription,
-            !_worktreesViewModel.IsBusy,
+            true,
             () => OpenWorktreeFolderAsync(worktree));
         AddMenuItem(
             flyout,
@@ -176,9 +176,9 @@ public sealed partial class MainPage
         flyout.Items.Add(new MenuFlyoutSeparator());
 
         if (worktree.IsLocked)
-            AddMenuItem(flyout, "Unlock", _worktreesViewModel.CanUnlock(worktree), () => UnlockWorktreeAsync(worktree));
+            AddMenuItem(flyout, "Unlock", () => _worktreesViewModel.CanUnlock(worktree), () => UnlockWorktreeAsync(worktree));
         else
-            AddMenuItem(flyout, "Lock…", _worktreesViewModel.CanLock(worktree), () => LockWorktreeAsync(worktree));
+            AddMenuItem(flyout, "Lock…", () => _worktreesViewModel.CanLock(worktree), () => LockWorktreeAsync(worktree));
 
         if (!worktree.IsPrimary && !worktree.IsCurrent && !worktree.IsLocked)
         {
@@ -186,12 +186,12 @@ public sealed partial class MainPage
             AddMenuItem(
                 flyout,
                 "Remove Worktree",
-                _worktreesViewModel.CanRemove(worktree),
+                () => _worktreesViewModel.CanRemove(worktree),
                 () => RemoveWorktreeAsync(worktree));
         }
 
         flyout.Items.Add(new MenuFlyoutSeparator());
-        AddMenuItem(flyout, "Prune Worktrees", _worktreesViewModel.CanMutate, PruneWorktreesAsync);
+        AddMenuItem(flyout, "Prune Worktrees", () => _worktreesViewModel.CanMutate, PruneWorktreesAsync);
     }
 
     private Task OpenWorktreeAsync(WorktreeInfo worktree)
