@@ -288,8 +288,9 @@ public sealed class HistoryViewModelTests
         Assert.Equal(0, fixture.Context.ActiveAdmissions);
         Assert.True(fixture.ViewModel.RefreshCommand.CanExecute(null));
 
+        var second = fixture.ViewModel.RefreshAsync();
         fixture.Service.CompleteRead(1, new HistoryPage([Row("two")], HasMore: false));
-        await fixture.ViewModel.RefreshAsync();
+        await second;
         Assert.Equal(["two"], fixture.ViewModel.Rows.Select(row => row.Commit.Hash));
     }
 
