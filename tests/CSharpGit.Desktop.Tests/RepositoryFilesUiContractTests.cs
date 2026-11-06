@@ -33,8 +33,8 @@ public sealed class RepositoryFilesUiContractTests
         Assert.Contains("_repositorySnapshotService.ReadTreeAsync", feature, StringComparison.Ordinal);
         Assert.Contains("_repositorySnapshotService.SearchContentAsync", feature, StringComparison.Ordinal);
         Assert.Contains("_repositorySnapshotService.ResolveFileVersionAsync", feature, StringComparison.Ordinal);
-        Assert.Contains("_repositoryFilesViewModel.ResolveFileVersionAsync", filesSurface, StringComparison.Ordinal);
-        Assert.Contains("_repositoryFilesViewModel.ResolveFileVersionAsync", previewSurface, StringComparison.Ordinal);
+        Assert.Contains("_repositoryFilesViewModel.ResolveFileVersionWithinAcceptedOperationAsync", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("_repositoryFilesViewModel.ResolveFileVersionWithinAcceptedOperationAsync", previewSurface, StringComparison.Ordinal);
         Assert.Contains("MaterializeAsync", filesSurface, StringComparison.Ordinal);
         Assert.Contains("OpenEditorAsync", filesSurface, StringComparison.Ordinal);
         Assert.Contains("MaterializeAsync", previewSurface, StringComparison.Ordinal);
