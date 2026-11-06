@@ -378,6 +378,10 @@ public sealed class FileActionsViewModel : INotifyPropertyChanged, IDisposable
     public void Dispose()
     {
         _disposed = true;
+        if (_context is not null) _context.PropertyChanged -= Context_PropertyChanged;
+        _context = null;
+        _pendingCommitRead = null;
+        _pendingWorkingRead = null;
         Interlocked.Increment(ref _commitGeneration);
         Interlocked.Increment(ref _workingGeneration);
     }
