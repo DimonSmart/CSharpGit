@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace CSharpGit.Presentation.ViewModels;
 
-public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, IDisposable
+public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, IDisposable, IUserGitOperationAdmission
 {
     private readonly IFolderPicker _folderPicker;
     private readonly IRepositoryService _repositoryService;
