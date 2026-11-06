@@ -10,6 +10,7 @@ public sealed partial class MainPage
     private ImageDiffPreviewService? _imageDiffPreviewService;
     private CancellationTokenSource? _commitImageDiffCts;
     private long _commitImageDiffGeneration;
+    private bool _pendingCommitImageDiff;
 
     private ImageDiffPreviewService ImageDiffService =>
         _imageDiffPreviewService ??= new ImageDiffPreviewService(
@@ -27,6 +28,15 @@ public sealed partial class MainPage
             SetCommitDiffPresentationState(DiffPresentationState.None);
             return;
         }
+
+        using var admission = _viewModel.TryBeginUserGitOperation(repository);
+        if (admission is null)
+        {
+            _pendingCommitImageDiff = true;
+            SetCommitDiffPresentationState(DiffPresentationState.Unavailable);
+            return;
+        }
+        _pendingCommitImageDiff = false;
 
         var generation = Interlocked.Increment(ref _commitImageDiffGeneration);
         var cts = new CancellationTokenSource();
@@ -77,6 +87,13 @@ public sealed partial class MainPage
         }
     }
 
+    private async Task ResumeDeferredCommitImageDiffAsync()
+    {
+        await Task.Yield();
+        if (_pendingCommitImageDiff && !IsShuttingDown)
+            await LoadCommitImageDiffAsync();
+    }
+
     private bool IsCurrentCommitImageDiffRequest(
         Repository repository,
         string commitHash,
@@ -94,6 +111,7 @@ public sealed partial class MainPage
 
     private void CancelCommitImageDiff(bool clearSurface)
     {
+        _pendingCommitImageDiff = false;
         Interlocked.Increment(ref _commitImageDiffGeneration);
         var cancellation = Interlocked.Exchange(ref _commitImageDiffCts, null);
         cancellation?.Cancel();
