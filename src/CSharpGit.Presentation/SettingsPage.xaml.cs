@@ -186,8 +186,8 @@ public sealed partial class SettingsPage : Page
         SettingsMessage.IsOpen = false;
         try
         {
-            await _identityViewModel.SaveAsync();
-            ShowSettingsSuccess("Identity", "Repository identity saved.");
+            if (await _identityViewModel.SaveAsync())
+                ShowSettingsSuccess("Identity", "Repository identity saved.");
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -219,11 +219,11 @@ public sealed partial class SettingsPage : Page
         SettingsMessage.IsOpen = false;
         try
         {
-            if (field == RepositoryIdentityField.Name)
-                await _identityViewModel.RemoveNameOverrideAsync();
-            else
-                await _identityViewModel.RemoveEmailOverrideAsync();
-            ShowSettingsSuccess("Identity", $"{field} repository override removed.");
+            var removed = field == RepositoryIdentityField.Name
+                ? await _identityViewModel.RemoveNameOverrideAsync()
+                : await _identityViewModel.RemoveEmailOverrideAsync();
+            if (removed)
+                ShowSettingsSuccess("Identity", $"{field} repository override removed.");
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
