@@ -41,6 +41,7 @@ public sealed class WorkingTreeViewModel : INotifyPropertyChanged, IDisposable
     private long _diffGeneration;
     private bool _isMutationBusy;
     private bool _isDiffLoading;
+    private DiffLoadMode? _pendingPreviewMode;
     private bool _isDiffPreviewDeferred;
     private string? _diffPreviewDeferredMessage;
     private string _diffPreviewActionText = "Load diff";
@@ -212,7 +213,10 @@ public sealed class WorkingTreeViewModel : INotifyPropertyChanged, IDisposable
     {
         ArgumentNullException.ThrowIfNull(context);
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        if (_context is not null)
+            _context.PropertyChanged -= Context_PropertyChanged;
         _context = context;
+        _context.PropertyChanged += Context_PropertyChanged;
         RefreshAvailability();
     }
 
@@ -446,6 +450,8 @@ public sealed class WorkingTreeViewModel : INotifyPropertyChanged, IDisposable
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
         CancelMutation();
         CancelDiff();
+        if (_context is not null)
+            _context.PropertyChanged -= Context_PropertyChanged;
         _context = null;
     }
 
@@ -633,6 +639,17 @@ public sealed class WorkingTreeViewModel : INotifyPropertyChanged, IDisposable
         WorkingTreeDiffKind kind,
         DiffLoadMode mode)
     {
+        using var admission = _context?.TryBeginUserGitOperation(repository);
+        if (admission is null)
+        {
+            if (mode == DiffLoadMode.Preview
+                && ReferenceEquals(repository, _context?.Repository)
+                && IsActive(change, kind))
+                _pendingPreviewMode = mode;
+            return;
+        }
+
+        _pendingPreviewMode = null;
         var cancellation = new CancellationTokenSource();
         _diffCts = cancellation;
         var generation = Interlocked.Increment(ref _diffGeneration);
@@ -689,6 +706,29 @@ public sealed class WorkingTreeViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    private void Context_PropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName != nameof(IWorkingTreeRepositoryContext.IsBusy)
+            && args.PropertyName != nameof(IUserGitOperationAdmission.CanStartUserGitOperation))
+            return;
+
+        if (_pendingPreviewMode is not { } mode
+            || _context?.CanStartUserGitOperation != true) return;
+        _pendingPreviewMode = null;
+        _ = ResumeDeferredPreviewAsync(mode);
+    }
+
+    private async Task ResumeDeferredPreviewAsync(DiffLoadMode mode)
+    {
+        await Task.Yield();
+        var repository = _context?.Repository;
+        var change = SelectedChange;
+        var kind = SelectedDiffKind;
+        if (Volatile.Read(ref _disposed) == 0 && repository is not null
+            && change is not null && kind is not null && IsActive(change, kind.Value))
+            await LoadDiffAsync(repository, change, kind.Value, mode);
+    }
+
     private bool CanPublishDiff(
         Repository repository,
         WorkingTreeChange change,
@@ -723,6 +763,7 @@ public sealed class WorkingTreeViewModel : INotifyPropertyChanged, IDisposable
 
     private void CancelDiff(bool preserveSelection = true)
     {
+        _pendingPreviewMode = null;
         Interlocked.Increment(ref _diffGeneration);
         var cancellation = Interlocked.Exchange(ref _diffCts, null);
         cancellation?.Cancel();
