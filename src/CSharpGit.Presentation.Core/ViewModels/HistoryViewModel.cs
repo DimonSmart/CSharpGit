@@ -16,10 +16,8 @@ internal enum HistoryDisplayMode
     AllReferencesWithReflog
 }
 
-public interface IHistoryRepositoryContext : INotifyPropertyChanged
+public interface IHistoryRepositoryContext : INotifyPropertyChanged, IUserGitOperationAdmission
 {
-    bool CanStartUserGitOperation { get; }
-    IDisposable? TryBeginUserGitOperation(Repository expectedRepository);
     Repository? Repository { get; }
     bool? HeadExists { get; }
     string? HeadReference { get; }
