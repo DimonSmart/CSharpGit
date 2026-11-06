@@ -259,18 +259,30 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             _ = await OpenRepositoryPathAsync(path);
     }
 
-    internal async Task<bool> OpenRepositoryPathAsync(
+    internal Task<bool> OpenRepositoryPathAsync(
         string path,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        OpenRepositoryPathCoreAsync(path, continuation: null, cancellationToken);
+
+    internal Task<bool> OpenRepositoryPathFromLifecycleAsync(
+        string path,
+        UserGitOperationLease continuation) =>
+        OpenRepositoryPathCoreAsync(path, continuation, CancellationToken.None);
+
+    private async Task<bool> OpenRepositoryPathCoreAsync(
+        string path,
+        UserGitOperationLease? continuation,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        if (Volatile.Read(ref _disposed) != 0 || IsBusy) return false;
+        if (Volatile.Read(ref _disposed) != 0
+            || (continuation is null ? IsBusy : !continuation.IsOwnedBy(this))) return false;
         if (Interlocked.CompareExchange(ref _repositoryChangeInProgress, 1, 0) != 0)
             return false;
 
         Notify(nameof(CanChangeRepository));
         RaiseCommands();
-        if (!_mutationGate.Wait(0))
+        if (continuation is null && !_mutationGate.Wait(0))
         {
             Interlocked.Exchange(ref _repositoryChangeInProgress, 0);
             Notify(nameof(CanChangeRepository));
@@ -279,9 +291,11 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         }
 
         // Another read may be working even when the mutation semaphore is available.
-        if (Volatile.Read(ref _disposed) != 0 || IsBusy || _isMutating)
+        if (Volatile.Read(ref _disposed) != 0
+            || (continuation is null ? IsBusy : !continuation.IsOwnedBy(this))
+            || _isMutating)
         {
-            _mutationGate.Release();
+            if (continuation is null) _mutationGate.Release();
             Interlocked.Exchange(ref _repositoryChangeInProgress, 0);
             Notify(nameof(CanChangeRepository));
             RaiseCommands();
@@ -357,7 +371,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         }
         finally
         {
-            _mutationGate.Release();
+            if (continuation is null) _mutationGate.Release();
             Interlocked.Exchange(ref _repositoryChangeInProgress, 0);
             ExitBusy();
             if (Volatile.Read(ref _disposed) == 0)
@@ -493,9 +507,12 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         return new UserGitOperationLease(this);
     }
 
-    private sealed class UserGitOperationLease(OpenRepositoryViewModel owner) : IDisposable
+    internal sealed class UserGitOperationLease(OpenRepositoryViewModel owner) : IDisposable
     {
         private OpenRepositoryViewModel? _owner = owner;
+
+        internal bool IsOwnedBy(OpenRepositoryViewModel candidate) =>
+            ReferenceEquals(Volatile.Read(ref _owner), candidate);
 
         public void Dispose()
         {
@@ -504,6 +521,24 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             try { current._mutationGate.Release(); }
             finally { current.ExitBusy(); }
         }
+    }
+
+    internal UserGitOperationLease? TryBeginRepositoryLifecycle()
+    {
+        var repository = Repository;
+        if (!CanChangeRepository || Volatile.Read(ref _disposed) != 0
+            || !_mutationGate.Wait(0)) return null;
+
+        if (!ReferenceEquals(repository, Repository) || IsBusy || _isMutating
+            || Volatile.Read(ref _disposed) != 0
+            || Volatile.Read(ref _repositoryChangeInProgress) != 0)
+        {
+            _mutationGate.Release();
+            return null;
+        }
+
+        EnterBusy();
+        return new UserGitOperationLease(this);
     }
 
     private void EnterBusy()
