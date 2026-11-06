@@ -1029,6 +1029,7 @@ public sealed partial class MainPage : Page
             Check(_viewModel.CommitCreation.HasUnappliedCommitMessage, "commit draft close guard is inactive", failures);
             if (_viewModel.WorkingTree.Changes.FirstOrDefault(change => change.IsUnstaged) is { } workingTreeCheckChange)
                 await _viewModel.WorkingTree.SelectChangeAsync(workingTreeCheckChange, WorkingTreeDiffKind.Unstaged);
+            await WaitUntilAsync(() => !_viewModel.IsBusy, TimeSpan.FromSeconds(20));
             Check(_viewModel.WorkingTree.StageCommand.CanExecute(null), "Stage must be enabled for an unstaged selection", failures);
             Check(!_viewModel.WorkingTree.UnstageCommand.CanExecute(null), "Unstage must be disabled for an unstaged selection", failures);
             var selectedChange = _viewModel.WorkingTree.SelectedChange;
@@ -1036,6 +1037,7 @@ public sealed partial class MainPage : Page
             Check(!_viewModel.WorkingTree.StageCommand.CanExecute(null) && !_viewModel.WorkingTree.UnstageCommand.CanExecute(null), "file commands must be disabled without a selection", failures);
             if (selectedChange is not null)
                 await _viewModel.WorkingTree.SelectChangeAsync(selectedChange, WorkingTreeDiffKind.Unstaged);
+            await WaitUntilAsync(() => !_viewModel.IsBusy, TimeSpan.FromSeconds(20));
             Check(_viewModel.CommitCreation.CommitCommand.CanExecute(null), "Commit must be enabled for a non-empty draft", failures);
             _viewModel.CommitCreation.CommitCommand.Execute(null);
             await WaitUntilAsync(() => !_viewModel.IsBusy, TimeSpan.FromSeconds(20));
