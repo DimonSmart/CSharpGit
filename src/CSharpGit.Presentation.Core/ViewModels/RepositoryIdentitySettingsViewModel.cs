@@ -240,14 +240,41 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
 
     internal async Task DiscardChangesAndReloadAsync(CancellationToken cancellationToken = default)
     {
-        Interlocked.Increment(ref _refreshGeneration);
-        _snapshot = null;
-        _loadedRepositoryKey = null;
-        _nameText = string.Empty;
-        _emailText = string.Empty;
-        _isStale = false;
-        NotifyAll();
-        await RefreshAsync(force: true, cancellationToken);
+        var repository = _repositoryAccessor();
+        using var admission = _gitAdmission(repository);
+        if (admission is null) return;
+
+        var generation = Interlocked.Increment(ref _refreshGeneration);
+        if (repository is null)
+        {
+            ClearForNoRepository();
+            return;
+        }
+
+        // Never discard unsaved input before the Git read is admitted and succeeds.
+        SetBusy(true);
+        try
+        {
+            var snapshot = await _service.ReadAsync(repository, cancellationToken);
+            if (generation != Volatile.Read(ref _refreshGeneration)) return;
+            if (!CurrentRepositoryMatches(repository))
+            {
+                MarkStale();
+                return;
+            }
+
+            var changed = _loadedRepositoryKey is not null
+                && !RepositoryKeysEqual(_loadedRepositoryKey, RepositoryKey(repository));
+            ApplySnapshot(repository, snapshot);
+            _repositoryReloadNotice = changed ? "Repository changed. Identity settings were reloaded." : null;
+            Notify(nameof(RepositoryReloadNotice));
+            Notify(nameof(HasRepositoryReloadNotice));
+        }
+        finally
+        {
+            if (generation == Volatile.Read(ref _refreshGeneration))
+                SetBusy(false);
+        }
     }
 
     private async Task<bool> RemoveOverrideAsync(
