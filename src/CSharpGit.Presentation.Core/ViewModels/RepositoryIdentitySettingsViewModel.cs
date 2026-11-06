@@ -196,9 +196,9 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
         }
     }
 
-    internal async Task SaveAsync(CancellationToken cancellationToken = default)
+    internal async Task<bool> SaveAsync(CancellationToken cancellationToken = default)
     {
-        if (!CanSave) return;
+        if (!CanSave) return false;
         var repository = RequireCurrentRepository();
         var desiredName = _nameText;
         var desiredEmail = _emailText;
@@ -206,7 +206,7 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
         var updateEmail = IsEmailDirty;
         var edit = new RepositoryIdentityEdit(updateName, desiredName, updateEmail, desiredEmail);
         using var admission = _gitAdmission(repository);
-        if (admission is null) return;
+        if (admission is null) return false;
 
         SetBusy(true);
         try
@@ -216,9 +216,10 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
             if (!CurrentRepositoryMatches(repository))
             {
                 MarkStale();
-                return;
+                return false;
             }
             ApplySnapshot(repository, snapshot);
+            return true;
         }
         catch
         {
@@ -231,10 +232,10 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
         }
     }
 
-    internal Task RemoveNameOverrideAsync(CancellationToken cancellationToken = default) =>
+    internal Task<bool> RemoveNameOverrideAsync(CancellationToken cancellationToken = default) =>
         RemoveOverrideAsync(RepositoryIdentityField.Name, cancellationToken);
 
-    internal Task RemoveEmailOverrideAsync(CancellationToken cancellationToken = default) =>
+    internal Task<bool> RemoveEmailOverrideAsync(CancellationToken cancellationToken = default) =>
         RemoveOverrideAsync(RepositoryIdentityField.Email, cancellationToken);
 
     internal async Task DiscardChangesAndReloadAsync(CancellationToken cancellationToken = default)
@@ -249,7 +250,7 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
         await RefreshAsync(force: true, cancellationToken);
     }
 
-    private async Task RemoveOverrideAsync(
+    private async Task<bool> RemoveOverrideAsync(
         RepositoryIdentityField field,
         CancellationToken cancellationToken)
     {
@@ -259,7 +260,7 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
         var desiredName = _nameText;
         var desiredEmail = _emailText;
         using var admission = _gitAdmission(repository);
-        if (admission is null) return;
+        if (admission is null) return false;
 
         SetBusy(true);
         try
@@ -269,13 +270,14 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
             if (!CurrentRepositoryMatches(repository))
             {
                 MarkStale();
-                return;
+                return false;
             }
 
             ApplySnapshot(repository, snapshot);
             if (preserveName) _nameText = desiredName;
             if (preserveEmail) _emailText = desiredEmail;
             NotifyAll();
+            return true;
         }
         finally
         {
