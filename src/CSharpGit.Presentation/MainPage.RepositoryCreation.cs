@@ -46,6 +46,9 @@ public sealed partial class MainPage
             }
 
             if (IsShuttingDown) return;
+            using var admission = _viewModel.TryBeginRepositoryLifecycle();
+            if (admission is null) return;
+
             bool created;
             try
             {
@@ -75,7 +78,7 @@ public sealed partial class MainPage
                 return;
             }
 
-            var opened = await SwitchRepositoryCoreAsync(path, discardDraft);
+            var opened = await SwitchRepositoryCoreAsync(path, discardDraft, admission);
             if (!opened)
             {
                 await ShowRepositoryCreationMessageAsync(
