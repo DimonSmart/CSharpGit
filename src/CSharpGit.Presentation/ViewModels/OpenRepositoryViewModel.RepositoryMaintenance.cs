@@ -37,6 +37,8 @@ public sealed partial class OpenRepositoryViewModel : IRepositoryMaintenanceCont
     async Task<RepositoryStorageStatistics?> IRepositoryMaintenanceContext.ReadMaintenanceStatisticsAsync(
         IRepositoryMaintenanceService service, Repository repository)
     {
+        using var admission = TryBeginUserGitOperation(repository);
+        if (admission is null) return null;
         var lifetime = _repositoryLifetime;
         if (lifetime is null || !IsMaintenanceSessionCurrent(repository)
             || !lifetime.TryAcquire(out var cancellationToken))
