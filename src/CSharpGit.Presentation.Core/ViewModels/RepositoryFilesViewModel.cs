@@ -6,7 +6,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Presentation.ViewModels;
 
-public interface IRepositoryFilesContext : INotifyPropertyChanged
+public interface IRepositoryFilesContext : INotifyPropertyChanged, IUserGitOperationAdmission
 {
     Repository? Repository { get; }
     string? SelectedObjectCommit { get; }
