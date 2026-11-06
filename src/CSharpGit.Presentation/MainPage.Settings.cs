@@ -18,5 +18,6 @@ public sealed partial class MainPage
     private void OpenSettingsWindow(
         SettingsSection section = SettingsSection.General,
         bool focusPullStrategy = false) =>
-        _settingsWindowController.Show(section, () => _viewModel.Repository, focusPullStrategy);
+        _settingsWindowController.Show(section, () => _viewModel.Repository,
+            _viewModel.TryBeginGitSettingsOperation, focusPullStrategy);
 }
