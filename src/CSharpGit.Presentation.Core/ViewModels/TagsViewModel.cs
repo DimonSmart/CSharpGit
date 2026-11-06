@@ -7,7 +7,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Presentation.ViewModels;
 
-public interface ITagsRepositoryContext : INotifyPropertyChanged
+public interface ITagsRepositoryContext : INotifyPropertyChanged, IUserGitOperationAdmission
 {
     Repository? Repository { get; }
     bool IsBusy { get; }
@@ -271,6 +271,10 @@ public sealed class TagsViewModel : INotifyPropertyChanged, IDisposable
         if (!IsCurrentRepository(context, repository))
             return new TagQueryResult<RemoteTagInfo?>(null, "The repository changed while the tag dialog was open.");
 
+        using var admission = context!.TryBeginUserGitOperation(repository);
+        if (admission is null)
+            return new TagQueryResult<RemoteTagInfo?>(null, "Another Git operation is already running.");
+
         try
         {
             var tag = await _tagService.ReadRemoteTagAsync(repository, remote.Name, tagName);
@@ -293,6 +297,10 @@ public sealed class TagsViewModel : INotifyPropertyChanged, IDisposable
         var context = _context;
         if (!IsCurrentRepository(context, repository))
             return new TagQueryResult<IReadOnlyList<RemoteTagInfo>>([], "The repository changed while the tag dialog was open.");
+
+        using var admission = context!.TryBeginUserGitOperation(repository);
+        if (admission is null)
+            return new TagQueryResult<IReadOnlyList<RemoteTagInfo>>([], "Another Git operation is already running.");
 
         try
         {
