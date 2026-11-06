@@ -225,6 +225,16 @@ public sealed class FileActionsViewModel : INotifyPropertyChanged, IDisposable
             await _shell.OpenFileAsync(path);
     }
 
+    internal async Task OpenResolvedVersionWithinAcceptedOperationAsync(
+        Repository repository, DiffFileVersion version, DiffFileSide side)
+    {
+        if (!IsCurrent(new CommitFileActionRequest(repository, string.Empty, version.GitPath)))
+            return;
+        var path = await _pathResolver.ResolveAsync(repository, version, side, CancellationToken.None);
+        if (_context?.IsCurrentFileActionsRepository(repository) == true)
+            await _shell.OpenFileAsync(path);
+    }
+
     // Image preview may already have resolved the same version pair; never overwrite a new selection.
     public void PublishWorkingTreePreview(WorkingTreeFileActionRequest request, DiffFileVersionPair pair)
     {
