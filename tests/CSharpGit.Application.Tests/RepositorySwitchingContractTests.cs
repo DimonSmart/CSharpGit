@@ -26,7 +26,8 @@ public sealed class RepositorySwitchingContractTests
             presentation,
             "MainPage.RepositoryRefresh.cs"));
 
-        Assert.Contains("internal async Task<bool> OpenRepositoryPathAsync", viewModel);
+        Assert.Contains("internal Task<bool> OpenRepositoryPathAsync", viewModel);
+        Assert.Contains("OpenRepositoryPathFromLifecycleAsync", viewModel);
         Assert.Contains("internal bool CloseRepository()", viewModel);
         Assert.Contains("History.Invalidate();", viewModel);
         Assert.Contains("ClearRepositoryPresentation();", viewModel);
@@ -45,7 +46,8 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("await _recentRepositoryFolderPicker.PickFolderAsync()", recent);
         Assert.DoesNotContain("QueuePath(item.Path)", recent);
 
-        Assert.Contains("SwitchRepositoryCoreAsync(path, discardDraft)", creation);
+        Assert.Contains("SwitchRepositoryCoreAsync(path, discardDraft, admission)", creation);
+        Assert.Contains("TryBeginRepositoryLifecycle()", creation);
         Assert.DoesNotContain("ConfirmDiscardCommitMessageForRepositorySwitchAsync", creation);
 
         Assert.Contains("_repositoryChangeMonitor.Stop();", refresh);
