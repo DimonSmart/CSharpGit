@@ -138,11 +138,9 @@ public sealed partial class OpenRepositoryViewModel : IRepositoryMaintenanceCont
             finally
             {
                 _isMutating = false;
+                ExitBusy();
                 if (Volatile.Read(ref _disposed) == 0)
-                {
-                    ExitBusy();
                     RaiseCommands();
-                }
             }
         }
         finally
