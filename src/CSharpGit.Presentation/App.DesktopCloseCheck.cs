@@ -167,15 +167,18 @@ public sealed partial class App
             }
             else if (command.StartsWith("ConfirmedSwitch\t", StringComparison.Ordinal))
             {
+                await WaitForReadyAsync();
                 await RespondAsync(await page.ConfirmedSwitchForDesktopCheckAsync(
                     command["ConfirmedSwitch\t".Length..]));
             }
             else if (command == "ConfirmedClose")
             {
+                await WaitForReadyAsync();
                 await RespondAsync(page.ConfirmedCloseForDesktopCheck());
             }
             else if (command == "CloseRepository")
             {
+                await WaitForReadyAsync();
                 await RespondAsync(vm.CloseRepository());
             }
             else if (command == "BeginMutation")
@@ -216,6 +219,7 @@ public sealed partial class App
                     reported = true;
                 }
                 finally { vm.RepositoryStateRefreshCompleted -= thrower; }
+                await WaitForReadyAsync();
                 await RespondAsync(reported && !vm.IsBusy);
             }
             else if (command.StartsWith("AttemptSwitchDuringMutation\t", StringComparison.Ordinal))
@@ -289,11 +293,15 @@ public sealed partial class App
                     await process.WaitForExitAsync(token);
                     if (process.ExitCode != 0) throw new IOException($"Git commit failed: {stderr}");
                 });
+                await WaitForReadyAsync();
                 await RespondAsync(result);
             }
             else if (command == "Refresh")
             {
-                await RespondAsync(await vm.RefreshAsyncForDesktopCheck());
+                await WaitForReadyAsync();
+                var succeeded = await vm.RefreshAsyncForDesktopCheck();
+                await WaitForReadyAsync();
+                await RespondAsync(succeeded);
             }
             else if (command == "RefreshWhenReady")
             {
@@ -505,6 +513,7 @@ public sealed partial class App
             }
             else if (command == "VerifyMaintenanceCloseSafety")
             {
+                await WaitForReadyAsync();
                 var repository = vm.Repository
                     ?? throw new InvalidOperationException("A Git repository must be open.");
                 var maintenance = page.DesktopMaintenanceForCheck;
