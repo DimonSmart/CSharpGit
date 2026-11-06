@@ -268,6 +268,54 @@ public sealed class HistoryViewModelTests
         Assert.Null(fixture.ViewModel.SelectedRow);
     }
 
+    [Fact]
+    public async Task ExclusiveHistoryReadRejectsConcurrentUserReadsWithoutLaunchingGit()
+    {
+        using var fixture = new Fixture(controlled: true);
+        fixture.Context.EnforceExclusiveReads = true;
+
+        var first = fixture.ViewModel.RefreshAsync();
+        Assert.Single(fixture.Service.Reads);
+        Assert.False(fixture.ViewModel.RefreshCommand.CanExecute(null));
+
+        await fixture.ViewModel.RefreshAsync();
+        Assert.Single(fixture.Service.Reads);
+        Assert.Null(fixture.Context.TryBeginUserGitOperation(fixture.Repository));
+
+        fixture.Service.CompleteRead(0, new HistoryPage([Row("one")], HasMore: false));
+        await first;
+
+        Assert.Equal(0, fixture.Context.ActiveAdmissions);
+        Assert.True(fixture.ViewModel.RefreshCommand.CanExecute(null));
+
+        fixture.Service.CompleteRead(1, new HistoryPage([Row("two")], HasMore: false));
+        await fixture.ViewModel.RefreshAsync();
+        Assert.Equal(["two"], fixture.ViewModel.Rows.Select(row => row.Commit.Hash));
+    }
+
+    [Fact]
+    public async Task ReactiveHistoryChangesKeepOnlyCurrentSelectionAcrossBusyPeriod()
+    {
+        using var fixture = new Fixture();
+        fixture.Context.CanStartUserGitOperation = false;
+
+        fixture.ViewModel.SelectedScope = fixture.ViewModel.Scopes[1];
+        fixture.ViewModel.ShowReflog = true;
+        fixture.ViewModel.SelectedScope = fixture.ViewModel.Scopes[1];
+
+        Assert.Empty(fixture.Service.Reads);
+        Assert.False(fixture.ViewModel.IsLoading);
+
+        fixture.Service.Enqueue(new HistoryPage([Row("latest")], HasMore: false));
+        fixture.Context.CanStartUserGitOperation = true;
+        fixture.Context.RaiseAvailability();
+        await Task.Yield();
+
+        Assert.Single(fixture.Service.Reads);
+        Assert.Equal(HistoryScope.CurrentBranch, fixture.Service.Reads[0].Query.Scope);
+        Assert.Equal(["latest"], fixture.ViewModel.Rows.Select(row => row.Commit.Hash));
+    }
+
     private static HistoryRow Row(string hash) =>
         new(
             new CommitHistoryItem(
@@ -305,17 +353,37 @@ public sealed class HistoryViewModelTests
     private sealed class FakeContext : IHistoryRepositoryContext
     {
         public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
-        public bool CanStartUserGitOperation { get; set; } = true;
-        public IDisposable? TryBeginUserGitOperation(Repository expectedRepository) =>
-            CanStartUserGitOperation && ReferenceEquals(Repository, expectedRepository)
-                ? new ReadLease() : null;
+        private bool _allow = true;
+        private int _activeAdmissions;
+        public bool EnforceExclusiveReads { get; set; }
+        public int ActiveAdmissions => Volatile.Read(ref _activeAdmissions);
+        public bool CanStartUserGitOperation
+        {
+            get => _allow && (!EnforceExclusiveReads || ActiveAdmissions == 0);
+            set => _allow = value;
+        }
+
+        public IDisposable? TryBeginUserGitOperation(Repository expectedRepository)
+        {
+            if (!CanStartUserGitOperation || !ReferenceEquals(Repository, expectedRepository))
+                return null;
+            Interlocked.Increment(ref _activeAdmissions);
+            return new ReadLease(this);
+        }
 
         public void RaiseAvailability() =>
             PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs("IsBusy"));
 
-        private sealed class ReadLease : IDisposable
+        private sealed class ReadLease(FakeContext owner) : IDisposable
         {
-            public void Dispose() { }
+            private FakeContext? _owner = owner;
+            public void Dispose()
+            {
+                var current = Interlocked.Exchange(ref _owner, null);
+                if (current is null) return;
+                Interlocked.Decrement(ref current._activeAdmissions);
+                current.RaiseAvailability();
+            }
         }
 
         public Repository? Repository { get; set; }
