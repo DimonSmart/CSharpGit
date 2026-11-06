@@ -5,7 +5,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Presentation.ViewModels;
 
-public interface IInteractiveRebaseRepositoryContext : INotifyPropertyChanged
+public interface IInteractiveRebaseRepositoryContext : INotifyPropertyChanged, IUserGitOperationAdmission
 {
     Repository? Repository { get; }
     bool IsBusy { get; }
@@ -102,6 +102,8 @@ public sealed class InteractiveRebaseViewModel : INotifyPropertyChanged, IDispos
             return false;
         }
 
+        using var admission = context.TryBeginUserGitOperation(repository);
+        if (admission is null) return false;
         var cancellation = new CancellationTokenSource();
         var previous = Interlocked.Exchange(ref _prepareCancellation, cancellation);
         previous?.Cancel();
@@ -156,6 +158,8 @@ public sealed class InteractiveRebaseViewModel : INotifyPropertyChanged, IDispos
         if (context is null || repository is null)
             return null;
 
+        using var admission = context.TryBeginUserGitOperation(repository);
+        if (admission is null) return null;
         var snapshot = await _repositoryIdentityService.ReadAsync(repository);
         return ReferenceEquals(repository, _context?.Repository)
             ? snapshot
@@ -179,6 +183,9 @@ public sealed class InteractiveRebaseViewModel : INotifyPropertyChanged, IDispos
         var repository = _context?.Repository
             ?? throw new InvalidOperationException("No repository is open.");
         var commits = _authorChangeService.GetTargetCommits(request);
+        using var admission = _context?.TryBeginUserGitOperation(repository);
+        if (admission is null)
+            throw new InvalidOperationException("Another Git operation is already running.");
         var authorDates = await _commitAuthorDateReader.ReadCommitAuthorDatesAsync(
             repository,
             commits);

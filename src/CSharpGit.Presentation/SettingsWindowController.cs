@@ -48,6 +48,7 @@ public sealed class SettingsWindowController : IDisposable
     internal void Show(
         SettingsSection section,
         Func<Repository?> repositoryAccessor,
+        Func<Repository?, IDisposable?> gitAdmission,
         bool focusPullStrategy = false)
     {
         if (Volatile.Read(ref _shutdownStarted) != 0) return;
@@ -62,8 +63,8 @@ public sealed class SettingsWindowController : IDisposable
 
         var page = new SettingsPage(
             new SettingsViewModel(_settings, _uiDispatcher),
-            new RepositoryIdentitySettingsViewModel(_repositoryIdentityService, repositoryAccessor),
-            new GitToolsSettingsViewModel(_gitToolConfigurationService, _externalGitToolService),
+            new RepositoryIdentitySettingsViewModel(_repositoryIdentityService, repositoryAccessor, gitAdmission),
+            new GitToolsSettingsViewModel(_gitToolConfigurationService, _externalGitToolService, gitAdmission),
             _desktopShellService,
             _folderPicker,
             SessionFileLoggerProvider.CurrentLogPath,

@@ -374,6 +374,14 @@ public sealed class RepositoryFilesViewModelTests
 
     private sealed class FakeRepositoryFilesContext : IRepositoryFilesContext
     {
+        public bool CanStartUserGitOperation { get; set; } = true;
+        public IDisposable? TryBeginUserGitOperation(Repository expectedRepository) =>
+            CanStartUserGitOperation && ReferenceEquals(Repository, expectedRepository)
+                ? new NoopLease() : null;
+        public void RaiseAvailability() =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("IsBusy"));
+        private sealed class NoopLease : IDisposable { public void Dispose() { } }
+
         private Repository? _repository;
         private string? _selectedObjectCommit;
         private bool _hasSelectedStash;

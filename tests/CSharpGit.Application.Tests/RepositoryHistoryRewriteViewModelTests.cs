@@ -96,6 +96,11 @@ public sealed class RepositoryHistoryRewriteViewModelTests
 
     private sealed class Context : IRepositoryHistoryRewriteContext
     {
+        public bool CanStartUserGitOperation => !IsBusy;
+        public IDisposable? TryBeginUserGitOperation(Repository expectedRepository) =>
+            CanStartUserGitOperation && ReferenceEquals(Repository, expectedRepository) ? new NoopLease() : null;
+        private sealed class NoopLease : IDisposable { public void Dispose() { } }
+
         public Repository? Repository { get; set; }
         public bool IsBusy { get; set; }
         public bool RefreshSucceeds { get; set; } = true;

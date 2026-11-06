@@ -10,7 +10,7 @@ using CSharpGit.Presentation.Threading;
 
 namespace CSharpGit.Presentation.ViewModels;
 
-public interface IRepositorySyncContext : INotifyPropertyChanged
+public interface IRepositorySyncContext : INotifyPropertyChanged, IUserGitOperationAdmission
 {
     Repository? Repository { get; }
     bool IsBusy { get; }
@@ -524,6 +524,10 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
         if (!CanRunQuery(context, repository))
             return new(null, "The repository changed while the publish dialog was open.");
 
+        using var admission = context!.TryBeginUserGitOperation(repository);
+        if (admission is null)
+            return new(null, "Another Git operation is already running.");
+
         _operationInProgress = true;
         RefreshAvailability();
         try
@@ -599,6 +603,11 @@ public sealed class RepositorySyncViewModel : INotifyPropertyChanged, IDisposabl
             return new(
                 ForcePushPreparationKind.StaleRepository,
                 Message: "The repository changed before force-push preparation could start.");
+
+        using var admission = context!.TryBeginUserGitOperation(repository);
+        if (admission is null)
+            return new(ForcePushPreparationKind.StaleRepository,
+                Message: "Another Git operation is already running.");
 
         _operationInProgress = true;
         RefreshAvailability();

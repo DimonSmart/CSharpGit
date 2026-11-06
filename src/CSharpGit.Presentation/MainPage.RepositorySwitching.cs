@@ -257,14 +257,19 @@ public sealed partial class MainPage
 
     private async Task<bool> SwitchRepositoryCoreAsync(
         string path,
-        bool discardDraft)
+        bool discardDraft,
+        OpenRepositoryViewModel.UserGitOperationLease? continuation = null)
     {
-        if (IsShuttingDown || !_viewModel.CanChangeRepository) return false;
+        if (IsShuttingDown
+            || (continuation is null ? !_viewModel.CanChangeRepository
+                : !continuation.IsOwnedBy(_viewModel))) return false;
 
         bool opened;
         try
         {
-            opened = await _viewModel.OpenRepositoryPathAsync(path);
+            opened = continuation is null
+                ? await _viewModel.OpenRepositoryPathAsync(path)
+                : await _viewModel.OpenRepositoryPathFromLifecycleAsync(path, continuation);
         }
         catch (OperationCanceledException)
         {

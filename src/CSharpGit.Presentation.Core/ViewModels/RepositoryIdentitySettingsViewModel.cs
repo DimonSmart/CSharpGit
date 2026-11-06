@@ -10,6 +10,7 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
 {
     private readonly IRepositoryIdentityService _service;
     private readonly Func<Repository?> _repositoryAccessor;
+    private readonly Func<Repository?, IDisposable?> _gitAdmission;
     private RepositoryIdentitySnapshot? _snapshot;
     private string? _loadedRepositoryKey;
     private string _repositoryName = string.Empty;
@@ -23,10 +24,12 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
 
     internal RepositoryIdentitySettingsViewModel(
         IRepositoryIdentityService service,
-        Func<Repository?> repositoryAccessor)
+        Func<Repository?> repositoryAccessor,
+        Func<Repository?, IDisposable?> gitAdmission)
     {
         _service = service ?? throw new ArgumentNullException(nameof(service));
         _repositoryAccessor = repositoryAccessor ?? throw new ArgumentNullException(nameof(repositoryAccessor));
+        _gitAdmission = gitAdmission ?? throw new ArgumentNullException(nameof(gitAdmission));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -170,6 +173,8 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
             && !_isStale)
             return;
 
+        using var admission = _gitAdmission(repository);
+        if (admission is null) return;
         SetBusy(true);
         try
         {
@@ -191,15 +196,17 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
         }
     }
 
-    internal async Task SaveAsync(CancellationToken cancellationToken = default)
+    internal async Task<bool> SaveAsync(CancellationToken cancellationToken = default)
     {
-        if (!CanSave) return;
+        if (!CanSave) return false;
         var repository = RequireCurrentRepository();
         var desiredName = _nameText;
         var desiredEmail = _emailText;
         var updateName = IsNameDirty;
         var updateEmail = IsEmailDirty;
         var edit = new RepositoryIdentityEdit(updateName, desiredName, updateEmail, desiredEmail);
+        using var admission = _gitAdmission(repository);
+        if (admission is null) return false;
 
         SetBusy(true);
         try
@@ -209,9 +216,10 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
             if (!CurrentRepositoryMatches(repository))
             {
                 MarkStale();
-                return;
+                return false;
             }
             ApplySnapshot(repository, snapshot);
+            return true;
         }
         catch
         {
@@ -224,25 +232,52 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
         }
     }
 
-    internal Task RemoveNameOverrideAsync(CancellationToken cancellationToken = default) =>
+    internal Task<bool> RemoveNameOverrideAsync(CancellationToken cancellationToken = default) =>
         RemoveOverrideAsync(RepositoryIdentityField.Name, cancellationToken);
 
-    internal Task RemoveEmailOverrideAsync(CancellationToken cancellationToken = default) =>
+    internal Task<bool> RemoveEmailOverrideAsync(CancellationToken cancellationToken = default) =>
         RemoveOverrideAsync(RepositoryIdentityField.Email, cancellationToken);
 
     internal async Task DiscardChangesAndReloadAsync(CancellationToken cancellationToken = default)
     {
-        Interlocked.Increment(ref _refreshGeneration);
-        _snapshot = null;
-        _loadedRepositoryKey = null;
-        _nameText = string.Empty;
-        _emailText = string.Empty;
-        _isStale = false;
-        NotifyAll();
-        await RefreshAsync(force: true, cancellationToken);
+        var repository = _repositoryAccessor();
+        using var admission = _gitAdmission(repository);
+        if (admission is null) return;
+
+        var generation = Interlocked.Increment(ref _refreshGeneration);
+        if (repository is null)
+        {
+            ClearForNoRepository();
+            return;
+        }
+
+        // Never discard unsaved input before the Git read is admitted and succeeds.
+        SetBusy(true);
+        try
+        {
+            var snapshot = await _service.ReadAsync(repository, cancellationToken);
+            if (generation != Volatile.Read(ref _refreshGeneration)) return;
+            if (!CurrentRepositoryMatches(repository))
+            {
+                MarkStale();
+                return;
+            }
+
+            var changed = _loadedRepositoryKey is not null
+                && !RepositoryKeysEqual(_loadedRepositoryKey, RepositoryKey(repository));
+            ApplySnapshot(repository, snapshot);
+            _repositoryReloadNotice = changed ? "Repository changed. Identity settings were reloaded." : null;
+            Notify(nameof(RepositoryReloadNotice));
+            Notify(nameof(HasRepositoryReloadNotice));
+        }
+        finally
+        {
+            if (generation == Volatile.Read(ref _refreshGeneration))
+                SetBusy(false);
+        }
     }
 
-    private async Task RemoveOverrideAsync(
+    private async Task<bool> RemoveOverrideAsync(
         RepositoryIdentityField field,
         CancellationToken cancellationToken)
     {
@@ -251,6 +286,8 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
         var preserveEmail = field != RepositoryIdentityField.Email && IsEmailDirty;
         var desiredName = _nameText;
         var desiredEmail = _emailText;
+        using var admission = _gitAdmission(repository);
+        if (admission is null) return false;
 
         SetBusy(true);
         try
@@ -260,13 +297,14 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
             if (!CurrentRepositoryMatches(repository))
             {
                 MarkStale();
-                return;
+                return false;
             }
 
             ApplySnapshot(repository, snapshot);
             if (preserveName) _nameText = desiredName;
             if (preserveEmail) _emailText = desiredEmail;
             NotifyAll();
+            return true;
         }
         finally
         {

@@ -216,6 +216,14 @@ public sealed class WorkingTreeViewModelTests
 
     private sealed class FakeContext : IWorkingTreeRepositoryContext
     {
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+        public bool CanStartUserGitOperation => !IsBusy;
+        public IDisposable? TryBeginUserGitOperation(Repository expectedRepository) =>
+            CanStartUserGitOperation && ReferenceEquals(Repository, expectedRepository) ? new NoopLease() : null;
+        public void RaiseBusyChanged() =>
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(IsBusy)));
+        private sealed class NoopLease : IDisposable { public void Dispose() { } }
+
         public Repository? Repository { get; set; }
         public bool IsBusy { get; set; }
         public bool CanRunRepositoryMutation { get; set; } = true;

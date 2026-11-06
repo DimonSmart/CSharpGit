@@ -136,6 +136,10 @@ public sealed partial class MainPage : Page
             if (becameIdle && ShouldRestorePendingEditedCommitSelection)
                 RunPageUiOperation(RestorePendingEditedCommitSelectionAsync,
                     "Restore edited commit selection");
+            if (becameIdle && _pendingRepositoryPreviewSelection is not null)
+                RunPageUiOperation(ResumeDeferredRepositoryPreviewAsync, "Resume repository file preview");
+            if (becameIdle && _pendingCommitImageDiff)
+                RunPageUiOperation(ResumeDeferredCommitImageDiffAsync, "Resume commit image preview");
         }
     }
 
@@ -415,13 +419,13 @@ public sealed partial class MainPage : Page
         switch (node.Kind)
         {
             case RepositoryTreeNodeKind.LocalBranch when node.Value is GitBranch branch:
-                AddMenuItem(flyout, "Switch / Checkout", !branch.IsCurrent && !_viewModel.IsBusy, async () =>
+                AddMenuItem(flyout, "Switch / Checkout", () => !branch.IsCurrent && _viewModel.CanStartUserGitOperation, async () =>
                 {
                     _viewModel.Branches.SelectedLocalBranch = branch;
                     await ExecuteCommandAsync(_viewModel.Branches.SwitchBranchCommand);
                 });
-                AddMenuItem(flyout, "Create branch from here…", !_viewModel.IsBusy, () => CreateBranchFromAsync(branch.Name));
-                AddMenuItem(flyout, "Merge into current branch", !branch.IsCurrent && !_viewModel.IsBusy, async () =>
+                AddMenuItem(flyout, "Create branch from here…", () => _viewModel.CanStartUserGitOperation, () => CreateBranchFromAsync(branch.Name));
+                AddMenuItem(flyout, "Merge into current branch", () => !branch.IsCurrent && _viewModel.CanStartUserGitOperation, async () =>
                 {
                     _viewModel.RepositoryOperations.SelectedMergeBranch = branch;
                     await ExecuteCommandAsync(_viewModel.RepositoryOperations.MergeCommand);
@@ -429,20 +433,20 @@ public sealed partial class MainPage : Page
                 AddMenuItem(
                     flyout,
                     "Delete",
-                    !branch.IsCurrent && !_viewModel.IsBusy,
+                    () => !branch.IsCurrent && _viewModel.CanStartUserGitOperation,
                     () => ConfirmDeleteLocalBranchAsync(branch));
                 flyout.Items.Add(new MenuFlyoutSeparator());
-                AddMenuItem(flyout, "Show branch history only", !_viewModel.IsBusy,
+                AddMenuItem(flyout, "Show branch history only", () => _viewModel.CanStartUserGitOperation,
                     () => ShowReferenceHistoryAsync(branch.Name, $"Branch: {branch.Name}"));
                 AddMenuItem(flyout, "Copy branch name", true, () => CopyTextAsync(branch.Name));
                 break;
 
             case RepositoryTreeNodeKind.Group when node.Name == "Remotes":
-                AddMenuItem(flyout, "Fetch all", !_viewModel.IsBusy, async () => await ExecuteCommandAsync(_viewModel.RepositorySync.FetchAllCommand));
+                AddMenuItem(flyout, "Fetch all", () => _viewModel.CanStartUserGitOperation, async () => await ExecuteCommandAsync(_viewModel.RepositorySync.FetchAllCommand));
                 break;
 
             case RepositoryTreeNodeKind.Remote when node.Value is GitRemote remote:
-                AddMenuItem(flyout, "Fetch", !_viewModel.IsBusy, async () =>
+                AddMenuItem(flyout, "Fetch", () => _viewModel.CanStartUserGitOperation, async () =>
                 {
                     _viewModel.RepositorySync.SelectedRemote = remote;
                     await ExecuteCommandAsync(_viewModel.RepositorySync.FetchCommand);
@@ -450,20 +454,20 @@ public sealed partial class MainPage : Page
                 break;
 
             case RepositoryTreeNodeKind.RemoteBranch when node.Value is GitBranch remoteBranch:
-                AddMenuItem(flyout, "Checkout as tracking branch", !_viewModel.IsBusy, async () =>
+                AddMenuItem(flyout, "Checkout as tracking branch", () => _viewModel.CanStartUserGitOperation, async () =>
                 {
                     _viewModel.Branches.SelectedRemoteBranch = remoteBranch;
                     var slash = remoteBranch.Name.IndexOf('/');
                     _viewModel.Branches.NewBranchName = slash >= 0 ? remoteBranch.Name[(slash + 1)..] : remoteBranch.Name;
                     await ExecuteCommandAsync(_viewModel.Branches.CheckoutRemoteCommand);
                 });
-                AddMenuItem(flyout, "Show branch history only", !_viewModel.IsBusy,
+                AddMenuItem(flyout, "Show branch history only", () => _viewModel.CanStartUserGitOperation,
                     () => ShowReferenceHistoryAsync(remoteBranch.Name, $"Remote: {remoteBranch.Name}"));
                 AddMenuItem(flyout, "Copy branch name", true, () => CopyTextAsync(remoteBranch.Name));
                 break;
 
             case RepositoryTreeNodeKind.Tag when node.Value is GitTag tag:
-                AddMenuItem(flyout, "Checkout detached", !_viewModel.IsBusy, async () =>
+                AddMenuItem(flyout, "Checkout detached", () => _viewModel.CanStartUserGitOperation, async () =>
                 {
                     _viewModel.Tags.SelectedTag = tag;
                     await ExecuteCommandAsync(_viewModel.Tags.CheckoutTagCommand);
@@ -473,22 +477,22 @@ public sealed partial class MainPage : Page
 
             case RepositoryTreeNodeKind.Group
                 when string.Equals(node.Key, RepositoryTreeDescriptorBuilder.StashesRootKey, StringComparison.Ordinal):
-                AddMenuItem(flyout, "Stash…", _viewModel.Stashes.CanCreateStash, ShowCreateStashDialogAsync);
+                AddMenuItem(flyout, "Stash…", () => _viewModel.Stashes.CanCreateStash, ShowCreateStashDialogAsync);
                 break;
 
             case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:
-                AddMenuItem(flyout, "Apply", _viewModel.Stashes.CanMutateStash(stash), async () =>
+                AddMenuItem(flyout, "Apply", () => _viewModel.Stashes.CanMutateStash(stash), async () =>
                 {
                     await _viewModel.Stashes.SelectStashAsync(stash);
                     await ExecuteCommandAsync(_viewModel.Stashes.ApplyCommand);
                 });
-                AddMenuItem(flyout, "Pop", _viewModel.Stashes.CanMutateStash(stash), async () =>
+                AddMenuItem(flyout, "Pop", () => _viewModel.Stashes.CanMutateStash(stash), async () =>
                 {
                     await _viewModel.Stashes.SelectStashAsync(stash);
                     await ExecuteCommandAsync(_viewModel.Stashes.PopCommand);
                 });
                 flyout.Items.Add(new MenuFlyoutSeparator());
-                AddMenuItem(flyout, "Drop…", _viewModel.Stashes.CanMutateStash(stash), async () =>
+                AddMenuItem(flyout, "Drop…", () => _viewModel.Stashes.CanMutateStash(stash), async () =>
                 {
                     await _viewModel.Stashes.SelectStashAsync(stash);
                     await ConfirmDropStashAsync(stash);
@@ -518,9 +522,29 @@ public sealed partial class MainPage : Page
         _ => null
     };
 
-    private void AddMenuItem(MenuFlyout flyout, string text, bool enabled, Func<Task> action)
+    private void AddMenuItem(MenuFlyout flyout, string text, bool enabled, Func<Task> action) =>
+        AddMenuItem(flyout, text, () => enabled, action);
+
+    // Capture live availability for menu items that can remain open across Working/Ready.
+    private void AddMenuItem(MenuFlyout flyout, string text, Func<bool> canExecute, Func<Task> action)
     {
-        var item = new MenuFlyoutItem { Text = text, IsEnabled = enabled };
+        var item = new MenuFlyoutItem { Text = text, IsEnabled = canExecute() };
+        void UpdateAvailability(object? sender, PropertyChangedEventArgs args)
+        {
+            if (args.PropertyName is nameof(OpenRepositoryViewModel.IsBusy)
+                or nameof(OpenRepositoryViewModel.Repository)
+                or nameof(OpenRepositoryViewModel.CanChangeRepository))
+                item.IsEnabled = canExecute();
+        }
+
+        void Detach(object? sender, object args)
+        {
+            _viewModel.PropertyChanged -= UpdateAvailability;
+            flyout.Closed -= Detach;
+        }
+
+        _viewModel.PropertyChanged += UpdateAvailability;
+        flyout.Closed += Detach;
         item.Click += (_, _) => RunPageUiOperation(action, "Menu action", showError: true);
         flyout.Items.Add(item);
     }
@@ -1005,6 +1029,7 @@ public sealed partial class MainPage : Page
             Check(_viewModel.CommitCreation.HasUnappliedCommitMessage, "commit draft close guard is inactive", failures);
             if (_viewModel.WorkingTree.Changes.FirstOrDefault(change => change.IsUnstaged) is { } workingTreeCheckChange)
                 await _viewModel.WorkingTree.SelectChangeAsync(workingTreeCheckChange, WorkingTreeDiffKind.Unstaged);
+            await WaitUntilAsync(() => !_viewModel.IsBusy, TimeSpan.FromSeconds(20));
             Check(_viewModel.WorkingTree.StageCommand.CanExecute(null), "Stage must be enabled for an unstaged selection", failures);
             Check(!_viewModel.WorkingTree.UnstageCommand.CanExecute(null), "Unstage must be disabled for an unstaged selection", failures);
             var selectedChange = _viewModel.WorkingTree.SelectedChange;
@@ -1012,6 +1037,7 @@ public sealed partial class MainPage : Page
             Check(!_viewModel.WorkingTree.StageCommand.CanExecute(null) && !_viewModel.WorkingTree.UnstageCommand.CanExecute(null), "file commands must be disabled without a selection", failures);
             if (selectedChange is not null)
                 await _viewModel.WorkingTree.SelectChangeAsync(selectedChange, WorkingTreeDiffKind.Unstaged);
+            await WaitUntilAsync(() => !_viewModel.IsBusy, TimeSpan.FromSeconds(20));
             Check(_viewModel.CommitCreation.CommitCommand.CanExecute(null), "Commit must be enabled for a non-empty draft", failures);
             _viewModel.CommitCreation.CommitCommand.Execute(null);
             await WaitUntilAsync(() => !_viewModel.IsBusy, TimeSpan.FromSeconds(20));

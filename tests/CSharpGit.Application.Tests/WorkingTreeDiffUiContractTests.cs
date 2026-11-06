@@ -128,7 +128,8 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("var snapshot = changes.ToArray()", viewModel);
         Assert.Contains("StageChangesAsync(_selectedUnstagedChanges", viewModel);
         Assert.Contains("UnstageChangesAsync(_selectedStagedChanges", viewModel);
-        Assert.Contains("WaitAsync(0)", repositoryViewModel);
+        Assert.Contains("_mutationGate.Wait(0)", repositoryViewModel);
+        Assert.Contains("IsBusy || _isMutating", repositoryViewModel);
         Assert.Contains("Conflicts.Any(conflict => !conflict.IsResolved)", repositoryViewModel);
         Assert.Contains("includeHistory: false", contextBridge);
         Assert.Contains("Could not stage selected files", viewModel);

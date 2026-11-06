@@ -192,6 +192,11 @@ public sealed class FileActionsViewModelTests
 
     private sealed class Context : IFileActionsContext, IDisposable
     {
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+        public bool CanStartFileActionsRead { get; set; } = true;
+        public void RaiseBusyChanged() => PropertyChanged?.Invoke(this,
+            new System.ComponentModel.PropertyChangedEventArgs("IsBusy"));
+        private sealed class NoopLease : IDisposable { public void Dispose() { } }
         private readonly RepositorySessionLifetime _lifetime = new(1);
         public Repository? Current { get; set; } = RepoA;
         public Repository? FileActionsRepository => Current;
@@ -199,7 +204,7 @@ public sealed class FileActionsViewModelTests
             ReferenceEquals(repository, Current);
         public FileActionsReadLease? AcquireFileActionsRead(Repository repository) =>
             IsCurrentFileActionsRepository(repository) && _lifetime.TryAcquire(out var ct)
-                ? new(_lifetime, ct) : null;
+                ? new(_lifetime, ct, new NoopLease()) : null;
         public void Dispose() => _lifetime.End();
     }
 

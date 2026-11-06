@@ -172,8 +172,8 @@ public sealed partial class SettingsPage : Page
         SettingsMessage.IsOpen = false;
         try
         {
-            await _gitToolsViewModel.RefreshAsync(_repositoryAccessor());
-            _gitToolsLoaded = true;
+            if (await _gitToolsViewModel.RefreshAsync(_repositoryAccessor()))
+                _gitToolsLoaded = true;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -186,8 +186,8 @@ public sealed partial class SettingsPage : Page
         SettingsMessage.IsOpen = false;
         try
         {
-            await _identityViewModel.SaveAsync();
-            ShowSettingsSuccess("Identity", "Repository identity saved.");
+            if (await _identityViewModel.SaveAsync())
+                ShowSettingsSuccess("Identity", "Repository identity saved.");
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -219,11 +219,11 @@ public sealed partial class SettingsPage : Page
         SettingsMessage.IsOpen = false;
         try
         {
-            if (field == RepositoryIdentityField.Name)
-                await _identityViewModel.RemoveNameOverrideAsync();
-            else
-                await _identityViewModel.RemoveEmailOverrideAsync();
-            ShowSettingsSuccess("Identity", $"{field} repository override removed.");
+            var removed = field == RepositoryIdentityField.Name
+                ? await _identityViewModel.RemoveNameOverrideAsync()
+                : await _identityViewModel.RemoveEmailOverrideAsync();
+            if (removed)
+                ShowSettingsSuccess("Identity", $"{field} repository override removed.");
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -264,8 +264,8 @@ public sealed partial class SettingsPage : Page
         SettingsMessage.IsOpen = false;
         try
         {
-            await _gitToolsViewModel.SaveAsync(_repositoryAccessor(), section);
-            ShowSettingsSuccess("Git Tools", successMessage);
+            if (await _gitToolsViewModel.SaveAsync(_repositoryAccessor(), section))
+                ShowSettingsSuccess("Git Tools", successMessage);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -279,8 +279,8 @@ public sealed partial class SettingsPage : Page
         SettingsMessage.IsOpen = false;
         try
         {
-            await _gitToolsViewModel.RemoveOverrideAsync(_repositoryAccessor(), section);
-            ShowSettingsSuccess("Git Tools", "Override removed. Effective Git configuration was re-read.");
+            if (await _gitToolsViewModel.RemoveOverrideAsync(_repositoryAccessor(), section))
+                ShowSettingsSuccess("Git Tools", "Override removed. Effective Git configuration was re-read.");
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -294,8 +294,8 @@ public sealed partial class SettingsPage : Page
         SettingsMessage.IsOpen = false;
         try
         {
-            await _gitToolsViewModel.TestAsync(_repositoryAccessor(), section);
-            ShowSettingsSuccess("Git Tools", successMessage);
+            if (await _gitToolsViewModel.TestAsync(_repositoryAccessor(), section))
+                ShowSettingsSuccess("Git Tools", successMessage);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

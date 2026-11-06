@@ -120,6 +120,19 @@ public sealed partial class App
             return writer.WriteLineAsync(response.AsMemory(), token).AsTask();
         }
 
+        // The lifecycle test is sequential. Reactive previews may hold a read lease
+        // after a command completes; do not mistake that lease for a failed switch.
+        // Explicit competing-operation checks below deliberately skip this wait.
+        async Task WaitForReadyAsync()
+        {
+            using var readyTimeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+            readyTimeout.CancelAfter(TimeSpan.FromSeconds(30));
+            while (!vm.CanChangeRepository || vm.IsBusy)
+            {
+                await Task.Delay(25, readyTimeout.Token);
+            }
+        }
+
         while (true)
         {
             var command = await reader.ReadLineAsync(token)
@@ -132,6 +145,7 @@ public sealed partial class App
 
             if (command.StartsWith("Switch\t", StringComparison.Ordinal))
             {
+                await WaitForReadyAsync();
                 await RespondAsync(await vm.OpenRepositoryPathAsync(command["Switch\t".Length..], token));
             }
             else if (command.StartsWith("SetDraft\t", StringComparison.Ordinal))
@@ -153,19 +167,23 @@ public sealed partial class App
             }
             else if (command.StartsWith("ConfirmedSwitch\t", StringComparison.Ordinal))
             {
+                await WaitForReadyAsync();
                 await RespondAsync(await page.ConfirmedSwitchForDesktopCheckAsync(
                     command["ConfirmedSwitch\t".Length..]));
             }
             else if (command == "ConfirmedClose")
             {
+                await WaitForReadyAsync();
                 await RespondAsync(page.ConfirmedCloseForDesktopCheck());
             }
             else if (command == "CloseRepository")
             {
+                await WaitForReadyAsync();
                 await RespondAsync(vm.CloseRepository());
             }
             else if (command == "BeginMutation")
             {
+                await WaitForReadyAsync();
                 if (mutation is not null) throw new InvalidOperationException("Mutation already running.");
                 release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -186,6 +204,7 @@ public sealed partial class App
             }
             else if (command == "ThrowCompletedHandler")
             {
+                await WaitForReadyAsync();
                 Action<CSharpGit.Domain.Repository> thrower = _ =>
                     throw new InvalidOperationException("Lifecycle subscriber failure");
                 vm.RepositoryStateRefreshCompleted += thrower;
@@ -200,6 +219,7 @@ public sealed partial class App
                     reported = true;
                 }
                 finally { vm.RepositoryStateRefreshCompleted -= thrower; }
+                await WaitForReadyAsync();
                 await RespondAsync(reported && !vm.IsBusy);
             }
             else if (command.StartsWith("AttemptSwitchDuringMutation\t", StringComparison.Ordinal))
@@ -242,6 +262,7 @@ public sealed partial class App
             }
             else if (command == "CommitWithFailedRefresh")
             {
+                await WaitForReadyAsync();
                 var repository = vm.Repository ?? throw new InvalidOperationException("No selected repository.");
                 PropertyChangedEventHandler handler = null!;
                 handler = (_, args) =>
@@ -272,15 +293,37 @@ public sealed partial class App
                     await process.WaitForExitAsync(token);
                     if (process.ExitCode != 0) throw new IOException($"Git commit failed: {stderr}");
                 });
+                await WaitForReadyAsync();
                 await RespondAsync(result);
             }
             else if (command == "Refresh")
             {
-                await vm.RefreshAsyncForDesktopCheck();
-                await RespondAsync(true);
+                await WaitForReadyAsync();
+                var succeeded = await vm.RefreshAsyncForDesktopCheck();
+                await WaitForReadyAsync();
+                await RespondAsync(succeeded);
+            }
+            else if (command == "RefreshWhenReady")
+            {
+                // Only the desktop test driver may retry: ordinary user Refresh
+                // continues to reject competing Git reads without queuing.
+                var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+                while (true)
+                {
+                    token.ThrowIfCancellationRequested();
+                    if (await vm.RefreshAsyncForDesktopCheck())
+                    {
+                        await RespondAsync(true);
+                        break;
+                    }
+                    if (DateTime.UtcNow >= deadline)
+                        throw new TimeoutException("Desktop test refresh did not obtain Git admission.");
+                    await Task.Delay(50, token);
+                }
             }
             else if (command.StartsWith("ReadFailureAfterAssignment\t", StringComparison.Ordinal))
             {
+                await WaitForReadyAsync();
                 var target = command["ReadFailureAfterAssignment\t".Length..];
                 var previousGitDirectory = Environment.GetEnvironmentVariable("GIT_DIR");
                 var invalidGitDirectory = Path.Combine(target, "missing-gitdir-for-lifecycle-test");
@@ -313,6 +356,7 @@ public sealed partial class App
             }
             else if (command.StartsWith("CancelOpenBeforeAssignment\t", StringComparison.Ordinal))
             {
+                await WaitForReadyAsync();
                 using var cancellation = new CancellationTokenSource();
                 cancellation.Cancel();
                 var cancelled = false;
@@ -323,6 +367,7 @@ public sealed partial class App
             }
             else if (command.StartsWith("CancelOpenAfterAssignment\t", StringComparison.Ordinal))
             {
+                await WaitForReadyAsync();
                 var target = command["CancelOpenAfterAssignment\t".Length..];
                 using var cancel = new CancellationTokenSource();
                 PropertyChangedEventHandler handler = null!;
@@ -344,28 +389,36 @@ public sealed partial class App
             }
             else if (command == "FailBeforeMutation")
             {
+                await WaitForReadyAsync();
                 var executed = 0;
                 var result = await vm.RunMutationAsync(
                     () => { executed++; return Task.CompletedTask; },
                     beforeMutation: () => throw new IOException("Injected pre-mutation failure"));
+                await WaitForReadyAsync();
                 await RespondAsync(!result && executed == 0 && vm.CanChangeRepository);
             }
             else if (command == "FailAfterSuccessfulMutation")
             {
+                await WaitForReadyAsync();
                 var executed = 0;
                 var result = await vm.RunMutationAsync(
                     () => { executed++; return Task.CompletedTask; },
                     afterSuccessfulMutation: () =>
                         throw new IOException("Injected post-mutation hook failure"));
+                await WaitForReadyAsync();
                 await RespondAsync(!result && executed == 1 && vm.CanChangeRepository);
             }
             else if (command == "FailMutation")
             {
-                await RespondAsync(await vm.RunMutationAsync(() =>
-                    throw new IOException("Injected Git mutation failure")));
+                await WaitForReadyAsync();
+                var succeeded = await vm.RunMutationAsync(() =>
+                    throw new IOException("Injected Git mutation failure"));
+                await WaitForReadyAsync();
+                await RespondAsync(succeeded);
             }
             else if (command == "CancelMutation")
             {
+                await WaitForReadyAsync();
                 var cancelled = false;
                 try
                 {
@@ -373,6 +426,7 @@ public sealed partial class App
                         throw new OperationCanceledException("Injected Git mutation cancellation"));
                 }
                 catch (OperationCanceledException) { cancelled = true; }
+                await WaitForReadyAsync();
                 await RespondAsync(cancelled);
             }
             else if (command.StartsWith("VerifyCloneCloseSafety\t", StringComparison.Ordinal))
@@ -459,6 +513,7 @@ public sealed partial class App
             }
             else if (command == "VerifyMaintenanceCloseSafety")
             {
+                await WaitForReadyAsync();
                 var repository = vm.Repository
                     ?? throw new InvalidOperationException("A Git repository must be open.");
                 var maintenance = page.DesktopMaintenanceForCheck;
@@ -486,7 +541,10 @@ public sealed partial class App
             }
             else if (command == "RetryMutation")
             {
-                await RespondAsync(await vm.RunMutationAsync(() => Task.CompletedTask));
+                await WaitForReadyAsync();
+                var succeeded = await vm.RunMutationAsync(() => Task.CompletedTask);
+                await WaitForReadyAsync();
+                await RespondAsync(succeeded);
             }
             else if (command == "CompleteMutation")
             {
@@ -496,6 +554,7 @@ public sealed partial class App
                 var result = await mutation.WaitAsync(token);
                 mutation = null;
                 release = null;
+                await WaitForReadyAsync();
                 await RespondAsync(result);
             }
             else throw new InvalidOperationException($"Unknown desktop lifecycle command: {command}");

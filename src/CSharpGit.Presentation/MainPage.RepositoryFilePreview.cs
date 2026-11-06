@@ -12,6 +12,7 @@ public sealed partial class MainPage
     private readonly FilePreviewService _repositoryFilePreviewService = new();
     private readonly PreviewPublicationGate<RepositoryPreviewContext> _repositoryPreviewGate = new();
     private FilePreviewHost? _repositoryFilePreviewHost;
+    private RepositoryFileSelection? _pendingRepositoryPreviewSelection;
 
     private Grid BuildRepositoryFilesSplitBody(Grid leftPane)
     {
@@ -55,6 +56,7 @@ public sealed partial class MainPage
         RepositorySnapshotEntry? entry)
     {
         if (IsShuttingDown || _repositoryFilePreviewHost is null) return;
+        _pendingRepositoryPreviewSelection = null;
 
         if (entry is null)
         {
@@ -107,6 +109,15 @@ public sealed partial class MainPage
             return;
         }
 
+        using var admission = _viewModel.TryBeginUserGitOperation(repository);
+        if (admission is null)
+        {
+            _pendingRepositoryPreviewSelection = selection;
+            _repositoryFilePreviewHost?.ShowUnsupported("Waiting for the current Git operation.");
+            return;
+        }
+
+        _pendingRepositoryPreviewSelection = null;
         var context = new RepositoryPreviewContext(
             RepositoryIdentity(repository),
             commitHash,
@@ -118,7 +129,7 @@ public sealed partial class MainPage
 
         try
         {
-            var version = await _repositoryFilesViewModel.ResolveFileVersionAsync(
+            var version = await _repositoryFilesViewModel.ResolveFileVersionWithinAcceptedOperationAsync(
                 entry,
                 lease.CancellationToken);
             if (version is null || !CanPublishRepositoryPreview(lease)) return;
@@ -152,6 +163,18 @@ public sealed partial class MainPage
             if (CanPublishRepositoryPreview(lease))
                 _repositoryFilePreviewHost?.ShowError(UserFacingFileError(exception));
         }
+    }
+
+    private async Task ResumeDeferredRepositoryPreviewAsync()
+    {
+        await Task.Yield();
+        var pending = _pendingRepositoryPreviewSelection;
+        if (pending is null || IsShuttingDown || !IsRepositoryFilesActive
+            || !string.Equals(_repositoryFilesViewModel.SelectedPath, pending.Path, StringComparison.Ordinal)
+            || !ReferenceEquals(_repositoryFilesViewModel.SelectedEntry, pending.Entry))
+            return;
+        _pendingRepositoryPreviewSelection = null;
+        await LoadRepositoryFilePreviewAsync(pending);
     }
 
     private bool CanPublishRepositoryPreview(PreviewLease<RepositoryPreviewContext> lease)

@@ -5,7 +5,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Presentation.ViewModels;
 
-public interface IWorktreesRepositoryContext : INotifyPropertyChanged
+public interface IWorktreesRepositoryContext : INotifyPropertyChanged, IUserGitOperationAdmission
 {
     Repository? Repository { get; }
     bool IsBusy { get; }
@@ -39,6 +39,7 @@ public sealed class WorktreesViewModel : INotifyPropertyChanged, IDisposable
     private bool _isRefreshing;
     private bool _operationInProgress;
     private string? _refreshErrorMessage;
+    private Repository? _pendingRefreshRepository;
     private int _disposed;
 
     public WorktreesViewModel(IWorktreeService worktreeService)
@@ -89,6 +90,7 @@ public sealed class WorktreesViewModel : INotifyPropertyChanged, IDisposable
         if (_context is not null)
             _context.PropertyChanged -= Context_PropertyChanged;
         _context = null;
+        _pendingRefreshRepository = null;
 
         CancelAndDispose(ref _operationCts);
         CancelAndDispose(ref _refreshCts);
@@ -381,6 +383,16 @@ public sealed class WorktreesViewModel : INotifyPropertyChanged, IDisposable
         Repository? expectedRepository,
         bool throwOnError)
     {
+        using var admission = expectedRepository is null
+            ? null : _context?.TryBeginUserGitOperation(expectedRepository);
+        if (expectedRepository is not null && admission is null)
+        {
+            if (IsCurrentRepository(_context, expectedRepository))
+                _pendingRefreshRepository = expectedRepository;
+            return;
+        }
+
+        _pendingRefreshRepository = null;
         var generation = Interlocked.Increment(ref _refreshGeneration);
         var cancellation = new CancellationTokenSource();
         var previous = Interlocked.Exchange(ref _refreshCts, cancellation);
@@ -451,7 +463,23 @@ public sealed class WorktreesViewModel : INotifyPropertyChanged, IDisposable
 
         if (args.PropertyName is nameof(IWorktreesRepositoryContext.IsBusy)
             or nameof(IWorktreesRepositoryContext.CurrentOperation))
+        {
             NotifyAvailability();
+            if (_pendingRefreshRepository is { } pending
+                && _context?.CanStartUserGitOperation == true)
+            {
+                _pendingRefreshRepository = null;
+                _ = ResumePendingRefreshAsync(pending);
+            }
+        }
+    }
+
+    private async Task ResumePendingRefreshAsync(Repository expectedRepository)
+    {
+        await Task.Yield();
+        if (Volatile.Read(ref _disposed) == 0
+            && IsCurrentRepository(_context, expectedRepository))
+            await RefreshAsync();
     }
 
     private void SetWorktrees(IReadOnlyList<WorktreeInfo> value)

@@ -46,6 +46,8 @@ public sealed class FileActionsViewModel : INotifyPropertyChanged, IDisposable
     private long _commitGeneration;
     private long _workingGeneration;
     private bool _disposed;
+    private FileActionRequest? _pendingCommitRead;
+    private FileActionRequest? _pendingWorkingRead;
 
     public FileActionsViewModel(
         IRepositoryFileVersionService versions,
@@ -70,14 +72,22 @@ public sealed class FileActionsViewModel : INotifyPropertyChanged, IDisposable
     public string RevealDescription => _shell.RevealDescription;
     internal DiffFileVersionPathResolver PathResolver => _pathResolver;
 
-    internal void Attach(IFileActionsContext context) =>
-        _context = context ?? throw new ArgumentNullException(nameof(context));
+    internal void Attach(IFileActionsContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        if (_context is not null)
+            _context.PropertyChanged -= Context_PropertyChanged;
+        _context = context;
+        _context.PropertyChanged += Context_PropertyChanged;
+    }
 
     public bool IsCurrent(FileActionRequest request) =>
         !_disposed && _context?.IsCurrentFileActionsRepository(request.Repository) == true;
 
     public void Invalidate()
     {
+        _pendingCommitRead = null;
+        _pendingWorkingRead = null;
         Interlocked.Increment(ref _commitGeneration);
         Interlocked.Increment(ref _workingGeneration);
         Commit = new(FileActionLoadPhase.Unavailable, null, null);
@@ -109,10 +119,19 @@ public sealed class FileActionsViewModel : INotifyPropertyChanged, IDisposable
             : Interlocked.Increment(ref _commitGeneration);
         SetState(workingTree, new(request is null ? FileActionLoadPhase.Unavailable : FileActionLoadPhase.Loading, request, null));
         if (request is null || !IsCurrent(request)) return;
+        if (_context?.CanStartFileActionsRead != true)
+        {
+            SetPendingRead(workingTree, request);
+            SetState(workingTree, new(FileActionLoadPhase.Unavailable, request, null));
+            return;
+        }
 
         try
         {
             var prepared = await PrepareAsync(request);
+            if (prepared is null && _context?.CanStartFileActionsRead != true
+                && IsSelectedCurrent(workingTree, generation, request))
+                SetPendingRead(workingTree, request);
             if (IsSelectedCurrent(workingTree, generation, request))
                 SetState(workingTree, prepared is null
                     ? new(FileActionLoadPhase.Unavailable, request, null)
@@ -128,6 +147,38 @@ public sealed class FileActionsViewModel : INotifyPropertyChanged, IDisposable
             if (IsSelectedCurrent(workingTree, generation, request))
                 SetState(workingTree, new(FileActionLoadPhase.Failed, request, null, UserFacingFileError(exception)));
         }
+    }
+
+    private void SetPendingRead(bool workingTree, FileActionRequest request)
+    {
+        if (workingTree)
+            _pendingWorkingRead = request;
+        else
+            _pendingCommitRead = request;
+    }
+
+    private void Context_PropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName != "IsBusy" && args.PropertyName != nameof(IFileActionsContext.CanStartFileActionsRead))
+            return;
+        if (_disposed || _context?.CanStartFileActionsRead != true) return;
+
+        var commit = _pendingCommitRead;
+        var working = _pendingWorkingRead;
+        _pendingCommitRead = null;
+        _pendingWorkingRead = null;
+        if (commit is null && working is null) return;
+        _ = ResumeDeferredSelectionsAsync(commit, working);
+    }
+
+    private async Task ResumeDeferredSelectionsAsync(FileActionRequest? commit, FileActionRequest? working)
+    {
+        await Task.Yield();
+        if (_disposed) return;
+        if (commit is not null && IsCurrent(commit) && Equals(Commit.Request, commit))
+            await SelectCommitAsync((CommitFileActionRequest)commit);
+        if (working is not null && IsCurrent(working) && Equals(WorkingTree.Request, working))
+            await SelectWorkingTreeAsync((WorkingTreeFileActionRequest)working);
     }
 
     private bool IsSelectedCurrent(bool workingTree, long generation, FileActionRequest request)
@@ -163,6 +214,18 @@ public sealed class FileActionsViewModel : INotifyPropertyChanged, IDisposable
     }
 
     public async Task OpenResolvedVersionAsync(
+        Repository repository, DiffFileVersion version, DiffFileSide side)
+    {
+        if (!IsCurrent(new CommitFileActionRequest(repository, string.Empty, version.GitPath)))
+            return;
+        using var lease = _context?.AcquireFileActionsRead(repository);
+        if (lease is null) return;
+        var path = await _pathResolver.ResolveAsync(repository, version, side, lease.Token);
+        if (_context?.IsCurrentFileActionsRepository(repository) == true)
+            await _shell.OpenFileAsync(path);
+    }
+
+    internal async Task OpenResolvedVersionWithinAcceptedOperationAsync(
         Repository repository, DiffFileVersion version, DiffFileSide side)
     {
         if (!IsCurrent(new CommitFileActionRequest(repository, string.Empty, version.GitPath)))
@@ -209,6 +272,11 @@ public sealed class FileActionsViewModel : INotifyPropertyChanged, IDisposable
             if (prepared is null || !IsCurrent(request))
                 return new(FileActionOutcomeKind.Stale);
 
+            using var executionLease = action == FileActionKind.Reveal
+                ? null : _context?.AcquireFileActionsRead(request.Repository);
+            if (action != FileActionKind.Reveal && executionLease is null)
+                return new(FileActionOutcomeKind.Unavailable, "Another Git operation is already running.");
+
             // Publish only to the slot still representing this request. A menu from A
             // may execute while B is selected, without changing B's availability.
             if (request is CommitFileActionRequest commit)
@@ -224,7 +292,7 @@ public sealed class FileActionsViewModel : INotifyPropertyChanged, IDisposable
                 var version = side == DiffFileSide.Original ? prepared.Pair.Original : prepared.Pair.Changed;
                 if (!version.CanOpen)
                     return new(FileActionOutcomeKind.Unavailable, version.UnavailableReason);
-                var path = await _pathResolver.ResolveAsync(request.Repository, version, side, CancellationToken.None);
+                var path = await _pathResolver.ResolveAsync(request.Repository, version, side, executionLease!.Token);
                 if (!IsCurrent(request)) return new(FileActionOutcomeKind.Stale);
                 await _shell.OpenFileAsync(path);
             }
@@ -320,6 +388,10 @@ public sealed class FileActionsViewModel : INotifyPropertyChanged, IDisposable
     public void Dispose()
     {
         _disposed = true;
+        if (_context is not null) _context.PropertyChanged -= Context_PropertyChanged;
+        _context = null;
+        _pendingCommitRead = null;
+        _pendingWorkingRead = null;
         Interlocked.Increment(ref _commitGeneration);
         Interlocked.Increment(ref _workingGeneration);
     }

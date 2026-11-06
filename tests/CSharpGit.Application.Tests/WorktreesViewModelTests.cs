@@ -300,6 +300,11 @@ public sealed class WorktreesViewModelTests
 
     private sealed class FakeWorktreesRepositoryContext : IWorktreesRepositoryContext
     {
+        public bool CanStartUserGitOperation => !IsBusy;
+        public IDisposable? TryBeginUserGitOperation(Repository expectedRepository) =>
+            CanStartUserGitOperation && ReferenceEquals(Repository, expectedRepository) ? new NoopLease() : null;
+        private sealed class NoopLease : IDisposable { public void Dispose() { } }
+
         private Repository? _repository;
         private bool _isBusy;
         private RepositoryOperation _currentOperation;

@@ -78,7 +78,8 @@ public sealed class RepositoryCloningUiContractTests
 
         Assert.Contains("ConfirmDiscardCommitMessageAsync(closing: false)", workflow);
         Assert.Contains("_cloneRepositoryViewModel.CloneAsync()", workflow);
-        Assert.Contains("SwitchRepositoryCoreAsync(path, discardDraft)", workflow);
+        Assert.Contains("SwitchRepositoryCoreAsync(path, discardDraft, _cloneWorkflowAdmission)", workflow);
+        Assert.Contains("TryBeginRepositoryLifecycle()", workflow);
         Assert.Contains("Repository cloned, but could not be opened.", workflow);
         Assert.Contains("_cloneRepositoryViewModel.Cancel()", workflow);
         Assert.DoesNotContain("Directory.Delete", workflow);

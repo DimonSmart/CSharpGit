@@ -76,6 +76,15 @@ public sealed class CommitDetailsViewModelTests
 
     private sealed class FakeContext(Repository repository) : ICommitDetailsRepositoryContext
     {
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+        public bool CanStartUserGitOperation { get; set; } = true;
+        public IDisposable? TryBeginUserGitOperation(Repository expectedRepository) =>
+            CanStartUserGitOperation && ReferenceEquals(Repository, expectedRepository)
+                ? new NoopLease() : null;
+        public void RaiseAvailability() =>
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs("IsBusy"));
+        private sealed class NoopLease : IDisposable { public void Dispose() { } }
+
         public Repository? Repository { get; } = repository;
         public string? Error { get; private set; }
 

@@ -3,7 +3,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Presentation.ViewModels;
 
-public interface IRepositoryHistoryRewriteContext
+public interface IRepositoryHistoryRewriteContext : IUserGitOperationAdmission
 {
     Repository? Repository { get; }
     bool IsBusy { get; }
@@ -57,15 +57,18 @@ public sealed class RepositoryHistoryRewriteViewModel
     {
         if (!CanExecute(repository) || IsInProgress)
             return new(PathRemovalPreparationStatus.RepositoryChanged);
+        using var admission = _context!.TryBeginUserGitOperation(repository);
+        if (admission is null)
+            return new(PathRemovalPreparationStatus.RepositoryChanged);
         try
         {
             var status = await _service.GetToolStatusAsync(repository, cancellationToken);
-            if (!CanExecute(repository))
+            if (!ReferenceEquals(_context?.Repository, repository))
                 return new(PathRemovalPreparationStatus.RepositoryChanged);
             if (!status.IsAvailable)
                 return new(PathRemovalPreparationStatus.ToolUnavailable);
             var analysis = await _service.AnalyzePathRemovalAsync(repository, path, cancellationToken);
-            if (!CanExecute(repository))
+            if (!ReferenceEquals(_context?.Repository, repository))
                 return new(PathRemovalPreparationStatus.RepositoryChanged);
             return analysis.PathHistoryCommitCount == 0
                 ? new(PathRemovalPreparationStatus.NothingToRemove)

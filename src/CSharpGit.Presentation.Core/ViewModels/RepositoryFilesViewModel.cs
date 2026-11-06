@@ -6,7 +6,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Presentation.ViewModels;
 
-public interface IRepositoryFilesContext : INotifyPropertyChanged
+public interface IRepositoryFilesContext : INotifyPropertyChanged, IUserGitOperationAdmission
 {
     Repository? Repository { get; }
     string? SelectedObjectCommit { get; }
@@ -56,6 +56,7 @@ public sealed class RepositoryFilesViewModel : INotifyPropertyChanged, IDisposab
     private long _contentSearchGeneration;
     private long _treeRevision;
     private long _selectionRevision;
+    private Repository? _pendingSnapshotRepository;
     private int _disposed;
 
     public RepositoryFilesViewModel(IRepositorySnapshotService repositorySnapshotService)
@@ -108,6 +109,7 @@ public sealed class RepositoryFilesViewModel : INotifyPropertyChanged, IDisposab
             _context.PropertyChanged -= Context_PropertyChanged;
         _context = null;
         _isActive = false;
+        _pendingSnapshotRepository = null;
         CancelRequests();
         ResetFeatureState(clearCache: true);
     }
@@ -122,15 +124,16 @@ public sealed class RepositoryFilesViewModel : INotifyPropertyChanged, IDisposab
         if (!active)
         {
             SavePresentationState();
+            _pendingSnapshotRepository = null;
             CancelRequests();
             SetLoading(false);
             return;
         }
 
-        await RefreshAsync();
+        await RefreshAsync(reactive: true);
     }
 
-    public async Task RefreshAsync()
+    public async Task RefreshAsync(bool reactive = false)
     {
         if (!_isActive || Volatile.Read(ref _disposed) != 0) return;
 
@@ -178,6 +181,17 @@ public sealed class RepositoryFilesViewModel : INotifyPropertyChanged, IDisposab
             return;
         }
 
+        using var admission = context?.TryBeginUserGitOperation(repository);
+        if (admission is null)
+        {
+            if (reactive)
+                _pendingSnapshotRepository = repository;
+            CancelSnapshotRequest();
+            SetStatus("Waiting for the current Git operation...", loading: false);
+            return;
+        }
+
+        _pendingSnapshotRepository = null;
         SetStatus("Loading repository files...", loading: true);
         try
         {
@@ -274,6 +288,9 @@ public sealed class RepositoryFilesViewModel : INotifyPropertyChanged, IDisposab
         var commitHash = context?.SelectedObjectCommit;
         if (repository is null || string.IsNullOrWhiteSpace(commitHash) || !SnapshotMatchesSelection)
             return;
+
+        using var admission = context?.TryBeginUserGitOperation(repository);
+        if (admission is null) return;
 
         CancelContentSearch();
         var generation = Interlocked.Increment(ref _contentSearchGeneration);
@@ -388,15 +405,29 @@ public sealed class RepositoryFilesViewModel : INotifyPropertyChanged, IDisposab
             state.ExpandedPaths.Remove(node.Path);
     }
 
-    public async Task<DiffFileVersion?> ResolveFileVersionAsync(
+    public Task<DiffFileVersion?> ResolveFileVersionAsync(
         RepositorySnapshotEntry entry,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        ResolveFileVersionCoreAsync(entry, admittedContinuation: false, cancellationToken);
+
+    internal Task<DiffFileVersion?> ResolveFileVersionWithinAcceptedOperationAsync(
+        RepositorySnapshotEntry entry,
+        CancellationToken cancellationToken = default) =>
+        ResolveFileVersionCoreAsync(entry, admittedContinuation: true, cancellationToken);
+
+    private async Task<DiffFileVersion?> ResolveFileVersionCoreAsync(
+        RepositorySnapshotEntry entry,
+        bool admittedContinuation,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(entry);
         var repository = _snapshotRepository;
         var commitHash = _snapshotCommit;
         if (repository is null || string.IsNullOrWhiteSpace(commitHash) || !SnapshotMatchesSelection)
             return null;
+
+        using var admission = admittedContinuation ? null : _context?.TryBeginUserGitOperation(repository);
+        if (!admittedContinuation && admission is null) return null;
 
         var version = await _repositorySnapshotService.ResolveFileVersionAsync(
             repository,
@@ -414,6 +445,7 @@ public sealed class RepositoryFilesViewModel : INotifyPropertyChanged, IDisposab
     {
         ArgumentNullException.ThrowIfNull(statusText);
         SavePresentationState();
+        _pendingSnapshotRepository = null;
         CancelRequests();
         ResetFeatureState(clearCache: true);
         SetStatus(statusText, loading);
@@ -429,20 +461,40 @@ public sealed class RepositoryFilesViewModel : INotifyPropertyChanged, IDisposab
     {
         if (Volatile.Read(ref _disposed) != 0) return;
 
+        if (args.PropertyName is "IsBusy"
+            or nameof(IUserGitOperationAdmission.CanStartUserGitOperation))
+        {
+            var pending = _pendingSnapshotRepository;
+            if (pending is not null && _context?.CanStartUserGitOperation == true)
+            {
+                _pendingSnapshotRepository = null;
+                _ = ResumeDeferredSnapshotAsync(pending);
+            }
+            return;
+        }
+
         if (args.PropertyName == nameof(IRepositoryFilesContext.Repository))
         {
             SavePresentationState();
             CancelRequests();
             ResetFeatureState(clearCache: true);
-            if (_isActive) _ = RefreshAsync();
+            if (_isActive) _ = RefreshAsync(reactive: true);
             return;
         }
 
         if (args.PropertyName is nameof(IRepositoryFilesContext.SelectedObjectCommit)
             or nameof(IRepositoryFilesContext.HasSelectedStash))
         {
-            if (_isActive) _ = RefreshAsync();
+            if (_isActive) _ = RefreshAsync(reactive: true);
         }
+    }
+
+    private async Task ResumeDeferredSnapshotAsync(Repository expectedRepository)
+    {
+        await Task.Yield();
+        if (Volatile.Read(ref _disposed) == 0 && _isActive
+            && ReferenceEquals(_context?.Repository, expectedRepository))
+            await RefreshAsync(reactive: true);
     }
 
     private bool CanPublishSnapshot(

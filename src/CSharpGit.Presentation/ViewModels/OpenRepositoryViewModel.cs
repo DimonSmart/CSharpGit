@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace CSharpGit.Presentation.ViewModels;
 
-public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, IDisposable
+public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, IDisposable, IUserGitOperationAdmission
 {
     private readonly IFolderPicker _folderPicker;
     private readonly IRepositoryService _repositoryService;
@@ -24,7 +24,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private RepositoryRefreshFlight? _repositoryRefreshFlight;
     private long _repositoryGeneration;
     private string? _errorMessage;
-    private bool _isBusy;
+    private bool _publishedBusy;
     private int _busyOperations;
     private bool _isMutating;
     private int _repositoryChangeInProgress;
@@ -97,7 +97,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         _logger = logger;
         _openRepositoryCommand = new AsyncCommand(OpenRepositoryAsync, () => !IsBusy && Repository is null,
             _logger, HandleUnhandledCommandError);
-        RefreshAllCommand = new AsyncCommand(RefreshAllAsync, () => Repository is not null,
+        RefreshAllCommand = new AsyncCommand(RefreshAllAsync, () => Repository is not null && CanStartUserGitOperation,
             _logger, HandleUnhandledCommandError);
         DismissErrorCommand = new AsyncCommand(() =>
         {
@@ -207,10 +207,13 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     public WorkingTreeStatusSnapshot? DisplayedWorkingTreeStatusSnapshot => _displayedWorkingTreeBaseline.Snapshot;
     public long DisplayedRefreshBaselineRevision => _displayedWorkingTreeBaseline.Revision;
     public string? ErrorMessage { get => _errorMessage; private set { _errorMessage = value; Notify(); Notify(nameof(HasError)); } }
-    public bool IsBusy { get => _isBusy; private set { _isBusy = value; Notify(); _openRepositoryCommand.RaiseCanExecuteChanged(); } }
+    public bool IsBusy => Volatile.Read(ref _busyOperations) != 0;
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
     public bool HasRepository => Repository is not null;
-    public bool CanChangeRepository => !_isMutating && Volatile.Read(ref _repositoryChangeInProgress) == 0;
+    public bool CanChangeRepository => !IsBusy && !_isMutating && Volatile.Read(ref _repositoryChangeInProgress) == 0;
+    public bool CanStartUserGitOperation => Volatile.Read(ref _disposed) == 0
+        && !IsBusy && !_isMutating && Volatile.Read(ref _repositoryChangeInProgress) == 0
+        && _mutationGate.CurrentCount != 0;
     public bool IsMutating => _isMutating;
     public bool IsChangingRepository => Volatile.Read(ref _repositoryChangeInProgress) != 0;
     public string RepositoryKind => Repository?.IsWorktree == true ? "Git worktree" : "Git repository";
@@ -223,7 +226,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     internal Task OpenRepositoryAsyncForDesktopCheck() => _openRepositoryCommand.ExecuteAsync();
 
-    internal Task RefreshAsyncForDesktopCheck() => RefreshAllAsync();
+    internal Task<bool> RefreshAsyncForDesktopCheck() => TryRefreshAllAsync();
 
     internal Task<bool> RunMutationAsync(
         Func<Task> mutation,
@@ -236,48 +239,63 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     private async Task OpenRepositoryAsync()
     {
+        if (!CanChangeRepository) return;
+        var expectedRepository = Repository;
         ErrorMessage = null;
-        EnterBusy();
+        string? path;
         try
         {
-            string? path;
-            try
-            {
-                path = await _folderPicker.PickFolderAsync();
-            }
-            catch (Exception exception) when (exception is not OperationCanceledException)
-            {
-                ErrorMessage = $"The system folder picker could not be opened: {exception.Message}";
-                _logger.LogError(exception, "Native folder picker failed");
-                return;
-            }
-
-            if (path is not null)
-                _ = await OpenRepositoryPathAsync(path);
+            path = await _folderPicker.PickFolderAsync();
         }
-        finally
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            if (Volatile.Read(ref _disposed) == 0)
-            {
-                ExitBusy();
-                _openRepositoryCommand.RaiseCanExecuteChanged();
-            }
+            ErrorMessage = $"The system folder picker could not be opened: {exception.Message}";
+            _logger.LogError(exception, "Native folder picker failed");
+            return;
         }
+
+        // A picker is not Git work. Admission occurs after the user chooses a path.
+        if (path is not null && ReferenceEquals(expectedRepository, Repository))
+            _ = await OpenRepositoryPathAsync(path);
     }
 
-    internal async Task<bool> OpenRepositoryPathAsync(
+    internal Task<bool> OpenRepositoryPathAsync(
         string path,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        OpenRepositoryPathCoreAsync(path, continuation: null, cancellationToken);
+
+    internal Task<bool> OpenRepositoryPathFromLifecycleAsync(
+        string path,
+        UserGitOperationLease continuation) =>
+        OpenRepositoryPathCoreAsync(path, continuation, CancellationToken.None);
+
+    private async Task<bool> OpenRepositoryPathCoreAsync(
+        string path,
+        UserGitOperationLease? continuation,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        if (Volatile.Read(ref _disposed) != 0) return false;
+        if (Volatile.Read(ref _disposed) != 0
+            || (continuation is null ? IsBusy : !continuation.IsOwnedBy(this))) return false;
         if (Interlocked.CompareExchange(ref _repositoryChangeInProgress, 1, 0) != 0)
             return false;
 
         Notify(nameof(CanChangeRepository));
         RaiseCommands();
-        if (!await _mutationGate.WaitAsync(0))
+        if (continuation is null && !_mutationGate.Wait(0))
         {
+            Interlocked.Exchange(ref _repositoryChangeInProgress, 0);
+            Notify(nameof(CanChangeRepository));
+            RaiseCommands();
+            return false;
+        }
+
+        // Another read may be working even when the mutation semaphore is available.
+        if (Volatile.Read(ref _disposed) != 0
+            || (continuation is null ? IsBusy : !continuation.IsOwnedBy(this))
+            || _isMutating)
+        {
+            if (continuation is null) _mutationGate.Release();
             Interlocked.Exchange(ref _repositoryChangeInProgress, 0);
             Notify(nameof(CanChangeRepository));
             RaiseCommands();
@@ -312,7 +330,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                 {
                     try
                     {
-                        await RefreshAllAsync();
+                        await RefreshStateAsync(includeHistory: true);
                     }
                     catch (Exception restoreException)
                     {
@@ -353,11 +371,11 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         }
         finally
         {
-            _mutationGate.Release();
+            if (continuation is null) _mutationGate.Release();
             Interlocked.Exchange(ref _repositoryChangeInProgress, 0);
+            ExitBusy();
             if (Volatile.Read(ref _disposed) == 0)
             {
-                ExitBusy();
                 Notify(nameof(CanChangeRepository));
                 RaiseCommands();
                 _openRepositoryCommand.RaiseCanExecuteChanged();
@@ -373,6 +391,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     {
         if (Volatile.Read(ref _disposed) != 0) return false;
         if (Repository is null) return true;
+        if (IsBusy) return false;
         if (Interlocked.CompareExchange(ref _repositoryChangeInProgress, 1, 0) != 0)
             return false;
 
@@ -380,6 +399,15 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         RaiseCommands();
         if (!_mutationGate.Wait(0))
         {
+            Interlocked.Exchange(ref _repositoryChangeInProgress, 0);
+            Notify(nameof(CanChangeRepository));
+            RaiseCommands();
+            return false;
+        }
+
+        if (IsBusy || _isMutating || Volatile.Read(ref _disposed) != 0)
+        {
+            _mutationGate.Release();
             Interlocked.Exchange(ref _repositoryChangeInProgress, 0);
             Notify(nameof(CanChangeRepository));
             RaiseCommands();
@@ -454,28 +482,133 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         Notify(nameof(DisplayedRefreshBaselineRevision));
     }
 
-    private bool CanMutate() =>
-        Repository is not null
-        && !_isMutating
-        && Volatile.Read(ref _repositoryChangeInProgress) == 0;
+    private bool CanMutate() => Repository is not null && CanStartUserGitOperation;
 
     private bool CanBulkMutate() =>
         CanMutate()
         && !RepositoryOperations.Conflicts.Any(conflict => !conflict.IsResolved);
 
+    // Admission is synchronous: the busy state is reserved before the first await.
+    public IDisposable? TryBeginUserGitOperation(Repository expectedRepository)
+    {
+        ArgumentNullException.ThrowIfNull(expectedRepository);
+        if (!CanStartUserGitOperation || !_mutationGate.Wait(0)) return null;
+
+        if (!ReferenceEquals(expectedRepository, Repository)
+            || _repositoryLifetime?.IsActive != true
+            || Volatile.Read(ref _disposed) != 0 || IsBusy || _isMutating
+            || Volatile.Read(ref _repositoryChangeInProgress) != 0)
+        {
+            _mutationGate.Release();
+            return null;
+        }
+
+        EnterBusy();
+        return new UserGitOperationLease(this);
+    }
+
+    internal sealed class UserGitOperationLease(OpenRepositoryViewModel owner) : IDisposable
+    {
+        private OpenRepositoryViewModel? _owner = owner;
+
+        internal bool IsOwnedBy(OpenRepositoryViewModel candidate) =>
+            ReferenceEquals(Volatile.Read(ref _owner), candidate);
+
+        public void Dispose()
+        {
+            var current = Interlocked.Exchange(ref _owner, null);
+            if (current is null) return;
+            try { current._mutationGate.Release(); }
+            finally { current.ExitBusy(); }
+        }
+    }
+
+    internal IDisposable? TryBeginGitSettingsOperation(Repository? expectedRepository)
+    {
+        if (!CanStartUserGitOperation || !_mutationGate.Wait(0)) return null;
+
+        if (Volatile.Read(ref _disposed) != 0 || IsBusy || _isMutating
+            || Volatile.Read(ref _repositoryChangeInProgress) != 0
+            || !ReferenceEquals(Repository, expectedRepository)
+            || (expectedRepository is not null && _repositoryLifetime?.IsActive != true))
+        {
+            _mutationGate.Release();
+            return null;
+        }
+
+        EnterBusy();
+        return new UserGitOperationLease(this);
+    }
+
+    internal UserGitOperationLease? TryBeginRepositoryLifecycle()
+    {
+        var repository = Repository;
+        if (!CanChangeRepository || Volatile.Read(ref _disposed) != 0
+            || !_mutationGate.Wait(0)) return null;
+
+        if (!ReferenceEquals(repository, Repository) || IsBusy || _isMutating
+            || Volatile.Read(ref _disposed) != 0
+            || Volatile.Read(ref _repositoryChangeInProgress) != 0)
+        {
+            _mutationGate.Release();
+            return null;
+        }
+
+        EnterBusy();
+        return new UserGitOperationLease(this);
+    }
+
     private void EnterBusy()
     {
-        _busyOperations++;
-        IsBusy = true;
+        if (Interlocked.Increment(ref _busyOperations) == 1)
+            PublishBusyAvailability();
     }
 
     private void ExitBusy()
     {
-        _busyOperations = Math.Max(0, _busyOperations - 1);
-        IsBusy = _busyOperations > 0;
+        var remaining = Interlocked.Decrement(ref _busyOperations);
+        if (remaining < 0)
+        {
+            Interlocked.Increment(ref _busyOperations);
+            throw new InvalidOperationException("Unbalanced repository busy lease.");
+        }
+
+        if (remaining == 0)
+            PublishBusyAvailability();
     }
 
-    private Task RefreshAllAsync() => RefreshStateAsync(includeHistory: true);
+    private void PublishBusyAvailability()
+    {
+        if (Volatile.Read(ref _disposed) != 0) return;
+        if (!_uiDispatcher.HasThreadAccess)
+        {
+            _uiDispatcher.TryEnqueue(PublishBusyAvailability);
+            return;
+        }
+
+        var busy = IsBusy;
+        if (_publishedBusy == busy) return;
+        _publishedBusy = busy;
+        Notify(nameof(IsBusy));
+        Notify(nameof(CanChangeRepository));
+        _openRepositoryCommand.RaiseCanExecuteChanged();
+        RaiseCommands();
+    }
+
+    private async Task RefreshAllAsync()
+    {
+        _ = await TryRefreshAllAsync();
+    }
+
+    private async Task<bool> TryRefreshAllAsync()
+    {
+        var repository = Repository;
+        if (repository is null) return false;
+        using var admission = TryBeginUserGitOperation(repository);
+        if (admission is null) return false;
+        await RefreshStateAsync(includeHistory: true);
+        return true;
+    }
 
     private Task RefreshStateAsync(bool includeHistory) =>
         RefreshStateCoreAsync(includeHistory, localOnly: false);
@@ -544,7 +677,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                     }, publishIfCurrent, sessionToken);
 
                     if (published && historyRequested && IsCurrentSession(lifetime, repository))
-                        await History.RefreshAsync();
+                        await History.RefreshWithinAcceptedOperationAsync();
                 },
                 () =>
                 {
@@ -562,8 +695,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
                     finally
                     {
                         // An observer error must never leak an active Busy lease.
-                        if (Volatile.Read(ref _disposed) == 0)
-                            ExitBusy();
+                        ExitBusy();
                     }
                 });
 
@@ -623,11 +755,14 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         Repository? expectedRepository = null)
     {
         var succeeded = false;
-        if (Volatile.Read(ref _repositoryChangeInProgress) != 0
-            || !await _mutationGate.WaitAsync(0))
+        if (Volatile.Read(ref _disposed) != 0
+            || Volatile.Read(ref _repositoryChangeInProgress) != 0
+            || !_mutationGate.Wait(0))
             return false;
 
-        if (Volatile.Read(ref _repositoryChangeInProgress) != 0)
+        if (Volatile.Read(ref _disposed) != 0
+            || Volatile.Read(ref _repositoryChangeInProgress) != 0
+            || IsBusy || _isMutating || Repository is null)
         {
             _mutationGate.Release();
             return false;
@@ -682,10 +817,10 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         {
             _isMutating = false;
             _mutationGate.Release();
+            ExitBusy();
             if (Volatile.Read(ref _disposed) == 0)
             {
                 Notify(nameof(CanChangeRepository));
-                ExitBusy();
                 RaiseCommands();
             }
         }

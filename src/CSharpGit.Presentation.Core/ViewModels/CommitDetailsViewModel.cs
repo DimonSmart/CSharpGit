@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace CSharpGit.Presentation.ViewModels;
 
-public interface ICommitDetailsRepositoryContext
+public interface ICommitDetailsRepositoryContext : INotifyPropertyChanged, IUserGitOperationAdmission
 {
     Repository? Repository { get; }
     void ReportCommitDetailsError(string message);
@@ -17,6 +17,7 @@ public interface ICommitDetailsRepositoryContext
 public sealed class CommitDetailsViewModel :
     INotifyPropertyChanged,
     IRepositoryFilesContext,
+    IUserGitOperationAdmission,
     IDisposable
 {
     private const int ChangedFilesDebounceMilliseconds = 120;
@@ -54,6 +55,7 @@ public sealed class CommitDetailsViewModel :
     private string _diffPreviewActionText = "Load diff";
     private bool _isNoNetStashDiff;
     private ChangedFileSelectionKey? _selectedChangedFileRestoreKey;
+    private bool _pendingSelectionRead;
     private int _disposed;
 
     public CommitDetailsViewModel(
@@ -69,6 +71,9 @@ public sealed class CommitDetailsViewModel :
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public Repository? Repository => _context?.Repository;
+    public bool CanStartUserGitOperation => _context?.CanStartUserGitOperation == true;
+    public IDisposable? TryBeginUserGitOperation(Repository expectedRepository) =>
+        _context?.TryBeginUserGitOperation(expectedRepository);
     public IReadOnlyList<ChangedFile> ChangedFiles => _changedFiles;
     public StashDetails? SelectedStashDetails => _selectedStashDetails;
     public bool HasSelectedStash => _selectedStash is not null;
@@ -225,7 +230,10 @@ public sealed class CommitDetailsViewModel :
     {
         ArgumentNullException.ThrowIfNull(context);
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        if (_context is not null)
+            _context.PropertyChanged -= Context_PropertyChanged;
         _context = context;
+        _context.PropertyChanged += Context_PropertyChanged;
         Notify(nameof(Repository));
     }
 
@@ -369,6 +377,8 @@ public sealed class CommitDetailsViewModel :
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
         ResetSession(clearSelection: true, clearCaches: true);
+        if (_context is not null)
+            _context.PropertyChanged -= Context_PropertyChanged;
         _context = null;
     }
 
@@ -423,6 +433,14 @@ public sealed class CommitDetailsViewModel :
         {
             if (debounce)
                 await Task.Delay(ChangedFilesDebounceMilliseconds, cancellation.Token);
+
+            using var admission = _context?.TryBeginUserGitOperation(repository);
+            if (admission is null)
+            {
+                if (IsCurrentChangedFilesRequest(generation, cancellation, repository, row))
+                    _pendingSelectionRead = true;
+                return;
+            }
 
             var files = (await _historyService.ReadChangedFilesAsync(
                 repository,
@@ -506,6 +524,14 @@ public sealed class CommitDetailsViewModel :
 
         try
         {
+            using var admission = _context?.TryBeginUserGitOperation(repository);
+            if (admission is null)
+            {
+                if (IsCurrentStashDetailsRequest(generation, cancellation, repository, stash))
+                    _pendingSelectionRead = true;
+                return;
+            }
+
             var stashDetails = await _stashService.ReadAsync(repository, stash, cancellation.Token);
             if (!IsCurrentStashDetailsRequest(generation, cancellation, repository, stash))
                 return;
@@ -619,6 +645,14 @@ public sealed class CommitDetailsViewModel :
             return;
         }
 
+        using var admission = _context?.TryBeginUserGitOperation(repository);
+        if (admission is null)
+        {
+            if (mode == DiffLoadMode.Preview)
+                _pendingSelectionRead = true;
+            return;
+        }
+
         var generation = Interlocked.Increment(ref _diffLoadGeneration);
         var cancellation = new CancellationTokenSource();
         ReplaceCancellation(ref _diffLoadCts, cancellation);
@@ -673,6 +707,37 @@ public sealed class CommitDetailsViewModel :
             if (IsCurrentDiffRequest(generation, cancellation, repository, selectionIdentity, file))
                 IsDiffLoading = false;
         }
+    }
+
+    private void Context_PropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName != "IsBusy"
+            && args.PropertyName != nameof(IUserGitOperationAdmission.CanStartUserGitOperation))
+            return;
+
+        // Repository Files uses this VM as its context.
+        Notify(nameof(CanStartUserGitOperation));
+        if (!_pendingSelectionRead || !CanStartUserGitOperation || Volatile.Read(ref _disposed) != 0)
+            return;
+
+        _pendingSelectionRead = false;
+        ObserveBackgroundLoad(async () =>
+        {
+            await Task.Yield();
+            if (Volatile.Read(ref _disposed) != 0 || !CanStartUserGitOperation) 
+            {
+                if (Volatile.Read(ref _disposed) == 0) _pendingSelectionRead = true;
+                return;
+            }
+
+            // Reevaluate the current selection; never replay an obsolete file/commit.
+            if (_selectedStash is not null && _selectedStashDetails is null)
+                await EnsureSelectedStashDetailsLoadedAsync();
+            else if (_isChangesViewActive && _selectedHistoryRow is not null && _changedFiles.Count == 0)
+                await EnsureChangedFilesLoadedAsync(debounce: false);
+            else if (_isChangesViewActive && SelectedFile is not null)
+                await LoadSelectedDiffAsync(DiffLoadMode.Preview);
+        }, "deferred selection");
     }
 
     private bool TryDeferLargeHistoricalDiff(ChangedFile file)
@@ -733,6 +798,7 @@ public sealed class CommitDetailsViewModel :
 
     private void ResetSession(bool clearSelection, bool clearCaches)
     {
+        _pendingSelectionRead = false;
         InvalidateChangedFilesLoad();
         InvalidateDiffLoad();
         InvalidateStashDetailsLoad();

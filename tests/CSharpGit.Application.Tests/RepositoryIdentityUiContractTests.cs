@@ -35,7 +35,7 @@ public sealed class RepositoryIdentityUiContractTests
         Assert.Contains("ShowSettingsSuccess(\"Identity\", \"Repository identity saved.\")", page);
 
         Assert.Contains("IRepositoryIdentityService _repositoryIdentityService", controller);
-        Assert.Contains("RepositoryIdentitySettingsViewModel(_repositoryIdentityService, repositoryAccessor)", controller);
+        Assert.Contains("RepositoryIdentitySettingsViewModel(_repositoryIdentityService, repositoryAccessor, gitAdmission)", controller);
         Assert.Contains("RepositoryChanged() => _page?.RepositoryChanged()", controller);
 
         Assert.Contains("Repository settings…", mainXaml);
