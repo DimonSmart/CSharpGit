@@ -13,6 +13,9 @@ public sealed partial class OpenRepositoryViewModel : IHistoryRepositoryContext
     IReadOnlyList<GitRemote> IHistoryRepositoryContext.Remotes => RepositorySync.Remotes;
     IReadOnlyList<GitTag> IHistoryRepositoryContext.Tags => Tags.Items;
     bool IHistoryRepositoryContext.CanUpdateHistorySelection => Stashes.SelectedStash is null;
+    bool IHistoryRepositoryContext.CanStartUserGitOperation => CanStartUserGitOperation;
+    IDisposable? IHistoryRepositoryContext.TryBeginUserGitOperation(Repository repository) =>
+        TryBeginUserGitOperation(repository);
 
     void IHistoryRepositoryContext.EnterHistoryBusy() => EnterBusy();
 
