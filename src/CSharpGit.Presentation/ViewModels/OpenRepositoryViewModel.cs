@@ -226,7 +226,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
 
     internal Task OpenRepositoryAsyncForDesktopCheck() => _openRepositoryCommand.ExecuteAsync();
 
-    internal Task RefreshAsyncForDesktopCheck() => RefreshAllAsync();
+    internal Task<bool> RefreshAsyncForDesktopCheck() => TryRefreshAllAsync();
 
     internal Task<bool> RunMutationAsync(
         Func<Task> mutation,
@@ -595,13 +595,16 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         RaiseCommands();
     }
 
-    private async Task RefreshAllAsync()
+    private async Task RefreshAllAsync() => _ = await TryRefreshAllAsync();
+
+    private async Task<bool> TryRefreshAllAsync()
     {
         var repository = Repository;
-        if (repository is null) return;
+        if (repository is null) return false;
         using var admission = TryBeginUserGitOperation(repository);
-        if (admission is null) return;
+        if (admission is null) return false;
         await RefreshStateAsync(includeHistory: true);
+        return true;
     }
 
     private Task RefreshStateAsync(bool includeHistory) =>
