@@ -57,7 +57,7 @@ public sealed class InteractiveRebaseViewModelTests
     }
 
     [Fact]
-    public async Task RepeatedPreparationCancelsPreviousRequestAndPublishesNewestTodo()
+    public async Task ConcurrentPreparationIsRejectedAndRetryAfterCancellationLoadsNewestTodo()
     {
         var repository = Repository("repo");
         var context = new FakeContext { Repository = repository };
@@ -80,10 +80,16 @@ public sealed class InteractiveRebaseViewModelTests
 
         var first = viewModel.PrepareInteractiveRebaseFromCommitAsync("old-base");
         await rebase.ReadStarted.Task;
-        var second = viewModel.PrepareInteractiveRebaseFromCommitAsync("new-base");
 
+        // A new user Git read cannot supersede an already admitted Git workflow.
+        Assert.False(await viewModel.PrepareInteractiveRebaseFromCommitAsync("new-base"));
+        Assert.Equal(1, Volatile.Read(ref call));
+
+        // Cancellation of the previous request remains a separate permitted action.
+        viewModel.Invalidate();
         Assert.False(await first);
-        Assert.True(await second);
+
+        Assert.True(await viewModel.PrepareInteractiveRebaseFromCommitAsync("new-base"));
         Assert.Equal("new-base", viewModel.RebaseOnto);
         Assert.Equal("pick b newest", viewModel.RebaseTodoText);
         Assert.Equal(2, context.EnterBusyCalls);
