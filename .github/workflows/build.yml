@@ -61,7 +61,7 @@ jobs:
         env:
           CSHARPGIT_TEST_METRICS: "1"
           CSHARPGIT_TEST_METRICS_DIR: ${{ github.workspace }}/TestDiagnostics
-        run: dotnet test CSharpGit.slnx --configuration Release --no-build --verbosity minimal --logger "trx;LogFilePrefix=test-results"
+        run: dotnet test CSharpGit.slnx --configuration Release --no-build --verbosity minimal --logger "trx;LogFilePrefix=test-results" --blame-hang-timeout 120s
 
       - name: Publish smoke and verify Core assemblies (Linux x64)
         if: runner.os == 'Linux'
