@@ -17,7 +17,7 @@ public sealed class RepositoryIdentitySettingsViewModelTests
             ReadHandler = (repository, _) => Task.FromResult(
                 Snapshot(Path.GetFileName(repository.WorkingDirectory)))
         };
-        var viewModel = new RepositoryIdentitySettingsViewModel(service, () => current);
+        var viewModel = new RepositoryIdentitySettingsViewModel(service, () => current, _ => new NoopLease());
 
         await viewModel.RefreshAsync(force: true);
         current = repositoryB;
@@ -39,7 +39,7 @@ public sealed class RepositoryIdentitySettingsViewModelTests
         {
             ReadHandler = (_, _) => Task.FromResult(Snapshot("Inherited"))
         };
-        var viewModel = new RepositoryIdentitySettingsViewModel(service, () => current);
+        var viewModel = new RepositoryIdentitySettingsViewModel(service, () => current, _ => new NoopLease());
 
         await viewModel.RefreshAsync(force: true);
         viewModel.NameText = "Unsaved A";
@@ -63,7 +63,7 @@ public sealed class RepositoryIdentitySettingsViewModelTests
         {
             ReadHandler = (_, _) => Task.FromResult(Snapshot("Inherited"))
         };
-        var viewModel = new RepositoryIdentitySettingsViewModel(service, () => current);
+        var viewModel = new RepositoryIdentitySettingsViewModel(service, () => current, _ => new NoopLease());
 
         await viewModel.RefreshAsync(force: true);
         viewModel.NameText = "Local A";
@@ -91,7 +91,7 @@ public sealed class RepositoryIdentitySettingsViewModelTests
                     ? aCompletion.Task
                     : Task.FromResult(Snapshot("B"))
         };
-        var viewModel = new RepositoryIdentitySettingsViewModel(service, () => current);
+        var viewModel = new RepositoryIdentitySettingsViewModel(service, () => current, _ => new NoopLease());
 
         var staleRead = viewModel.RefreshAsync(force: true);
         current = repositoryB;
@@ -113,7 +113,7 @@ public sealed class RepositoryIdentitySettingsViewModelTests
         {
             ReadHandler = (_, _) => Task.FromResult(Snapshot("Inherited"))
         };
-        var viewModel = new RepositoryIdentitySettingsViewModel(service, () => current);
+        var viewModel = new RepositoryIdentitySettingsViewModel(service, () => current, _ => new NoopLease());
 
         await viewModel.RefreshAsync(force: true);
         viewModel.NameText = "Unsaved A";
@@ -145,7 +145,7 @@ public sealed class RepositoryIdentitySettingsViewModelTests
                 authoritative.Email);
             throw new InvalidOperationException("email write failed");
         };
-        var viewModel = new RepositoryIdentitySettingsViewModel(service, () => repository);
+        var viewModel = new RepositoryIdentitySettingsViewModel(service, () => repository, _ => new NoopLease());
 
         await viewModel.RefreshAsync(force: true);
         viewModel.NameText = "Local Name";
@@ -167,7 +167,7 @@ public sealed class RepositoryIdentitySettingsViewModelTests
         {
             ReadHandler = (_, _) => Task.FromResult(Snapshot("Global User"))
         };
-        var viewModel = new RepositoryIdentitySettingsViewModel(service, () => repository);
+        var viewModel = new RepositoryIdentitySettingsViewModel(service, () => repository, _ => new NoopLease());
 
         await viewModel.RefreshAsync(force: true);
         Assert.Equal("Global User", viewModel.NamePlaceholder);
@@ -192,7 +192,7 @@ public sealed class RepositoryIdentitySettingsViewModelTests
         {
             ReadHandler = (_, _) => Task.FromResult(Snapshot("Global"))
         };
-        var viewModel = new RepositoryIdentitySettingsViewModel(service, () => repository);
+        var viewModel = new RepositoryIdentitySettingsViewModel(service, () => repository, _ => new NoopLease());
         await viewModel.RefreshAsync(force: true);
 
         viewModel.EmailText = value;
@@ -241,4 +241,5 @@ public sealed class RepositoryIdentitySettingsViewModelTests
             CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
     }
+    private sealed class NoopLease : IDisposable { public void Dispose() { } }
 }
