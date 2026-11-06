@@ -10,6 +10,7 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
 {
     private readonly IRepositoryIdentityService _service;
     private readonly Func<Repository?> _repositoryAccessor;
+    private readonly Func<Repository?, IDisposable?> _gitAdmission;
     private RepositoryIdentitySnapshot? _snapshot;
     private string? _loadedRepositoryKey;
     private string _repositoryName = string.Empty;
@@ -23,10 +24,12 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
 
     internal RepositoryIdentitySettingsViewModel(
         IRepositoryIdentityService service,
-        Func<Repository?> repositoryAccessor)
+        Func<Repository?> repositoryAccessor,
+        Func<Repository?, IDisposable?> gitAdmission)
     {
         _service = service ?? throw new ArgumentNullException(nameof(service));
         _repositoryAccessor = repositoryAccessor ?? throw new ArgumentNullException(nameof(repositoryAccessor));
+        _gitAdmission = gitAdmission ?? throw new ArgumentNullException(nameof(gitAdmission));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -170,6 +173,8 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
             && !_isStale)
             return;
 
+        using var admission = _gitAdmission(repository);
+        if (admission is null) return;
         SetBusy(true);
         try
         {
@@ -200,6 +205,8 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
         var updateName = IsNameDirty;
         var updateEmail = IsEmailDirty;
         var edit = new RepositoryIdentityEdit(updateName, desiredName, updateEmail, desiredEmail);
+        using var admission = _gitAdmission(repository);
+        if (admission is null) return;
 
         SetBusy(true);
         try
@@ -251,6 +258,8 @@ internal sealed class RepositoryIdentitySettingsViewModel : INotifyPropertyChang
         var preserveEmail = field != RepositoryIdentityField.Email && IsEmailDirty;
         var desiredName = _nameText;
         var desiredEmail = _emailText;
+        using var admission = _gitAdmission(repository);
+        if (admission is null) return;
 
         SetBusy(true);
         try
