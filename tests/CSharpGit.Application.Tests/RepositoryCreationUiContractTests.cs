@@ -88,7 +88,8 @@ public sealed class RepositoryCreationUiContractTests
                 "_createRepositoryViewModel.CreateAsync()",
                 StringComparison.Ordinal));
 
-        Assert.Contains("SwitchRepositoryCoreAsync(path, discardDraft)", workflow);
+        Assert.Contains("SwitchRepositoryCoreAsync(path, discardDraft, admission)", workflow);
+        Assert.Contains("TryBeginRepositoryLifecycle()", workflow);
         Assert.Contains("OpenRepositoryPathAsync", switching);
         Assert.Contains("OpenRepositoryPathAsync", openViewModel);
         Assert.DoesNotContain("QueuePath", workflow);
