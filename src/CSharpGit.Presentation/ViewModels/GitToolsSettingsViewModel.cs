@@ -30,16 +30,17 @@ public sealed class GitToolsSettingsViewModel
     public GitToolSectionViewModel Diff { get; }
     public GitToolSectionViewModel Merge { get; }
 
-    public async Task RefreshAsync(Repository? repository, CancellationToken cancellationToken = default)
+    public async Task<bool> RefreshAsync(Repository? repository, CancellationToken cancellationToken = default)
     {
         using var lease = _admission(repository);
-        if (lease is null) return;
+        if (lease is null) return false;
         var editor = await _configurationService.ReadAsync(repository, GitToolKind.Editor, cancellationToken);
         var diff = await _configurationService.ReadAsync(repository, GitToolKind.Diff, cancellationToken);
         var merge = await _configurationService.ReadAsync(repository, GitToolKind.Merge, cancellationToken);
         Editor.Load(editor, repository is not null);
         Diff.Load(diff, repository is not null);
         Merge.Load(merge, repository is not null);
+        return true;
     }
 
     public async Task<bool> SaveAsync(Repository? repository, GitToolSectionViewModel section, CancellationToken cancellationToken = default)
