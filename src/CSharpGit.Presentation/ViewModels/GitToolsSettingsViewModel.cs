@@ -11,13 +11,16 @@ public sealed class GitToolsSettingsViewModel
 {
     private readonly IGitToolConfigurationService _configurationService;
     private readonly IExternalGitToolService _externalToolService;
+    private readonly Func<Repository?, IDisposable?> _admission;
 
     public GitToolsSettingsViewModel(
         IGitToolConfigurationService configurationService,
-        IExternalGitToolService externalToolService)
+        IExternalGitToolService externalToolService,
+        Func<Repository?, IDisposable?> admission)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _externalToolService = externalToolService ?? throw new ArgumentNullException(nameof(externalToolService));
+        _admission = admission ?? throw new ArgumentNullException(nameof(admission));
         Editor = new GitToolSectionViewModel(GitToolKind.Editor, "Editor");
         Diff = new GitToolSectionViewModel(GitToolKind.Diff, "Diff Tool");
         Merge = new GitToolSectionViewModel(GitToolKind.Merge, "Merge Tool");
@@ -29,6 +32,8 @@ public sealed class GitToolsSettingsViewModel
 
     public async Task RefreshAsync(Repository? repository, CancellationToken cancellationToken = default)
     {
+        using var lease = _admission(repository);
+        if (lease is null) return;
         var editor = await _configurationService.ReadAsync(repository, GitToolKind.Editor, cancellationToken);
         var diff = await _configurationService.ReadAsync(repository, GitToolKind.Diff, cancellationToken);
         var merge = await _configurationService.ReadAsync(repository, GitToolKind.Merge, cancellationToken);
@@ -37,32 +42,41 @@ public sealed class GitToolsSettingsViewModel
         Merge.Load(merge, repository is not null);
     }
 
-    public async Task SaveAsync(Repository? repository, GitToolSectionViewModel section, CancellationToken cancellationToken = default)
+    public async Task<bool> SaveAsync(Repository? repository, GitToolSectionViewModel section, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(section);
         if (section.SelectedScope is null) throw new InvalidOperationException("Select a Git configuration scope.");
-        if (!section.IsDirty) return;
+        if (!section.IsDirty) return false;
         var edit = section.CreateEdit();
+        using var lease = _admission(repository);
+        if (lease is null) return false;
         await _configurationService.SaveAsync(repository, edit, cancellationToken);
         var refreshed = await _configurationService.ReadAsync(repository, section.Kind, cancellationToken);
         section.Load(refreshed, repository is not null, edit.Scope);
+        return true;
     }
 
-    public async Task RemoveOverrideAsync(Repository? repository, GitToolSectionViewModel section, CancellationToken cancellationToken = default)
+    public async Task<bool> RemoveOverrideAsync(Repository? repository, GitToolSectionViewModel section, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(section);
         if (section.SelectedScope is null) throw new InvalidOperationException("Select a Git configuration scope.");
         var scope = section.SelectedScope.Scope;
+        using var lease = _admission(repository);
+        if (lease is null) return false;
         await _configurationService.RemoveOverrideAsync(repository, section.Kind, scope, cancellationToken);
         var refreshed = await _configurationService.ReadAsync(repository, section.Kind, cancellationToken);
         section.Load(refreshed, repository is not null, scope);
+        return true;
     }
 
-    public async Task TestAsync(Repository? repository, GitToolSectionViewModel section, CancellationToken cancellationToken = default)
+    public async Task<bool> TestAsync(Repository? repository, GitToolSectionViewModel section, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(section);
         if (section.IsDirty) throw new InvalidOperationException("Save Git Tools changes before running the test.");
+        using var lease = _admission(repository);
+        if (lease is null) return false;
         await _externalToolService.TestAsync(repository, section.Kind, cancellationToken);
+        return true;
     }
 }
 
