@@ -8,7 +8,7 @@ using CSharpGit.Domain;
 
 namespace CSharpGit.Presentation.ViewModels;
 
-public interface IWorkingTreeRepositoryContext
+public interface IWorkingTreeRepositoryContext : INotifyPropertyChanged, IUserGitOperationAdmission
 {
     Repository? Repository { get; }
     bool IsBusy { get; }
