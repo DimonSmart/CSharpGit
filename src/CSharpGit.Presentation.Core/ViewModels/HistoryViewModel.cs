@@ -392,8 +392,18 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
                 || (expectedSelectionIntentVersion.HasValue
                     && _selectionIntentVersion != expectedSelectionIntentVersion.Value)) return null;
 
-            _rows.ReplaceAll(page.Rows);
-            HasMore = page.HasMore;
+            // Collection Reset can transiently clear ListView's two-way selection.
+            // As in LoadAsync, that reset is not a new user selection intent.
+            _isApplyingHistoryRows = true;
+            try
+            {
+                _rows.ReplaceAll(page.Rows);
+                HasMore = page.HasMore;
+            }
+            finally
+            {
+                _isApplyingHistoryRows = false;
+            }
 
             var lookupStartedAt = Stopwatch.GetTimestamp();
             var target = _rows.FirstOrDefault(row =>

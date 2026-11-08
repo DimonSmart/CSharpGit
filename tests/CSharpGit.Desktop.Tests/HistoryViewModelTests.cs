@@ -31,6 +31,27 @@ public sealed class HistoryViewModelTests
     }
 
     [Fact]
+    public async Task NavigationIgnoresTransientListSelectionResetWhileReplacingRows()
+    {
+        using var fixture = new Fixture();
+        fixture.Service.Enqueue(new HistoryPage([Row("old")], HasMore: true));
+        await fixture.ViewModel.RefreshAsync();
+        var selectionVersion = fixture.ViewModel.SelectionIntentVersion;
+        fixture.ViewModel.Rows.CollectionChanged += (_, args) =>
+        {
+            if (args.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset)
+                fixture.ViewModel.SelectedRow = null;
+        };
+
+        var target = Row("new-branch");
+        fixture.Service.EnqueueThrough(new HistoryPage([Row("old"), target], HasMore: true));
+
+        Assert.Same(target, await fixture.ViewModel.NavigateToCommitAsync("new-branch"));
+        Assert.Same(target, fixture.ViewModel.SelectedRow);
+        Assert.Equal(selectionVersion + 1, fixture.ViewModel.SelectionIntentVersion);
+    }
+
+    [Fact]
     public async Task PullNavigationSelectsHeadWithinCurrentBranchWithoutChangingScope()
     {
         using var fixture = new Fixture();

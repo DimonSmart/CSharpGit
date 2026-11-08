@@ -84,7 +84,8 @@ public sealed class StashUiContractTests
 
         var stashSelection = SliceFirstCase(page, "case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:");
         Assert.Contains("await _viewModel.Stashes.SelectStashAsync(stash)", stashSelection, StringComparison.Ordinal);
-        Assert.Contains("await NavigateToReferenceAsync(stash.Commit, preserveSelectedStash: true)", stashSelection, StringComparison.Ordinal);
+        Assert.Contains("stash.Commit, preserveSelectedStash: true", stashSelection, StringComparison.Ordinal);
+        Assert.Contains("treeInteractionVersion: interactionVersion", stashSelection, StringComparison.Ordinal);
         Assert.Contains("string.Equals(selectedRow.Commit.Hash, selectedStash.Commit, StringComparison.Ordinal)", historyAdapter, StringComparison.Ordinal);
         Assert.Contains("string.Equals(historyRow.Commit.Hash, stash.Commit, StringComparison.Ordinal)", detailsComposition, StringComparison.Ordinal);
 

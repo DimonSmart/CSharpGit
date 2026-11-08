@@ -341,6 +341,10 @@ public sealed partial class MainPage : Page
         HistoryPane.Visibility = Visibility.Visible;
         WorkingTreePane.Visibility = Visibility.Collapsed;
 
+        // When the commit is not materialized yet, navigation replaces the history
+        // ItemsSource content. Its layout may not be ready for ScrollIntoView.
+        var previouslyMaterialized = _viewModel.History.Rows.FirstOrDefault(row =>
+            string.Equals(row.Commit.Hash, commitHash, StringComparison.Ordinal));
         var target = await _viewModel.History.NavigateToCommitAsync(commitHash);
         if (treeInteractionVersion is { } currentVersion
             && (currentVersion != _repositoryTreeInteractionVersion
@@ -366,6 +370,28 @@ public sealed partial class MainPage : Page
 
         HistoryList.SelectedItem = target;
         HistoryList.ScrollIntoView(target, ScrollIntoViewAlignment.Leading);
+
+        if (ReferenceEquals(previouslyMaterialized, target)) return;
+
+        // A Reset can invalidate the ListView's pending selection/scroll before
+        // virtualized containers are laid out. Retry once on the next layout pass.
+        var selectionIntentVersion = _viewModel.History.SelectionIntentVersion;
+        DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            if (IsShuttingDown
+                || !ReferenceEquals(_viewModel.Repository, repository)
+                || (treeInteractionVersion.HasValue
+                    && treeInteractionVersion.Value != _repositoryTreeInteractionVersion)
+                || HistoryPane.Visibility != Visibility.Visible
+                || _viewModel.History.SelectionIntentVersion != selectionIntentVersion
+                || !ReferenceEquals(_viewModel.History.SelectedRow, target)
+                || !_viewModel.History.Rows.Contains(target))
+                return;
+
+            HistoryList.UpdateLayout();
+            HistoryList.SelectedItem = target;
+            HistoryList.ScrollIntoView(target, ScrollIntoViewAlignment.Leading);
+        });
     }
 
     private Task ResumePendingRepositoryTreeNavigationAsync()
