@@ -376,7 +376,7 @@ public sealed partial class MainPage : Page
         // A Reset can invalidate the ListView's pending selection/scroll before
         // virtualized containers are laid out. Retry once on the next layout pass.
         var selectionIntentVersion = _viewModel.History.SelectionIntentVersion;
-        DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
             if (IsShuttingDown
                 || !ReferenceEquals(_viewModel.Repository, repository)
