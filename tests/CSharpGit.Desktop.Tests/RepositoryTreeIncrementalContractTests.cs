@@ -23,6 +23,26 @@ public sealed class RepositoryTreeIncrementalContractTests
     }
 
     [Fact]
+    public void RepositoryTreeNavigationRetainsLatestClickDuringBusyHistoryRead()
+    {
+        var root = FindRepositoryRoot();
+        var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+
+        var click = ExtractMethod(page, "private void RepositoryTree_ItemInvoked(");
+        var navigation = ExtractMethod(page, "private async Task NavigateToReferenceAsync(");
+        var resume = ExtractMethod(page, "private Task ResumePendingRepositoryTreeNavigationAsync()");
+        var checkout = ExtractMethod(page, "private void RepositoryTree_DoubleTapped(");
+
+        Assert.Contains("RepositoryTree.SelectedItem = node;", click, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.History.Invalidate();", click, StringComparison.Ordinal);
+        Assert.Contains("_pendingRepositoryTreeNavigation = new(", navigation, StringComparison.Ordinal);
+        Assert.Contains("treeInteractionVersion", navigation, StringComparison.Ordinal);
+        Assert.Contains("pending.Version != _repositoryTreeInteractionVersion", resume, StringComparison.Ordinal);
+        Assert.Contains("pending.SelectionIntentVersion != _viewModel.History.SelectionIntentVersion", resume, StringComparison.Ordinal);
+        Assert.Contains("SwitchRepositoryTreeBranchAsync", checkout, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void StableKeysAndSeparateWorktreeReconciliationAreExplicit()
     {
         var root = FindRepositoryRoot();

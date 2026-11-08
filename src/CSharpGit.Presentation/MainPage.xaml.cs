@@ -30,6 +30,22 @@ public sealed partial class MainPage : Page
     private readonly BulkObservableCollection<WorkingTreeChange> _stagedChanges = [];
     private readonly ObservableCollection<CommitFileRow> _commitFiles = [];
     private bool _wasBusy;
+    private long _repositoryTreeInteractionVersion;
+    private PendingRepositoryTreeNavigation? _pendingRepositoryTreeNavigation;
+    private PendingRepositoryTreeCheckout? _pendingRepositoryTreeCheckout;
+
+    private sealed record PendingRepositoryTreeNavigation(
+        Repository Repository,
+        long Version,
+        long SelectionIntentVersion,
+        string CommitHash,
+        bool PreserveSelectedStash);
+
+    private sealed record PendingRepositoryTreeCheckout(
+        Repository Repository,
+        long Version,
+        string BranchName);
+
     private readonly Storyboard _busyPulseStoryboard = new();
     private readonly SolidColorBrush _busyStatusBackgroundBrush = new(Windows.UI.Color.FromArgb(28, 34, 197, 94));
     private bool _busyPulseRunning;
@@ -118,6 +134,9 @@ public sealed partial class MainPage : Page
 
         if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.Repository))
         {
+            _repositoryTreeInteractionVersion++;
+            _pendingRepositoryTreeNavigation = null;
+            _pendingRepositoryTreeCheckout = null;
             UpdateStatusBar();
             UpdateRepositorySelectorPresentation();
             _settingsWindowController.RepositoryChanged();
@@ -140,6 +159,10 @@ public sealed partial class MainPage : Page
                 RunPageUiOperation(ResumeDeferredRepositoryPreviewAsync, "Resume repository file preview");
             if (becameIdle && _pendingCommitImageDiff)
                 RunPageUiOperation(ResumeDeferredCommitImageDiffAsync, "Resume commit image preview");
+            if (becameIdle && _pendingRepositoryTreeCheckout is not null)
+                RunPageUiOperation(ResumePendingRepositoryTreeCheckoutAsync, "Resume branch checkout");
+            else if (becameIdle && _pendingRepositoryTreeNavigation is not null)
+                RunPageUiOperation(ResumePendingRepositoryTreeNavigationAsync, "Resume branch navigation");
         }
     }
 
@@ -304,8 +327,14 @@ public sealed partial class MainPage : Page
 
     private async Task NavigateToReferenceAsync(
         string commitHash,
-        bool preserveSelectedStash = false)
+        bool preserveSelectedStash = false,
+        long? treeInteractionVersion = null)
     {
+        var repository = _viewModel.Repository;
+        if (treeInteractionVersion is { } version
+            && (version != _repositoryTreeInteractionVersion || repository is null))
+            return;
+
         if (!preserveSelectedStash)
             _viewModel.Stashes.ClearSelection();
 
@@ -313,11 +342,79 @@ public sealed partial class MainPage : Page
         WorkingTreePane.Visibility = Visibility.Collapsed;
 
         var target = await _viewModel.History.NavigateToCommitAsync(commitHash);
+        if (treeInteractionVersion is { } currentVersion
+            && (currentVersion != _repositoryTreeInteractionVersion
+                || !ReferenceEquals(repository, _viewModel.Repository)))
+            return;
+
         UpdateHistoryScopePresentation();
-        if (target is null) return;
+        if (target is null)
+        {
+            // An in-flight history read can temporarily hold the shared Git-operation gate.
+            // Keep only the latest explicit tree navigation and retry when the gate is free.
+            if (treeInteractionVersion is { } deferredVersion
+                && repository is not null
+                && !_viewModel.CanStartUserGitOperation)
+                _pendingRepositoryTreeNavigation = new(
+                    repository,
+                    deferredVersion,
+                    _viewModel.History.SelectionIntentVersion,
+                    commitHash,
+                    preserveSelectedStash);
+            return;
+        }
 
         HistoryList.SelectedItem = target;
         HistoryList.ScrollIntoView(target, ScrollIntoViewAlignment.Leading);
+    }
+
+    private Task ResumePendingRepositoryTreeNavigationAsync()
+    {
+        var pending = _pendingRepositoryTreeNavigation;
+        _pendingRepositoryTreeNavigation = null;
+        if (pending is null
+            || pending.Version != _repositoryTreeInteractionVersion
+            || !ReferenceEquals(pending.Repository, _viewModel.Repository)
+            || pending.SelectionIntentVersion != _viewModel.History.SelectionIntentVersion)
+            return Task.CompletedTask;
+
+        return NavigateToReferenceAsync(
+            pending.CommitHash,
+            pending.PreserveSelectedStash,
+            pending.Version);
+    }
+
+    private Task ResumePendingRepositoryTreeCheckoutAsync()
+    {
+        var pending = _pendingRepositoryTreeCheckout;
+        _pendingRepositoryTreeCheckout = null;
+        if (pending is null
+            || pending.Version != _repositoryTreeInteractionVersion
+            || !ReferenceEquals(pending.Repository, _viewModel.Repository))
+            return Task.CompletedTask;
+
+        return SwitchRepositoryTreeBranchAsync(pending.BranchName, pending.Version);
+    }
+
+    private async Task SwitchRepositoryTreeBranchAsync(string branchName, long interactionVersion)
+    {
+        if (_viewModel.Repository is not { } repository
+            || interactionVersion != _repositoryTreeInteractionVersion)
+            return;
+
+        if (!_viewModel.CanStartUserGitOperation)
+        {
+            _pendingRepositoryTreeCheckout = new(repository, interactionVersion, branchName);
+            return;
+        }
+
+        // Resolve the branch again: a repository refresh may have replaced GitBranch instances.
+        var branch = _viewModel.Branches.LocalBranches.FirstOrDefault(
+            candidate => string.Equals(candidate.Name, branchName, StringComparison.Ordinal));
+        if (branch is null || branch.IsCurrent) return;
+
+        _viewModel.Branches.SelectedLocalBranch = branch;
+        await ExecuteCommandAsync(_viewModel.Branches.SwitchBranchCommand);
     }
 
     private async Task ShowReferenceHistoryAsync(string reference, string label)
@@ -367,29 +464,46 @@ public sealed partial class MainPage : Page
 
     private void RepositoryTree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
     {
-        if (ResolveNode(args.InvokedItem) is { } node)
-            RunPageUiOperation(() => SelectRepositoryNodeAsync(node), "Repository tree navigation");
+        if (ResolveNode(args.InvokedItem) is not { } node) return;
+
+        RepositoryTree.SelectedItem = node;
+        var version = ++_repositoryTreeInteractionVersion;
+        _pendingRepositoryTreeNavigation = null;
+        _pendingRepositoryTreeCheckout = null;
+        if (node.Kind is RepositoryTreeNodeKind.LocalBranch
+            or RepositoryTreeNodeKind.RemoteBranch
+            or RepositoryTreeNodeKind.Tag
+            or RepositoryTreeNodeKind.Stash
+            or RepositoryTreeNodeKind.Group)
+            _viewModel.History.Invalidate();
+
+        RunPageUiOperation(
+            () => SelectRepositoryNodeAsync(node, version), "Repository tree navigation");
     }
 
-    private async Task SelectRepositoryNodeAsync(RepositoryTreeNode node)
+    private async Task SelectRepositoryNodeAsync(RepositoryTreeNode node, long interactionVersion)
     {
+        if (interactionVersion != _repositoryTreeInteractionVersion) return;
+
         switch (node.Kind)
         {
             case RepositoryTreeNodeKind.LocalBranch when node.Value is GitBranch local:
                 _viewModel.Branches.SelectedLocalBranch = local;
-                await NavigateToReferenceAsync(local.Commit);
+                await NavigateToReferenceAsync(local.Commit, treeInteractionVersion: interactionVersion);
                 break;
             case RepositoryTreeNodeKind.RemoteBranch when node.Value is GitBranch remoteBranch:
                 _viewModel.Branches.SelectedRemoteBranch = remoteBranch;
-                await NavigateToReferenceAsync(remoteBranch.Commit);
+                await NavigateToReferenceAsync(remoteBranch.Commit, treeInteractionVersion: interactionVersion);
                 break;
             case RepositoryTreeNodeKind.Tag when node.Value is GitTag tag:
                 _viewModel.Tags.SelectedTag = tag;
-                await NavigateToReferenceAsync(tag.TargetCommit);
+                await NavigateToReferenceAsync(tag.TargetCommit, treeInteractionVersion: interactionVersion);
                 break;
             case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:
                 await _viewModel.Stashes.SelectStashAsync(stash);
-                await NavigateToReferenceAsync(stash.Commit, preserveSelectedStash: true);
+                if (interactionVersion != _repositoryTreeInteractionVersion) return;
+                await NavigateToReferenceAsync(
+                    stash.Commit, preserveSelectedStash: true, treeInteractionVersion: interactionVersion);
                 UpdateStashPresentation();
                 break;
             case RepositoryTreeNodeKind.Group:
@@ -403,10 +517,13 @@ public sealed partial class MainPage : Page
         if (IsShuttingDown) return;
         var node = ResolveNode((args.OriginalSource as FrameworkElement)?.DataContext);
         if (node?.Kind != RepositoryTreeNodeKind.LocalBranch || node.Value is not GitBranch branch) return;
-        _viewModel.Branches.SelectedLocalBranch = branch;
+
+        var version = ++_repositoryTreeInteractionVersion;
+        _pendingRepositoryTreeNavigation = null;
+        _pendingRepositoryTreeCheckout = null;
+        _viewModel.History.Invalidate();
         args.Handled = true;
-        RunPageUiOperation(
-            () => ExecuteCommandAsync(_viewModel.Branches.SwitchBranchCommand), "Switch branch");
+        RunPageUiOperation(() => SwitchRepositoryTreeBranchAsync(branch.Name, version), "Switch branch");
     }
 
     private void RepositoryTree_RightTapped(object sender, RightTappedRoutedEventArgs args)
