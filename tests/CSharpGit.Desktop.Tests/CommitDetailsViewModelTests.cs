@@ -62,6 +62,49 @@ public sealed class CommitDetailsViewModelTests
         Assert.Null(viewModel.SelectedStashDetails);
     }
 
+    [Fact]
+    public async Task CommitAndStashDetailModesAreMutuallyExclusive()
+    {
+        var stashService = new ControlledStashService();
+        using var viewModel = new CommitDetailsViewModel(
+            new UnusedHistoryService(),
+            stashService,
+            NullLogger<CommitDetailsViewModel>.Instance);
+        viewModel.Attach(new FakeContext(Repository()));
+
+        var commit = Commit("shared-hash");
+        var row = new HistoryRow(commit, new CommitTopology(0, []));
+        var visibilityNotifications = 0;
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(CommitDetailsViewModel.HasSelectedCommit))
+                visibilityNotifications++;
+        };
+
+        viewModel.ShowCommit(row);
+        Assert.True(viewModel.HasSelectedCommit);
+        Assert.False(viewModel.HasSelectedStash);
+
+        var stash = Stash("stash@{0}", commit.Hash);
+        var stashLoad = viewModel.ShowStashAsync(stash);
+        await stashService.WaitUntilStartedAsync(stash.Commit);
+
+        Assert.False(viewModel.HasSelectedCommit);
+        Assert.True(viewModel.HasSelectedStash);
+
+        stashService.Complete(stash, Details(stash));
+        await stashLoad;
+
+        viewModel.ShowCommit(row);
+        Assert.True(viewModel.HasSelectedCommit);
+        Assert.False(viewModel.HasSelectedStash);
+
+        viewModel.ClearSelection();
+        Assert.False(viewModel.HasSelectedCommit);
+        Assert.False(viewModel.HasSelectedStash);
+        Assert.Equal(4, visibilityNotifications);
+    }
+
     private static Repository Repository() =>
         new("/repo", "/repo", "/repo/.git", false);
 

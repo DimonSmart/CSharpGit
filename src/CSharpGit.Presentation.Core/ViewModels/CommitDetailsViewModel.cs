@@ -77,6 +77,7 @@ public sealed class CommitDetailsViewModel :
     public IReadOnlyList<ChangedFile> ChangedFiles => _changedFiles;
     public StashDetails? SelectedStashDetails => _selectedStashDetails;
     public bool HasSelectedStash => _selectedStash is not null;
+    public bool HasSelectedCommit => _selectedHistoryRow is not null && _selectedStash is null;
     public bool HasSelectedDetailsObject => _selectedStash is not null || _selectedHistoryRow is not null;
     public string? SelectedObjectCommit => _selectedStash?.Commit ?? _selectedHistoryRow?.Commit.Hash;
     public string SelectedDetailsTitle => _selectedStash is null ? "Commit" : "Stash";
@@ -772,6 +773,7 @@ public sealed class CommitDetailsViewModel :
 
     private void NotifySelectionState()
     {
+        Notify(nameof(HasSelectedCommit));
         Notify(nameof(HasSelectedStash));
         Notify(nameof(HasSelectedDetailsObject));
         Notify(nameof(SelectedObjectCommit));

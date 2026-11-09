@@ -649,7 +649,7 @@
               <PivotItem x:Name="SummaryTab" Header="{Binding CommitDetails.SelectedDetailsTitle}">
                 <Grid>
                   <ScrollViewer x:Name="DetailsScroller"
-                                Visibility="{Binding HasSelectedCommit, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                Visibility="{Binding CommitDetails.HasSelectedCommit, Converter={StaticResource BooleanToVisibilityConverter}}"
                                 HorizontalAlignment="Left"
                                 HorizontalScrollMode="Disabled"
                                 HorizontalScrollBarVisibility="Disabled"
@@ -659,7 +659,7 @@
                     <controls:CommitDetailsView x:Name="CommitDetailsContent" />
                   </ScrollViewer>
 
-                  <ScrollViewer Visibility="{Binding Stashes.HasSelectedStash, Converter={StaticResource BooleanToVisibilityConverter}}"
+                  <ScrollViewer Visibility="{Binding CommitDetails.HasSelectedStash, Converter={StaticResource BooleanToVisibilityConverter}}"
                                 HorizontalScrollMode="Disabled"
                                 HorizontalScrollBarVisibility="Disabled"
                                 VerticalScrollMode="Auto"
