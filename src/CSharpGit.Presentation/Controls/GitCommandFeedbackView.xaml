@@ -33,23 +33,7 @@
                ScrollViewer.HorizontalScrollBarVisibility="Auto"
                ScrollViewer.VerticalScrollBarVisibility="Auto"
                AutomationProperties.Name="Git output preview" />
-      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
-        <TextBlock x:Name="ResultDetails" Style="{StaticResource SecondaryTextStyle}" VerticalAlignment="Center" />
-        <StackPanel x:Name="AutoCloseIndicator" Grid.Column="1" Orientation="Horizontal"
-                    HorizontalAlignment="Right" VerticalAlignment="Center"
-                    Spacing="{StaticResource Spacing.L}" Visibility="Collapsed"
-                    ToolTipService.ToolTip="Closes automatically. Countdown pauses during interaction.">
-          <ProgressBar x:Name="AutoCloseProgress" Width="136" Height="6"
-                       Minimum="0" Maximum="100" Value="100"
-                       Foreground="{ThemeResource SystemFillColorSuccessBrush}"
-                       AutomationProperties.Name="Auto-close countdown" />
-          <Border Padding="7,2" CornerRadius="5" BorderThickness="1"
-                  BorderBrush="{ThemeResource SystemFillColorSuccessBrush}">
-            <TextBlock x:Name="AutoCloseTimeText" Text="5s"
-                       Style="{StaticResource SecondaryTextStyle}" />
-          </Border>
-        </StackPanel>
-      </Grid>
+      <TextBlock x:Name="ResultDetails" Style="{StaticResource SecondaryTextStyle}" />
       <TextBlock x:Name="HintText" TextWrapping="Wrap"
                  Style="{StaticResource SecondaryTextStyle}" Visibility="Collapsed" />
       <StackPanel Style="{StaticResource FormActionRowStyle}">
@@ -57,8 +41,23 @@
                 Style="{StaticResource SecondaryActionButtonStyle}" Click="Copy_Click" />
         <Button Content="Open Git Console" AutomationProperties.Name="Open Git Console"
                 Style="{StaticResource SecondaryActionButtonStyle}" Click="OpenConsole_Click" />
-        <Button x:Name="DismissButton" Content="Hide" AutomationProperties.Name="Hide"
-                Style="{StaticResource SecondaryActionButtonStyle}" Click="Dismiss_Click" />
+        <Button x:Name="DismissButton" AutomationProperties.Name="Hide"
+                Style="{StaticResource SecondaryActionButtonStyle}" Click="Dismiss_Click">
+          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.L}">
+            <TextBlock x:Name="DismissButtonLabel" Text="Hide" VerticalAlignment="Center" />
+            <Grid x:Name="AutoCloseIndicator" Width="28" Height="28" Visibility="Collapsed"
+                  ToolTipService.ToolTip="Closes automatically. Countdown pauses during interaction.">
+              <Ellipse Width="22" Height="22" StrokeThickness="3"
+                       Stroke="{ThemeResource SystemFillColorSuccessBrush}" Opacity="0.25" />
+              <Path x:Name="AutoCloseCountdownArc" StrokeThickness="3"
+                    StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                    Stroke="{ThemeResource SystemFillColorSuccessBrush}" />
+              <TextBlock x:Name="AutoCloseTimeText" Text="5s" Style="{StaticResource BodyTextStyle}"
+                         FontSize="{StaticResource Font.Caption}"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" />
+            </Grid>
+          </StackPanel>
+        </Button>
       </StackPanel>
     </StackPanel>
   </Border>

@@ -1,6 +1,7 @@
 using CSharpGit.Application.Abstractions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Windows.ApplicationModel.DataTransfer;
 
 namespace CSharpGit.Presentation.Controls;
@@ -11,10 +12,28 @@ public sealed partial class GitCommandFeedbackView : UserControl
     private GitCommandFeedbackSnapshot? _current;
     private bool _hovered;
     private bool _focused;
+    private readonly PathFigure _countdownFigure = new()
+    {
+        StartPoint = new Windows.Foundation.Point(14, 3)
+    };
+    private readonly ArcSegment _countdownFirstArc = new()
+    {
+        Size = new Windows.Foundation.Size(11, 11),
+        SweepDirection = SweepDirection.Clockwise
+    };
+    private readonly ArcSegment _countdownSecondArc = new()
+    {
+        Size = new Windows.Foundation.Size(11, 11),
+        SweepDirection = SweepDirection.Clockwise
+    };
 
     public GitCommandFeedbackView()
     {
         InitializeComponent();
+        _countdownFigure.Segments.Add(_countdownFirstArc);
+        var geometry = new PathGeometry();
+        geometry.Figures.Add(_countdownFigure);
+        AutoCloseCountdownArc.Data = geometry;
     }
 
     internal event Action<Guid>? DismissRequested;
@@ -55,7 +74,7 @@ public sealed partial class GitCommandFeedbackView : UserControl
         if (state is { AutoCloseRemaining: { } remaining, AutoCloseTotal: { } total } && total > TimeSpan.Zero)
         {
             AutoCloseIndicator.Visibility = Visibility.Visible;
-            AutoCloseProgress.Value = 100 * Math.Clamp(remaining.TotalSeconds / total.TotalSeconds, 0, 1);
+            UpdateCountdownArc(remaining.TotalSeconds / total.TotalSeconds);
             var seconds = Math.Max(1, (int)Math.Ceiling(remaining.TotalSeconds));
             AutoCloseTimeText.Text = $"{seconds}s";
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
@@ -63,9 +82,33 @@ public sealed partial class GitCommandFeedbackView : UserControl
         }
         else
             AutoCloseIndicator.Visibility = Visibility.Collapsed;
-        DismissButton.Content = state.Status == GitCommandStatus.Running ? "Hide" : "Close";
+        DismissButtonLabel.Text = state.Status == GitCommandStatus.Running ? "Hide" : "Close";
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
             DismissButton, state.Status == GitCommandStatus.Running ? "Hide" : "Close");
+    }
+
+    private void UpdateCountdownArc(double remainingFraction)
+    {
+        var fraction = Math.Clamp(remainingFraction, 0, 1);
+        AutoCloseCountdownArc.Visibility = fraction > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (fraction <= 0)
+            return;
+
+        _countdownFirstArc.Point = GetCountdownPoint(Math.Min(fraction, 0.5));
+        if (fraction > 0.5)
+        {
+            _countdownSecondArc.Point = GetCountdownPoint(fraction);
+            if (_countdownFigure.Segments.Count == 1)
+                _countdownFigure.Segments.Add(_countdownSecondArc);
+        }
+        else if (_countdownFigure.Segments.Count > 1)
+            _countdownFigure.Segments.RemoveAt(1);
+    }
+
+    private static Windows.Foundation.Point GetCountdownPoint(double progress)
+    {
+        var angle = progress * 2 * Math.PI - Math.PI / 2;
+        return new Windows.Foundation.Point(14 + 11 * Math.Cos(angle), 14 + 11 * Math.Sin(angle));
     }
 
     internal void ShowUnavailableMessage()

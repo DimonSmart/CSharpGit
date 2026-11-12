@@ -27,21 +27,42 @@ public sealed class GitCommandFeedbackModalUiContractTests
     }
 
     [Fact]
-    public void CountdownIsRightAlignedAndHasCompactSecondsBadge()
+    public void CountdownIsInsideCloseButtonAndUsesCircularArc()
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var xaml = File.ReadAllText(Path.Combine(presentation, "Controls", "GitCommandFeedbackView.xaml"));
         var codeBehind = File.ReadAllText(Path.Combine(presentation, "Controls", "GitCommandFeedbackView.xaml.cs"));
 
-        Assert.Contains("x:Name=\"AutoCloseIndicator\" Grid.Column=\"1\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("HorizontalAlignment=\"Right\" VerticalAlignment=\"Center\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("x:Name=\"AutoCloseProgress\"", xaml, StringComparison.Ordinal);
+        var closeButton = xaml.IndexOf("x:Name=\"DismissButton\"", StringComparison.Ordinal);
+        var countdown = xaml.IndexOf("x:Name=\"AutoCloseIndicator\"", StringComparison.Ordinal);
+        var buttonEnd = xaml.IndexOf("</Button>", closeButton, StringComparison.Ordinal);
+        Assert.True(closeButton >= 0 && countdown > closeButton && countdown < buttonEnd,
+            "The countdown must be inside the existing Close button.");
+        Assert.Contains("x:Name=\"DismissButtonLabel\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"AutoCloseCountdownArc\"", xaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"AutoCloseTimeText\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Visibility=\"Collapsed\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("AutoCloseProgress.Value = 100 * Math.Clamp", codeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("x:Name=\"AutoCloseProgress\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("UpdateCountdownArc(remaining.TotalSeconds / total.TotalSeconds)", codeBehind, StringComparison.Ordinal);
         Assert.Contains("AutoCloseTimeText.Text = $\"{seconds}s\";", codeBehind, StringComparison.Ordinal);
         Assert.Contains("AutoCloseIndicator.Visibility = Visibility.Collapsed", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("DismissButtonLabel.Text = state.Status == GitCommandStatus.Running", codeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("DismissButton.Content =", codeBehind, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CircularCountdownCoversBothHalfArcs()
+    {
+        var root = FindRepositoryRoot();
+        var code = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation",
+            "Controls", "GitCommandFeedbackView.xaml.cs"));
+
+        Assert.Contains("Math.Clamp(remainingFraction, 0, 1)", code, StringComparison.Ordinal);
+        Assert.Contains("GetCountdownPoint(Math.Min(fraction, 0.5))", code, StringComparison.Ordinal);
+        Assert.Contains("if (fraction > 0.5)", code, StringComparison.Ordinal);
+        Assert.Contains("_countdownFigure.Segments.Add(_countdownSecondArc)", code, StringComparison.Ordinal);
+        Assert.Contains("_countdownFigure.Segments.RemoveAt(1)", code, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()
