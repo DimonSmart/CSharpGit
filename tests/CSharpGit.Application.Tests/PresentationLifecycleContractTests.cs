@@ -9,9 +9,9 @@ public sealed class PresentationLifecycleContractTests
     {
         var xaml = XDocument.Load(Path.Combine(FindRepositoryRoot(),
             "src", "CSharpGit.Presentation", "MainPage.xaml"));
-        var fetchButton = Assert.Single(xaml.Descendants().Where(element =>
+        var fetchButton = Assert.Single(xaml.Descendants(), element =>
             element.Name.LocalName == "Button"
-            && (string?)element.Attribute("Click") == "Fetch_Click"));
+            && (string?)element.Attribute("Click") == "Fetch_Click");
 
         Assert.Equal("{Binding RepositorySync.CanFetch}",
             (string?)fetchButton.Attribute("IsEnabled"));
