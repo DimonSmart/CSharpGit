@@ -1,7 +1,22 @@
+using System.Xml.Linq;
+
 namespace CSharpGit.Application.Tests;
 
 public sealed class PresentationLifecycleContractTests
 {
+    [Fact]
+    public void FetchToolbarAvailabilityIsBoundToRepositorySync()
+    {
+        var xaml = XDocument.Load(Path.Combine(FindRepositoryRoot(),
+            "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var fetchButton = Assert.Single(xaml.Descendants().Where(element =>
+            element.Name.LocalName == "Button"
+            && (string?)element.Attribute("Click") == "Fetch_Click"));
+
+        Assert.Equal("{Binding RepositorySync.CanFetch}",
+            (string?)fetchButton.Attribute("IsEnabled"));
+    }
+
     [Fact]
     public void DesktopCloseCheckWaitsForReadinessAndAnExplicitCloseCommand()
     {

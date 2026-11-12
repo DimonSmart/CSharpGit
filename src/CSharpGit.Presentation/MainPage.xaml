@@ -305,7 +305,9 @@
                 <TextBlock x:Name="CommitNavigationText" Text="Commit (0)" Style="{StaticResource BodyTextStyle}" />
               </StackPanel>
             </Button>
-            <Button Click="Fetch_Click" Style="{StaticResource SecondaryActionButtonStyle}">
+            <Button Click="Fetch_Click"
+                    IsEnabled="{Binding RepositorySync.CanFetch}"
+                    Style="{StaticResource SecondaryActionButtonStyle}">
               <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
                 <FontIcon Glyph="{StaticResource Icon.Glyph.Fetch}" FontSize="{StaticResource Icon.Small}" />
                 <TextBlock Text="Fetch" Style="{StaticResource BodyTextStyle}" />
