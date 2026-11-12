@@ -33,7 +33,23 @@
                ScrollViewer.HorizontalScrollBarVisibility="Auto"
                ScrollViewer.VerticalScrollBarVisibility="Auto"
                AutomationProperties.Name="Git output preview" />
-      <TextBlock x:Name="ResultDetails" Style="{StaticResource SecondaryTextStyle}" />
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.L}">
+        <TextBlock x:Name="ResultDetails" Style="{StaticResource SecondaryTextStyle}" VerticalAlignment="Center" />
+        <StackPanel x:Name="AutoCloseIndicator" Grid.Column="1" Orientation="Horizontal"
+                    HorizontalAlignment="Right" VerticalAlignment="Center"
+                    Spacing="{StaticResource Spacing.L}" Visibility="Collapsed"
+                    ToolTipService.ToolTip="Closes automatically. Countdown pauses during interaction.">
+          <ProgressBar x:Name="AutoCloseProgress" Width="136" Height="6"
+                       Minimum="0" Maximum="100" Value="100"
+                       Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                       AutomationProperties.Name="Auto-close countdown" />
+          <Border Padding="7,2" CornerRadius="5" BorderThickness="1"
+                  BorderBrush="{ThemeResource SystemFillColorSuccessBrush}">
+            <TextBlock x:Name="AutoCloseTimeText" Text="5s"
+                       Style="{StaticResource SecondaryTextStyle}" />
+          </Border>
+        </StackPanel>
+      </Grid>
       <TextBlock x:Name="HintText" TextWrapping="Wrap"
                  Style="{StaticResource SecondaryTextStyle}" Visibility="Collapsed" />
       <StackPanel Style="{StaticResource FormActionRowStyle}">

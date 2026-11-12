@@ -269,6 +269,72 @@ public sealed class GitCommandFeedbackCoordinatorTests
         Assert.False(coordinator.Capture()!.IsVisible);
     }
 
+    [Fact]
+    public void AutoCloseSnapshotShowsAccurateRemainingTimeAndProgress()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = Create(history, () => now, autoClose: true, durationSeconds: 10);
+        var id = history.Started("git", "/repo", ["pull"], GitCommandKind.User);
+        history.Completed(id, 0);
+
+        now += TimeSpan.FromMilliseconds(149);
+        Assert.Null(coordinator.Capture()!.AutoCloseRemaining);
+        now += TimeSpan.FromMilliseconds(1);
+        var initial = coordinator.Capture()!;
+        Assert.Equal(TimeSpan.FromSeconds(10), initial.AutoCloseRemaining);
+        Assert.Equal(TimeSpan.FromSeconds(10), initial.AutoCloseTotal);
+
+        now += TimeSpan.FromMilliseconds(2250);
+        var halfway = coordinator.Capture()!;
+        Assert.Equal(TimeSpan.FromMilliseconds(7750), halfway.AutoCloseRemaining);
+        Assert.Equal(TimeSpan.FromSeconds(10), halfway.AutoCloseTotal);
+    }
+
+    [Fact]
+    public void AutoCloseSnapshotIsFrozenWhileInteractingAndResumesAfterward()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = Create(history, () => now, autoClose: true);
+        var id = history.Started("git", "/repo", ["fetch"], GitCommandKind.User);
+        history.Completed(id, 0);
+        now += TimeSpan.FromMilliseconds(150);
+        coordinator.Capture();
+        now += TimeSpan.FromSeconds(1);
+        var beforePause = coordinator.Capture()!.AutoCloseRemaining;
+        coordinator.Interacting(hovered: true, focused: false);
+        now += TimeSpan.FromSeconds(3);
+        Assert.Equal(beforePause, coordinator.Capture()!.AutoCloseRemaining);
+        coordinator.Interacting(hovered: false, focused: false);
+        now += TimeSpan.FromMilliseconds(500);
+        Assert.Equal(beforePause - TimeSpan.FromMilliseconds(500), coordinator.Capture()!.AutoCloseRemaining);
+    }
+
+    [Fact]
+    public void CountdownIsAbsentForRunningFailureAndDisabledAutoClose()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = Create(history, () => now, autoClose: true);
+        var id = history.Started("git", "/repo", ["push"], GitCommandKind.User);
+        now += TimeSpan.FromMilliseconds(150);
+        Assert.Null(coordinator.Capture()!.AutoCloseRemaining);
+        history.Completed(id, 1);
+        Assert.Null(coordinator.Capture()!.AutoCloseRemaining);
+
+        coordinator.Dismiss(id);
+        var next = history.Started("git", "/repo", ["pull"], GitCommandKind.User);
+        history.Completed(next, 0);
+        now += TimeSpan.FromMilliseconds(150);
+        Assert.NotNull(coordinator.Capture()!.AutoCloseRemaining);
+        coordinator.Configure(true, false);
+        var manual = coordinator.Capture()!;
+        Assert.True(manual.IsVisible);
+        Assert.Null(manual.AutoCloseRemaining);
+        Assert.Null(manual.AutoCloseTotal);
+    }
+
     private static GitCommandFeedbackCoordinator Create(
         GitCommandActivityHistory history,
         Func<DateTimeOffset> clock,

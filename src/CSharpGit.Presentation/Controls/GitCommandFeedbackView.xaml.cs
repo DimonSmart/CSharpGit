@@ -52,6 +52,17 @@ public sealed partial class GitCommandFeedbackView : UserControl
         ResultDetails.Text = GitCommandConsoleItem.FormatDuration(state.Duration);
         if (state.Status == GitCommandStatus.Failed && state.ExitCode is { } exitCode)
             ResultDetails.Text += " · exit " + exitCode;
+        if (state is { AutoCloseRemaining: { } remaining, AutoCloseTotal: { } total } && total > TimeSpan.Zero)
+        {
+            AutoCloseIndicator.Visibility = Visibility.Visible;
+            AutoCloseProgress.Value = 100 * Math.Clamp(remaining.TotalSeconds / total.TotalSeconds, 0, 1);
+            var seconds = Math.Max(1, (int)Math.Ceiling(remaining.TotalSeconds));
+            AutoCloseTimeText.Text = $"{seconds}s";
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+                AutoCloseTimeText, $"Closes automatically in {seconds} seconds");
+        }
+        else
+            AutoCloseIndicator.Visibility = Visibility.Collapsed;
         DismissButton.Content = state.Status == GitCommandStatus.Running ? "Hide" : "Close";
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
             DismissButton, state.Status == GitCommandStatus.Running ? "Hide" : "Close");

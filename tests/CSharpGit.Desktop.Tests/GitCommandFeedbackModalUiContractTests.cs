@@ -26,6 +26,24 @@ public sealed class GitCommandFeedbackModalUiContractTests
         Assert.Contains("if (GitCommandFeedbackModalHost.Visibility == Visibility.Visible) return;", console, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void CountdownIsRightAlignedAndHasCompactSecondsBadge()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var xaml = File.ReadAllText(Path.Combine(presentation, "Controls", "GitCommandFeedbackView.xaml"));
+        var codeBehind = File.ReadAllText(Path.Combine(presentation, "Controls", "GitCommandFeedbackView.xaml.cs"));
+
+        Assert.Contains("x:Name=\"AutoCloseIndicator\" Grid.Column=\"1\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("HorizontalAlignment=\"Right\" VerticalAlignment=\"Center\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"AutoCloseProgress\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"AutoCloseTimeText\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Visibility=\"Collapsed\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("AutoCloseProgress.Value = 100 * Math.Clamp", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("AutoCloseTimeText.Text = $\"{seconds}s\";", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("AutoCloseIndicator.Visibility = Visibility.Collapsed", codeBehind, StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

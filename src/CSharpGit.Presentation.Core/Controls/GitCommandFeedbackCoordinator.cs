@@ -19,7 +19,9 @@ internal sealed record GitCommandFeedbackSnapshot(
     string PreviewText,
     bool PreviewTruncated,
     bool IsVisible,
-    bool CanOpenExactConsoleActivity)
+    bool CanOpenExactConsoleActivity,
+    TimeSpan? AutoCloseRemaining = null,
+    TimeSpan? AutoCloseTotal = null)
 {
     public string StatusText => Status switch
     {
@@ -217,11 +219,15 @@ internal sealed class GitCommandFeedbackCoordinator
             if (_truncated)
                 text = "Showing recent output. Open Git Console for details.\n" + text;
 
+            var showCountdown = _visible && !_dismissed && _autoClose &&
+                _current.Status == GitCommandStatus.Succeeded && _successDurationSeconds > 0;
             return new GitCommandFeedbackSnapshot(
                 _current.Id, _owner, _current.DisplayCommand,
                 _current.Status, _current.ExitCode, duration,
                 text, _truncated, _visible && !_dismissed,
-                _listedInConsole);
+                _listedInConsole,
+                showCountdown ? _closeRemaining : null,
+                showCountdown ? TimeSpan.FromSeconds(_successDurationSeconds) : null);
         }
     }
 
