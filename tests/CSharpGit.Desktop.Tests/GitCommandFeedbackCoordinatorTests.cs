@@ -335,6 +335,105 @@ public sealed class GitCommandFeedbackCoordinatorTests
         Assert.Null(manual.AutoCloseTotal);
     }
 
+    [Fact]
+    public void EscapeCancellationRemovesCountdownAndKeepsSuccessVisible()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = Create(history, () => now, autoClose: true, durationSeconds: 5);
+        var id = history.Started("git", "/repo", ["pull"], GitCommandKind.User);
+        history.Completed(id, 0);
+
+        now += TimeSpan.FromMilliseconds(150);
+        Assert.NotNull(coordinator.Capture()!.AutoCloseRemaining);
+        now += TimeSpan.FromSeconds(2);
+        Assert.True(coordinator.Capture()!.IsVisible);
+
+        Assert.True(coordinator.CancelAutoClose(id));
+        var cancelled = coordinator.Capture()!;
+        Assert.True(cancelled.IsVisible);
+        Assert.Equal(GitCommandStatus.Succeeded, cancelled.Status);
+        Assert.Null(cancelled.AutoCloseRemaining);
+        Assert.Null(cancelled.AutoCloseTotal);
+        Assert.False(coordinator.CancelAutoClose(id));
+
+        now += TimeSpan.FromMinutes(1);
+        Assert.True(coordinator.Capture()!.IsVisible);
+        coordinator.Dismiss(id);
+        Assert.Null(coordinator.Capture());
+    }
+
+    [Fact]
+    public void EscapeCancelsCountdownEvenWhenPausedAndDoesNotResumeOnPointerExit()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = Create(history, () => now, autoClose: true);
+        var id = history.Started("git", "/repo", ["fetch"], GitCommandKind.User);
+        history.Completed(id, 0);
+        now += TimeSpan.FromMilliseconds(150);
+        coordinator.Capture();
+
+        coordinator.Interacting(hovered: true, focused: false);
+        Assert.True(coordinator.CancelAutoClose(id));
+        coordinator.Interacting(hovered: false, focused: false);
+        now += TimeSpan.FromSeconds(30);
+        Assert.True(coordinator.Capture()!.IsVisible);
+        Assert.Null(coordinator.Capture()!.AutoCloseRemaining);
+
+        coordinator.Configure(true, true, 10);
+        now += TimeSpan.FromSeconds(30);
+        Assert.True(coordinator.Capture()!.IsVisible);
+        Assert.Null(coordinator.Capture()!.AutoCloseRemaining);
+    }
+
+    [Fact]
+    public void EscapeCancellationAppliesOnlyToVisibleSuccessfulFloatingFeedback()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = Create(history, () => now, autoClose: true);
+        var id = history.Started("git", "/repo", ["push"], GitCommandKind.User);
+        Assert.False(coordinator.CancelAutoClose(id));
+        now += TimeSpan.FromMilliseconds(150);
+        Assert.False(coordinator.CancelAutoClose(id));
+
+        history.Completed(id, 1);
+        Assert.False(coordinator.CancelAutoClose(id));
+        coordinator.Dismiss(id);
+
+        var success = history.Started("git", "/repo", ["pull"], GitCommandKind.User);
+        history.Completed(success, 0);
+        Assert.False(coordinator.CancelAutoClose(success));
+        now += TimeSpan.FromMilliseconds(150);
+        Assert.NotNull(coordinator.Capture()!.AutoCloseRemaining);
+        Assert.False(coordinator.CancelAutoClose(id));
+        Assert.True(coordinator.CancelAutoClose(success));
+        Assert.Null(coordinator.Capture()!.AutoCloseRemaining);
+    }
+
+    [Fact]
+    public void NextCommandStillUsesConfiguredAutoCloseAfterEscape()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var history = new GitCommandActivityHistory();
+        var coordinator = Create(history, () => now, autoClose: true);
+        var first = history.Started("git", "/repo", ["fetch"], GitCommandKind.User);
+        history.Completed(first, 0);
+        now += TimeSpan.FromMilliseconds(150);
+        coordinator.Capture();
+        Assert.True(coordinator.CancelAutoClose(first));
+
+        var next = history.Started("git", "/repo", ["pull"], GitCommandKind.User);
+        history.Completed(next, 0);
+        now += TimeSpan.FromMilliseconds(150);
+        var nextState = coordinator.Capture()!;
+        Assert.Equal(next, nextState.ActivityId);
+        Assert.Equal(TimeSpan.FromSeconds(5), nextState.AutoCloseRemaining);
+        now += TimeSpan.FromSeconds(5);
+        Assert.False(coordinator.Capture()!.IsVisible);
+    }
+
     private static GitCommandFeedbackCoordinator Create(
         GitCommandActivityHistory history,
         Func<DateTimeOffset> clock,

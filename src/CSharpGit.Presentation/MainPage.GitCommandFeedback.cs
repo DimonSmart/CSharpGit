@@ -107,6 +107,14 @@ public sealed partial class MainPage
 
     private void WireGitCommandFeedback(GitCommandFeedbackView view)
     {
+        view.AutoCloseCancellationRequested += id =>
+        {
+            if (_commandFeedback?.CancelAutoClose(id) != true)
+                return false;
+
+            RenderGitCommandFeedback();
+            return true;
+        };
         view.DismissRequested += id =>
         {
             _commandFeedback?.Dismiss(id);

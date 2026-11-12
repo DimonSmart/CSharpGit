@@ -66,6 +66,7 @@ internal sealed class GitCommandFeedbackCoordinator
     private DateTimeOffset _lastCloseTick;
     private TimeSpan _closeRemaining = TimeSpan.FromSeconds(DefaultSuccessDurationSeconds);
     private bool _successPresented;
+    private bool _autoCloseCancelled;
 
     public GitCommandFeedbackCoordinator(IGitCommandActivitySource source, Func<DateTimeOffset>? clock = null)
     {
@@ -85,6 +86,7 @@ internal sealed class GitCommandFeedbackCoordinator
                 _current = null;
                 _dismissed = true;
                 _visible = false;
+                _autoCloseCancelled = false;
                 _preview.Reset(string.Empty);
                 return;
             }
@@ -190,7 +192,8 @@ internal sealed class GitCommandFeedbackCoordinator
                 _closeRemaining = TimeSpan.FromSeconds(_successDurationSeconds);
             }
 
-            if (_visible && presentationAvailable && _autoClose && _current.Status == GitCommandStatus.Succeeded)
+            if (_visible && presentationAvailable && _autoClose && !_autoCloseCancelled &&
+                _current.Status == GitCommandStatus.Succeeded)
             {
                 if (!_successPresented)
                 {
@@ -219,7 +222,7 @@ internal sealed class GitCommandFeedbackCoordinator
             if (_truncated)
                 text = "Showing recent output. Open Git Console for details.\n" + text;
 
-            var showCountdown = _visible && !_dismissed && _autoClose &&
+            var showCountdown = _visible && !_dismissed && _autoClose && !_autoCloseCancelled &&
                 _current.Status == GitCommandStatus.Succeeded && _successDurationSeconds > 0;
             return new GitCommandFeedbackSnapshot(
                 _current.Id, _owner, _current.DisplayCommand,
@@ -228,6 +231,23 @@ internal sealed class GitCommandFeedbackCoordinator
                 _listedInConsole,
                 showCountdown ? _closeRemaining : null,
                 showCountdown ? TimeSpan.FromSeconds(_successDurationSeconds) : null);
+        }
+    }
+
+    /// <summary>Keep this successful feedback open without changing the saved auto-close setting.</summary>
+    public bool CancelAutoClose(Guid activityId)
+    {
+        lock (_gate)
+        {
+            if (!_enabled || !_autoClose || _autoCloseCancelled || !_visible || _dismissed ||
+                _successDurationSeconds == 0 || _owner != GitCommandFeedbackOwner.Floating ||
+                _current is not { Status: GitCommandStatus.Succeeded } activity ||
+                activity.Id != activityId)
+                return false;
+
+            _autoCloseCancelled = true;
+            _lastCloseTick = _clock();
+            return true;
         }
     }
 
@@ -307,6 +327,7 @@ internal sealed class GitCommandFeedbackCoordinator
         _hovered = false;
         _focused = false;
         _successPresented = false;
+        _autoCloseCancelled = false;
         _truncated = false;
         _showAt = _clock().AddMilliseconds(ShowDelayMilliseconds);
         _nextReconciliationAt = _clock();

@@ -65,6 +65,26 @@ public sealed class GitCommandFeedbackModalUiContractTests
         Assert.Contains("_countdownFigure.Segments.RemoveAt(1)", code, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void EscapeCancelsAutoCloseWithoutClosingFeedbackDialog()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var xaml = File.ReadAllText(Path.Combine(presentation, "Controls", "GitCommandFeedbackView.xaml"));
+        var view = File.ReadAllText(Path.Combine(presentation, "Controls", "GitCommandFeedbackView.xaml.cs"));
+        var page = File.ReadAllText(Path.Combine(presentation, "MainPage.GitCommandFeedback.cs"));
+
+        Assert.Contains("Press Esc to cancel auto-close", xaml, StringComparison.Ordinal);
+        Assert.Contains("AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(Feedback_KeyDown), handledEventsToo: true)", view, StringComparison.Ordinal);
+        Assert.Contains("e.Key != VirtualKey.Escape", view, StringComparison.Ordinal);
+        Assert.Contains("AutoCloseRemaining: not null", view, StringComparison.Ordinal);
+        Assert.Contains("AutoCloseCancellationRequested?.Invoke(state.ActivityId)", view, StringComparison.Ordinal);
+        Assert.Contains("_commandFeedback?.CancelAutoClose(id)", page, StringComparison.Ordinal);
+        Assert.Contains("RenderGitCommandFeedback();", page, StringComparison.Ordinal);
+        Assert.Contains("AutoCloseIndicator.Visibility = Visibility.Collapsed", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("DismissRequested?.Invoke(state.ActivityId)", view, StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

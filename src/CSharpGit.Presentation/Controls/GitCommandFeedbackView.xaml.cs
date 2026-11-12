@@ -1,8 +1,10 @@
 using CSharpGit.Application.Abstractions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.System;
 
 namespace CSharpGit.Presentation.Controls;
 
@@ -34,9 +36,11 @@ public sealed partial class GitCommandFeedbackView : UserControl
         var geometry = new PathGeometry();
         geometry.Figures.Add(_countdownFigure);
         AutoCloseCountdownArc.Data = geometry;
+        AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(Feedback_KeyDown), handledEventsToo: true);
     }
 
     internal event Action<Guid>? DismissRequested;
+    internal event Func<Guid, bool>? AutoCloseCancellationRequested;
     internal event Action<Guid>? OpenConsoleRequested;
     internal event Action<bool, bool>? InteractionChanged;
 
@@ -129,6 +133,16 @@ public sealed partial class GitCommandFeedbackView : UserControl
     {
         if (_current is { } state)
             OpenConsoleRequested?.Invoke(state.ActivityId);
+    }
+
+    private void Feedback_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key != VirtualKey.Escape ||
+            _current is not { IsVisible: true, AutoCloseRemaining: not null } state)
+            return;
+
+        if (AutoCloseCancellationRequested?.Invoke(state.ActivityId) == true)
+            e.Handled = true;
     }
 
     private void Dismiss_Click(object sender, RoutedEventArgs e)
