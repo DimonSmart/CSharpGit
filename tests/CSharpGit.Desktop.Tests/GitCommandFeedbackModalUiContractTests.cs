@@ -82,7 +82,9 @@ public sealed class GitCommandFeedbackModalUiContractTests
         Assert.Contains("_commandFeedback?.CancelAutoClose(id)", page, StringComparison.Ordinal);
         Assert.Contains("RenderGitCommandFeedback();", page, StringComparison.Ordinal);
         Assert.Contains("AutoCloseIndicator.Visibility = Visibility.Collapsed", view, StringComparison.Ordinal);
-        Assert.DoesNotContain("DismissRequested?.Invoke(state.ActivityId)", view, StringComparison.Ordinal);
+        var escapeHandler = view[view.IndexOf("private void Feedback_KeyDown", StringComparison.Ordinal)
+            ..view.IndexOf("private void Dismiss_Click", StringComparison.Ordinal)];
+        Assert.DoesNotContain("DismissRequested?.Invoke", escapeHandler, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()
