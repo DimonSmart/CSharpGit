@@ -52,19 +52,19 @@
         <StackPanel Orientation="Horizontal"
                     HorizontalAlignment="Center"
                     Spacing="{StaticResource Spacing.M}">
-          <Button Click="OpenRepository_Click" Style="{StaticResource PrimaryActionButtonStyle}" AutomationProperties.Name="Select folder…">
+          <Button Click="OpenRepository_Click" IsEnabled="{Binding CanChangeRepository}" Style="{StaticResource PrimaryActionButtonStyle}" AutomationProperties.Name="Select folder…">
             <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
               <FontIcon Glyph="{StaticResource Icon.Glyph.Open}" FontSize="{StaticResource Icon.Small}" />
               <TextBlock Text="Select folder…" Style="{StaticResource BodyTextStyle}" />
             </StackPanel>
           </Button>
-          <Button Click="CloneRepository_Click" Style="{StaticResource SecondaryActionButtonStyle}" AutomationProperties.Name="Clone repository…">
+          <Button Click="CloneRepository_Click" IsEnabled="{Binding CanChangeRepository}" Style="{StaticResource SecondaryActionButtonStyle}" AutomationProperties.Name="Clone repository…">
             <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
               <FontIcon Glyph="{StaticResource Icon.Glyph.Clone}" FontSize="{StaticResource Icon.Small}" />
               <TextBlock Text="Clone repository…" Style="{StaticResource BodyTextStyle}" />
             </StackPanel>
           </Button>
-          <Button Click="CreateRepository_Click" Style="{StaticResource SecondaryActionButtonStyle}" AutomationProperties.Name="Create repository…">
+          <Button Click="CreateRepository_Click" IsEnabled="{Binding CanChangeRepository}" Style="{StaticResource SecondaryActionButtonStyle}" AutomationProperties.Name="Create repository…">
             <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
               <FontIcon Glyph="{StaticResource Icon.Glyph.Create}" FontSize="{StaticResource Icon.Small}" />
               <TextBlock Text="Create repository…" Style="{StaticResource BodyTextStyle}" />
@@ -427,6 +427,7 @@
             </StackPanel>
             <Button x:Name="RefreshButton"
                     Click="RefreshIndicator_Click"
+                    IsEnabled="{Binding CanChangeRepository}"
                     Style="{StaticResource IconButtonStyle}"
                     VerticalAlignment="Center"
                     ToolTipService.ToolTip="Refresh repository."
@@ -464,7 +465,9 @@
                 <MenuFlyoutItem Text="Clone repository…"
                                 Click="CloneRepository_Click"
                                 IsEnabled="{Binding CanChangeRepository}" />
-                <MenuFlyoutItem Text="Create repository…" Click="CreateRepository_Click" />
+                <MenuFlyoutItem Text="Create repository…"
+                                Click="CreateRepository_Click"
+                                IsEnabled="{Binding CanChangeRepository}" />
                 <MenuFlyoutItem Text="Repositories…"
                                 Click="Repositories_Click"
                                 IsEnabled="{Binding CanChangeRepository}" />

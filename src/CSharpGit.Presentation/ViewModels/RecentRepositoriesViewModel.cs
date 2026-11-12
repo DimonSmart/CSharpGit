@@ -45,11 +45,13 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
         Func<RecentRepositoryItem, Task> removeAsync,
         Func<RecentRepositoryItem, Task> togglePinnedAsync,
         Func<RecentRepositoryItem, Task> moveEarlierAsync,
-        Func<RecentRepositoryItem, Task> moveLaterAsync)
+        Func<RecentRepositoryItem, Task> moveLaterAsync,
+        Func<bool> canChangeRepository)
     {
         Path = settings.Path;
         _isAvailable = Directory.Exists(Path);
-        OpenCommand = new AsyncCommand(() => openAsync(this), () => true);
+        OpenCommand = new AsyncCommand(() => openAsync(this),
+            () => _isAvailable && canChangeRepository());
         OpenFolderCommand = new AsyncCommand(() => openFolderAsync(this), () => true);
         CopyPathCommand = new AsyncCommand(() => copyPathAsync(this), () => true);
         OpenFolderActionLabel = openFolderActionLabel;
@@ -158,9 +160,13 @@ public sealed class RecentRepositoryItem : INotifyPropertyChanged
 
         _isAvailable = isAvailable;
         OnPropertyChanged(nameof(IsAvailable));
+        ((AsyncCommand)OpenCommand).RaiseCanExecuteChanged();
         OnPropertyChanged(nameof(TileOpacity));
         UpdateMetadata(commitTimeDisplayMode);
     }
+
+    internal void RefreshRepositoryActionAvailability() =>
+        ((AsyncCommand)OpenCommand).RaiseCanExecuteChanged();
 
     internal void SetMoveCapabilities(bool canMoveEarlier, bool canMoveLater)
     {
@@ -447,6 +453,7 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
     private readonly IAppearanceSettings _appearanceSettings;
     private readonly IRepositoryImageService _repositoryImageService;
     private readonly Func<RecentRepositoryItem, Task> _openRecentAsync;
+    private readonly Func<bool> _canChangeRepository;
     private readonly Func<RecentRepositoryItem, Task> _openRecentFolderAsync;
     private readonly Func<RecentRepositoryItem, Task> _copyRecentPathAsync;
     private readonly string _openFolderActionLabel;
@@ -471,19 +478,21 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
         Func<Task> openRepositoryAsync,
         Func<Task> cloneRepositoryAsync,
         Func<Task> createRepositoryAsync,
+        Func<bool> canChangeRepository,
         DispatcherQueue dispatcherQueue)
     {
         _settings = settings;
         _appearanceSettings = appearanceSettings;
         _repositoryImageService = repositoryImageService;
         _openRecentAsync = openRecentAsync;
+        _canChangeRepository = canChangeRepository ?? throw new ArgumentNullException(nameof(canChangeRepository));
         _openRecentFolderAsync = openRecentFolderAsync;
         _copyRecentPathAsync = copyRecentPathAsync;
         _openFolderActionLabel = openFolderActionLabel;
         _dispatcherQueue = dispatcherQueue ?? throw new ArgumentNullException(nameof(dispatcherQueue));
-        OpenRepositoryCommand = new AsyncCommand(openRepositoryAsync, () => true);
-        CloneRepositoryCommand = new AsyncCommand(cloneRepositoryAsync, () => true);
-        CreateRepositoryCommand = new AsyncCommand(createRepositoryAsync, () => true);
+        OpenRepositoryCommand = new AsyncCommand(openRepositoryAsync, _canChangeRepository);
+        CloneRepositoryCommand = new AsyncCommand(cloneRepositoryAsync, _canChangeRepository);
+        CreateRepositoryCommand = new AsyncCommand(createRepositoryAsync, _canChangeRepository);
         RemoveUnavailableRepositoriesCommand = new AsyncCommand(RemoveUnavailableRepositoriesAsync, () => true);
         _settings.Changed += Settings_Changed;
         Reconcile();
@@ -550,6 +559,16 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
     }
 
     public bool HasUnavailableRepositories => _itemsByPath.Values.Any(item => !item.IsAvailable);
+
+    internal void RefreshRepositoryActionAvailability()
+    {
+        if (_disposed) return;
+        ((AsyncCommand)OpenRepositoryCommand).RaiseCanExecuteChanged();
+        ((AsyncCommand)CloneRepositoryCommand).RaiseCanExecuteChanged();
+        ((AsyncCommand)CreateRepositoryCommand).RaiseCanExecuteChanged();
+        foreach (var item in _itemsByPath.Values)
+            item.RefreshRepositoryActionAvailability();
+    }
 
     internal void StartImageLoading()
     {
@@ -628,7 +647,8 @@ public sealed class RecentRepositoriesViewModel : INotifyPropertyChanged, IDispo
                 RemoveAsync,
                 TogglePinnedAsync,
                 MoveEarlierAsync,
-                MoveLaterAsync);
+                MoveLaterAsync,
+                _canChangeRepository);
             var cached = _repositoryImageService.GetCachedState(item.Path);
             item.SetRepositoryVisual(cached);
             item.NeedsImageRefresh = cached.ShouldRefresh;

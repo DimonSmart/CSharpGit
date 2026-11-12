@@ -18,6 +18,32 @@ public sealed class PresentationLifecycleContractTests
     }
 
     [Fact]
+    public void RepositoryToolbarAndLauncherActionsDisableDuringGitActivity()
+    {
+        var xaml = XDocument.Load(Path.Combine(FindRepositoryRoot(),
+            "src", "CSharpGit.Presentation", "MainPage.xaml"));
+
+        foreach (var action in new[] { "RefreshIndicator_Click", "OpenRepository_Click",
+                     "CloneRepository_Click", "CreateRepository_Click" })
+        {
+            var actions = xaml.Descendants()
+                .Where(element => (string?)element.Attribute("Click") == action)
+                .ToArray();
+            Assert.NotEmpty(actions);
+            Assert.All(actions, element =>
+                Assert.Equal("{Binding CanChangeRepository}",
+                    (string?)element.Attribute("IsEnabled")));
+        }
+
+        var mainPage = File.ReadAllText(Path.Combine(FindRepositoryRoot(),
+            "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+        Assert.Contains("_viewModel.History.LoadMoreCommand.CanExecute(null)", mainPage);
+        Assert.Contains("nameof(OpenRepositoryViewModel.CanChangeRepository)", mainPage);
+        Assert.Contains("UpdateLoadMoreHistoryAvailability();", mainPage);
+        Assert.DoesNotContain("LoadMoreHistoryButton.IsEnabled = history.HasMore", mainPage);
+    }
+
+    [Fact]
     public void DesktopCloseCheckWaitsForReadinessAndAnExplicitCloseCommand()
     {
         var presentation = Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation");

@@ -3,6 +3,26 @@ namespace CSharpGit.Application.Tests;
 public sealed class RecentRepositoriesStartScreenContractTests
 {
     [Fact]
+    public void RecentRepositoryActionsFollowWorkspaceAdmission()
+    {
+        var presentation = Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation");
+        var model = File.ReadAllText(Path.Combine(presentation, "ViewModels",
+            "RecentRepositoriesViewModel.cs"));
+        var integration = File.ReadAllText(Path.Combine(presentation, "MainPage.RecentRepositories.cs"));
+        var flyout = File.ReadAllText(Path.Combine(presentation, "RecentRepositoriesView.xaml.cs"));
+
+        Assert.Contains("() => _isAvailable && canChangeRepository()", model);
+        Assert.Contains("new AsyncCommand(openRepositoryAsync, _canChangeRepository)", model);
+        Assert.Contains("new AsyncCommand(cloneRepositoryAsync, _canChangeRepository)", model);
+        Assert.Contains("new AsyncCommand(createRepositoryAsync, _canChangeRepository)", model);
+        Assert.Contains("item.RefreshRepositoryActionAvailability();", model);
+        Assert.Contains("((AsyncCommand)OpenCommand).RaiseCanExecuteChanged();", model);
+        Assert.Contains("() => _viewModel.CanChangeRepository", integration);
+        Assert.Contains("_recentRepositoriesViewModel?.RefreshRepositoryActionAvailability();", integration);
+        Assert.Contains("Command = repo.OpenCommand", flyout);
+    }
+
+    [Fact]
     public void RecentRepositoryLauncherPreservesEmptyStateAndTracksRepositoryMetadata()
     {
         var root = FindRepositoryRoot();

@@ -334,8 +334,7 @@ public sealed partial class RecentRepositoriesView : UserControl
             || flyout.Target is not FrameworkElement { DataContext: RecentRepositoryItem repo }
             || Model is not { } vm) return;
         flyout.Items.Clear();
-        flyout.Items.Add(MenuAction("Open", repo.IsAvailable,
-            () => { if (repo.OpenCommand.CanExecute(null)) repo.OpenCommand.Execute(null); }));
+        flyout.Items.Add(new MenuFlyoutItem { Text = "Open", Command = repo.OpenCommand });
         flyout.Items.Add(MenuAction(repo.OpenFolderActionLabel, repo.IsAvailable,
             () => { if (repo.OpenFolderCommand.CanExecute(null)) repo.OpenFolderCommand.Execute(null); }));
         flyout.Items.Add(MenuAction("Copy repository path", true,

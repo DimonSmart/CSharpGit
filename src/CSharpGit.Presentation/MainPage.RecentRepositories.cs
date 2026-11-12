@@ -33,6 +33,7 @@ public sealed partial class MainPage
             OpenRepositoryPickerAsync,
             ShowCloneRepositoryAsync,
             ShowCreateRepositoryAsync,
+            () => _viewModel.CanChangeRepository,
             DispatcherQueue);
         _recentRepositoriesView = new RecentRepositoriesView
         {
@@ -59,6 +60,11 @@ public sealed partial class MainPage
 
         if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.CurrentBranchName))
             RunPageUiOperation(UpdateRecentRepositoryBranchMetadataAsync, "Recent repository branch metadata");
+
+        if (eventArgs.PropertyName is nameof(OpenRepositoryViewModel.IsBusy)
+            or nameof(OpenRepositoryViewModel.CanChangeRepository)
+            or nameof(OpenRepositoryViewModel.Repository))
+            _recentRepositoriesViewModel?.RefreshRepositoryActionAvailability();
 
         if (eventArgs.PropertyName != nameof(OpenRepositoryViewModel.IsBusy)) return;
 

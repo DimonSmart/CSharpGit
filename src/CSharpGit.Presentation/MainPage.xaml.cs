@@ -152,6 +152,7 @@ public sealed partial class MainPage : Page
             var becameIdle = _wasBusy && !_viewModel.IsBusy;
             _wasBusy = _viewModel.IsBusy;
             UpdateStatusBar();
+            UpdateLoadMoreHistoryAvailability();
             if (becameIdle && ShouldRestorePendingEditedCommitSelection)
                 RunPageUiOperation(RestorePendingEditedCommitSelectionAsync,
                     "Restore edited commit selection");
@@ -163,6 +164,10 @@ public sealed partial class MainPage : Page
                 RunPageUiOperation(ResumePendingRepositoryTreeCheckoutAsync, "Resume branch checkout");
             else if (becameIdle && _pendingRepositoryTreeNavigation is not null)
                 RunPageUiOperation(ResumePendingRepositoryTreeNavigationAsync, "Resume branch navigation");
+        }
+        else if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.CanChangeRepository))
+        {
+            UpdateLoadMoreHistoryAvailability();
         }
     }
 
@@ -192,8 +197,7 @@ public sealed partial class MainPage : Page
         else if (eventArgs.PropertyName is nameof(HistoryViewModel.HasMore)
                  or nameof(HistoryViewModel.IsLoading))
         {
-            LoadMoreHistoryButton.IsEnabled =
-                _viewModel.History.HasMore && !_viewModel.History.IsLoading;
+            UpdateLoadMoreHistoryAvailability();
         }
     }
 
@@ -207,9 +211,12 @@ public sealed partial class MainPage : Page
         ScopeCombo.Visibility = history.IsReferenceScoped ? Visibility.Collapsed : Visibility.Visible;
         ReferenceScopePanel.Visibility = history.IsReferenceScoped ? Visibility.Visible : Visibility.Collapsed;
         ActiveReferenceText.Text = history.ActiveReferenceLabel ?? string.Empty;
-        LoadMoreHistoryButton.IsEnabled = history.HasMore && !history.IsLoading;
+        UpdateLoadMoreHistoryAvailability();
         UpdateCommitNavigationText();
     }
+
+    private void UpdateLoadMoreHistoryAvailability() =>
+        LoadMoreHistoryButton.IsEnabled = _viewModel.History.LoadMoreCommand.CanExecute(null);
 
     private void PublishWindowTitle() => WindowTitleChanged?.Invoke(CurrentWindowTitle);
 
