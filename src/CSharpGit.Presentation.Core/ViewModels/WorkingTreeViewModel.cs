@@ -341,6 +341,55 @@ public sealed class WorkingTreeViewModel : INotifyPropertyChanged, IDisposable
         SelectedChange is { } selected &&
         SameChange(selected, change);
 
+    public static bool IsGitIgnoreFileCandidate(WorkingTreeChange change) =>
+        change.IndexStatus == '?' &&
+        change.WorkingTreeStatus == '?' &&
+        !change.IsConflicted &&
+        !string.Equals(Path.GetFileName(change.Path), ".gitignore", StringComparison.OrdinalIgnoreCase) &&
+        change.Path.IndexOfAny(['\r', '\n', '\0']) < 0;
+
+    public static bool IsGitIgnoreFolderCandidate(
+        string folderPath,
+        IReadOnlyCollection<WorkingTreeChange> changes) =>
+        !string.IsNullOrWhiteSpace(folderPath) &&
+        folderPath != ".git" &&
+        !folderPath.StartsWith(".git/", StringComparison.OrdinalIgnoreCase) &&
+        changes.Any(change =>
+            IsGitIgnoreFileCandidate(change) &&
+            change.Path.StartsWith(folderPath + "/", StringComparison.Ordinal));
+
+    public bool CanAddFileToGitIgnore(WorkingTreeChange change) =>
+        CanRunRepositoryMutation && IsGitIgnoreFileCandidate(change);
+
+    public bool CanAddFolderToGitIgnore(
+        string folderPath,
+        IReadOnlyCollection<WorkingTreeChange> changes) =>
+        CanRunRepositoryMutation && IsGitIgnoreFolderCandidate(folderPath, changes);
+
+    public Task AddFileToGitIgnoreAsync(WorkingTreeChange change)
+    {
+        if (!CanAddFileToGitIgnore(change)) return Task.CompletedTask;
+
+        return RunMutationAsync(
+            (repository, cancellationToken) =>
+                _workingTreeService.AddFileToGitIgnoreAsync(repository, change, cancellationToken),
+            "Could not add file to .gitignore",
+            requireBulkEligibility: false);
+    }
+
+    public Task AddFolderToGitIgnoreAsync(
+        string folderPath,
+        IReadOnlyCollection<WorkingTreeChange> changes)
+    {
+        if (!CanAddFolderToGitIgnore(folderPath, changes)) return Task.CompletedTask;
+
+        return RunMutationAsync(
+            (repository, cancellationToken) =>
+                _workingTreeService.AddFolderToGitIgnoreAsync(repository, folderPath, cancellationToken),
+            "Could not add folder to .gitignore",
+            requireBulkEligibility: false);
+    }
+
     public bool CanStageChanges(IReadOnlyCollection<WorkingTreeChange> changes)
     {
         ArgumentNullException.ThrowIfNull(changes);

@@ -80,6 +80,31 @@ public sealed class WorkingTreeContextMenuUiContractTests
         Assert.Contains("DiscardAllFileChangesAsync", viewModel, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void GitIgnoreMenuIsLimitedToSingleUntrackedFileOrEligibleUnstagedFolder()
+    {
+        var root = FindRepositoryRoot();
+        var contextMenu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
+        var viewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs");
+        var fileMenu = MethodBody(
+            contextMenu,
+            "private void AddWorkingTreeFileContextMenuItems",
+            "private void AddWorkingTreeFolderContextMenuItems");
+        var folderMenu = MethodBody(
+            contextMenu,
+            "private void AddWorkingTreeFolderContextMenuItems",
+            "private IReadOnlyList<WorkingTreeChange> SelectWorkingTreeContextTarget");
+
+        Assert.Contains("count == 1 && WorkingTreeViewModel.IsGitIgnoreFileCandidate(changes[0])", fileMenu, StringComparison.Ordinal);
+        Assert.Contains("Add file to .gitignore", fileMenu, StringComparison.Ordinal);
+        Assert.Contains("if (separatorIndex > 0)", fileMenu, StringComparison.Ordinal);
+        Assert.Contains("Add folder to .gitignore…", folderMenu, StringComparison.Ordinal);
+        Assert.Contains("IsGitIgnoreFolderCandidate(folderPath, changes)", folderMenu, StringComparison.Ordinal);
+        Assert.Contains("DefaultButton = ContentDialogButton.Close", contextMenu, StringComparison.Ordinal);
+        Assert.Contains("change.IndexStatus == '?'", viewModel, StringComparison.Ordinal);
+        Assert.Contains("change.WorkingTreeStatus == '?'", viewModel, StringComparison.Ordinal);
+    }
+
     private static string MethodBody(string source, string startMarker, string endMarker)
     {
         var start = source.IndexOf(startMarker, StringComparison.Ordinal);

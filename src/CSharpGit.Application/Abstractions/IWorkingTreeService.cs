@@ -7,6 +7,8 @@ public interface IWorkingTreeService
     Task StageFileAsync(Repository repository, WorkingTreeChange change, CancellationToken cancellationToken = default);
     Task StageFilesAsync(Repository repository, IReadOnlyCollection<WorkingTreeChange> changes, CancellationToken cancellationToken = default);
     Task StageAllAsync(Repository repository, CancellationToken cancellationToken = default);
+    Task AddFileToGitIgnoreAsync(Repository repository, WorkingTreeChange change, CancellationToken cancellationToken = default);
+    Task AddFolderToGitIgnoreAsync(Repository repository, string folderPath, CancellationToken cancellationToken = default);
     Task UnstageFileAsync(Repository repository, WorkingTreeChange change, CancellationToken cancellationToken = default);
     Task UnstageFilesAsync(Repository repository, IReadOnlyCollection<WorkingTreeChange> changes, CancellationToken cancellationToken = default);
     Task UnstageAllAsync(Repository repository, CancellationToken cancellationToken = default);

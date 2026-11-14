@@ -1,5 +1,6 @@
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
+using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -62,6 +63,28 @@ public sealed partial class MainPage
                 count == 1 ? "Stash selected…" : $"Stash {count} files…",
                 () => _viewModel.Stashes.CanCreateSelectedStash(changes),
                 () => ShowCreateSelectedStashDialogAsync(changes));
+            if (count == 1 && WorkingTreeViewModel.IsGitIgnoreFileCandidate(changes[0]))
+            {
+                var change = changes[0];
+                flyout.Items.Add(new MenuFlyoutSeparator());
+                AddMenuItem(
+                    flyout,
+                    "Add file to .gitignore",
+                    () => _viewModel.WorkingTree.CanAddFileToGitIgnore(change),
+                    () => _viewModel.WorkingTree.AddFileToGitIgnoreAsync(change));
+
+                var separatorIndex = change.Path.LastIndexOf('/');
+                if (separatorIndex > 0)
+                {
+                    var folderPath = change.Path[..separatorIndex];
+                    AddMenuItem(
+                        flyout,
+                        "Add folder to .gitignore…",
+                        () => _viewModel.WorkingTree.CanAddFolderToGitIgnore(folderPath, changes),
+                        () => ConfirmAddFolderToGitIgnoreAsync(folderPath, changes));
+                }
+            }
+
             flyout.Items.Add(new MenuFlyoutSeparator());
             AddMenuItem(
                 flyout,
@@ -108,6 +131,16 @@ public sealed partial class MainPage
                 "Stage",
                 () => _viewModel.WorkingTree.CanStageChanges(changes),
                 () => _viewModel.WorkingTree.StageChangesAsync(changes, "Could not stage folder"));
+            if (WorkingTreeViewModel.IsGitIgnoreFolderCandidate(folderPath, changes))
+            {
+                flyout.Items.Add(new MenuFlyoutSeparator());
+                AddMenuItem(
+                    flyout,
+                    "Add folder to .gitignore…",
+                    () => _viewModel.WorkingTree.CanAddFolderToGitIgnore(folderPath, changes),
+                    () => ConfirmAddFolderToGitIgnoreAsync(folderPath, changes));
+            }
+
             flyout.Items.Add(new MenuFlyoutSeparator());
             AddMenuItem(
                 flyout,
@@ -143,6 +176,38 @@ public sealed partial class MainPage
         _viewModel.WorkingTree.SetSelection(kind, snapshot);
         SelectWorkingTreeChange(node.Change!, kind);
         return snapshot;
+    }
+
+    private async Task ConfirmAddFolderToGitIgnoreAsync(
+        string folderPath,
+        IReadOnlyList<WorkingTreeChange> changes)
+    {
+        if (!_viewModel.WorkingTree.CanAddFolderToGitIgnore(folderPath, changes)) return;
+
+        var content = new StackPanel { Spacing = 8 };
+        content.Children.Add(new TextBlock
+        {
+            Text = "Add '/" + folderPath + "/' to the repository's .gitignore?",
+            TextWrapping = TextWrapping.Wrap
+        });
+        content.Children.Add(new TextBlock
+        {
+            Text = "Untracked files in this folder will be ignored. Files already tracked by Git will remain tracked.",
+            TextWrapping = TextWrapping.Wrap
+        });
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = "Ignore folder?",
+            Content = content,
+            PrimaryButtonText = "Add to .gitignore",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        await _viewModel.WorkingTree.AddFolderToGitIgnoreAsync(folderPath, changes);
     }
 
     private bool CanDiscardStagedFile(WorkingTreeChange change) =>
