@@ -283,6 +283,18 @@ public sealed class WorkingTreeViewModelTests
         public Task StageAllAsync(Repository repository, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
+        public Task AddFileToGitIgnoreAsync(
+            Repository repository,
+            WorkingTreeChange change,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task AddFolderToGitIgnoreAsync(
+            Repository repository,
+            string folderPath,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
         public Task UnstageFileAsync(Repository repository, WorkingTreeChange change, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 

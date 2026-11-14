@@ -426,6 +426,18 @@ public sealed class CommitCreationViewModelTests
                 : Task.FromException(StageAllFailure);
         }
 
+        public Task AddFileToGitIgnoreAsync(
+            Repository repository,
+            WorkingTreeChange change,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task AddFolderToGitIgnoreAsync(
+            Repository repository,
+            string folderPath,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
         public Task UnstageFileAsync(
             Repository repository,
             WorkingTreeChange change,
