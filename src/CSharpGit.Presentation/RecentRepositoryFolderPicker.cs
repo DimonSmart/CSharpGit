@@ -21,6 +21,9 @@ public sealed class RecentRepositoryFolderPicker(IFolderPicker inner) : IFolderP
         return inner.PickFolderAsync(cancellationToken);
     }
 
+    public Task<string?> PickFileAsync(CancellationToken cancellationToken = default) =>
+        inner.PickFileAsync(cancellationToken);
+
     internal void QueuePath(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);

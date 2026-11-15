@@ -160,6 +160,9 @@ public sealed class CloneRepositoryViewModelTests : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(path);
         }
+
+        public Task<string?> PickFileAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
     }
 
     private sealed class RecordingCloneService : IRepositoryCloneService

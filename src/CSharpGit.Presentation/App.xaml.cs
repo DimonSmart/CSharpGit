@@ -530,5 +530,8 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     private sealed class FixedFolderPicker(string path) : IFolderPicker
     {
         public Task<string?> PickFolderAsync(CancellationToken cancellationToken = default) => Task.FromResult<string?>(path);
+
+        public Task<string?> PickFileAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
     }
 }
