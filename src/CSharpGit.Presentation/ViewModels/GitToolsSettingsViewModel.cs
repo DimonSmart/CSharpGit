@@ -12,15 +12,21 @@ public sealed class GitToolsSettingsViewModel
     private readonly IGitToolConfigurationService _configurationService;
     private readonly IExternalGitToolService _externalToolService;
     private readonly Func<Repository?, IDisposable?> _admission;
+    private readonly Func<Repository?> _repositoryAccessor;
+    private string? _loadedRepositoryKey;
+    private bool _hasLoaded;
+    private long _refreshGeneration;
 
     public GitToolsSettingsViewModel(
         IGitToolConfigurationService configurationService,
         IExternalGitToolService externalToolService,
-        Func<Repository?, IDisposable?> admission)
+        Func<Repository?, IDisposable?> admission,
+        Func<Repository?> repositoryAccessor)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _externalToolService = externalToolService ?? throw new ArgumentNullException(nameof(externalToolService));
         _admission = admission ?? throw new ArgumentNullException(nameof(admission));
+        _repositoryAccessor = repositoryAccessor ?? throw new ArgumentNullException(nameof(repositoryAccessor));
         Editor = new GitToolSectionViewModel(GitToolKind.Editor, "Editor");
         Diff = new GitToolSectionViewModel(GitToolKind.Diff, "Diff Tool");
         Merge = new GitToolSectionViewModel(GitToolKind.Merge, "Merge Tool");
@@ -30,16 +36,51 @@ public sealed class GitToolsSettingsViewModel
     public GitToolSectionViewModel Diff { get; }
     public GitToolSectionViewModel Merge { get; }
 
-    public async Task<bool> RefreshAsync(Repository? repository, CancellationToken cancellationToken = default)
+    private bool HasPendingChanges => Editor.HasUnsavedChanges || Diff.HasUnsavedChanges || Merge.HasUnsavedChanges;
+
+    public void RepositoryChanged()
     {
+        Interlocked.Increment(ref _refreshGeneration);
+        if (!_hasLoaded || RepositoryKeysEqual(_loadedRepositoryKey, RepositoryKey(_repositoryAccessor()))) return;
+        if (HasPendingChanges) MarkStale();
+    }
+
+    public async Task<bool> RefreshAsync(
+        Repository? repository,
+        bool force = false,
+        bool discard = false,
+        CancellationToken cancellationToken = default)
+    {
+        var generation = Interlocked.Increment(ref _refreshGeneration);
+        if (!CurrentRepositoryMatches(repository)) return false;
+        var currentKey = RepositoryKey(repository);
+        if (!discard && HasPendingChanges)
+        {
+            if (!_hasLoaded || !RepositoryKeysEqual(_loadedRepositoryKey, currentKey))
+                MarkStale();
+            // Same repository: keep edits across section navigation and reopening Settings.
+            return false;
+        }
+
         using var lease = _admission(repository);
         if (lease is null) return false;
         var editor = await _configurationService.ReadAsync(repository, GitToolKind.Editor, cancellationToken);
         var diff = await _configurationService.ReadAsync(repository, GitToolKind.Diff, cancellationToken);
         var merge = await _configurationService.ReadAsync(repository, GitToolKind.Merge, cancellationToken);
+        if (generation != Volatile.Read(ref _refreshGeneration) || !CurrentRepositoryMatches(repository))
+            return false;
+
+        if (discard)
+        {
+            Editor.ClearDrafts();
+            Diff.ClearDrafts();
+            Merge.ClearDrafts();
+        }
         Editor.Load(editor, repository is not null);
         Diff.Load(diff, repository is not null);
         Merge.Load(merge, repository is not null);
+        _loadedRepositoryKey = currentKey;
+        _hasLoaded = true;
         return true;
     }
 
@@ -48,24 +89,54 @@ public sealed class GitToolsSettingsViewModel
         ArgumentNullException.ThrowIfNull(section);
         if (section.SelectedScope is null) throw new InvalidOperationException("Select a Git configuration scope.");
         if (!section.IsDirty) return false;
+        EnsureCurrentRepository(repository);
+        if (!section.CanSave) throw new InvalidOperationException(section.EditValidationMessage ?? "Reload Git Tools settings before saving.");
         var edit = section.CreateEdit();
         using var lease = _admission(repository);
         if (lease is null) return false;
-        await _configurationService.SaveAsync(repository, edit, cancellationToken);
-        var refreshed = await _configurationService.ReadAsync(repository, section.Kind, cancellationToken);
-        section.Load(refreshed, repository is not null, edit.Scope);
-        return true;
+        EnsureCurrentRepository(repository); // Recheck immediately before the first write.
+        try
+        {
+            await _configurationService.SaveAsync(repository, edit, cancellationToken);
+            var refreshed = await _configurationService.ReadAsync(repository, section.Kind, cancellationToken);
+            if (!CurrentRepositoryMatches(repository)) { MarkStale(); return false; }
+            section.ForgetCurrentDraft();
+            section.Load(refreshed, repository is not null, edit.Scope);
+            return true;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            try
+            {
+                var refreshed = await _configurationService.ReadAsync(repository, section.Kind, cancellationToken);
+                if (CurrentRepositoryMatches(repository))
+                {
+                    section.Load(refreshed, repository is not null, edit.Scope);
+                    section.RestorePendingEdit(edit);
+                }
+                else MarkStale();
+            }
+            catch { /* The original failure is more actionable; never discard the edit buffer. */ }
+            throw new InvalidOperationException(
+                "Git Tools save failed. Some values may already have been written. Current Git configuration was re-read where possible; unapplied edits remain available. " + exception.Message,
+                exception);
+        }
     }
 
     public async Task<bool> RemoveOverrideAsync(Repository? repository, GitToolSectionViewModel section, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(section);
         if (section.SelectedScope is null) throw new InvalidOperationException("Select a Git configuration scope.");
+        EnsureCurrentRepository(repository);
+        if (section.IsDirty) throw new InvalidOperationException("Save or discard changes in this scope before removing its override.");
+        if (!section.CanRemoveOverride) return false;
         var scope = section.SelectedScope.Scope;
         using var lease = _admission(repository);
         if (lease is null) return false;
+        EnsureCurrentRepository(repository);
         await _configurationService.RemoveOverrideAsync(repository, section.Kind, scope, cancellationToken);
         var refreshed = await _configurationService.ReadAsync(repository, section.Kind, cancellationToken);
+        if (!CurrentRepositoryMatches(repository)) { MarkStale(); return false; }
         section.Load(refreshed, repository is not null, scope);
         return true;
     }
@@ -73,12 +144,43 @@ public sealed class GitToolsSettingsViewModel
     public async Task<bool> TestAsync(Repository? repository, GitToolSectionViewModel section, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(section);
+        EnsureCurrentRepository(repository);
         if (section.IsDirty) throw new InvalidOperationException("Save Git Tools changes before running the test.");
         using var lease = _admission(repository);
         if (lease is null) return false;
+        EnsureCurrentRepository(repository);
         await _externalToolService.TestAsync(repository, section.Kind, cancellationToken);
-        return true;
+        return CurrentRepositoryMatches(repository);
     }
+
+    private void EnsureCurrentRepository(Repository? repository)
+    {
+        if (!_hasLoaded || !CurrentRepositoryMatches(repository)
+            || !RepositoryKeysEqual(_loadedRepositoryKey, RepositoryKey(repository))
+            || Editor.IsStale || Diff.IsStale || Merge.IsStale)
+        {
+            MarkStale();
+            throw new InvalidOperationException("Repository changed. Discard and reload Git Tools settings before saving or testing.");
+        }
+    }
+
+    private bool CurrentRepositoryMatches(Repository? repository) =>
+        RepositoryKeysEqual(RepositoryKey(repository), RepositoryKey(_repositoryAccessor()));
+
+    private void MarkStale()
+    {
+        Editor.SetStale(true);
+        Diff.SetStale(true);
+        Merge.SetStale(true);
+    }
+
+    private static string? RepositoryKey(Repository? repository) =>
+        repository is null ? null : Path.GetFullPath(repository.WorkingDirectory)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+    private static bool RepositoryKeysEqual(string? left, string? right) =>
+        string.Equals(left, right,
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 }
 
 public sealed class GitToolSectionViewModel : INotifyPropertyChanged
@@ -97,6 +199,16 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
     private bool _trustDirty;
     private bool _keepBackupDirty;
     private string _initialValue = string.Empty;
+    private bool _isStale;
+    private readonly Dictionary<GitToolWriteScope, GitToolDraft> _drafts = new();
+
+    private sealed record GitToolDraft(
+        string Value, string Path, string Command, bool? TrustExitCode, bool? KeepBackup,
+        string InitialValue, bool PathDirty, bool CommandDirty, bool TrustDirty, bool KeepBackupDirty)
+    {
+        public bool IsDirty => !string.Equals(InitialValue, Value, StringComparison.Ordinal)
+                               || PathDirty || CommandDirty || TrustDirty || KeepBackupDirty;
+    }
 
     public GitToolSectionViewModel(GitToolKind kind, string title)
     {
@@ -117,6 +229,7 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
         set
         {
             if (Equals(_selectedScope, value)) return;
+            if (!_loading) StoreCurrentDraft();
             _selectedScope = value;
             Notify();
             if (!_loading) LoadEditableScope();
@@ -131,7 +244,16 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
             if (Equals(_selectedPreset, value)) return;
             _selectedPreset = value;
             Notify();
-            if (!_loading && value is { IsCustom: false }) Value = value.Value;
+            if (!_loading && value is { IsCustom: false })
+            {
+                var changedTool = !string.Equals(Value, value.Value, StringComparison.OrdinalIgnoreCase);
+                Value = value.Value;
+                if (changedTool && !IsEditor)
+                {
+                    Path = string.Empty;
+                    Command = string.Empty;
+                }
+            }
         }
     }
 
@@ -144,7 +266,7 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
             if (string.Equals(_value, value, StringComparison.Ordinal)) return;
             _value = value;
             Notify();
-            Notify(nameof(IsDirty));
+            NotifyEditState();
             if (!_loading) RefreshPresetSelection();
         }
     }
@@ -159,7 +281,7 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
             _path = value;
             if (!_loading) _pathDirty = true;
             Notify();
-            Notify(nameof(IsDirty));
+            NotifyEditState();
         }
     }
 
@@ -173,7 +295,7 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
             _command = value;
             if (!_loading) _commandDirty = true;
             Notify();
-            Notify(nameof(IsDirty));
+            NotifyEditState();
             if (!_loading && Kind is GitToolKind.Diff or GitToolKind.Merge && !string.IsNullOrWhiteSpace(value)) SelectCustomPreset();
         }
     }
@@ -187,7 +309,7 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
             _trustExitCode = value;
             if (!_loading) _trustDirty = true;
             Notify();
-            Notify(nameof(IsDirty));
+            NotifyEditState();
         }
     }
 
@@ -200,7 +322,7 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
             _keepBackup = value;
             if (!_loading) _keepBackupDirty = true;
             Notify();
-            Notify(nameof(IsDirty));
+            NotifyEditState();
         }
     }
 
@@ -208,6 +330,31 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
         !string.Equals(_initialValue, Value, StringComparison.Ordinal)
         || _pathDirty || _commandDirty || _trustDirty || _keepBackupDirty;
 
+    public bool HasUnsavedChanges => IsDirty || _drafts.Values.Any(draft => draft.IsDirty);
+    public bool IsStale => _isStale;
+    public string StaleNotice => "Repository changed. These unsaved Git Tools edits belong to another repository. Discard and reload to edit the current repository.";
+    public bool CanSave => IsDirty && !_isStale && EditValidationMessage is null;
+    public string? EditValidationMessage
+    {
+        get
+        {
+            if (!IsDirty) return null;
+            if (string.IsNullOrWhiteSpace(Value)) return IsEditor ? "Enter a Git editor command." : "Select a Git tool.";
+            if (Value.IndexOfAny(['\0', '\r', '\n']) >= 0) return "Value cannot contain line breaks or NUL.";
+            if (!IsEditor && Value.Any(char.IsWhiteSpace)) return "Tool name cannot contain whitespace.";
+            if (!IsEditor && !string.IsNullOrWhiteSpace(Path) && !File.Exists(Path) && !Directory.Exists(Path))
+                return "Executable not found. Browse to an installed tool.";
+            if (!IsEditor && !string.IsNullOrWhiteSpace(Command))
+            {
+                var required = Kind == GitToolKind.Diff ? new[] { "$LOCAL", "$REMOTE" }
+                    : new[] { "$LOCAL", "$REMOTE", "$MERGED" };
+                foreach (var variable in required)
+                    if (!Command.Contains(variable, StringComparison.Ordinal))
+                        return $"Custom command must contain {variable}.";
+            }
+            return null;
+        }
+    }
     public bool IsEditor => Kind == GitToolKind.Editor;
     public bool IsMerge => Kind == GitToolKind.Merge;
 
@@ -221,15 +368,18 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
     public string ResolvedExecutableDisplay => string.IsNullOrWhiteSpace(_snapshot?.ResolvedExecutable) ? "Not resolved" : _snapshot.ResolvedExecutable!;
     public string EffectivePathDisplay => string.IsNullOrWhiteSpace(_snapshot?.EffectivePath) ? "Git built-in / PATH" : _snapshot.EffectivePath!;
     public string EffectiveCommandDisplay => string.IsNullOrWhiteSpace(_snapshot?.EffectiveCommand) ? "Git built-in" : _snapshot.EffectiveCommand!;
-    public string ValidationDisplay => _snapshot is null || _snapshot.Validation.Count == 0
-        ? "Configuration looks usable."
-        : string.Join(Environment.NewLine, _snapshot.Validation.Select(message => $"{message.Severity}: {message.Message}"));
+    public string ValidationDisplay => EditValidationMessage
+        ?? (_snapshot is null || _snapshot.Validation.Count == 0
+            ? "Configuration looks usable."
+            : string.Join(Environment.NewLine, _snapshot.Validation.Select(message => $"{message.Severity}: {message.Message}")));
 
     public string OverrideNotice
     {
         get
         {
             if (_snapshot is null || SelectedScope is null) return string.Empty;
+            if (_snapshot.EffectiveSource == GitToolConfigurationSource.Environment)
+                return "An environment or command override controls the effective value. Saving this scope will not replace it.";
             if (SelectedScope.Scope == GitToolWriteScope.Global)
             {
                 if (_snapshot.Worktree.IsConfigured) return "A worktree value has higher priority here. Saving Global will not change the effective value for this worktree.";
@@ -242,12 +392,13 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
     }
 
     public bool CanRemoveOverride =>
-        SelectedEditableConfiguration()?.SelectionKey is { } key && IsOwnSelectionKey(Kind, key);
+        !_isStale && SelectedEditableConfiguration()?.SelectionKey is { } key && IsOwnSelectionKey(Kind, key);
 
     public void Load(GitToolConfigurationSnapshot snapshot, bool repositoryAvailable, GitToolWriteScope? preferredScope = null)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         _snapshot = snapshot;
+        _isStale = false;
         _loading = true;
         try
         {
@@ -272,6 +423,41 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
         }
 
         NotifySnapshotProperties();
+    }
+
+    public void SetStale(bool stale)
+    {
+        if (_isStale == stale) return;
+        _isStale = stale;
+        Notify(nameof(IsStale));
+        Notify(nameof(CanSave));
+        Notify(nameof(CanRemoveOverride));
+    }
+
+    public void ClearDrafts() => _drafts.Clear();
+
+    public void ForgetCurrentDraft()
+    {
+        if (SelectedScope is not null) _drafts.Remove(SelectedScope.Scope);
+    }
+
+    public void RestorePendingEdit(GitToolEdit edit)
+    {
+        Value = edit.Value;
+        if (edit.UpdatePath) Path = edit.Path ?? string.Empty;
+        if (edit.UpdateCommand) Command = edit.Command ?? string.Empty;
+        if (edit.UpdateTrustExitCode) TrustExitCode = edit.TrustExitCode;
+        if (edit.UpdateKeepBackup) KeepBackup = edit.KeepBackup;
+    }
+
+    private void StoreCurrentDraft()
+    {
+        if (SelectedScope is null) return;
+        if (IsDirty)
+            _drafts[SelectedScope.Scope] = new GitToolDraft(
+                _value, _path, _command, _trustExitCode, _keepBackup, _initialValue,
+                _pathDirty, _commandDirty, _trustDirty, _keepBackupDirty);
+        else _drafts.Remove(SelectedScope.Scope);
     }
 
     public GitToolEdit CreateEdit()
@@ -314,6 +500,19 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
         _commandDirty = false;
         _trustDirty = false;
         _keepBackupDirty = false;
+        if (SelectedScope is { } selected && _drafts.TryGetValue(selected.Scope, out var draft))
+        {
+            _value = draft.Value;
+            _path = draft.Path;
+            _command = draft.Command;
+            _trustExitCode = draft.TrustExitCode;
+            _keepBackup = draft.KeepBackup;
+            _initialValue = draft.InitialValue;
+            _pathDirty = draft.PathDirty;
+            _commandDirty = draft.CommandDirty;
+            _trustDirty = draft.TrustDirty;
+            _keepBackupDirty = draft.KeepBackupDirty;
+        }
         _selectedPreset = FindPreset(_value, _command);
 
         Notify(nameof(Value));
@@ -322,9 +521,12 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
         Notify(nameof(TrustExitCode));
         Notify(nameof(KeepBackup));
         Notify(nameof(SelectedPreset));
-        Notify(nameof(IsDirty));
+        NotifyEditState();
         Notify(nameof(CanRemoveOverride));
         Notify(nameof(OverrideNotice));
+        Notify(nameof(HasUnsavedChanges));
+        Notify(nameof(CanSave));
+        Notify(nameof(ValidationDisplay));
     }
 
     private GitToolScopeConfiguration? SelectedEditableConfiguration()
@@ -410,8 +612,19 @@ public sealed class GitToolSectionViewModel : INotifyPropertyChanged
         _ => "Not configured"
     };
 
+    private void NotifyEditState()
+    {
+        Notify(nameof(IsDirty));
+        Notify(nameof(HasUnsavedChanges));
+        Notify(nameof(CanSave));
+        Notify(nameof(ValidationDisplay));
+    }
+
     private void NotifySnapshotProperties()
     {
+        Notify(nameof(IsStale));
+        Notify(nameof(CanSave));
+        Notify(nameof(HasUnsavedChanges));
         Notify(nameof(EffectiveDisplay));
         Notify(nameof(SourceDisplay));
         Notify(nameof(OriginDisplay));
