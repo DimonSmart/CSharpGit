@@ -64,33 +64,19 @@
                           MinWidth="220"
                           HorizontalAlignment="Left"
                           SelectionChanged="ThemeModeComboBox_SelectionChanged" />
-                <TextBlock Text="System follows the operating system appearance."
-                           Style="{StaticResource SecondaryTextStyle}"
-                           TextWrapping="Wrap"
-                           MaxWidth="620" />
-              </StackPanel>
-            </Border>
-
-            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
-              <StackPanel Spacing="{StaticResource Spacing.M}">
-                <TextBlock Text="Author avatars" Style="{StaticResource BodyStrongTextStyle}" />
                 <ToggleSwitch x:Name="ShowAuthorAvatarsToggle"
                               Header="Show author avatars"
                               IsOn="{Binding ShowAuthorAvatars, Mode=TwoWay}"
-                              OnContent="On"
-                              OffContent="Off"
                               Toggled="ShowAuthorAvatarsToggle_Toggled" />
-                <ToggleSwitch x:Name="OnlineAvatarLookupToggle"
-                              Header="Load avatar images from online services"
-                              IsOn="{Binding OnlineAvatarLookupEnabled, Mode=TwoWay}"
-                              IsEnabled="{Binding ShowAuthorAvatars}"
-                              OnContent="On"
-                              OffContent="Off"
-                              Toggled="OnlineAvatarLookupToggle_Toggled" />
-                <TextBlock Text="CSharpGit can contact GitHub or Gravatar to load author avatars. For Gravatar, a SHA-256 hash derived from the commit author email is used. Disable online lookup to use locally generated initials only."
-                           Style="{StaticResource SecondaryTextStyle}"
-                           TextWrapping="Wrap"
-                           MaxWidth="620" />
+                <StackPanel Margin="16,0,0,0" Spacing="{StaticResource Spacing.S}"
+                            IsEnabled="{Binding CanConfigureOnlineAvatars}">
+                  <ToggleSwitch x:Name="OnlineAvatarLookupToggle"
+                                Header="Load avatars from online services"
+                                IsOn="{Binding OnlineAvatarLookupEnabled, Mode=TwoWay}"
+                                Toggled="OnlineAvatarLookupToggle_Toggled" />
+                  <TextBlock Text="May contact external services (GitHub or Gravatar)."
+                             Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                </StackPanel>
               </StackPanel>
             </Border>
 
@@ -99,14 +85,8 @@
                        Margin="{StaticResource Margin.Section}" />
             <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
               <StackPanel Spacing="{StaticResource Spacing.M}">
-                <TextBlock Text="Default repositories folder"
-                           Style="{StaticResource BodyStrongTextStyle}" />
-                <TextBlock Text="Used as the default location for cloned repositories."
-                           Style="{StaticResource SecondaryTextStyle}"
-                           TextWrapping="Wrap"
-                           MaxWidth="620" />
-                <Grid ColumnDefinitions="*,Auto"
-                      ColumnSpacing="{StaticResource Spacing.M}">
+                <TextBlock Text="Default repositories folder" Style="{StaticResource BodyStrongTextStyle}" />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.M}">
                   <TextBox x:Name="DefaultRepositoriesDirectoryTextBox"
                            Text="{Binding DefaultRepositoriesDirectory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                            Style="{StaticResource CompactTextBoxStyle}"
@@ -121,30 +101,14 @@
               </StackPanel>
             </Border>
 
-            <TextBlock Text="Git push"
+            <TextBlock Text="Git operations"
                        Style="{StaticResource SectionHeaderTextStyle}"
                        Margin="{StaticResource Margin.Section}" />
+            <TextBlock Text="CSharpGit preferences only; these do not change persistent Git configuration."
+                       Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" MaxWidth="680" />
             <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
               <StackPanel Spacing="{StaticResource Spacing.M}">
-                <ToggleSwitch x:Name="AutoSetupRemoteOnPushToggle"
-                              Header="Automatically set upstream on first push"
-                              IsOn="{Binding AutoSetupRemoteOnPush, Mode=TwoWay}"
-                              OnContent="On"
-                              OffContent="Off"
-                              Toggled="AutoSetupRemoteOnPushToggle_Toggled" />
-                <TextBlock Text="Use Git push.autoSetupRemote for branches without an upstream. CSharpGit applies it only to the push command and does not modify Git configuration."
-                           Style="{StaticResource SecondaryTextStyle}"
-                           TextWrapping="Wrap"
-                           MaxWidth="620" />
-              </StackPanel>
-            </Border>
-
-            <TextBlock Text="Git pull"
-                       Style="{StaticResource SectionHeaderTextStyle}"
-                       Margin="{StaticResource Margin.Section}" />
-            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
-              <StackPanel Spacing="{StaticResource Spacing.M}">
-                <TextBlock Text="Default strategy" Style="{StaticResource BodyStrongTextStyle}" />
+                <TextBlock Text="Default Pull strategy" Style="{StaticResource BodyStrongTextStyle}" />
                 <ComboBox x:Name="PullStrategyComboBox"
                           ItemsSource="{Binding PullStrategies}"
                           SelectedItem="{Binding SelectedPullStrategy, Mode=TwoWay}"
@@ -156,52 +120,35 @@
                 <ToggleSwitch x:Name="ForcePullAutoStashToggle"
                               Header="Force Git autostash"
                               IsOn="{Binding ForcePullAutoStash, Mode=TwoWay}"
-                              OnContent="On"
-                              OffContent="Off"
                               Toggled="ForcePullAutoStashToggle_Toggled" />
-                <TextBlock Text="When off, Git controls autostash according to its configuration. This setting does not change Git configuration."
-                           Style="{StaticResource SecondaryTextStyle}"
-                           TextWrapping="Wrap"
-                           MaxWidth="620" />
+                <ToggleSwitch x:Name="AutoSetupRemoteOnPushToggle"
+                              Header="Automatically set upstream on first push"
+                              IsOn="{Binding AutoSetupRemoteOnPush, Mode=TwoWay}"
+                              Toggled="AutoSetupRemoteOnPushToggle_Toggled" />
               </StackPanel>
             </Border>
 
-            <TextBlock Text="Commit time display"
+            <TextBlock Text="Commit time"
                        Style="{StaticResource SectionHeaderTextStyle}"
                        Margin="{StaticResource Margin.Section}" />
-            <TextBlock Text="Choose how commit timestamps are shown throughout CSharpGit. The setting is global, applies immediately, and is saved for future launches. Hover a commit time to see its exact local date, time, and time-zone offset."
-                       Style="{StaticResource BodySubduedTextStyle}"
-                       TextWrapping="Wrap"
-                       MaxWidth="680" />
-
-            <ListView x:Name="CommitTimeModeList"
-                      ItemsSource="{Binding CommitTimeModes}"
-                      SelectedItem="{Binding SelectedCommitTimeMode, Mode=TwoWay}"
-                      SelectionMode="Single"
-                      SelectionChanged="CommitTimeModeList_SelectionChanged"
-                      MaxWidth="680"
-                      HorizontalAlignment="Stretch"
-                      ItemContainerStyle="{StaticResource FormListItemStyle}">
-              <ListView.ItemTemplate>
-                <DataTemplate>
-                  <Border Style="{StaticResource FormCardStyle}">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.XXL}">
-                      <StackPanel Spacing="{StaticResource Spacing.S}">
-                        <TextBlock Text="{Binding Label}" Style="{StaticResource BodyStrongTextStyle}" />
-                        <TextBlock Text="{Binding Description}"
-                                   Style="{StaticResource SecondaryTextStyle}"
-                                   TextWrapping="Wrap" />
-                      </StackPanel>
-                      <TextBlock Grid.Column="1"
-                                 Text="{Binding Example}"
-                                 Style="{StaticResource SecondaryTextStyle}"
-                                 VerticalAlignment="Center"
-                                 Opacity="0.78" />
-                    </Grid>
-                  </Border>
-                </DataTemplate>
-              </ListView.ItemTemplate>
-            </ListView>
+            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
+              <StackPanel Spacing="{StaticResource Spacing.S}">
+                <ComboBox x:Name="CommitTimeModeComboBox"
+                          ItemsSource="{Binding CommitTimeModes}"
+                          SelectedItem="{Binding SelectedCommitTimeMode, Mode=TwoWay}"
+                          DisplayMemberPath="Label"
+                          Style="{StaticResource CompactComboBoxStyle}"
+                          MinWidth="220"
+                          HorizontalAlignment="Left"
+                          SelectionChanged="CommitTimeModeComboBox_SelectionChanged" />
+                <TextBlock Text="{Binding SelectedCommitTimeMode.Description}"
+                           Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding SelectedCommitTimeMode.Example}"
+                           Style="{StaticResource TechnicalTextStyle}" TextWrapping="Wrap" />
+                <TextBlock Text="Applies everywhere. Hover a commit time for the exact local timestamp and offset."
+                           Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
           </StackPanel>
         </ScrollViewer>
 
@@ -545,13 +492,9 @@
             <TextBlock Text="Git Console"
                        Style="{StaticResource SectionHeaderTextStyle}"
                        Margin="{StaticResource Margin.Section}" />
-            <TextBlock Text="Choose when the Git Console opens automatically. Internal commands never open it by themselves. The command history is session-only and is limited to the latest 100 Git commands."
-                       Style="{StaticResource BodySubduedTextStyle}"
-                       TextWrapping="Wrap"
-                       MaxWidth="680" />
             <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
-              <StackPanel Spacing="{StaticResource Spacing.M}">
-                <TextBlock Text="Auto open" Style="{StaticResource BodyStrongTextStyle}" />
+              <StackPanel Spacing="{StaticResource Spacing.S}">
+                <TextBlock Text="Open automatically" Style="{StaticResource BodyStrongTextStyle}" />
                 <ComboBox x:Name="GitConsoleAutoOpenComboBox"
                           ItemsSource="{Binding GitConsoleAutoOpenModes}"
                           SelectedItem="{Binding SelectedGitConsoleAutoOpenMode, Mode=TwoWay}"
@@ -560,14 +503,12 @@
                           MinWidth="220"
                           HorizontalAlignment="Left"
                           SelectionChanged="GitConsoleAutoOpenComboBox_SelectionChanged" />
-                <TextBlock Text="On errors is the default and opens the console only after a user Git command fails."
-                           Style="{StaticResource SecondaryTextStyle}"
-                           TextWrapping="Wrap"
-                           MaxWidth="620" />
+                <TextBlock Text="Only user Git commands can open it automatically; the latest 100 commands are retained per session."
+                           Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
               </StackPanel>
             </Border>
 
-            <TextBlock Text="Git Command Feedback"
+            <TextBlock Text="Git command feedback"
                        Style="{StaticResource SectionHeaderTextStyle}"
                        Margin="{StaticResource Margin.Section}" />
             <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
@@ -576,52 +517,98 @@
                               Header="Show Git command progress dialog"
                               IsOn="{Binding ShowGitCommandProgressDialog, Mode=TwoWay}"
                               Toggled="ShowGitCommandProgressDialogToggle_Toggled" />
-                <TextBlock Text="Show a compact panel with the actual Git command, live output, and execution result."
-                           Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
-                <ToggleSwitch x:Name="AutoCloseSuccessfulGitCommandFeedbackToggle"
-                              Header="Automatically close after successful completion"
-                              IsEnabled="{Binding ShowGitCommandProgressDialog}"
-                              IsOn="{Binding AutoCloseSuccessfulGitCommandFeedback, Mode=TwoWay}"
-                              Toggled="AutoCloseSuccessfulGitCommandFeedbackToggle_Toggled" />
-
-                <NumberBox x:Name="SuccessfulGitCommandFeedbackDurationNumberBox"
-                           Header="Display duration after success (seconds)"
-                           Minimum="0"
-                           Maximum="30"
-                           SmallChange="1"
-                           SpinButtonPlacementMode="Compact"
-                           Width="240"
-                           HorizontalAlignment="Left"
-                           IsEnabled="{Binding AutoCloseSuccessfulGitCommandFeedback}"
-                           Value="{Binding SuccessfulGitCommandFeedbackDurationSeconds}"
-                           ValueChanged="SuccessfulGitCommandFeedbackDurationNumberBox_ValueChanged" />
-                <TextBlock Text="0 closes immediately; 1–30 seconds keeps a successful result visible. The countdown pauses while you interact with the dialog. Failed and cancelled commands stay open."
+                <StackPanel Margin="16,0,0,0" Spacing="{StaticResource Spacing.M}">
+                  <ToggleSwitch x:Name="AutoCloseSuccessfulGitCommandFeedbackToggle"
+                                Header="Automatically close after successful completion"
+                                IsEnabled="{Binding CanConfigureGitCommandFeedbackAutoClose}"
+                                IsOn="{Binding AutoCloseSuccessfulGitCommandFeedback, Mode=TwoWay}"
+                                Toggled="AutoCloseSuccessfulGitCommandFeedbackToggle_Toggled" />
+                  <NumberBox x:Name="SuccessfulGitCommandFeedbackDurationNumberBox"
+                             Header="Display duration after success (seconds)"
+                             Minimum="0"
+                             Maximum="30"
+                             SmallChange="1"
+                             SpinButtonPlacementMode="Compact"
+                             Width="240"
+                             HorizontalAlignment="Left"
+                             IsEnabled="{Binding CanConfigureGitCommandFeedbackDuration}"
+                             Value="{Binding SuccessfulGitCommandFeedbackDurationSeconds}"
+                             ValueChanged="SuccessfulGitCommandFeedbackDurationNumberBox_ValueChanged" />
+                </StackPanel>
+                <TextBlock Text="0 closes immediately. Interaction pauses the countdown; errors and cancellations stay visible."
                            Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
               </StackPanel>
             </Border>
 
-            <TextBlock Text="History performance capture"
+            <TextBlock Text="File logging"
                        Style="{StaticResource SectionHeaderTextStyle}"
                        Margin="{StaticResource Margin.Section}" />
-            <TextBlock Text="Collect focused History scrolling and rendering telemetry. Capture files are independent of normal file logging and do not contain repository paths, commit messages, author identities, refs, or Git arguments."
-                       Style="{StaticResource BodySubduedTextStyle}"
-                       TextWrapping="Wrap"
-                       MaxWidth="680" />
             <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
               <StackPanel Spacing="{StaticResource Spacing.M}">
+                <ToggleSwitch x:Name="LoggingToggle"
+                              Header="Enable file logging"
+                              IsOn="{Binding LoggingEnabled}"
+                              Toggled="LoggingToggle_Toggled" />
+                <StackPanel Margin="16,0,0,0" Spacing="{StaticResource Spacing.S}"
+                            IsEnabled="{Binding CanConfigureLogLevel}">
+                  <TextBlock Text="Log level" Style="{StaticResource BodyStrongTextStyle}" />
+                  <ComboBox x:Name="LogLevelComboBox"
+                            ItemsSource="{Binding LogLevels}"
+                            SelectedItem="{Binding SelectedLogLevel, Mode=TwoWay}"
+                            DisplayMemberPath="Label"
+                            Style="{StaticResource CompactComboBoxStyle}"
+                            MinWidth="220"
+                            HorizontalAlignment="Left"
+                            SelectionChanged="LogLevelComboBox_SelectionChanged" />
+                </StackPanel>
+                <TextBlock Text="Log file" Style="{StaticResource BodyStrongTextStyle}" />
+                <TextBlock x:Name="LogFilePathText"
+                           Style="{StaticResource TechnicalTextStyle}"
+                           TextWrapping="Wrap"
+                           IsTextSelectionEnabled="True"
+                           MaxWidth="620"
+                           HorizontalAlignment="Left" />
+                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.M}">
+                  <Button Content="Copy path"
+                          Click="CopyLogPath_Click"
+                          Style="{StaticResource CompactButtonStyle}"
+                          AutomationProperties.Name="Copy log file path" />
+                  <Button Content="Open folder"
+                          Click="OpenLogFolder_Click"
+                          Style="{StaticResource CompactButtonStyle}"
+                          AutomationProperties.Name="Open log folder" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <InfoBar Severity="Warning"
+                     IsClosable="False"
+                     IsOpen="{Binding IsNonProductionHistoryRenderingMode}"
+                     Title="History uses a diagnostic rendering mode"
+                     Message="{Binding HistoryRenderingModeNotice}"
+                     MaxWidth="680"
+                     HorizontalAlignment="Stretch">
+              <InfoBar.ActionButton>
+                <Button Content="Restore Full production"
+                        Click="RestoreFullHistoryRenderingMode_Click" />
+              </InfoBar.ActionButton>
+            </InfoBar>
+
+            <Expander Header="Advanced diagnostics"
+                      IsExpanded="False"
+                      HorizontalAlignment="Stretch"
+                      MaxWidth="680">
+              <StackPanel Padding="{StaticResource Padding.Form}" Spacing="{StaticResource Spacing.M}">
+                <TextBlock Text="History performance capture"
+                           Style="{StaticResource BodyStrongTextStyle}" />
+                <TextBlock Text="Capture is independent of normal file logging; excludes repository paths, messages, author identities, refs and Git arguments."
+                           Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
                 <ToggleSwitch x:Name="HistoryPerformanceDiagnosticsToggle"
                               Header="Enable history performance diagnostics"
                               IsOn="{Binding HistoryPerformanceDiagnosticsEnabled, Mode=TwoWay}"
-                              OnContent="On"
-                              OffContent="Off"
                               Toggled="HistoryPerformanceDiagnosticsToggle_Toggled" />
-                <TextBlock Text="When enabled, the History toolbar exposes Start/Stop performance capture and Open diagnostics folder. No capture runs until Start is pressed."
-                           Style="{StaticResource SecondaryTextStyle}"
-                           TextWrapping="Wrap"
-                           MaxWidth="620" />
-                <Border Height="1"
-                        Background="{ThemeResource DividerStrokeColorDefaultBrush}"
-                        Margin="{StaticResource Margin.FormSeparator}" />
+                <TextBlock Text="Enabling exposes Start/Stop capture in History; capture starts only on request."
+                           Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
                 <TextBlock Text="History row rendering mode" Style="{StaticResource BodyStrongTextStyle}" />
                 <ComboBox x:Name="HistoryRenderingModeComboBox"
                           ItemsSource="{Binding HistoryRenderingModes}"
@@ -633,73 +620,11 @@
                           SelectionChanged="HistoryRenderingModeComboBox_SelectionChanged" />
                 <TextBlock Text="{Binding SelectedHistoryRenderingMode.Description}"
                            Style="{StaticResource SecondaryTextStyle}"
-                           TextWrapping="Wrap"
-                           MaxWidth="620" />
-                <TextBlock Text="Use modes 1 through 5 for comparable captures. Change the mode between captures; each capture records the exact active mode."
-                           Style="{StaticResource SecondaryTextStyle}"
-                           TextWrapping="Wrap"
-                           MaxWidth="620" />
+                           TextWrapping="Wrap" />
+                <TextBlock Text="Modes 1–5 affect the actual History row, including outside captures."
+                           Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
               </StackPanel>
-            </Border>
-
-            <TextBlock Text="File logging"
-                       Style="{StaticResource SectionHeaderTextStyle}"
-                       Margin="{StaticResource Margin.Section}" />
-            <TextBlock Text="Enable diagnostic session logs when troubleshooting CSharpGit. Logging is off by default. Changes apply immediately and are saved for future launches."
-                       Style="{StaticResource BodySubduedTextStyle}"
-                       TextWrapping="Wrap"
-                       MaxWidth="680" />
-
-            <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
-              <StackPanel Spacing="{StaticResource Spacing.XL}">
-                <ToggleSwitch x:Name="LoggingToggle"
-                              Header="Enable file logging"
-                              IsOn="{Binding LoggingEnabled}"
-                              OnContent="On"
-                              OffContent="Off"
-                              Toggled="LoggingToggle_Toggled" />
-
-                <StackPanel Spacing="{StaticResource Spacing.M}">
-                  <TextBlock Text="Log level" Style="{StaticResource BodyStrongTextStyle}" />
-                  <ComboBox x:Name="LogLevelComboBox"
-                            ItemsSource="{Binding LogLevels}"
-                            SelectedItem="{Binding SelectedLogLevel, Mode=TwoWay}"
-                            DisplayMemberPath="Label"
-                            Style="{StaticResource CompactComboBoxStyle}"
-                            MinWidth="220"
-                            HorizontalAlignment="Left"
-                            SelectionChanged="LogLevelComboBox_SelectionChanged" />
-                  <TextBlock Text="Trace is the most verbose. Information is recommended for normal diagnostics; Warning and higher reduce log volume."
-                             Style="{StaticResource SecondaryTextStyle}"
-                             TextWrapping="Wrap"
-                             MaxWidth="620" />
-                </StackPanel>
-
-                <StackPanel Spacing="{StaticResource Spacing.M}">
-                  <TextBlock Text="Log file" Style="{StaticResource BodyStrongTextStyle}" />
-                  <TextBlock x:Name="LogFilePathText"
-                             Style="{StaticResource TechnicalTextStyle}"
-                             TextWrapping="Wrap"
-                             IsTextSelectionEnabled="True"
-                             MaxWidth="620"
-                             HorizontalAlignment="Left" />
-                  <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.M}">
-                    <Button Content="Copy path"
-                            Click="CopyLogPath_Click"
-                            Style="{StaticResource CompactButtonStyle}"
-                            AutomationProperties.Name="Copy log file path" />
-                    <Button Content="Open folder"
-                            Click="OpenLogFolder_Click"
-                            Style="{StaticResource CompactButtonStyle}"
-                            AutomationProperties.Name="Open log folder" />
-                  </StackPanel>
-                  <TextBlock Text="The file is created after the first enabled log entry is written in this session."
-                             Style="{StaticResource SecondaryTextStyle}"
-                             TextWrapping="Wrap"
-                             MaxWidth="620" />
-                </StackPanel>
-              </StackPanel>
-            </Border>
+            </Expander>
           </StackPanel>
         </ScrollViewer>
 

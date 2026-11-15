@@ -69,7 +69,6 @@ public sealed partial class SettingsPage : Page
         Loaded += async (_, _) =>
         {
             _selectionReady = true;
-            LogLevelComboBox.IsEnabled = LoggingToggle.IsOn;
             await ActivateSectionAsync(SelectedSection(), force: true);
             if (_focusPullStrategyOnLoad)
                 FocusPullStrategy();
@@ -400,9 +399,9 @@ public sealed partial class SettingsPage : Page
         }
     }
 
-    private async void CommitTimeModeList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void CommitTimeModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_selectionReady || _viewModel.IsSynchronizingFromSettings || CommitTimeModeList.SelectedItem is not CommitTimeModeOption option) return;
+        if (!_selectionReady || _viewModel.IsSynchronizingFromSettings || CommitTimeModeComboBox.SelectedItem is not CommitTimeModeOption option) return;
 
         SettingsMessage.IsOpen = false;
         try
@@ -523,6 +522,19 @@ public sealed partial class SettingsPage : Page
         }
     }
 
+    private async void RestoreFullHistoryRenderingMode_Click(object sender, RoutedEventArgs e)
+    {
+        SettingsMessage.IsOpen = false;
+        try
+        {
+            await _viewModel.RestoreFullHistoryRenderingModeAsync();
+        }
+        catch (Exception exception)
+        {
+            ShowSettingsError(exception);
+        }
+    }
+
     private async void ShowGitCommandProgressDialogToggle_Toggled(object sender, RoutedEventArgs e)
     {
         if (!_selectionReady || _viewModel.IsSynchronizingFromSettings) return;
@@ -597,7 +609,6 @@ public sealed partial class SettingsPage : Page
 
     private async void LoggingToggle_Toggled(object sender, RoutedEventArgs e)
     {
-        LogLevelComboBox.IsEnabled = LoggingToggle.IsOn;
         if (!_selectionReady || _viewModel.IsSynchronizingFromSettings) return;
         await ApplyLoggingSettingsAsync();
     }
