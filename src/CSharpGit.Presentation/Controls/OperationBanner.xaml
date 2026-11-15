@@ -28,17 +28,23 @@
                   DisplayMemberPath="Display"
                   MaxHeight="90"
                   ItemContainerStyle="{StaticResource DenseListItemStyle}" />
-        <StackPanel Grid.Column="1"
-                    Orientation="Horizontal"
-                    Spacing="{StaticResource Spacing.M}"
-                    VerticalAlignment="Center">
-          <Button Content="Open" Command="{Binding OpenConflictCommand}" Style="{StaticResource CompactButtonStyle}" />
-          <Button Content="{Binding CurrentSideLabel}" Command="{Binding ChooseCurrentCommand}" Style="{StaticResource CompactButtonStyle}" />
-          <Button Content="{Binding IncomingSideLabel}" Command="{Binding ChooseIncomingCommand}" Style="{StaticResource CompactButtonStyle}" />
-          <Button Content="Keep deletion" Command="{Binding KeepDeletionCommand}" Style="{StaticResource CompactButtonStyle}" />
-          <Button Content="Mark resolved" Command="{Binding StageConflictCommand}" Style="{StaticResource CompactButtonStyle}" />
-          <Button Content="Merge tool" Command="{Binding MergeToolCommand}" Style="{StaticResource CompactButtonStyle}" />
-          <Button Content="Merge tool: all" Command="{Binding MergeToolWorkflowCommand}" Style="{StaticResource CompactButtonStyle}" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal"
+                    Spacing="{StaticResource Spacing.M}" VerticalAlignment="Center">
+          <Button Content="Open in merge tool" Command="{Binding MergeToolCommand}" Style="{StaticResource PrimaryActionButtonStyle}" />
+          <Button Content="Stage resolution" Command="{Binding StageConflictCommand}" Style="{StaticResource CompactButtonStyle}" />
+          <Button Content="More…" Style="{StaticResource CompactButtonStyle}">
+            <Button.Flyout>
+              <MenuFlyout>
+                <MenuFlyoutItem Text="Open in editor" Command="{Binding OpenConflictCommand}" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="{Binding CurrentSideLabel}" Command="{Binding ChooseCurrentCommand}" />
+                <MenuFlyoutItem Text="{Binding IncomingSideLabel}" Command="{Binding ChooseIncomingCommand}" />
+                <MenuFlyoutItem Text="Keep deletion" Command="{Binding KeepDeletionCommand}" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Resolve all conflicts using merge tool" Command="{Binding MergeToolWorkflowCommand}" />
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
         </StackPanel>
       </Grid>
     </Grid>

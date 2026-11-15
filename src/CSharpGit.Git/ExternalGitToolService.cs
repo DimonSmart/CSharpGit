@@ -88,6 +88,7 @@ internal sealed class ExternalGitToolService : IExternalGitToolService
 
         var configuration = await _configurationService.ReadAsync(repository, GitToolKind.Merge, cancellationToken);
         EnsureRunnable(configuration, "Merge tool");
+        EnsureNonInteractiveMergeTool(configuration);
         var result = await RunGitResultAsync(
             repository.WorkingDirectory,
             "MergeToolFile",
@@ -104,6 +105,7 @@ internal sealed class ExternalGitToolService : IExternalGitToolService
         ArgumentNullException.ThrowIfNull(repository);
         var configuration = await _configurationService.ReadAsync(repository, GitToolKind.Merge, cancellationToken);
         EnsureRunnable(configuration, "Merge tool");
+        EnsureNonInteractiveMergeTool(configuration);
         var result = await RunGitResultAsync(
             repository.WorkingDirectory,
             "MergeToolWorkflow",
@@ -215,6 +217,7 @@ internal sealed class ExternalGitToolService : IExternalGitToolService
     {
         var configuration = await _configurationService.ReadAsync(repository, GitToolKind.Merge, cancellationToken);
         EnsureRunnable(configuration, "Merge tool");
+        EnsureNonInteractiveMergeTool(configuration);
         var directory = CreateTemporaryDirectory("merge-test");
         try
         {
@@ -295,6 +298,18 @@ internal sealed class ExternalGitToolService : IExternalGitToolService
         null => null
     };
 
+    private static void EnsureNonInteractiveMergeTool(GitToolConfigurationSnapshot configuration)
+    {
+        // --no-prompt does not suppress Git's post-tool success confirmation.
+        // Never leave that question waiting invisibly for stdin.
+        if (!string.IsNullOrWhiteSpace(configuration.EffectiveCommand)
+            && configuration.EffectiveTrustExitCode != true)
+            throw new InvalidOperationException(
+                "This custom merge command requires interactive confirmation. " +
+                "Edit the file and Stage resolution manually, or use a tool with reliable " +
+                "exit codes and explicitly enable Trust exit code.");
+    }
+
     private static void EnsureRunnable(GitToolConfigurationSnapshot configuration, string displayName)
     {
         if (string.IsNullOrWhiteSpace(configuration.EffectiveValue))
@@ -344,7 +359,7 @@ internal sealed class ExternalGitToolService : IExternalGitToolService
         var detail = string.IsNullOrWhiteSpace(result.StandardError)
             ? $"Git exited with code {result.ExitCode}."
             : $"Git exited with code {result.ExitCode}. {result.StandardError.Trim()}";
-        return new InvalidOperationException($"{operation} tool \"{name}\" failed to start. {detail}");
+        return new InvalidOperationException($"{operation} tool \"{name}\" failed. {detail}");
     }
 
     private static InvalidOperationException GitFailure(string prefix, GitCommandResult result)
