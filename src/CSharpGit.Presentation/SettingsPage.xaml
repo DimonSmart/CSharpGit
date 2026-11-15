@@ -71,7 +71,7 @@
                 <StackPanel Margin="16,0,0,0" Spacing="{StaticResource Spacing.S}"
                             IsEnabled="{Binding CanConfigureOnlineAvatars}">
                   <ToggleSwitch x:Name="OnlineAvatarLookupToggle"
-                                Header="Load avatars from online services"
+                                Header="Load avatar images from online services"
                                 IsOn="{Binding OnlineAvatarLookupEnabled, Mode=TwoWay}"
                                 Toggled="OnlineAvatarLookupToggle_Toggled" />
                   <TextBlock Text="May contact external services (GitHub or Gravatar)."
@@ -86,6 +86,8 @@
             <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
               <StackPanel Spacing="{StaticResource Spacing.M}">
                 <TextBlock Text="Default repositories folder" Style="{StaticResource BodyStrongTextStyle}" />
+                <TextBlock Text="Used as the default location for cloned repositories."
+                           Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.M}">
                   <TextBox x:Name="DefaultRepositoriesDirectoryTextBox"
                            Text="{Binding DefaultRepositoriesDirectory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -125,10 +127,12 @@
                               Header="Automatically set upstream on first push"
                               IsOn="{Binding AutoSetupRemoteOnPush, Mode=TwoWay}"
                               Toggled="AutoSetupRemoteOnPushToggle_Toggled" />
+                <TextBlock Text="Uses push.autoSetupRemote for this push only; does not change Git configuration."
+                           Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
               </StackPanel>
             </Border>
 
-            <TextBlock Text="Commit time"
+            <TextBlock Text="Commit time display"
                        Style="{StaticResource SectionHeaderTextStyle}"
                        Margin="{StaticResource Margin.Section}" />
             <Border Style="{StaticResource FormCardStyle}" MaxWidth="680">
@@ -503,7 +507,7 @@
                           MinWidth="220"
                           HorizontalAlignment="Left"
                           SelectionChanged="GitConsoleAutoOpenComboBox_SelectionChanged" />
-                <TextBlock Text="Only user Git commands can open it automatically; the latest 100 commands are retained per session."
+                <TextBlock Text="Only user Git commands can open it automatically; the latest 100 Git commands are retained per session."
                            Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
               </StackPanel>
             </Border>
