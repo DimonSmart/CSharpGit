@@ -100,6 +100,16 @@ public sealed partial class SettingsPage : Page
         });
     }
 
+    internal bool AllowSettingsWindowClose()
+    {
+        if (!_gitToolsViewModel.HasUnsavedChanges) return true;
+        SettingsMessage.Title = "Unsaved Git Tools changes";
+        SettingsMessage.Message = "Save your changes, or use 'Discard changes and reload' before closing Settings.";
+        SettingsMessage.Severity = InfoBarSeverity.Warning;
+        SettingsMessage.IsOpen = true;
+        return false;
+    }
+
     internal void RepositoryChanged()
     {
         _gitToolsViewModel.RepositoryChanged();

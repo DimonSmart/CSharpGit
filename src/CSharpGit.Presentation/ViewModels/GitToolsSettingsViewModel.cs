@@ -36,7 +36,9 @@ public sealed class GitToolsSettingsViewModel
     public GitToolSectionViewModel Diff { get; }
     public GitToolSectionViewModel Merge { get; }
 
-    private bool HasPendingChanges => Editor.HasUnsavedChanges || Diff.HasUnsavedChanges || Merge.HasUnsavedChanges;
+    public bool HasUnsavedChanges => Editor.HasUnsavedChanges || Diff.HasUnsavedChanges || Merge.HasUnsavedChanges;
+
+    private bool HasPendingChanges => HasUnsavedChanges;
 
     public void RepositoryChanged()
     {

@@ -78,7 +78,15 @@ public sealed class SettingsWindowController : IDisposable
             Content = page
         };
         window.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 980, Height = 720 });
-        window.AppWindow.Closing += (_, _) => Cleanup(window, page, themeRegistration);
+        window.AppWindow.Closing += (_, args) =>
+        {
+            if (Volatile.Read(ref _shutdownStarted) == 0 && !page.AllowSettingsWindowClose())
+            {
+                args.Cancel = true;
+                return;
+            }
+            Cleanup(window, page, themeRegistration);
+        };
 
         _window = window;
         _page = page;
