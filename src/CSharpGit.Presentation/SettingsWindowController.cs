@@ -64,7 +64,7 @@ public sealed class SettingsWindowController : IDisposable
         var page = new SettingsPage(
             new SettingsViewModel(_settings, _uiDispatcher),
             new RepositoryIdentitySettingsViewModel(_repositoryIdentityService, repositoryAccessor, gitAdmission),
-            new GitToolsSettingsViewModel(_gitToolConfigurationService, _externalGitToolService, gitAdmission),
+            new GitToolsSettingsViewModel(_gitToolConfigurationService, _externalGitToolService, gitAdmission, repositoryAccessor),
             _desktopShellService,
             _folderPicker,
             SessionFileLoggerProvider.CurrentLogPath,

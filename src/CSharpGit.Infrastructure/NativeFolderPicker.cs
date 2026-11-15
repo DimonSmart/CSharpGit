@@ -13,6 +13,17 @@ public sealed class NativeFolderPicker : IFolderPicker
         _ownerWindowHandle = ownerWindowHandle;
     }
 
+    public async Task<string?> PickFileAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var picker = new FileOpenPicker { SuggestedStartLocation = PickerLocationId.ComputerFolder };
+        picker.FileTypeFilter.Add("*");
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, _ownerWindowHandle());
+        var file = await picker.PickSingleFileAsync();
+        cancellationToken.ThrowIfCancellationRequested();
+        return file?.Path;
+    }
+
     public async Task<string?> PickFolderAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

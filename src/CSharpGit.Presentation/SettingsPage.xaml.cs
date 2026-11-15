@@ -102,8 +102,11 @@ public sealed partial class SettingsPage : Page
 
     internal void RepositoryChanged()
     {
+        _gitToolsViewModel.RepositoryChanged();
         if (_selectionReady && SelectedSection() == SettingsSection.Identity)
             _ = RefreshIdentityAsync(force: false);
+        if (_selectionReady && _gitToolsLoaded)
+            _ = RefreshGitToolsAsync(force: true);
     }
 
     private async void SettingsNavigation_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -165,14 +168,10 @@ public sealed partial class SettingsPage : Page
             ShowSettingsError(new InvalidOperationException("Git Tools service is not available."));
             return;
         }
-        if (!force && _gitToolsLoaded &&
-            (_gitToolsViewModel.Editor.IsDirty || _gitToolsViewModel.Diff.IsDirty || _gitToolsViewModel.Merge.IsDirty))
-            return;
-
-        SettingsMessage.IsOpen = false;
+         SettingsMessage.IsOpen = false;
         try
         {
-            if (await _gitToolsViewModel.RefreshAsync(_repositoryAccessor()))
+            if (await _gitToolsViewModel.RefreshAsync(_repositoryAccessor(), force: force))
                 _gitToolsLoaded = true;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -257,6 +256,41 @@ public sealed partial class SettingsPage : Page
 
     private async void MergeTest_Click(object sender, RoutedEventArgs e) =>
         await TestGitToolAsync(_gitToolsViewModel?.Merge, "Merge tool test completed in an isolated temporary repository.");
+
+    private async void GitToolsReload_Click(object sender, RoutedEventArgs e)
+    {
+        SettingsMessage.IsOpen = false;
+        try
+        {
+            if (await _gitToolsViewModel.RefreshAsync(_repositoryAccessor(), force: true, discard: true))
+                ShowSettingsSuccess("Git Tools", "Git configuration reloaded; unsaved changes discarded.");
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            ShowSettingsError(exception);
+        }
+    }
+
+    private async void DiffExecutableBrowse_Click(object sender, RoutedEventArgs e) =>
+        await BrowseGitToolExecutableAsync(_gitToolsViewModel.Diff);
+
+    private async void MergeExecutableBrowse_Click(object sender, RoutedEventArgs e) =>
+        await BrowseGitToolExecutableAsync(_gitToolsViewModel.Merge);
+
+    private async Task BrowseGitToolExecutableAsync(GitToolSectionViewModel section)
+    {
+        SettingsMessage.IsOpen = false;
+        try
+        {
+            var path = await _folderPicker.PickFileAsync();
+            if (!string.IsNullOrWhiteSpace(path))
+                section.Path = path;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            ShowSettingsError(exception);
+        }
+    }
 
     private async Task SaveGitToolAsync(GitToolSectionViewModel? section, string successMessage)
     {
