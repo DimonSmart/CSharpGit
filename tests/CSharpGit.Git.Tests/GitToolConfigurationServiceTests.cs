@@ -269,22 +269,22 @@ public sealed class GitToolConfigurationServiceTests : IClassFixture<GitToolsEmp
     }
 
     [Fact]
-    public async Task ReadingToolsUsesAtMostTwoGitProcessesPerOperation()
+    public async Task ReadingToolsUsesBoundedGitProcessesWithSeparateDirectConfiguration()
     {
-        // One config snapshot and one --tool-help. The historical implementation
-        // ran many independent --get commands even when no tools were configured.
+        // One effective snapshot, one direct (--no-includes) snapshot, plus
+        // --tool-help when the supported-tool cache is cold.
         var before = Volatile.Read(ref _gitProcessesStarted);
         await _service.ReadAsync(_repository, GitToolKind.Diff);
-        Assert.InRange(Volatile.Read(ref _gitProcessesStarted) - before, 1, 2);
+        Assert.InRange(Volatile.Read(ref _gitProcessesStarted) - before, 2, 3);
 
         before = Volatile.Read(ref _gitProcessesStarted);
         await _service.ReadAsync(_repository, GitToolKind.Merge);
-        Assert.InRange(Volatile.Read(ref _gitProcessesStarted) - before, 1, 2);
+        Assert.InRange(Volatile.Read(ref _gitProcessesStarted) - before, 2, 3);
 
         RunGit(_repositoryPath, "config", "core.editor", "vim");
         before = Volatile.Read(ref _gitProcessesStarted);
         await _service.ReadAsync(_repository, GitToolKind.Editor);
-        Assert.Equal(1, Volatile.Read(ref _gitProcessesStarted) - before);
+        Assert.Equal(2, Volatile.Read(ref _gitProcessesStarted) - before);
     }
 
     [Fact]
@@ -295,9 +295,8 @@ public sealed class GitToolConfigurationServiceTests : IClassFixture<GitToolsEmp
 
         await _service.ReadAsync(_repository, GitToolKind.Diff);
 
-        // The second read still starts Git for a fresh config snapshot, but
-        // does not repeat expensive --tool-help with unchanged dependencies.
-        Assert.Equal(1, Volatile.Read(ref _gitProcessesStarted) - before);
+        // Both Git snapshots are refreshed, but supported tools are cached.
+        Assert.Equal(2, Volatile.Read(ref _gitProcessesStarted) - before);
     }
 
     [Fact]
@@ -310,9 +309,8 @@ public sealed class GitToolConfigurationServiceTests : IClassFixture<GitToolsEmp
 
         await _service.ReadAsync(_repository, GitToolKind.Diff);
 
-        // One fresh config snapshot plus a new tool-help result for a changed
-        // config fingerprint. No stale supported-tool list is returned.
-        Assert.Equal(2, Volatile.Read(ref _gitProcessesStarted) - before);
+        // Effective and direct snapshots plus refreshed --tool-help.
+        Assert.Equal(3, Volatile.Read(ref _gitProcessesStarted) - before);
     }
 
     [Fact]
@@ -344,7 +342,9 @@ public sealed class GitToolConfigurationServiceTests : IClassFixture<GitToolsEmp
     public async Task UnchangedSelectionAndOptionalFieldsDoNotRewriteConfig()
     {
         RunGit(_repositoryPath, "config", "diff.guitool", "mytool");
-        RunGit(_repositoryPath, "config", "difftool.mytool.path", "tool path");
+        var toolPath = Path.Combine(_root, "tool path");
+        File.WriteAllText(toolPath, "test executable");
+        RunGit(_repositoryPath, "config", "difftool.mytool.path", toolPath);
         var configPath = Path.Combine(_repositoryPath, ".git", "config");
         var initial = File.ReadAllBytes(configPath);
         var sentinel = new DateTime(2001, 2, 3, 4, 5, 6, DateTimeKind.Utc);
@@ -352,10 +352,103 @@ public sealed class GitToolConfigurationServiceTests : IClassFixture<GitToolsEmp
 
         await _service.SaveAsync(_repository, new GitToolEdit(
             GitToolKind.Diff, GitToolWriteScope.Repository, "mytool",
-            Path: "tool path", UpdatePath: true));
+            Path: toolPath, UpdatePath: true));
 
         Assert.Equal(initial, File.ReadAllBytes(configPath));
         Assert.Equal(sentinel, File.GetLastWriteTimeUtc(configPath));
+    }
+
+    [Fact]
+    public async Task IncludedGlobalSelectionIsNotDirectOverrideAndRemovalLeavesIncludedFile()
+    {
+        var includeFile = Path.Combine(_home, "included-merge.config");
+        File.WriteAllText(includeFile, "[merge]\n\tguitool = included-merger\n");
+        RunGit(_repositoryPath, "config", "--global", "include.path", includeFile);
+
+        var included = await _service.ReadAsync(_repository, GitToolKind.Merge);
+        Assert.Equal("included-merger", included.EffectiveValue);
+        Assert.Null(included.Global.SelectionKey);
+        Assert.Null(included.Global.SelectionValue);
+
+        await _service.RemoveOverrideAsync(_repository, GitToolKind.Merge, GitToolWriteScope.Global);
+        Assert.Equal("included-merger", (await _service.ReadAsync(_repository, GitToolKind.Merge)).EffectiveValue);
+        Assert.Contains("included-merger", File.ReadAllText(includeFile), StringComparison.Ordinal);
+
+        // An explicit override must be written even when it has the same value as inherited.
+        await _service.SaveAsync(_repository, new GitToolEdit(
+            GitToolKind.Merge, GitToolWriteScope.Global, "included-merger"));
+        Assert.Equal("included-merger", ReadGit(_repositoryPath,
+            "config", "--global", "--no-includes", "--get", "merge.guitool"));
+
+        await _service.RemoveOverrideAsync(_repository, GitToolKind.Merge, GitToolWriteScope.Global);
+        Assert.Equal(string.Empty, ReadGitAllowFailure(_repositoryPath,
+            "config", "--global", "--no-includes", "--get", "merge.guitool"));
+        Assert.Equal("included-merger", (await _service.ReadAsync(_repository, GitToolKind.Merge)).EffectiveValue);
+    }
+
+    [Fact]
+    public async Task IncludedLocalSelectionCannotBeRemovedAsALocalOverride()
+    {
+        var includeFile = Path.Combine(_root, "local-include.config");
+        File.WriteAllText(includeFile, "[diff]\n\tguitool = from-include\n");
+        RunGit(_repositoryPath, "config", "--local", "include.path", includeFile);
+
+        var included = await _service.ReadAsync(_repository, GitToolKind.Diff);
+        Assert.Equal("from-include", included.EffectiveValue);
+        Assert.Null(included.Repository.SelectionKey);
+
+        await _service.RemoveOverrideAsync(_repository, GitToolKind.Diff, GitToolWriteScope.Repository);
+        Assert.Equal("from-include", (await _service.ReadAsync(_repository, GitToolKind.Diff)).EffectiveValue);
+
+        await _service.SaveAsync(_repository, new GitToolEdit(
+            GitToolKind.Diff, GitToolWriteScope.Repository, "replacement"));
+        Assert.Equal("replacement", (await _service.ReadAsync(_repository, GitToolKind.Diff)).EffectiveValue);
+        await _service.RemoveOverrideAsync(_repository, GitToolKind.Diff, GitToolWriteScope.Repository);
+        Assert.Equal("from-include", (await _service.ReadAsync(_repository, GitToolKind.Diff)).EffectiveValue);
+        Assert.Contains("from-include", File.ReadAllText(includeFile), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SavingSelectionNormalizesAllDuplicateDirectValues()
+    {
+        RunGit(_repositoryPath, "config", "--local", "--add", "merge.guitool", "old");
+        RunGit(_repositoryPath, "config", "--local", "--add", "merge.guitool", "selected");
+
+        await _service.SaveAsync(_repository, new GitToolEdit(
+            GitToolKind.Merge, GitToolWriteScope.Repository, "selected"));
+
+        var values = ReadGit(_repositoryPath,
+            "config", "--local", "--no-includes", "--get-all", "merge.guitool")
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(new[] { "selected" }, values);
+    }
+
+    [Theory]
+    [InlineData(GitToolKind.Diff, "tool $LOCAL")]
+    [InlineData(GitToolKind.Merge, "tool $LOCAL $REMOTE")]
+    public async Task InvalidCustomCommandDoesNotWriteAnyGitConfig(GitToolKind kind, string command)
+    {
+        var configPath = Path.Combine(_repositoryPath, ".git", "config");
+        var original = File.ReadAllBytes(configPath);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.SaveAsync(
+            _repository, new GitToolEdit(kind, GitToolWriteScope.Repository,
+                "invalid-command", Command: command, UpdateCommand: true)));
+
+        Assert.Equal(original, File.ReadAllBytes(configPath));
+    }
+
+    [Fact]
+    public async Task InvalidExecutablePathDoesNotSaveNewSelection()
+    {
+        var configPath = Path.Combine(_repositoryPath, ".git", "config");
+        var original = File.ReadAllBytes(configPath);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.SaveAsync(
+            _repository, new GitToolEdit(GitToolKind.Merge, GitToolWriteScope.Repository,
+                "kdiff3", Path: Path.Combine(_root, "missing executable"), UpdatePath: true)));
+
+        Assert.Equal(original, File.ReadAllBytes(configPath));
     }
 
     [Fact]
