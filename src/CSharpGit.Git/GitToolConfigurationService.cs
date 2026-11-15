@@ -41,35 +41,46 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
                 ? "Enter a Git editor command."
                 : "Enter a Git tool name.", nameof(edit));
 
-        var config = await _configService.ReadSnapshotAsync(repository, cancellationToken);
+        // Validate every requested field before the first Git configuration mutation.
+        if (value.IndexOfAny(['\0', '\r', '\n']) >= 0)
+            throw new ArgumentException("Git tool configuration cannot contain control characters.", nameof(edit));
         if (edit.Kind == GitToolKind.Editor)
         {
-            await WriteIfChangedAsync(repository, edit.Scope, config, "core.editor", value, cancellationToken);
+            var editorPath = ExtractExplicitCommandPath(value);
+            if (editorPath is not null && !_externalProcess.IsExecutablePathUsable(editorPath))
+                throw new ArgumentException($"Editor executable path is not usable: {editorPath}", nameof(edit));
+            await WriteIfChangedAsync(repository, edit.Scope, "core.editor", value, cancellationToken);
             return;
         }
 
         ValidateToolName(value);
-        var selectionKey = SelectWritableSelectionKey(config, edit.Kind, edit.Scope);
-        await WriteIfChangedAsync(repository, edit.Scope, config, selectionKey, value, cancellationToken);
+        var path = edit.UpdatePath ? NormalizeOptional(edit.Path) : null;
+        var command = edit.UpdateCommand ? NormalizeOptional(edit.Command) : null;
+        if (path is not null && !_externalProcess.IsExecutablePathUsable(path))
+            throw new ArgumentException($"Executable path is not usable: {path}", nameof(edit));
+        if (command is not null && command.Contains('\0'))
+            throw new ArgumentException("Custom command cannot contain NUL.", nameof(edit));
+        if (edit.UpdateCommand) ValidateCustomCommand(edit.Kind, command);
+
+        // A value coming from include/includeIf is never a direct writable override.
+        var direct = await _configService.ReadSnapshotAsync(repository, cancellationToken, includes: false);
+        var selectionKey = SelectWritableSelectionKey(direct, edit.Kind, edit.Scope);
+        await WriteIfChangedAsync(repository, edit.Scope, selectionKey, value, cancellationToken);
 
         var prefix = edit.Kind == GitToolKind.Diff ? "difftool" : "mergetool";
         if (edit.UpdatePath)
-            await WriteOrUnsetIfChangedAsync(repository, edit.Scope, config, $"{prefix}.{value}.path", NormalizeOptional(edit.Path), cancellationToken);
+            await WriteOrUnsetIfChangedAsync(repository, edit.Scope, $"{prefix}.{value}.path", path, cancellationToken);
         if (edit.UpdateCommand)
-        {
-            var command = NormalizeOptional(edit.Command);
-            ValidateCustomCommand(edit.Kind, command);
-            await WriteOrUnsetIfChangedAsync(repository, edit.Scope, config, $"{prefix}.{value}.cmd", command, cancellationToken);
-        }
+            await WriteOrUnsetIfChangedAsync(repository, edit.Scope, $"{prefix}.{value}.cmd", command, cancellationToken);
         if (edit.UpdateTrustExitCode)
         {
             var trustKey = edit.Kind == GitToolKind.Diff
                 ? "difftool.trustExitCode"
                 : $"mergetool.{value}.trustExitCode";
-            await WriteOrUnsetIfChangedAsync(repository, edit.Scope, config, trustKey, BoolText(edit.TrustExitCode), cancellationToken);
+            await WriteOrUnsetIfChangedAsync(repository, edit.Scope, trustKey, BoolText(edit.TrustExitCode), cancellationToken);
         }
         if (edit.Kind == GitToolKind.Merge && edit.UpdateKeepBackup)
-            await WriteOrUnsetIfChangedAsync(repository, edit.Scope, config, "mergetool.keepBackup", BoolText(edit.KeepBackup), cancellationToken);
+            await WriteOrUnsetIfChangedAsync(repository, edit.Scope, "mergetool.keepBackup", BoolText(edit.KeepBackup), cancellationToken);
     }
 
     public async Task RemoveOverrideAsync(
@@ -79,10 +90,10 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
         CancellationToken cancellationToken = default)
     {
         EnsureWritableScope(repository, scope);
-        var config = await _configService.ReadSnapshotAsync(repository, cancellationToken);
+        var direct = await _configService.ReadSnapshotAsync(repository, cancellationToken, includes: false);
         if (kind == GitToolKind.Editor)
         {
-            await UnsetIfPresentAsync(repository, scope, config, "core.editor", cancellationToken);
+            await UnsetIfPresentAsync(repository, scope, "core.editor", cancellationToken);
             return;
         }
 
@@ -91,8 +102,8 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
             : new[] { "merge.guitool", "merge.tool" };
         foreach (var key in keys)
         {
-            if (config.Scoped(key, SourceFor(scope)) is null) continue;
-            await UnsetIfPresentAsync(repository, scope, config, key, cancellationToken);
+            if (direct.Scoped(key, SourceFor(scope)) is null) continue;
+            await UnsetIfPresentAsync(repository, scope, key, cancellationToken);
             return;
         }
     }
@@ -102,14 +113,15 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
         CancellationToken cancellationToken)
     {
         var config = await _configService.ReadSnapshotAsync(repository, cancellationToken);
-        var global = EditorScope(config, GitToolConfigurationSource.Global, GitConfigSource.Global);
+        var direct = await _configService.ReadSnapshotAsync(repository, cancellationToken, includes: false);
+        var global = EditorScope(direct, GitToolConfigurationSource.Global, GitConfigSource.Global);
         var local = repository is null
             ? EmptyScope(GitToolConfigurationSource.Repository)
-            : EditorScope(config, GitToolConfigurationSource.Repository, GitConfigSource.Repository);
+            : EditorScope(direct, GitToolConfigurationSource.Repository, GitConfigSource.Repository);
         var worktree = repository is null
             ? EmptyScope(GitToolConfigurationSource.Worktree)
-            : EditorScope(config, GitToolConfigurationSource.Worktree, GitConfigSource.Worktree);
-        var system = EditorScope(config, GitToolConfigurationSource.System, GitConfigSource.System);
+            : EditorScope(direct, GitToolConfigurationSource.Worktree, GitConfigSource.Worktree);
+        var system = EditorScope(direct, GitToolConfigurationSource.System, GitConfigSource.System);
 
         ConfigValue effective;
         var gitEditor = NormalizeOptional(Environment.GetEnvironmentVariable("GIT_EDITOR"));
@@ -171,6 +183,7 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
         if (kind is not (GitToolKind.Diff or GitToolKind.Merge)) throw new ArgumentOutOfRangeException(nameof(kind));
 
         var config = await _configService.ReadSnapshotAsync(repository, cancellationToken);
+        var direct = await _configService.ReadSnapshotAsync(repository, cancellationToken, includes: false);
         var selection = Pick(config, SelectionKeys(kind, includeCrossToolFallback: true));
         var supported = await ReadSupportedToolsAsync(repository, kind, config, cancellationToken);
         var presets = BuildToolPresets(kind, supported);
@@ -191,14 +204,14 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
         else
             keepBackup = FromSnapshot(config.Effective("mergetool.keepBackup"));
 
-        var global = ToolScope(config, kind, GitToolConfigurationSource.Global, GitConfigSource.Global);
+        var global = ToolScope(direct, kind, GitToolConfigurationSource.Global, GitConfigSource.Global);
         var local = repository is null
             ? EmptyScope(GitToolConfigurationSource.Repository)
-            : ToolScope(config, kind, GitToolConfigurationSource.Repository, GitConfigSource.Repository);
+            : ToolScope(direct, kind, GitToolConfigurationSource.Repository, GitConfigSource.Repository);
         var worktree = repository is null
             ? EmptyScope(GitToolConfigurationSource.Worktree)
-            : ToolScope(config, kind, GitToolConfigurationSource.Worktree, GitConfigSource.Worktree);
-        var system = ToolScope(config, kind, GitToolConfigurationSource.System, GitConfigSource.System);
+            : ToolScope(direct, kind, GitToolConfigurationSource.Worktree, GitConfigSource.Worktree);
+        var system = ToolScope(direct, kind, GitToolConfigurationSource.System, GitConfigSource.System);
 
         var resolved = ResolveToolExecutable(selection?.Value, path?.Value, command?.Value, presets);
         var validation = ValidateConfiguration(kind, selection?.Value, path?.Value, command?.Value, resolved, presets, supported);
@@ -332,45 +345,46 @@ internal sealed class GitToolConfigurationService : IGitToolConfigurationService
         return supported;
     }
 
-    private Task WriteIfChangedAsync(
+    private async Task WriteIfChangedAsync(
         Repository? repository,
         GitToolWriteScope scope,
-        GitConfigSnapshot config,
         string key,
         string value,
         CancellationToken cancellationToken)
     {
-        var existing = config.Scoped(key, SourceFor(scope));
-        if (string.Equals(existing?.Value, value, StringComparison.Ordinal)) return Task.CompletedTask;
-        return _configService.SetValueAsync(repository, ToConfigScope(scope), key, value, replaceAll: false, cancellationToken);
+        var configScope = ToConfigScope(scope);
+        var direct = await _configService.ReadDirectValuesAsync(repository, key, configScope, cancellationToken);
+        if (direct.Count == 1 && string.Equals(direct[0].Value, value, StringComparison.Ordinal))
+            return;
+        await _configService.SetValueAsync(repository, configScope, key, value, replaceAll: true, cancellationToken);
     }
 
-    private Task WriteOrUnsetIfChangedAsync(
+    private async Task WriteOrUnsetIfChangedAsync(
         Repository? repository,
         GitToolWriteScope scope,
-        GitConfigSnapshot config,
         string key,
         string? value,
         CancellationToken cancellationToken)
     {
-        var existing = config.Scoped(key, SourceFor(scope));
+        var configScope = ToConfigScope(scope);
+        var direct = await _configService.ReadDirectValuesAsync(repository, key, configScope, cancellationToken);
         if (value is null)
-            return existing is null
-                ? Task.CompletedTask
-                : _configService.UnsetAllWithoutReadAsync(repository, ToConfigScope(scope), key, cancellationToken);
-        if (string.Equals(existing?.Value, value, StringComparison.Ordinal)) return Task.CompletedTask;
-        return _configService.SetValueAsync(repository, ToConfigScope(scope), key, value, replaceAll: false, cancellationToken);
+        {
+            if (direct.Count > 0)
+                await _configService.UnsetAllWithoutReadAsync(repository, configScope, key, cancellationToken);
+            return;
+        }
+        if (direct.Count == 1 && string.Equals(direct[0].Value, value, StringComparison.Ordinal))
+            return;
+        await _configService.SetValueAsync(repository, configScope, key, value, replaceAll: true, cancellationToken);
     }
 
     private Task UnsetIfPresentAsync(
         Repository? repository,
         GitToolWriteScope scope,
-        GitConfigSnapshot config,
         string key,
         CancellationToken cancellationToken) =>
-        config.Scoped(key, SourceFor(scope)) is null
-            ? Task.CompletedTask
-            : _configService.UnsetAllWithoutReadAsync(repository, ToConfigScope(scope), key, cancellationToken);
+        _configService.UnsetAllAsync(repository, ToConfigScope(scope), key, cancellationToken);
 
     private Task<GitCommandResult> RunGitResultAsync(
         string workingDirectory,
