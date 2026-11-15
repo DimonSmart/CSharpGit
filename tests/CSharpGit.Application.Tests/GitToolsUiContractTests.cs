@@ -10,7 +10,7 @@ public sealed class GitToolsUiContractTests
         var mainXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml.cs"));
         var controller = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsWindowController.cs"));
-        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "GitToolsSettingsViewModel.cs"));
+        var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "GitToolsSettingsViewModel.cs"));
         var configurationContract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IGitToolConfigurationService.cs"));
         var executionContract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IExternalGitToolService.cs"));
         var appSettings = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IAppSettingsService.cs"));
