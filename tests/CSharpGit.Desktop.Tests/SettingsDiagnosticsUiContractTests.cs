@@ -57,6 +57,26 @@ public sealed class SettingsDiagnosticsUiContractTests
         Assert.Contains("CreateCommand(\"xdg-open\", fullPath)", shell, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void CompactSettingsKeepAdvancedStatusAndBindDependentControlsToViewModel()
+    {
+        var root = FindRepositoryRoot();
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml"));
+        var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml.cs"));
+
+        Assert.Contains("Header=\"Advanced diagnostics\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("IsExpanded=\"False\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("IsOpen=\"{Binding IsNonProductionHistoryRenderingMode}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Click=\"RestoreFullHistoryRenderingMode_Click\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("IsEnabled=\"{Binding CanConfigureGitCommandFeedbackDuration}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("IsEnabled=\"{Binding CanConfigureGitCommandFeedbackAutoClose}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("IsEnabled=\"{Binding CanConfigureLogLevel}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("IsEnabled=\"{Binding CanConfigureOnlineAvatars}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("CommitTimeModeComboBox", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("CommitTimeModeList", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("LogLevelComboBox.IsEnabled =", page, StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

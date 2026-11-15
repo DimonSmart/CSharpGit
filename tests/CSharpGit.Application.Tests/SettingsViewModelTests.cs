@@ -221,6 +221,79 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
+    public async Task DependentSettingsAvailabilityTracksBothSwitchesWithoutClearingValues()
+    {
+        var settings = new FakeAppSettingsService
+        {
+            ShowGitCommandProgressDialog = true,
+            AutoCloseSuccessfulGitCommandFeedback = true,
+            SuccessfulGitCommandFeedbackDurationSeconds = 17,
+            LoggingEnabled = true,
+            LogLevel = ApplicationLogLevel.Debug,
+            ShowAuthorAvatars = true,
+            OnlineAvatarLookupEnabled = true
+        };
+        using var vm = CreateViewModel(settings);
+        var changes = new List<string?>();
+        vm.PropertyChanged += (_, args) => changes.Add(args.PropertyName);
+
+        Assert.True(vm.CanConfigureGitCommandFeedbackAutoClose);
+        Assert.True(vm.CanConfigureGitCommandFeedbackDuration);
+        Assert.True(vm.CanConfigureLogLevel);
+        Assert.True(vm.CanConfigureOnlineAvatars);
+
+        await vm.ApplyShowGitCommandProgressDialogAsync(false);
+        Assert.False(vm.CanConfigureGitCommandFeedbackAutoClose);
+        Assert.False(vm.CanConfigureGitCommandFeedbackDuration);
+        Assert.True(vm.AutoCloseSuccessfulGitCommandFeedback);
+        Assert.Equal(17, vm.SuccessfulGitCommandFeedbackDurationSeconds);
+        Assert.Contains(nameof(SettingsViewModel.CanConfigureGitCommandFeedbackDuration), changes);
+
+        await vm.ApplyShowGitCommandProgressDialogAsync(true);
+        await vm.ApplyAutoCloseSuccessfulGitCommandFeedbackAsync(false);
+        Assert.True(vm.CanConfigureGitCommandFeedbackAutoClose);
+        Assert.False(vm.CanConfigureGitCommandFeedbackDuration);
+        Assert.Equal(17, settings.SuccessfulGitCommandFeedbackDurationSeconds);
+
+        await vm.ApplyLoggingSettingsAsync(false, vm.SelectedLogLevel);
+        Assert.False(vm.CanConfigureLogLevel);
+        Assert.Equal(ApplicationLogLevel.Debug, settings.LogLevel);
+        await vm.ApplyLoggingSettingsAsync(true, vm.SelectedLogLevel);
+        Assert.True(vm.CanConfigureLogLevel);
+        Assert.Equal(ApplicationLogLevel.Debug, vm.SelectedLogLevel.Level);
+
+        await vm.ApplyShowAuthorAvatarsAsync(false);
+        Assert.False(vm.CanConfigureOnlineAvatars);
+        Assert.True(settings.OnlineAvatarLookupEnabled);
+        await vm.ApplyShowAuthorAvatarsAsync(true);
+        Assert.True(vm.CanConfigureOnlineAvatars);
+        Assert.True(vm.OnlineAvatarLookupEnabled);
+    }
+
+    [Theory]
+    [InlineData(HistoryRenderingMode.SubjectOnly)]
+    [InlineData(HistoryRenderingMode.TextColumns)]
+    [InlineData(HistoryRenderingMode.TextAndGraph)]
+    [InlineData(HistoryRenderingMode.TextGraphAndReferences)]
+    public async Task HistoryRenderingWarningTracksSelectedModeAndExplicitRestore(HistoryRenderingMode mode)
+    {
+        var settings = new FakeAppSettingsService();
+        using var vm = CreateViewModel(settings);
+        var notifications = new List<string?>();
+        vm.PropertyChanged += (_, args) => notifications.Add(args.PropertyName);
+        await vm.ApplyHistoryRenderingModeAsync(vm.HistoryRenderingModes.Single(option => option.Mode == mode));
+        Assert.True(vm.IsNonProductionHistoryRenderingMode);
+        Assert.Contains(vm.SelectedHistoryRenderingMode.Label, vm.HistoryRenderingModeNotice);
+        Assert.Contains(nameof(SettingsViewModel.IsNonProductionHistoryRenderingMode), notifications);
+        Assert.Equal(mode, settings.HistoryRenderingMode);
+
+        await vm.RestoreFullHistoryRenderingModeAsync();
+        Assert.False(vm.IsNonProductionHistoryRenderingMode);
+        Assert.Equal(string.Empty, vm.HistoryRenderingModeNotice);
+        Assert.Equal(HistoryRenderingMode.Full, settings.HistoryRenderingMode);
+    }
+
+    [Fact]
     public void DisposeIsIdempotent()
     {
         var settings = new FakeAppSettingsService();

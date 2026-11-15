@@ -179,6 +179,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
             if (_loggingEnabled == value) return;
             _loggingEnabled = value;
             Notify();
+            Notify(nameof(CanConfigureLogLevel));
         }
     }
 
@@ -209,13 +210,26 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
     public bool ShowGitCommandProgressDialog
     {
         get => _showGitCommandProgressDialog;
-        set { if (_showGitCommandProgressDialog == value) return; _showGitCommandProgressDialog = value; Notify(); }
+        set
+        {
+            if (_showGitCommandProgressDialog == value) return;
+            _showGitCommandProgressDialog = value;
+            Notify();
+            Notify(nameof(CanConfigureGitCommandFeedbackAutoClose));
+            Notify(nameof(CanConfigureGitCommandFeedbackDuration));
+        }
     }
 
     public bool AutoCloseSuccessfulGitCommandFeedback
     {
         get => _autoCloseSuccessfulGitCommandFeedback;
-        set { if (_autoCloseSuccessfulGitCommandFeedback == value) return; _autoCloseSuccessfulGitCommandFeedback = value; Notify(); }
+        set
+        {
+            if (_autoCloseSuccessfulGitCommandFeedback == value) return;
+            _autoCloseSuccessfulGitCommandFeedback = value;
+            Notify();
+            Notify(nameof(CanConfigureGitCommandFeedbackDuration));
+        }
     }
 
     public double SuccessfulGitCommandFeedbackDurationSeconds
@@ -267,6 +281,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
             if (_showAuthorAvatars == value) return;
             _showAuthorAvatars = value;
             Notify();
+            Notify(nameof(CanConfigureOnlineAvatars));
         }
     }
 
@@ -302,8 +317,27 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
             if (Equals(_selectedHistoryRenderingMode, value)) return;
             _selectedHistoryRenderingMode = value;
             Notify();
+            Notify(nameof(IsNonProductionHistoryRenderingMode));
+            Notify(nameof(HistoryRenderingModeNotice));
         }
     }
+
+    public bool CanConfigureOnlineAvatars => ShowAuthorAvatars;
+
+    public bool CanConfigureLogLevel => LoggingEnabled;
+
+    public bool CanConfigureGitCommandFeedbackAutoClose => ShowGitCommandProgressDialog;
+
+    public bool CanConfigureGitCommandFeedbackDuration =>
+        ShowGitCommandProgressDialog && AutoCloseSuccessfulGitCommandFeedback;
+
+    public bool IsNonProductionHistoryRenderingMode =>
+        SelectedHistoryRenderingMode.Mode != HistoryRenderingMode.Full;
+
+    public string HistoryRenderingModeNotice =>
+        IsNonProductionHistoryRenderingMode
+            ? $"Active: {SelectedHistoryRenderingMode.Label}. This changes the History display."
+            : string.Empty;
 
     public string DefaultRepositoriesDirectory
     {
@@ -525,6 +559,11 @@ public sealed class SettingsViewModel : INotifyPropertyChanged, IDisposable
             throw;
         }
     }
+
+    public Task RestoreFullHistoryRenderingModeAsync(CancellationToken cancellationToken = default) =>
+        ApplyHistoryRenderingModeAsync(
+            HistoryRenderingModes.First(option => option.Mode == HistoryRenderingMode.Full),
+            cancellationToken);
 
     public async Task ApplyDefaultRepositoriesDirectoryAsync(
         string directory,
