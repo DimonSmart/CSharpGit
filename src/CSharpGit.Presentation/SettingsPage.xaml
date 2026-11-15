@@ -74,7 +74,7 @@
                                 Header="Load avatar images from online services"
                                 IsOn="{Binding OnlineAvatarLookupEnabled, Mode=TwoWay}"
                                 Toggled="OnlineAvatarLookupToggle_Toggled" />
-                  <TextBlock Text="May contact external services (GitHub or Gravatar)."
+                  <TextBlock Text="May contact GitHub or Gravatar; Gravatar uses a SHA-256 hash derived from the commit author email."
                              Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
                 </StackPanel>
               </StackPanel>
