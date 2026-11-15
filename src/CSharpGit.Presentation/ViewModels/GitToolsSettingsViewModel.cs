@@ -69,6 +69,10 @@ public sealed class GitToolsSettingsViewModel
         var merge = await _configurationService.ReadAsync(repository, GitToolKind.Merge, cancellationToken);
         if (generation != Volatile.Read(ref _refreshGeneration) || !CurrentRepositoryMatches(repository))
             return false;
+        // The user may have started editing during the awaited Git reads.
+        // Never publish a refresh over those freshly typed changes.
+        if (!discard && HasPendingChanges)
+            return false;
 
         if (discard)
         {

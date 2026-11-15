@@ -140,6 +140,24 @@ public sealed class GitToolsExecutionTests : IClassFixture<GitToolsHistoryFixtur
     }
 
     [Fact]
+    public async Task UntrustedCustomToolIsRejectedWithoutMutatingUnmergedIndex()
+    {
+        CreateConflict();
+        RunGit("config", "merge.guitool", "needs-confirmation");
+        RunGit("config", "mergetool.needs-confirmation.cmd",
+            "true \"$LOCAL\" \"$REMOTE\" \"$MERGED\"");
+        var state = await new GitRepositoryStateService(_executor).ReadAsync(_repository);
+        var conflict = Assert.Single(state.CurrentOperation.Conflicts);
+        var before = ReadGit("ls-files", "--unmerged", "--", conflict.Path);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.RunMergeToolForFileAsync(_repository, conflict));
+
+        Assert.Contains("interactive confirmation", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(before, ReadGit("ls-files", "--unmerged", "--", conflict.Path));
+    }
+
+    [Fact]
     public async Task MergeLaunchFailureNamesToolOperationAndGitReason()
     {
         CreateConflict();
