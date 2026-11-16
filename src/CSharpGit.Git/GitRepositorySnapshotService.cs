@@ -65,7 +65,7 @@ internal GitRepositorySnapshotService(GitCommandExecutor executor)
             repository.WorkingDirectory,
             "RepositorySnapshotResolveFile",
             cancellationToken,
-            "ls-tree", "-z", "--full-tree", commitHash, "--", path);
+            "ls-tree", "-z", "--full-tree", commitHash, "--", GitPathValidator.LiteralPathspec(path));
 
         var entry = ParseTree(output).FirstOrDefault(candidate =>
             string.Equals(candidate.Path, path, StringComparison.Ordinal));

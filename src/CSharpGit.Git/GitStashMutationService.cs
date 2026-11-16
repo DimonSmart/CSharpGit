@@ -246,7 +246,7 @@ internal sealed class GitStashMutationService : IStashMutationService
         CancellationToken cancellationToken)
     {
         var direct = selectedPaths
-            .Select(path => $":(literal){path}")
+            .Select(GitPathValidator.LiteralPathspec)
             .ToArray();
 
         var statusOutput = await _runner.RunAsync(

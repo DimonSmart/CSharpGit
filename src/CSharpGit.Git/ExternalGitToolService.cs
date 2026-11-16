@@ -94,7 +94,7 @@ internal sealed class ExternalGitToolService : IExternalGitToolService
             "MergeToolFile",
             GitCommandKind.User,
             cancellationToken,
-            ["mergetool", "--gui", "--no-prompt", "--", conflict.Path]);
+            ["mergetool", "--gui", "--no-prompt", "--", GitPathValidator.LiteralPathspec(conflict.Path)]);
         if (result.ExitCode != 0) throw ToolFailure(configuration.EffectiveValue, "Merge", result);
     }
 

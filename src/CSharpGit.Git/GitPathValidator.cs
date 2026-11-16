@@ -10,6 +10,13 @@ internal static class GitPathValidator
             throw new ArgumentException("Invalid file path.", parameterName);
     }
 
+    // "--" stops option parsing, not Git pathspec/glob interpretation.
+    internal static string LiteralPathspec(string path)
+    {
+        ValidateRepositoryRelative(path);
+        return $":(literal){path}";
+    }
+
     internal static void ValidateChange(WorkingTreeChange change)
     {
         ArgumentNullException.ThrowIfNull(change);

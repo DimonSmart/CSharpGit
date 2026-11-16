@@ -58,8 +58,9 @@ internal sealed partial class GitWorkingTreeService
         foreach (var change in changes)
         {
             GitPathValidator.ValidateChange(change);
-            if (seen.Add(change.Path)) paths.Add(change.Path);
-            if (change.OriginalPath is { } originalPath && seen.Add(originalPath)) paths.Add(originalPath);
+            if (seen.Add(change.Path)) paths.Add(GitPathValidator.LiteralPathspec(change.Path));
+            if (change.OriginalPath is { } originalPath && seen.Add(originalPath))
+                paths.Add(GitPathValidator.LiteralPathspec(originalPath));
         }
 
         return [.. paths];

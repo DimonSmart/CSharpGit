@@ -160,7 +160,7 @@ public sealed class GitHistoryService : IHistoryService
                 arguments.AddRange(["--find-renames", "--find-copies"]);
             arguments.AddRange([parentHash, commitHash, "--"]);
         }
-        arguments.AddRange(paths);
+        arguments.AddRange(paths.Select(GitPathValidator.LiteralPathspec));
 
         string output;
         try

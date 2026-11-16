@@ -249,7 +249,7 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
             "--cached",
             "--numstat",
             "--",
-            path);
+            GitPathValidator.LiteralPathspec(path));
 
         if (output.Split('\n').Any(line => line.StartsWith("-\t-\t", StringComparison.Ordinal)))
             return true;

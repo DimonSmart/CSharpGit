@@ -238,13 +238,14 @@ internal GitRepositoryFileVersionService(GitCommandExecutor executor)
         var output = await RunGitAsync(
             repository.WorkingDirectory,
             cancellationToken,
-            "ls-tree", "-z", revision, "--", path);
+            "ls-tree", "-z", revision, "--", GitPathValidator.LiteralPathspec(path));
         if (output.Length == 0) return null;
 
         var record = output.Split('\0', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
         if (record is null) return null;
         var tab = record.IndexOf('\t');
-        if (tab < 0) return null;
+        if (tab < 0 || !string.Equals(record[(tab + 1)..], path, StringComparison.Ordinal))
+            return null;
         var metadata = record[..tab].Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (metadata.Length < 3) return null;
         return BuildSnapshotVersion(path, revision, metadata[2], metadata[0], "The requested Git version is not available.");
@@ -258,7 +259,7 @@ internal GitRepositoryFileVersionService(GitCommandExecutor executor)
         var output = await RunGitAsync(
             repository.WorkingDirectory,
             cancellationToken,
-            "ls-files", "--stage", "-z", "--", path);
+            "ls-files", "--stage", "-z", "--", GitPathValidator.LiteralPathspec(path));
         if (output.Length == 0) return null;
 
         foreach (var record in output.Split('\0', StringSplitOptions.RemoveEmptyEntries))
@@ -268,6 +269,7 @@ internal GitRepositoryFileVersionService(GitCommandExecutor executor)
             var metadata = record[..tab].Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (metadata.Length != 3 || metadata[2] != "0") continue;
             var actualPath = record[(tab + 1)..];
+            if (!string.Equals(actualPath, path, StringComparison.Ordinal)) continue;
             return BuildSnapshotVersion(actualPath, $"index:{metadata[1]}", metadata[1], metadata[0], "The index version is not available.");
         }
         return null;

@@ -101,7 +101,7 @@ private readonly GitRepositoryCommandRunner _runner;
                     "Rename/path-pair changes must use the single-item discard workflow.");
 
             if (seen.Add(change.Path))
-                paths.Add(LiteralPathspec(change.Path));
+                paths.Add(GitPathValidator.LiteralPathspec(change.Path));
         }
 
         return _runner.RunMutationAsync(
@@ -148,7 +148,7 @@ private readonly GitRepositoryCommandRunner _runner;
                 "restore",
                 "--worktree",
                 "--",
-                LiteralPathspec(change.OriginalPath));
+                GitPathValidator.LiteralPathspec(change.OriginalPath));
             return;
         }
 
@@ -158,7 +158,7 @@ private readonly GitRepositoryCommandRunner _runner;
             "restore",
             "--worktree",
             "--",
-            LiteralPathspec(change.Path));
+            GitPathValidator.LiteralPathspec(change.Path));
     }
 
     public async Task DiscardAllFileChangesAsync(
@@ -244,9 +244,6 @@ private readonly GitRepositoryCommandRunner _runner;
             arguments.ToArray());
     }
 
-    private static string LiteralPathspec(string path) =>
-        $":(literal){path}";
-
     private static string[] PathArguments(
         string command,
         WorkingTreeChange change,
@@ -255,9 +252,9 @@ private readonly GitRepositoryCommandRunner _runner;
             command,
             .. options,
             "--",
-            change.Path,
+            GitPathValidator.LiteralPathspec(change.Path),
             .. (change.OriginalPath is null
                 ? Array.Empty<string>()
-                : [change.OriginalPath])
+                : [GitPathValidator.LiteralPathspec(change.OriginalPath)])
         ];
 }
