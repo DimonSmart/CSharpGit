@@ -308,7 +308,9 @@ public sealed class JsonAppSettingsRecentRepositoriesTests
         var service = fixture.CreateService();
         var path = fixture.RepositoryPath("repo");
         await service.RecordRecentRepositoryAsync(path, "repo", "main");
-        Directory.CreateDirectory(fixture.SettingsPath + ".lock");
+        var lockPath = fixture.SettingsPath + ".lock";
+        if (File.Exists(lockPath)) File.Delete(lockPath);
+        Directory.CreateDirectory(lockPath);
         var changes = 0;
         service.Changed += (_, _) => changes++;
 
@@ -436,7 +438,9 @@ public sealed class JsonAppSettingsRecentRepositoriesTests
     {
         using var fixture = new SettingsFixture();
         var service = fixture.CreateService();
-        Directory.CreateDirectory(fixture.SettingsPath + ".lock");
+        var lockPath = fixture.SettingsPath + ".lock";
+        if (File.Exists(lockPath)) File.Delete(lockPath);
+        Directory.CreateDirectory(lockPath);
         var changes = 0;
         service.Changed += (_, _) => changes++;
         await Assert.ThrowsAnyAsync<Exception>(() => service.CreateRepositoryGroupAsync("Work"));

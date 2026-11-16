@@ -319,7 +319,9 @@ public sealed class JsonAppSettingsServiceTests
         var service = fixture.CreateService();
         await service.SetThemeModeAsync(ApplicationThemeMode.Light);
         var previousFile = await File.ReadAllTextAsync(fixture.SettingsPath);
-        Directory.CreateDirectory(fixture.SettingsPath + ".lock");
+        var lockPath = fixture.SettingsPath + ".lock";
+        if (File.Exists(lockPath)) File.Delete(lockPath);
+        Directory.CreateDirectory(lockPath);
         var changes = 0;
         service.Changed += (_, _) => changes++;
 
