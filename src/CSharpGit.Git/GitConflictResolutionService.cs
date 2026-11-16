@@ -39,7 +39,7 @@ internal sealed class GitConflictResolutionService : IConflictResolutionService
             "checkout",
             gitSide,
             "--",
-            conflict.Path);
+            GitPathValidator.LiteralPathspec(conflict.Path));
     }
 
     public Task KeepConflictDeletionAsync(
@@ -53,7 +53,7 @@ internal sealed class GitConflictResolutionService : IConflictResolutionService
             cancellationToken,
             "rm",
             "--",
-            conflict.Path);
+            GitPathValidator.LiteralPathspec(conflict.Path));
     }
 
     public Task StageResolvedConflictAsync(
@@ -67,7 +67,7 @@ internal sealed class GitConflictResolutionService : IConflictResolutionService
             cancellationToken,
             "add",
             "--",
-            conflict.Path);
+            GitPathValidator.LiteralPathspec(conflict.Path));
     }
 
     private static void ValidateConflictAction(

@@ -69,8 +69,9 @@ private readonly GitRepositoryCommandRunner _runner;
         arguments.Add("--no-ext-diff");
         arguments.Add("--find-renames");
         arguments.Add("--");
-        arguments.Add(change.Path);
-        if (change.OriginalPath is not null) arguments.Add(change.OriginalPath);
+        arguments.Add(GitPathValidator.LiteralPathspec(change.Path));
+        if (change.OriginalPath is not null)
+            arguments.Add(GitPathValidator.LiteralPathspec(change.OriginalPath));
 
         try
         {

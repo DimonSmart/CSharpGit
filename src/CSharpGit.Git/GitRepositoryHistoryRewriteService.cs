@@ -591,7 +591,7 @@ internal GitRepositoryHistoryRewriteService(GitCommandExecutor executor)
         var arguments = new List<string> { "rev-list" };
         arguments.AddRange(refs);
         arguments.Add("--");
-        arguments.Add(path);
+        arguments.Add(GitPathValidator.LiteralPathspec(path));
 
         var output = await _executor.ExecuteAsync(
             repository.WorkingDirectory,
@@ -618,7 +618,7 @@ internal GitRepositoryHistoryRewriteService(GitCommandExecutor executor)
             "HistoryRewriteCheckReference",
             GitCommandKind.Internal,
             cancellationToken,
-            "rev-list", "-1", reference, "--", path);
+            "rev-list", "-1", reference, "--", GitPathValidator.LiteralPathspec(path));
         return !string.IsNullOrWhiteSpace(output);
     }
 
