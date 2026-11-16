@@ -319,7 +319,7 @@ public sealed class JsonAppSettingsServiceTests
         var service = fixture.CreateService();
         await service.SetThemeModeAsync(ApplicationThemeMode.Light);
         var previousFile = await File.ReadAllTextAsync(fixture.SettingsPath);
-        Directory.CreateDirectory(fixture.SettingsPath + ".tmp");
+        Directory.CreateDirectory(fixture.SettingsPath + ".lock");
         var changes = 0;
         service.Changed += (_, _) => changes++;
 
@@ -338,7 +338,7 @@ public sealed class JsonAppSettingsServiceTests
         using var fixture = new SettingsFixture();
         Directory.CreateDirectory(fixture.SettingsPath);
         var service = fixture.CreateService();
-        var temporaryPath = fixture.SettingsPath + ".tmp";
+        var temporaryPattern = "settings.json.*.tmp";
         var changes = 0;
         service.Changed += (_, _) => changes++;
 
@@ -347,7 +347,7 @@ public sealed class JsonAppSettingsServiceTests
 
         Assert.NotNull(exception);
         Assert.Equal(ApplicationThemeMode.System, service.ThemeMode);
-        Assert.False(File.Exists(temporaryPath));
+        Assert.Empty(Directory.EnumerateFiles(Path.GetDirectoryName(fixture.SettingsPath)!, temporaryPattern));
         Assert.Equal(0, changes);
     }
 

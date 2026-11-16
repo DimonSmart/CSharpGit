@@ -25,7 +25,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         ? StringComparer.OrdinalIgnoreCase
         : StringComparer.Ordinal;
 
-    private readonly string _filePath;
+    private readonly JsonSettingsFileStore _store;
     private readonly SemaphoreSlim _updateGate = new(1, 1);
     private SettingsState _state;
 
@@ -36,7 +36,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
 
     internal JsonAppSettingsService(string filePath)
     {
-        _filePath = filePath;
+        _store = new JsonSettingsFileStore(filePath);
         _state = LoadSettings();
     }
 
@@ -545,13 +545,26 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         await _updateGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var current = Volatile.Read(ref _state);
+            // Serialize read/modify/write across all processes using the same settings file.
+            // Never build a new JSON document from this instance's potentially stale snapshot.
+            await using var fileLock = await _store.AcquireWriteLockAsync(cancellationToken).ConfigureAwait(false);
+            var previous = Volatile.Read(ref _state);
+            var current = LoadSettings(throwOnFailure: true);
             var next = createNext(current);
-            if (ReferenceEquals(current, next)) return;
 
-            await PersistAsync(next, cancellationToken).ConfigureAwait(false);
-            Volatile.Write(ref _state, next);
-            changed = true;
+            if (!ReferenceEquals(current, next))
+            {
+                await PersistAsync(next, cancellationToken).ConfigureAwait(false);
+                Volatile.Write(ref _state, next);
+                changed = true;
+            }
+            else if (!Equivalent(previous, current))
+            {
+                // Another process already applied this value. Publish the refreshed state
+                // without rewriting the file, so existing subscribers observe that change.
+                Volatile.Write(ref _state, current);
+                changed = true;
+            }
         }
         finally
         {
@@ -562,13 +575,24 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    private SettingsState LoadSettings()
+    private static bool Equivalent(SettingsState left, SettingsState right) =>
+        string.Equals(
+            JsonSerializer.Serialize(left, SerializerOptions),
+            JsonSerializer.Serialize(right, SerializerOptions),
+            StringComparison.Ordinal);
+
+    private SettingsState LoadSettings(bool throwOnFailure = false)
     {
         try
         {
-            if (!File.Exists(_filePath)) return SettingsState.Default;
-            var document = JsonSerializer.Deserialize<SettingsDocument>(File.ReadAllText(_filePath), SerializerOptions);
-            if (document is null) return SettingsState.Default;
+            var json = _store.ReadText();
+            if (json is null) return SettingsState.Default;
+            var document = JsonSerializer.Deserialize<SettingsDocument>(json, SerializerOptions);
+            if (document is null)
+            {
+                if (throwOnFailure) throw new JsonException("Settings JSON document must be an object.");
+                return SettingsState.Default;
+            }
 
             var themeMode = Enum.IsDefined(typeof(ApplicationThemeMode), document.ThemeMode)
                 ? document.ThemeMode
@@ -618,15 +642,15 @@ public sealed class JsonAppSettingsService : IAppSettingsService
                 repositoryGroups,
                 document.RecentRepositoriesExpanded);
         }
-        catch (JsonException)
+        catch (JsonException) when (!throwOnFailure)
         {
             return SettingsState.Default;
         }
-        catch (IOException)
+        catch (IOException) when (!throwOnFailure)
         {
             return SettingsState.Default;
         }
-        catch (UnauthorizedAccessException)
+        catch (UnauthorizedAccessException) when (!throwOnFailure)
         {
             return SettingsState.Default;
         }
@@ -636,9 +660,6 @@ public sealed class JsonAppSettingsService : IAppSettingsService
         SettingsState state,
         CancellationToken cancellationToken)
     {
-        var directory = Path.GetDirectoryName(_filePath);
-        if (!string.IsNullOrWhiteSpace(directory)) Directory.CreateDirectory(directory);
-
         var document = new SettingsDocument
         {
             ThemeMode = state.ThemeMode,
@@ -664,25 +685,7 @@ public sealed class JsonAppSettingsService : IAppSettingsService
             RecentRepositoriesExpanded = state.RecentRepositoriesExpanded
         };
         var json = JsonSerializer.Serialize(document, SerializerOptions);
-        var temporaryPath = _filePath + ".tmp";
-        try
-        {
-            await File.WriteAllTextAsync(temporaryPath, json, cancellationToken).ConfigureAwait(false);
-            File.Move(temporaryPath, _filePath, true);
-        }
-        finally
-        {
-            try
-            {
-                if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
-            }
-            catch (IOException)
-            {
-            }
-            catch (UnauthorizedAccessException)
-            {
-            }
-        }
+        await _store.WriteAtomicAsync(json, cancellationToken).ConfigureAwait(false);
     }
 
 
