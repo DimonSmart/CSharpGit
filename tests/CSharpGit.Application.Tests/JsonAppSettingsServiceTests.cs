@@ -319,7 +319,9 @@ public sealed class JsonAppSettingsServiceTests
         var service = fixture.CreateService();
         await service.SetThemeModeAsync(ApplicationThemeMode.Light);
         var previousFile = await File.ReadAllTextAsync(fixture.SettingsPath);
-        Directory.CreateDirectory(fixture.SettingsPath + ".tmp");
+        var lockPath = fixture.SettingsPath + ".lock";
+        if (File.Exists(lockPath)) File.Delete(lockPath);
+        Directory.CreateDirectory(lockPath);
         var changes = 0;
         service.Changed += (_, _) => changes++;
 
@@ -333,22 +335,19 @@ public sealed class JsonAppSettingsServiceTests
     }
 
     [Fact]
-    public async Task FailedMoveCleansTemporaryFileAndDoesNotPublishCandidateState()
+    public async Task FailedAtomicMoveCleansUniqueTemporaryFile()
     {
         using var fixture = new SettingsFixture();
         Directory.CreateDirectory(fixture.SettingsPath);
-        var service = fixture.CreateService();
-        var temporaryPath = fixture.SettingsPath + ".tmp";
-        var changes = 0;
-        service.Changed += (_, _) => changes++;
+        var store = new JsonSettingsFileStore(fixture.SettingsPath);
+        await using var lease = await store.AcquireWriteLockAsync(CancellationToken.None);
 
-        var exception = await Record.ExceptionAsync(
-            () => service.SetThemeModeAsync(ApplicationThemeMode.Dark));
+        await Assert.ThrowsAnyAsync<Exception>(() =>
+            store.WriteAtomicAsync("{\"ThemeMode\":\"Dark\"}", CancellationToken.None));
 
-        Assert.NotNull(exception);
-        Assert.Equal(ApplicationThemeMode.System, service.ThemeMode);
-        Assert.False(File.Exists(temporaryPath));
-        Assert.Equal(0, changes);
+        Assert.True(Directory.Exists(fixture.SettingsPath));
+        Assert.Empty(Directory.EnumerateFiles(
+            Path.GetDirectoryName(fixture.SettingsPath)!, "settings.json.*.tmp"));
     }
 
     [Fact]

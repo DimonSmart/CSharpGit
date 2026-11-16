@@ -30,6 +30,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
             File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryLauncherSettings.cs"));
         var imageContract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryImageService.cs"));
         var settingsPersistence = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure.Core", "JsonAppSettingsService.cs"));
+        var settingsNormalization = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure.Core", "JsonAppSettingsService.Normalization.cs"));
         var imageService = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure.Core", "RepositoryImageService.cs"));
         var localImageProvider = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure.Core", "LocalRepositoryImageProvider.cs"));
         var githubImageProvider = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure.Core", "GitHubRepositoryImageProvider.cs"));
@@ -55,7 +56,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         Assert.Contains("MovePinnedRepositoryAsync", settingsContract);
         Assert.DoesNotContain("RepositoryImage", settingsContract);
         Assert.Contains("MaxUnpinnedRecentRepositories = 1000", settingsPersistence);
-        Assert.Contains("Take(MaxUnpinnedRecentRepositories)", settingsPersistence);
+        Assert.Contains("Take(MaxUnpinnedRecentRepositories)", settingsNormalization);
         Assert.Contains("NormalizeRecentRepositories", settingsPersistence);
         Assert.Contains("PathComparer.Equals", settingsPersistence);
 
