@@ -25,6 +25,8 @@ internal sealed class WindowSession(
         {
             if (_state == (int)WindowSessionState.Created)
                 Volatile.Write(ref _state, (int)WindowSessionState.Active);
+            else if (_state != (int)WindowSessionState.Active)
+                throw new InvalidOperationException("A closing window session cannot be initialized.");
         }
         return Task.CompletedTask;
     }
@@ -38,10 +40,13 @@ internal sealed class WindowSession(
             if (_prepareTask is not null)
                 return _prepareTask;
             Volatile.Write(ref _state, (int)WindowSessionState.PreparingForShutdown);
-            _prepareTask = content.PrepareForShutdownAsync(cancellationToken);
+            _prepareTask = PrepareCoreAsync(cancellationToken);
             return _prepareTask;
         }
     }
+
+    private async Task PrepareCoreAsync(CancellationToken cancellationToken) =>
+        await content.PrepareForShutdownAsync(cancellationToken);
 
     internal void CompleteShutdown()
     {
