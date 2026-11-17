@@ -187,6 +187,10 @@ public sealed class PresentationLifecycleContractTests
         Assert.Contains("window.DispatcherQueue.TryEnqueue(() => BeginShutdown(page))", app, StringComparison.Ordinal);
         Assert.Contains("CloseSchedulingRejected", app, StringComparison.Ordinal);
         Assert.Contains("Interlocked.Exchange(ref _shutdownFinalized, 1)", lifecycle, StringComparison.Ordinal);
+        var prepare = lifecycle.IndexOf("public Task PrepareForShutdown()", StringComparison.Ordinal);
+        var stopMonitoring = lifecycle.IndexOf("ShutdownRepositoryChangeMonitoring();", prepare, StringComparison.Ordinal);
+        var beginShutdown = lifecycle.IndexOf("public void BeginShutdown()", prepare, StringComparison.Ordinal);
+        Assert.True(prepare >= 0 && stopMonitoring > prepare && stopMonitoring < beginShutdown);
         Assert.DoesNotContain(".GetAwaiter()\n            .GetResult()", perf, StringComparison.Ordinal);
     }
 
