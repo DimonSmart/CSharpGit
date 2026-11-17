@@ -57,8 +57,8 @@ public sealed class AboutUpdateUiContractTests
         Assert.Contains("IsUpdateRunning: IsApplicationUpdateInProgress", lifecycle);
         Assert.Contains("_closeCoordinator.Stage != WindowCloseStage.Idle", app);
         Assert.Contains("ScheduleShutdown(page);", app);
-        Assert.Contains("page.PrepareForShutdown()", app);
-        Assert.Contains("page.BeginShutdown()", app);
+        Assert.Contains("_windowSession?.PrepareForShutdownAsync(CancellationToken.None)", app);
+        Assert.Contains("_windowSession?.CompleteShutdown()", app);
 
         Assert.DoesNotContain("brew update", about, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("brew upgrade", about, StringComparison.OrdinalIgnoreCase);
