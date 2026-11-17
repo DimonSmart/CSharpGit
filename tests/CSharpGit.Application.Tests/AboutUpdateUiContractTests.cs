@@ -51,14 +51,14 @@ public sealed class AboutUpdateUiContractTests
         Assert.Contains("GitHubUpdateCheckService", app);
         Assert.Contains("MacOsHomebrewUpdateInstaller", app);
         Assert.Contains("UnsupportedApplicationUpdateInstaller", app);
-        var lifecycle = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
-        Assert.Contains("page?.IsUnsafeToClose == true", app);
-        Assert.Contains("IsUpdateRunning: IsApplicationUpdateInProgress", lifecycle);
-        Assert.Contains("_closeCoordinator.Stage != WindowCloseStage.Idle", app);
-        Assert.Contains("ScheduleShutdown(page);", app);
-        Assert.Contains("_windowSession?.PrepareForShutdownAsync(CancellationToken.None)", app);
-        Assert.Contains("_windowSession?.CompleteShutdown()", app);
+        var close = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Windowing", "WindowCloseOrchestrator.cs"));
+        var safety = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Windowing", "WindowCloseSafetyProvider.cs"));
+        Assert.Contains("session.IsUnsafeToClose", close);
+        Assert.Contains("IsUpdateRunning: isUpdateRunning()", safety);
+        Assert.Contains("Stage != WindowCloseStage.Idle", close);
+        Assert.Contains("ScheduleShutdown();", close);
+        Assert.Contains("session.PrepareForShutdownAsync(CancellationToken.None)", close);
+        Assert.Contains("session.CompleteShutdown()", close);
 
         Assert.DoesNotContain("brew update", about, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("brew upgrade", about, StringComparison.OrdinalIgnoreCase);

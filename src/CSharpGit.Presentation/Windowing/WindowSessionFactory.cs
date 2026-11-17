@@ -11,7 +11,13 @@ internal sealed class WindowSessionFactory(IServiceScopeFactory scopeFactory)
         try
         {
             var page = scope.ServiceProvider.GetRequiredService<MainPage>();
-            return (page, new WindowSession(scope, page, page.WindowRepository));
+            var safety = new WindowCloseSafetyProvider(
+                page.WindowRepository,
+                page.DesktopCloneForCheck,
+                page.DesktopCreateForCheck,
+                page.DesktopMaintenanceForCheck,
+                () => page.IsApplicationUpdateInProgress);
+            return (page, new WindowSession(scope, page, page.WindowRepository, safety));
         }
         catch
         {

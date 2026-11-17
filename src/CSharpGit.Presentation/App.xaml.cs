@@ -17,7 +17,7 @@ using Uno.UI.Xaml;
 
 namespace CSharpGit.Presentation;
 
-public sealed partial class App : Microsoft.UI.Xaml.Application
+public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHost
 {
     private readonly IAppSettingsService _appSettings;
     private readonly SessionFileLoggerProvider _sessionFileLoggerProvider;
@@ -25,8 +25,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     private Window? _window;
     private WindowSession? _windowSession;
     private IDisposable? _mainThemeRegistration;
-    private readonly WindowCloseCoordinator _closeCoordinator = new();
-    private static readonly TimeSpan DiagnosticsShutdownBudget = TimeSpan.FromSeconds(3);
+    private WindowCloseOrchestrator? _windowClose;
     private bool _closeCheckStarted;
     private int _hostStopped;
     private readonly object _hostStopGate = new();
@@ -179,6 +178,8 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         var mainPage = windowContent.Page;
         _windowSession = windowContent.Session;
         await _windowSession.InitializeAsync(CancellationToken.None);
+        _windowClose = new WindowCloseOrchestrator(
+            _window, mainPage, _windowSession, mainPage, this);
         mainPage.WindowTitleChanged += MainPage_WindowTitleChanged;
         _window.Title = mainPage.CurrentWindowTitle;
         _mainThemeRegistration = themeManager.Register(mainPage);
@@ -211,57 +212,14 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
             await mainPage.OpenInitialRepositoryAsync();
     }
 
-    private bool TryBeginNormalShutdown(MainPage? page)
-    {
-        ReportDesktopCloseCheck("Closing");
-        // The final native request can arrive after MainPage was disposed.
-        if (_closeCoordinator.Stage == WindowCloseStage.FinalClose)
-        {
-            ReportDesktopCloseCheck("FinalCloseAllowed");
-            return true;
-        }
-
-        var decision = _closeCoordinator.Request(
-            page?.IsUnsafeToClose == true,
-            page?.RequiresCloseConfirmation == true);
-
-        switch (decision)
-        {
-            case WindowCloseDecision.AllowFinalClose:
-                ReportDesktopCloseCheck("FinalCloseAllowed");
-                return true;
-
-            case WindowCloseDecision.Confirm:
-                ReportDesktopCloseCheck("CloseCanceled: commit draft requires confirmation");
-                LogCloseLifecycle("ConfirmationRequired");
-                _ = UiAsyncOperationRunner.RunAsync(
-                    () => ConfirmAndCloseAsync(page!),
-                    exception =>
-                    {
-                        _closeCoordinator.CancelConfirmation();
-                        LogUiFailure(exception, "Close confirmation");
-                    });
-                return false;
-
-            case WindowCloseDecision.Schedule:
-                ScheduleShutdown(page);
-                return false;
-
-            default:
-                if (page?.IsUnsafeToClose == true)
-                {
-                    ReportDesktopCloseCheck("CloseCanceled: protected operation is active");
-                    LogCloseLifecycle("ProtectedOperationRejected");
-                }
-                return false;
-        }
-    }
+    private bool TryBeginNormalShutdown(MainPage? page) =>
+        _windowClose?.RequestClose() ?? true;
 
     private void LogCloseLifecycle(string phase)
     {
         _sessionFileLoggerProvider.WriteDirect(
             "CSharpGit.UiLifecycle", "WindowClose",
-            $"phase={phase} state={_closeCoordinator.Stage}", LogLevel.Information);
+            $"phase={phase} state={_windowClose?.Stage}", LogLevel.Information);
     }
 
     internal void LogUiFailure(Exception exception, string operation)
@@ -320,146 +278,6 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         _ => LogLevel.Information
     };
 
-    private async Task ConfirmAndCloseAsync(MainPage page)
-    {
-        try
-        {
-            ReportDesktopCloseCheck("CloseConfirmationStarted");
-            var confirmed = await page.ConfirmCloseAsync();
-            var accepted = _closeCoordinator.CompleteConfirmation(
-                confirmed,
-                page.IsUnsafeToClose || !ReferenceEquals(_window?.Content, page));
-            if (!accepted)
-            {
-                ReportDesktopCloseCheck("CloseConfirmationCanceled");
-                LogCloseLifecycle("ConfirmationCanceled");
-                return;
-            }
-
-            ReportDesktopCloseCheck("CloseConfirmed");
-            LogCloseLifecycle("ConfirmationAccepted");
-            ScheduleShutdown(page);
-        }
-        catch (Exception exception)
-        {
-            _closeCoordinator.CancelConfirmation();
-            LogUiFailure(exception, "Close confirmation");
-        }
-    }
-
-    private void ScheduleShutdown(MainPage? page)
-    {
-        var window = _window;
-        if (window is null) return;
-
-        try
-        {
-            // macOS windowShouldClose must return before we start any cleanup
-            // or invoke Window.Close again. Enqueue *before* disposing resources.
-            var scheduled = _closeCoordinator.TrySchedule(() =>
-            {
-                if (OperatingSystem.IsMacOS())
-                    return window.DispatcherQueue.TryEnqueue(() => BeginShutdown(page));
-
-                // Preserve Windows' existing WM_CLOSE route and Linux behavior.
-                BeginShutdown(page);
-                return true;
-            });
-
-            if (!scheduled)
-            {
-                ReportDesktopCloseCheck("CloseSchedulingRejected");
-                LogCloseLifecycle("ScheduleRejected");
-                LogUiFailure(
-                    new InvalidOperationException("Window dispatcher rejected shutdown scheduling."),
-                    "Window shutdown scheduling");
-                return;
-            }
-
-            ReportDesktopCloseCheck("CloseScheduled");
-            LogCloseLifecycle("Scheduled");
-        }
-        catch (Exception exception)
-        {
-            ReportDesktopCloseCheck("CloseSchedulingFailed");
-            LogUiFailure(exception, "Window shutdown scheduling");
-        }
-    }
-
-    private void BeginShutdown(MainPage? page)
-    {
-        if (!_closeCoordinator.BeginShutdown()) return;
-        ReportDesktopCloseCheck("CloseAccepted");
-        ReportDesktopCloseCheck("ShutdownStarted");
-        LogCloseLifecycle("CleanupStarted");
-        _ = UiAsyncOperationRunner.RunAsync(
-            () => FinalizeWindowShutdownAsync(page),
-            exception => LogUiFailure(exception, "Window shutdown"));
-    }
-
-    private async Task FinalizeWindowShutdownAsync(MainPage? page)
-    {
-        try
-        {
-            if (page is not null)
-            {
-                try
-                {
-                    await UiBoundedTaskWait.WaitAsync(
-                        _windowSession?.PrepareForShutdownAsync(CancellationToken.None)
-                            ?? Task.CompletedTask,
-                        DiagnosticsShutdownBudget,
-                        exception => LogUiFailure(exception, "History diagnostics shutdown"));
-                }
-                finally
-                {
-                    // A failed PrepareForShutdown or diagnostics writer must not
-                    // bypass page disposal or authorize an undisposed window.
-                    page.WindowTitleChanged -= MainPage_WindowTitleChanged;
-                    _windowSession?.CompleteShutdown();
-                    ReportDesktopCloseCheck("PageShutdownCompleted");
-                    LogCloseLifecycle("PageShutdownCompleted");
-                }
-            }
-        }
-        catch (Exception exception) { LogUiFailure(exception, "Final window cleanup"); }
-        finally
-        {
-            // On macOS the native loop can exit as soon as the window closes.
-            // Complete managed shutdown asynchronously before that boundary.
-            if (OperatingSystem.IsMacOS())
-            {
-                try { await StopHostAsync(); }
-                catch (Exception exception) { LogUiFailure(exception, "Host shutdown before window close"); }
-            }
-
-            _closeCoordinator.AuthorizeFinalClose();
-            LogCloseLifecycle("FinalCloseAuthorized");
-            try
-            {
-                var window = _window;
-                if (window is not null)
-                {
-                    // macOS shutdown started in a separate UI queue callback,
-                    // after the original windowShouldClose stack returned.
-                    if (window.DispatcherQueue.HasThreadAccess)
-                        CloseAuthorizedWindow();
-                    else if (!window.DispatcherQueue.TryEnqueue(CloseAuthorizedWindow))
-                    {
-                        LogUiFailure(new InvalidOperationException(
-                            "Window dispatcher rejected final close after cleanup."), "Final window close");
-                        FailFinalMacOsClose();
-                    }
-                }
-            }
-            catch (Exception exception)
-            {
-                LogUiFailure(exception, "Final window close");
-                FailFinalMacOsClose();
-            }
-        }
-    }
-
     private void CloseAuthorizedWindow()
     {
         var window = _window;
@@ -491,14 +309,21 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
         Environment.Exit(1);
     }
 
-    internal void CompleteApplicationUpdateRestart(MainPage page)
+    internal void CompleteApplicationUpdateRestart(MainPage page) =>
+        _windowClose?.RequestApplicationRestartClose(page);
+
+    void IWindowCloseHost.Report(string phase) => ReportDesktopCloseCheck(phase);
+    void IWindowCloseHost.Log(string phase) => LogCloseLifecycle(phase);
+    void IWindowCloseHost.LogFailure(Exception exception, string operation) =>
+        LogUiFailure(exception, operation);
+    Task IWindowCloseHost.StopHostAsync() => StopHostAsync();
+    void IWindowCloseHost.ReleaseWindowBindings()
     {
-        ArgumentNullException.ThrowIfNull(page);
-        if (_closeCoordinator.Stage != WindowCloseStage.Idle
-            || !ReferenceEquals(_window?.Content, page) || page.IsUnsafeToClose)
-            return;
-        ScheduleShutdown(page);
+        if (_window?.Content is MainPage page)
+            page.WindowTitleChanged -= MainPage_WindowTitleChanged;
     }
+    void IWindowCloseHost.CloseAuthorizedWindow() => CloseAuthorizedWindow();
+    void IWindowCloseHost.FailFinalNativeClose() => FailFinalMacOsClose();
 
     // Program's synchronous join occurs only after UnoPlatformHost.RunAsync exits.
     internal void StopHost() => StopHostAsync().GetAwaiter().GetResult();

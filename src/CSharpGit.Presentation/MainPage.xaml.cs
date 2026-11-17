@@ -22,7 +22,7 @@ using Windows.UI.Core;
 
 namespace CSharpGit.Presentation;
 
-public sealed partial class MainPage : Page
+public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
 {
     private readonly OpenRepositoryViewModel _viewModel;
     internal OpenRepositoryViewModel WindowRepository => _viewModel;
@@ -96,6 +96,9 @@ public sealed partial class MainPage : Page
 
     private void RepositoryPresentationStashes_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
         QueueRepositoryPresentationRefresh();
+
+    Task<bool> Windowing.ICloseConfirmationDialog.ConfirmDiscardCommitMessageAsync(
+        CancellationToken cancellationToken) => ConfirmCloseAsync();
 
     public async Task<bool> ConfirmCloseAsync()
     {
