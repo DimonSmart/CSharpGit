@@ -7,7 +7,7 @@ public sealed class FileHierarchyUiContractTests
     {
         var root = FindRepositoryRoot();
         var main = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
-        var files = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs");
+        var files = Read(root, "src", "CSharpGit.Presentation", "Controls", "RepositoryFilesSurface.cs");
         var repositoryTree = Read(root, "src", "CSharpGit.Presentation", "Styles", "RepositoryTree.xaml");
         var workspace = Read(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml");
 

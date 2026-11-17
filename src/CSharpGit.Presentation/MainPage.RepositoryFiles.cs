@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Presentation.ViewModels;
+using CSharpGit.Presentation.Controls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -13,12 +14,11 @@ public sealed partial class MainPage
     private readonly RepositoryFilesViewModel _repositoryFilesViewModel = null!;
     private PivotItem? _repositoryFilesTab;
     private PivotItem? _changesTab;
-    private TextBox? _repositoryFilesSearch;
-    private ComboBox? _repositoryFilesSearchMode;
-    private TreeView? _repositoryFilesTree;
-    private ListView? _repositoryContentResults;
-    private ProgressRing? _repositoryFilesProgress;
-    private TextBlock? _repositoryFilesStatus;
+    private RepositoryFilesSurface? _repositoryFilesSurface;
+    private TextBox? _repositoryFilesSearch => _repositoryFilesSurface?.SearchBox;
+    private ComboBox? _repositoryFilesSearchMode => _repositoryFilesSurface?.SearchMode;
+    private TreeView? _repositoryFilesTree => _repositoryFilesSurface?.FileTree;
+    private ListView? _repositoryContentResults => _repositoryFilesSurface?.ContentResults;
     private bool _repositoryFilesBuildingTree;
     private bool _repositoryFilesRestoringPresentationState;
     private bool _repositoryFilesHandlingUserSelection;
@@ -69,103 +69,23 @@ public sealed partial class MainPage
 
     private UIElement BuildRepositoryFilesSurface()
     {
-        var root = new Grid { MinHeight = 120 };
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        _repositoryFilesSurface = new RepositoryFilesSurface(_repositoryFilesViewModel);
+        _repositoryFilesSurface.SearchBox.TextChanged += RepositoryFilesSearch_TextChanged;
+        _repositoryFilesSurface.SearchBox.KeyDown += RepositoryFilesSearch_KeyDown;
+        _repositoryFilesSurface.SearchMode.SelectionChanged += RepositoryFilesSearchMode_SelectionChanged;
 
-        var toolbar = new Grid
-        {
-            Padding = new Thickness(8, 4, 8, 4),
-            ColumnSpacing = 8
-        };
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        _repositoryFilesSurface.FileTree.SelectionChanged += RepositoryFilesTree_SelectionChanged;
+        _repositoryFilesSurface.FileTree.DoubleTapped += RepositoryFilesTree_DoubleTapped;
+        _repositoryFilesSurface.FileTree.RightTapped += RepositoryFilesTree_RightTapped;
+        _repositoryFilesSurface.FileTree.Expanding += RepositoryFilesTree_Expanding;
+        _repositoryFilesSurface.FileTree.Collapsed += RepositoryFilesTree_Collapsed;
 
-        _repositoryFilesSearch = new TextBox
-        { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"),
-            PlaceholderText = "Search files...",
-            MinWidth = 180
-        };
-        _repositoryFilesSearch.TextChanged += RepositoryFilesSearch_TextChanged;
-        _repositoryFilesSearch.KeyDown += RepositoryFilesSearch_KeyDown;
-        toolbar.Children.Add(_repositoryFilesSearch);
+        _repositoryFilesSurface.ContentResults.SelectionChanged += RepositoryContentResults_SelectionChanged;
+        _repositoryFilesSurface.ContentResults.DoubleTapped += RepositoryContentResults_DoubleTapped;
+        _repositoryFilesSurface.ContentResults.KeyDown += RepositoryContentResults_KeyDown;
+        _repositoryFilesSurface.ContentResults.RightTapped += RepositoryContentResults_RightTapped;
 
-        _repositoryFilesSearchMode = new ComboBox
-        { Style = UiStyles.Resolve<Style>("CompactComboBoxStyle"),
-            MinWidth = 110,
-            ItemsSource = new[]
-            {
-                RepositoryFilesViewModel.NameSearchMode,
-                RepositoryFilesViewModel.ContentSearchMode
-            },
-            SelectedIndex = 0
-        };
-        _repositoryFilesSearchMode.SelectionChanged += RepositoryFilesSearchMode_SelectionChanged;
-        Grid.SetColumn(_repositoryFilesSearchMode, 1);
-        toolbar.Children.Add(_repositoryFilesSearchMode);
-        root.Children.Add(toolbar);
-
-        var leftPane = new Grid();
-
-        _repositoryFilesTree = new TreeView
-        {
-            SelectionMode = TreeViewSelectionMode.Single,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch,
-            Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["DenseTreeViewStyle"],
-            ItemContainerStyle = (Style)Microsoft.UI.Xaml.Application.Current.Resources["DenseTreeItemStyle"],
-            ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["RepositoryFilesTreeItemTemplate"],
-            ItemsSource = _repositoryFilesViewModel.TreeRoots
-        };
-        _repositoryFilesTree.SelectionChanged += RepositoryFilesTree_SelectionChanged;
-        _repositoryFilesTree.DoubleTapped += RepositoryFilesTree_DoubleTapped;
-        _repositoryFilesTree.RightTapped += RepositoryFilesTree_RightTapped;
-        _repositoryFilesTree.Expanding += RepositoryFilesTree_Expanding;
-        _repositoryFilesTree.Collapsed += RepositoryFilesTree_Collapsed;
-        leftPane.Children.Add(_repositoryFilesTree);
-
-        _repositoryContentResults = new ListView
-        {
-            SelectionMode = ListViewSelectionMode.Single,
-            Visibility = Visibility.Collapsed,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch
-        };
-        _repositoryContentResults.SelectionChanged += RepositoryContentResults_SelectionChanged;
-        _repositoryContentResults.DoubleTapped += RepositoryContentResults_DoubleTapped;
-        _repositoryContentResults.KeyDown += RepositoryContentResults_KeyDown;
-        _repositoryContentResults.RightTapped += RepositoryContentResults_RightTapped;
-        leftPane.Children.Add(_repositoryContentResults);
-
-        var statusPanel = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            IsHitTestVisible = false
-        };
-        _repositoryFilesProgress = new ProgressRing
-        {
-            Width = 18,
-            Height = 18,
-            IsActive = false,
-            Visibility = Visibility.Collapsed
-        };
-        _repositoryFilesStatus = new TextBlock
-        {
-            Text = string.Empty,
-            TextWrapping = TextWrapping.Wrap,
-            MaxWidth = 560,
-            TextAlignment = TextAlignment.Center
-        };
-        statusPanel.Children.Add(_repositoryFilesProgress);
-        statusPanel.Children.Add(_repositoryFilesStatus);
-        leftPane.Children.Add(statusPanel);
-
-        var body = BuildRepositoryFilesSplitBody(leftPane);
-        Grid.SetRow(body, 1);
-        root.Children.Add(body);
-        return root;
+        return _repositoryFilesSurface;
     }
 
     private void RepositoryFilesViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
@@ -620,17 +540,7 @@ public sealed partial class MainPage
         args.Handled = true;
     }
 
-    private void SetRepositoryFilesStatus(string text, bool loading)
-    {
-        if (_repositoryFilesStatus is not null)
-            _repositoryFilesStatus.Text = text;
+    private void SetRepositoryFilesStatus(string text, bool loading) =>
+        _repositoryFilesSurface?.UpdateStatus(text, loading);
 
-        if (_repositoryFilesProgress is not null)
-        {
-            _repositoryFilesProgress.IsActive = loading;
-            _repositoryFilesProgress.Visibility = loading
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-        }
-    }
 }
