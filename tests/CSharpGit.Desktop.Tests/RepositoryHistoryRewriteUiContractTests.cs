@@ -38,9 +38,11 @@ public sealed class RepositoryHistoryRewriteUiContractTests
     {
         var source = ReadSource("src/CSharpGit.Presentation/App.xaml.cs");
 
-        var lifecycle = ReadSource("src/CSharpGit.Presentation/MainPage.Lifecycle.cs");
-        Assert.Contains("page?.IsUnsafeToClose == true", source, StringComparison.Ordinal);
-        Assert.Contains("IsHistoryRewriteRunning: IsHistoryRewriteInProgress", lifecycle, StringComparison.Ordinal);
+        var safety = ReadSource("src/CSharpGit.Presentation/Windowing/WindowCloseSafetyProvider.cs");
+        var close = ReadSource("src/CSharpGit.Presentation/Windowing/WindowCloseOrchestrator.cs");
+        Assert.Contains("_windowClose?.RequestClose()", source, StringComparison.Ordinal);
+        Assert.Contains("session.IsUnsafeToClose", close, StringComparison.Ordinal);
+        Assert.Contains("IsHistoryRewriteRunning: repository.RepositoryHistoryRewrite.IsInProgress", safety, StringComparison.Ordinal);
         Assert.Contains("eventArgs.Cancel = true", source, StringComparison.Ordinal);
     }
 

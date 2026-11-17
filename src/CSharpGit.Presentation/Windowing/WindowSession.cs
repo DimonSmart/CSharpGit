@@ -8,13 +8,16 @@ internal enum WindowSessionState { Created, Active, PreparingForShutdown, Dispos
 internal sealed class WindowSession(
     IServiceScope scope,
     IWindowContentLifetime content,
-    OpenRepositoryViewModel repository)
+    OpenRepositoryViewModel repository,
+    WindowCloseSafetyProvider closeSafety)
 {
     private readonly object _gate = new();
     private Task? _prepareTask;
     private int _state = (int)WindowSessionState.Created;
 
     internal OpenRepositoryViewModel Repository { get; } = repository;
+    internal bool IsUnsafeToClose => closeSafety.IsUnsafeToClose;
+    internal bool RequiresCloseConfirmation => closeSafety.RequiresCloseConfirmation;
     internal WindowSessionState State => (WindowSessionState)Volatile.Read(ref _state);
     internal bool IsActive => State == WindowSessionState.Active;
 

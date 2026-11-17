@@ -176,6 +176,7 @@ public sealed class DesktopUiContractTests
         var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
         var app = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
         var program = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Platforms", "Desktop", "Program.cs"));
+        var close = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Windowing", "WindowCloseOrchestrator.cs"));
 
         Assert.DoesNotContain("EmptyIndexChoiceVisibility", xaml);
         Assert.DoesNotContain("Title=\"The index is empty\"", xaml);
@@ -190,15 +191,15 @@ public sealed class DesktopUiContractTests
         Assert.Contains("_workingTreeService.StageAllAsync", commitCreation);
         Assert.Contains("HasUnappliedCommitMessage", page);
         Assert.Contains("Keep editing", page);
-        Assert.Contains("RequiresCloseConfirmation", lifecycle);
-        Assert.Contains("page?.RequiresCloseConfirmation == true", app);
+        Assert.Contains("RequiresCloseConfirmation", close);
+        Assert.Contains("session.RequiresCloseConfirmation", close);
         Assert.Contains("eventArgs.Cancel = true", app);
-        Assert.Contains("WindowCloseDecision.Confirm", app);
-        Assert.Contains("_closeCoordinator.CancelConfirmation()", app);
-        Assert.Contains("await UiBoundedTaskWait.WaitAsync(", app);
-        Assert.Contains("DiagnosticsShutdownBudget,", app);
-        Assert.Contains("_windowSession?.PrepareForShutdownAsync(CancellationToken.None)", app);
-        Assert.Contains("_windowSession?.CompleteShutdown()", app);
+        Assert.Contains("WindowCloseDecision.Confirm", close);
+        Assert.Contains("_coordinator.CancelConfirmation()", close);
+        Assert.Contains("await UiBoundedTaskWait.WaitAsync(", close);
+        Assert.Contains("DiagnosticsShutdownBudget,", close);
+        Assert.Contains("session.PrepareForShutdownAsync(CancellationToken.None)", close);
+        Assert.Contains("session.CompleteShutdown()", close);
         Assert.DoesNotContain("_window.Closed += async", app);
         Assert.Contains("application?.StopHost()", program);
     }

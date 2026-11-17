@@ -77,23 +77,23 @@ public sealed class PresentationLifecycleContractTests
     public void DesktopCloseCheckReportsNormalLifetimeMilestones()
     {
         var app = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "App.xaml.cs"));
-        foreach (var milestone in new[] { "Closing", "CloseCanceled", "CloseAccepted", "WindowClosed",
-                     "PageShutdownCompleted", "HostStopping", "HostStopped" })
-            Assert.Contains($"ReportDesktopCloseCheck(\"{milestone}", app, StringComparison.Ordinal);
+        var close = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Windowing", "WindowCloseOrchestrator.cs"));
+        foreach (var milestone in new[] { "Closing", "CloseCanceled", "CloseAccepted", "WindowClosed", "PageShutdownCompleted", "HostStopping", "HostStopped" })
+            Assert.Contains(milestone, app + close, StringComparison.Ordinal);
     }
 
     [Fact]
     public void CloseChecksActiveOperationsAndRechecksAfterConfirmation()
     {
-        var presentation = Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation");
-        var lifecycle = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
-        var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
-        Assert.Contains("_viewModel.IsMutating", lifecycle, StringComparison.Ordinal);
-        Assert.Contains("_cloneRepositoryViewModel.IsBusy", lifecycle, StringComparison.Ordinal);
-        Assert.Contains("_createRepositoryViewModel.IsBusy", lifecycle, StringComparison.Ordinal);
-        Assert.Contains("page?.IsUnsafeToClose == true", app, StringComparison.Ordinal);
-        var recheck = app.IndexOf("page.IsUnsafeToClose || !ReferenceEquals", StringComparison.Ordinal);
-        var scheduling = app.IndexOf("ScheduleShutdown(page);", recheck, StringComparison.Ordinal);
+        var safety = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Windowing", "WindowCloseSafetyProvider.cs"));
+        var close = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Windowing", "WindowCloseOrchestrator.cs"));
+        foreach (var flag in new[] { "repository.IsMutating", "repository.IsChangingRepository",
+                     "repository.RepositoryHistoryRewrite.IsInProgress", "maintenance.IsRunning",
+                     "isUpdateRunning()", "clone.IsBusy", "create.IsBusy" })
+            Assert.Contains(flag, safety, StringComparison.Ordinal);
+        Assert.Contains("session.IsUnsafeToClose", close, StringComparison.Ordinal);
+        var recheck = close.IndexOf("session.IsUnsafeToClose || !ReferenceEquals(window.Content, content)", StringComparison.Ordinal);
+        var scheduling = close.IndexOf("ScheduleShutdown();", recheck, StringComparison.Ordinal);
         Assert.True(recheck >= 0 && scheduling > recheck);
     }
 
@@ -162,9 +162,9 @@ public sealed class PresentationLifecycleContractTests
     [Fact]
     public void MacOsDoesNotSynchronouslyStopHostInWindowClosed()
     {
-        var root = FindRepositoryRoot();
-        var app = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
-        Assert.Contains("await StopHostAsync();", app, StringComparison.Ordinal);
+        var app = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "App.xaml.cs"));
+        var close = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Windowing", "WindowCloseOrchestrator.cs"));
+        Assert.Contains("await host.StopHostAsync();", close, StringComparison.Ordinal);
         Assert.Contains("_hostStopTask ??= StopHostCoreAsync()", app, StringComparison.Ordinal);
         Assert.Contains("await _host.StopAsync(timeout.Token)", app, StringComparison.Ordinal);
         var closed = app.IndexOf("_window.Closed +=", StringComparison.Ordinal);
@@ -176,39 +176,38 @@ public sealed class PresentationLifecycleContractTests
     [Fact]
     public void AsyncShutdownIsBoundedAndIdempotent()
     {
-        var presentation = Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation");
-        var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
-        var lifecycle = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
-        var perf = File.ReadAllText(Path.Combine(presentation, "MainPage.HistoryPerformanceDiagnostics.cs"));
-        Assert.Contains("await UiBoundedTaskWait.WaitAsync(", app, StringComparison.Ordinal);
-        Assert.Contains("DiagnosticsShutdownBudget,", app, StringComparison.Ordinal);
-        Assert.Contains("WindowCloseStage.FinalClose", app, StringComparison.Ordinal);
-        Assert.Contains("_closeCoordinator.AuthorizeFinalClose();", app, StringComparison.Ordinal);
-        Assert.Contains("window.DispatcherQueue.TryEnqueue(() => BeginShutdown(page))", app, StringComparison.Ordinal);
-        Assert.Contains("CloseSchedulingRejected", app, StringComparison.Ordinal);
+        var close = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Windowing", "WindowCloseOrchestrator.cs"));
+        var session = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Windowing", "WindowSession.cs"));
+        var lifecycle = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
+        var perf = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "MainPage.HistoryPerformanceDiagnostics.cs"));
+        Assert.Contains("await UiBoundedTaskWait.WaitAsync(", close, StringComparison.Ordinal);
+        Assert.Contains("DiagnosticsShutdownBudget,", close, StringComparison.Ordinal);
+        Assert.Contains("WindowCloseStage.FinalClose", close, StringComparison.Ordinal);
+        Assert.Contains("_coordinator.AuthorizeFinalClose();", close, StringComparison.Ordinal);
+        Assert.Contains("window.DispatcherQueue.TryEnqueue(BeginShutdown)", close, StringComparison.Ordinal);
+        Assert.Contains("CloseSchedulingRejected", close, StringComparison.Ordinal);
+        Assert.Contains("lock (_gate)", session, StringComparison.Ordinal);
+        Assert.Contains("scope.Dispose()", session, StringComparison.Ordinal);
         Assert.Contains("Interlocked.Exchange(ref _shutdownFinalized, 1)", lifecycle, StringComparison.Ordinal);
         var prepare = lifecycle.IndexOf("public Task PrepareForShutdown()", StringComparison.Ordinal);
         var stopMonitoring = lifecycle.IndexOf("ShutdownRepositoryChangeMonitoring();", prepare, StringComparison.Ordinal);
         var beginShutdown = lifecycle.IndexOf("public void BeginShutdown()", prepare, StringComparison.Ordinal);
         Assert.True(prepare >= 0 && stopMonitoring > prepare && stopMonitoring < beginShutdown);
-        Assert.DoesNotContain(".GetAwaiter()\n            .GetResult()", perf, StringComparison.Ordinal);
+        Assert.DoesNotContain(".GetAwaiter()\\n            .GetResult()", perf, StringComparison.Ordinal);
     }
 
     [Fact]
     public void MacOsShutdownIsScheduledBeforeAnyResourceCleanup()
     {
-        var presentation = Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation");
-        var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
-        var scheduleStart = app.IndexOf("private void ScheduleShutdown", StringComparison.Ordinal);
-        var queue = app.IndexOf("window.DispatcherQueue.TryEnqueue(() => BeginShutdown(page))", scheduleStart, StringComparison.Ordinal);
-        var shutdown = app.IndexOf("private void BeginShutdown", queue, StringComparison.Ordinal);
-        var cleanup = app.IndexOf("private async Task FinalizeWindowShutdownAsync", shutdown, StringComparison.Ordinal);
-
+        var close = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Windowing", "WindowCloseOrchestrator.cs"));
+        var scheduleStart = close.IndexOf("private void ScheduleShutdown", StringComparison.Ordinal);
+        var queue = close.IndexOf("window.DispatcherQueue.TryEnqueue(BeginShutdown)", scheduleStart, StringComparison.Ordinal);
+        var shutdown = close.IndexOf("private void BeginShutdown", queue, StringComparison.Ordinal);
+        var cleanup = close.IndexOf("private async Task FinalizeWindowShutdownAsync", shutdown, StringComparison.Ordinal);
         Assert.True(scheduleStart >= 0 && queue > scheduleStart && shutdown > queue && cleanup > shutdown);
-        Assert.Contains("_closeCoordinator.TrySchedule", app, StringComparison.Ordinal);
-        Assert.Contains("if (!_closeCoordinator.BeginShutdown()) return;", app, StringComparison.Ordinal);
-        Assert.DoesNotContain("if (window.DispatcherQueue.HasThreadAccess) CloseAuthorizedWindow();", app,
-            StringComparison.Ordinal);
+        Assert.Contains("_coordinator.TrySchedule", close, StringComparison.Ordinal);
+        Assert.Contains("if (!_coordinator.BeginShutdown()) return;", close, StringComparison.Ordinal);
+        Assert.DoesNotContain("if (window.DispatcherQueue.HasThreadAccess) CloseAuthorizedWindow();", close, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()
