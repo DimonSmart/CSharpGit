@@ -12,6 +12,7 @@ public sealed class ManualRefreshUiContractTests
         var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
         var refreshAction = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RefreshIndicator.cs"));
         var monitor = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "RepositoryChangeMonitor.cs"));
+        var coordinator = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "RepositoryChangeCoordinator.cs"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var reader = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitWorkingTreeStatusReader.cs"));
         var application = Path.Combine(root, "src", "CSharpGit.Application");
@@ -36,13 +37,15 @@ public sealed class ManualRefreshUiContractTests
         Assert.DoesNotContain("Text=\"Refresh\"", xaml);
 
         Assert.Contains("IsRefreshRequired", refresh);
-        Assert.Contains("IWorkingTreeStatusReader", refresh);
-        Assert.Contains("RunWorkingTreeStatusLoopAsync", refresh);
+        Assert.Contains("_repositoryChangeCoordinator.PublishBaseline(", refresh);
+        Assert.Contains("_repositoryChangeCoordinator.ChangeRepository(", refresh);
         Assert.Contains("DisplayedRefreshBaselineRevision", refresh);
-        Assert.Contains("GetInvalidationsSince", refresh);
-        Assert.Contains("StatusProbeFailed", refresh);
-        Assert.Contains("WatcherOverflow", refresh);
-        Assert.DoesNotContain("IRepositoryRefreshProbe", refresh);
+        Assert.Contains("IWorkingTreeStatusReader", coordinator);
+        Assert.Contains("RunStatusLoopAsync", coordinator);
+        Assert.Contains("GetInvalidationsSince", coordinator);
+        Assert.Contains("StatusProbeFailed", coordinator);
+        Assert.Contains("WatcherOverflow", coordinator);
+        Assert.DoesNotContain("IRepositoryRefreshProbe", refresh + coordinator);
         Assert.DoesNotContain("_repositoryChangeMonitor.Suspend()", refresh);
         Assert.DoesNotContain("_repositoryChangeMonitor.Resume()", refresh);
         Assert.Contains("Repository has changed externally. Refresh to see the latest state.", refresh);

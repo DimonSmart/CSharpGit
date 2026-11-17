@@ -25,6 +25,11 @@ public sealed class RepositorySwitchingContractTests
         var refresh = File.ReadAllText(Path.Combine(
             presentation,
             "MainPage.RepositoryRefresh.cs"));
+        var coordinator = File.ReadAllText(Path.Combine(
+            root,
+            "src",
+            "CSharpGit.Presentation.Core",
+            "RepositoryChangeCoordinator.cs"));
 
         Assert.Contains("internal Task<bool> OpenRepositoryPathAsync", viewModel);
         Assert.Contains("OpenRepositoryPathFromLifecycleAsync", viewModel);
@@ -50,8 +55,9 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("TryBeginRepositoryLifecycle()", creation);
         Assert.DoesNotContain("ConfirmDiscardCommitMessageForRepositorySwitchAsync", creation);
 
-        Assert.Contains("_repositoryChangeMonitor.Stop();", refresh);
-        Assert.Contains("_repositoryChangeMonitor.Start(repository);", refresh);
+        Assert.Contains("_repositoryChangeCoordinator.ChangeRepository(", refresh);
+        Assert.Contains("_monitor.Stop();", coordinator);
+        Assert.Contains("_monitor.Start(repository);", coordinator);
     }
 
     [Fact]

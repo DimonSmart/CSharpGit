@@ -107,6 +107,8 @@ public sealed class PresentationLifecycleContractTests
         var recent = File.ReadAllText(Path.Combine(presentation, "MainPage.RecentRepositories.cs"));
         var gitConsole = File.ReadAllText(Path.Combine(presentation, "MainPage.GitConsole.cs"));
         var refresh = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryRefresh.cs"));
+        var coordinator = File.ReadAllText(Path.Combine(
+            root, "src", "CSharpGit.Presentation.Core", "RepositoryChangeCoordinator.cs"));
 
         Assert.Contains("_uiDispatcher.HasThreadAccess", openRepositoryViewModel, StringComparison.Ordinal);
         Assert.Contains("ApplySettingsChangeOnUiThread", openRepositoryViewModel, StringComparison.Ordinal);
@@ -122,8 +124,10 @@ public sealed class PresentationLifecycleContractTests
         Assert.Contains("ApplyGitCommandLifecycleChange", gitConsole, StringComparison.Ordinal);
 
         Assert.Contains("if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;", refresh, StringComparison.Ordinal);
-        Assert.Contains("_workingTreeStatusPending = null;", refresh, StringComparison.Ordinal);
-        Assert.Contains("_workingTreeStatusToken", refresh, StringComparison.Ordinal);
+        Assert.Contains("_pendingStatus = null;", coordinator, StringComparison.Ordinal);
+        Assert.Contains("_repositoryStatusStop?.Cancel();", coordinator, StringComparison.Ordinal);
+        Assert.Contains("_lifetimeStop.Cancel();", coordinator, StringComparison.Ordinal);
+        Assert.Contains("_dispatcher.HasThreadAccess", coordinator, StringComparison.Ordinal);
         Assert.Contains("if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;", refresh, StringComparison.Ordinal);
         Assert.Contains("!IsShuttingDown && DispatcherQueue.HasThreadAccess", refresh, StringComparison.Ordinal);
         Assert.Contains("ClearRepositoryPresentationRefreshQueue();", refresh, StringComparison.Ordinal);
@@ -132,20 +136,20 @@ public sealed class PresentationLifecycleContractTests
     [Fact]
     public void WorkingTreeStatusCheckRechecksLifecycleAfterAwaitAndBeforeRestart()
     {
-        var refresh = File.ReadAllText(Path.Combine(
+        var coordinator = File.ReadAllText(Path.Combine(
             FindRepositoryRoot(),
             "src",
-            "CSharpGit.Presentation",
-            "MainPage.RepositoryRefresh.cs"));
+            "CSharpGit.Presentation.Core",
+            "RepositoryChangeCoordinator.cs"));
 
-        var awaitIndex = refresh.IndexOf("await _workingTreeStatusReader.ReadAsync", StringComparison.Ordinal);
-        var postAwaitFenceIndex = refresh.IndexOf(
-            "if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;",
+        var awaitIndex = coordinator.IndexOf("await _statusReader.ReadAsync", StringComparison.Ordinal);
+        var postAwaitFenceIndex = coordinator.IndexOf(
+            "if (!_initialized || _disposed) return;",
             awaitIndex,
             StringComparison.Ordinal);
-        var finallyIndex = refresh.IndexOf("finally", awaitIndex, StringComparison.Ordinal);
-        var restartFenceIndex = refresh.IndexOf(
-            "StartWorkingTreeStatusLoopIfNeeded();",
+        var finallyIndex = coordinator.IndexOf("finally", awaitIndex, StringComparison.Ordinal);
+        var restartFenceIndex = coordinator.IndexOf(
+            "StartStatusLoopIfNeeded();",
             finallyIndex,
             StringComparison.Ordinal);
 
@@ -183,6 +187,10 @@ public sealed class PresentationLifecycleContractTests
         Assert.Contains("window.DispatcherQueue.TryEnqueue(() => BeginShutdown(page))", app, StringComparison.Ordinal);
         Assert.Contains("CloseSchedulingRejected", app, StringComparison.Ordinal);
         Assert.Contains("Interlocked.Exchange(ref _shutdownFinalized, 1)", lifecycle, StringComparison.Ordinal);
+        var prepare = lifecycle.IndexOf("public Task PrepareForShutdown()", StringComparison.Ordinal);
+        var stopMonitoring = lifecycle.IndexOf("ShutdownRepositoryChangeMonitoring();", prepare, StringComparison.Ordinal);
+        var beginShutdown = lifecycle.IndexOf("public void BeginShutdown()", prepare, StringComparison.Ordinal);
+        Assert.True(prepare >= 0 && stopMonitoring > prepare && stopMonitoring < beginShutdown);
         Assert.DoesNotContain(".GetAwaiter()\n            .GetResult()", perf, StringComparison.Ordinal);
     }
 
