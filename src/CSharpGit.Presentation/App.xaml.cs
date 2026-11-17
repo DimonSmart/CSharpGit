@@ -76,7 +76,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
                 services.AddSingleton<ApplicationThemeManager>();
                 services.AddSingleton<IRepositoryImageService, RepositoryImageService>();
                 services.AddSingleton<IAuthorAvatarService, AuthorAvatarService>();
-                services.AddSingleton<SettingsWindowController>();
+                services.AddScoped<SettingsWindowController>();
                 services.AddSingleton<GitCommandActivityHistory>();
                 services.AddSingleton<IGitCommandActivitySink>(
                     provider => provider.GetRequiredService<GitCommandActivityHistory>());
@@ -85,7 +85,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
 
                 var checkRepository = Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_REPOSITORY")
                                       ?? Program.InitialRepositoryPath;
-                services.AddSingleton<RecentRepositoryFolderPicker>(_ =>
+                services.AddScoped<RecentRepositoryFolderPicker>(_ =>
                 {
                     IFolderPicker innerPicker;
                     if (string.IsNullOrWhiteSpace(checkRepository))
@@ -103,7 +103,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
 
                     return new RecentRepositoryFolderPicker(innerPicker);
                 });
-                services.AddSingleton<IFolderPicker>(provider => provider.GetRequiredService<RecentRepositoryFolderPicker>());
+                services.AddScoped<IFolderPicker>(provider => provider.GetRequiredService<RecentRepositoryFolderPicker>());
 
                 services.AddSingleton<IExternalToolProcessService, ExternalToolProcessService>();
                 services.AddSingleton<IApplicationVersionProvider>(_ => new ApplicationVersionProvider(typeof(App).Assembly));
@@ -177,7 +177,6 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
         var windowContent = _host.Services.GetRequiredService<WindowSessionFactory>().Create();
         var mainPage = windowContent.Page;
         _windowSession = windowContent.Session;
-        await _windowSession.InitializeAsync(CancellationToken.None);
         _windowClose = new WindowCloseOrchestrator(
             _window, mainPage, _windowSession, mainPage, this);
         mainPage.WindowTitleChanged += MainPage_WindowTitleChanged;
@@ -208,8 +207,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
         SetWindowIcon(_window, startupLogger);
         _window.Activate();
 
-        if (Program.InitialRepositoryPath is not null)
-            await mainPage.OpenInitialRepositoryAsync();
+        await _windowSession.InitializeAsync(CancellationToken.None);
     }
 
     private bool TryBeginNormalShutdown(MainPage? page) =>

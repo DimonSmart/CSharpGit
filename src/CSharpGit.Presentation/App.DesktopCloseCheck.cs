@@ -42,7 +42,7 @@ public sealed partial class App
                 throw new InvalidOperationException("The desktop close-check repository was not configured.");
             if (!await viewModel.OpenRepositoryPathAsync(repository, timeout.Token))
                 throw new InvalidOperationException($"The desktop close-check repository did not open: {viewModel.ErrorMessage}");
-            if (page.IsUnsafeToClose || page.RequiresCloseConfirmation)
+            if (_windowSession?.IsUnsafeToClose == true || _windowSession?.RequiresCloseConfirmation == true)
                 throw new InvalidOperationException("The desktop close-check repository is not ready for normal closure.");
 
             ReportDesktopCloseCheck("Ready");
@@ -111,7 +111,7 @@ public sealed partial class App
                 TagCount = vm.Tags.Items.Count,
                 StashCount = vm.Stashes.Items.Count,
                 Draft = vm.CommitCreation.CommitMessage,
-                UnsafeToClose = page.IsUnsafeToClose,
+                UnsafeToClose = _windowSession?.IsUnsafeToClose == true,
                 IsBusy = vm.IsBusy,
                 CanChangeRepository = vm.CanChangeRepository,
                 RefreshRequired = page.IsRefreshRequired,
@@ -444,14 +444,14 @@ public sealed partial class App
                 {
                     if (args.PropertyName != nameof(CloneRepositoryViewModel.IsBusy) || !clone.IsBusy) return;
                     busyObserved = true;
-                    closeRejected = page.IsUnsafeToClose && !TryBeginNormalShutdown(page);
+                    closeRejected = _windowSession?.IsUnsafeToClose == true && !TryBeginNormalShutdown(page);
                 };
                 clone.PropertyChanged += observer;
                 bool succeeded;
                 try { succeeded = await clone.CloneAsync(token); }
                 finally { clone.PropertyChanged -= observer; }
                 await RespondAsync(succeeded && busyObserved && closeRejected
-                    && !page.IsUnsafeToClose && !clone.IsBusy && Directory.Exists(Path.Combine(target, ".git")));
+                    && _windowSession?.IsUnsafeToClose != true && !clone.IsBusy && Directory.Exists(Path.Combine(target, ".git")));
             }
             else if (command.StartsWith("VerifyCreateCloseSafety\t", StringComparison.Ordinal))
             {
@@ -465,14 +465,14 @@ public sealed partial class App
                 {
                     if (args.PropertyName != nameof(CreateRepositoryViewModel.IsBusy) || !create.IsBusy) return;
                     busyObserved = true;
-                    closeRejected = page.IsUnsafeToClose && !TryBeginNormalShutdown(page);
+                    closeRejected = _windowSession?.IsUnsafeToClose == true && !TryBeginNormalShutdown(page);
                 };
                 create.PropertyChanged += observer;
                 bool succeeded;
                 try { succeeded = await create.CreateAsync(token); }
                 finally { create.PropertyChanged -= observer; }
                 await RespondAsync(succeeded && busyObserved && closeRejected
-                    && !page.IsUnsafeToClose && !create.IsBusy && Directory.Exists(Path.Combine(target, ".git")));
+                    && _windowSession?.IsUnsafeToClose != true && !create.IsBusy && Directory.Exists(Path.Combine(target, ".git")));
             }
             else if (command == "VerifyCloneFailureReleasesClose")
             {
@@ -484,14 +484,14 @@ public sealed partial class App
                 PropertyChangedEventHandler observer = (_, args) =>
                 {
                     if (args.PropertyName == nameof(CloneRepositoryViewModel.IsBusy) && clone.IsBusy)
-                        busyObserved = page.IsUnsafeToClose && !TryBeginNormalShutdown(page);
+                        busyObserved = _windowSession?.IsUnsafeToClose == true && !TryBeginNormalShutdown(page);
                 };
                 clone.PropertyChanged += observer;
                 bool result;
                 try { result = await clone.CloneAsync(token); }
                 finally { clone.PropertyChanged -= observer; }
                 await RespondAsync(!result && busyObserved && !clone.IsBusy
-                    && !page.IsUnsafeToClose && !string.IsNullOrWhiteSpace(clone.ErrorMessage));
+                    && _windowSession?.IsUnsafeToClose != true && !string.IsNullOrWhiteSpace(clone.ErrorMessage));
             }
             else if (command == "VerifyCreateFailureReleasesClose")
             {
@@ -502,14 +502,14 @@ public sealed partial class App
                 PropertyChangedEventHandler observer = (_, args) =>
                 {
                     if (args.PropertyName == nameof(CreateRepositoryViewModel.IsBusy) && create.IsBusy)
-                        busyObserved = page.IsUnsafeToClose && !TryBeginNormalShutdown(page);
+                        busyObserved = _windowSession?.IsUnsafeToClose == true && !TryBeginNormalShutdown(page);
                 };
                 create.PropertyChanged += observer;
                 bool result;
                 try { result = await create.CreateAsync(token); }
                 finally { create.PropertyChanged -= observer; }
                 await RespondAsync(!result && busyObserved && !create.IsBusy
-                    && !page.IsUnsafeToClose && !string.IsNullOrWhiteSpace(create.ErrorMessage));
+                    && _windowSession?.IsUnsafeToClose != true && !string.IsNullOrWhiteSpace(create.ErrorMessage));
             }
             else if (command == "VerifyMaintenanceCloseSafety")
             {
@@ -525,7 +525,7 @@ public sealed partial class App
                     if (args.PropertyName != nameof(RepositoryMaintenanceViewModel.IsRunning)
                         || !maintenance.IsRunning) return;
                     sawRunning = true;
-                    rejectedClose = page.IsUnsafeToClose && !TryBeginNormalShutdown(page);
+                    rejectedClose = _windowSession?.IsUnsafeToClose == true && !TryBeginNormalShutdown(page);
                 };
                 maintenance.PropertyChanged += observer;
                 RepositoryMaintenanceResultKind? resultKind = null;
@@ -537,7 +537,7 @@ public sealed partial class App
                 finally { maintenance.PropertyChanged -= observer; }
                 await RespondAsync(prepared && sawRunning && rejectedClose
                     && resultKind == RepositoryMaintenanceResultKind.Completed
-                    && !maintenance.IsRunning && !page.IsUnsafeToClose);
+                    && !maintenance.IsRunning && _windowSession?.IsUnsafeToClose != true);
             }
             else if (command == "RetryMutation")
             {

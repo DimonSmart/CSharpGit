@@ -186,7 +186,8 @@ public sealed class PresentationLifecycleContractTests
         Assert.Contains("_coordinator.AuthorizeFinalClose();", close, StringComparison.Ordinal);
         Assert.Contains("window.DispatcherQueue.TryEnqueue(BeginShutdown)", close, StringComparison.Ordinal);
         Assert.Contains("CloseSchedulingRejected", close, StringComparison.Ordinal);
-        Assert.Contains("lock (_gate)", session, StringComparison.Ordinal);
+        var transition = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation.Core", "WindowSessionLifecycle.cs"));
+        Assert.Contains("lock (_gate)", transition, StringComparison.Ordinal);
         Assert.Contains("scope.Dispose()", session, StringComparison.Ordinal);
         Assert.Contains("Interlocked.Exchange(ref _shutdownFinalized, 1)", lifecycle, StringComparison.Ordinal);
         var prepare = lifecycle.IndexOf("public Task PrepareForShutdown()", StringComparison.Ordinal);

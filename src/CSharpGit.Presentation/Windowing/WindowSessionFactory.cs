@@ -17,7 +17,14 @@ internal sealed class WindowSessionFactory(IServiceScopeFactory scopeFactory)
                 page.DesktopCreateForCheck,
                 page.DesktopMaintenanceForCheck,
                 () => page.IsApplicationUpdateInProgress);
-            return (page, new WindowSession(scope, page, page.WindowRepository, safety));
+            return (page, new WindowSession(
+                scope,
+                page,
+                page.WindowRepository,
+                safety,
+                _ => Program.InitialRepositoryPath is not null
+                    ? page.OpenInitialRepositoryAsync()
+                    : Task.CompletedTask));
         }
         catch
         {

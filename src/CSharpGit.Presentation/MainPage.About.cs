@@ -168,7 +168,7 @@ public sealed partial class MainPage
                 return;
             }
 
-            if (RequiresCloseConfirmation && !await ConfirmCloseAsync())
+            if (_viewModel.CommitCreation.HasUnappliedCommitMessage && !await ConfirmCloseAsync())
                 return;
 
             using var cancellation = new CancellationTokenSource();

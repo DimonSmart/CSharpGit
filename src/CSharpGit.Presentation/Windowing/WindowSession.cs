@@ -3,62 +3,30 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace CSharpGit.Presentation.Windowing;
 
-internal enum WindowSessionState { Created, Active, PreparingForShutdown, Disposed }
-
 internal sealed class WindowSession(
     IServiceScope scope,
     IWindowContentLifetime content,
     OpenRepositoryViewModel repository,
-    WindowCloseSafetyProvider closeSafety)
+    WindowCloseSafetyProvider closeSafety,
+    Func<CancellationToken, Task> initializeContent)
 {
-    private readonly object _gate = new();
-    private Task? _prepareTask;
-    private int _state = (int)WindowSessionState.Created;
+    private readonly WindowSessionLifecycle _lifetime = new();
 
     internal OpenRepositoryViewModel Repository { get; } = repository;
     internal bool IsUnsafeToClose => closeSafety.IsUnsafeToClose;
     internal bool RequiresCloseConfirmation => closeSafety.RequiresCloseConfirmation;
-    internal WindowSessionState State => (WindowSessionState)Volatile.Read(ref _state);
+    internal WindowSessionState State => _lifetime.State;
     internal bool IsActive => State == WindowSessionState.Active;
 
-    internal Task InitializeAsync(CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        lock (_gate)
-        {
-            if (_state == (int)WindowSessionState.Created)
-                Volatile.Write(ref _state, (int)WindowSessionState.Active);
-            else if (_state != (int)WindowSessionState.Active)
-                throw new InvalidOperationException("A closing window session cannot be initialized.");
-        }
-        return Task.CompletedTask;
-    }
+    internal Task InitializeAsync(CancellationToken cancellationToken) =>
+        _lifetime.InitializeAsync(initializeContent, CompleteShutdown, cancellationToken);
 
-    internal Task PrepareForShutdownAsync(CancellationToken cancellationToken)
-    {
-        lock (_gate)
-        {
-            if (_state == (int)WindowSessionState.Disposed)
-                return Task.CompletedTask;
-            if (_prepareTask is not null)
-                return _prepareTask;
-            Volatile.Write(ref _state, (int)WindowSessionState.PreparingForShutdown);
-            _prepareTask = PrepareCoreAsync(cancellationToken);
-            return _prepareTask;
-        }
-    }
-
-    private async Task PrepareCoreAsync(CancellationToken cancellationToken) =>
-        await content.PrepareForShutdownAsync(cancellationToken);
+    internal Task PrepareForShutdownAsync(CancellationToken cancellationToken) =>
+        _lifetime.PrepareAsync(content.PrepareForShutdownAsync, cancellationToken);
 
     internal void CompleteShutdown()
     {
-        lock (_gate)
-        {
-            if (_state == (int)WindowSessionState.Disposed) return;
-            Volatile.Write(ref _state, (int)WindowSessionState.Disposed);
-        }
-
+        if (!_lifetime.TryComplete()) return;
         try { content.CompleteShutdown(); }
         finally { scope.Dispose(); }
     }
