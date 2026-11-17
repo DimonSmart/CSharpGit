@@ -197,8 +197,8 @@ public sealed class DesktopUiContractTests
         Assert.Contains("_closeCoordinator.CancelConfirmation()", app);
         Assert.Contains("await UiBoundedTaskWait.WaitAsync(", app);
         Assert.Contains("DiagnosticsShutdownBudget,", app);
-        Assert.Contains("page.PrepareForShutdown()", app);
-        Assert.Contains("page.BeginShutdown()", app);
+        Assert.Contains("_windowSession?.PrepareForShutdownAsync(CancellationToken.None)", app);
+        Assert.Contains("_windowSession?.CompleteShutdown()", app);
         Assert.DoesNotContain("_window.Closed += async", app);
         Assert.Contains("application?.StopHost()", program);
     }
