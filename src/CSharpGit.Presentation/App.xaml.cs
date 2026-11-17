@@ -4,6 +4,7 @@ using CSharpGit.Application;
 using CSharpGit.Git;
 using CSharpGit.Infrastructure;
 using CSharpGit.Presentation.Diagnostics;
+using CSharpGit.Presentation.Windowing;
 using CSharpGit.Presentation.Threading;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.Extensions.Configuration;
@@ -22,6 +23,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
     private readonly SessionFileLoggerProvider _sessionFileLoggerProvider;
     private readonly IHost _host;
     private Window? _window;
+    private WindowSession? _windowSession;
     private IDisposable? _mainThemeRegistration;
     private readonly WindowCloseCoordinator _closeCoordinator = new();
     private static readonly TimeSpan DiagnosticsShutdownBudget = TimeSpan.FromSeconds(3);
@@ -138,6 +140,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 services.AddTransient<CreateRepositoryViewModel>();
                 services.AddTransient<CloneRepositoryViewModel>();
                 services.AddTransient<MainPage>();
+                services.AddSingleton<WindowSessionFactory>();
             })
             .Build();
     }
@@ -172,7 +175,10 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
 
         _window = new Window { Title = "CSharpGit" };
         var themeManager = _host.Services.GetRequiredService<ApplicationThemeManager>();
-        var mainPage = _host.Services.GetRequiredService<MainPage>();
+        var windowContent = _host.Services.GetRequiredService<WindowSessionFactory>().Create();
+        var mainPage = windowContent.Page;
+        _windowSession = windowContent.Session;
+        await _windowSession.InitializeAsync(CancellationToken.None);
         mainPage.WindowTitleChanged += MainPage_WindowTitleChanged;
         _window.Title = mainPage.CurrentWindowTitle;
         _mainThemeRegistration = themeManager.Register(mainPage);
@@ -400,7 +406,8 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                 try
                 {
                     await UiBoundedTaskWait.WaitAsync(
-                        page.PrepareForShutdown(),
+                        _windowSession?.PrepareForShutdownAsync(CancellationToken.None)
+                            ?? Task.CompletedTask,
                         DiagnosticsShutdownBudget,
                         exception => LogUiFailure(exception, "History diagnostics shutdown"));
                 }
@@ -409,7 +416,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application
                     // A failed PrepareForShutdown or diagnostics writer must not
                     // bypass page disposal or authorize an undisposed window.
                     page.WindowTitleChanged -= MainPage_WindowTitleChanged;
-                    page.BeginShutdown();
+                    _windowSession?.CompleteShutdown();
                     ReportDesktopCloseCheck("PageShutdownCompleted");
                     LogCloseLifecycle("PageShutdownCompleted");
                 }
