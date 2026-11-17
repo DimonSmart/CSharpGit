@@ -132,7 +132,8 @@ public sealed class DesignSystemContractTests
         Assert.Contains("UpdateRepositoryFilesViewActivity();", changes);
         Assert.Contains("UpdateChangesViewActivity();", changes);
         Assert.Contains("Changes ({_commitFiles.Count})", changes);
-        Assert.Contains("\"Tracked files\"", mainCode);
+        var navigation = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs");
+        Assert.Contains("\"Tracked files\"", navigation);
         Assert.Contains("\"Stash\"", mainCode + changes + files + 
             Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs"));
     }

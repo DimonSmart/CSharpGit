@@ -132,7 +132,8 @@ public sealed class DesktopUiContractTests
         var forcePushPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ForcePush.cs"));
         var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
         var workingTreeMenus = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs"));
-        var surface = xaml + operationBanner + page + confirmationDialogs + forcePushPage + commitActions + workingTreeMenus;
+        var navigation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs"));
+        var surface = xaml + operationBanner + page + navigation + confirmationDialogs + forcePushPage + commitActions + workingTreeMenus;
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var repositorySync = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySyncViewModel.cs"));
         var repositoryOperations = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryOperationsViewModel.cs"));
