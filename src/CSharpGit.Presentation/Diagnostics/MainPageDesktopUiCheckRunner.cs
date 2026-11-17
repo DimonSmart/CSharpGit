@@ -16,11 +16,32 @@ public sealed partial class MainPage
     {
         private readonly MainPage _page = page;
 
+        private sealed class XamlOnlyProbeData
+        {
+            public string ProbeText => "XAML-only binding verified";
+        }
+
         public async Task RunAsync(string resultPath)
         {
             var failures = new List<string>();
             try
             {
+                var probe = new Views.XamlOnlyProbe { DataContext = new XamlOnlyProbeData() };
+                _page.RootLayout.Children.Add(probe);
+                try
+                {
+                    var text = (probe.Content as Grid)?.Children.OfType<TextBlock>().FirstOrDefault();
+                    await WaitUntilAsync(
+                        () => text?.Text == "XAML-only binding verified",
+                        TimeSpan.FromSeconds(5));
+                    Check(text?.Text == "XAML-only binding verified",
+                        "generated XAML-only UserControl did not bind its DataContext", failures);
+                }
+                finally
+                {
+                    _page.RootLayout.Children.Remove(probe);
+                }
+
                 var busyObserved = false;
                 _page._viewModel.PropertyChanged += (_, eventArgs) =>
                 {

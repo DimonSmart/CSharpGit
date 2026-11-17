@@ -10,21 +10,9 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
     private bool IsShuttingDown =>
         Volatile.Read(ref _shutdownStarted) != 0;
 
-    public bool RequiresCloseConfirmation => _viewModel.CommitCreation.HasUnappliedCommitMessage;
-
     internal CSharpGit.Presentation.ViewModels.CloneRepositoryViewModel DesktopCloneForCheck => _cloneRepositoryViewModel;
     internal CSharpGit.Presentation.ViewModels.CreateRepositoryViewModel DesktopCreateForCheck => _createRepositoryViewModel;
     internal CSharpGit.Presentation.ViewModels.RepositoryMaintenanceViewModel DesktopMaintenanceForCheck => _repositoryMaintenance;
-
-    // Only operations with Git or filesystem side effects make shutdown unsafe.
-    public bool IsUnsafeToClose => new WindowCloseSafetyState(
-        IsMutating: _viewModel.IsMutating,
-        IsChangingRepository: _viewModel.IsChangingRepository,
-        IsHistoryRewriteRunning: IsHistoryRewriteInProgress,
-        IsMaintenanceRunning: IsRepositoryMaintenanceInProgress,
-        IsUpdateRunning: IsApplicationUpdateInProgress,
-        IsCloneRunning: _cloneRepositoryViewModel.IsBusy,
-        IsCreateRunning: _createRepositoryViewModel.IsBusy).IsUnsafeToClose;
 
     private void MainPage_Loaded(object sender, RoutedEventArgs args)
     {
