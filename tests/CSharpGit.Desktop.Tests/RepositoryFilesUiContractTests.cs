@@ -76,7 +76,8 @@ public sealed class RepositoryFilesUiContractTests
         var changesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.Changes.cs"));
 
         Assert.Contains("public ObservableCollection<RepositorySnapshotTreeNode> TreeRoots { get; } = []", feature, StringComparison.Ordinal);
-        Assert.Contains("ItemsSource = _repositoryFilesViewModel.TreeRoots", filesSurface, StringComparison.Ordinal);
+        var visual = File.ReadAllText(Path.Combine(presentation, "Controls", "RepositoryFilesSurface.cs"));
+        Assert.Contains("ItemsSource = viewModel.TreeRoots", visual, StringComparison.Ordinal);
         Assert.Contains("RepositorySnapshotTreeSynchronizer.Reconcile(TreeRoots, _snapshot, query)", feature, StringComparison.Ordinal);
         Assert.DoesNotContain("_repositoryFilesTree.ItemsSource = null", filesSurface, StringComparison.Ordinal);
         Assert.Contains("ChangedFileTreeSynchronizer.Reconcile(_changedFileTreeRoots, entries)", changesSurface, StringComparison.Ordinal);
@@ -112,9 +113,11 @@ public sealed class RepositoryFilesUiContractTests
 
         Assert.Contains("RepositoryFilesTreeItemTemplate", treeStyles, StringComparison.Ordinal);
         Assert.Contains("controls:RepositoryTreeGuides", treeStyles, StringComparison.Ordinal);
-        Assert.Contains("BuildRepositoryFilesSplitBody", filesSurface, StringComparison.Ordinal);
-        Assert.Contains("new GridSplitter", previewSurface, StringComparison.Ordinal);
-        Assert.Contains("FilePreviewHost", previewSurface, StringComparison.Ordinal);
+        var visual = File.ReadAllText(Path.Combine(presentation, "Controls", "RepositoryFilesSurface.cs"));
+        Assert.Contains("new RepositoryFilesSurface(_repositoryFilesViewModel)", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("new GridSplitter", visual, StringComparison.Ordinal);
+        Assert.Contains("new FilePreviewHost()", visual, StringComparison.Ordinal);
+        Assert.Contains("_repositoryFilesSurface?.PreviewHost", previewSurface, StringComparison.Ordinal);
         Assert.Contains("FilePreviewService", previewService, StringComparison.Ordinal);
         Assert.Contains("TextPreviewContent", previewHost, StringComparison.Ordinal);
         Assert.Contains("ImagePreviewContent", previewHost, StringComparison.Ordinal);

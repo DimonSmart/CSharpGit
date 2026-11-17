@@ -43,8 +43,12 @@ public sealed class TagUiContractTests
         Assert.Contains("_viewModel.Tags.DeleteRemoteTagAsync(repository, remoteTag)", tags, StringComparison.Ordinal);
 
         Assert.Contains("\"Remote tags…\"", tags, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.Tags.ReadRemoteTagsAsync(repository, remote)", tags, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.Tags.DeleteRemoteTagAsync(repository, selectedTag)", tags, StringComparison.Ordinal);
+        var remoteDialog = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Dialogs", "RemoteTagsDialogController.cs"));
+        Assert.Contains("new RemoteTagsDialogController(", tags, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.Tags.ReadRemoteTagsAsync(repository, remote)", remoteDialog, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.Tags.DeleteRemoteTagAsync(repository, selectedTag)", remoteDialog, StringComparison.Ordinal);
+        Assert.Contains("revision != lookupRevision", remoteDialog, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(repository, _viewModel.Repository)", remoteDialog, StringComparison.Ordinal);
         Assert.DoesNotContain("_tagService", tags, StringComparison.Ordinal);
 
         Assert.Contains("Task DeleteRemoteTagAsync(", contract, StringComparison.Ordinal);

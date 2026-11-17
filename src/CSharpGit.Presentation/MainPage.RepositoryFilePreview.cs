@@ -11,44 +11,8 @@ public sealed partial class MainPage
 {
     private readonly FilePreviewService _repositoryFilePreviewService = new();
     private readonly PreviewPublicationGate<RepositoryPreviewContext> _repositoryPreviewGate = new();
-    private FilePreviewHost? _repositoryFilePreviewHost;
+    private FilePreviewHost? _repositoryFilePreviewHost => _repositoryFilesSurface?.PreviewHost;
     private RepositoryFileSelection? _pendingRepositoryPreviewSelection;
-
-    private Grid BuildRepositoryFilesSplitBody(Grid leftPane)
-    {
-        var body = new Grid();
-        body.ColumnDefinitions.Add(new ColumnDefinition
-        {
-            Width = new GridLength(2, GridUnitType.Star),
-            MinWidth = 180
-        });
-        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(6) });
-        body.ColumnDefinitions.Add(new ColumnDefinition
-        {
-            Width = new GridLength(3, GridUnitType.Star),
-            MinWidth = 250
-        });
-
-        Grid.SetColumn(leftPane, 0);
-        body.Children.Add(leftPane);
-
-        var splitter = new GridSplitter
-        {
-            ResizeDirection = GridResizeDirection.Columns,
-            ResizeBehavior = GridResizeBehavior.PreviousAndNext,
-            MinimumFirst = 180,
-            MinimumSecond = 250,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch
-        };
-        Grid.SetColumn(splitter, 1);
-        body.Children.Add(splitter);
-
-        _repositoryFilePreviewHost = new FilePreviewHost();
-        Grid.SetColumn(_repositoryFilePreviewHost, 2);
-        body.Children.Add(_repositoryFilePreviewHost);
-        return body;
-    }
 
     private void ApplyRepositoryFileSelection(
         string path,

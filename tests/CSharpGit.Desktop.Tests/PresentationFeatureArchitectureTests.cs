@@ -84,6 +84,46 @@ public sealed class PresentationFeatureArchitectureTests
         Assert.DoesNotContain("Message.Contains(\"Diff tool is not configured\"", page);
     }
 
+    [Fact]
+    public void RepositoryFilesOwnsVisualCompositionWithoutOwningGitOperations()
+    {
+        var page = Read("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
+        var preview = Read("src/CSharpGit.Presentation/MainPage.RepositoryFilePreview.cs");
+        var surface = Read("src/CSharpGit.Presentation/Controls/RepositoryFilesSurface.cs");
+
+        Assert.Contains("new RepositoryFilesSurface(_repositoryFilesViewModel)", page);
+        Assert.Contains("SearchBox.TextChanged += RepositoryFilesSearch_TextChanged", page);
+        Assert.Contains("FileTree.SelectionChanged += RepositoryFilesTree_SelectionChanged", page);
+        Assert.Contains("_repositoryFilesSurface?.PreviewHost", preview);
+        Assert.DoesNotContain("private Grid BuildRepositoryFilesSplitBody", preview);
+        Assert.DoesNotContain("new GridSplitter", page);
+        Assert.Contains("new GridSplitter", surface);
+        Assert.Contains("PreviewHost = new FilePreviewHost()", surface);
+        Assert.Contains("ItemsSource = viewModel.TreeRoots", surface);
+        Assert.DoesNotContain("IRepositorySnapshotService", surface);
+        Assert.DoesNotContain("ReadTreeAsync", surface);
+        Assert.DoesNotContain("SearchContentAsync", surface);
+    }
+
+    [Fact]
+    public void RemoteTagBrowserOwnsItsDialogAndRejectsOutdatedLookups()
+    {
+        var page = Read("src/CSharpGit.Presentation/MainPage.Tags.cs");
+        var browser = Read("src/CSharpGit.Presentation/Dialogs/RemoteTagsDialogController.cs");
+
+        Assert.Contains("new RemoteTagsDialogController(", page);
+        Assert.DoesNotContain("private async Task ShowRemoteTagsAsync()", page);
+        Assert.DoesNotContain("ReadRemoteTagsAsync(repository, remote)", page);
+        Assert.Contains("ReadRemoteTagsAsync(repository, remote)", browser);
+        Assert.Contains("revision != lookupRevision", browser);
+        Assert.Contains("ReferenceEquals(repository, _viewModel.Repository)", browser);
+        Assert.Contains("dialogActive = false", browser);
+        Assert.Contains("ContentDialogResult.Primary", browser);
+        Assert.Contains("DeleteRemoteTagAsync(repository, selectedTag)", browser);
+        Assert.DoesNotContain("IGitTagService", browser);
+        Assert.DoesNotContain("GitCommandExecutor", browser);
+    }
+
     private static string Read(string relative) =>
         File.ReadAllText(Path.Combine(Root(), relative.Replace('/', Path.DirectorySeparatorChar)));
 
