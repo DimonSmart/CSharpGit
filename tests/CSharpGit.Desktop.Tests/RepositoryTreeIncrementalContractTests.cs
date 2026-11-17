@@ -26,19 +26,21 @@ public sealed class RepositoryTreeIncrementalContractTests
     public void RepositoryTreeNavigationRetainsLatestClickDuringBusyHistoryRead()
     {
         var root = FindRepositoryRoot();
-        var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+        var navigationSource = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs"));
+        var coordinator = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "RepositoryTreeNavigationCoordinator.cs"));
 
-        var click = ExtractMethod(page, "private void RepositoryTree_ItemInvoked(");
-        var navigation = ExtractMethod(page, "private async Task NavigateToReferenceAsync(");
-        var resume = ExtractMethod(page, "private Task ResumePendingRepositoryTreeNavigationAsync()");
-        var checkout = ExtractMethod(page, "private void RepositoryTree_DoubleTapped(");
+        var click = ExtractMethod(navigationSource, "private void RepositoryTree_ItemInvoked(");
+        var navigation = ExtractMethod(navigationSource, "private async Task NavigateToReferenceAsync(");
+        var resume = ExtractMethod(navigationSource, "private Task ResumePendingRepositoryTreeNavigationAsync()");
+        var checkout = ExtractMethod(navigationSource, "private void RepositoryTree_DoubleTapped(");
 
         Assert.Contains("RepositoryTree.SelectedItem = node;", click, StringComparison.Ordinal);
         Assert.Contains("_viewModel.History.Invalidate();", click, StringComparison.Ordinal);
-        Assert.Contains("_pendingRepositoryTreeNavigation = new(", navigation, StringComparison.Ordinal);
+        Assert.Contains("_repositoryTreeNavigation.DeferReference(", navigation, StringComparison.Ordinal);
         Assert.Contains("treeInteractionVersion", navigation, StringComparison.Ordinal);
-        Assert.Contains("pending.Version != _repositoryTreeInteractionVersion", resume, StringComparison.Ordinal);
-        Assert.Contains("pending.SelectionIntentVersion != _viewModel.History.SelectionIntentVersion", resume, StringComparison.Ordinal);
+        Assert.Contains("_repositoryTreeNavigation.TryTakeReference(", resume, StringComparison.Ordinal);
+        Assert.Contains("candidate.Version != _version", coordinator, StringComparison.Ordinal);
+        Assert.Contains("candidate.SelectionIntentVersion != currentSelectionIntentVersion", coordinator, StringComparison.Ordinal);
         Assert.Contains("SwitchRepositoryTreeBranchAsync", checkout, StringComparison.Ordinal);
     }
 

@@ -32,8 +32,9 @@ public sealed class StashUiContractTests
         Assert.Contains("Click=\"CreateStash_Click\"", xaml, StringComparison.Ordinal);
         Assert.Contains("IsEnabled=\"{Binding Stashes.CanCreateStash}\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("IsEnabled=\"{Binding CanCreateStash}\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("\"Stash…\"", page, StringComparison.Ordinal);
-        Assert.Contains("ShowCreateStashDialogAsync", page, StringComparison.Ordinal);
+        var navigation = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs");
+        Assert.Contains("\"Stash…\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("ShowCreateStashDialogAsync", navigation, StringComparison.Ordinal);
 
         Assert.Contains("Title = \"Stash changes\"", stashPage, StringComparison.Ordinal);
         Assert.Contains("Content = \"All tracked changes\"", stashPage, StringComparison.Ordinal);
@@ -82,7 +83,8 @@ public sealed class StashUiContractTests
         var detailsComposition = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.DetailsComposition.cs");
         var detailsViewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs");
 
-        var stashSelection = SliceFirstCase(page, "case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:");
+        var navigation = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs");
+        var stashSelection = SliceFirstCase(navigation, "case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:");
         Assert.Contains("await _viewModel.Stashes.SelectStashAsync(stash)", stashSelection, StringComparison.Ordinal);
         Assert.Contains("stash.Commit, preserveSelectedStash: true", stashSelection, StringComparison.Ordinal);
         Assert.Contains("treeInteractionVersion: interactionVersion", stashSelection, StringComparison.Ordinal);
@@ -99,7 +101,7 @@ public sealed class StashUiContractTests
         Assert.Contains("Click=\"DropSelectedStash_Click\"", xaml, StringComparison.Ordinal);
 
         Assert.Contains("context?.SelectedObjectCommit", repositoryFiles, StringComparison.Ordinal);
-        Assert.Contains("\"Tracked files\"", page, StringComparison.Ordinal);
+        Assert.Contains("\"Tracked files\"", navigation, StringComparison.Ordinal);
         Assert.Contains("Untracked stash files are shown in Changes.", detailsViewModel, StringComparison.Ordinal);
     }
 
@@ -111,7 +113,8 @@ public sealed class StashUiContractTests
         var stashPage = Read(root, "src", "CSharpGit.Presentation", "MainPage.Stashes.cs");
         var stashViewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "StashesViewModel.cs");
 
-        var stashMenu = SliceCase(page, "case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:");
+        var navigation = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs");
+        var stashMenu = SliceCase(navigation, "case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:");
         Assert.Contains("\"Apply\"", stashMenu, StringComparison.Ordinal);
         Assert.Contains("\"Pop\"", stashMenu, StringComparison.Ordinal);
         Assert.Contains("\"Drop…\"", stashMenu, StringComparison.Ordinal);

@@ -124,7 +124,7 @@ public sealed class ForcePushUiContractTests
     public void ContextualReplacementsRemainAvailableAndDeadCreateCommandIsRemoved()
     {
         var root = FindRepositoryRoot();
-        var codeBehind = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+        var codeBehind = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs"));
         var viewModel = File.ReadAllText(Path.Combine(
             root,
             "src",
