@@ -64,13 +64,17 @@ public sealed class PresentationFeatureArchitectureTests
     }
 
     [Fact]
-    public void FeatureLifecycleHasSinglePageOwner()
+    public void FeatureLifecycleIsUnsubscribedBeforeScopeDisposal()
     {
         var lifecycle = Read("src/CSharpGit.Presentation/MainPage.Lifecycle.cs");
-        Assert.Contains("_fileActions.Dispose()", lifecycle);
-        Assert.Contains("_repositoryMaintenance.Dispose()", lifecycle);
+        var session = Read("src/CSharpGit.Presentation/Windowing/WindowSession.cs");
+        Assert.DoesNotContain("_fileActions.Dispose()", lifecycle);
+        Assert.DoesNotContain("_repositoryMaintenance.Dispose()", lifecycle);
+        Assert.DoesNotContain("_viewModel.Dispose()", lifecycle);
         Assert.Contains("_fileActions.PropertyChanged -= FileActions_PropertyChanged", lifecycle);
         Assert.Contains("_repositoryMaintenance.PropertyChanged -= RepositoryMaintenance_PropertyChanged", lifecycle);
+        Assert.Contains("content.CompleteShutdown();", session);
+        Assert.Contains("finally { scope.Dispose(); }", session);
     }
 
     [Fact]
