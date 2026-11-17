@@ -64,7 +64,9 @@ public sealed partial class MainPage : Page
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
-        _workingTreeStatusReader = workingTreeStatusReader ?? throw new ArgumentNullException(nameof(workingTreeStatusReader));
+        _repositoryChangeCoordinator = new RepositoryChangeCoordinator(
+            workingTreeStatusReader ?? throw new ArgumentNullException(nameof(workingTreeStatusReader)),
+            new UiDispatcher(DispatcherQueue));
         InitializeBusyStatusPresentation();
 
         RepositoryTree.ItemsSource = _repositoryTreeRoots;
