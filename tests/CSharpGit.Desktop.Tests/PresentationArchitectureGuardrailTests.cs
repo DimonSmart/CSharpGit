@@ -64,11 +64,13 @@ public sealed class PresentationArchitectureGuardrailTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var appPath = Path.Combine(presentation, "App.xaml.cs");
+        var factoryPath = Path.Combine(presentation, "Windowing", "WindowSessionFactory.cs");
         var app = File.ReadAllText(appPath);
 
         foreach (var file in ProductionCsFiles(presentation)
             .Concat(ProductionCsFiles(Path.Combine(root, "src", "CSharpGit.Presentation.Core")))
-            .Where(path => !Path.GetFullPath(path).Equals(Path.GetFullPath(appPath), StringComparison.OrdinalIgnoreCase)))
+            .Where(path => !Path.GetFullPath(path).Equals(Path.GetFullPath(appPath), StringComparison.OrdinalIgnoreCase)
+                && !Path.GetFullPath(path).Equals(Path.GetFullPath(factoryPath), StringComparison.OrdinalIgnoreCase)))
         {
             var source = File.ReadAllText(file);
             Assert.DoesNotContain("new JsonAppSettingsService", source, StringComparison.Ordinal);
@@ -78,6 +80,7 @@ public sealed class PresentationArchitectureGuardrailTests
             Assert.DoesNotContain("GetRequiredService<", source, StringComparison.Ordinal);
         }
 
+        Assert.Contains("scope.ServiceProvider.GetRequiredService<MainPage>()", File.ReadAllText(factoryPath), StringComparison.Ordinal);
         Assert.Contains("new JsonAppSettingsService()", app, StringComparison.Ordinal);
         Assert.Contains("AddSingleton<IRepositoryImageService, RepositoryImageService>()", app, StringComparison.Ordinal);
         Assert.Contains("AddSingleton<GitCommandActivityHistory>()", app, StringComparison.Ordinal);
