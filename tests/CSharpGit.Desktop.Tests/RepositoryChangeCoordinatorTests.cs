@@ -35,23 +35,27 @@ public sealed class RepositoryChangeCoordinatorTests
     [Fact]
     public void QueuedDeliveryFromPreviousSessionCannotLatchAfterAtoBtoA()
     {
-        var repository = CreateRepository();
+        var repositoryA = CreateRepository();
+        var repositoryB = CreateRepository();
         try
         {
             using var coordinator = NewCoordinator(WorkingTreeStatusSnapshot.Empty);
             coordinator.Initialize();
-            coordinator.ChangeRepository(repository, WorkingTreeStatusSnapshot.Empty, 1);
+            coordinator.ChangeRepository(repositoryA, WorkingTreeStatusSnapshot.Empty, 1);
             var staleDelivery = coordinator.CapturePendingMonitorDeliveryForDesktopCheck();
 
-            coordinator.ChangeRepository(repository with { }, WorkingTreeStatusSnapshot.Empty, 2);
-            coordinator.ChangeRepository(repository with { }, WorkingTreeStatusSnapshot.Empty, 3);
+            coordinator.ChangeRepository(repositoryB, WorkingTreeStatusSnapshot.Empty, 2);
+            coordinator.ChangeRepository(repositoryA, WorkingTreeStatusSnapshot.Empty, 3);
             staleDelivery();
 
+            // The original A instance is current again, so identity alone
+            // cannot reject the old callback; the delivery epoch must do it.
             Assert.False(coordinator.IsRefreshRequired);
         }
         finally
         {
-            DeleteRepository(repository);
+            DeleteRepository(repositoryA);
+            DeleteRepository(repositoryB);
         }
     }
 
