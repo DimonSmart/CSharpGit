@@ -1,0 +1,8 @@
+<UserControl
+    x:Class="CSharpGit.Presentation.Views.XamlOnlyProbe"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <TextBlock Text="{Binding ProbeText}" />
+    </Grid>
+</UserControl>
