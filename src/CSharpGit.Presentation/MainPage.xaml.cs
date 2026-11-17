@@ -25,6 +25,7 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage : Page
 {
     private readonly OpenRepositoryViewModel _viewModel;
+    internal OpenRepositoryViewModel WindowRepository => _viewModel;
     private readonly ObservableCollection<RepositoryTreeNode> _repositoryTreeRoots = [];
     private readonly BulkObservableCollection<WorkingTreeChange> _unstagedChanges = [];
     private readonly BulkObservableCollection<WorkingTreeChange> _stagedChanges = [];

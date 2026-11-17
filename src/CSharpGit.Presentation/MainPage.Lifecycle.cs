@@ -2,7 +2,7 @@ using Microsoft.UI.Xaml;
 
 namespace CSharpGit.Presentation;
 
-public sealed partial class MainPage
+public sealed partial class MainPage : Windowing.IWindowContentLifetime
 {
     private int _shutdownStarted;
     private int _shutdownFinalized;
@@ -36,6 +36,11 @@ public sealed partial class MainPage
     }
 
     // Close admission is decided by App; this phase only shuts down UI requests.
+    Task Windowing.IWindowContentLifetime.PrepareForShutdownAsync(CancellationToken cancellationToken) =>
+        PrepareForShutdown();
+
+    void Windowing.IWindowContentLifetime.CompleteShutdown() => BeginShutdown();
+
     public Task PrepareForShutdown()
     {
         if (Interlocked.Exchange(ref _shutdownStarted, 1) != 0) return Task.CompletedTask;
@@ -89,14 +94,14 @@ public sealed partial class MainPage
         StagedChangesList.RightTapped -= WorkingTreeChanges_RightTapped;
         UnstagedChangesList.DoubleTapped -= WorkingTreeChanges_DoubleTapped;
         StagedChangesList.DoubleTapped -= WorkingTreeChanges_DoubleTapped;
-        _fileActions.Dispose();
+        // Window DI scope owns disposal of resolved feature models.
         _viewModel.WorkingTree.PropertyChanged -= WorkingTreeConfirmation_PropertyChanged;
         _repositoryFilesViewModel.PropertyChanged -= RepositoryFilesViewModel_PropertyChanged;
-        _repositoryFilesViewModel.Dispose();
+
         _viewModel.PropertyChanged -= RepositoryMaintenanceViewModel_PropertyChanged;
         _repositoryMaintenance.PropertyChanged -= RepositoryMaintenance_PropertyChanged;
-        _repositoryMaintenance.Dispose();
+
         _viewModel.History.Rows.CollectionChanged -= HistoryRows_CollectionChanged;
-        _viewModel.Dispose();
+
     }
 }
