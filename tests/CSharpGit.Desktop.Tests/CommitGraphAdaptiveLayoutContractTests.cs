@@ -6,7 +6,7 @@ public sealed class CommitGraphAdaptiveLayoutContractTests
     public void HeaderAndRowsDoNotOwnIndependentFixedGraphWidths()
     {
         var root = FindRepositoryRoot();
-        var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryView.xaml"));
         var historyReferences = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml"));
 
         Assert.DoesNotContain("120,*,160,150,90", mainPage, StringComparison.Ordinal);
@@ -15,8 +15,10 @@ public sealed class CommitGraphAdaptiveLayoutContractTests
         Assert.Contains("HistoryRowRoot", historyReferences, StringComparison.Ordinal);
         Assert.Contains(@"<ColumnDefinition Width=""Auto"" />", historyReferences, StringComparison.Ordinal);
         Assert.DoesNotContain("ContainerContentChanging=", mainPage, StringComparison.Ordinal);
-        var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitGraphLayout.cs"));
-        Assert.Contains("CommitGraphPresentationContext.Publish", lifecycle, StringComparison.Ordinal);
+        var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryView.Graph.cs"));
+        Assert.Contains("LayoutChanged?.Invoke(this, EventArgs.Empty);", lifecycle, StringComparison.Ordinal);
+        Assert.Contains("HistoryRenderDiagnostics.PresentationPublished(startedAt);", lifecycle, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphPresentationContext.cs")));
         Assert.DoesNotContain("VisualTreeHelper", lifecycle, StringComparison.Ordinal);
     }
 
