@@ -77,7 +77,7 @@ public sealed partial class MainPage
                             $"history row {index} graph clip does not match its render area", failures);
                         if (graph is not null)
                         {
-                            var layout = _page.ActiveCommitGraphLayout;
+                            var layout = _page.HistoryView.Layout;
                             Check(Math.Abs(graph.ActualWidth - layout.GraphWidth) <= 0.25,
                                 $"history row {index} graph width {graph.ActualWidth:0.###} does not match session width {layout.GraphWidth:0.###}",
                                 failures);
@@ -169,7 +169,7 @@ public sealed partial class MainPage
                         ? FindDescendant<CommitGraphControl>(item) : null;
                     Check(graph?.HasCurrentRenderForCheck() == true,
                         $"{templateKey} did not paint the initial graph after reference layout settled", failures);
-                    Check(graph?.ActualWidth == _page.ActiveCommitGraphLayout.GraphWidth,
+                    Check(graph?.ActualWidth == _page.HistoryView.Layout.GraphWidth,
                         $"{templateKey} lost the initial graph column width", failures);
                 }
             }
@@ -181,7 +181,7 @@ public sealed partial class MainPage
 
         private async Task RunHistoryPerformanceCaptureCheckAsync(ICollection<string> failures)
         {
-            var layout = _page.ActiveCommitGraphLayout;
+            var layout = _page.HistoryView.Layout;
             var context = new HistoryPerformanceStartContext(
                 "main",
                 _page._viewModel.History.Rows.Count,

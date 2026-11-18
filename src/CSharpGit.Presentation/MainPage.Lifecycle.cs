@@ -34,7 +34,7 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
                 ShowErrorAsync));
     }
 
-    // Close admission is decided by App; this phase only shuts down UI requests.
+    // Close admission is decided by WindowCloseOrchestrator; the page only shuts down UI requests.
     Task Windowing.IWindowContentLifetime.PrepareForShutdownAsync(CancellationToken cancellationToken) =>
         PrepareForShutdown();
 

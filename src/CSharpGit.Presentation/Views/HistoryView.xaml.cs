@@ -33,21 +33,8 @@ public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvide
 
     internal ListView List => HistoryList;
     internal TextBox FilterBox => HistoryFilter;
-    internal SelectorBar ScopeSelector => ScopeCombo;
-    internal SelectorBarItem CurrentScope => CurrentScopeItem;
-    internal SelectorBarItem AllScope => AllScopeItem;
-    internal SelectorBarItem ReflogScope => ShowReflogToggle;
-    internal StackPanel ReferencePanel => ReferenceScopePanel;
-    internal TextBlock ReferenceLabel => ActiveReferenceText;
-    internal StackPanel PerformanceControls => HistoryPerformanceControls;
-    internal TextBlock PerformanceCaptureStatus => HistoryPerformanceCaptureStatus;
-    internal MenuFlyoutItem StartCaptureAction => StartHistoryPerformanceCaptureMenuItem;
-    internal MenuFlyoutItem StopCaptureAction => StopHistoryPerformanceCaptureMenuItem;
-    internal MenuFlyoutItem OpenDiagnosticsAction => OpenHistoryPerformanceDiagnosticsFolderMenuItem;
-    internal ColumnDefinition GraphHeaderColumn => HistoryGraphHeaderColumn;
     internal Border ColumnHeader => HistoryColumnHeader;
     internal Border FilterToolbar => HistoryFilterToolbar;
-    internal Button LoadMoreButton => LoadMoreHistoryButton;
 
     internal void Configure(HistoryViewModel history, WorkspaceNavigator navigator,
         Func<bool> isBusy)
