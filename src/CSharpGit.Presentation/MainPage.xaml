@@ -667,7 +667,7 @@
           </Grid>
         </Grid>
 
-      <views:StatusBarView x:Name="StatusBar" Grid.Row="3" Grid.ColumnSpan="3" />
+      <views:GitConsoleHostView x:Name="GitConsoleHost" Grid.Row="3" Grid.ColumnSpan="3" />
     </Grid>
 
     <InfoBar IsOpen="{Binding HasError}"
