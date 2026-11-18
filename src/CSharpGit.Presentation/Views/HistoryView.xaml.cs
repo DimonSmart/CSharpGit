@@ -39,7 +39,6 @@ public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvide
         _avatarSettings ?? throw new InvalidOperationException("History avatar settings not configured.");
 
     internal ListView List => HistoryList;
-    internal TextBox FilterBox => HistoryFilter;
     internal Border ColumnHeader => HistoryColumnHeader;
     internal Border FilterToolbar => HistoryFilterToolbar;
 
@@ -194,12 +193,15 @@ public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvide
         LoadMoreHistoryButton.IsEnabled = _history.LoadMoreCommand.CanExecute(null);
     }
 
-    internal void ScrollTo(HistoryRow row)
+    internal void ScrollTo(HistoryRow row, bool updateLayout = false)
     {
         if (_disposed || !HistoryList.Items.Contains(row)) return;
+        if (updateLayout) HistoryList.UpdateLayout();
         HistoryList.SelectedItem = row;
         HistoryList.ScrollIntoView(row, ScrollIntoViewAlignment.Leading);
     }
+
+    internal void FocusFilter() => HistoryFilter.Focus(FocusState.Programmatic);
 
     private void RunHistoryOperation(Func<Task> operation)
     {

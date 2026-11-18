@@ -8,5 +8,4 @@ public sealed partial class MainPage
     // They will be removed when those consumers migrate.
     internal ListView HistoryList => HistoryView.List;
     internal Border HistoryColumnHeader => HistoryView.ColumnHeader;
-    private TextBox HistoryFilter => HistoryView.FilterBox;
 }

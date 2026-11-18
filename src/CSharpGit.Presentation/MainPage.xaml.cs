@@ -437,7 +437,7 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
                 && ReferenceEquals(_viewModel.Repository, repository)
                 && target is not null
                 && ReferenceEquals(target, history.SelectedRow))
-                HistoryList.ScrollIntoView(target, ScrollIntoViewAlignment.Leading);
+                HistoryView.ScrollTo(target);
         }
 
         await ShowPullResultAsync(result);
@@ -590,7 +590,7 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
                 if (WorkingTreePane.Visibility == Visibility.Visible)
                     await ShowAllHistoryAsync();
                 if (!IsShuttingDown)
-                    HistoryFilter.Focus(FocusState.Programmatic);
+                    HistoryView.FocusFilter();
             }, "History search shortcut");
         }
         else if (e.Key == VirtualKey.F5)
