@@ -1,70 +1,94 @@
 # MainPage migration map
 
-Baseline: `main` at `e64f849e55112ea53b61209346a9a06e3f0f0c32`. This is an inventory of the existing page boundaries, not authorization to move feature behavior in phase 1.
+Phase 2 baseline: `e8ebd64467519d642978c31ae635f511db432aba` (subsequent phase-1 fixes on `main` are included). This matrix documents the agreed three-phase boundary. A phase-2 feature cannot retain its implementation in `MainPage` after extraction.
 
 ## Cross-file ownership and migration matrix
 
-| Existing file | Current responsibility / observable state | Planned owner | Phase |
-|---|---|---|---|
-| `MainPage.xaml` | xaml presentation, commands and/or visual state | Workspace UI composition (phase 2) | 3 |
-| `MainPage.xaml.cs` | Composition root for the existing page; collection projections, DataContext, event subscriptions and XAML handlers | Workspace UI composition (phase 2) | 3 |
-| `MainPage.Lifecycle.cs` | Page-owned cancellation, unsubscription and disposal; currently also computes close safety | WindowSession + IWindowContentLifetime (temporary page adapter) | 1 |
-| `MainPage.LoadingOverlays.cs` | Loading Overlays presentation, commands and/or visual state | Window shell / window session (phase 1), feature view for remaining presentation (phase 2) | 3 |
-| `MainPage.RefreshIndicator.cs` | Refresh Indicator presentation, commands and/or visual state | Window shell / window session (phase 1), feature view for remaining presentation (phase 2) | 3 |
-| `MainPage.RecentRepositories.cs` | Recent repository selection and launcher | Window shell / window session (phase 1), feature view for remaining presentation (phase 2) | 3 |
-| `MainPage.Settings.cs` | Settings UI and controller | Window shell / window session (phase 1), feature view for remaining presentation (phase 2) | 3 |
-| `MainPage.About.cs` | About presentation, commands and/or visual state | Window shell / window session (phase 1), feature view for remaining presentation (phase 2) | 3 |
-| `MainPage.RepositoryNavigation.cs` | Repository tree navigation, pending checkout and reference selection | RepositoryWorkspace coordinator and repository/navigation views (phase 2) | 2 |
-| `MainPage.RepositoryTreeState.cs` | Tree expansion/selection and sync of visual tree | RepositoryWorkspace coordinator and repository/navigation views (phase 2) | 2 |
-| `MainPage.RepositoryRefresh.cs` | Repository monitor callbacks and refresh invalidation | RepositoryWorkspace coordinator and repository/navigation views (phase 2) | 2 |
-| `MainPage.RepositorySwitching.cs` | Repository switching UI and state transitions | RepositoryWorkspace coordinator and repository/navigation views (phase 2) | 2 |
-| `MainPage.RepositoryCreation.cs` | Create workflow and dialog | RepositoryWorkspace coordinator and repository/navigation views (phase 2) | 2 |
-| `MainPage.RepositoryCloning.cs` | Clone workflow and dialog | RepositoryWorkspace coordinator and repository/navigation views (phase 2) | 2 |
-| `MainPage.RepositoryMaintenance.cs` | Maintenance dialog and progress | RepositoryWorkspace coordinator and repository/navigation views (phase 2) | 2 |
-| `MainPage.Worktrees.cs` | Worktrees presentation, commands and/or visual state | RepositoryWorkspace coordinator and repository/navigation views (phase 2) | 2 |
-| `MainPage.WorktreeContextMenu.cs` | Worktree Context Menu presentation, commands and/or visual state | RepositoryWorkspace coordinator and repository/navigation views (phase 2) | 2 |
-| `MainPage.HistoryDisplayMode.cs` | History Display Mode presentation, commands and/or visual state | HistoryView, CommitDetailsView and related focused coordinators (phase 2) | 2 |
-| `MainPage.HistoryInfiniteScroll.cs` | History page loading and scroll state | HistoryView, CommitDetailsView and related focused coordinators (phase 2) | 2 |
-| `MainPage.HistoryPerformanceDiagnostics.cs` | Bounded history diagnostic capture shutdown | HistoryView, CommitDetailsView and related focused coordinators (phase 2) | 2 |
-| `MainPage.CommitGraphLayout.cs` | History commit graph layout and viewport | HistoryView, CommitDetailsView and related focused coordinators (phase 2) | 2 |
-| `MainPage.CommitActions.cs` | Commit Actions presentation, commands and/or visual state | HistoryView, CommitDetailsView and related focused coordinators (phase 2) | 2 |
-| `MainPage.CommitCopy.cs` | Commit Copy presentation, commands and/or visual state | HistoryView, CommitDetailsView and related focused coordinators (phase 2) | 2 |
-| `MainPage.EditCommitMessage.cs` | Edit Commit Message presentation, commands and/or visual state | HistoryView, CommitDetailsView and related focused coordinators (phase 2) | 2 |
-| `MainPage.InteractiveRebaseAuthor.cs` | Interactive Rebase Author presentation, commands and/or visual state | HistoryView, CommitDetailsView and related focused coordinators (phase 2) | 2 |
-| `MainPage.HistoryRewrite.cs` | History rewrite UI | HistoryView, CommitDetailsView and related focused coordinators (phase 2) | 2 |
-| `MainPage.Changes.cs` | Working tree change projections | RepositoryFilesView, WorkingTreeView and preview controllers (phase 2) | 2 |
-| `MainPage.RepositoryFiles.cs` | Repository file browser UI composition and tree events | RepositoryFilesView, WorkingTreeView and preview controllers (phase 2) | 2 |
-| `MainPage.RepositoryFilePreview.cs` | Cancelable file preview and publication | RepositoryFilesView, WorkingTreeView and preview controllers (phase 2) | 2 |
-| `MainPage.FileOpening.cs` | Open file actions and external tool integration | RepositoryFilesView, WorkingTreeView and preview controllers (phase 2) | 2 |
-| `MainPage.DiffPresentation.cs` | Diff Presentation presentation, commands and/or visual state | RepositoryFilesView, WorkingTreeView and preview controllers (phase 2) | 2 |
-| `MainPage.ImageDiff.cs` | Image Diff presentation, commands and/or visual state | RepositoryFilesView, WorkingTreeView and preview controllers (phase 2) | 2 |
-| `MainPage.WorkingTreeDiff.cs` | Working tree diff and selection | RepositoryFilesView, WorkingTreeView and preview controllers (phase 2) | 2 |
-| `MainPage.WorkingTreeContextMenu.cs` | Working Tree Context Menu presentation, commands and/or visual state | RepositoryFilesView, WorkingTreeView and preview controllers (phase 2) | 2 |
-| `MainPage.BranchDeletion.cs` | Branch Deletion presentation, commands and/or visual state | ReferencesView and dedicated Git operation controllers (phase 3) | 3 |
-| `MainPage.BranchFolderDeletion.cs` | Branch Folder Deletion presentation, commands and/or visual state | ReferencesView and dedicated Git operation controllers (phase 3) | 3 |
-| `MainPage.BranchDragDrop.cs` | Branch Drag Drop presentation, commands and/or visual state | ReferencesView and dedicated Git operation controllers (phase 3) | 3 |
-| `MainPage.BranchRename.cs` | Branch Rename presentation, commands and/or visual state | ReferencesView and dedicated Git operation controllers (phase 3) | 3 |
-| `MainPage.Tags.cs` | Tags presentation, commands and/or visual state | ReferencesView and dedicated Git operation controllers (phase 3) | 3 |
-| `MainPage.Stashes.cs` | Stashes presentation, commands and/or visual state | ReferencesView and dedicated Git operation controllers (phase 3) | 3 |
-| `MainPage.ForcePush.cs` | Force Push presentation, commands and/or visual state | ReferencesView and dedicated Git operation controllers (phase 3) | 3 |
-| `MainPage.GitCommandFeedback.cs` | Git operation status and feedback | ReferencesView and dedicated Git operation controllers (phase 3) | 3 |
-| `MainPage.GitConsole.cs` | Console presentation and Git command activity subscriptions | ReferencesView and dedicated Git operation controllers (phase 3) | 3 |
-| `MainPage.Dialogs.cs` | Page-level dialogs and dialog gate | Feature-specific dialogs, assets presenter (phase 3) | 3 |
-| `MainPage.ConfirmationDialogs.cs` | Destructive operation confirmation UI | Feature-specific dialogs, assets presenter (phase 3) | 3 |
-| `MainPage.AuthorAvatars.cs` | Author Avatars presentation, commands and/or visual state | Feature-specific dialogs, assets presenter (phase 3) | 3 |
+Each source entry has one planned owner. Temporary adapters are **not** new general-purpose service containers; remove them at the specified phase. The acceptance column describes when the legacy implementation may be deleted, not merely wrapped.
+
+| Existing file | Planned owner | Phase | Required dependencies | Temporary integration | Exit criterion |
+|---|---|---|---|---|---|
+| `MainPage.xaml` | MainPage (composition only), then phase-3 feature views | 2 + 3 | OpenRepositoryViewModel, XAML controls | Phase-3 Working Tree/Files/dialog integration | Migrated regions contain only component placement and typed integration |
+| `MainPage.xaml.cs` | MainPage (composition only), then phase-3 feature views | 2 + 3 | OpenRepositoryViewModel, XAML controls | Phase-3 Working Tree/Files/dialog integration | Migrated regions contain only component placement and typed integration |
+| `MainPage.Lifecycle.cs` | WindowSession + IWindowContentLifetime | 1 → 3 | WindowSession, diagnostic/preview cancellation | Page implements IWindowContentLifetime until phase 3 | No page-owned close admission; adapter deleted in phase 3 |
+| `MainPage.RecentRepositories.cs` | StartScreenView | 2.2 | RecentRepositoriesView, RecentRepositoriesViewModel, settings | Create/clone dialogs remain behind narrow phase-3 commands | Start-screen subscriptions and recent-list lifecycle removed from MainPage |
+| `MainPage.RepositorySwitching.cs` | RepositorySelectorView + RepositoryHeaderView | 2.2 | OpenRepositoryViewModel, repository selector grouping | Commit-draft confirmation lives in phase-3 dialog adapter | Selector UI, grouped entries, and actions are view-owned |
+| `MainPage.LoadingOverlays.cs` | RepositoryToolbarView + shell state | 2.2 | Repository operation and refresh state | Remaining phase-3 dialogs invoked by typed commands | No MainPage control mutation for toolbar and refresh visuals |
+| `MainPage.RefreshIndicator.cs` | RepositoryToolbarView + shell state | 2.2 | Repository operation and refresh state | Remaining phase-3 dialogs invoked by typed commands | No MainPage control mutation for toolbar and refresh visuals |
+| `MainPage.Settings.cs` | Settings and About dialog feature surfaces | 3 | SettingsWindowController, update services | Toolbar delegates to narrow commands | Settings and About workflows extracted from MainPage |
+| `MainPage.About.cs` | Settings and About dialog feature surfaces | 3 | SettingsWindowController, update services | Toolbar delegates to narrow commands | Settings and About workflows extracted from MainPage |
+| `MainPage.AuthorAvatars.cs` | HistoryView and CommitDetailsView (instance dependencies) | 2.1 → 2.5 | IAuthorAvatarService, IAppSettingsService | MainPage implements IAuthorAvatarDependencyProvider until HistoryView extraction | HistoryView provides per-window avatars; no page/global fallback |
+| `MainPage.RepositoryNavigation.cs` | RepositoryExplorerView + WorkspaceNavigator | 2.4 | RepositoryTreeSynchronizer, RepositoryTreeNavigationCoordinator | Phase-3 branch/stash dialog operations behind typed contracts | View owns TreeView/selection/expand; navigator owns navigation only |
+| `MainPage.RepositoryTreeState.cs` | RepositoryExplorerView + WorkspaceNavigator | 2.4 | RepositoryTreeSynchronizer, RepositoryTreeNavigationCoordinator | Phase-3 branch/stash dialog operations behind typed contracts | View owns TreeView/selection/expand; navigator owns navigation only |
+| `MainPage.RepositoryRefresh.cs` | RepositoryExplorerView + window refresh coordination | 2.4 | RepositoryChangeCoordinator, RepositorySessionLifetime | Phase-3 preview invalidation remains local to Files | Stale repository requests rejected without MainPage tree access |
+| `MainPage.HistoryDisplayMode.cs` | HistoryView and its local controllers | 2.5 | HistoryViewModel, CommitGraphLayoutState, diagnostics | Commit Details and context dialogs remain phase-3 consumers | Graph, filters, virtual scrolling and diagnostics fully view-owned |
+| `MainPage.HistoryInfiniteScroll.cs` | HistoryView and its local controllers | 2.5 | HistoryViewModel, CommitGraphLayoutState, diagnostics | Commit Details and context dialogs remain phase-3 consumers | Graph, filters, virtual scrolling and diagnostics fully view-owned |
+| `MainPage.HistoryPerformanceDiagnostics.cs` | HistoryView and its local controllers | 2.5 | HistoryViewModel, CommitGraphLayoutState, diagnostics | Commit Details and context dialogs remain phase-3 consumers | Graph, filters, virtual scrolling and diagnostics fully view-owned |
+| `MainPage.CommitGraphLayout.cs` | HistoryView and its local controllers | 2.5 | HistoryViewModel, CommitGraphLayoutState, diagnostics | Commit Details and context dialogs remain phase-3 consumers | Graph, filters, virtual scrolling and diagnostics fully view-owned |
+| `MainPage.GitConsole.cs` | GitConsoleHostView + GitConsoleView | 2.3 | IGitCommandActivitySource, splitter/layout | GitCommandFeedback stays a separate phase-3 modal | Console layout, streaming, shutdown owned by host |
+| `MainPage.RepositoryCreation.cs` | Dedicated repository workflow dialogs/controllers | 3 | Create/Clone/Maintenance ViewModels | StartScreen/selector call typed workflow commands | Full dialog lifecycle and operations removed from MainPage |
+| `MainPage.RepositoryCloning.cs` | Dedicated repository workflow dialogs/controllers | 3 | Create/Clone/Maintenance ViewModels | StartScreen/selector call typed workflow commands | Full dialog lifecycle and operations removed from MainPage |
+| `MainPage.RepositoryMaintenance.cs` | Dedicated repository workflow dialogs/controllers | 3 | Create/Clone/Maintenance ViewModels | StartScreen/selector call typed workflow commands | Full dialog lifecycle and operations removed from MainPage |
+| `MainPage.Worktrees.cs` | WorktreesView + dialog controllers | 3 | WorktreesViewModel, worktree services | RepositoryExplorer navigation exposes references only | Worktree operations and context menus feature-owned |
+| `MainPage.WorktreeContextMenu.cs` | WorktreesView + dialog controllers | 3 | WorktreesViewModel, worktree services | RepositoryExplorer navigation exposes references only | Worktree operations and context menus feature-owned |
+| `MainPage.CommitActions.cs` | CommitDetailsView + commit-operation dialog controllers | 3 | CommitActions/CommitDetails/HistoryRewrite ViewModels | HistoryView emits selected commit via existing HistoryViewModel | All commit dialog/operation handlers absent from MainPage |
+| `MainPage.CommitCopy.cs` | CommitDetailsView + commit-operation dialog controllers | 3 | CommitActions/CommitDetails/HistoryRewrite ViewModels | HistoryView emits selected commit via existing HistoryViewModel | All commit dialog/operation handlers absent from MainPage |
+| `MainPage.EditCommitMessage.cs` | CommitDetailsView + commit-operation dialog controllers | 3 | CommitActions/CommitDetails/HistoryRewrite ViewModels | HistoryView emits selected commit via existing HistoryViewModel | All commit dialog/operation handlers absent from MainPage |
+| `MainPage.InteractiveRebaseAuthor.cs` | CommitDetailsView + commit-operation dialog controllers | 3 | CommitActions/CommitDetails/HistoryRewrite ViewModels | HistoryView emits selected commit via existing HistoryViewModel | All commit dialog/operation handlers absent from MainPage |
+| `MainPage.HistoryRewrite.cs` | CommitDetailsView + commit-operation dialog controllers | 3 | CommitActions/CommitDetails/HistoryRewrite ViewModels | HistoryView emits selected commit via existing HistoryViewModel | All commit dialog/operation handlers absent from MainPage |
+| `MainPage.Changes.cs` | WorkingTreeView + focused diff controllers | 3 | WorkingTreeViewModel, FileActionsViewModel | WorkspaceNavigator switches to Working Tree via model state | Working tree selections/diffs and actions view-owned |
+| `MainPage.WorkingTreeDiff.cs` | WorkingTreeView + focused diff controllers | 3 | WorkingTreeViewModel, FileActionsViewModel | WorkspaceNavigator switches to Working Tree via model state | Working tree selections/diffs and actions view-owned |
+| `MainPage.WorkingTreeContextMenu.cs` | WorkingTreeView + focused diff controllers | 3 | WorkingTreeViewModel, FileActionsViewModel | WorkspaceNavigator switches to Working Tree via model state | Working tree selections/diffs and actions view-owned |
+| `MainPage.RepositoryFiles.cs` | RepositoryFilesView + preview lifecycle | 3 | RepositoryFilesViewModel, RepositoryFilesSurface, preview services | RepositoryExplorer passes typed navigation targets | File browser, preview, open/diff actions feature-owned |
+| `MainPage.RepositoryFilePreview.cs` | RepositoryFilesView + preview lifecycle | 3 | RepositoryFilesViewModel, RepositoryFilesSurface, preview services | RepositoryExplorer passes typed navigation targets | File browser, preview, open/diff actions feature-owned |
+| `MainPage.FileOpening.cs` | RepositoryFilesView + preview lifecycle | 3 | RepositoryFilesViewModel, RepositoryFilesSurface, preview services | RepositoryExplorer passes typed navigation targets | File browser, preview, open/diff actions feature-owned |
+| `MainPage.DiffPresentation.cs` | RepositoryFilesView + preview lifecycle | 3 | RepositoryFilesViewModel, RepositoryFilesSurface, preview services | RepositoryExplorer passes typed navigation targets | File browser, preview, open/diff actions feature-owned |
+| `MainPage.ImageDiff.cs` | RepositoryFilesView + preview lifecycle | 3 | RepositoryFilesViewModel, RepositoryFilesSurface, preview services | RepositoryExplorer passes typed navigation targets | File browser, preview, open/diff actions feature-owned |
+| `MainPage.BranchDeletion.cs` | Reference operation dialogs and commands | 3 | Branches/Tags/Stashes ViewModels, operation safety gate | RepositoryExplorer supplies narrow phase-3 action requests | No branch/tag/stash Git operation implementation in Explorer/MainPage |
+| `MainPage.BranchFolderDeletion.cs` | Reference operation dialogs and commands | 3 | Branches/Tags/Stashes ViewModels, operation safety gate | RepositoryExplorer supplies narrow phase-3 action requests | No branch/tag/stash Git operation implementation in Explorer/MainPage |
+| `MainPage.BranchDragDrop.cs` | Reference operation dialogs and commands | 3 | Branches/Tags/Stashes ViewModels, operation safety gate | RepositoryExplorer supplies narrow phase-3 action requests | No branch/tag/stash Git operation implementation in Explorer/MainPage |
+| `MainPage.BranchRename.cs` | Reference operation dialogs and commands | 3 | Branches/Tags/Stashes ViewModels, operation safety gate | RepositoryExplorer supplies narrow phase-3 action requests | No branch/tag/stash Git operation implementation in Explorer/MainPage |
+| `MainPage.Tags.cs` | Reference operation dialogs and commands | 3 | Branches/Tags/Stashes ViewModels, operation safety gate | RepositoryExplorer supplies narrow phase-3 action requests | No branch/tag/stash Git operation implementation in Explorer/MainPage |
+| `MainPage.Stashes.cs` | Reference operation dialogs and commands | 3 | Branches/Tags/Stashes ViewModels, operation safety gate | RepositoryExplorer supplies narrow phase-3 action requests | No branch/tag/stash Git operation implementation in Explorer/MainPage |
+| `MainPage.ForcePush.cs` | Reference operation dialogs and commands | 3 | Branches/Tags/Stashes ViewModels, operation safety gate | RepositoryExplorer supplies narrow phase-3 action requests | No branch/tag/stash Git operation implementation in Explorer/MainPage |
+| `MainPage.GitCommandFeedback.cs` | GitCommandFeedbackView + modal controller | 3 | GitCommandFeedbackCoordinator | Distinct from GitConsoleHostView | Modal ownership and dialog sequence local |
+| `MainPage.Dialogs.cs` | Feature dialog controllers + serialized dialog host | 3 | UiPageDialogGate, correct XamlRoot | Narrow interfaces for phase-2 components | All shared page dialog entry points removed |
+| `MainPage.ConfirmationDialogs.cs` | Feature dialog controllers + serialized dialog host | 3 | UiPageDialogGate, correct XamlRoot | Narrow interfaces for phase-2 components | All shared page dialog entry points removed |
+
+### New phase-2 component ownership
+
+| Component | Window owner | Direct dependencies | Lifetime / disposal | Acceptance |
+|---|---|---|---|---|
+| `WindowSession` | `WindowSessionFactory` scope | `WindowCloseSafetyProvider`, `WindowTitleState`, legacy `IWindowContentLifetime` | Scope disposed exactly once, including startup failures; native macOS close defers cleanup | Close decision has no `MainPage` input |
+| `WindowTitleState` | `WindowSession` | `OpenRepositoryViewModel` | Subscribes once; unsubscribes before scope disposal | App title independent of MainPage events |
+| `StartScreenView` | root view | `RecentRepositoriesViewModel` | Owns subscriptions and recent tiles | Repository opening and create/clone entry points work |
+| `RepositoryHeaderView` / `RepositorySelectorView` | root view | `OpenRepositoryViewModel`, selector state | UI instance owns menu/selection state | Grouped switching and confirmation parity |
+| `RepositoryToolbarView` | root view | Existing Git ICommand properties | UI instance owns subscriptions | Fetch/Pull/Push/refresh/navigation available |
+| `StatusBarView` | root view | Repository activity and status projection | UI instance owns animation | No MainPage TextBlock/ProgressRing mutations |
+| `GitConsoleHostView` | root view | `GitConsoleView`, activity source | Stream callbacks canceled or ignored on final shutdown | Splitter, keyboard shortcut, streaming parity |
+| `RepositoryExplorerView` | root view | Tree synchronizer and navigator | Incremental visuals and event subscriptions are view-local | No direct MainPage Git operations |
+| `WorkspaceNavigator` | `WindowSession` | `HistoryViewModel`, repository navigation coordinator | Scoped; no XAML dependencies | History/ref/commit/Working Tree flows race-safe |
+| `HistoryView` | root view | `HistoryViewModel`, graph layout and diagnostics | Owns scroll subscription and bounded capture | Existing virtualization/performance retained |
+
+### Phase 2.1 implementation notes
+
+- Transient child ViewModels resolved within the window DI scope are disposed by that scope, not a second time by `OpenRepositoryViewModel`; independent manually constructed `OpenRepositoryViewModel` instances retain cascade disposal.
+- `AuthorAvatarServiceContext` and `HistoryReferencePresentationContext` have been removed. Avatar dependencies are resolved through an instance-owned visual ancestor contract while HistoryView migration is pending; default-branch metadata is carried on `HistoryReferenceDecoration`.
+- The phase-2 smoke check must instantiate `XamlOnlyProbe`, attach a DataContext, assert its binding, mutate an `INotifyPropertyChanged` source, and assert updated text. No `.xaml.cs` is created.
+- The existing global `CommitGraphPresentationContext` must be replaced with instance-owned layout state in PR 2.5, not renamed into another global context.
 
 ## Existing high-risk shared scenarios
 
 - **Close:** `App.xaml.cs` owns native close events, coordinator and host stop; `MainPage.Lifecycle.cs` owns cancellation, close-state computation and final resource release. Phase 1 owner: `WindowCloseOrchestrator` using existing `WindowCloseCoordinator`; `WindowSession` owns lifetime; a narrow temporary content adapter retains page cleanup.
-- **Repository switch:** `MainPage.RepositorySwitching.cs`, `RepositoryRefresh.cs`, `RepositoryTreeState.cs`, `RepositoryNavigation.cs` and `RepositoryFilePreview.cs`. Phase 2 coordinator owns switch and invalidation; preserve `RepositorySessionLifetime` and `RepositoryChangeCoordinator`.
-- **History:** `MainPage.HistoryInfiniteScroll.cs`, `HistoryDisplayMode.cs`, `CommitGraphLayout.cs`, `HistoryPerformanceDiagnostics.cs` and `MainPage.xaml.cs`. Phase 2 owner: HistoryView plus existing HistoryViewModel.
-- **Files:** `MainPage.RepositoryFiles.cs`, `RepositoryFilePreview.cs`, `FileOpening.cs`, `WorkingTreeDiff.cs` and `DiffPresentation.cs`. Phase 2 owner: separate file surfaces and preview lifecycle; use existing `RepositoryFilesSurface`.
-- **Dialogs and commands:** `MainPage.Dialogs.cs`, `ConfirmationDialogs.cs` and feature files. Each feature owns its dialog; shared serialization remains the existing page dialog gate until extracted.
+- **Repository switch:** `MainPage.RepositorySwitching.cs`, `RepositoryRefresh.cs`, `RepositoryTreeState.cs`, `RepositoryNavigation.cs` and `RepositoryFilePreview.cs`. Phase 2 selector and navigator own switching/navigation while phase-3 previews own invalidation; preserve `RepositorySessionLifetime` and `RepositoryChangeCoordinator`.
+- **History:** `MainPage.HistoryInfiniteScroll.cs`, `HistoryDisplayMode.cs`, `CommitGraphLayout.cs`, `HistoryPerformanceDiagnostics.cs` and `MainPage.xaml.cs`. Phase 2.5 owner: HistoryView plus existing HistoryViewModel.
+- **Files:** `MainPage.RepositoryFiles.cs`, `RepositoryFilePreview.cs`, `FileOpening.cs`, `WorkingTreeDiff.cs` and `DiffPresentation.cs`. Phase 3 owner: separate file surfaces and preview lifecycle; use existing `RepositoryFilesSurface`.
+- **Dialogs and commands:** `MainPage.Dialogs.cs`, `ConfirmationDialogs.cs` and feature files. Each phase-3 feature owns its dialog; shared serialization remains the existing page dialog gate until extracted.
 
 ## Lifetime and subscription hotspots
 
 - `MainPage.xaml.cs`: subscribes to repository, history, branches, tags, remotes, stashes and working-tree collections; uses window-title callback. All corresponding unsubscriptions must be paired in `MainPage.Lifecycle.cs` while the temporary adapter exists.
-- `MainPage.Lifecycle.cs`: `PrepareForShutdown` cancels dialogs, previews and repository monitor; `BeginShutdown` unregisters change handlers, shuts down child surfaces, disposes feature models. Do not allow DI scope and page to dispose the same logical feature twice.
+- `MainPage.Lifecycle.cs`: `PrepareForShutdown` cancels dialogs, previews and repository monitor; `BeginShutdown` unregisters change handlers, shuts down child surfaces, disposes feature models. Scope ownership prevents duplicate feature disposal; page releases its own subscriptions.
 - `App.xaml.cs`: owns host and native Window, theme registration, title update and layout resize callback. Scope/host must live until window-specific cleanup completes.
 - `MainPage.HistoryPerformanceDiagnostics.cs`: bounded diagnostic task must not delay window closure indefinitely; no blanket timeout for mutations.
 
