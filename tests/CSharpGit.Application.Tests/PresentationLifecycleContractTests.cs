@@ -20,13 +20,17 @@ public sealed class PresentationLifecycleContractTests
     [Fact]
     public void RepositoryToolbarAndLauncherActionsDisableDuringGitActivity()
     {
-        var xaml = XDocument.Load(Path.Combine(FindRepositoryRoot(),
+        var root = FindRepositoryRoot();
+        var main = XDocument.Load(Path.Combine(root,
             "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var launcher = XDocument.Load(Path.Combine(root,
+            "src", "CSharpGit.Presentation", "Views", "StartScreenView.xaml"));
+        var actionsInViews = main.Descendants().Concat(launcher.Descendants());
 
         foreach (var action in new[] { "RefreshIndicator_Click", "OpenRepository_Click",
                      "CloneRepository_Click", "CreateRepository_Click" })
         {
-            var actions = xaml.Descendants()
+            var actions = actionsInViews
                 .Where(element => (string?)element.Attribute("Click") == action)
                 .ToArray();
             Assert.NotEmpty(actions);
@@ -104,7 +108,7 @@ public sealed class PresentationLifecycleContractTests
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var openRepositoryViewModel = File.ReadAllText(Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.cs"));
         var lifecycle = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
-        var recent = File.ReadAllText(Path.Combine(presentation, "MainPage.RecentRepositories.cs"));
+        var recent = File.ReadAllText(Path.Combine(presentation, "Views", "StartScreenView.xaml.cs"));
         var gitConsole = File.ReadAllText(Path.Combine(presentation, "MainPage.GitConsole.cs"));
         var refresh = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryRefresh.cs"));
         var coordinator = File.ReadAllText(Path.Combine(
@@ -118,7 +122,7 @@ public sealed class PresentationLifecycleContractTests
         Assert.Contains("Volatile.Read(ref _shutdownStarted)", lifecycle, StringComparison.Ordinal);
 
         Assert.Contains("DispatcherQueue.HasThreadAccess", recent, StringComparison.Ordinal);
-        Assert.Contains("!IsShuttingDown && !_recentRepositoriesShutdown", recent, StringComparison.Ordinal);
+        Assert.Contains("!_recentRepositoriesShutdown", recent, StringComparison.Ordinal);
 
         Assert.Contains("if (IsShuttingDown || !_gitConsoleInitialized", gitConsole, StringComparison.Ordinal);
         Assert.Contains("ApplyGitCommandLifecycleChange", gitConsole, StringComparison.Ordinal);
