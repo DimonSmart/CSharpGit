@@ -52,7 +52,8 @@ public sealed class ManualRefreshUiContractTests
         Assert.Contains("Repository has changed externally. Refresh to see the latest state.", refresh);
         Assert.Contains("RefreshRequiredIcon.Visibility", refresh);
         Assert.Contains("Microsoft.UI.Colors.Goldenrod", refresh);
-        Assert.Contains("RefreshProgressRing.IsActive = isRefreshing", refresh);
+        Assert.Contains("RepositoryToolbar.SetRefreshPresentation(", refresh);
+        Assert.Contains("RefreshProgressRing.IsActive = refreshing", refresh);
 
         Assert.Contains("SetRefreshInProgress(true)", refreshAction);
         Assert.Contains("RefreshAsyncForDesktopCheck", refreshAction);

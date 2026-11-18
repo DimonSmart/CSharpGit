@@ -105,7 +105,8 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("Open Terminal Here", xaml);
         Assert.Contains("_desktopShellService.OpenTerminalAsync(path)", switching);
         Assert.Contains("RepositorySelectorOpenTerminalButton.IsEnabled", switching);
-        Assert.Contains("ShowCreateRepositoryAsync", switchingWorkflow);
+        var shellComposition = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
+        Assert.Contains("ShowCreateRepositoryAsync", shellComposition);
         Assert.Contains("ShowUnavailableRepositoryAsync", switchingWorkflow);
 
         Assert.Contains("e.Key == VirtualKey.O", page);
@@ -193,7 +194,8 @@ public sealed class RepositorySwitchingContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var xaml = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
+        var xaml = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"))
+            + File.ReadAllText(Path.Combine(presentation, "Views", "RepositorySelectorView.xaml"));
         var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
         var switching = File.ReadAllText(Path.Combine(
             presentation,

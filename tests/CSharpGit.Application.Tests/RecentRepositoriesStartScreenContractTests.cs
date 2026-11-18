@@ -283,7 +283,9 @@ public sealed class RecentRepositoriesStartScreenContractTests
 
         Assert.Contains("Directory.Exists(item.Path)", integration);
         Assert.Contains("OpenRecentRepositoryFolderAsync", integration);
-        Assert.Contains("_desktopShellService.OpenFolderDescription", integration);
+        var shellComposition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
+        Assert.Contains("_desktopShellService.OpenFolderDescription", shellComposition);
+        Assert.Contains("_openFolderDescription", integration);
         Assert.Contains("RecordRecentRepositoryAsync", integration);
         Assert.Contains("branch.IsCurrent", integration);
         Assert.DoesNotContain("RemoveRecentRepositoryAsync(item.Path)", integration);
