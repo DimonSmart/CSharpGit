@@ -114,7 +114,7 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
         {
             _repositoryTreeNavigation.ResetForRepositoryChange();
             UpdateStatusBar();
-            UpdateRepositorySelectorPresentation();
+            RepositoryHeader.Refresh();
             HandleHistoryPerformanceRepositoryChanged();
             _settingsWindowController.RepositoryChanged();
         }
