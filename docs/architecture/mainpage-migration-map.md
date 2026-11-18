@@ -77,6 +77,31 @@ Each source entry has one planned owner. Temporary adapters are **not** new gene
 - The phase-2 smoke check must instantiate `XamlOnlyProbe`, attach a DataContext, assert its binding, mutate an `INotifyPropertyChanged` source, and assert updated text. No `.xaml.cs` is created.
 - The existing global `CommitGraphPresentationContext` must be replaced with instance-owned layout state in PR 2.5, not renamed into another global context.
 
+## Phase 2 completion inventory (implementation, not baseline)
+
+The source-evidence tables below capture the **pre-migration baseline** and must not be interpreted as the current ownership of extracted controls. The authoritative implementation boundaries after PRs 2.1–2.5 are:
+
+| Owner | Creation and scope | Owns and tears down | Phase-3 integration to remove later |
+|---|---|---|---|
+| `WindowSession` / `WindowSessionFactory` | One DI scope per main window | title publisher, close admission, scoped feature models; unhooks before scope disposal | `IWindowContentLifetime` bridge to `MainPage` |
+| `MainPage` | Main window root within `WindowSession` | composition and remaining Working Tree / Commit Details / Files / dialog surfaces | legacy Git dialog and preview hosts, eventually replaced in phase 3 |
+| `StartScreenView` | XAML child of `MainPage` | recent repository projection, tile model, settings and repository subscriptions, explicit `ShutdownRecentRepositories` | `StartScreenActions` for repository picker/clone/create and error dialogs |
+| `RepositoryHeaderView` / `RepositorySelectorView` | XAML child of `MainPage`, header owns selector | grouped quick list, selector menu, folder/terminal/path UI, repository subscription, explicit `Shutdown` | `RepositorySelectorActions` for commit-draft confirmation and repository switch workflows |
+| `RepositoryToolbarView` | XAML child of `MainPage` | toolbar XAML, refresh visuals, commit navigation label, optimization menu availability, typed command intents | `RepositoryToolbarAction` adapter to phase-3 Git dialog/workflow handlers |
+| `GitConsoleHostView` / `StatusBarView` | Single XAML child of workspace; host owns status and console | status pulse, Git command status, activity-source subscriptions, streaming, console resize persistence, keyboard shortcut, explicit `Shutdown` | `MainPage.GitConsole.cs` adapter to separate GitCommandFeedback modal |
+| `RepositoryExplorerView` | XAML child of workspace | tree roots, synchronizer, selection, expand/collapse, event subscriptions, explicit `Shutdown` | `MainPage.RepositoryTreeState.cs` exposes read-only tree to phase-3 branch/stash/tag/Files consumers; `ReferenceMenuRequested` bridges complex Git menus |
+| `WorkspaceNavigator` | One instance per window, created by root composition | reference/commit/Working Tree target decisions and existing `RepositoryTreeNavigationCoordinator`; XAML-free; retained with window | navigation visuals and legacy Commit Details access currently adapted by `MainPage.RepositoryNavigation.cs` |
+| `HistoryView` | XAML child of workspace | history filter/scope/reflog, list, lazy scroll subscription, per-instance graph layout + geometry cache, bounded diagnostics and timers, explicit `Shutdown` | `MainPage.HistoryDisplayMode.cs`, `MainPage.CommitGraphLayout.cs` provide a narrow visual/diagnostic read adapter for phase-3 consumers; `MainPage.HistoryPerformanceDiagnostics.cs` hosts dialog callbacks |
+| `CommitGraphControl` | Instance per virtualized row | rendering state and cache from nearest ancestor `ICommitGraphLayoutProvider`, unsubscribes at `Unloaded` | none; process-global `CommitGraphPresentationContext` deleted |
+
+**Preserved phase-3 scope.** `MainPage.WorkingTreeDiff.cs`, `MainPage.Changes.cs`, `MainPage.CommitActions.cs`, `MainPage.RepositoryFiles.cs`, `MainPage.FileOpening.cs`, `MainPage.DiffPresentation.cs`, `MainPage.ImageDiff.cs`, `MainPage.BranchDeletion.cs`, `MainPage.BranchRename.cs`, `MainPage.BranchDragDrop.cs`, `MainPage.Tags.cs`, `MainPage.Stashes.cs`, `MainPage.RepositoryCreation.cs`, `MainPage.RepositoryCloning.cs`, `MainPage.RepositoryMaintenance.cs`, `MainPage.Settings.cs`, `MainPage.About.cs`, `MainPage.GitCommandFeedback.cs`, and shared page dialogs are **not** migrated by phase 2.
+
+**Known transitional dependencies.** Repository context menus still enter phase-3 operation/dialog code through `ReferenceMenuRequested`; History selection and graph state still have thin accessors for the existing Commit Details and diagnostics smoke checks. They must be replaced with operation-specific contracts and independent feature views, not promoted into a universal `IMainPageActions` or service locator. These adapters have an explicit removal target: **phase 3**.
+
+**Lifetime guardrails.** `Unloaded` is not final disposal. The root invokes the children’s explicit shutdown during normal `WindowSession` cleanup; each child unhooks events it owns. History diagnostics stops asynchronously during `PrepareForShutdown` before final view disposal. A cross-repository navigation result is accepted only when both reference identity and interaction/selection versions still match.
+
+**Verification scope.** PR CI exercises .NET build, automated tests and the existing cross-platform publish/smoke checks on Windows/macOS/Linux. Real interactive resize, streaming, complex dialogs, platform-specific focus and visual-performance comparisons remain useful manual acceptance evidence; do not infer measured FPS, memory or latency from source-only assertions.
+
 ## Existing high-risk shared scenarios
 
 - **Close:** `App.xaml.cs` owns native close events, coordinator and host stop; `MainPage.Lifecycle.cs` owns cancellation, close-state computation and final resource release. Phase 1 owner: `WindowCloseOrchestrator` using existing `WindowCloseCoordinator`; `WindowSession` owns lifetime; a narrow temporary content adapter retains page cleanup.
