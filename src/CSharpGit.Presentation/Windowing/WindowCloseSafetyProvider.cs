@@ -8,14 +8,14 @@ internal sealed class WindowCloseSafetyProvider(
     CloneRepositoryViewModel clone,
     CreateRepositoryViewModel create,
     RepositoryMaintenanceViewModel maintenance,
-    Func<bool> isUpdateRunning)
+    ApplicationUpdateActivityState updateActivity)
 {
     internal bool IsUnsafeToClose => new WindowCloseSafetyState(
         IsMutating: repository.IsMutating,
         IsChangingRepository: repository.IsChangingRepository,
         IsHistoryRewriteRunning: repository.RepositoryHistoryRewrite.IsInProgress,
         IsMaintenanceRunning: maintenance.IsRunning,
-        IsUpdateRunning: isUpdateRunning(),
+        IsUpdateRunning: updateActivity.IsRunning,
         IsCloneRunning: clone.IsBusy,
         IsCreateRunning: create.IsBusy).IsUnsafeToClose;
 

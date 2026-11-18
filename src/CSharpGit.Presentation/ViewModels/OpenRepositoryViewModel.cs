@@ -30,6 +30,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private int _repositoryChangeInProgress;
     private readonly SemaphoreSlim _mutationGate = new(1, 1);
     private int _disposed;
+    private int _scopeOwnsChildren;
     private string _headDisplay = string.Empty;
     private string? _currentBranchName;
     private string? _currentHeadCommit;
@@ -112,6 +113,9 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         ErrorMessage = $"Git: {exception.Message}";
     }
 
+    // Only the window factory opts in. Manually constructed models preserve cascade disposal.
+    internal void UseScopeOwnedChildren() => Volatile.Write(ref _scopeOwnsChildren, 1);
+
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
@@ -119,20 +123,20 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
         _repositoryLifetime?.End();
         _repositoryLifetime = null;
         Stashes.SelectedStashChanged -= Stashes_SelectedStashChanged;
-        Stashes.Dispose();
-        CommitDetails.Dispose();
+        if (Volatile.Read(ref _scopeOwnsChildren) == 0) Stashes.Dispose();
+        if (Volatile.Read(ref _scopeOwnsChildren) == 0) CommitDetails.Dispose();
         WorkingTree.Changes.CollectionChanged -= CommitCreationSourceCollectionChanged;
         RepositoryOperations.Conflicts.CollectionChanged -= CommitCreationSourceCollectionChanged;
         RepositoryOperations.PropertyChanged -= RepositoryOperations_PropertyChanged;
-        RepositoryOperations.Dispose();
-        InteractiveRebase.Dispose();
+        if (Volatile.Read(ref _scopeOwnsChildren) == 0) RepositoryOperations.Dispose();
+        if (Volatile.Read(ref _scopeOwnsChildren) == 0) InteractiveRebase.Dispose();
         _settings.Changed -= AppSettings_Changed;
         History.SelectedRowChanged -= History_SelectedRowChanged;
-        History.Dispose();
-        RepositorySync.Dispose();
-        Tags.Dispose();
-        Branches.Dispose();
-        WorkingTree.Dispose();
+        if (Volatile.Read(ref _scopeOwnsChildren) == 0) History.Dispose();
+        if (Volatile.Read(ref _scopeOwnsChildren) == 0) RepositorySync.Dispose();
+        if (Volatile.Read(ref _scopeOwnsChildren) == 0) Tags.Dispose();
+        if (Volatile.Read(ref _scopeOwnsChildren) == 0) Branches.Dispose();
+        if (Volatile.Read(ref _scopeOwnsChildren) == 0) WorkingTree.Dispose();
     }
 
     private void AppSettings_Changed(object? sender, EventArgs e)

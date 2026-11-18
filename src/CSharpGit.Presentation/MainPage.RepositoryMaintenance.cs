@@ -34,7 +34,8 @@ public sealed partial class MainPage
         IApplicationVersionProvider applicationVersionProvider,
         IUpdateCheckService updateCheckService,
         IApplicationUpdateInstaller applicationUpdateInstaller,
-        ISystemUriLauncher systemUriLauncher)
+        ISystemUriLauncher systemUriLauncher,
+        Windowing.ApplicationUpdateActivityState updateActivityState)
         : this(
             viewModel,
             workingTreeStatusReader,
@@ -65,6 +66,7 @@ public sealed partial class MainPage
         _updateCheckService = updateCheckService ?? throw new ArgumentNullException(nameof(updateCheckService));
         _applicationUpdateInstaller = applicationUpdateInstaller ?? throw new ArgumentNullException(nameof(applicationUpdateInstaller));
         _systemUriLauncher = systemUriLauncher ?? throw new ArgumentNullException(nameof(systemUriLauncher));
+        _applicationUpdateActivity = updateActivityState ?? throw new ArgumentNullException(nameof(updateActivityState));
 
         _repositoryMaintenance.Attach(_viewModel, () => _worktreesViewModel.RefreshAsync(throwOnError: true));
         _repositoryMaintenance.PropertyChanged += RepositoryMaintenance_PropertyChanged;

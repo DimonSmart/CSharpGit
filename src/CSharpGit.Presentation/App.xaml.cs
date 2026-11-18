@@ -77,6 +77,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
                 services.AddSingleton<IRepositoryImageService, RepositoryImageService>();
                 services.AddSingleton<IAuthorAvatarService, AuthorAvatarService>();
                 services.AddScoped<SettingsWindowController>();
+                services.AddScoped<ApplicationUpdateActivityState>();
                 services.AddSingleton<GitCommandActivityHistory>();
                 services.AddSingleton<IGitCommandActivitySink>(
                     provider => provider.GetRequiredService<GitCommandActivityHistory>());
@@ -131,13 +132,13 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
                 services.AddTransient<RepositoryOperationsViewModel>();
                 services.AddTransient<InteractiveRebaseViewModel>();
                 services.AddTransient<WorktreesViewModel>();
-                services.AddTransient<RepositoryMaintenanceViewModel>();
+                services.AddScoped<RepositoryMaintenanceViewModel>();
                 services.AddTransient<FileActionsViewModel>();
                 services.AddTransient<RepositoryFilesViewModel>();
                 services.AddTransient<WorkingTreeViewModel>();
-                services.AddTransient<OpenRepositoryViewModel>();
-                services.AddTransient<CreateRepositoryViewModel>();
-                services.AddTransient<CloneRepositoryViewModel>();
+                services.AddScoped<OpenRepositoryViewModel>();
+                services.AddScoped<CreateRepositoryViewModel>();
+                services.AddScoped<CloneRepositoryViewModel>();
                 services.AddTransient<MainPage>();
                 services.AddSingleton<WindowSessionFactory>();
             })
