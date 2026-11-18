@@ -18,10 +18,10 @@ public sealed class WorkspaceNavigatorOwnershipContractTests
         Assert.Contains("WorkspaceNavigator navigator,", session);
         Assert.Contains("WorkspaceNavigator Navigator { get; } = navigator;", session);
         Assert.Contains("WorkspaceNavigator workspaceNavigator)", page);
-        Assert.DoesNotContain("new WorkspaceNavigator(", page);
         var primary = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryMaintenance.cs"));
         Assert.Contains("WorkspaceNavigator workspaceNavigator)", primary);
         Assert.DoesNotContain("AttachNavigator(", factory);
+        Assert.DoesNotContain("new WorkspaceNavigator(", page);
         Assert.DoesNotContain("new WorkspaceNavigator(", page);
     }
 
