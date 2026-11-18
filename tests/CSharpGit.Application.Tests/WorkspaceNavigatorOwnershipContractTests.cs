@@ -17,6 +17,7 @@ public sealed class WorkspaceNavigatorOwnershipContractTests
         Assert.Contains("GetRequiredService<WorkspaceNavigator>()", factory);
         Assert.Contains("WorkspaceNavigator navigator,", session);
         Assert.Contains("WorkspaceNavigator Navigator { get; } = navigator;", session);
+        Assert.Contains("public MainPage(", page);
         Assert.Contains("WorkspaceNavigator workspaceNavigator)", page);
         Assert.Contains("_workspaceNavigator = workspaceNavigator", page);
         Assert.DoesNotContain("new WorkspaceNavigator(", page);

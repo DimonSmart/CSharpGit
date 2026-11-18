@@ -35,7 +35,7 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
     private RepositoryTreeNavigationCoordinator _repositoryTreeNavigation => _workspaceNavigator.Interactions;
 
 
-    private MainPage(
+    public MainPage(
         OpenRepositoryViewModel viewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
         WorkspaceNavigator workspaceNavigator)
