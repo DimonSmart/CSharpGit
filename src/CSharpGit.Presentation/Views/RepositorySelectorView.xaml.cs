@@ -42,7 +42,8 @@ public sealed partial class RepositorySelectorView : UserControl
     internal void Configure(OpenRepositoryViewModel repository, IAppSettingsService settings,
         IDesktopShellService shell, RepositorySelectorActions actions)
     {
-        if (_actions is not null) throw new InvalidOperationException("Selector already configured.");
+        if (_actions is not null) return;
+        if (_isShutdown) return;
         _viewModel = repository ?? throw new ArgumentNullException(nameof(repository));
         _recentRepositorySettings = settings ?? throw new ArgumentNullException(nameof(settings));
         _desktopShellService = shell ?? throw new ArgumentNullException(nameof(shell));
@@ -100,6 +101,7 @@ public sealed partial class RepositorySelectorView : UserControl
 
     internal void Refresh()
     {
+        if (_isShutdown || _actions is null) return;
         var repository = _viewModel.Repository;
         if (repository is null)
         {

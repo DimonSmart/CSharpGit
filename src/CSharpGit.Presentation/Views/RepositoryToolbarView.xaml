@@ -6,10 +6,7 @@
     <controls:BranchTrackingActionTextConverter x:Key="BranchTrackingActionTextConverter" />
     <controls:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
   </UserControl.Resources>
-      <Border x:Name="MainToolbar"
-              Grid.Row="0"
-              Grid.Column="2"
-              Style="{StaticResource ToolbarSurfaceStyle}">
+      <Border Style="{StaticResource ToolbarSurfaceStyle}">
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.M}">
           <ScrollViewer HorizontalScrollMode="Enabled" HorizontalScrollBarVisibility="Auto"
                         VerticalScrollMode="Disabled" VerticalScrollBarVisibility="Disabled">

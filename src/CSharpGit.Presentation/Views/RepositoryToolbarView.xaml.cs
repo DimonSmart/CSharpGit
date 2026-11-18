@@ -15,6 +15,9 @@ public sealed partial class RepositoryToolbarView : UserControl
 
     internal void Shutdown() => _onAction = null;
 
+    internal string CommitNavigationLabel => CommitNavigationText.Text;
+    internal bool IsRefreshBusy => RefreshProgressRing.IsActive;
+
     internal void SetCommitNavigationText(bool workingTreeVisible, int changes) =>
         CommitNavigationText.Text = workingTreeVisible ? "Back to history" : $"Commit ({changes})";
 
