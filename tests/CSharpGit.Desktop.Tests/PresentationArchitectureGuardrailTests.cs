@@ -590,7 +590,7 @@ public sealed class PresentationArchitectureGuardrailTests
         var formatter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "MainWindowTitleFormatter.cs"));
 
         var session = File.ReadAllText(Path.Combine(presentation, "Windowing", "WindowSession.cs"));
-        var titleState = File.ReadAllText(Path.Combine(presentation, "Windowing", "WindowTitleState.cs"));
+        var titleState = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "WindowTitleState.cs"));
         Assert.Contains("_windowSession.WindowTitleChanged += Session_WindowTitleChanged;", app, StringComparison.Ordinal);
         Assert.Contains("_windowSession.WindowTitleChanged -= Session_WindowTitleChanged;", app, StringComparison.Ordinal);
         Assert.DoesNotContain("WindowTitleChanged", mainPage, StringComparison.Ordinal);
@@ -598,8 +598,8 @@ public sealed class PresentationArchitectureGuardrailTests
         Assert.Contains("_source.PropertyChanged += Repository_PropertyChanged", titleState, StringComparison.Ordinal);
         Assert.Contains("_source.PropertyChanged -= Repository_PropertyChanged", titleState, StringComparison.Ordinal);
         Assert.Contains("_window.Title = title;", app, StringComparison.Ordinal);
-        Assert.Contains("CurrentHeadCommit", titleState, StringComparison.Ordinal);
-        Assert.Contains("IsDetachedHead", titleState, StringComparison.Ordinal);
+        Assert.Contains("CurrentHeadCommit", File.ReadAllText(Path.Combine(presentation, "Windowing", "WindowSessionFactory.cs")), StringComparison.Ordinal);
+        Assert.Contains("IsDetachedHead", File.ReadAllText(Path.Combine(presentation, "Windowing", "WindowSessionFactory.cs")), StringComparison.Ordinal);
         Assert.DoesNotContain("Window.Title", viewModel, StringComparison.Ordinal);
         Assert.DoesNotContain("Microsoft.UI.Xaml", viewModel, StringComparison.Ordinal);
         Assert.DoesNotContain("IRepositoryStateService", formatter, StringComparison.Ordinal);

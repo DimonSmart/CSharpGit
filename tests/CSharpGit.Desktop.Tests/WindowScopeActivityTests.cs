@@ -1,4 +1,4 @@
-using CSharpGit.Presentation.Windowing;
+using CSharpGit.Presentation;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CSharpGit.Desktop.Tests;

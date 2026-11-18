@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using CSharpGit.Presentation.Windowing;
+using CSharpGit.Presentation;
 
 namespace CSharpGit.Desktop.Tests;
 
@@ -22,7 +22,7 @@ public sealed class WindowTitleStateTests
         Assert.Equal("second", second.CurrentTitle);
 
         firstSource.Change("first updated");
-        Assert.Equal(["first updated"], firstUpdates);
+        Assert.Equal(new[] { "first updated" }, firstUpdates);
         Assert.Empty(secondUpdates);
 
         first.Dispose();
@@ -30,7 +30,7 @@ public sealed class WindowTitleStateTests
         secondSource.Change("second updated");
 
         Assert.Equal(["first updated"], firstUpdates);
-        Assert.Equal(["second updated"], secondUpdates);
+        Assert.Equal(new[] { "second updated" }, secondUpdates);
     }
 
     private sealed class TitleSource(string title) : INotifyPropertyChanged
