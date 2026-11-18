@@ -89,7 +89,7 @@ public sealed class PresentationLifecycleContractTests
         var close = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Windowing", "WindowCloseOrchestrator.cs"));
         foreach (var flag in new[] { "repository.IsMutating", "repository.IsChangingRepository",
                      "repository.RepositoryHistoryRewrite.IsInProgress", "maintenance.IsRunning",
-                     "isUpdateRunning()", "clone.IsBusy", "create.IsBusy" })
+                     "updateActivity.IsRunning", "clone.IsBusy", "create.IsBusy" })
             Assert.Contains(flag, safety, StringComparison.Ordinal);
         Assert.Contains("session.IsUnsafeToClose", close, StringComparison.Ordinal);
         var recheck = close.IndexOf("session.IsUnsafeToClose || !ReferenceEquals(window.Content, content)", StringComparison.Ordinal);

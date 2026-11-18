@@ -66,7 +66,8 @@ public sealed class WindowMigrationArchitectureTests
     {
         var runner = Read("src/CSharpGit.Presentation/Diagnostics/MainPageDesktopUiCheckRunner.cs");
         Assert.Contains("new Views.XamlOnlyProbe", runner);
-        Assert.Contains("DataContext = new XamlOnlyProbeData()", runner);
+        Assert.Contains("DataContext = probeData", runner);
+        Assert.Contains("probeData.ProbeText = \"XAML-only binding updated\"", runner);
         Assert.Contains("XAML-only binding verified", runner);
     }
 

@@ -54,7 +54,7 @@ public sealed class AboutUpdateUiContractTests
         var close = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Windowing", "WindowCloseOrchestrator.cs"));
         var safety = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Windowing", "WindowCloseSafetyProvider.cs"));
         Assert.Contains("session.IsUnsafeToClose", close);
-        Assert.Contains("IsUpdateRunning: isUpdateRunning()", safety);
+        Assert.Contains("IsUpdateRunning: updateActivity.IsRunning", safety);
         Assert.Contains("Stage != WindowCloseStage.Idle", close);
         Assert.Contains("ScheduleShutdown();", close);
         Assert.Contains("session.PrepareForShutdownAsync(CancellationToken.None)", close);

@@ -91,4 +91,27 @@ public sealed class WindowSessionLifecycleTests
         Assert.True(lifetime.TryComplete());
         Assert.False(lifetime.TryComplete());
     }
+    [Fact]
+    public async Task FailedPreparationRemainsIdempotentAndStillAllowsDisposal()
+    {
+        var lifetime = new WindowSessionLifecycle();
+        await lifetime.InitializeAsync(_ => Task.CompletedTask, () => { }, CancellationToken.None);
+        var attempts = 0;
+        var first = lifetime.PrepareAsync(_ =>
+        {
+            attempts++;
+            return Task.FromException(new InvalidOperationException("cleanup"));
+        }, CancellationToken.None);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => first);
+        var second = lifetime.PrepareAsync(_ => Task.CompletedTask, CancellationToken.None);
+        Assert.Same(first, second);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => second);
+        Assert.Equal(1, attempts);
+        Assert.Equal(WindowSessionState.PreparingForShutdown, lifetime.State);
+        Assert.True(lifetime.TryComplete());
+        Assert.False(lifetime.TryComplete());
+        Assert.Equal(WindowSessionState.Disposed, lifetime.State);
+    }
+
 }

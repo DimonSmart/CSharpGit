@@ -61,7 +61,7 @@ public sealed class AuthorAvatarUiContractTests
     }
 
     [Fact]
-    public void AvatarControlUsesPresentationContextWithoutHistoryTreeTraversal()
+    public void AvatarDependenciesFollowTheOwningVisualTreeWithoutGlobalContext()
     {
         var root = FindRepositoryRoot();
         var control = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "AuthorAvatar.xaml.cs"));
@@ -69,10 +69,13 @@ public sealed class AuthorAvatarUiContractTests
         var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
 
         Assert.Contains("internal void Configure(", control, StringComparison.Ordinal);
-        Assert.Contains("AuthorAvatarServiceContext.TryGet", control, StringComparison.Ordinal);
-        Assert.Contains("AuthorAvatarServiceContext.Configure", composition, StringComparison.Ordinal);
+        Assert.Contains("IAuthorAvatarDependencyProvider provider", control, StringComparison.Ordinal);
+        Assert.Contains("VisualTreeHelper.GetParent", control, StringComparison.Ordinal);
+        Assert.Contains("Controls.IAuthorAvatarDependencyProvider", host, StringComparison.Ordinal);
+        Assert.DoesNotContain("AuthorAvatarServiceContext", control, StringComparison.Ordinal);
+        Assert.DoesNotContain("AuthorAvatarServiceContext", composition, StringComparison.Ordinal);
+        Assert.DoesNotContain("HistoryReferencePresentationContext", composition, StringComparison.Ordinal);
         Assert.DoesNotContain("ConfigureAuthorAvatars", host, StringComparison.Ordinal);
-        Assert.DoesNotContain("VisualTreeHelper", host, StringComparison.Ordinal);
         Assert.DoesNotContain("GetRequiredService", control, StringComparison.Ordinal);
         Assert.DoesNotContain("ServiceProvider", control, StringComparison.Ordinal);
     }

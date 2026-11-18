@@ -77,6 +77,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
                 services.AddSingleton<IRepositoryImageService, RepositoryImageService>();
                 services.AddSingleton<IAuthorAvatarService, AuthorAvatarService>();
                 services.AddScoped<SettingsWindowController>();
+                services.AddScoped<ApplicationUpdateActivityState>();
                 services.AddSingleton<GitCommandActivityHistory>();
                 services.AddSingleton<IGitCommandActivitySink>(
                     provider => provider.GetRequiredService<GitCommandActivityHistory>());
@@ -131,13 +132,13 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
                 services.AddTransient<RepositoryOperationsViewModel>();
                 services.AddTransient<InteractiveRebaseViewModel>();
                 services.AddTransient<WorktreesViewModel>();
-                services.AddTransient<RepositoryMaintenanceViewModel>();
+                services.AddScoped<RepositoryMaintenanceViewModel>();
                 services.AddTransient<FileActionsViewModel>();
                 services.AddTransient<RepositoryFilesViewModel>();
                 services.AddTransient<WorkingTreeViewModel>();
-                services.AddTransient<OpenRepositoryViewModel>();
-                services.AddTransient<CreateRepositoryViewModel>();
-                services.AddTransient<CloneRepositoryViewModel>();
+                services.AddScoped<OpenRepositoryViewModel>();
+                services.AddScoped<CreateRepositoryViewModel>();
+                services.AddScoped<CloneRepositoryViewModel>();
                 services.AddTransient<MainPage>();
                 services.AddSingleton<WindowSessionFactory>();
             })
@@ -150,8 +151,13 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
         catch (Exception exception)
         {
             LogUiFailure(exception, "Application startup");
+            // Startup may fail after the window scope exists but before close handlers are registered.
+            try { _windowSession?.CompleteShutdown(); }
+            catch (Exception cleanupFailure) { LogUiFailure(cleanupFailure, "Failed startup session cleanup"); }
+            try { await StopHostAsync(); }
+            catch (Exception stopFailure) { LogUiFailure(stopFailure, "Failed startup host cleanup"); }
             try { _window?.Close(); }
-            catch (Exception closeFailure) { LogUiFailure(closeFailure, "Failed startup cleanup"); }
+            catch (Exception closeFailure) { LogUiFailure(closeFailure, "Failed startup window close"); }
         }
     }
 
@@ -179,8 +185,8 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
         _windowSession = windowContent.Session;
         _windowClose = new WindowCloseOrchestrator(
             _window, mainPage, _windowSession, mainPage, this);
-        mainPage.WindowTitleChanged += MainPage_WindowTitleChanged;
-        _window.Title = mainPage.CurrentWindowTitle;
+        _windowSession.WindowTitleChanged += Session_WindowTitleChanged;
+        _window.Title = _windowSession.CurrentWindowTitle;
         _mainThemeRegistration = themeManager.Register(mainPage);
         _window.AppWindow.Changed += (_, eventArgs) =>
         {
@@ -192,7 +198,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
         _window.AppWindow.Closing += (sender, eventArgs) =>
         {
             LogCloseLifecycle("AppWindow.Closing");
-            if (!TryBeginNormalShutdown(_window.Content as MainPage))
+            if (!TryBeginNormalShutdown())
                 eventArgs.Cancel = true;
         };
 
@@ -210,7 +216,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
         await _windowSession.InitializeAsync(CancellationToken.None);
     }
 
-    private bool TryBeginNormalShutdown(MainPage? page) =>
+    private bool TryBeginNormalShutdown() =>
         _windowClose?.RequestClose() ?? true;
 
     private void LogCloseLifecycle(string phase)
@@ -237,7 +243,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
         Trace.TraceError($"UI operation '{operation}' failed: {exception}");
     }
 
-    private void MainPage_WindowTitleChanged(string title)
+    private void Session_WindowTitleChanged(string title)
     {
         if (_window is not null)
             _window.Title = title;
@@ -317,8 +323,8 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
     Task IWindowCloseHost.StopHostAsync() => StopHostAsync();
     void IWindowCloseHost.ReleaseWindowBindings()
     {
-        if (_window?.Content is MainPage page)
-            page.WindowTitleChanged -= MainPage_WindowTitleChanged;
+        if (_windowSession is not null)
+            _windowSession.WindowTitleChanged -= Session_WindowTitleChanged;
     }
     void IWindowCloseHost.CloseAuthorizedWindow() => CloseAuthorizedWindow();
     void IWindowCloseHost.FailFinalNativeClose() => FailFinalMacOsClose();

@@ -198,7 +198,7 @@ public sealed partial class App
             }
             else if (command == "AttemptCloseDuringMutation")
             {
-                if (TryBeginNormalShutdown(page))
+                if (TryBeginNormalShutdown())
                     throw new InvalidOperationException("Close was accepted during a protected mutation.");
                 await RespondAsync(true);
             }
@@ -444,7 +444,7 @@ public sealed partial class App
                 {
                     if (args.PropertyName != nameof(CloneRepositoryViewModel.IsBusy) || !clone.IsBusy) return;
                     busyObserved = true;
-                    closeRejected = _windowSession?.IsUnsafeToClose == true && !TryBeginNormalShutdown(page);
+                    closeRejected = _windowSession?.IsUnsafeToClose == true && !TryBeginNormalShutdown();
                 };
                 clone.PropertyChanged += observer;
                 bool succeeded;
@@ -465,7 +465,7 @@ public sealed partial class App
                 {
                     if (args.PropertyName != nameof(CreateRepositoryViewModel.IsBusy) || !create.IsBusy) return;
                     busyObserved = true;
-                    closeRejected = _windowSession?.IsUnsafeToClose == true && !TryBeginNormalShutdown(page);
+                    closeRejected = _windowSession?.IsUnsafeToClose == true && !TryBeginNormalShutdown();
                 };
                 create.PropertyChanged += observer;
                 bool succeeded;
@@ -484,7 +484,7 @@ public sealed partial class App
                 PropertyChangedEventHandler observer = (_, args) =>
                 {
                     if (args.PropertyName == nameof(CloneRepositoryViewModel.IsBusy) && clone.IsBusy)
-                        busyObserved = _windowSession?.IsUnsafeToClose == true && !TryBeginNormalShutdown(page);
+                        busyObserved = _windowSession?.IsUnsafeToClose == true && !TryBeginNormalShutdown();
                 };
                 clone.PropertyChanged += observer;
                 bool result;
@@ -502,7 +502,7 @@ public sealed partial class App
                 PropertyChangedEventHandler observer = (_, args) =>
                 {
                     if (args.PropertyName == nameof(CreateRepositoryViewModel.IsBusy) && create.IsBusy)
-                        busyObserved = _windowSession?.IsUnsafeToClose == true && !TryBeginNormalShutdown(page);
+                        busyObserved = _windowSession?.IsUnsafeToClose == true && !TryBeginNormalShutdown();
                 };
                 create.PropertyChanged += observer;
                 bool result;
@@ -525,7 +525,7 @@ public sealed partial class App
                     if (args.PropertyName != nameof(RepositoryMaintenanceViewModel.IsRunning)
                         || !maintenance.IsRunning) return;
                     sawRunning = true;
-                    rejectedClose = _windowSession?.IsUnsafeToClose == true && !TryBeginNormalShutdown(page);
+                    rejectedClose = _windowSession?.IsUnsafeToClose == true && !TryBeginNormalShutdown();
                 };
                 maintenance.PropertyChanged += observer;
                 RepositoryMaintenanceResultKind? resultKind = null;
@@ -573,8 +573,8 @@ public sealed partial class App
 
         if (mode == "AppRequest")
         {
-            if (TryBeginNormalShutdown(_window!.Content as MainPage))
-                _window.Close();
+            if (TryBeginNormalShutdown())
+                _window!.Close();
             return;
         }
 
@@ -592,9 +592,9 @@ public sealed partial class App
         {
             RequestMacOsNativeClose();
         }
-        else if (TryBeginNormalShutdown(_window!.Content as MainPage))
+        else if (TryBeginNormalShutdown())
         {
-            _window.Close();
+            _window!.Close();
         }
     }
 

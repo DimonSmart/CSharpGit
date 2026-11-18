@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using CSharpGit.Presentation.ViewModels;
 
 namespace CSharpGit.Presentation.Windowing;
 
@@ -10,21 +11,36 @@ internal sealed class WindowSessionFactory(IServiceScopeFactory scopeFactory)
         var scope = scopeFactory.CreateScope();
         try
         {
+            // The scope, not the repository ViewModel, owns DI-created feature models.
+            var repository = scope.ServiceProvider.GetRequiredService<OpenRepositoryViewModel>();
+            repository.UseScopeOwnedChildren();
+            var clone = scope.ServiceProvider.GetRequiredService<CloneRepositoryViewModel>();
+            var create = scope.ServiceProvider.GetRequiredService<CreateRepositoryViewModel>();
+            var maintenance = scope.ServiceProvider.GetRequiredService<RepositoryMaintenanceViewModel>();
+            var updateActivity = scope.ServiceProvider.GetRequiredService<ApplicationUpdateActivityState>();
             var page = scope.ServiceProvider.GetRequiredService<MainPage>();
             var safety = new WindowCloseSafetyProvider(
-                page.WindowRepository,
-                page.DesktopCloneForCheck,
-                page.DesktopCreateForCheck,
-                page.DesktopMaintenanceForCheck,
-                () => page.IsApplicationUpdateInProgress);
+                repository, clone, create, maintenance, updateActivity);
+            var titleState = new WindowTitleState(
+                repository,
+                () => MainWindowTitleFormatter.Format(
+                    repository.Repository,
+                    repository.CurrentBranchName,
+                    repository.CurrentHeadCommit,
+                    repository.IsDetachedHead),
+                nameof(OpenRepositoryViewModel.Repository),
+                nameof(OpenRepositoryViewModel.CurrentBranchName),
+                nameof(OpenRepositoryViewModel.CurrentHeadCommit),
+                nameof(OpenRepositoryViewModel.IsDetachedHead));
             return (page, new WindowSession(
                 scope,
                 page,
-                page.WindowRepository,
+                repository,
                 safety,
                 _ => Program.InitialRepositoryPath is not null
                     ? page.OpenInitialRepositoryAsync()
-                    : Task.CompletedTask));
+                    : Task.CompletedTask,
+                titleState));
         }
         catch
         {

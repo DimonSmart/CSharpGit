@@ -11,10 +11,9 @@ public sealed partial class MainPage
     private readonly IUpdateCheckService _updateCheckService = null!;
     private readonly IApplicationUpdateInstaller _applicationUpdateInstaller = null!;
     private readonly ISystemUriLauncher _systemUriLauncher = null!;
-    private int _applicationUpdateInProgress;
+    private readonly ApplicationUpdateActivityState _applicationUpdateActivity = null!;
 
-    internal bool IsApplicationUpdateInProgress =>
-        Volatile.Read(ref _applicationUpdateInProgress) != 0;
+    internal bool IsApplicationUpdateInProgress => _applicationUpdateActivity.IsRunning;
 
     private void About_Click(object sender, RoutedEventArgs e) =>
         RunPageUiOperation(ShowAboutAsync, "About dialog");
@@ -155,7 +154,7 @@ public sealed partial class MainPage
 
     private async Task RunApplicationUpdateAsync(ReleaseVersion expectedVersion)
     {
-        if (Interlocked.CompareExchange(ref _applicationUpdateInProgress, 1, 0) != 0)
+        if (!_applicationUpdateActivity.TryBegin())
             return;
 
         try
@@ -243,7 +242,7 @@ public sealed partial class MainPage
 
             if (result.Status == ApplicationUpdateResultStatus.Succeeded)
             {
-                Interlocked.Exchange(ref _applicationUpdateInProgress, 0);
+                _applicationUpdateActivity.End();
                 if (Microsoft.UI.Xaml.Application.Current is App app)
                     app.CompleteApplicationUpdateRestart(this);
                 return;
@@ -257,7 +256,7 @@ public sealed partial class MainPage
         }
         finally
         {
-            Interlocked.Exchange(ref _applicationUpdateInProgress, 0);
+            _applicationUpdateActivity.End();
         }
     }
 

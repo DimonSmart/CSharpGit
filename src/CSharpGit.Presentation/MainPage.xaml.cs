@@ -37,14 +37,6 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
     private readonly SolidColorBrush _busyStatusBackgroundBrush = new(Windows.UI.Color.FromArgb(28, 34, 197, 94));
     private bool _busyPulseRunning;
 
-    internal event Action<string>? WindowTitleChanged;
-
-    internal string CurrentWindowTitle => MainWindowTitleFormatter.Format(
-        _viewModel.Repository,
-        _viewModel.CurrentBranchName,
-        _viewModel.CurrentHeadCommit,
-        _viewModel.IsDetachedHead);
-
     private MainPage(
         OpenRepositoryViewModel viewModel,
         IWorkingTreeStatusReader workingTreeStatusReader)
@@ -118,12 +110,6 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
-        if (eventArgs.PropertyName is nameof(OpenRepositoryViewModel.Repository)
-            or nameof(OpenRepositoryViewModel.CurrentBranchName)
-            or nameof(OpenRepositoryViewModel.CurrentHeadCommit)
-            or nameof(OpenRepositoryViewModel.IsDetachedHead))
-            PublishWindowTitle();
-
         if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.Repository))
         {
             _repositoryTreeNavigation.ResetForRepositoryChange();
@@ -207,8 +193,6 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
 
     private void UpdateLoadMoreHistoryAvailability() =>
         LoadMoreHistoryButton.IsEnabled = _viewModel.History.LoadMoreCommand.CanExecute(null);
-
-    private void PublishWindowTitle() => WindowTitleChanged?.Invoke(CurrentWindowTitle);
 
     private void RefreshPresentationCollections()
     {
