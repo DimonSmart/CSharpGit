@@ -574,7 +574,7 @@ public sealed partial class App
         if (mode == "AppRequest")
         {
             if (TryBeginNormalShutdown())
-                _window.Close();
+                _window!.Close();
             return;
         }
 
@@ -594,7 +594,7 @@ public sealed partial class App
         }
         else if (TryBeginNormalShutdown())
         {
-            _window.Close();
+            _window!.Close();
         }
     }
 

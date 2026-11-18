@@ -21,7 +21,17 @@ internal sealed class WindowSessionFactory(IServiceScopeFactory scopeFactory)
             var page = scope.ServiceProvider.GetRequiredService<MainPage>();
             var safety = new WindowCloseSafetyProvider(
                 repository, clone, create, maintenance, updateActivity);
-            var titleState = new WindowTitleState(repository);
+            var titleState = new WindowTitleState(
+                repository,
+                () => MainWindowTitleFormatter.Format(
+                    repository.Repository,
+                    repository.CurrentBranchName,
+                    repository.CurrentHeadCommit,
+                    repository.IsDetachedHead),
+                nameof(OpenRepositoryViewModel.Repository),
+                nameof(OpenRepositoryViewModel.CurrentBranchName),
+                nameof(OpenRepositoryViewModel.CurrentHeadCommit),
+                nameof(OpenRepositoryViewModel.IsDetachedHead));
             return (page, new WindowSession(
                 scope,
                 page,

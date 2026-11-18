@@ -35,7 +35,7 @@ public sealed partial class MainPage
         IUpdateCheckService updateCheckService,
         IApplicationUpdateInstaller applicationUpdateInstaller,
         ISystemUriLauncher systemUriLauncher,
-        Windowing.ApplicationUpdateActivityState updateActivityState)
+        ApplicationUpdateActivityState updateActivityState)
         : this(
             viewModel,
             workingTreeStatusReader,

@@ -11,7 +11,7 @@ public sealed partial class MainPage
     private readonly IUpdateCheckService _updateCheckService = null!;
     private readonly IApplicationUpdateInstaller _applicationUpdateInstaller = null!;
     private readonly ISystemUriLauncher _systemUriLauncher = null!;
-    private readonly Windowing.ApplicationUpdateActivityState _applicationUpdateActivity = null!;
+    private readonly ApplicationUpdateActivityState _applicationUpdateActivity = null!;
 
     internal bool IsApplicationUpdateInProgress => _applicationUpdateActivity.IsRunning;
 
