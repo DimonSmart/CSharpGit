@@ -115,7 +115,7 @@ public sealed partial class MainPage
     }
 
     private void UpdateOptimizeRepositoryAvailability() =>
-        OptimizeRepositoryMenuItem.IsEnabled = _repositoryMaintenance.CanStart;
+        RepositoryToolbar.SetOptimizeAvailability(_repositoryMaintenance.CanStart);
 
     private void OptimizeRepository_Click(object sender, RoutedEventArgs e) =>
         RunPageUiOperation(OptimizeRepositoryAsync, "Optimize repository");

@@ -8,6 +8,7 @@ using System.Windows.Input;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.Controls;
+using CSharpGit.Presentation.Views;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Input;
@@ -406,6 +407,40 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
         {
             // Showing an error can itself fail (concurrent dialog/disposed XamlRoot).
             ReportUiFailure(exception, "Error notification");
+        }
+    }
+
+    // Typed transitional bridge for phase-3 Git/dialog workflows.
+    private void HandleRepositoryToolbarAction(RepositoryToolbarAction action)
+    {
+        var args = new RoutedEventArgs();
+        switch (action)
+        {
+            case RepositoryToolbarAction.CommitNavigation: CommitNavigation_Click(this, args); break;
+            case RepositoryToolbarAction.Fetch: Fetch_Click(this, args); break;
+            case RepositoryToolbarAction.Pull: Pull_Click(this, args); break;
+            case RepositoryToolbarAction.PullFastForwardOnly: PullFastForwardOnly_Click(this, args); break;
+            case RepositoryToolbarAction.PullMerge: PullMerge_Click(this, args); break;
+            case RepositoryToolbarAction.PullRebase: PullRebase_Click(this, args); break;
+            case RepositoryToolbarAction.PullSettings: PullSettings_Click(this, args); break;
+            case RepositoryToolbarAction.PushPrimary: PushPrimary_Click(this, args); break;
+            case RepositoryToolbarAction.Push: Push_Click(this, args); break;
+            case RepositoryToolbarAction.PushTo: PushTo_Click(this, args); break;
+            case RepositoryToolbarAction.ForcePushWithLease: ForcePushWithLease_Click(this, args); break;
+            case RepositoryToolbarAction.PushSetDefault: PushSetDefault_Click(this, args); break;
+            case RepositoryToolbarAction.PushToSetDefault: PushToSetDefault_Click(this, args); break;
+            case RepositoryToolbarAction.ForcePushWithLeaseSetDefault: ForcePushWithLeaseSetDefault_Click(this, args); break;
+            case RepositoryToolbarAction.RefreshIndicator: RefreshIndicator_Click(this, args); break;
+            case RepositoryToolbarAction.OpenRepository: OpenRepository_Click(this, args); break;
+            case RepositoryToolbarAction.CloneRepository: CloneRepository_Click(this, args); break;
+            case RepositoryToolbarAction.CreateRepository: CreateRepository_Click(this, args); break;
+            case RepositoryToolbarAction.Repositories: Repositories_Click(this, args); break;
+            case RepositoryToolbarAction.CloseRepository: CloseRepository_Click(this, args); break;
+            case RepositoryToolbarAction.RepositorySettings: RepositorySettings_Click(this, args); break;
+            case RepositoryToolbarAction.OptimizeRepository: OptimizeRepository_Click(this, args); break;
+            case RepositoryToolbarAction.Settings: Settings_Click(this, args); break;
+            case RepositoryToolbarAction.About: About_Click(this, args); break;
+            default: throw new ArgumentOutOfRangeException(nameof(action), action, null);
         }
     }
 
