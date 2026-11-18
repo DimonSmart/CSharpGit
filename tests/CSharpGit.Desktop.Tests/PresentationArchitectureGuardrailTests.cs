@@ -433,7 +433,8 @@ public sealed class PresentationArchitectureGuardrailTests
         var contextAdapter = File.ReadAllText(
             Path.Combine(viewModels, "OpenRepositoryViewModel.CommitCreation.cs"));
         var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
-        var mainXaml = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
+        var mainXaml = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"))
+            + File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeCommitEditorView.xaml"));
         var mainPage = string.Join(
             Environment.NewLine,
             Directory.GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
