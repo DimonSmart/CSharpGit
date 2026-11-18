@@ -9,7 +9,9 @@ public sealed class DesktopUiContractTests
     {
         var root = FindRepositoryRoot();
         var document = XDocument.Load(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
-        var xaml = document.ToString(SaveOptions.DisableFormatting);
+        var xaml = document.ToString(SaveOptions.DisableFormatting)
+            + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "StartScreenView.xaml"))
+            + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml"));
         var operationBanner = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "OperationBanner.xaml"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var program = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Platforms", "Desktop", "Program.cs"));
@@ -125,7 +127,8 @@ public sealed class DesktopUiContractTests
     public void MainWindowExposesAllOperationActionsAndStateDependentCommands()
     {
         var root = FindRepositoryRoot();
-        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"))
+            + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml"));
         var operationBanner = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "OperationBanner.xaml"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var confirmationDialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ConfirmationDialogs.cs"));

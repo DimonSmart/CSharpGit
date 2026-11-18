@@ -5,8 +5,6 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private ProgressRing BusyIndicator => RefreshProgressRing;
-
     private void RefreshIndicator_Click(object sender, RoutedEventArgs e) =>
         RunPageUiOperation(RefreshIndicatorAsync, "Repository refresh indicator");
 

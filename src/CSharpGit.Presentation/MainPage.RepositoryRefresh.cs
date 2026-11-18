@@ -98,21 +98,9 @@ public sealed partial class MainPage
                 : RefreshIndicatorState.UpToDate;
         var isRefreshing = state == RefreshIndicatorState.Refreshing;
 
-        RefreshIcon.Visibility =
-            !isRefreshing && state == RefreshIndicatorState.UpToDate
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-        RefreshRequiredIcon.Visibility =
-            !isRefreshing && state == RefreshIndicatorState.RefreshRequired
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-        RefreshProgressRing.Visibility = isRefreshing ? Visibility.Visible : Visibility.Collapsed;
-        RefreshProgressRing.IsActive = isRefreshing;
-
-        RefreshProgressRing.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Goldenrod);
-
-        ToolTipService.SetToolTip(
-            RefreshButton,
+        RepositoryToolbar.SetRefreshPresentation(
+            isRefreshing,
+            state == RefreshIndicatorState.RefreshRequired,
             state switch
             {
                 RefreshIndicatorState.RefreshRequired => ExternalRepositoryChangeTooltip,

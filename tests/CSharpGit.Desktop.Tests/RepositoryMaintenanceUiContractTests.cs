@@ -5,7 +5,7 @@ public sealed class RepositoryMaintenanceUiContractTests
     [Fact]
     public void MainMenuExposesOptimizationBeforeSettingsWithoutLegacyOperations()
     {
-        var source = ReadSource("src/CSharpGit.Presentation/MainPage.xaml");
+        var source = ReadSource("src/CSharpGit.Presentation/Views/RepositoryToolbarView.xaml");
 
         var optimize = source.IndexOf("Optimize repository…", StringComparison.Ordinal);
         var settings = source.IndexOf("Settings…", optimize, StringComparison.Ordinal);

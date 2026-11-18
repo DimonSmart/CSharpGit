@@ -7,7 +7,7 @@ public sealed class PublishBranchUiContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var xaml = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
+        var xaml = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryToolbarView.xaml"));
         var converter = File.ReadAllText(Path.Combine(presentation, "Controls", "BranchTrackingActionTextConverter.cs"));
         var workflow = File.ReadAllText(Path.Combine(presentation, "MainPage.ForcePush.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySyncViewModel.cs"));

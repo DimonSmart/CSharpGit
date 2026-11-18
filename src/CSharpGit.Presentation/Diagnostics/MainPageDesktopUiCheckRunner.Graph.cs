@@ -375,7 +375,7 @@ public sealed partial class MainPage
                 CheckActualHeight(_page.RepositoryTree.ContainerFromItem(firstRepositoryNode) as FrameworkElement, 23, 26, "repository tree row", failures);
             }
 
-            CheckActualHeight(_page.MainToolbar, 0, 34, "main toolbar", failures);
+            CheckActualHeight(_page.RepositoryToolbar, 0, 34, "main toolbar", failures);
             CheckActualHeight(_page.HistoryFilterToolbar, 0, 34, "history filter toolbar", failures);
             CheckActualHeight(_page.HistoryColumnHeader, 0, 26, "history column header", failures);
             CheckActualHeight(_page.StatusBar, 0, 22, "status bar", failures);

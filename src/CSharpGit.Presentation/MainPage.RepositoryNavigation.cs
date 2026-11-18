@@ -166,9 +166,9 @@ public sealed partial class MainPage
     }
 
     private void UpdateCommitNavigationText() =>
-        CommitNavigationText.Text = WorkingTreePane.Visibility == Visibility.Visible
-            ? "Back to history"
-            : $"Commit ({_viewModel.WorkingTree.Changes.Count})";
+        RepositoryToolbar.SetCommitNavigationText(
+            WorkingTreePane.Visibility == Visibility.Visible,
+            _viewModel.WorkingTree.Changes.Count);
 
     private void RepositoryTree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
     {

@@ -176,13 +176,13 @@ public sealed partial class MainPage
                 splitter?.ResizeForCheck(24);
                 Check(splitterGrid is not null && splitterGrid.ColumnDefinitions[0].Width.IsAbsolute && Math.Abs(splitterGrid.ColumnDefinitions[0].Width.Value - oldWidth) > 1, "splitter did not resize its pane", failures);
 
-                Check(_page.CommitNavigationText.Text == $"Commit ({_page._viewModel.WorkingTree.Changes.Count})", "commit toolbar count is incorrect", failures);
+                Check(_page.RepositoryToolbar.CommitNavigationLabel == $"Commit ({_page._viewModel.WorkingTree.Changes.Count})", "commit toolbar count is incorrect", failures);
                 _page.ShowWorkingTree();
                 Check(_page.WorkingTreePane.Visibility == Visibility.Visible && _page.HistoryPane.Visibility == Visibility.Collapsed, "working tree mode did not open", failures);
-                Check(_page.CommitNavigationText.Text == "Back to history", "commit toolbar did not become the history navigation action", failures);
+                Check(_page.RepositoryToolbar.CommitNavigationLabel == "Back to history", "commit toolbar did not become the history navigation action", failures);
                 Check(_page._unstagedChanges.Count + _page._stagedChanges.Count >= _page._viewModel.WorkingTree.Changes.Count, "working tree staged/unstaged views lost changes", failures);
                 await _page.ShowAllHistoryAsync();
-                Check(_page.CommitNavigationText.Text == $"Commit ({_page._viewModel.WorkingTree.Changes.Count})", "commit toolbar did not restore the change count", failures);
+                Check(_page.RepositoryToolbar.CommitNavigationLabel == $"Commit ({_page._viewModel.WorkingTree.Changes.Count})", "commit toolbar did not restore the change count", failures);
 
                 if (_page._viewModel.History.Rows.FirstOrDefault() is { } selectedBeforeRefresh)
                 {
@@ -219,7 +219,7 @@ public sealed partial class MainPage
                 await WaitUntilAsync(() => !_page._viewModel.IsBusy, TimeSpan.FromSeconds(20));
                 Check(_page._viewModel.CommitCreation.IsEmptyIndexChoiceOpen, "empty index did not present an explicit choice", failures);
                 Check(_page._viewModel.CommitCreation.CommitMessage == "draft retained by close guard", "commit draft was lost", failures);
-                Check(busyObserved && !_page.BusyIndicator.IsActive, "busy indication did not transition back to idle", failures);
+                Check(busyObserved && !_page.RepositoryToolbar.IsRefreshBusy, "busy indication did not transition back to idle", failures);
 
                 await File.WriteAllTextAsync(resultPath, JsonSerializer.Serialize(new DesktopCheckResult(failures.Count == 0, failures, _page._viewModel.Repository?.IsWorktree ?? false)));
             }

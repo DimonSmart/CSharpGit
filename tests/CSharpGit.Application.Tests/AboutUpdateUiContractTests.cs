@@ -7,7 +7,9 @@ public sealed class AboutUpdateUiContractTests
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+            root, "src", "CSharpGit.Presentation", "MainPage.xaml"))
+            + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "StartScreenView.xaml"))
+            + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml"));
 
         Assert.True(Count(xaml, "About CSharpGit…") >= 2);
         Assert.Contains("StartScreenOverflowButton", xaml);

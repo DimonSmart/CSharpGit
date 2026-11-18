@@ -2,6 +2,7 @@ using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Presentation.ViewModels;
 using CSharpGit.Presentation.Controls;
+using CSharpGit.Presentation.Views;
 using Microsoft.UI.Xaml;
 
 namespace CSharpGit.Presentation;
@@ -10,6 +11,8 @@ public sealed partial class MainPage
 {
     private readonly RepositoryMaintenanceViewModel _repositoryMaintenance = null!;
     private readonly IDesktopShellService _desktopShellService = null!;
+    private IAppSettingsService _recentRepositorySettings = null!;
+    private IRepositoryImageService _repositoryImageService = null!;
 
     internal bool IsRepositoryMaintenanceInProgress => _repositoryMaintenance.IsRunning;
 
@@ -73,7 +76,19 @@ public sealed partial class MainPage
         _viewModel.PropertyChanged += RepositoryMaintenanceViewModel_PropertyChanged;
         UpdateOptimizeRepositoryAvailability();
         InitializeRepositoryChangeMonitoring();
-        InitializeRecentRepositories();
+        StartScreenHost.Configure(_viewModel, _recentRepositorySettings, _repositoryImageService,
+            _desktopShellService.OpenFolderDescription,
+            new StartScreenActions(
+                OpenRepositoryPickerAsync,
+                ShowCloneRepositoryAsync,
+                ShowCreateRepositoryAsync,
+                TrySwitchRepositoryAsync,
+                ShowUnavailableRepositoryAsync,
+                path => OpenFolderInDesktopShellAsync(path, "Could not open repository folder"),
+                CopyTextAsync,
+                () => OpenSettingsWindow(SettingsSection.General),
+                ShowAboutAsync));
+        _recentRepositorySettings.Changed += StartScreenSettings_Changed;
         InitializeHistoryPerformanceDiagnostics();
         InitializeGitConsole();
         InitializeWorktreeSupport();
@@ -100,7 +115,7 @@ public sealed partial class MainPage
     }
 
     private void UpdateOptimizeRepositoryAvailability() =>
-        OptimizeRepositoryMenuItem.IsEnabled = _repositoryMaintenance.CanStart;
+        RepositoryToolbar.SetOptimizeAvailability(_repositoryMaintenance.CanStart);
 
     private void OptimizeRepository_Click(object sender, RoutedEventArgs e) =>
         RunPageUiOperation(OptimizeRepositoryAsync, "Optimize repository");

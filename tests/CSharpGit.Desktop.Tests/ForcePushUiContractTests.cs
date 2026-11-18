@@ -7,7 +7,7 @@ public sealed class ForcePushUiContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var xaml = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
+        var xaml = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryToolbarView.xaml"));
         var trackingConverter = File.ReadAllText(Path.Combine(presentation, "Controls", "BranchTrackingActionTextConverter.cs"));
         var workflow = File.ReadAllText(Path.Combine(presentation, "MainPage.ForcePush.cs"));
 
@@ -105,7 +105,8 @@ public sealed class ForcePushUiContractTests
     public void LegacyOperationsContainerIsRemovedAndPushMenuKeepsContextualActions()
     {
         var root = FindRepositoryRoot();
-        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"))
+            + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml"));
         var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Dialogs.cs"));
 
         Assert.DoesNotContain("GitOperationsDialog", xaml + dialogs, StringComparison.Ordinal);
@@ -131,7 +132,8 @@ public sealed class ForcePushUiContractTests
             "CSharpGit.Presentation",
             "ViewModels",
             "OpenRepositoryViewModel.cs"));
-        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"))
+            + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml"));
 
         Assert.Contains("Create branch from here…", codeBehind, StringComparison.Ordinal);
         Assert.Contains("Merge into current branch", codeBehind, StringComparison.Ordinal);

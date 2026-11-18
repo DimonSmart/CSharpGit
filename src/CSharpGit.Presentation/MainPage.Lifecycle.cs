@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml;
+using CSharpGit.Presentation.Views;
 
 namespace CSharpGit.Presentation;
 
@@ -20,7 +21,17 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         InitializeConfirmationDialogs();
         InitializeBranchRename();
         InitializeBranchDragDrop();
-        InitializeRepositorySwitching();
+        RepositoryToolbar.Configure(HandleRepositoryToolbarAction);
+        RepositoryHeader.Configure(_viewModel, _recentRepositorySettings, _desktopShellService,
+            new RepositorySelectorActions(
+                TrySwitchRepositoryAsync,
+                OpenRepositoryPickerAsync,
+                ShowCloneRepositoryAsync,
+                ShowCreateRepositoryAsync,
+                TryCloseRepositoryAsync,
+                path => OpenFolderInDesktopShellAsync(path, "Could not open repository folder"),
+                CopyTextAsync,
+                ShowErrorAsync));
     }
 
     // Close admission is decided by App; this phase only shuts down UI requests.
@@ -58,7 +69,10 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         _viewModel.Stashes.Items.CollectionChanged -= RepositoryPresentationStashes_CollectionChanged;
         DetachRepositoryTreeStateTracking();
         ShutdownGitConsole();
-        ShutdownRecentRepositories();
+        StartScreenHost.ShutdownRecentRepositories();
+        RepositoryHeader.Shutdown();
+        RepositoryToolbar.Shutdown();
+        _recentRepositorySettings.Changed -= StartScreenSettings_Changed;
         ShutdownRepositoryChangeMonitoring();
         ShutdownWorktreeSupport();
         _settingsWindowController.Shutdown();

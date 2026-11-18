@@ -7,13 +7,16 @@ public sealed class RepositoryCloningUiContractTests
     {
         var root = FindRepositoryRoot();
         var mainXaml = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+            root, "src", "CSharpGit.Presentation", "MainPage.xaml"))
+            + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "StartScreenView.xaml"))
+            + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml"))
+            + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositorySelectorView.xaml"));
         var recentXaml = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "RecentRepositoriesView.xaml"));
         var recentViewModel = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "ViewModels", "RecentRepositoriesViewModel.cs"));
         var switching = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.RepositorySwitching.cs"));
+            root, "src", "CSharpGit.Presentation", "Views", "RepositorySelectorView.xaml.cs"));
         var workflow = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "MainPage.RepositoryCloning.cs"));
 
