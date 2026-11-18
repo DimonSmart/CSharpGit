@@ -33,9 +33,11 @@ public sealed class MainPageResponsibilitiesContractTests
         Assert.DoesNotContain("_pendingRepositoryTreeCheckout", page);
         Assert.DoesNotContain("_pendingRepositoryTreeNavigation", page);
         Assert.DoesNotContain("NavigateToReferenceAsync(", page);
-        Assert.Contains("_repositoryTreeNavigation.BeginInteraction()", navigation);
+        var explorer = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryExplorerView.xaml.cs"));
+        var navigator = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "WorkspaceNavigator.cs"));
+        Assert.Contains("_navigator.Interactions.BeginInteraction()", explorer);
         Assert.Contains("_repositoryTreeNavigation.DeferCheckout(", navigation);
-        Assert.Contains("_repositoryTreeNavigation.DeferReference(", navigation);
+        Assert.Contains("Interactions.DeferReference(", navigator);
         Assert.Contains("TryTakeReference(", coordinator);
         Assert.Contains("TryTakeCheckout(", coordinator);
     }

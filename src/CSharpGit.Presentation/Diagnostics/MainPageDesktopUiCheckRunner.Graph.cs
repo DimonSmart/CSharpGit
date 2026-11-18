@@ -367,7 +367,7 @@ public sealed partial class MainPage
                 CheckActualHeight(_page.HistoryList.ContainerFromItem(firstHistory) as FrameworkElement, 23, 26, "history row", failures);
             }
 
-            if (_page._repositoryTreeRoots.FirstOrDefault() is { } firstRepositoryNode)
+            if (_page.RepositoryExplorer.RootsForCheck.FirstOrDefault() is { } firstRepositoryNode)
             {
                 await WaitUntilAsync(
                     () => _page.RepositoryTree.ContainerFromItem(firstRepositoryNode) is TreeViewItem,
