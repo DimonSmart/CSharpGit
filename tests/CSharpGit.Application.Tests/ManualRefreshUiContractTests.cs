@@ -7,8 +7,9 @@ public sealed class ManualRefreshUiContractTests
     {
         var root = FindRepositoryRoot();
         var app = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
-        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
-        var refresh = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryRefresh.cs"));
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml"));
+        var refresh = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryRefresh.cs"))
+            + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml.cs"));
         var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
         var refreshAction = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RefreshIndicator.cs"));
         var monitor = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "RepositoryChangeMonitor.cs"));

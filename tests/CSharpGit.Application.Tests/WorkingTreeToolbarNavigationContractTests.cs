@@ -6,7 +6,7 @@ public sealed class WorkingTreeToolbarNavigationContractTests
     public void WorkingTreeNavigationLivesOnMainToolbarInsteadOfRepositoryTree()
     {
         var root = FindRepositoryRoot();
-        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var treeNode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RepositoryTreeNode.cs"));
 
@@ -17,8 +17,10 @@ public sealed class WorkingTreeToolbarNavigationContractTests
         Assert.DoesNotContain("ShowHistory_Click", xaml + page);
 
         var navigation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs"));
-        Assert.Contains("$\"Commit ({_viewModel.WorkingTree.Changes.Count})\"", navigation);
-        Assert.Contains("\"Back to history\"", navigation);
+        var toolbar = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml.cs"));
+        Assert.Contains("RepositoryToolbar.SetCommitNavigationText(", navigation);
+        Assert.Contains("\"Back to history\"", toolbar);
+        Assert.Contains("$\"Commit ({changes})\"", toolbar);
         Assert.DoesNotContain("RepositoryTreeNodeKind.WorkingTree", page);
         Assert.DoesNotContain("WorkingTree,", treeNode);
     }
