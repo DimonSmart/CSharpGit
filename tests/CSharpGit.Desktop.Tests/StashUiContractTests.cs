@@ -23,15 +23,21 @@ public sealed class StashUiContractTests
     {
         var root = FindRepositoryRoot();
         var xaml = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
+        var editor = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeCommitEditorView.xaml");
+        var editorCode = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeCommitEditorView.xaml.cs");
+        var composer = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs");
         var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
         var stashPage = Read(root, "src", "CSharpGit.Presentation", "MainPage.Stashes.cs");
         var stashViewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "StashesViewModel.cs");
 
-        Assert.Contains("Text=\"Stash…\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Icon.Glyph.Stash", xaml, StringComparison.Ordinal);
-        Assert.Contains("Click=\"CreateStash_Click\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("IsEnabled=\"{Binding Stashes.CanCreateStash}\"", xaml, StringComparison.Ordinal);
-        Assert.DoesNotContain("IsEnabled=\"{Binding CanCreateStash}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("<views:WorkingTreeCommitEditorView", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Stash…\"", editor, StringComparison.Ordinal);
+        Assert.Contains("Icon.Glyph.Stash", editor, StringComparison.Ordinal);
+        Assert.Contains("Click=\"Stash_Click\"", editor, StringComparison.Ordinal);
+        Assert.Contains("IsEnabled=\"{Binding Stashes.CanCreateStash}\"", editor, StringComparison.Ordinal);
+        Assert.DoesNotContain("IsEnabled=\"{Binding CanCreateStash}\"", editor, StringComparison.Ordinal);
+        Assert.Contains("StashRequested?.Invoke", editorCode, StringComparison.Ordinal);
+        Assert.Contains("WorkingTreeCommitEditor.StashRequested += CreateStash_Click;", composer, StringComparison.Ordinal);
         var navigation = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs");
         Assert.Contains("\"Stash…\"", navigation, StringComparison.Ordinal);
         Assert.Contains("ShowCreateStashDialogAsync", navigation, StringComparison.Ordinal);
