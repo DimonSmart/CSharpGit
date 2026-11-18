@@ -7,7 +7,7 @@ public sealed class PullUiContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var ui = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
+        var ui = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryToolbarView.xaml"));
         var view = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
         var syncVm = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySyncViewModel.cs"));
 
@@ -44,7 +44,7 @@ public sealed class PullUiContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var ui = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
+        var ui = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryToolbarView.xaml"));
         var view = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
 
         Assert.Contains("PullDefaultAsync() => PullFromUiAsync(null)", view, StringComparison.Ordinal);
@@ -61,7 +61,7 @@ public sealed class PullUiContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var ui = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
+        var ui = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryToolbarView.xaml"));
         var mainSettings = File.ReadAllText(Path.Combine(presentation, "MainPage.Settings.cs"));
         var controller = File.ReadAllText(Path.Combine(presentation, "SettingsWindowController.cs"));
         var settingsPage = File.ReadAllText(Path.Combine(presentation, "SettingsPage.xaml.cs"));
