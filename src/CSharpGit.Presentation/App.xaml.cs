@@ -150,8 +150,13 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
         catch (Exception exception)
         {
             LogUiFailure(exception, "Application startup");
+            // Startup may fail after the window scope exists but before close handlers are registered.
+            try { _windowSession?.CompleteShutdown(); }
+            catch (Exception cleanupFailure) { LogUiFailure(cleanupFailure, "Failed startup session cleanup"); }
+            try { await StopHostAsync(); }
+            catch (Exception stopFailure) { LogUiFailure(stopFailure, "Failed startup host cleanup"); }
             try { _window?.Close(); }
-            catch (Exception closeFailure) { LogUiFailure(closeFailure, "Failed startup cleanup"); }
+            catch (Exception closeFailure) { LogUiFailure(closeFailure, "Failed startup window close"); }
         }
     }
 
@@ -179,8 +184,8 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
         _windowSession = windowContent.Session;
         _windowClose = new WindowCloseOrchestrator(
             _window, mainPage, _windowSession, mainPage, this);
-        mainPage.WindowTitleChanged += MainPage_WindowTitleChanged;
-        _window.Title = mainPage.CurrentWindowTitle;
+        _windowSession.WindowTitleChanged += Session_WindowTitleChanged;
+        _window.Title = _windowSession.CurrentWindowTitle;
         _mainThemeRegistration = themeManager.Register(mainPage);
         _window.AppWindow.Changed += (_, eventArgs) =>
         {
@@ -237,7 +242,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
         Trace.TraceError($"UI operation '{operation}' failed: {exception}");
     }
 
-    private void MainPage_WindowTitleChanged(string title)
+    private void Session_WindowTitleChanged(string title)
     {
         if (_window is not null)
             _window.Title = title;
@@ -317,8 +322,8 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
     Task IWindowCloseHost.StopHostAsync() => StopHostAsync();
     void IWindowCloseHost.ReleaseWindowBindings()
     {
-        if (_window?.Content is MainPage page)
-            page.WindowTitleChanged -= MainPage_WindowTitleChanged;
+        if (_windowSession is not null)
+            _windowSession.WindowTitleChanged -= Session_WindowTitleChanged;
     }
     void IWindowCloseHost.CloseAuthorizedWindow() => CloseAuthorizedWindow();
     void IWindowCloseHost.FailFinalNativeClose() => FailFinalMacOsClose();

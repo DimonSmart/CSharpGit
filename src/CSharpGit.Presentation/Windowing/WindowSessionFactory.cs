@@ -17,6 +17,7 @@ internal sealed class WindowSessionFactory(IServiceScopeFactory scopeFactory)
                 page.DesktopCreateForCheck,
                 page.DesktopMaintenanceForCheck,
                 () => page.IsApplicationUpdateInProgress);
+            var titleState = new WindowTitleState(page.WindowRepository);
             return (page, new WindowSession(
                 scope,
                 page,
@@ -24,7 +25,8 @@ internal sealed class WindowSessionFactory(IServiceScopeFactory scopeFactory)
                 safety,
                 _ => Program.InitialRepositoryPath is not null
                     ? page.OpenInitialRepositoryAsync()
-                    : Task.CompletedTask));
+                    : Task.CompletedTask,
+                titleState));
         }
         catch
         {
