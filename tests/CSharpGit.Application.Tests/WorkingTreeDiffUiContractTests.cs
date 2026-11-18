@@ -207,7 +207,9 @@ public sealed class WorkingTreeDiffUiContractTests
         var commitCreationContext = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.CommitCreation.cs"));
         var workingTreeViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs"));
 
-        Assert.Contains("Text=\"{Binding CommitCreation.CommitMessage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", xaml);
+        var commitEditor = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeCommitEditorView.xaml"));
+        Assert.Contains("<views:WorkingTreeCommitEditorView", xaml);
+        Assert.Contains("Text=\"{Binding CommitCreation.CommitMessage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", commitEditor);
         Assert.Contains("WorkingTree.ClearCommittedPresentationSelection", commitCreationContext);
         Assert.Contains("context.ClearCommittedWorkingTreePresentationSelection();", commitCreation);
         Assert.Contains("SelectedDiffKind == WorkingTreeDiffKind.Staged", workingTreeViewModel);

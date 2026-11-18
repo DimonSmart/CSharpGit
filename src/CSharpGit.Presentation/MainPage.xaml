@@ -512,32 +512,7 @@
               </Grid>
             </Grid>
 
-            <Border Grid.Row="2"
-                    BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                    BorderThickness="0,1,0,0"
-                    Padding="0,4,0,0">
-              <StackPanel Spacing="{StaticResource Spacing.S}">
-                <TextBlock Text="Commit message"
-                           Style="{StaticResource BodyStrongTextStyle}" />
-                <TextBox x:Name="CommitMessageEditor"
-                         Text="{Binding CommitCreation.CommitMessage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                         AcceptsReturn="True"
-                         TextWrapping="Wrap"
-                         Style="{StaticResource CompactMultilineTextBoxStyle}"
-                         MinHeight="{StaticResource Height.CommitEditor}"
-                         AutomationProperties.Name="Commit message" />
-                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
-                  <Button Content="Commit" Command="{Binding CommitCreation.CommitCommand}" Style="{StaticResource PrimaryActionButtonStyle}" />
-                  <Button Content="Amend" Command="{Binding CommitCreation.AmendCommand}" Style="{StaticResource SecondaryActionButtonStyle}" />
-                  <Button Click="CreateStash_Click" IsEnabled="{Binding Stashes.CanCreateStash}" Style="{StaticResource SecondaryActionButtonStyle}" AutomationProperties.Name="Stash changes">
-                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
-                      <FontIcon Glyph="{StaticResource Icon.Glyph.Stash}" FontSize="{StaticResource Icon.Small}" />
-                      <TextBlock Text="Stash…" Style="{StaticResource BodyTextStyle}" />
-                    </StackPanel>
-                  </Button>
-                </StackPanel>
-              </StackPanel>
-            </Border>
+            <views:WorkingTreeCommitEditorView x:Name="WorkingTreeCommitEditor" Grid.Row="2" />
           </Grid>
         </Grid>
 

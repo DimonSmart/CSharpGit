@@ -52,6 +52,7 @@ public sealed partial class MainPage
             workspaceNavigator)
     {
         InstallRepositoryHistoryRewriteMenus();
+        WorkingTreeCommitEditor.StashRequested += CreateStash_Click;
         _createRepositoryViewModel = createRepositoryViewModel
             ?? throw new ArgumentNullException(nameof(createRepositoryViewModel));
         _cloneRepositoryViewModel = cloneRepositoryViewModel
