@@ -1,61 +1,22 @@
-using System.ComponentModel;
-using CSharpGit.Presentation.ViewModels;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private bool _syncingHistoryDisplayMode;
-
-    private void HistoryDisplayModeSelector_Loaded(object sender, RoutedEventArgs e)
-    {
-        _viewModel.History.PropertyChanged += HistoryDisplayModeViewModel_PropertyChanged;
-        SyncHistoryDisplayModeSelector();
-    }
-
-    private void HistoryDisplayModeSelector_Unloaded(object sender, RoutedEventArgs e) =>
-        _viewModel.History.PropertyChanged -= HistoryDisplayModeViewModel_PropertyChanged;
-
-    private void HistoryDisplayModeViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName is nameof(HistoryViewModel.SelectedScope) or nameof(HistoryViewModel.ShowReflog))
-            SyncHistoryDisplayModeSelector();
-    }
-
-    private void HistoryDisplayModeSelector_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs e)
-    {
-        if (_syncingHistoryDisplayMode || sender.SelectedItem is null) return;
-
-        var mode = ReferenceEquals(sender.SelectedItem, CurrentScopeItem)
-            ? HistoryDisplayMode.CurrentBranch
-            : ReferenceEquals(sender.SelectedItem, ShowReflogToggle)
-                ? HistoryDisplayMode.AllReferencesWithReflog
-                : HistoryDisplayMode.AllReferences;
-
-        _viewModel.History.SetHistoryDisplayMode(mode);
-    }
-
-    private void SyncHistoryDisplayModeSelector()
-    {
-        var item = _viewModel.History.HistoryDisplayMode switch
-        {
-            HistoryDisplayMode.CurrentBranch => CurrentScopeItem,
-            HistoryDisplayMode.AllReferencesWithReflog => ShowReflogToggle,
-            _ => AllScopeItem
-        };
-
-        if (ReferenceEquals(ScopeCombo.SelectedItem, item)) return;
-
-        _syncingHistoryDisplayMode = true;
-        try
-        {
-            ScopeCombo.SelectedItem = item;
-        }
-        finally
-        {
-            _syncingHistoryDisplayMode = false;
-        }
-    }
+    // Transitional consumers belong to phase-3 Commit Details and diagnostic dialogs.
+    // All history state, filters and scroll subscriptions are now owned by HistoryView.
+    internal ListView HistoryList => HistoryView.List;
+    internal Border HistoryColumnHeader => HistoryView.ColumnHeader;
+    private TextBox HistoryFilter => HistoryView.FilterBox;
+    private ColumnDefinition HistoryGraphHeaderColumn => HistoryView.GraphHeaderColumn;
+    private SelectorBar ScopeCombo => HistoryView.ScopeSelector;
+    private StackPanel ReferenceScopePanel => HistoryView.ReferencePanel;
+    private TextBlock ActiveReferenceText => HistoryView.ReferenceLabel;
+    private Button LoadMoreHistoryButton => HistoryView.LoadMoreButton;
+    private StackPanel HistoryPerformanceControls => HistoryView.PerformanceControls;
+    private TextBlock HistoryPerformanceCaptureStatus => HistoryView.PerformanceCaptureStatus;
+    private MenuFlyoutItem StartHistoryPerformanceCaptureMenuItem => HistoryView.StartCaptureAction;
+    private MenuFlyoutItem StopHistoryPerformanceCaptureMenuItem => HistoryView.StopCaptureAction;
+    private MenuFlyoutItem OpenHistoryPerformanceDiagnosticsFolderMenuItem => HistoryView.OpenDiagnosticsAction;
 }

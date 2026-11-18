@@ -113,7 +113,6 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
             _workspaceNavigator.ResetForRepositoryChange();
             UpdateStatusBar();
             RepositoryHeader.Refresh();
-            HandleHistoryPerformanceRepositoryChanged();
             _settingsWindowController.RepositoryChanged();
         }
         else if (eventArgs.PropertyName is nameof(OpenRepositoryViewModel.HeadDisplay)
@@ -181,17 +180,13 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
 
     private void UpdateHistoryScopePresentation()
     {
-        var history = _viewModel.History;
-        ShowReflogToggle.IsEnabled = !history.IsReferenceScoped;
-        ScopeCombo.Visibility = history.IsReferenceScoped ? Visibility.Collapsed : Visibility.Visible;
-        ReferenceScopePanel.Visibility = history.IsReferenceScoped ? Visibility.Visible : Visibility.Collapsed;
-        ActiveReferenceText.Text = history.ActiveReferenceLabel ?? string.Empty;
+        HistoryView.UpdateScopePresentation();
         UpdateLoadMoreHistoryAvailability();
         UpdateCommitNavigationText();
     }
 
     private void UpdateLoadMoreHistoryAvailability() =>
-        LoadMoreHistoryButton.IsEnabled = _viewModel.History.LoadMoreCommand.CanExecute(null);
+        HistoryView.UpdateLoadMoreAvailability();
 
     private void RefreshPresentationCollections()
     {

@@ -68,11 +68,11 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         _viewModel.Tags.Items.CollectionChanged -= RepositoryPresentationTags_CollectionChanged;
         _viewModel.Stashes.Items.CollectionChanged -= RepositoryPresentationStashes_CollectionChanged;
         DetachRepositoryTreeStateTracking();
+        HistoryView.Shutdown();
         ShutdownGitConsole();
         StartScreenHost.ShutdownRecentRepositories();
         RepositoryHeader.Shutdown();
         RepositoryToolbar.Shutdown();
-        _recentRepositorySettings.Changed -= StartScreenSettings_Changed;
         ShutdownRepositoryChangeMonitoring();
         ShutdownWorktreeSupport();
         _settingsWindowController.Shutdown();
@@ -103,7 +103,6 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         _viewModel.PropertyChanged -= RepositoryMaintenanceViewModel_PropertyChanged;
         _repositoryMaintenance.PropertyChanged -= RepositoryMaintenance_PropertyChanged;
 
-        _viewModel.History.Rows.CollectionChanged -= HistoryRows_CollectionChanged;
 
     }
 }
