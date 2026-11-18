@@ -131,7 +131,7 @@ public sealed partial class MainPage
 
                 Check(_page.RepositoryWorkspace.ActualWidth > 0 && _page.RepositoryWorkspace.ActualHeight > 0, "workspace was not laid out", failures);
                 Check(_page.HistoryList.ActualWidth > 0 && _page.HistoryList.ActualHeight > 0, "history list was not laid out", failures);
-                Check(_page.RepositoryTree.ActualWidth > 0 && _page._repositoryTreeRoots.Count >= 4, "repository tree was not laid out", failures);
+                Check(_page.RepositoryTree.ActualWidth > 0 && _page.RepositoryExplorer.RootsForCheck.Count >= 4, "repository tree was not laid out", failures);
                 Check(_page.DetailsScroller.HorizontalScrollBarVisibility == ScrollBarVisibility.Disabled && _page.DetailsScroller.VerticalScrollBarVisibility == ScrollBarVisibility.Auto, "detail message wrapping is not configured", failures);
                 await WaitUntilAsync(
                     () => _page._commitDetailsView is { ActualWidth: > 0 } && _page.DetailsScroller.ViewportWidth > 0,

@@ -62,11 +62,11 @@ public sealed class RepositoryTreeExpanderTests
     {
         var root = FindRepositoryRoot();
         var page = System.Xml.Linq.XDocument.Load(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+            root, "src", "CSharpGit.Presentation", "Views", "RepositoryExplorerView.xaml"));
         var tree = Assert.Single(page.Descendants(), element =>
             element.Name.LocalName == "TreeView"
             && (string?)element.Attribute(System.Xml.Linq.XName.Get(
-                "Name", "http://schemas.microsoft.com/winfx/2006/xaml")) == "RepositoryTree");
+                "Name", "http://schemas.microsoft.com/winfx/2006/xaml")) == "Tree");
 
         Assert.Equal("-16,0,0,0", (string?)tree.Attribute("Margin"));
         Assert.Equal("{StaticResource DenseTreeViewStyle}", (string?)tree.Attribute("Style"));

@@ -1,0 +1,19 @@
+<UserControl x:Class="CSharpGit.Presentation.Views.RepositoryExplorerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+      <Border MinHeight="300"
+              Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+              BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+              BorderThickness="0,0,1,0">
+        <!-- Compensate the reserved root expander slot once; keep native child indentation. -->
+        <TreeView x:Name="Tree"
+                  Style="{StaticResource DenseTreeViewStyle}"
+                  Margin="-16,0,0,0"
+                  ItemContainerStyle="{StaticResource DenseTreeItemStyle}"
+                  ItemTemplate="{StaticResource RepositoryTreeItemTemplate}"
+                  SelectionMode="Single"
+                  ItemInvoked="Tree_ItemInvoked"
+                  RightTapped="Tree_RightTapped"
+                  DoubleTapped="Tree_DoubleTapped" />
+      </Border>
+</UserControl>

@@ -71,6 +71,13 @@ public sealed partial class MainPage
         _systemUriLauncher = systemUriLauncher ?? throw new ArgumentNullException(nameof(systemUriLauncher));
         _applicationUpdateActivity = updateActivityState ?? throw new ArgumentNullException(nameof(updateActivityState));
 
+        RepositoryExplorer.Configure(_viewModel, _worktreesViewModel, _workspaceNavigator);
+        RepositoryExplorer.NavigateRequested += (node, version) =>
+            RunPageUiOperation(() => SelectRepositoryNodeAsync(node, version), "Repository tree navigation");
+        RepositoryExplorer.CheckoutRequested += (branch, version) =>
+            RunPageUiOperation(() => SwitchRepositoryTreeBranchAsync(branch, version), "Switch branch");
+        RepositoryExplorer.ReferenceMenuRequested += RepositoryTreeBranchDeletion_RightTapped;
+
         _repositoryMaintenance.Attach(_viewModel, () => _worktreesViewModel.RefreshAsync(throwOnError: true));
         _repositoryMaintenance.PropertyChanged += RepositoryMaintenance_PropertyChanged;
         _viewModel.PropertyChanged += RepositoryMaintenanceViewModel_PropertyChanged;

@@ -16,67 +16,27 @@ public sealed partial class MainPage
         bool preserveSelectedStash = false,
         long? treeInteractionVersion = null)
     {
-        var repository = _viewModel.Repository;
-        if (treeInteractionVersion is { } version
-            && (version != _repositoryTreeNavigation.Version || repository is null))
-            return;
-
-        if (!preserveSelectedStash)
-            _viewModel.Stashes.ClearSelection();
+        var target = await _workspaceNavigator.NavigateToCommitAsync(
+            commitHash, preserveSelectedStash, treeInteractionVersion);
+        if (IsShuttingDown) return;
 
         HistoryPane.Visibility = Visibility.Visible;
         WorkingTreePane.Visibility = Visibility.Collapsed;
-
-        // When the commit is not materialized yet, navigation replaces the history
-        // ItemsSource content. Its layout may not be ready for ScrollIntoView.
-        var previouslyMaterialized = _viewModel.History.Rows.FirstOrDefault(row =>
-            string.Equals(row.Commit.Hash, commitHash, StringComparison.Ordinal));
-        var target = await _viewModel.History.NavigateToCommitAsync(commitHash);
-        if (treeInteractionVersion is { } currentVersion
-            && (currentVersion != _repositoryTreeNavigation.Version
-                || !ReferenceEquals(repository, _viewModel.Repository)))
-            return;
-
         UpdateHistoryScopePresentation();
-        if (target is null)
-        {
-            // An in-flight history read can temporarily hold the shared Git-operation gate.
-            // Keep only the latest explicit tree navigation and retry when the gate is free.
-            if (treeInteractionVersion is { } deferredVersion
-                && repository is not null
-                && !_viewModel.CanStartUserGitOperation)
-                _repositoryTreeNavigation.DeferReference(
-                    repository,
-                    deferredVersion,
-                    _viewModel.History.SelectionIntentVersion,
-                    commitHash,
-                    preserveSelectedStash);
-            return;
-        }
+        if (target is null || !_workspaceNavigator.IsTargetCurrent(target)) return;
 
-        HistoryList.SelectedItem = target;
-        HistoryList.ScrollIntoView(target, ScrollIntoViewAlignment.Leading);
+        HistoryList.SelectedItem = target.Row;
+        HistoryList.ScrollIntoView(target.Row, ScrollIntoViewAlignment.Leading);
+        if (target.WasPreviouslyLoaded) return;
 
-        if (ReferenceEquals(previouslyMaterialized, target)) return;
-
-        // A Reset can invalidate the ListView's pending selection/scroll before
-        // virtualized containers are laid out. Retry once on the next layout pass.
-        var selectionIntentVersion = _viewModel.History.SelectionIntentVersion;
+        // A virtualized Reset can discard a scroll. Retry only while repository,
+        // selection intent and explicit tree interaction still match.
         DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
-            if (IsShuttingDown
-                || !ReferenceEquals(_viewModel.Repository, repository)
-                || (treeInteractionVersion.HasValue
-                    && treeInteractionVersion.Value != _repositoryTreeNavigation.Version)
-                || HistoryPane.Visibility != Visibility.Visible
-                || _viewModel.History.SelectionIntentVersion != selectionIntentVersion
-                || !ReferenceEquals(_viewModel.History.SelectedRow, target)
-                || !_viewModel.History.Rows.Contains(target))
-                return;
-
+            if (IsShuttingDown || !_workspaceNavigator.IsTargetCurrent(target)) return;
             HistoryList.UpdateLayout();
-            HistoryList.SelectedItem = target;
-            HistoryList.ScrollIntoView(target, ScrollIntoViewAlignment.Leading);
+            HistoryList.SelectedItem = target.Row;
+            HistoryList.ScrollIntoView(target.Row, ScrollIntoViewAlignment.Leading);
         });
     }
 
@@ -127,21 +87,22 @@ public sealed partial class MainPage
 
     private async Task ShowReferenceHistoryAsync(string reference, string label)
     {
+        await _workspaceNavigator.ShowReferenceAsync(reference, label);
+        if (IsShuttingDown) return;
         HistoryPane.Visibility = Visibility.Visible;
         WorkingTreePane.Visibility = Visibility.Collapsed;
-        await _viewModel.History.ShowReferenceAsync(reference, label);
         UpdateHistoryScopePresentation();
     }
 
     private async Task ShowAllHistoryAsync()
     {
-        _viewModel.Stashes.ClearSelection();
+        var selected = await _workspaceNavigator.ShowAllHistoryAsync();
+        if (IsShuttingDown) return;
         HistoryPane.Visibility = Visibility.Visible;
         WorkingTreePane.Visibility = Visibility.Collapsed;
-        await _viewModel.History.ShowAllAsync();
         UpdateHistoryScopePresentation();
 
-        if (_viewModel.History.SelectedRow is { } selected)
+        if (selected is not null)
         {
             HistoryList.SelectedItem = selected;
             HistoryList.ScrollIntoView(selected, ScrollIntoViewAlignment.Leading);
@@ -150,6 +111,7 @@ public sealed partial class MainPage
 
     private void ShowWorkingTree()
     {
+        _workspaceNavigator.ShowWorkingTree();
         HistoryPane.Visibility = Visibility.Collapsed;
         WorkingTreePane.Visibility = Visibility.Visible;
         UpdateCommitNavigationText();
@@ -169,23 +131,6 @@ public sealed partial class MainPage
         RepositoryToolbar.SetCommitNavigationText(
             WorkingTreePane.Visibility == Visibility.Visible,
             _viewModel.WorkingTree.Changes.Count);
-
-    private void RepositoryTree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
-    {
-        if (ResolveNode(args.InvokedItem) is not { } node) return;
-
-        RepositoryTree.SelectedItem = node;
-        var version = _repositoryTreeNavigation.BeginInteraction();
-        if (node.Kind is RepositoryTreeNodeKind.LocalBranch
-            or RepositoryTreeNodeKind.RemoteBranch
-            or RepositoryTreeNodeKind.Tag
-            or RepositoryTreeNodeKind.Stash
-            or RepositoryTreeNodeKind.Group)
-            _viewModel.History.Invalidate();
-
-        RunPageUiOperation(
-            () => SelectRepositoryNodeAsync(node, version), "Repository tree navigation");
-    }
 
     private async Task SelectRepositoryNodeAsync(RepositoryTreeNode node, long interactionVersion)
     {
@@ -216,18 +161,6 @@ public sealed partial class MainPage
                 await ShowAllHistoryAsync();
                 break;
         }
-    }
-
-    private void RepositoryTree_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
-    {
-        if (IsShuttingDown) return;
-        var node = ResolveNode((args.OriginalSource as FrameworkElement)?.DataContext);
-        if (node?.Kind != RepositoryTreeNodeKind.LocalBranch || node.Value is not GitBranch branch) return;
-
-        var version = _repositoryTreeNavigation.BeginInteraction();
-        _viewModel.History.Invalidate();
-        args.Handled = true;
-        RunPageUiOperation(() => SwitchRepositoryTreeBranchAsync(branch.Name, version), "Switch branch");
     }
 
     private void RepositoryTree_RightTapped(object sender, RightTappedRoutedEventArgs args)

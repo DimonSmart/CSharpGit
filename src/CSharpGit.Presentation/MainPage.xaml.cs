@@ -27,12 +27,12 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
 {
     private readonly OpenRepositoryViewModel _viewModel;
     internal OpenRepositoryViewModel WindowRepository => _viewModel;
-    private readonly ObservableCollection<RepositoryTreeNode> _repositoryTreeRoots = [];
     private readonly BulkObservableCollection<WorkingTreeChange> _unstagedChanges = [];
     private readonly BulkObservableCollection<WorkingTreeChange> _stagedChanges = [];
     private readonly ObservableCollection<CommitFileRow> _commitFiles = [];
     private bool _wasBusy;
-    private readonly RepositoryTreeNavigationCoordinator _repositoryTreeNavigation = new();
+    private readonly WorkspaceNavigator _workspaceNavigator;
+    private RepositoryTreeNavigationCoordinator _repositoryTreeNavigation => _workspaceNavigator.Interactions;
 
 
     private MainPage(
@@ -41,11 +41,12 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
+        _workspaceNavigator = new WorkspaceNavigator(_viewModel, _viewModel.History,
+            _viewModel.Stashes.ClearSelection);
         _repositoryChangeCoordinator = new RepositoryChangeCoordinator(
             workingTreeStatusReader ?? throw new ArgumentNullException(nameof(workingTreeStatusReader)),
             new UiDispatcher(DispatcherQueue));
 
-        RepositoryTree.ItemsSource = _repositoryTreeRoots;
         UnstagedChangesList.ItemsSource = _unstagedChanges;
         StagedChangesList.ItemsSource = _stagedChanges;
         CommitFilesList.ItemsSource = _commitFiles;
@@ -109,7 +110,7 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
     {
         if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.Repository))
         {
-            _repositoryTreeNavigation.ResetForRepositoryChange();
+            _workspaceNavigator.ResetForRepositoryChange();
             UpdateStatusBar();
             RepositoryHeader.Refresh();
             HandleHistoryPerformanceRepositoryChanged();

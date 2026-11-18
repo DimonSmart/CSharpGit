@@ -29,19 +29,21 @@ public sealed class RepositoryTreeIncrementalContractTests
         var navigationSource = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs"));
         var coordinator = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "RepositoryTreeNavigationCoordinator.cs"));
 
-        var click = ExtractMethod(navigationSource, "private void RepositoryTree_ItemInvoked(");
-        var navigation = ExtractMethod(navigationSource, "private async Task NavigateToReferenceAsync(");
+        var explorerSource = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryExplorerView.xaml.cs"));
+        var workspaceSource = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "WorkspaceNavigator.cs"));
+        var click = ExtractMethod(explorerSource, "private void Tree_ItemInvoked(");
+        var navigation = ExtractMethod(workspaceSource, "public async Task<WorkspaceCommitTarget?> NavigateToCommitAsync(");
         var resume = ExtractMethod(navigationSource, "private Task ResumePendingRepositoryTreeNavigationAsync()");
-        var checkout = ExtractMethod(navigationSource, "private void RepositoryTree_DoubleTapped(");
+        var checkout = ExtractMethod(explorerSource, "private void Tree_DoubleTapped(");
 
-        Assert.Contains("RepositoryTree.SelectedItem = node;", click, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.History.Invalidate();", click, StringComparison.Ordinal);
-        Assert.Contains("_repositoryTreeNavigation.DeferReference(", navigation, StringComparison.Ordinal);
-        Assert.Contains("treeInteractionVersion", navigation, StringComparison.Ordinal);
+        Assert.Contains("Tree.SelectedItem = node;", click, StringComparison.Ordinal);
+        Assert.Contains("_repository.History.Invalidate();", click, StringComparison.Ordinal);
+        Assert.Contains("Interactions.DeferReference(", navigation, StringComparison.Ordinal);
+        Assert.Contains("interactionVersion", navigation, StringComparison.Ordinal);
         Assert.Contains("_repositoryTreeNavigation.TryTakeReference(", resume, StringComparison.Ordinal);
         Assert.Contains("candidate.Version != _version", coordinator, StringComparison.Ordinal);
         Assert.Contains("candidate.SelectionIntentVersion != currentSelectionIntentVersion", coordinator, StringComparison.Ordinal);
-        Assert.Contains("SwitchRepositoryTreeBranchAsync", checkout, StringComparison.Ordinal);
+        Assert.Contains("CheckoutRequested?.Invoke(branch.Name, version);", checkout, StringComparison.Ordinal);
     }
 
     [Fact]

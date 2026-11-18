@@ -204,7 +204,8 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("x:Name=\"RepositoryHeader\"", xaml);
         Assert.Contains("<ColumnDefinition Width=\"270\" MinWidth=\"180\" MaxWidth=\"430\" />", xaml);
         Assert.Contains("<controls:GridSplitter Grid.Row=\"2\"", xaml);
-        Assert.Contains("<TreeView x:Name=\"RepositoryTree\"", xaml);
+        var explorer = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryExplorerView.xaml"));
+        Assert.Contains("<TreeView x:Name=\"Tree\"", explorer);
         Assert.Contains("AutomationProperties.HelpText=\"{Binding Repository.WorkingDirectory}\"", xaml);
         Assert.Contains("DataContext=\"{Binding RepositoryOperations}\"", xaml);
         Assert.Contains("Visibility=\"{Binding HasOperationOrConflicts", xaml);
