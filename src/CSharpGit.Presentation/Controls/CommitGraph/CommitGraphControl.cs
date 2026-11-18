@@ -1,6 +1,7 @@
 using CSharpGit.Presentation.Controls.CommitGraph;
 using CSharpGit.Presentation.Diagnostics;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 using SkiaSharp;
 using Uno.WinUI.Graphics2DSK;
@@ -37,14 +38,14 @@ public sealed class CommitGraphControl : SKCanvasElement
     private static readonly SKColor DarkReflogColor = Color(0x9A, 0x9A, 0x9A);
 
     private CommitGraphGeometry? _geometry;
-    private CommitGraphGeometryCache _geometryCache =
-        CommitGraphPresentationContext.Current.GeometryCache;
+    private CommitGraphGeometryCache _geometryCache = new();
+    private CommitGraphLayoutState _fallbackLayout = new();
+    private ICommitGraphLayoutProvider? _layoutProvider;
     private CommitGraphMetrics _metrics = CommitGraphMetrics.Default;
     private CommitGraphGeometryKey? _renderedGeometryKey;
     private CommitGraphGeometryKey? _paintedGeometryKey;
     private long _renderCount;
     private bool _hasRenderedState;
-    private bool _presentationContextSubscribed;
 
     public static readonly DependencyProperty GraphProperty = DependencyProperty.Register(
         nameof(Graph),
@@ -94,10 +95,14 @@ public sealed class CommitGraphControl : SKCanvasElement
     private void CommitGraphControl_Loaded(object sender, RoutedEventArgs args)
     {
         HistoryRenderDiagnostics.GraphLoaded();
-        if (!_presentationContextSubscribed)
+        var provider = FindLayoutProvider();
+        if (!ReferenceEquals(provider, _layoutProvider))
         {
-            CommitGraphPresentationContext.Changed += CommitGraphPresentationContext_Changed;
-            _presentationContextSubscribed = true;
+            if (_layoutProvider is not null)
+                _layoutProvider.LayoutChanged -= LayoutProvider_Changed;
+            _layoutProvider = provider;
+            if (_layoutProvider is not null)
+                _layoutProvider.LayoutChanged += LayoutProvider_Changed;
         }
 
         ApplyPresentationLayout();
@@ -107,11 +112,21 @@ public sealed class CommitGraphControl : SKCanvasElement
     private void CommitGraphControl_Unloaded(object sender, RoutedEventArgs args)
     {
         HistoryRenderDiagnostics.GraphUnloaded();
-        if (!_presentationContextSubscribed)
-            return;
+        if (_layoutProvider is null) return;
+        _layoutProvider.LayoutChanged -= LayoutProvider_Changed;
+        _layoutProvider = null;
+    }
 
-        CommitGraphPresentationContext.Changed -= CommitGraphPresentationContext_Changed;
-        _presentationContextSubscribed = false;
+    private ICommitGraphLayoutProvider? FindLayoutProvider()
+    {
+        DependencyObject? ancestor = this;
+        for (var depth = 0; ancestor is not null && depth < 64; depth++)
+        {
+            if (ancestor is ICommitGraphLayoutProvider provider) return provider;
+            ancestor = (ancestor as FrameworkElement)?.Parent
+                ?? VisualTreeHelper.GetParent(ancestor);
+        }
+        return null;
     }
 
     private void HandleDataContextChanged()
@@ -173,7 +188,7 @@ public sealed class CommitGraphControl : SKCanvasElement
         HistoryRenderDiagnostics.GraphSizeChangedInsignificant();
     }
 
-    private void CommitGraphPresentationContext_Changed(object? sender, EventArgs args)
+    private void LayoutProvider_Changed(object? sender, EventArgs args)
     {
         var startedAt = HistoryRenderDiagnostics.TimestampIfPerformanceCaptureActive();
         HistoryRenderDiagnostics.GraphPresentationContextChanged();
@@ -184,7 +199,7 @@ public sealed class CommitGraphControl : SKCanvasElement
 
     private void ApplyPresentationLayout()
     {
-        var layout = CommitGraphPresentationContext.Current;
+        var layout = _layoutProvider?.Layout ?? _fallbackLayout;
         _geometryCache = layout.GeometryCache;
         HistoryRenderDiagnostics.GeometrySharedCacheStateChanged(
             _geometryCache.Count,

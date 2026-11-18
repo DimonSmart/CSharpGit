@@ -19,8 +19,8 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
     [Fact]
     public void ProductionVirtualizationSubscriptionExistsOnlyInsideActiveCaptureLifecycle()
     {
-        var page = Read("src", "CSharpGit.Presentation", "MainPage.HistoryPerformanceDiagnostics.cs");
-        var infiniteScroll = Read("src", "CSharpGit.Presentation", "MainPage.HistoryInfiniteScroll.cs");
+        var page = Read("src", "CSharpGit.Presentation", "Views", "HistoryView.Performance.cs");
+        var infiniteScroll = Read("src", "CSharpGit.Presentation", "Views", "HistoryView.xaml.cs");
 
         Assert.Contains("HistoryList.ContainerContentChanging += HistoryList_PerformanceContainerContentChanging", page, StringComparison.Ordinal);
         Assert.Contains("HistoryList.ContainerContentChanging -= HistoryList_PerformanceContainerContentChanging", page, StringComparison.Ordinal);
@@ -115,12 +115,13 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
     [Fact]
     public void LayoutAndScrollInstrumentationDoesNotAddFullHistoryScanToScrolling()
     {
-        var layout = Read("src", "CSharpGit.Presentation", "MainPage.CommitGraphLayout.cs");
-        var scroll = Read("src", "CSharpGit.Presentation", "MainPage.HistoryInfiniteScroll.cs");
+        var layout = Read("src", "CSharpGit.Presentation", "Views", "HistoryView.Graph.cs");
+        var scroll = Read("src", "CSharpGit.Presentation", "Views", "HistoryView.xaml.cs");
 
         Assert.Contains("GraphLayoutInitialized", layout, StringComparison.Ordinal);
         Assert.Contains("GraphLayoutUpdated", layout, StringComparison.Ordinal);
-        Assert.Contains("PresentationPublished", Read("src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphPresentationContext.cs"), StringComparison.Ordinal);
+        Assert.Contains("PresentationPublished", layout, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Controls", "CommitGraph", "CommitGraphPresentationContext.cs")));
         Assert.Contains("HistoryViewChanged", scroll, StringComparison.Ordinal);
         Assert.Contains("PageLoadStarted", scroll, StringComparison.Ordinal);
         Assert.Contains("e.IsIntermediate", scroll, StringComparison.Ordinal);
@@ -144,7 +145,7 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
     [Fact]
     public void CaptureHasAllRequiredTerminationPaths()
     {
-        var page = Read("src", "CSharpGit.Presentation", "MainPage.HistoryPerformanceDiagnostics.cs");
+        var page = Read("src", "CSharpGit.Presentation", "Views", "HistoryView.Performance.cs");
         var lifecycle = Read("src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs");
 
         Assert.Contains("HistoryPerformanceStopReason.Manual", page, StringComparison.Ordinal);

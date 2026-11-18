@@ -7,8 +7,8 @@ public sealed class AuthorAvatarUiContractTests
     {
         var root = FindRepositoryRoot();
         var history = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "HistoryReferences.xaml"));
-        var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
-        var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitGraphLayout.cs"));
+        var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryView.xaml"));
+        var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryView.Graph.cs"));
 
         Assert.Contains("<controls:AuthorAvatar", history, StringComparison.Ordinal);
         Assert.Contains(@"AuthorName=""{x:Bind Commit.Author, Mode=OneWay}""", history, StringComparison.Ordinal);

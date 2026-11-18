@@ -92,14 +92,14 @@ public sealed partial class MainPage
                 if (_page._viewModel.History.HasMore)
                 {
                     var beforeLoadMore = _page._viewModel.History.Rows.Count;
-                    var beforeGraphWidth = _page._historyGraphLayout.GraphWidth;
-                    var beforeLaneWidth = _page._historyGraphLayout.LaneWidth;
+                    var beforeGraphWidth = _page.HistoryView.Layout.GraphWidth;
+                    var beforeLaneWidth = _page.HistoryView.Layout.LaneWidth;
                     if (_page._viewModel.History.LoadMoreCommand is AsyncCommand loadMore)
                         await loadMore.ExecuteAsync();
                     Check(_page._viewModel.History.Rows.Count > beforeLoadMore, "Load more did not append history during graph viewport check", failures);
-                    Check(_page._historyGraphLayout.GraphWidth + 0.001 >= beforeGraphWidth,
+                    Check(_page.HistoryView.Layout.GraphWidth + 0.001 >= beforeGraphWidth,
                         "Load more decreased the session graph width", failures);
-                    Check(_page._historyGraphLayout.LaneWidth <= beforeLaneWidth + 0.001,
+                    Check(_page.HistoryView.Layout.LaneWidth <= beforeLaneWidth + 0.001,
                         "Load more increased the session lane width", failures);
                 }
 
@@ -211,7 +211,7 @@ public sealed partial class MainPage
                 Check(started, "History performance capture did not start", failures);
                 if (!started) return;
 
-                _page.AttachHistoryPerformanceSubscriptions();
+                _page.HistoryView.AttachHistoryPerformanceSubscriptions();
                 var indexes = new[]
                 {
                     0,
@@ -228,7 +228,7 @@ public sealed partial class MainPage
             }
             finally
             {
-                _page.DetachHistoryPerformanceSubscriptions();
+                _page.HistoryView.DetachHistoryPerformanceSubscriptions();
                 if (HistoryPerformanceDiagnostics.IsCaptureActive)
                     result = await HistoryPerformanceDiagnostics.StopAsync(HistoryPerformanceStopReason.Manual);
             }
@@ -376,7 +376,7 @@ public sealed partial class MainPage
             }
 
             CheckActualHeight(_page.RepositoryToolbar, 0, 34, "main toolbar", failures);
-            CheckActualHeight(_page.HistoryFilterToolbar, 0, 34, "history filter toolbar", failures);
+            CheckActualHeight(_page.HistoryView.FilterToolbar, 0, 34, "history filter toolbar", failures);
             CheckActualHeight(_page.HistoryColumnHeader, 0, 26, "history column header", failures);
             CheckActualHeight(_page.GitConsoleHost.StatusBar, 0, 22, "status bar", failures);
 

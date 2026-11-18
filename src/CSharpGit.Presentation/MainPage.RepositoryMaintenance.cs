@@ -95,7 +95,8 @@ public sealed partial class MainPage
                 CopyTextAsync,
                 () => OpenSettingsWindow(SettingsSection.General),
                 ShowAboutAsync));
-        _recentRepositorySettings.Changed += StartScreenSettings_Changed;
+        HistoryView.Configure(_viewModel.History, _workspaceNavigator,
+            () => _viewModel.IsBusy);
         InitializeHistoryPerformanceDiagnostics();
         InitializeGitConsole();
         InitializeWorktreeSupport();
