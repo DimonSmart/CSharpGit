@@ -4,7 +4,7 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
-The initial phase-3 extraction gives `WorkspaceNavigator` **scoped window ownership**. `App` registers it once per window DI scope, `WindowSessionFactory` resolves the same instance that `MainPage` receives through explicit one-time composition wiring, and `WindowSession` explicitly retains the owner reference. History scrolling remains local to `HistoryView`. The semantic navigation and interaction-version checks remain in `WorkspaceNavigator` / `RepositoryTreeNavigationCoordinator`. This is a partial migration; the still-present `MainPage.RepositoryNavigation.cs` visual adapters and legacy lifecycle are not considered complete.
+The initial phase-3 extraction gives `WorkspaceNavigator` **scoped window ownership**. `App` registers it once per window DI scope, `WindowSessionFactory` resolves the same instance that `MainPage` receives through constructor injection in its existing full dependency chain, and `WindowSession` explicitly retains the owner reference. History scrolling remains local to `HistoryView`. The semantic navigation and interaction-version checks remain in `WorkspaceNavigator` / `RepositoryTreeNavigationCoordinator`. This is a partial migration; the still-present `MainPage.RepositoryNavigation.cs` visual adapters and legacy lifecycle are not considered complete.
 
 Remaining module extraction must preserve each row's assigned owner in the matrix below. Existing diagnostic runners and tests remain valid while being moved behind feature-owned inspection contracts.
 

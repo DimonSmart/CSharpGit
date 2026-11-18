@@ -21,8 +21,9 @@ public sealed partial class MainPage
         IWorkingTreeStatusReader workingTreeStatusReader,
         IRepositoryFileVersionService fileVersionService,
         IExternalGitToolService externalGitToolService,
-        FileActionsViewModel fileActions)
-        : this(viewModel, workingTreeStatusReader)
+        FileActionsViewModel fileActions,
+        WorkspaceNavigator workspaceNavigator)
+        : this(viewModel, workingTreeStatusReader, workspaceNavigator)
     {
         _fileVersionService = fileVersionService ?? throw new ArgumentNullException(nameof(fileVersionService));
         _externalGitToolService = externalGitToolService ?? throw new ArgumentNullException(nameof(externalGitToolService));

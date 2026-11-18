@@ -32,13 +32,15 @@ public sealed partial class MainPage
         IRepositoryFileVersionService fileVersionService,
         IExternalGitToolService externalGitToolService,
         FileActionsViewModel fileActions,
-        RepositoryFilesViewModel repositoryFilesViewModel)
+        RepositoryFilesViewModel repositoryFilesViewModel,
+        WorkspaceNavigator workspaceNavigator)
         : this(
             viewModel,
             workingTreeStatusReader,
             fileVersionService,
             externalGitToolService,
-            fileActions)
+            fileActions,
+            workspaceNavigator)
     {
         _repositoryFilesViewModel = repositoryFilesViewModel
             ?? throw new ArgumentNullException(nameof(repositoryFilesViewModel));

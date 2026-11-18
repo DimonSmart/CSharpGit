@@ -31,16 +31,18 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
     private readonly BulkObservableCollection<WorkingTreeChange> _stagedChanges = [];
     private readonly ObservableCollection<CommitFileRow> _commitFiles = [];
     private bool _wasBusy;
-    private WorkspaceNavigator _workspaceNavigator = null!;
+    private readonly WorkspaceNavigator _workspaceNavigator;
     private RepositoryTreeNavigationCoordinator _repositoryTreeNavigation => _workspaceNavigator.Interactions;
 
 
-    public MainPage(
+    private MainPage(
         OpenRepositoryViewModel viewModel,
-        IWorkingTreeStatusReader workingTreeStatusReader)
+        IWorkingTreeStatusReader workingTreeStatusReader,
+        WorkspaceNavigator workspaceNavigator)
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
+        _workspaceNavigator = workspaceNavigator ?? throw new ArgumentNullException(nameof(workspaceNavigator));
         _repositoryChangeCoordinator = new RepositoryChangeCoordinator(
             workingTreeStatusReader ?? throw new ArgumentNullException(nameof(workingTreeStatusReader)),
             new UiDispatcher(DispatcherQueue));
@@ -65,16 +67,6 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
         InitializeWorkingTreeDiffSurface();
         InitializeCommitActions();
         UpdateHistoryScopePresentation();
-    }
-
-    // The window composition root wires the session-owned navigator before
-    // the page is attached to a Window or receives UI events.
-    internal void AttachNavigator(WorkspaceNavigator navigator)
-    {
-        ArgumentNullException.ThrowIfNull(navigator);
-        if (_workspaceNavigator is not null)
-            throw new InvalidOperationException("Workspace navigation is already attached.");
-        _workspaceNavigator = navigator;
     }
 
     private void RepositoryPresentationChanges_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
