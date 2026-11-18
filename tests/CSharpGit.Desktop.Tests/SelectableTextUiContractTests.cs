@@ -9,7 +9,8 @@ public sealed class SelectableTextUiContractTests
         var typography = Read(root, "src", "CSharpGit.Presentation", "Styles", "Typography.xaml");
         var details = Read(root, "src", "CSharpGit.Presentation", "Controls", "CommitDetailsView.xaml");
         var commitTime = Read(root, "src", "CSharpGit.Presentation", "Controls", "CommitTimeText.cs");
-        var main = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
+        var main = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml")
+            + Read(root, "src", "CSharpGit.Presentation", "Views", "RepositorySelectorView.xaml");
         var console = Read(root, "src", "CSharpGit.Presentation", "Controls", "GitConsoleView.xaml");
         var preview = Read(root, "src", "CSharpGit.Presentation", "Controls", "FilePreviewHost.cs");
 

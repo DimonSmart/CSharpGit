@@ -7,13 +7,16 @@ public sealed class RepositoryCreationUiContractTests
     {
         var root = FindRepositoryRoot();
         var mainXaml = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+            root, "src", "CSharpGit.Presentation", "MainPage.xaml"))
+            + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "StartScreenView.xaml"))
+            + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml"))
+            + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositorySelectorView.xaml"));
         var recentXaml = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "RecentRepositoriesView.xaml"));
         var recentViewModel = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "ViewModels", "RecentRepositoriesViewModel.cs"));
         var recentIntegration = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.RecentRepositories.cs"));
+            root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
         var workflow = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "MainPage.RepositoryCreation.cs"));
 
