@@ -192,7 +192,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
         var mainPage = windowContent.Page;
         _windowSession = windowContent.Session;
         _windowClose = new WindowCloseOrchestrator(
-            _window, mainPage, _windowSession, mainPage, this);
+            _window, mainPage, _windowSession, windowContent.Confirmation, this);
         _windowSession.WindowTitleChanged += Session_WindowTitleChanged;
         _window.Title = _windowSession.CurrentWindowTitle;
         _mainThemeRegistration = themeManager.Register(mainPage);

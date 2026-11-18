@@ -23,7 +23,7 @@ using Windows.UI.Core;
 
 namespace CSharpGit.Presentation;
 
-public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
+public sealed partial class MainPage : Page
 {
     private readonly OpenRepositoryViewModel _viewModel;
     internal OpenRepositoryViewModel WindowRepository => _viewModel;
@@ -87,24 +87,26 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
     private void RepositoryPresentationStashes_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
         QueueRepositoryPresentationRefresh();
 
-    Task<bool> Windowing.ICloseConfirmationDialog.ConfirmDiscardCommitMessageAsync(
-        CancellationToken cancellationToken) => ConfirmCloseAsync();
+    private Windowing.ICloseConfirmationDialog? _closeConfirmation;
 
-    public async Task<bool> ConfirmCloseAsync()
+    // Temporary adapter for legacy repository-switch and restart callers.
+    internal void ConfigureCloseConfirmation(Windowing.ICloseConfirmationDialog confirmation)
     {
-        if (!_viewModel.CommitCreation.HasUnappliedCommitMessage) return true;
-
-        var dialog = new ContentDialog
-        {
-            XamlRoot = XamlRoot,
-            Title = "Discard commit message?",
-            Content = "The commit message has not been applied. Close the window and discard it?",
-            PrimaryButtonText = "Discard and close",
-            CloseButtonText = "Keep editing",
-            DefaultButton = ContentDialogButton.Close
-        };
-        return !IsShuttingDown && await ShowPageDialogAsync(dialog) == ContentDialogResult.Primary;
+        ArgumentNullException.ThrowIfNull(confirmation);
+        if (_closeConfirmation is not null)
+            throw new InvalidOperationException("Close confirmation is already configured.");
+        _closeConfirmation = confirmation;
     }
+
+    internal Task<ContentDialogResult> ShowCommitDraftDialogAsync(ContentDialog dialog) =>
+        ShowPageDialogAsync(dialog);
+
+    internal bool IsClosingForDialog => IsShuttingDown;
+
+    public Task<bool> ConfirmCloseAsync() =>
+        (_closeConfirmation ?? throw new InvalidOperationException(
+            "Close confirmation was not configured."))
+        .ConfirmDiscardCommitMessageAsync(CancellationToken.None);
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
