@@ -11,6 +11,8 @@ public sealed partial class MainPage
 {
     private readonly RepositoryMaintenanceViewModel _repositoryMaintenance = null!;
     private readonly IDesktopShellService _desktopShellService = null!;
+    private IAppSettingsService _recentRepositorySettings = null!;
+    private IRepositoryImageService _repositoryImageService = null!;
 
     internal bool IsRepositoryMaintenanceInProgress => _repositoryMaintenance.IsRunning;
 
