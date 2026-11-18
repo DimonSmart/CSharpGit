@@ -16,9 +16,22 @@ public sealed partial class MainPage
     {
         private readonly MainPage _page = page;
 
-        private sealed class XamlOnlyProbeData
+        private sealed class XamlOnlyProbeData : System.ComponentModel.INotifyPropertyChanged
         {
-            public string ProbeText => "XAML-only binding verified";
+            private string _probeText = "XAML-only binding verified";
+            public string ProbeText
+            {
+                get => _probeText;
+                set
+                {
+                    if (_probeText == value) return;
+                    _probeText = value;
+                    PropertyChanged?.Invoke(this,
+                        new System.ComponentModel.PropertyChangedEventArgs(nameof(ProbeText)));
+                }
+            }
+
+            public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
         }
 
         public async Task RunAsync(string resultPath)
@@ -26,7 +39,8 @@ public sealed partial class MainPage
             var failures = new List<string>();
             try
             {
-                var probe = new Views.XamlOnlyProbe { DataContext = new XamlOnlyProbeData() };
+                var probeData = new XamlOnlyProbeData();
+                var probe = new Views.XamlOnlyProbe { DataContext = probeData };
                 _page.RootLayout.Children.Add(probe);
                 try
                 {
@@ -36,6 +50,12 @@ public sealed partial class MainPage
                         TimeSpan.FromSeconds(5));
                     Check(text?.Text == "XAML-only binding verified",
                         "generated XAML-only UserControl did not bind its DataContext", failures);
+                    probeData.ProbeText = "XAML-only binding updated";
+                    await WaitUntilAsync(
+                        () => text?.Text == "XAML-only binding updated",
+                        TimeSpan.FromSeconds(5));
+                    Check(text?.Text == "XAML-only binding updated",
+                        "generated XAML-only UserControl did not react to INotifyPropertyChanged", failures);
                 }
                 finally
                 {

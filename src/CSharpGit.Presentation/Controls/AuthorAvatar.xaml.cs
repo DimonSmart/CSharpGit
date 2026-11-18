@@ -136,16 +136,19 @@ public sealed partial class AuthorAvatar : UserControl
         if (_avatarService is not null && _settings is not null)
             return;
 
-        if (!AuthorAvatarServiceContext.TryGet(out var avatarService, out var settings))
-            return;
-
-        if (!ReferenceEquals(_avatarService, avatarService))
+        // Resolve from the current visual owner, never from an app-wide static context.
+        // This also keeps recycled history rows bound to the correct window.
+        DependencyObject? ancestor = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(this);
+        while (ancestor is not null)
         {
-            _avatarService = avatarService;
-            Interlocked.Increment(ref _serviceGeneration);
-        }
+            if (ancestor is IAuthorAvatarDependencyProvider provider)
+            {
+                Configure(provider.AvatarService, provider.AppSettings);
+                return;
+            }
 
-        _settings = settings;
+            ancestor = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(ancestor);
+        }
     }
 
     private void AttachSettings()
