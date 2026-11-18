@@ -18,6 +18,7 @@ internal sealed class WindowSessionFactory(IServiceScopeFactory scopeFactory)
             var create = scope.ServiceProvider.GetRequiredService<CreateRepositoryViewModel>();
             var maintenance = scope.ServiceProvider.GetRequiredService<RepositoryMaintenanceViewModel>();
             var updateActivity = scope.ServiceProvider.GetRequiredService<ApplicationUpdateActivityState>();
+            var navigator = scope.ServiceProvider.GetRequiredService<WorkspaceNavigator>();
             var page = scope.ServiceProvider.GetRequiredService<MainPage>();
             var safety = new WindowCloseSafetyProvider(
                 repository, clone, create, maintenance, updateActivity);
@@ -36,6 +37,7 @@ internal sealed class WindowSessionFactory(IServiceScopeFactory scopeFactory)
                 scope,
                 page,
                 repository,
+                navigator,
                 safety,
                 _ => Program.InitialRepositoryPath is not null
                     ? page.OpenInitialRepositoryAsync()

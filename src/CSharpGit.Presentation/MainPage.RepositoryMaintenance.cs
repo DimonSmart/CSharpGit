@@ -40,14 +40,16 @@ public sealed partial class MainPage
         IUpdateCheckService updateCheckService,
         IApplicationUpdateInstaller applicationUpdateInstaller,
         ISystemUriLauncher systemUriLauncher,
-        ApplicationUpdateActivityState updateActivityState)
+        ApplicationUpdateActivityState updateActivityState,
+        WorkspaceNavigator workspaceNavigator)
         : this(
             viewModel,
             workingTreeStatusReader,
             fileVersionService,
             externalGitToolService,
             fileActions,
-            repositoryFilesViewModel)
+            repositoryFilesViewModel,
+            workspaceNavigator)
     {
         InstallRepositoryHistoryRewriteMenus();
         _createRepositoryViewModel = createRepositoryViewModel

@@ -37,12 +37,12 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
-        IWorkingTreeStatusReader workingTreeStatusReader)
+        IWorkingTreeStatusReader workingTreeStatusReader,
+        WorkspaceNavigator workspaceNavigator)
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
-        _workspaceNavigator = new WorkspaceNavigator(_viewModel, _viewModel.History,
-            _viewModel.Stashes.ClearSelection);
+        _workspaceNavigator = workspaceNavigator ?? throw new ArgumentNullException(nameof(workspaceNavigator));
         _repositoryChangeCoordinator = new RepositoryChangeCoordinator(
             workingTreeStatusReader ?? throw new ArgumentNullException(nameof(workingTreeStatusReader)),
             new UiDispatcher(DispatcherQueue));

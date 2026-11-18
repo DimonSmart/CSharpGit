@@ -7,6 +7,7 @@ internal sealed class WindowSession(
     IServiceScope scope,
     IWindowContentLifetime content,
     OpenRepositoryViewModel repository,
+    WorkspaceNavigator navigator,
     WindowCloseSafetyProvider closeSafety,
     Func<CancellationToken, Task> initializeContent,
     WindowTitleState titleState)
@@ -14,6 +15,7 @@ internal sealed class WindowSession(
     private readonly WindowSessionLifecycle _lifetime = new();
 
     internal OpenRepositoryViewModel Repository { get; } = repository;
+    internal WorkspaceNavigator Navigator { get; } = navigator;
     internal string CurrentWindowTitle => titleState.CurrentTitle;
     internal event Action<string>? WindowTitleChanged
     {

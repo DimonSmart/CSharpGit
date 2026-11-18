@@ -7,7 +7,7 @@ namespace CSharpGit.Presentation;
 /// Session-owned navigation coordinator. Resolves history targets and rejects stale
 /// repository/interaction versions; visual selection and scrolling belong to HistoryView.
 /// </summary>
-internal sealed class WorkspaceNavigator
+public sealed class WorkspaceNavigator
 {
     private readonly IHistoryRepositoryContext _context;
     private readonly HistoryViewModel _history;
@@ -23,9 +23,9 @@ internal sealed class WorkspaceNavigator
         _clearStashSelection = clearStashSelection ?? throw new ArgumentNullException(nameof(clearStashSelection));
     }
 
-    public RepositoryTreeNavigationCoordinator Interactions { get; } = new();
-    public WorkspaceSurface Surface { get; private set; } = WorkspaceSurface.History;
-    public event Action<WorkspaceSurface>? SurfaceChanged;
+    internal RepositoryTreeNavigationCoordinator Interactions { get; } = new();
+    internal WorkspaceSurface Surface { get; private set; } = WorkspaceSurface.History;
+    internal event Action<WorkspaceSurface>? SurfaceChanged;
 
     public void ResetForRepositoryChange()
     {
@@ -41,7 +41,7 @@ internal sealed class WorkspaceNavigator
 
     public void ShowHistory() => ShowSurface(WorkspaceSurface.History);
 
-    public async Task<WorkspaceCommitTarget?> NavigateToCommitAsync(
+    internal async Task<WorkspaceCommitTarget?> NavigateToCommitAsync(
         string commitHash, bool preserveSelectedStash = false,
         long? interactionVersion = null)
     {
@@ -96,7 +96,7 @@ internal sealed class WorkspaceNavigator
             ? _history.SelectedRow : null;
     }
 
-    public bool IsTargetCurrent(WorkspaceCommitTarget target) =>
+    internal bool IsTargetCurrent(WorkspaceCommitTarget target) =>
         ReferenceEquals(target.Repository, _context.Repository)
         && Surface == WorkspaceSurface.History
         && _history.SelectionIntentVersion == target.SelectionIntentVersion

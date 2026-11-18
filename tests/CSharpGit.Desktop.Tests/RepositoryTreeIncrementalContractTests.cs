@@ -32,7 +32,7 @@ public sealed class RepositoryTreeIncrementalContractTests
         var explorerSource = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryExplorerView.xaml.cs"));
         var workspaceSource = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "WorkspaceNavigator.cs"));
         var click = ExtractMethod(explorerSource, "private void Tree_ItemInvoked(");
-        var navigation = ExtractMethod(workspaceSource, "public async Task<WorkspaceCommitTarget?> NavigateToCommitAsync(");
+        var navigation = ExtractMethod(workspaceSource, "Task<WorkspaceCommitTarget?> NavigateToCommitAsync(");
         var resume = ExtractMethod(navigationSource, "private Task ResumePendingRepositoryTreeNavigationAsync()");
         var checkout = ExtractMethod(explorerSource, "private void Tree_DoubleTapped(");
 
