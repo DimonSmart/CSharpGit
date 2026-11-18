@@ -17,8 +17,6 @@ public sealed partial class MainPage
     private IAppSettingsService _gitConsoleSettings = null!;
     private GitConsoleView? _gitConsoleView;
     private Controls.GridSplitter? _gitConsoleSplitter;
-    private Button? _gitCommandStatusButton;
-    private TextBlock? _gitCommandStatusText;
     private RowDefinition? _gitConsoleSplitterRow;
     private RowDefinition? _gitConsoleRow;
     private double _lastGitConsoleHeight = DefaultGitConsoleHeight;
@@ -31,6 +29,7 @@ public sealed partial class MainPage
         _gitConsoleInitialized = true;
 
         BuildGitConsoleLayout();
+        StatusBar.GitCommandStatusClicked += GitCommandStatus_Clicked;
         _gitConsoleView?.SetActivityResolver(_gitCommandActivitySource.Get);
         _gitCommandActivitySource.Changed += GitCommandActivitySource_Changed;
         RootLayout.KeyDown += GitConsole_KeyDown;
@@ -74,31 +73,11 @@ public sealed partial class MainPage
         Grid.SetColumnSpan(_gitConsoleView, RepositoryWorkspace.ColumnDefinitions.Count);
         RepositoryWorkspace.Children.Add(_gitConsoleView);
 
-        if (StatusBar.Child is Grid statusGrid)
-        {
-            statusGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(420) });
-            _gitCommandStatusText = new TextBlock
-            {
-                Text = "No Git commands",
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                VerticalAlignment = VerticalAlignment.Center,
-                MaxWidth = 410,
-                Opacity = 0.82
-            };
-            _gitCommandStatusButton = new Button
-            {
-                Content = _gitCommandStatusText,
-                Padding = new Thickness(6, 1, 6, 1),
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Center,
-                Background = null,
-                BorderThickness = new Thickness(0)
-            };
-            _gitCommandStatusButton.Click += (_, _) => ToggleGitConsoleFromStatus();
-            Grid.SetColumn(_gitCommandStatusButton, 5);
-            statusGrid.Children.Add(_gitCommandStatusButton);
-        }
+
     }
+
+    private void GitCommandStatus_Clicked(object? sender, EventArgs args) =>
+        ToggleGitConsoleFromStatus();
 
     private void GitCommandActivitySource_Changed(object? sender, GitCommandActivityChangedEventArgs e)
     {
@@ -170,19 +149,13 @@ public sealed partial class MainPage
 
     private void UpdateGitCommandStatus()
     {
-        if (_gitCommandActivitySource is null || _gitCommandStatusText is null || _gitCommandStatusButton is null) return;
+        if (_gitCommandActivitySource is null) return;
         var filter = _gitConsoleView?.Filter ?? GitCommandFilter.UserCommands;
         var activity = _gitCommandActivitySource.GetLatest(filter)
             ?? _gitCommandActivitySource.GetLatest(GitCommandFilter.AllCommands);
-        if (activity is null)
-        {
-            _gitCommandStatusText.Text = "No Git commands";
-            ToolTipService.SetToolTip(_gitCommandStatusButton, "No Git commands recorded in this session.");
-            return;
-        }
-
-        _gitCommandStatusText.Text = StatusSummary(activity);
-        ToolTipService.SetToolTip(_gitCommandStatusButton, activity.DisplayCommand);
+        StatusBar.SetGitCommandStatus(
+            activity is null ? "No Git commands" : StatusSummary(activity),
+            activity?.DisplayCommand ?? "No Git commands recorded in this session.");
     }
 
     private void ToggleGitConsoleFromStatus()
@@ -286,6 +259,7 @@ public sealed partial class MainPage
         if (!_gitConsoleInitialized) return;
         _gitConsoleInitialized = false;
         _gitCommandActivitySource.Changed -= GitCommandActivitySource_Changed;
+        StatusBar.GitCommandStatusClicked -= GitCommandStatus_Clicked;
         ShutdownGitCommandFeedback();
         RootLayout.KeyDown -= GitConsole_KeyDown;
         _gitConsoleOpen = false;
