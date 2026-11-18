@@ -595,8 +595,8 @@ public sealed class PresentationArchitectureGuardrailTests
         Assert.Contains("_windowSession.WindowTitleChanged -= Session_WindowTitleChanged;", app, StringComparison.Ordinal);
         Assert.DoesNotContain("WindowTitleChanged", mainPage, StringComparison.Ordinal);
         Assert.Contains("titleState.TitleChanged", session, StringComparison.Ordinal);
-        Assert.Contains("repository.PropertyChanged += Repository_PropertyChanged", titleState, StringComparison.Ordinal);
-        Assert.Contains("repository.PropertyChanged -= Repository_PropertyChanged", titleState, StringComparison.Ordinal);
+        Assert.Contains("_source.PropertyChanged += Repository_PropertyChanged", titleState, StringComparison.Ordinal);
+        Assert.Contains("_source.PropertyChanged -= Repository_PropertyChanged", titleState, StringComparison.Ordinal);
         Assert.Contains("_window.Title = title;", app, StringComparison.Ordinal);
         Assert.Contains("CurrentHeadCommit", titleState, StringComparison.Ordinal);
         Assert.Contains("IsDetachedHead", titleState, StringComparison.Ordinal);

@@ -57,6 +57,9 @@ public sealed class PresentationFeatureArchitectureTests
             Assert.DoesNotContain("GetRequiredService", source);
         }
         Assert.Contains("services.AddScoped<RepositoryMaintenanceViewModel>();", app);
+        Assert.Contains("services.AddScoped<OpenRepositoryViewModel>();", app);
+        Assert.Contains("services.AddScoped<CreateRepositoryViewModel>();", app);
+        Assert.Contains("services.AddScoped<CloneRepositoryViewModel>();", app);
         Assert.Contains("services.AddTransient<FileActionsViewModel>();", app);
         Assert.Contains("_repositoryMaintenance.Attach(_viewModel", main);
         Assert.Contains("_worktreesViewModel.RefreshAsync(throwOnError: true)", main);

@@ -198,7 +198,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
         _window.AppWindow.Closing += (sender, eventArgs) =>
         {
             LogCloseLifecycle("AppWindow.Closing");
-            if (!TryBeginNormalShutdown(_window.Content as MainPage))
+            if (!TryBeginNormalShutdown())
                 eventArgs.Cancel = true;
         };
 
@@ -216,7 +216,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
         await _windowSession.InitializeAsync(CancellationToken.None);
     }
 
-    private bool TryBeginNormalShutdown(MainPage? page) =>
+    private bool TryBeginNormalShutdown() =>
         _windowClose?.RequestClose() ?? true;
 
     private void LogCloseLifecycle(string phase)

@@ -6,20 +6,28 @@ namespace CSharpGit.Presentation.Windowing;
 // Window-scoped presentation state: native window bindings never subscribe to MainPage.
 internal sealed class WindowTitleState : IDisposable
 {
-    private readonly OpenRepositoryViewModel _repository;
+    private readonly INotifyPropertyChanged _source;
+    private readonly Func<string> _getTitle;
     private int _disposed;
 
     internal WindowTitleState(OpenRepositoryViewModel repository)
+        : this(repository, () => MainWindowTitleFormatter.Format(
+            repository.Repository,
+            repository.CurrentBranchName,
+            repository.CurrentHeadCommit,
+            repository.IsDetachedHead))
     {
-        _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-        _repository.PropertyChanged += Repository_PropertyChanged;
     }
 
-    internal string CurrentTitle => MainWindowTitleFormatter.Format(
-        _repository.Repository,
-        _repository.CurrentBranchName,
-        _repository.CurrentHeadCommit,
-        _repository.IsDetachedHead);
+    // A narrow observable source makes lifetime/isolation verifiable without XAML.
+    internal WindowTitleState(INotifyPropertyChanged source, Func<string> getTitle)
+    {
+        _source = source ?? throw new ArgumentNullException(nameof(source));
+        _getTitle = getTitle ?? throw new ArgumentNullException(nameof(getTitle));
+        _source.PropertyChanged += Repository_PropertyChanged;
+    }
+
+    internal string CurrentTitle => _getTitle();
 
     internal event Action<string>? TitleChanged;
 
@@ -40,7 +48,7 @@ internal sealed class WindowTitleState : IDisposable
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
             return;
 
-        _repository.PropertyChanged -= Repository_PropertyChanged;
+        _source.PropertyChanged -= Repository_PropertyChanged;
         TitleChanged = null;
     }
 }
