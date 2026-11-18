@@ -20,6 +20,7 @@ internal sealed class WindowSessionFactory(IServiceScopeFactory scopeFactory)
             var updateActivity = scope.ServiceProvider.GetRequiredService<ApplicationUpdateActivityState>();
             var navigator = scope.ServiceProvider.GetRequiredService<WorkspaceNavigator>();
             var page = scope.ServiceProvider.GetRequiredService<MainPage>();
+            page.AttachNavigator(navigator);
             var safety = new WindowCloseSafetyProvider(
                 repository, clone, create, maintenance, updateActivity);
             var titleState = new WindowTitleState(
