@@ -2,6 +2,7 @@ using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Presentation.ViewModels;
 using CSharpGit.Presentation.Controls;
+using CSharpGit.Presentation.Views;
 using Microsoft.UI.Xaml;
 
 namespace CSharpGit.Presentation;
@@ -73,7 +74,19 @@ public sealed partial class MainPage
         _viewModel.PropertyChanged += RepositoryMaintenanceViewModel_PropertyChanged;
         UpdateOptimizeRepositoryAvailability();
         InitializeRepositoryChangeMonitoring();
-        InitializeRecentRepositories();
+        StartScreenHost.Configure(_viewModel, _recentRepositorySettings, _repositoryImageService,
+            _desktopShellService.OpenFolderDescription,
+            new StartScreenActions(
+                OpenRepositoryPickerAsync,
+                ShowCloneRepositoryAsync,
+                ShowCreateRepositoryAsync,
+                TrySwitchRepositoryAsync,
+                ShowUnavailableRepositoryAsync,
+                path => OpenFolderInDesktopShellAsync(path, "Could not open repository folder"),
+                CopyTextAsync,
+                () => OpenSettingsWindow(SettingsSection.General),
+                ShowAboutAsync));
+        _recentRepositorySettings.Changed += StartScreenSettings_Changed;
         InitializeHistoryPerformanceDiagnostics();
         InitializeGitConsole();
         InitializeWorktreeSupport();

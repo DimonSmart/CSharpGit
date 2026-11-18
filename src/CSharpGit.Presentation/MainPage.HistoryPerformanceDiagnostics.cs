@@ -14,6 +14,22 @@ public sealed partial class MainPage
     private DispatcherQueueTimer? _historyPerformanceTimeoutTimer;
     private bool _historyPerformanceSubscriptionsAttached;
 
+    private void StartScreenSettings_Changed(object? sender, EventArgs args)
+    {
+        if (IsShuttingDown) return;
+        if (DispatcherQueue.HasThreadAccess)
+        {
+            HandleHistoryPerformanceSettingsChanged();
+            return;
+        }
+
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (!IsShuttingDown)
+                HandleHistoryPerformanceSettingsChanged();
+        });
+    }
+
     private void InitializeHistoryPerformanceDiagnostics()
     {
         UpdateHistoryRenderingMode();

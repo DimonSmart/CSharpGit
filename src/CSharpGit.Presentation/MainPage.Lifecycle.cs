@@ -58,7 +58,8 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         _viewModel.Stashes.Items.CollectionChanged -= RepositoryPresentationStashes_CollectionChanged;
         DetachRepositoryTreeStateTracking();
         ShutdownGitConsole();
-        ShutdownRecentRepositories();
+        StartScreenHost.ShutdownRecentRepositories();
+        _recentRepositorySettings.Changed -= StartScreenSettings_Changed;
         ShutdownRepositoryChangeMonitoring();
         ShutdownWorktreeSupport();
         _settingsWindowController.Shutdown();
