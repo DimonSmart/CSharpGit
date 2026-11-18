@@ -137,6 +137,14 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
                 services.AddTransient<RepositoryFilesViewModel>();
                 services.AddTransient<WorkingTreeViewModel>();
                 services.AddScoped<OpenRepositoryViewModel>();
+                // One navigator per window: the same instance is used by the page,
+                // repository explorer and window session.
+                services.AddScoped(provider =>
+                {
+                    var repository = provider.GetRequiredService<OpenRepositoryViewModel>();
+                    return new WorkspaceNavigator(
+                        repository, repository.History, repository.Stashes.ClearSelection);
+                });
                 services.AddScoped<CreateRepositoryViewModel>();
                 services.AddScoped<CloneRepositoryViewModel>();
                 services.AddTransient<MainPage>();
