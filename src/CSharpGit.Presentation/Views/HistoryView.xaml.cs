@@ -21,7 +21,6 @@ namespace CSharpGit.Presentation.Views;
 public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvider, IAuthorAvatarDependencyProvider
 {
     private const double LoadMoreThreshold = 68;
-    private IAuthorAvatarService? _avatarService;
     private IAppSettingsService? _avatarSettings;
     private HistoryViewModel? _history;
     private WorkspaceNavigator? _navigator;
