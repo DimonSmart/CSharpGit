@@ -10,7 +10,7 @@ public sealed partial class MainPage
     protected override void OnApplyTemplate()
     {
         base.OnApplyTemplate();
-        InitializeHistoryInfiniteScroll();
+        HistoryView.InitializeScroll();
         InitializeLoadingOverlays();
     }
 

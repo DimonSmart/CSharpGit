@@ -65,13 +65,17 @@ public sealed class AuthorAvatarUiContractTests
     {
         var root = FindRepositoryRoot();
         var control = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "AuthorAvatar.xaml.cs"));
-        var host = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.AuthorAvatars.cs"));
+        var host = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryView.xaml.cs"));
         var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
 
         Assert.Contains("internal void Configure(", control, StringComparison.Ordinal);
         Assert.Contains("IAuthorAvatarDependencyProvider provider", control, StringComparison.Ordinal);
         Assert.Contains("VisualTreeHelper.GetParent", control, StringComparison.Ordinal);
-        Assert.Contains("Controls.IAuthorAvatarDependencyProvider", host, StringComparison.Ordinal);
+        Assert.Contains("IAuthorAvatarDependencyProvider.AvatarService", host, StringComparison.Ordinal);
+        Assert.Contains("IAuthorAvatarDependencyProvider.AppSettings", host, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.AuthorAvatars.cs")));
+        var details = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitDetailsView.xaml.cs"));
+        Assert.Contains("CommitAuthorAvatar.Configure(avatarService, settings)", details, StringComparison.Ordinal);
         Assert.DoesNotContain("AuthorAvatarServiceContext", control, StringComparison.Ordinal);
         Assert.DoesNotContain("AuthorAvatarServiceContext", composition, StringComparison.Ordinal);
         Assert.DoesNotContain("HistoryReferencePresentationContext", composition, StringComparison.Ordinal);

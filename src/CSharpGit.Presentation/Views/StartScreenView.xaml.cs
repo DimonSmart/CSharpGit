@@ -102,12 +102,11 @@ public sealed partial class StartScreenView : UserControl
 
     private void RecentRepositoryHost_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
-        if (_recentRepositoriesShutdown || _recentRepositoriesShutdown) return;
+        if (_recentRepositoriesShutdown) return;
 
         if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.Repository))
         {
             UpdateStartScreenVisibility();
-
         }
 
         if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.CurrentBranchName))
@@ -128,28 +127,24 @@ public sealed partial class StartScreenView : UserControl
 
     private void RecentRepositorySettings_Changed(object? sender, EventArgs e)
     {
-        if (_recentRepositoriesShutdown || _recentRepositoriesShutdown) return;
+        if (_recentRepositoriesShutdown) return;
 
         if (DispatcherQueue.HasThreadAccess)
         {
-
             UpdateStartScreenVisibility();
             return;
         }
 
         DispatcherQueue.TryEnqueue(() =>
         {
-            if (!_recentRepositoriesShutdown && !_recentRepositoriesShutdown)
-            {
-
+            if (!_recentRepositoriesShutdown)
                 UpdateStartScreenVisibility();
-            }
         });
     }
 
     private void UpdateStartScreenVisibility()
     {
-        if (_recentRepositoriesShutdown || _recentRepositoriesShutdown || _recentRepositoriesView is null) return;
+        if (_recentRepositoriesShutdown || _recentRepositoriesView is null) return;
 
         var repositoryOpen = _viewModel.Repository is not null;
         var snapshot = _recentRepositorySettings.RepositoryLauncherSnapshot;

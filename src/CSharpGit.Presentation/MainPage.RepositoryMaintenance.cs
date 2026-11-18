@@ -13,6 +13,8 @@ public sealed partial class MainPage
     private readonly IDesktopShellService _desktopShellService = null!;
     private IAppSettingsService _recentRepositorySettings = null!;
     private IRepositoryImageService _repositoryImageService = null!;
+    private IAuthorAvatarService _authorAvatarService = null!;
+    private IAppSettingsService _authorAvatarSettings = null!;
 
     internal bool IsRepositoryMaintenanceInProgress => _repositoryMaintenance.IsRunning;
 
@@ -96,7 +98,7 @@ public sealed partial class MainPage
                 () => OpenSettingsWindow(SettingsSection.General),
                 ShowAboutAsync));
         HistoryView.Configure(_viewModel.History, _workspaceNavigator,
-            () => _viewModel.IsBusy);
+            () => _viewModel.IsBusy, _authorAvatarService, _authorAvatarSettings);
         InitializeHistoryPerformanceDiagnostics();
         InitializeGitConsole();
         InitializeWorktreeSupport();

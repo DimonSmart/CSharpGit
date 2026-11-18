@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.Controls;
 using CSharpGit.Presentation.Controls.CommitGraph;
@@ -17,9 +18,10 @@ namespace CSharpGit.Presentation.Views;
 /// Owns history filtering, display mode and virtual-scroll subscription for one window.
 /// Commit Details remains a separate phase-3 UI; performance dialogs are transitional callbacks.
 /// </summary>
-public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvider
+public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvider, IAuthorAvatarDependencyProvider
 {
     private const double LoadMoreThreshold = 68;
+    private IAppSettingsService? _avatarSettings;
     private HistoryViewModel? _history;
     private WorkspaceNavigator? _navigator;
     private Func<bool>? _isBusy;
@@ -31,32 +33,25 @@ public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvide
 
     public HistoryView() => InitializeComponent();
 
+    IAuthorAvatarService IAuthorAvatarDependencyProvider.AvatarService =>
+        _avatarService ?? throw new InvalidOperationException("History avatar dependencies not configured.");
+    IAppSettingsService IAuthorAvatarDependencyProvider.AppSettings =>
+        _avatarSettings ?? throw new InvalidOperationException("History avatar settings not configured.");
+
     internal ListView List => HistoryList;
-    internal TextBox FilterBox => HistoryFilter;
-    internal SelectorBar ScopeSelector => ScopeCombo;
-    internal SelectorBarItem CurrentScope => CurrentScopeItem;
-    internal SelectorBarItem AllScope => AllScopeItem;
-    internal SelectorBarItem ReflogScope => ShowReflogToggle;
-    internal StackPanel ReferencePanel => ReferenceScopePanel;
-    internal TextBlock ReferenceLabel => ActiveReferenceText;
-    internal StackPanel PerformanceControls => HistoryPerformanceControls;
-    internal TextBlock PerformanceCaptureStatus => HistoryPerformanceCaptureStatus;
-    internal MenuFlyoutItem StartCaptureAction => StartHistoryPerformanceCaptureMenuItem;
-    internal MenuFlyoutItem StopCaptureAction => StopHistoryPerformanceCaptureMenuItem;
-    internal MenuFlyoutItem OpenDiagnosticsAction => OpenHistoryPerformanceDiagnosticsFolderMenuItem;
-    internal ColumnDefinition GraphHeaderColumn => HistoryGraphHeaderColumn;
     internal Border ColumnHeader => HistoryColumnHeader;
     internal Border FilterToolbar => HistoryFilterToolbar;
-    internal Button LoadMoreButton => LoadMoreHistoryButton;
 
     internal void Configure(HistoryViewModel history, WorkspaceNavigator navigator,
-        Func<bool> isBusy)
+        Func<bool> isBusy, IAuthorAvatarService avatarService, IAppSettingsService avatarSettings)
     {
         if (_configured || _disposed) return;
         _configured = true;
         _history = history ?? throw new ArgumentNullException(nameof(history));
         _navigator = navigator ?? throw new ArgumentNullException(nameof(navigator));
         _isBusy = isBusy ?? throw new ArgumentNullException(nameof(isBusy));
+        _avatarService = avatarService ?? throw new ArgumentNullException(nameof(avatarService));
+        _avatarSettings = avatarSettings ?? throw new ArgumentNullException(nameof(avatarSettings));
         _history.PropertyChanged += History_PropertyChanged;
         HistoryList.Loaded += HistoryList_Loaded;
         LoadMoreHistoryButton.Visibility = Visibility.Collapsed;
@@ -198,12 +193,15 @@ public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvide
         LoadMoreHistoryButton.IsEnabled = _history.LoadMoreCommand.CanExecute(null);
     }
 
-    internal void ScrollTo(HistoryRow row)
+    internal void ScrollTo(HistoryRow row, bool updateLayout = false)
     {
         if (_disposed || !HistoryList.Items.Contains(row)) return;
+        if (updateLayout) HistoryList.UpdateLayout();
         HistoryList.SelectedItem = row;
         HistoryList.ScrollIntoView(row, ScrollIntoViewAlignment.Leading);
     }
+
+    internal void FocusFilter() => HistoryFilter.Focus(FocusState.Programmatic);
 
     private void RunHistoryOperation(Func<Task> operation)
     {

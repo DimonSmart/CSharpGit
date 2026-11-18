@@ -52,7 +52,9 @@ public sealed class PullUiContractTests
         Assert.Contains("result.Kind == PullExecutionKind.Completed", view, StringComparison.Ordinal);
         Assert.Contains("history.SelectionIntentVersion == selectionIntentVersion", view, StringComparison.Ordinal);
         Assert.Contains("history.SelectCommitInCurrentHistoryAsync(", view, StringComparison.Ordinal);
-        Assert.Contains("HistoryList.ScrollIntoView(target, ScrollIntoViewAlignment.Leading)", view, StringComparison.Ordinal);
+        Assert.Contains("HistoryView.ScrollTo(target);", view, StringComparison.Ordinal);
+        var historyView = File.ReadAllText(Path.Combine(presentation, "Views", "HistoryView.xaml.cs"));
+        Assert.Contains("HistoryList.ScrollIntoView(row, ScrollIntoViewAlignment.Leading)", historyView, StringComparison.Ordinal);
         Assert.DoesNotContain("Go to HEAD", ui, StringComparison.OrdinalIgnoreCase);
     }
 

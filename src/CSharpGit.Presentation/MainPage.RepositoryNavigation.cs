@@ -25,8 +25,7 @@ public sealed partial class MainPage
         UpdateHistoryScopePresentation();
         if (target is null || !_workspaceNavigator.IsTargetCurrent(target)) return;
 
-        HistoryList.SelectedItem = target.Row;
-        HistoryList.ScrollIntoView(target.Row, ScrollIntoViewAlignment.Leading);
+        HistoryView.ScrollTo(target.Row);
         if (target.WasPreviouslyLoaded) return;
 
         // A virtualized Reset can discard a scroll. Retry only while repository,
@@ -34,9 +33,7 @@ public sealed partial class MainPage
         DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
             if (IsShuttingDown || !_workspaceNavigator.IsTargetCurrent(target)) return;
-            HistoryList.UpdateLayout();
-            HistoryList.SelectedItem = target.Row;
-            HistoryList.ScrollIntoView(target.Row, ScrollIntoViewAlignment.Leading);
+            HistoryView.ScrollTo(target.Row, updateLayout: true);
         });
     }
 
@@ -104,8 +101,7 @@ public sealed partial class MainPage
 
         if (selected is not null)
         {
-            HistoryList.SelectedItem = selected;
-            HistoryList.ScrollIntoView(selected, ScrollIntoViewAlignment.Leading);
+            HistoryView.ScrollTo(selected);
         }
     }
 
