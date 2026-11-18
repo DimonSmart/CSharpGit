@@ -667,38 +667,7 @@
           </Grid>
         </Grid>
 
-      <Border x:Name="StatusBar" Grid.Row="3" Grid.ColumnSpan="3" Style="{StaticResource StatusBarSurfaceStyle}">
-        <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="{StaticResource Spacing.XL}">
-          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.M}" VerticalAlignment="Center">
-            <FontIcon Glyph="&#xE8F0;" FontSize="{StaticResource Icon.Small}" />
-            <TextBlock x:Name="StatusBranchText" Style="{StaticResource BodyTextStyle}" VerticalAlignment="Center" />
-          </StackPanel>
-          <TextBlock x:Name="StatusTrackingText" Grid.Column="1" Style="{StaticResource SecondaryTextStyle}" VerticalAlignment="Center" />
-          <TextBlock x:Name="StatusChangesText" Grid.Column="2" Style="{StaticResource SecondaryTextStyle}" VerticalAlignment="Center" />
-          <Border x:Name="StatusOperationContainer"
-                  Grid.Column="4"
-                  Padding="8,2"
-                  CornerRadius="6">
-            <StackPanel Orientation="Horizontal"
-                        Spacing="{StaticResource Spacing.S}"
-                        VerticalAlignment="Center">
-              <FontIcon x:Name="StatusOperationIdleIcon"
-                        Glyph="&#xE73E;"
-                        FontSize="{StaticResource Icon.Small}"
-                        Opacity="0.66" />
-              <Ellipse x:Name="BusyPulseDot"
-                       Width="8"
-                       Height="8"
-                       Fill="#22C55E"
-                       Opacity="1"
-                       Visibility="Collapsed" />
-              <TextBlock x:Name="StatusOperationText"
-                         Style="{StaticResource BodyStrongTextStyle}"
-                         VerticalAlignment="Center" />
-            </StackPanel>
-          </Border>
-        </Grid>
-      </Border>
+      <views:GitConsoleHostView x:Name="GitConsoleHost" Grid.Row="3" Grid.ColumnSpan="3" />
     </Grid>
 
     <InfoBar IsOpen="{Binding HasError}"

@@ -1,0 +1,18 @@
+<UserControl x:Class="CSharpGit.Presentation.Views.GitConsoleHostView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:CSharpGit.Presentation.Controls"
+             xmlns:views="using:CSharpGit.Presentation.Views">
+  <Grid x:Name="HostLayout" RowDefinitions="0,0,Auto">
+    <Border x:Name="HeightDragHandle" Grid.Row="0" Height="6"
+            Visibility="Collapsed"
+            Background="{ThemeResource DividerStrokeColorDefaultBrush}"
+            PointerPressed="HeightDragHandle_PointerPressed"
+            PointerMoved="HeightDragHandle_PointerMoved"
+            PointerReleased="HeightDragHandle_PointerReleased"
+            PointerCaptureLost="HeightDragHandle_PointerCaptureLost"
+            AutomationProperties.Name="Resize Git console" />
+    <controls:GitConsoleView x:Name="ConsoleView" Grid.Row="1" Visibility="Collapsed"/>
+    <views:StatusBarView x:Name="CommandStatus" Grid.Row="2" />
+  </Grid>
+</UserControl>

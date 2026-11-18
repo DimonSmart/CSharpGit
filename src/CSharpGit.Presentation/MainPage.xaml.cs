@@ -34,9 +34,6 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
     private bool _wasBusy;
     private readonly RepositoryTreeNavigationCoordinator _repositoryTreeNavigation = new();
 
-    private readonly Storyboard _busyPulseStoryboard = new();
-    private readonly SolidColorBrush _busyStatusBackgroundBrush = new(Windows.UI.Color.FromArgb(28, 34, 197, 94));
-    private bool _busyPulseRunning;
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
@@ -47,7 +44,6 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
         _repositoryChangeCoordinator = new RepositoryChangeCoordinator(
             workingTreeStatusReader ?? throw new ArgumentNullException(nameof(workingTreeStatusReader)),
             new UiDispatcher(DispatcherQueue));
-        InitializeBusyStatusPresentation();
 
         RepositoryTree.ItemsSource = _repositoryTreeRoots;
         UnstagedChangesList.ItemsSource = _unstagedChanges;
@@ -228,67 +224,20 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
         SynchronizeRepositoryTree();
     }
 
-    private void InitializeBusyStatusPresentation()
-    {
-        var opacityAnimation = new DoubleAnimationUsingKeyFrames
-        {
-            RepeatBehavior = RepeatBehavior.Forever
-        };
-        opacityAnimation.KeyFrames.Add(new LinearDoubleKeyFrame
-        {
-            KeyTime = KeyTime.FromTimeSpan(TimeSpan.Zero),
-            Value = 1
-        });
-        opacityAnimation.KeyFrames.Add(new LinearDoubleKeyFrame
-        {
-            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(900)),
-            Value = 0.45
-        });
-        opacityAnimation.KeyFrames.Add(new LinearDoubleKeyFrame
-        {
-            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1800)),
-            Value = 1
-        });
-        Storyboard.SetTarget(opacityAnimation, BusyPulseDot);
-        Storyboard.SetTargetProperty(opacityAnimation, "Opacity");
-        _busyPulseStoryboard.Children.Add(opacityAnimation);
-    }
-
-    private void UpdateBusyStatusPresentation()
-    {
-        var isBusy = _viewModel.IsBusy;
-        StatusOperationIdleIcon.Visibility = isBusy ? Visibility.Collapsed : Visibility.Visible;
-        BusyPulseDot.Visibility = isBusy ? Visibility.Visible : Visibility.Collapsed;
-        StatusOperationContainer.Background = isBusy ? _busyStatusBackgroundBrush : null;
-
-        if (_busyPulseRunning == isBusy) return;
-
-        _busyPulseRunning = isBusy;
-        if (isBusy)
-        {
-            BusyPulseDot.Opacity = 1;
-            _busyPulseStoryboard.Begin();
-        }
-        else
-        {
-            _busyPulseStoryboard.Stop();
-            BusyPulseDot.Opacity = 1;
-        }
-    }
-
     private void UpdateStatusBar()
     {
         var current = _viewModel.Branches.LocalBranches.FirstOrDefault(branch => branch.IsCurrent);
         var branch = current?.Name
                      ?? _viewModel.CurrentBranchName
                      ?? (_viewModel.Repository is null ? string.Empty : "detached HEAD");
-        StatusBranchText.Text = branch;
-        StatusTrackingText.Text = current is null ? string.Empty : $"↑{current.Ahead} ↓{current.Behind}";
-        StatusChangesText.Text = $"{_viewModel.WorkingTree.Changes.Count} changes";
-        StatusOperationText.Text = _viewModel.IsBusy
-            ? "Working…"
-            : _viewModel.RepositoryOperations.CurrentOperation == RepositoryOperation.None ? "Ready" : _viewModel.RepositoryOperations.CurrentOperation.ToString();
-        UpdateBusyStatusPresentation();
+        GitConsoleHost.StatusBar.SetStatus(
+            branch,
+            current is null ? string.Empty : $"↑{current.Ahead} ↓{current.Behind}",
+            _viewModel.WorkingTree.Changes.Count,
+            _viewModel.IsBusy ? "Working…" :
+                _viewModel.RepositoryOperations.CurrentOperation == RepositoryOperation.None
+                    ? "Ready" : _viewModel.RepositoryOperations.CurrentOperation.ToString(),
+            _viewModel.IsBusy);
         UpdateCommitNavigationText();
     }
 

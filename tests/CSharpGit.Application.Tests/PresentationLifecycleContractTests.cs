@@ -111,7 +111,7 @@ public sealed class PresentationLifecycleContractTests
         var openRepositoryViewModel = File.ReadAllText(Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.cs"));
         var lifecycle = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
         var recent = File.ReadAllText(Path.Combine(presentation, "Views", "StartScreenView.xaml.cs"));
-        var gitConsole = File.ReadAllText(Path.Combine(presentation, "MainPage.GitConsole.cs"));
+        var gitConsole = File.ReadAllText(Path.Combine(presentation, "Views", "GitConsoleHostView.xaml.cs"));
         var refresh = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryRefresh.cs"));
         var coordinator = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation.Core", "RepositoryChangeCoordinator.cs"));
@@ -126,8 +126,8 @@ public sealed class PresentationLifecycleContractTests
         Assert.Contains("DispatcherQueue.HasThreadAccess", recent, StringComparison.Ordinal);
         Assert.Contains("!_recentRepositoriesShutdown", recent, StringComparison.Ordinal);
 
-        Assert.Contains("if (IsShuttingDown || !_gitConsoleInitialized", gitConsole, StringComparison.Ordinal);
-        Assert.Contains("ApplyGitCommandLifecycleChange", gitConsole, StringComparison.Ordinal);
+        Assert.Contains("if (_shutdown || !_configured", gitConsole, StringComparison.Ordinal);
+        Assert.Contains("ApplyActivity", gitConsole, StringComparison.Ordinal);
 
         Assert.Contains("if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;", refresh, StringComparison.Ordinal);
         Assert.Contains("_pendingStatus = null;", coordinator, StringComparison.Ordinal);

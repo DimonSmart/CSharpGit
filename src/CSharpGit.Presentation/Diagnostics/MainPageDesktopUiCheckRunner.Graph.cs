@@ -378,7 +378,7 @@ public sealed partial class MainPage
             CheckActualHeight(_page.RepositoryToolbar, 0, 34, "main toolbar", failures);
             CheckActualHeight(_page.HistoryFilterToolbar, 0, 34, "history filter toolbar", failures);
             CheckActualHeight(_page.HistoryColumnHeader, 0, 26, "history column header", failures);
-            CheckActualHeight(_page.StatusBar, 0, 22, "status bar", failures);
+            CheckActualHeight(_page.GitConsoleHost.StatusBar, 0, 22, "status bar", failures);
 
             var pivotHeader = FindDescendant<PivotHeaderItem>(_page.DetailsTabs);
             CheckActualHeight(pivotHeader, 0, 28, "details tab header", failures);

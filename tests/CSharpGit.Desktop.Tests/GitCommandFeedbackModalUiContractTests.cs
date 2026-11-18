@@ -21,9 +21,9 @@ public sealed class GitCommandFeedbackModalUiContractTests
         Assert.Contains("GitCommandFeedbackModalHost.Visibility = Visibility.Collapsed", feedback, StringComparison.Ordinal);
 
         var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
-        var console = File.ReadAllText(Path.Combine(presentation, "MainPage.GitConsole.cs"));
+        var console = File.ReadAllText(Path.Combine(presentation, "Views", "GitConsoleHostView.xaml.cs"));
         Assert.Contains("IsShuttingDown || GitCommandFeedbackModalHost.Visibility == Visibility.Visible", page, StringComparison.Ordinal);
-        Assert.Contains("if (GitCommandFeedbackModalHost.Visibility == Visibility.Visible) return;", console, StringComparison.Ordinal);
+        Assert.Contains("_modalVisible?.Invoke() == true", console, StringComparison.Ordinal);
     }
 
     [Fact]

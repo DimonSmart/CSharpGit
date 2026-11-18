@@ -9,7 +9,7 @@ public sealed class GitConsoleUiContractTests
         var consoleXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "GitConsoleView.xaml"));
         var typographyXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Typography.xaml"));
         var consoleCode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "GitConsoleView.xaml.cs"));
-        var integration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.GitConsole.cs"));
+        var integration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "GitConsoleHostView.xaml.cs"));
         var settingsXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml"));
         var settingsViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "SettingsViewModel.cs"));
         var operationBanner = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "OperationBanner.xaml"));
@@ -30,13 +30,15 @@ public sealed class GitConsoleUiContractTests
         Assert.Contains("All commands", consoleCode);
         Assert.DoesNotContain("Run again", consoleXaml, StringComparison.OrdinalIgnoreCase);
 
-        Assert.Contains("InitializeGitConsole", integration);
+        var pageIntegration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.GitConsole.cs"));
+        Assert.Contains("InitializeGitConsole", pageIntegration);
         Assert.Contains("GitConsoleAutoOpenMode.Always", integration);
         Assert.Contains("GitConsoleAutoOpenMode.OnErrors", integration);
         Assert.Contains("GitCommandKind.User", integration);
-        Assert.Contains("ToggleGitConsoleFromStatus", integration);
-        Assert.Contains("GitConsoleShortcutKey = (VirtualKey)0xC0", integration);
-        Assert.Contains("ToolTipService.SetToolTip", integration);
+        Assert.Contains("CommandStatus_Clicked", integration);
+        Assert.Contains("ConsoleShortcutKey = (VirtualKey)0xC0", integration);
+        var statusView = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "StatusBarView.xaml.cs"));
+        Assert.Contains("ToolTipService.SetToolTip", statusView);
 
         Assert.Contains("Git Console", settingsXaml);
         Assert.Contains("GitConsoleAutoOpenComboBox", settingsXaml);
@@ -55,7 +57,7 @@ public sealed class GitConsoleUiContractTests
         var consoleXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "GitConsoleView.xaml"));
         var consoleCode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "GitConsoleView.xaml.cs"))
             .Replace("\r\n", "\n", StringComparison.Ordinal);
-        var integration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.GitConsole.cs"))
+        var integration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "GitConsoleHostView.xaml.cs"))
             .Replace("\r\n", "\n", StringComparison.Ordinal);
 
         Assert.Contains("SelectionMode=\"Single\"", consoleXaml);
@@ -67,19 +69,23 @@ public sealed class GitConsoleUiContractTests
             "CommandList.SelectedItem = item;\n        CommandList.ScrollIntoView(item);",
             consoleCode);
         Assert.DoesNotContain(
-            "RebuildGitConsole(preferredSelection);\n        if (preferredSelection is { } id)\n            _gitConsoleView.SelectActivity(id);",
+            "Rebuild(preferredSelection);\n        if (preferredSelection is { } id)\n            ConsoleView.SelectActivity(id);",
             integration);
-        Assert.Contains("_gitConsoleView.SelectActivity(alreadyOpenId);", integration);
+        Assert.Contains("ConsoleView.SelectActivity(alreadyOpenId);", integration);
     }
 
     [Fact]
     public void GitConsoleSpansEntireRepositoryWorkspace()
     {
         var root = FindRepositoryRoot();
-        var integration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.GitConsole.cs"));
+        var integration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "GitConsoleHostView.xaml.cs"));
 
-        Assert.Contains("Grid.SetColumnSpan(_gitConsoleSplitter, RepositoryWorkspace.ColumnDefinitions.Count);", integration);
-        Assert.Contains("Grid.SetColumnSpan(_gitConsoleView, RepositoryWorkspace.ColumnDefinitions.Count);", integration);
+        var mainXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var hostXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "GitConsoleHostView.xaml"));
+        Assert.Contains("x:Name=\"GitConsoleHost\" Grid.Row=\"3\" Grid.ColumnSpan=\"3\"", mainXaml);
+        Assert.Contains("x:Name=\"ConsoleView\"", hostXaml);
+        Assert.Contains("x:Name=\"HeightDragHandle\"", hostXaml);
+        Assert.Contains("x:Name=\"CommandStatus\"", hostXaml);
     }
 
     [Fact]
