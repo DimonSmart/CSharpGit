@@ -8,7 +8,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         var presentation = Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation");
         var model = File.ReadAllText(Path.Combine(presentation, "ViewModels",
             "RecentRepositoriesViewModel.cs"));
-        var integration = File.ReadAllText(Path.Combine(presentation, "MainPage.RecentRepositories.cs"));
+        var integration = File.ReadAllText(Path.Combine(presentation, "Views", "StartScreenView.xaml.cs"));
         var flyout = File.ReadAllText(Path.Combine(presentation, "RecentRepositoriesView.xaml.cs"));
 
         Assert.Contains("() => _isAvailable && canChangeRepository()", model);
@@ -36,7 +36,8 @@ public sealed class RecentRepositoriesStartScreenContractTests
         var githubImageProvider = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure.Core", "GitHubRepositoryImageProvider.cs"));
         var imageInternals = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Infrastructure.Core", "RepositoryImageInternals.cs"));
         var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
-        var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"))
+            + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "StartScreenView.xaml"));
         var recentView = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "RecentRepositoriesView.xaml"));
         var controlsStyles = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Styles", "Controls.xaml"));
         var recentViewCodeBehind = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "RecentRepositoriesView.xaml.cs"));
@@ -45,7 +46,7 @@ public sealed class RecentRepositoriesStartScreenContractTests
         var imagesIntent = File.ReadAllText(Path.Combine(root, ".idd", "intent", "IDD-0016.spec-repository-images.md"));
         var launcherIntent = File.ReadAllText(Path.Combine(root, ".idd", "intent", "IDD-0037.spec-recent-repositories-start-screen.md"));
         var recentViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "RecentRepositoriesViewModel.cs"));
-        var integration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RecentRepositories.cs"));
+        var integration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "StartScreenView.xaml.cs"));
 
         Assert.Contains("RecentRepositorySettings", settingsContract);
         Assert.Contains("LastOpenedUtc", settingsContract);

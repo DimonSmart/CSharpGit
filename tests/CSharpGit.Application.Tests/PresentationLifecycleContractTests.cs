@@ -8,7 +8,7 @@ public sealed class PresentationLifecycleContractTests
     public void FetchToolbarAvailabilityIsBoundToRepositorySync()
     {
         var xaml = XDocument.Load(Path.Combine(FindRepositoryRoot(),
-            "src", "CSharpGit.Presentation", "MainPage.xaml"));
+            "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml"));
         var fetchButton = Assert.Single(xaml.Descendants(), element =>
             element.Name.LocalName == "Button"
             && (string?)element.Attribute("Click") == "Fetch_Click");
@@ -25,7 +25,9 @@ public sealed class PresentationLifecycleContractTests
             "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var launcher = XDocument.Load(Path.Combine(root,
             "src", "CSharpGit.Presentation", "Views", "StartScreenView.xaml"));
-        var actionsInViews = main.Descendants().Concat(launcher.Descendants());
+        var toolbar = XDocument.Load(Path.Combine(root,
+            "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml"));
+        var actionsInViews = main.Descendants().Concat(launcher.Descendants()).Concat(toolbar.Descendants());
 
         foreach (var action in new[] { "RefreshIndicator_Click", "OpenRepository_Click",
                      "CloneRepository_Click", "CreateRepository_Click" })

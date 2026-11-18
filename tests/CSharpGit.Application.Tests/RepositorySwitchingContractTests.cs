@@ -47,7 +47,8 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("if (!opened || IsShuttingDown) return false;", switching);
         Assert.Contains("_viewModel.CommitCreation.CommitMessage = string.Empty;", switching);
 
-        Assert.Contains("await TrySwitchRepositoryAsync(item.Path);", recent);
+        var launcher = File.ReadAllText(Path.Combine(presentation, "Views", "StartScreenView.xaml.cs"));
+        Assert.Contains("await _actions.SwitchRepository(item.Path);", launcher);
         Assert.Contains("await _recentRepositoryFolderPicker.PickFolderAsync()", recent);
         Assert.DoesNotContain("QueuePath(item.Path)", recent);
 
@@ -65,11 +66,14 @@ public sealed class RepositorySwitchingContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var xaml = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
+        var xaml = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"))
+            + File.ReadAllText(Path.Combine(presentation, "Views", "RepositorySelectorView.xaml"))
+            + File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryToolbarView.xaml"));
         var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
         var switching = File.ReadAllText(Path.Combine(
             presentation,
-            "MainPage.RepositorySwitching.cs"));
+            "Views", "RepositorySelectorView.xaml.cs"));
+        var switchingWorkflow = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositorySwitching.cs"));
 
         Assert.Contains("x:Name=\"RepositorySelectorButton\"", xaml);
         Assert.Contains("Opening=\"RepositorySelectorFlyout_Opening\"", xaml);
@@ -94,14 +98,15 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("_desktopShellService.OpenFolderDescription", switching);
         Assert.Contains("Text=\"Copy repository path\"", xaml);
         Assert.Contains("Icon.Glyph.Copy", xaml);
-        Assert.Contains("OpenFolderInDesktopShellAsync", switching);
+        Assert.Contains("_actions.OpenFolder(path)", switching);
+        Assert.Contains("OpenFolderInDesktopShellAsync", switchingWorkflow);
         Assert.Contains("x:Name=\"RepositorySelectorOpenTerminalButton\"", xaml);
         Assert.Contains("Click=\"RepositorySelectorOpenTerminal_Click\"", xaml);
         Assert.Contains("Open Terminal Here", xaml);
         Assert.Contains("_desktopShellService.OpenTerminalAsync(path)", switching);
         Assert.Contains("RepositorySelectorOpenTerminalButton.IsEnabled", switching);
-        Assert.Contains("ShowCreateRepositoryAsync", switching);
-        Assert.Contains("ShowUnavailableRepositoryAsync", switching);
+        Assert.Contains("ShowCreateRepositoryAsync", switchingWorkflow);
+        Assert.Contains("ShowUnavailableRepositoryAsync", switchingWorkflow);
 
         Assert.Contains("e.Key == VirtualKey.O", page);
         Assert.Contains("RunPageUiOperation(OpenRepositoryPickerAsync, \"Open repository shortcut\")", page);
@@ -113,7 +118,7 @@ public sealed class RepositorySwitchingContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var xaml = XDocument.Load(Path.Combine(presentation, "MainPage.xaml"));
+        var xaml = XDocument.Load(Path.Combine(presentation, "Views", "RepositorySelectorView.xaml"));
         var controls = XDocument.Load(Path.Combine(presentation, "Styles", "Controls.xaml"));
         XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
 
@@ -203,15 +208,15 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("Visibility=\"{Binding HasOperationOrConflicts", xaml);
         Assert.Contains("x:Name=\"StatusBar\" Grid.Row=\"3\" Grid.ColumnSpan=\"3\"", xaml);
 
-        var headerStart = xaml.IndexOf("<Border x:Name=\"RepositoryHeader\"", StringComparison.Ordinal);
-        var toolbarStart = xaml.IndexOf("<Border x:Name=\"MainToolbar\"", StringComparison.Ordinal);
-        var operationStart = xaml.IndexOf("<controls:OperationBanner", toolbarStart, StringComparison.Ordinal);
-        var selectorStart = xaml.IndexOf("x:Name=\"RepositorySelectorButton\"", StringComparison.Ordinal);
-        var treeStart = xaml.IndexOf("x:Name=\"RepositoryTree\"", StringComparison.Ordinal);
-        Assert.True(headerStart >= 0 && selectorStart > headerStart && toolbarStart > selectorStart);
-        Assert.True(operationStart > toolbarStart && treeStart > operationStart);
+        var header = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryHeaderView.xaml"));
+        var selector = File.ReadAllText(Path.Combine(presentation, "Views", "RepositorySelectorView.xaml"));
+        var toolbar = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryToolbarView.xaml"));
+        var selectorController = File.ReadAllText(Path.Combine(presentation, "Views", "RepositorySelectorView.xaml.cs"));
 
-        var toolbar = xaml[toolbarStart..operationStart];
+        Assert.Contains("<views:RepositoryHeaderView", xaml);
+        Assert.Contains("<views:RepositoryToolbarView", xaml);
+        Assert.Contains("<views:RepositorySelectorView", header);
+        Assert.Contains("RepositorySelectorButton", selector);
         Assert.DoesNotContain("RepositorySelectorButton", toolbar);
         Assert.DoesNotContain("ToolbarBranchText", toolbar);
         Assert.DoesNotContain("ToolbarProductTextStyle", toolbar);
@@ -228,7 +233,7 @@ public sealed class RepositorySwitchingContractTests
         Assert.DoesNotContain("ToolbarBranchText.Text", page);
         Assert.Contains("StatusBranchText.Text = branch;", page);
         Assert.DoesNotContain("RepositorySelectorPath", switching);
-        Assert.Contains("QuickRepositoryLimit = 8", switching);
+        Assert.Contains("QuickRepositoryLimit = 8", selectorController);
     }
 
     private static string FindRepositoryRoot()
