@@ -93,6 +93,9 @@ public sealed class Phase2ComponentOwnershipTests
         Assert.Contains("_activitySource.Changed -= ActivitySource_Changed", console);
         Assert.Contains("ConsoleView.SetActive(false)", console);
         Assert.Contains("HistoryGraphHeaderColumn.Width", graph);
+        var history = Read("src/CSharpGit.Presentation/Views/HistoryView.xaml.cs");
+        Assert.Contains("IAuthorAvatarDependencyProvider.AvatarService", history, StringComparison.Ordinal);
+        Assert.DoesNotContain("MainPage", history, StringComparison.Ordinal);
     }
 
     private static string Read(string relative) =>

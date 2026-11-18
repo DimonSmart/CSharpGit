@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.Controls;
 using CSharpGit.Presentation.Controls.CommitGraph;
@@ -17,9 +18,11 @@ namespace CSharpGit.Presentation.Views;
 /// Owns history filtering, display mode and virtual-scroll subscription for one window.
 /// Commit Details remains a separate phase-3 UI; performance dialogs are transitional callbacks.
 /// </summary>
-public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvider
+public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvider, IAuthorAvatarDependencyProvider
 {
     private const double LoadMoreThreshold = 68;
+    private IAuthorAvatarService? _avatarService;
+    private IAppSettingsService? _avatarSettings;
     private HistoryViewModel? _history;
     private WorkspaceNavigator? _navigator;
     private Func<bool>? _isBusy;
@@ -31,19 +34,26 @@ public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvide
 
     public HistoryView() => InitializeComponent();
 
+    IAuthorAvatarService IAuthorAvatarDependencyProvider.AvatarService =>
+        _avatarService ?? throw new InvalidOperationException("History avatar dependencies not configured.");
+    IAppSettingsService IAuthorAvatarDependencyProvider.AppSettings =>
+        _avatarSettings ?? throw new InvalidOperationException("History avatar settings not configured.");
+
     internal ListView List => HistoryList;
     internal TextBox FilterBox => HistoryFilter;
     internal Border ColumnHeader => HistoryColumnHeader;
     internal Border FilterToolbar => HistoryFilterToolbar;
 
     internal void Configure(HistoryViewModel history, WorkspaceNavigator navigator,
-        Func<bool> isBusy)
+        Func<bool> isBusy, IAuthorAvatarService avatarService, IAppSettingsService avatarSettings)
     {
         if (_configured || _disposed) return;
         _configured = true;
         _history = history ?? throw new ArgumentNullException(nameof(history));
         _navigator = navigator ?? throw new ArgumentNullException(nameof(navigator));
         _isBusy = isBusy ?? throw new ArgumentNullException(nameof(isBusy));
+        _avatarService = avatarService ?? throw new ArgumentNullException(nameof(avatarService));
+        _avatarSettings = avatarSettings ?? throw new ArgumentNullException(nameof(avatarSettings));
         _history.PropertyChanged += History_PropertyChanged;
         HistoryList.Loaded += HistoryList_Loaded;
         LoadMoreHistoryButton.Visibility = Visibility.Collapsed;
