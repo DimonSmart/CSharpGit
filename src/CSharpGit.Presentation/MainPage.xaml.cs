@@ -230,7 +230,7 @@ public sealed partial class MainPage : Page, Windowing.ICloseConfirmationDialog
         var branch = current?.Name
                      ?? _viewModel.CurrentBranchName
                      ?? (_viewModel.Repository is null ? string.Empty : "detached HEAD");
-        StatusBar.SetStatus(
+        GitConsoleHost.StatusBar.SetStatus(
             branch,
             current is null ? string.Empty : $"↑{current.Ahead} ↓{current.Behind}",
             _viewModel.WorkingTree.Changes.Count,
