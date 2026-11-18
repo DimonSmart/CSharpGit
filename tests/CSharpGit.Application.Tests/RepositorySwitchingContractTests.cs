@@ -208,7 +208,7 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("AutomationProperties.HelpText=\"{Binding Repository.WorkingDirectory}\"", xaml);
         Assert.Contains("DataContext=\"{Binding RepositoryOperations}\"", xaml);
         Assert.Contains("Visibility=\"{Binding HasOperationOrConflicts", xaml);
-        Assert.Contains("x:Name=\"StatusBar\" Grid.Row=\"3\" Grid.ColumnSpan=\"3\"", xaml);
+        Assert.Contains("x:Name=\"GitConsoleHost\" Grid.Row=\"3\" Grid.ColumnSpan=\"3\"", xaml);
 
         var header = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryHeaderView.xaml"));
         var selector = File.ReadAllText(Path.Combine(presentation, "Views", "RepositorySelectorView.xaml"));
@@ -231,9 +231,11 @@ public sealed class RepositorySwitchingContractTests
 
         Assert.DoesNotContain("RepositorySelectorPath", xaml);
         Assert.DoesNotContain("ToolbarBranchText", xaml);
-        Assert.Contains("x:Name=\"StatusBranchText\"", xaml);
+        var statusXaml = File.ReadAllText(Path.Combine(presentation, "Views", "StatusBarView.xaml"));
+        Assert.Contains("x:Name=\"StatusBranchText\"", statusXaml);
         Assert.DoesNotContain("ToolbarBranchText.Text", page);
-        Assert.Contains("StatusBranchText.Text = branch;", page);
+        var statusCode = File.ReadAllText(Path.Combine(presentation, "Views", "StatusBarView.xaml.cs"));
+        Assert.Contains("StatusBranchText.Text = branch;", statusCode);
         Assert.DoesNotContain("RepositorySelectorPath", switching);
         Assert.Contains("QuickRepositoryLimit = 8", selectorController);
     }
