@@ -17,7 +17,7 @@ Each source entry has one planned owner. Temporary adapters are **not** new gene
 | `MainPage.RefreshIndicator.cs` | RepositoryToolbarView + shell state | 2.2 | Repository operation and refresh state | Remaining phase-3 dialogs invoked by typed commands | No MainPage control mutation for toolbar and refresh visuals |
 | `MainPage.Settings.cs` | Settings and About dialog feature surfaces | 3 | SettingsWindowController, update services | Toolbar delegates to narrow commands | Settings and About workflows extracted from MainPage |
 | `MainPage.About.cs` | Settings and About dialog feature surfaces | 3 | SettingsWindowController, update services | Toolbar delegates to narrow commands | Settings and About workflows extracted from MainPage |
-| `MainPage.AuthorAvatars.cs` | HistoryView and CommitDetailsView (instance dependencies) | 2.1 → 2.5 | IAuthorAvatarService, IAppSettingsService | MainPage implements IAuthorAvatarDependencyProvider until HistoryView extraction | HistoryView provides per-window avatars; no page/global fallback |
+| `MainPage.AuthorAvatars.cs` (deleted in 2.6) | HistoryView and CommitDetailsView (instance dependencies) | 2.1 → 2.6 | IAuthorAvatarService, IAppSettingsService | HistoryView implements IAuthorAvatarDependencyProvider; CommitDetailsView explicitly configures avatar | Both render from instance-owned dependencies without a page/global fallback |
 | `MainPage.RepositoryNavigation.cs` | RepositoryExplorerView + WorkspaceNavigator | 2.4 | RepositoryTreeSynchronizer, RepositoryTreeNavigationCoordinator | Phase-3 branch/stash dialog operations behind typed contracts | View owns TreeView/selection/expand; navigator owns navigation only |
 | `MainPage.RepositoryTreeState.cs` | RepositoryExplorerView + WorkspaceNavigator | 2.4 | RepositoryTreeSynchronizer, RepositoryTreeNavigationCoordinator | Phase-3 branch/stash dialog operations behind typed contracts | View owns TreeView/selection/expand; navigator owns navigation only |
 | `MainPage.RepositoryRefresh.cs` | RepositoryExplorerView + window refresh coordination | 2.4 | RepositoryChangeCoordinator, RepositorySessionLifetime | Phase-3 preview invalidation remains local to Files | Stale repository requests rejected without MainPage tree access |
@@ -73,9 +73,9 @@ Each source entry has one planned owner. Temporary adapters are **not** new gene
 ### Phase 2.1 implementation notes
 
 - Transient child ViewModels resolved within the window DI scope are disposed by that scope, not a second time by `OpenRepositoryViewModel`; independent manually constructed `OpenRepositoryViewModel` instances retain cascade disposal.
-- `AuthorAvatarServiceContext` and `HistoryReferencePresentationContext` have been removed. Avatar dependencies are resolved through an instance-owned visual ancestor contract while HistoryView migration is pending; default-branch metadata is carried on `HistoryReferenceDecoration`.
+- `AuthorAvatarServiceContext` and `HistoryReferencePresentationContext` have been removed. HistoryView now implements `IAuthorAvatarDependencyProvider` directly, and CommitDetailsView receives its own explicit avatar configuration. The obsolete MainPage provider was removed in PR 2.6. Default-branch metadata is carried on `HistoryReferenceDecoration`.
 - The phase-2 smoke check must instantiate `XamlOnlyProbe`, attach a DataContext, assert its binding, mutate an `INotifyPropertyChanged` source, and assert updated text. No `.xaml.cs` is created.
-- The existing global `CommitGraphPresentationContext` must be replaced with instance-owned layout state in PR 2.5, not renamed into another global context.
+- PR 2.5 replaced the global `CommitGraphPresentationContext` with per-HistoryView `ICommitGraphLayoutProvider`, and deleted the static context. Virtualized graph controls subscribe to their visual ancestor's layout.
 
 ## Phase 2 completion inventory (implementation, not baseline)
 
@@ -96,9 +96,11 @@ The source-evidence tables below capture the **pre-migration baseline** and must
 
 **Preserved phase-3 scope.** `MainPage.WorkingTreeDiff.cs`, `MainPage.Changes.cs`, `MainPage.CommitActions.cs`, `MainPage.RepositoryFiles.cs`, `MainPage.FileOpening.cs`, `MainPage.DiffPresentation.cs`, `MainPage.ImageDiff.cs`, `MainPage.BranchDeletion.cs`, `MainPage.BranchRename.cs`, `MainPage.BranchDragDrop.cs`, `MainPage.Tags.cs`, `MainPage.Stashes.cs`, `MainPage.RepositoryCreation.cs`, `MainPage.RepositoryCloning.cs`, `MainPage.RepositoryMaintenance.cs`, `MainPage.Settings.cs`, `MainPage.About.cs`, `MainPage.GitCommandFeedback.cs`, and shared page dialogs are **not** migrated by phase 2.
 
+**Avatar ownership.** History rows obtain `IAuthorAvatarService` and `IAppSettingsService` from their own `HistoryView` visual ancestor; `CommitDetailsView` uses `ConfigureAuthorAvatar`. `MainPage` no longer implements `IAuthorAvatarDependencyProvider`, and neither component uses application-global UI state.
+
 **Known transitional dependencies.** Repository context menus still enter phase-3 operation/dialog code through `ReferenceMenuRequested`; History selection and graph state still have thin accessors for the existing Commit Details and diagnostics smoke checks. They must be replaced with operation-specific contracts and independent feature views, not promoted into a universal `IMainPageActions` or service locator. These adapters have an explicit removal target: **phase 3**.
 
-**Removed obsolete migration files.** `MainPage.CommitGraphLayout.cs` and `MainPage.HistoryInfiniteScroll.cs` have been deleted rather than preserved as forwarding-only partial classes. `MainPage.RepositoryTreeState.cs` invokes `HistoryView.InitializeScroll()` directly. Their pre-migration file names remain in the historical source-evidence table below for traceability; no current source ownership is implied.
+**Removed obsolete migration files.** `MainPage.AuthorAvatars.cs`, `MainPage.CommitGraphLayout.cs` and `MainPage.HistoryInfiniteScroll.cs` have been deleted rather than preserved as forwarding-only partial classes. `MainPage.RepositoryTreeState.cs` invokes `HistoryView.InitializeScroll()` directly. Their pre-migration file names remain in the historical source-evidence table below for traceability; no current source ownership is implied.
 
 **Lifetime guardrails.** `Unloaded` is not final disposal. The root invokes the children’s explicit shutdown during normal `WindowSession` cleanup; each child unhooks events it owns. History diagnostics stops asynchronously during `PrepareForShutdown` before final view disposal. A cross-repository navigation result is accepted only when both reference identity and interaction/selection versions still match.
 
@@ -106,8 +108,8 @@ The source-evidence tables below capture the **pre-migration baseline** and must
 
 ## Existing high-risk shared scenarios
 
-- **Close:** `App.xaml.cs` owns native close events, coordinator and host stop; `MainPage.Lifecycle.cs` owns cancellation, close-state computation and final resource release. Phase 1 owner: `WindowCloseOrchestrator` using existing `WindowCloseCoordinator`; `WindowSession` owns lifetime; a narrow temporary content adapter retains page cleanup.
-- **Repository switch:** `MainPage.RepositorySwitching.cs`, `RepositoryRefresh.cs`, `RepositoryTreeState.cs`, `RepositoryNavigation.cs` and `RepositoryFilePreview.cs`. Phase 2 selector and navigator own switching/navigation while phase-3 previews own invalidation; preserve `RepositorySessionLifetime` and `RepositoryChangeCoordinator`.
+- **Close:** `App.xaml.cs` owns native close callbacks and host stop; `WindowCloseOrchestrator` and `WindowCloseSafetyProvider` decide admission and confirmations, independent of `MainPage`; `WindowSession` owns lifetime and scope. `MainPage.Lifecycle.cs` only completes legacy UI cleanup via `IWindowContentLifetime` until phase 3.
+- **Repository switch:** `MainPage.RepositorySwitching.cs`, `RepositoryRefresh.cs`, `RepositoryTreeState.cs`, `RepositoryNavigation.cs` and `RepositoryFilePreview.cs`. Phase-2 selector owns menu and selection UI, `WorkspaceNavigator` owns navigation decisions, and the phase-3 repository-switch/dialog workflow remains behind a typed action adapter; preserve `RepositorySessionLifetime` and `RepositoryChangeCoordinator`.
 - **History:** `MainPage.HistoryInfiniteScroll.cs`, `HistoryDisplayMode.cs`, `CommitGraphLayout.cs`, `HistoryPerformanceDiagnostics.cs` and `MainPage.xaml.cs`. Phase 2.5 owner: HistoryView plus existing HistoryViewModel.
 - **Files:** `MainPage.RepositoryFiles.cs`, `RepositoryFilePreview.cs`, `FileOpening.cs`, `WorkingTreeDiff.cs` and `DiffPresentation.cs`. Phase 3 owner: separate file surfaces and preview lifecycle; use existing `RepositoryFilesSurface`.
 - **Dialogs and commands:** `MainPage.Dialogs.cs`, `ConfirmationDialogs.cs` and feature files. Each phase-3 feature owns its dialog; shared serialization remains the existing page dialog gate until extracted.
