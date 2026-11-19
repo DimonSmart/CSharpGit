@@ -1,4 +1,3 @@
-using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -38,7 +37,7 @@ internal sealed class CollectionViewportController : IDisposable
 
         // A TreeView/ListView may not have measured its new content when the
         // collection notification fires. Recheck on the next UI turn.
-        _surface.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low,
+        _surface.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
             () => Apply(ticket, adjustment));
     }
 
