@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using CSharpGit.Presentation.ViewModels;
+using CSharpGit.Presentation.Controls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -12,6 +13,9 @@ public sealed partial class MainPage
     private readonly ObservableCollection<ChangedFileTreeNode> _changedFileTreeRoots = [];
     private bool _changesSurfaceInitialized;
     private bool _changedFileTreeRefreshQueued;
+    private CollectionViewportController? _changedFilesViewport;
+    private CollectionViewportController? _commitSummaryViewport;
+    private CollectionViewportController? _stashSummaryViewport;
 
     private PivotItem? ChangesTabControl =>
         DetailsTabs.Items.Count > 1 ? DetailsTabs.Items[1] as PivotItem : null;
@@ -22,6 +26,7 @@ public sealed partial class MainPage
         _changesSurfaceInitialized = true;
 
         ChangedFilesTree.ItemsSource = _changedFileTreeRoots;
+        _changedFilesViewport = new CollectionViewportController(ChangedFilesTree);
         _commitFiles.CollectionChanged += CommitFiles_CollectionChanged;
         _viewModel.CommitDetails.PropertyChanged += ChangesViewModel_PropertyChanged;
 
@@ -90,6 +95,7 @@ public sealed partial class MainPage
 
         var entries = _commitFiles.Select(row => new ChangedFileTreeEntry(row.Status, row.File));
         ChangedFileTreeSynchronizer.Reconcile(_changedFileTreeRoots, entries);
+        _changedFilesViewport?.Observe(SelectedDetailsViewportKey(), _commitFiles.Count);
 
         if (ChangesTabControl is { } changesTab)
             changesTab.Header = _commitFiles.Count == 0 ? "Changes" : $"Changes ({_commitFiles.Count})";
@@ -144,7 +150,12 @@ public sealed partial class MainPage
     {
         if (!_viewModel.CommitDetails.IsChangesViewActive) return;
         var files = _viewModel.CommitDetails.ChangedFiles;
-        if (files.Count == 0) return;
+        if (files.Count == 0)
+        {
+            if (_viewModel.CommitDetails.SelectedFile is not null)
+                _viewModel.CommitDetails.SelectedFile = null;
+            return;
+        }
 
         var selected = _viewModel.CommitDetails.SelectedFile;
         var current = selected is null
@@ -157,10 +168,30 @@ public sealed partial class MainPage
 
     private void SyncChangedFileTreeSelection()
     {
-        if (!_changesSurfaceInitialized || _viewModel.CommitDetails.SelectedFile is null) return;
-        var node = FindChangedFileNode(_changedFileTreeRoots, _viewModel.CommitDetails.SelectedFile.Path);
-        if (node is not null && !ReferenceEquals(ChangedFilesTree.SelectedItem, node))
+        if (!_changesSurfaceInitialized) return;
+        var selected = _viewModel.CommitDetails.SelectedFile;
+        var node = selected is null
+            ? null
+            : FindChangedFileNode(_changedFileTreeRoots, selected.Path);
+        if (!ReferenceEquals(ChangedFilesTree.SelectedItem, node))
             ChangedFilesTree.SelectedItem = node;
+    }
+
+    private string? SelectedDetailsViewportKey()
+    {
+        var details = _viewModel.CommitDetails;
+        var selectedCommit = details.SelectedObjectCommit;
+        return selectedCommit is null
+            ? null
+            : $"{_viewModel.Repository?.GitDirectory}|{(details.HasSelectedStash ? "stash" : "commit")}|{selectedCommit}";
+    }
+
+    private void SynchronizeDetailsViewport()
+    {
+        var details = _viewModel.CommitDetails;
+        var key = SelectedDetailsViewportKey();
+        _commitSummaryViewport?.Observe(key, details.HasSelectedCommit ? 1 : 0);
+        _stashSummaryViewport?.Observe(key, details.HasSelectedStash ? 1 : 0);
     }
 
     private void CommitLargeDiffButton_Click(object sender, RoutedEventArgs args) =>
