@@ -160,11 +160,13 @@ public sealed partial class RepositoryExplorerView : UserControl
     private void Tree_Expanding(TreeView sender, TreeViewExpandingEventArgs e)
     {
         if (ResolveNode(e.Item) is { } node) node.IsExpanded = true;
+        ObserveTreeViewport();
     }
 
     private void Tree_Collapsed(TreeView sender, TreeViewCollapsedEventArgs e)
     {
         if (ResolveNode(e.Item) is { } node) node.IsExpanded = false;
+        ObserveTreeViewport();
     }
 
     private void Tree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs e)
