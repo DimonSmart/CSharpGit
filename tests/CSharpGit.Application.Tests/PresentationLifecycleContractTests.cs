@@ -187,7 +187,7 @@ public sealed class PresentationLifecycleContractTests
         var close = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Windowing", "WindowCloseOrchestrator.cs"));
         var session = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Windowing", "WindowSession.cs"));
         var lifecycle = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
-        var perf = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "MainPage.HistoryPerformanceDiagnostics.cs"));
+        var perf = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Views", "HistoryView.Performance.cs"));
         Assert.Contains("await UiBoundedTaskWait.WaitAsync(", close, StringComparison.Ordinal);
         Assert.Contains("DiagnosticsShutdownBudget,", close, StringComparison.Ordinal);
         Assert.Contains("WindowCloseStage.FinalClose", close, StringComparison.Ordinal);
@@ -202,6 +202,7 @@ public sealed class PresentationLifecycleContractTests
         var stopMonitoring = lifecycle.IndexOf("ShutdownRepositoryChangeMonitoring();", prepare, StringComparison.Ordinal);
         var beginShutdown = lifecycle.IndexOf("public void BeginShutdown()", prepare, StringComparison.Ordinal);
         Assert.True(prepare >= 0 && stopMonitoring > prepare && stopMonitoring < beginShutdown);
+        Assert.Contains("HistoryView.StopHistoryPerformanceCaptureOnShutdown()", lifecycle, StringComparison.Ordinal);
         Assert.DoesNotContain(".GetAwaiter()\\n            .GetResult()", perf, StringComparison.Ordinal);
     }
 
