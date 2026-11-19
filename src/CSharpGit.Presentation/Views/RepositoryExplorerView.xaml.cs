@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using CSharpGit.Domain;
+using CSharpGit.Presentation.Controls;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -18,6 +19,7 @@ public sealed partial class RepositoryExplorerView : UserControl
 {
     private readonly ObservableCollection<RepositoryTreeNode> _roots = [];
     private readonly RepositoryTreeSynchronizer _synchronizer;
+    private readonly CollectionViewportController _viewport;
     private OpenRepositoryViewModel? _repository;
     private WorktreesViewModel? _worktrees;
     private WorkspaceNavigator? _navigator;
@@ -29,6 +31,7 @@ public sealed partial class RepositoryExplorerView : UserControl
         InitializeComponent();
         _synchronizer = new RepositoryTreeSynchronizer(_roots);
         Tree.ItemsSource = _roots;
+        _viewport = new CollectionViewportController(Tree);
     }
 
     internal TreeView TreeControl => Tree;
@@ -70,6 +73,7 @@ public sealed partial class RepositoryExplorerView : UserControl
         _roots.Clear();
         _synchronizer.ResetSession();
         Tree.SelectedItem = null;
+        ObserveTreeViewport();
         if (_repository?.Repository is not null)
             ReconcileRepository();
     }
@@ -93,6 +97,7 @@ public sealed partial class RepositoryExplorerView : UserControl
             Recover("repository-state reconciliation", exception);
         }
         RestoreSelection(selection);
+        ObserveTreeViewport();
     }
 
     internal void ReconcileWorktrees()
@@ -108,6 +113,7 @@ public sealed partial class RepositoryExplorerView : UserControl
             Recover("worktree reconciliation", exception);
         }
         RestoreSelection(selection);
+        ObserveTreeViewport();
     }
 
     private void Recover(string operation, Exception exception)
@@ -123,6 +129,20 @@ public sealed partial class RepositoryExplorerView : UserControl
             _repository.Tags.Items,
             _repository.Stashes.Items,
             _worktrees.Worktrees);
+    }
+
+    private void ObserveTreeViewport() =>
+        _viewport.Observe(_repository?.Repository?.GitDirectory, CountVisibleNodes(_roots));
+
+    private static int CountVisibleNodes(IEnumerable<RepositoryTreeNode> nodes)
+    {
+        var count = 0;
+        foreach (var node in nodes)
+        {
+            count++;
+            if (node.IsExpanded) count += CountVisibleNodes(node.Children);
+        }
+        return count;
     }
 
     private RepositoryTreeSelectionAnchor<RepositoryTreeNode>? CaptureSelection() =>
@@ -204,6 +224,7 @@ public sealed partial class RepositoryExplorerView : UserControl
         _repository = null;
         _worktrees = null;
         _navigator = null;
+        _viewport.Dispose();
         _roots.Clear();
         Tree.ItemsSource = null;
     }
