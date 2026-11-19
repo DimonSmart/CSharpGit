@@ -34,7 +34,9 @@ public sealed class CollectionViewportUiContractTests
         Assert.Contains("_historyViewport?.CancelPendingAdjustment()", history);
         Assert.Contains("ObserveTreeViewport()", explorer);
         Assert.Contains("DiffViewportResetGate", controller);
-        Assert.Contains("ClampToContent", controller);
+        var policy = File.ReadAllText(Path.Combine(root,
+            "src", "CSharpGit.Presentation.Core", "Controls", "CollectionViewportState.cs"));
+        Assert.Contains("ClampToContent", policy);
         Assert.Contains("DispatcherQueuePriority.Low", controller);
         Assert.Contains("CancelPendingAdjustment()", controller);
         Assert.Contains("_surface.UpdateLayout()", controller);
