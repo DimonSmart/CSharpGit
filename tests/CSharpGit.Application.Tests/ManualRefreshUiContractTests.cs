@@ -41,8 +41,15 @@ public sealed class ManualRefreshUiContractTests
         Assert.Contains("_repositoryChangeCoordinator.PublishBaseline(", refresh);
         Assert.Contains("_repositoryChangeCoordinator.ChangeRepository(", refresh);
         Assert.Contains("DisplayedRefreshBaselineRevision", refresh);
+        Assert.Contains("OwnedFollowupRefreshRequested", refresh);
+        Assert.Contains("TryConsumeRacedRefresh", refresh);
+        Assert.Contains("RepositoryMutationCompleted", refresh);
+        Assert.Contains("RefreshAfterOwnedMutationAsync", refresh);
         Assert.Contains("IWorkingTreeStatusReader", coordinator);
         Assert.Contains("RunStatusLoopAsync", coordinator);
+        Assert.Contains("TryConsumeRacedRefresh", coordinator);
+        Assert.Contains("OwnedMutationCompleted", coordinator);
+        Assert.Contains("RequestOwnedFollowupIfNeeded", coordinator);
         Assert.Contains("GetInvalidationsSince", coordinator);
         Assert.Contains("StatusProbeFailed", coordinator);
         Assert.Contains("WatcherOverflow", coordinator);

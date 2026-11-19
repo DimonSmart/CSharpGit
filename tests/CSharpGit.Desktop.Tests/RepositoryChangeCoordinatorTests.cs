@@ -111,6 +111,144 @@ public sealed class RepositoryChangeCoordinatorTests
         }
     }
 
+    [Fact]
+    public void MetadataRaceDuringRefreshRequestsOnlyOneAdditionalFullRead()
+    {
+        var repository = CreateRepository();
+        try
+        {
+            var monitor = new RepositoryChangeMonitor();
+            using var coordinator = new RepositoryChangeCoordinator(
+                new SnapshotReader(WorkingTreeStatusSnapshot.Empty),
+                new InlineDispatcher(), monitor);
+            coordinator.Initialize();
+            coordinator.ChangeRepository(repository, WorkingTreeStatusSnapshot.Empty, 10);
+
+            coordinator.RefreshStarted(repository);
+            monitor.EnqueueInvalidation(RepositoryInvalidationSource.GitMetadata, ["HEAD"]);
+            coordinator.PublishBaseline(repository, WorkingTreeStatusSnapshot.Empty, 11);
+            coordinator.RefreshCompleted(repository);
+
+            Assert.True(coordinator.IsRefreshRequired);
+            Assert.True(coordinator.TryConsumeRacedRefresh(repository));
+            Assert.False(coordinator.TryConsumeRacedRefresh(repository));
+
+            coordinator.RefreshStarted(repository);
+            coordinator.PublishBaseline(repository, WorkingTreeStatusSnapshot.Empty, 12);
+            coordinator.RefreshCompleted(repository);
+
+            Assert.False(coordinator.IsRefreshRequired);
+        }
+        finally
+        {
+            DeleteRepository(repository);
+        }
+    }
+
+    [Fact]
+    public void FailedRefreshDoesNotRequestAnAdditionalRead()
+    {
+        var repository = CreateRepository();
+        try
+        {
+            var monitor = new RepositoryChangeMonitor();
+            using var coordinator = new RepositoryChangeCoordinator(
+                new SnapshotReader(WorkingTreeStatusSnapshot.Empty),
+                new InlineDispatcher(), monitor);
+            coordinator.Initialize();
+            coordinator.ChangeRepository(repository, WorkingTreeStatusSnapshot.Empty, 10);
+
+            coordinator.RefreshStarted(repository);
+            monitor.EnqueueInvalidation(RepositoryInvalidationSource.GitMetadata, ["HEAD"]);
+            coordinator.RefreshCompleted(repository);
+
+            Assert.True(coordinator.IsRefreshRequired);
+            Assert.False(coordinator.TryConsumeRacedRefresh(repository));
+        }
+        finally
+        {
+            DeleteRepository(repository);
+        }
+    }
+
+    [Fact]
+    public void LateOwnedMetadataEventSchedulesOnlyOneFollowupAndKeepsRedUntilPublication()
+    {
+        var repository = CreateRepository();
+        try
+        {
+            using var coordinator = NewCoordinator(WorkingTreeStatusSnapshot.Empty);
+            coordinator.Initialize();
+            coordinator.ChangeRepository(repository, WorkingTreeStatusSnapshot.Empty, 10);
+
+            var followups = 0;
+            coordinator.OwnedFollowupRefreshRequested += () => followups++;
+            coordinator.OwnedMutationCompleted(repository);
+            coordinator.HandleInvalidationBatch(MetadataChange(1));
+
+            Assert.True(coordinator.IsRefreshRequired);
+            Assert.Equal(1, followups);
+
+            coordinator.PublishBaseline(repository, WorkingTreeStatusSnapshot.Empty, 11);
+            Assert.False(coordinator.IsRefreshRequired);
+            coordinator.HandleInvalidationBatch(MetadataChange(2));
+
+            Assert.True(coordinator.IsRefreshRequired);
+            Assert.Equal(1, followups);
+        }
+        finally
+        {
+            DeleteRepository(repository);
+        }
+    }
+
+    [Fact]
+    public void MetadataArrivingBeforeOwnedCompletionStillGetsOneFollowup()
+    {
+        var repository = CreateRepository();
+        try
+        {
+            using var coordinator = NewCoordinator(WorkingTreeStatusSnapshot.Empty);
+            coordinator.Initialize();
+            coordinator.ChangeRepository(repository, WorkingTreeStatusSnapshot.Empty, 10);
+            coordinator.HandleInvalidationBatch(MetadataChange(1));
+
+            var followups = 0;
+            coordinator.OwnedFollowupRefreshRequested += () => followups++;
+            coordinator.OwnedMutationCompleted(repository);
+
+            Assert.True(coordinator.IsRefreshRequired);
+            Assert.Equal(1, followups);
+        }
+        finally
+        {
+            DeleteRepository(repository);
+        }
+    }
+
+    [Fact]
+    public void ExternalMetadataWithoutRecentOwnedMutationDoesNotAutoRefresh()
+    {
+        var repository = CreateRepository();
+        try
+        {
+            using var coordinator = NewCoordinator(WorkingTreeStatusSnapshot.Empty);
+            coordinator.Initialize();
+            coordinator.ChangeRepository(repository, WorkingTreeStatusSnapshot.Empty, 10);
+
+            var followups = 0;
+            coordinator.OwnedFollowupRefreshRequested += () => followups++;
+            coordinator.HandleInvalidationBatch(MetadataChange(1));
+
+            Assert.True(coordinator.IsRefreshRequired);
+            Assert.Equal(0, followups);
+        }
+        finally
+        {
+            DeleteRepository(repository);
+        }
+    }
+
     private static RepositoryChangeCoordinator NewCoordinator(WorkingTreeStatusSnapshot snapshot) =>
         new(new SnapshotReader(snapshot), new InlineDispatcher());
 

@@ -24,6 +24,11 @@ internal sealed class RepositoryChangeCoordinator : IDisposable
     private RepositoryInvalidationBatch? _pendingStatus;
     private Repository? _refreshWindowRepository;
     private long _refreshStartGeneration;
+    private long _refreshStartBaselineRevision;
+    private bool _refreshNeedsRetry;
+    private Repository? _recentOwnedMutationRepository;
+    private long _recentOwnedMutationTimestamp;
+    private bool _ownedFollowupRequested;
     private long _handledGeneration;
     private long _deliveryEpoch;
     private bool _refreshWindowActive;
@@ -42,6 +47,9 @@ internal sealed class RepositoryChangeCoordinator : IDisposable
     }
 
     public event Action? RefreshRequirementChanged;
+    public event Action? OwnedFollowupRefreshRequested;
+
+    private static readonly TimeSpan OwnedMutationAfterglow = TimeSpan.FromSeconds(2);
 
     public bool IsRefreshRequired => _lifecycle.IsRefreshRequired;
 
@@ -77,6 +85,8 @@ internal sealed class RepositoryChangeCoordinator : IDisposable
             _pendingStatus = null;
             _refreshWindowActive = false;
             _refreshWindowRepository = null;
+            _refreshNeedsRetry = false;
+            _recentOwnedMutationRepository = null;
             _handledGeneration = _monitor.Generation;
             _lifecycle.Reset(baselineRevision);
             _monitor.Stop();
@@ -91,6 +101,8 @@ internal sealed class RepositoryChangeCoordinator : IDisposable
         _pendingStatus = null;
         _refreshWindowActive = false;
         _refreshWindowRepository = null;
+        _refreshNeedsRetry = false;
+        _recentOwnedMutationRepository = null;
         _lifecycle.Reset(baselineRevision);
         _monitor.Start(repository);
         _handledGeneration = _monitor.Generation;
@@ -134,6 +146,8 @@ internal sealed class RepositoryChangeCoordinator : IDisposable
         _refreshWindowActive = true;
         _refreshWindowRepository = repository;
         _refreshStartGeneration = _monitor.Generation;
+        _refreshStartBaselineRevision = _lifecycle.BaselineRevision;
+        _refreshNeedsRetry = false;
         Trace.WriteLine($"Repository refresh window started: generation={_refreshStartGeneration}");
     }
 
@@ -148,9 +162,53 @@ internal sealed class RepositoryChangeCoordinator : IDisposable
         _refreshWindowRepository = null;
         var invalidation = _monitor.GetInvalidationsSince(startGeneration);
         if (invalidation.HasAny)
+        {
             HandleInvalidationBatch(invalidation);
+            // The just-published snapshot may have raced with a late watcher
+            // delivery from Git itself or a real external change. Do not
+            // suppress the invalidation: request one more full read instead.
+            _refreshNeedsRetry = _lifecycle.BaselineRevision > _refreshStartBaselineRevision
+                && (invalidation.HasRelevantMetadataChanges || invalidation.HasUnknownOrOverflow)
+                && _lifecycle.IsRefreshRequired;
+        }
 
         StartStatusLoopIfNeeded();
+    }
+
+    public bool TryConsumeRacedRefresh(Repository repository)
+    {
+        if (!_initialized || _disposed || !ReferenceEquals(repository, _monitoredRepository)
+            || !_refreshNeedsRetry)
+            return false;
+
+        _refreshNeedsRetry = false;
+        return _lifecycle.IsRefreshRequired;
+    }
+
+    public void OwnedMutationCompleted(Repository repository)
+    {
+        if (!_initialized || _disposed || !ReferenceEquals(repository, _monitoredRepository)) return;
+        _recentOwnedMutationRepository = repository;
+        _recentOwnedMutationTimestamp = Stopwatch.GetTimestamp();
+        _ownedFollowupRequested = false;
+        // A watcher delivery can land in the narrow gap between the final
+        // refresh flight and notification of mutation completion.
+        if (_lifecycle.IsRefreshRequired)
+            RequestOwnedFollowupIfNeeded();
+    }
+
+    private void RequestOwnedFollowupIfNeeded()
+    {
+        if (_ownedFollowupRequested || _recentOwnedMutationRepository is null
+            || !ReferenceEquals(_recentOwnedMutationRepository, _monitoredRepository)
+            || Stopwatch.GetElapsedTime(_recentOwnedMutationTimestamp) > OwnedMutationAfterglow)
+            return;
+
+        _ownedFollowupRequested = true;
+        // Refresh remains required until a new baseline is actually published.
+        // The owner can perform one bounded follow-up refresh after the watcher
+        // debounce, rather than mistaking a delayed self-event for external work.
+        OwnedFollowupRefreshRequested?.Invoke();
     }
 
     // The desktop check delivers an actual captured callback after A -> B -> A.
@@ -303,6 +361,7 @@ internal sealed class RepositoryChangeCoordinator : IDisposable
                 {
                     _pendingStatus = null;
                     RefreshRequirementChanged?.Invoke();
+                    RequestOwnedFollowupIfNeeded();
                     return;
                 }
             }
@@ -330,6 +389,8 @@ internal sealed class RepositoryChangeCoordinator : IDisposable
         Trace.WriteLine(
             $"RefreshRequired reason={reason} generation={generation} baselineRevision={_lifecycle.BaselineRevision}");
         RefreshRequirementChanged?.Invoke();
+        if (disposition == RepositoryStatusCheckDisposition.RefreshRequired)
+            RequestOwnedFollowupIfNeeded();
     }
 
     public void Dispose()
@@ -341,6 +402,8 @@ internal sealed class RepositoryChangeCoordinator : IDisposable
         _pendingStatus = null;
         _refreshWindowActive = false;
         _refreshWindowRepository = null;
+        _refreshNeedsRetry = false;
+        _recentOwnedMutationRepository = null;
         _monitor.RepositoryChanged -= Monitor_RepositoryChanged;
         _lifetimeStop.Cancel();
         _repositoryStatusStop?.Cancel();

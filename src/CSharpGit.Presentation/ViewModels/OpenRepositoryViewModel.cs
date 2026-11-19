@@ -39,6 +39,8 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     private readonly DisplayedWorkingTreeBaseline _displayedWorkingTreeBaseline = new();
     internal event Action<Repository>? RepositoryStateRefreshStarting;
     internal event Action<Repository>? RepositoryStateRefreshCompleted;
+    internal event Action<Repository>? RepositoryMutationCompleted;
+    internal Func<Repository, bool>? ConsumeRacedRefreshRetry { get; set; }
 
     public OpenRepositoryViewModel(
         IFolderPicker folderPicker,
@@ -615,10 +617,24 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
     }
 
     private Task RefreshStateAsync(bool includeHistory) =>
-        RefreshStateCoreAsync(includeHistory, localOnly: false);
+        RefreshWithRaceRetryAsync(includeHistory, localOnly: false);
 
     private Task RefreshStateLocalOnlyAsync(bool includeHistory) =>
-        RefreshStateCoreAsync(includeHistory, localOnly: true);
+        RefreshWithRaceRetryAsync(includeHistory, localOnly: true);
+
+    private async Task RefreshWithRaceRetryAsync(bool includeHistory, bool localOnly)
+    {
+        var repository = Repository;
+        await RefreshStateCoreAsync(includeHistory, localOnly);
+        if (repository is not null && ReferenceEquals(repository, Repository)
+            && ConsumeRacedRefreshRetry?.Invoke(repository) == true)
+        {
+            // A concurrent metadata event may have been the final delayed
+            // notification of our own Git command. Read again, rather than
+            // forcing Refresh green and losing a real external modification.
+            await RefreshStateCoreAsync(includeHistory, localOnly);
+        }
+    }
 
     private bool IsCurrentSession(RepositorySessionLifetime lifetime, Repository repository) =>
         Volatile.Read(ref _disposed) == 0
@@ -778,6 +794,7 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             return false;
         }
 
+        var mutationRepository = Repository;
         _isMutating = true;
         Notify(nameof(CanChangeRepository));
         EnterBusy();
@@ -826,6 +843,15 @@ public sealed partial class OpenRepositoryViewModel : INotifyPropertyChanged, ID
             {
                 Notify(nameof(CanChangeRepository));
                 RaiseCommands();
+                if (succeeded && mutationRepository is not null
+                    && ReferenceEquals(mutationRepository, Repository))
+                {
+                    try { RepositoryMutationCompleted?.Invoke(mutationRepository); }
+                    catch (Exception exception)
+                    {
+                        _logger.LogWarning(exception, "Repository mutation completion observer failed");
+                    }
+                }
             }
         }
         return succeeded;
