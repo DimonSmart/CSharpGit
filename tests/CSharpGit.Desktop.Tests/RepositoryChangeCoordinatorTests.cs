@@ -203,6 +203,30 @@ public sealed class RepositoryChangeCoordinatorTests
     }
 
     [Fact]
+    public void MetadataArrivingBeforeOwnedCompletionStillGetsOneFollowup()
+    {
+        var repository = CreateRepository();
+        try
+        {
+            using var coordinator = NewCoordinator(WorkingTreeStatusSnapshot.Empty);
+            coordinator.Initialize();
+            coordinator.ChangeRepository(repository, WorkingTreeStatusSnapshot.Empty, 10);
+            coordinator.HandleInvalidationBatch(MetadataChange(1));
+
+            var followups = 0;
+            coordinator.OwnedFollowupRefreshRequested += () => followups++;
+            coordinator.OwnedMutationCompleted(repository);
+
+            Assert.True(coordinator.IsRefreshRequired);
+            Assert.Equal(1, followups);
+        }
+        finally
+        {
+            DeleteRepository(repository);
+        }
+    }
+
+    [Fact]
     public void ExternalMetadataWithoutRecentOwnedMutationDoesNotAutoRefresh()
     {
         var repository = CreateRepository();
