@@ -10,6 +10,7 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage
 {
     private readonly RepositoryMaintenanceViewModel _repositoryMaintenance = null!;
+    private readonly Workflows.RecentRepositoryPickerWorkflow _repositoryPicker = null!;
     private readonly IDesktopShellService _desktopShellService = null!;
     private IAppSettingsService _recentRepositorySettings = null!;
     private IRepositoryImageService _repositoryImageService = null!;
@@ -68,7 +69,12 @@ public sealed partial class MainPage
         _authorAvatarService = authorAvatarService ?? throw new ArgumentNullException(nameof(authorAvatarService));
         _authorAvatarSettings = appSettings;
         CommitDetailsContent.ConfigureAuthorAvatar(_authorAvatarService, _authorAvatarSettings);
-        _recentRepositoryFolderPicker = recentRepositoryFolderPicker ?? throw new ArgumentNullException(nameof(recentRepositoryFolderPicker));
+        _repositoryPicker = new Workflows.RecentRepositoryPickerWorkflow(
+            recentRepositoryFolderPicker ?? throw new ArgumentNullException(nameof(recentRepositoryFolderPicker)),
+            () => !_repositoryCloningWorkflowActive && !_repositoryCreationWorkflowActive
+                  && _viewModel.CanChangeRepository && !IsShuttingDown,
+            TrySwitchRepositoryAsync,
+            ShowPageDialogAsync);
         _settingsWindowController = settingsWindowController ?? throw new ArgumentNullException(nameof(settingsWindowController));
         _applicationVersionProvider = applicationVersionProvider ?? throw new ArgumentNullException(nameof(applicationVersionProvider));
         _updateCheckService = updateCheckService ?? throw new ArgumentNullException(nameof(updateCheckService));
@@ -106,6 +112,8 @@ public sealed partial class MainPage
         InitializeGitConsole();
         InitializeWorktreeSupport();
     }
+
+    private Task OpenRepositoryPickerAsync() => _repositoryPicker.OpenAsync();
 
     private void RepositoryMaintenance_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {

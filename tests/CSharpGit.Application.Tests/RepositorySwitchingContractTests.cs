@@ -18,7 +18,7 @@ public sealed class RepositorySwitchingContractTests
             "MainPage.RepositorySwitching.cs"));
         var recent = File.ReadAllText(Path.Combine(
             presentation,
-            "MainPage.RecentRepositories.cs"));
+            "Workflows", "RecentRepositoryPickerWorkflow.cs"));
         var creation = File.ReadAllText(Path.Combine(
             presentation,
             "MainPage.RepositoryCreation.cs"));
@@ -49,7 +49,8 @@ public sealed class RepositorySwitchingContractTests
 
         var launcher = File.ReadAllText(Path.Combine(presentation, "Views", "StartScreenView.xaml.cs"));
         Assert.Contains("await _actions.SwitchRepository(item.Path);", launcher);
-        Assert.Contains("await _recentRepositoryFolderPicker.PickFolderAsync()", recent);
+        Assert.Contains("await folderPicker.PickFolderAsync()", recent);
+        Assert.Contains("if (!string.IsNullOrEmpty(path) && canChangeRepository())", recent);
         Assert.DoesNotContain("QueuePath(item.Path)", recent);
 
         Assert.Contains("SwitchRepositoryCoreAsync(path, discardDraft, admission)", creation);
