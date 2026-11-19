@@ -4,6 +4,16 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Commit-draft close confirmation is now owned by the per-window
+`CommitDraftCloseConfirmationDialog`, passed directly to
+`WindowCloseOrchestrator`. It reads the live draft state and rejects a late
+dialog result after shutdown or repository switching. The existing page dialog
+gate supplies serialized presentation and `XamlRoot`; the remaining
+`MainPage.ConfirmCloseAsync` adapter is only for legacy switching/restart
+callers, and must be removed during the final window-composition migration.
+
+
+
 The working-tree commit-message editor, Commit/Amend commands and Stash button
 now live in `WorkingTreeCommitEditorView` as one visual component. The parent
 still handles `StashRequested` through its existing dialog workflow, with an

@@ -474,7 +474,8 @@ public sealed class PresentationArchitectureGuardrailTests
         Assert.DoesNotContain("_viewModel.CommitMessage", mainPage, StringComparison.Ordinal);
         Assert.DoesNotContain("_viewModel.CommitCommand", mainPage, StringComparison.Ordinal);
         Assert.DoesNotContain("_viewModel.IsEmptyIndexChoiceOpen", mainPage, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.CommitCreation.HasUnappliedCommitMessage", mainPage, StringComparison.Ordinal);
+        var closeConfirmation = File.ReadAllText(Path.Combine(presentation, "Windowing", "CommitDraftCloseConfirmationDialog.cs"));
+        Assert.Contains("repository.CommitCreation.HasUnappliedCommitMessage", closeConfirmation, StringComparison.Ordinal);
 
         Assert.DoesNotContain("Microsoft.UI.Xaml", commitCreation, StringComparison.Ordinal);
         Assert.DoesNotContain("ContentDialog", commitCreation, StringComparison.Ordinal);

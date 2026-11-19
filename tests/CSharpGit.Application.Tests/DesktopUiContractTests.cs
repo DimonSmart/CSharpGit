@@ -182,6 +182,7 @@ public sealed class DesktopUiContractTests
         var app = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
         var program = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Platforms", "Desktop", "Program.cs"));
         var close = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Windowing", "WindowCloseOrchestrator.cs"));
+        var draftConfirmation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Windowing", "CommitDraftCloseConfirmationDialog.cs"));
 
         Assert.DoesNotContain("EmptyIndexChoiceVisibility", xaml);
         Assert.DoesNotContain("Title=\"The index is empty\"", xaml);
@@ -194,8 +195,9 @@ public sealed class DesktopUiContractTests
         Assert.All(new[] { "StageAllAndCommitCommand", "ConfirmEmptyCommitCommand", "CancelCommitCommand" }, command => Assert.Contains(command, dialogs));
         Assert.Contains("!context.HasStagedChanges && context.HasUnstagedChanges", commitCreation);
         Assert.Contains("_workingTreeService.StageAllAsync", commitCreation);
-        Assert.Contains("HasUnappliedCommitMessage", page);
-        Assert.Contains("Keep editing", page);
+        Assert.Contains("HasUnappliedCommitMessage", draftConfirmation);
+        Assert.Contains("Keep editing", draftConfirmation);
+        Assert.Contains("ConfirmCloseAsync()", page);
         Assert.Contains("RequiresCloseConfirmation", close);
         Assert.Contains("session.RequiresCloseConfirmation", close);
         Assert.Contains("eventArgs.Cancel = true", app);
@@ -219,6 +221,7 @@ public sealed class DesktopUiContractTests
         var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
         var forcePush = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ForcePush.cs"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+        var draftConfirmation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Windowing", "CommitDraftCloseConfirmationDialog.cs"));
 
         Assert.Contains("<controls:OperationBanner", xaml);
         Assert.Contains("Binary file — text diff is not available.", xaml);
@@ -246,10 +249,11 @@ public sealed class DesktopUiContractTests
         Assert.Contains("PrimaryButtonText = \"Force push with lease\"", forcePush);
         Assert.Contains("DefaultButton = ContentDialogButton.Close", forcePush);
 
-        Assert.Contains("Title = \"Discard commit message?\"", page);
-        Assert.Contains("PrimaryButtonText = \"Discard and close\"", page);
-        Assert.Contains("CloseButtonText = \"Keep editing\"", page);
-        Assert.Contains("DefaultButton = ContentDialogButton.Close", page);
+        Assert.Contains("Title = \"Discard commit message?\"", draftConfirmation);
+        Assert.Contains("PrimaryButtonText = \"Discard and close\"", draftConfirmation);
+        Assert.Contains("CloseButtonText = \"Keep editing\"", draftConfirmation);
+        Assert.Contains("DefaultButton = ContentDialogButton.Close", draftConfirmation);
+        Assert.DoesNotContain("Title = \"Discard commit message?\"", page);
     }
 
     private static int Count(string value, string fragment) =>
