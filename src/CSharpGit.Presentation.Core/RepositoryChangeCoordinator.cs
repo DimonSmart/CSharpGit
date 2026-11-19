@@ -191,6 +191,10 @@ internal sealed class RepositoryChangeCoordinator : IDisposable
         _recentOwnedMutationRepository = repository;
         _recentOwnedMutationTimestamp = Stopwatch.GetTimestamp();
         _ownedFollowupRequested = false;
+        // A watcher delivery can land in the narrow gap between the final
+        // refresh flight and notification of mutation completion.
+        if (_lifecycle.IsRefreshRequired)
+            RequestOwnedFollowupIfNeeded();
     }
 
     private void RequestOwnedFollowupIfNeeded()
