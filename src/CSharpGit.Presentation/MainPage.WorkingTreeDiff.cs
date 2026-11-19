@@ -3,6 +3,7 @@ using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.ViewModels;
+using CSharpGit.Presentation.Controls;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -25,6 +26,8 @@ public sealed partial class MainPage
     private bool _workingTreeTreeRefreshQueued;
     private bool _workingTreeTreeRefreshScheduled;
     private bool _workingTreePreviewRestoreQueued;
+    private CollectionViewportController? _unstagedViewport;
+    private CollectionViewportController? _stagedViewport;
     private string? _workingTreeExpansionRepositoryIdentity;
     private string? _desiredWorkingTreePath;
 
@@ -35,6 +38,12 @@ public sealed partial class MainPage
     {
         UnstagedChangesTree.ItemsSource = _unstagedTreeRoots;
         StagedChangesTree.ItemsSource = _stagedTreeRoots;
+        _unstagedViewport = new CollectionViewportController(UnstagedChangesTree);
+        _stagedViewport = new CollectionViewportController(StagedChangesTree);
+        UnstagedChangesTree.Expanding += WorkingTreeTree_Expanding;
+        UnstagedChangesTree.Collapsed += WorkingTreeTree_Collapsed;
+        StagedChangesTree.Expanding += WorkingTreeTree_Expanding;
+        StagedChangesTree.Collapsed += WorkingTreeTree_Collapsed;
 
         _unstagedChanges.CollectionChanged += WorkingTreePresentationSourceChanged;
         _stagedChanges.CollectionChanged += WorkingTreePresentationSourceChanged;
@@ -115,6 +124,7 @@ public sealed partial class MainPage
         ReplaceRoots(_stagedTreeRoots, WorkingTreeTreeNode.Build(_stagedChanges, WorkingTreeDiffKind.Staged));
         WorkingTreeTreeExpansionState.Restore(_unstagedTreeRoots, _unstagedExpansionState);
         WorkingTreeTreeExpansionState.Restore(_stagedTreeRoots, _stagedExpansionState);
+        ObserveWorkingTreeViewports();
 
         _unstagedTreeSelection.SetSelectedPaths(selectedUnstagedPaths, _unstagedTreeRoots);
         _stagedTreeSelection.SetSelectedPaths(selectedStagedPaths, _stagedTreeRoots);
@@ -126,6 +136,36 @@ public sealed partial class MainPage
             _stagedTreeSelection.GetSelectedLeaves(_stagedTreeRoots).Select(node => node.Change!));
 
         if (WorkingTreePane.Visibility == Visibility.Visible) QueueWorkingTreePreviewRestore();
+    }
+
+    private void WorkingTreeTree_Expanding(TreeView sender, TreeViewExpandingEventArgs args)
+    {
+        if (ResolveWorkingTreeNode(args.Item) is { } node) node.IsExpanded = true;
+        ObserveWorkingTreeViewports();
+    }
+
+    private void WorkingTreeTree_Collapsed(TreeView sender, TreeViewCollapsedEventArgs args)
+    {
+        if (ResolveWorkingTreeNode(args.Item) is { } node) node.IsExpanded = false;
+        ObserveWorkingTreeViewports();
+    }
+
+    private void ObserveWorkingTreeViewports()
+    {
+        var repositoryKey = _viewModel.Repository?.GitDirectory;
+        _unstagedViewport?.Observe(repositoryKey, CountVisibleWorkingTreeNodes(_unstagedTreeRoots));
+        _stagedViewport?.Observe(repositoryKey, CountVisibleWorkingTreeNodes(_stagedTreeRoots));
+    }
+
+    private static int CountVisibleWorkingTreeNodes(IEnumerable<WorkingTreeTreeNode> nodes)
+    {
+        var count = 0;
+        foreach (var node in nodes)
+        {
+            count++;
+            if (node.IsExpanded) count += CountVisibleWorkingTreeNodes(node.Children);
+        }
+        return count;
     }
 
     private static void ReplaceRoots(
@@ -463,7 +503,23 @@ public sealed partial class MainPage
             return;
         }
 
+        var movedBetweenTrees = kind != workingTree.SelectedDiffKind;
         SelectWorkingTreeChange(target.Change, kind);
+        if (movedBetweenTrees)
+        {
+            var targetPath = target.Path;
+            var repository = _viewModel.Repository;
+            var tree = kind == WorkingTreeDiffKind.Unstaged
+                ? UnstagedChangesTree : StagedChangesTree;
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+            {
+                if (IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+                    || !string.Equals(targetPath, _desiredWorkingTreePath, StringComparison.Ordinal))
+                    return;
+
+                tree.ScrollIntoView(target);
+            });
+        }
     }
 
     private static WorkingTreeTreeNode? FindWorkingTreeLeaf(

@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using CSharpGit.Application.Abstractions;
@@ -26,6 +27,7 @@ public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvide
     private WorkspaceNavigator? _navigator;
     private Func<bool>? _isBusy;
     private ScrollViewer? _scrollViewer;
+    private CollectionViewportController? _historyViewport;
     private bool _loadMorePending;
     private bool _syncingScope;
     private bool _configured;
@@ -53,6 +55,9 @@ public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvide
         _avatarService = avatarService ?? throw new ArgumentNullException(nameof(avatarService));
         _avatarSettings = avatarSettings ?? throw new ArgumentNullException(nameof(avatarSettings));
         _history.PropertyChanged += History_PropertyChanged;
+        _history.Rows.CollectionChanged += HistoryRows_ViewportCollectionChanged;
+        _historyViewport = new CollectionViewportController(HistoryList);
+        _historyViewport.Observe(HistoryViewportKey(), _history.Rows.Count);
         HistoryList.Loaded += HistoryList_Loaded;
         LoadMoreHistoryButton.Visibility = Visibility.Collapsed;
         SyncDisplayMode();
@@ -69,6 +74,19 @@ public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvide
     }
 
     private void HistoryList_Loaded(object sender, RoutedEventArgs e) => AttachScrollViewer();
+
+    private string HistoryViewportKey()
+    {
+        var history = _history!;
+        return $"{history.SelectedScope.Value}|{history.ShowReflog}|{history.ActiveReference}|{history.FilterText}";
+    }
+
+    private void HistoryRows_ViewportCollectionChanged(
+        object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (_disposed || _history is null) return;
+        _historyViewport?.Observe(HistoryViewportKey(), _history.Rows.Count);
+    }
 
     private void AttachScrollViewer()
     {
@@ -197,6 +215,7 @@ public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvide
     {
         if (_disposed || !HistoryList.Items.Contains(row)) return;
         if (updateLayout) HistoryList.UpdateLayout();
+        _historyViewport?.CancelPendingAdjustment();
         HistoryList.SelectedItem = row;
         HistoryList.ScrollIntoView(row, ScrollIntoViewAlignment.Leading);
     }
@@ -237,7 +256,12 @@ public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvide
         StopPerformanceUiSubscriptions();
         _disposed = true;
         if (_history is not null)
+        {
             _history.PropertyChanged -= History_PropertyChanged;
+            _history.Rows.CollectionChanged -= HistoryRows_ViewportCollectionChanged;
+        }
+        _historyViewport?.Dispose();
+        _historyViewport = null;
         HistoryList.Loaded -= HistoryList_Loaded;
         if (_scrollViewer is not null)
             _scrollViewer.ViewChanged -= ScrollViewer_ViewChanged;

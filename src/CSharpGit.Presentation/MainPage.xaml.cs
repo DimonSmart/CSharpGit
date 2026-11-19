@@ -42,6 +42,9 @@ public sealed partial class MainPage : Page
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
+        _commitSummaryViewport = new CollectionViewportController(DetailsScroller);
+        _stashSummaryViewport = new CollectionViewportController(StashDetailsScroller);
+        SynchronizeDetailsViewport();
         _workspaceNavigator = workspaceNavigator ?? throw new ArgumentNullException(nameof(workspaceNavigator));
         _repositoryChangeCoordinator = new RepositoryChangeCoordinator(
             workingTreeStatusReader ?? throw new ArgumentNullException(nameof(workingTreeStatusReader)),
@@ -161,6 +164,9 @@ public sealed partial class MainPage : Page
         else if (eventArgs.PropertyName is nameof(CommitDetailsViewModel.SelectedStashDetails)
                  or nameof(CommitDetailsViewModel.HasSelectedStash))
             UpdateStashPresentation();
+
+        if (eventArgs.PropertyName == nameof(CommitDetailsViewModel.SelectedObjectCommit))
+            SynchronizeDetailsViewport();
     }
 
     private void HistoryViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)

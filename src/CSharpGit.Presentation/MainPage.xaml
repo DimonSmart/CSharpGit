@@ -113,7 +113,7 @@
                     <controls:CommitDetailsView x:Name="CommitDetailsContent" />
                   </ScrollViewer>
 
-                  <ScrollViewer Visibility="{Binding CommitDetails.HasSelectedStash, Converter={StaticResource BooleanToVisibilityConverter}}"
+                  <ScrollViewer x:Name="StashDetailsScroller" Visibility="{Binding CommitDetails.HasSelectedStash, Converter={StaticResource BooleanToVisibilityConverter}}"
                                 HorizontalScrollMode="Disabled"
                                 HorizontalScrollBarVisibility="Disabled"
                                 VerticalScrollMode="Auto"
