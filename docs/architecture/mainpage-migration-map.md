@@ -4,6 +4,15 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+The phase-2 `MainPage.HistoryPerformanceDiagnostics.cs` forwarding adapter
+has been removed: window composition now configures the owner
+`HistoryView.ConfigurePerformance` directly, and shutdown calls
+`HistoryView.StopHistoryPerformanceCaptureOnShutdown`. Timers, event
+subscriptions and diagnostic state were already owned and torn down by
+`HistoryView`; no alternate global controller or view locator was introduced.
+
+
+
 The recent-repository native folder picker is now a focused
 `RecentRepositoryPickerWorkflow`, which owns picker errors and checks live
 repository-switch admission again after awaiting the native chooser. Its

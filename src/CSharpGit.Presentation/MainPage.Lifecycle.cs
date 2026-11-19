@@ -51,7 +51,7 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         CancelCommitImageDiff(clearSurface: false);
         CancelWorkingTreeImageDiff();
         _cloneRepositoryViewModel.Cancel();
-        return StopHistoryPerformanceCaptureOnShutdown();
+        return HistoryView.StopHistoryPerformanceCaptureOnShutdown();
     }
 
     public void BeginShutdown()

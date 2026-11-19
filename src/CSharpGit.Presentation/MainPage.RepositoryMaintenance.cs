@@ -108,7 +108,15 @@ public sealed partial class MainPage
                 ShowAboutAsync));
         HistoryView.Configure(_viewModel.History, _workspaceNavigator,
             () => _viewModel.IsBusy, _authorAvatarService, _authorAvatarSettings);
-        InitializeHistoryPerformanceDiagnostics();
+        HistoryView.ConfigurePerformance(
+            _viewModel,
+            _recentRepositorySettings,
+            _gitCommandActivitySource,
+            _authorAvatarService,
+            _desktopShellService,
+            ShowErrorAsync,
+            async dialog => { await ShowPageDialogAsync(dialog); },
+            ReportUiFailure);
         InitializeGitConsole();
         InitializeWorktreeSupport();
     }
