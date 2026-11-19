@@ -20,10 +20,14 @@ public sealed class CollectionViewportUiContractTests
             "src", "CSharpGit.Presentation", "MainPage.xaml"));
 
         Assert.Contains("_changedFilesViewport?.Observe", changes);
+        Assert.Contains("CountVisibleChangedFileNodes", changes);
+        Assert.Contains("ChangedFilesTree_Collapsed", changes);
         Assert.Contains("SelectedDetailsViewportKey()", changes);
         Assert.Contains("ChangedFilesTree.SelectedItem = node", changes);
         Assert.Contains("_unstagedViewport?.Observe", workingTree);
         Assert.Contains("_stagedViewport?.Observe", workingTree);
+        Assert.Contains("CountVisibleWorkingTreeNodes", workingTree);
+        Assert.Contains("WorkingTreeTree_Collapsed", workingTree);
         Assert.Contains("tree.ScrollIntoView(target)", workingTree);
         Assert.Contains("SynchronizeDetailsViewport()", page);
         Assert.Contains("x:Name=\"StashDetailsScroller\"", xaml);
