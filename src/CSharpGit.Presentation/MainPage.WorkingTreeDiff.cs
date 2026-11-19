@@ -25,6 +25,8 @@ public sealed partial class MainPage
     private bool _workingTreeTreeRefreshQueued;
     private bool _workingTreeTreeRefreshScheduled;
     private bool _workingTreePreviewRestoreQueued;
+    private CollectionViewportController? _unstagedViewport;
+    private CollectionViewportController? _stagedViewport;
     private string? _workingTreeExpansionRepositoryIdentity;
     private string? _desiredWorkingTreePath;
 
@@ -35,6 +37,8 @@ public sealed partial class MainPage
     {
         UnstagedChangesTree.ItemsSource = _unstagedTreeRoots;
         StagedChangesTree.ItemsSource = _stagedTreeRoots;
+        _unstagedViewport = new CollectionViewportController(UnstagedChangesTree);
+        _stagedViewport = new CollectionViewportController(StagedChangesTree);
 
         _unstagedChanges.CollectionChanged += WorkingTreePresentationSourceChanged;
         _stagedChanges.CollectionChanged += WorkingTreePresentationSourceChanged;
@@ -115,6 +119,8 @@ public sealed partial class MainPage
         ReplaceRoots(_stagedTreeRoots, WorkingTreeTreeNode.Build(_stagedChanges, WorkingTreeDiffKind.Staged));
         WorkingTreeTreeExpansionState.Restore(_unstagedTreeRoots, _unstagedExpansionState);
         WorkingTreeTreeExpansionState.Restore(_stagedTreeRoots, _stagedExpansionState);
+        _unstagedViewport?.Observe(repositoryIdentity, _unstagedChanges.Count);
+        _stagedViewport?.Observe(repositoryIdentity, _stagedChanges.Count);
 
         _unstagedTreeSelection.SetSelectedPaths(selectedUnstagedPaths, _unstagedTreeRoots);
         _stagedTreeSelection.SetSelectedPaths(selectedStagedPaths, _stagedTreeRoots);
@@ -463,7 +469,23 @@ public sealed partial class MainPage
             return;
         }
 
+        var movedBetweenTrees = kind != workingTree.SelectedDiffKind;
         SelectWorkingTreeChange(target.Change, kind);
+        if (movedBetweenTrees)
+        {
+            var targetPath = target.Path;
+            var repository = _viewModel.Repository;
+            var tree = kind == WorkingTreeDiffKind.Unstaged
+                ? UnstagedChangesTree : StagedChangesTree;
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+            {
+                if (IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+                    || !string.Equals(targetPath, _desiredWorkingTreePath, StringComparison.Ordinal))
+                    return;
+
+                tree.ScrollIntoView(target);
+            });
+        }
     }
 
     private static WorkingTreeTreeNode? FindWorkingTreeLeaf(
