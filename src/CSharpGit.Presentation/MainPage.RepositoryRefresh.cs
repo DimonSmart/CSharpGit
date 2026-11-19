@@ -28,10 +28,13 @@ public sealed partial class MainPage
         _repositoryChangeMonitoringInitialized = true;
 
         _repositoryChangeCoordinator.RefreshRequirementChanged += UpdateRefreshIndicator;
+        _repositoryChangeCoordinator.OwnedFollowupRefreshRequested += QueueOwnedFollowupRefresh;
         _repositoryChangeCoordinator.Initialize();
         _viewModel.PropertyChanged += RepositoryRefreshTracking_PropertyChanged;
         _viewModel.RepositoryStateRefreshStarting += RepositoryStateRefreshStarting;
         _viewModel.RepositoryStateRefreshCompleted += RepositoryStateRefreshCompleted;
+        _viewModel.RepositoryMutationCompleted += RepositoryMutationCompleted;
+        _viewModel.ConsumeRacedRefreshRetry = _repositoryChangeCoordinator.TryConsumeRacedRefresh;
         UpdateRepositoryChangeMonitor();
         UpdateRefreshIndicator();
     }
@@ -43,7 +46,10 @@ public sealed partial class MainPage
         _viewModel.PropertyChanged -= RepositoryRefreshTracking_PropertyChanged;
         _viewModel.RepositoryStateRefreshStarting -= RepositoryStateRefreshStarting;
         _viewModel.RepositoryStateRefreshCompleted -= RepositoryStateRefreshCompleted;
+        _viewModel.RepositoryMutationCompleted -= RepositoryMutationCompleted;
+        _viewModel.ConsumeRacedRefreshRetry = null;
         _repositoryChangeCoordinator.RefreshRequirementChanged -= UpdateRefreshIndicator;
+        _repositoryChangeCoordinator.OwnedFollowupRefreshRequested -= QueueOwnedFollowupRefresh;
         _repositoryChangeCoordinator.Dispose();
     }
 
@@ -62,11 +68,47 @@ public sealed partial class MainPage
                 _viewModel.DisplayedRefreshBaselineRevision);
     }
 
-    private void RepositoryStateRefreshStarting(Repository repository) =>
+    private void RepositoryStateRefreshStarting(Repository repository)
+    {
         _repositoryChangeCoordinator.RefreshStarted(repository);
+        SetRefreshInProgress(true);
+    }
 
-    private void RepositoryStateRefreshCompleted(Repository repository) =>
+    private void RepositoryStateRefreshCompleted(Repository repository)
+    {
         _repositoryChangeCoordinator.RefreshCompleted(repository);
+        SetRefreshInProgress(false);
+    }
+
+    private void RepositoryMutationCompleted(Repository repository) =>
+        _repositoryChangeCoordinator.OwnedMutationCompleted(repository);
+
+    private bool _ownedFollowupRefreshQueued;
+
+    private void QueueOwnedFollowupRefresh()
+    {
+        if (IsShuttingDown || _ownedFollowupRefreshQueued) return;
+        _ownedFollowupRefreshQueued = true;
+        RunPageUiOperation(RefreshAfterOwnedMutationAsync, "Post-mutation repository reconciliation");
+    }
+
+    private async Task RefreshAfterOwnedMutationAsync()
+    {
+        var repository = _viewModel.Repository;
+        try
+        {
+            // Let delayed FileSystemWatcher notifications coalesce first.
+            await Task.Delay(RepositoryChangeMonitor.DebounceDelay);
+            if (IsShuttingDown || repository is null
+                || !ReferenceEquals(repository, _viewModel.Repository)) return;
+
+            await _viewModel.RefreshAsyncForDesktopCheck();
+        }
+        finally
+        {
+            _ownedFollowupRefreshQueued = false;
+        }
+    }
 
     private void UpdateRepositoryChangeMonitor()
     {
