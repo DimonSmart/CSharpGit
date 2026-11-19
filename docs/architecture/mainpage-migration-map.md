@@ -4,6 +4,15 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+The recent-repository native folder picker is now a focused
+`RecentRepositoryPickerWorkflow`, which owns picker errors and checks live
+repository-switch admission again after awaiting the native chooser. Its
+existing `MainPage` wrapper is strictly transitional; selection and switching
+remain routed through the existing repository-switch workflow while phase 3.5
+extraction proceeds. The former `MainPage.RecentRepositories.cs` is removed.
+
+
+
 Commit-draft close confirmation is now owned by the per-window
 `CommitDraftCloseConfirmationDialog`, passed directly to
 `WindowCloseOrchestrator`. It reads the live draft state and rejects a late
