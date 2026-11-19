@@ -76,6 +76,8 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         RepositoryToolbar.Shutdown();
         ShutdownRepositoryChangeMonitoring();
         _changedFilesViewport?.Dispose();
+        _unstagedViewport?.Dispose();
+        _stagedViewport?.Dispose();
         _commitSummaryViewport?.Dispose();
         _stashSummaryViewport?.Dispose();
         ShutdownWorktreeSupport();
