@@ -27,6 +27,8 @@ public sealed partial class MainPage
 
         ChangedFilesTree.ItemsSource = _changedFileTreeRoots;
         _changedFilesViewport = new CollectionViewportController(ChangedFilesTree);
+        ChangedFilesTree.Expanding += ChangedFilesTree_Expanding;
+        ChangedFilesTree.Collapsed += ChangedFilesTree_Collapsed;
         _commitFiles.CollectionChanged += CommitFiles_CollectionChanged;
         _viewModel.CommitDetails.PropertyChanged += ChangesViewModel_PropertyChanged;
 
@@ -95,7 +97,7 @@ public sealed partial class MainPage
 
         var entries = _commitFiles.Select(row => new ChangedFileTreeEntry(row.Status, row.File));
         ChangedFileTreeSynchronizer.Reconcile(_changedFileTreeRoots, entries);
-        _changedFilesViewport?.Observe(SelectedDetailsViewportKey(), _commitFiles.Count);
+        ObserveChangedFilesViewport();
 
         if (ChangesTabControl is { } changesTab)
             changesTab.Header = _commitFiles.Count == 0 ? "Changes" : $"Changes ({_commitFiles.Count})";
@@ -175,6 +177,33 @@ public sealed partial class MainPage
             : FindChangedFileNode(_changedFileTreeRoots, selected.Path);
         if (!ReferenceEquals(ChangedFilesTree.SelectedItem, node))
             ChangedFilesTree.SelectedItem = node;
+    }
+
+    private void ChangedFilesTree_Expanding(TreeView sender, TreeViewExpandingEventArgs args)
+    {
+        if (ResolveChangedFileNode(args.Item) is { } node) node.IsExpanded = true;
+        ObserveChangedFilesViewport();
+    }
+
+    private void ChangedFilesTree_Collapsed(TreeView sender, TreeViewCollapsedEventArgs args)
+    {
+        if (ResolveChangedFileNode(args.Item) is { } node) node.IsExpanded = false;
+        ObserveChangedFilesViewport();
+    }
+
+    private void ObserveChangedFilesViewport() =>
+        _changedFilesViewport?.Observe(
+            SelectedDetailsViewportKey(), CountVisibleChangedFileNodes(_changedFileTreeRoots));
+
+    private static int CountVisibleChangedFileNodes(IEnumerable<ChangedFileTreeNode> nodes)
+    {
+        var count = 0;
+        foreach (var node in nodes)
+        {
+            count++;
+            if (node.IsExpanded) count += CountVisibleChangedFileNodes(node.Children);
+        }
+        return count;
     }
 
     private string? SelectedDetailsViewportKey()
