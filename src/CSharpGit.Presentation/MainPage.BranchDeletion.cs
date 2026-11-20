@@ -70,7 +70,7 @@ public sealed partial class MainPage
                         ? "Delete all branches in this folder…"
                         : "Delete all remote branches in this folder…",
                     !_viewModel.IsBusy,
-                    () => ConfirmDeleteBranchFolderAsync(node, folderInfo));
+                    () => _branchFolderDeletion.ConfirmDeleteAsync(node, folderInfo));
                 break;
 
             case RepositoryTreeNodeKind.Worktree when node.Value is WorktreeInfo worktree:

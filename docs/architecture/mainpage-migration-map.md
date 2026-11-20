@@ -4,6 +4,13 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Local and remote branch-folder delete dialogs, candidate planning, partial-failure
+reporting and safe confirmation now belong to `Workflows/BranchFolderDeletionController`.
+The model remains the sole owner of Git deletion; the controller validates repository
+identity and operation state after each dialog. `MainPage.BranchFolderDeletion.cs`
+is removed and the context menu calls the window-scoped workflow directly.
+
+
 Stash creation (repository-wide and selected paths) and destructive drop confirmation
 are now owned by `Workflows/StashDialogController`. Its operations share the
 window dialog gate, revalidate repository identity and selection after confirmation,
