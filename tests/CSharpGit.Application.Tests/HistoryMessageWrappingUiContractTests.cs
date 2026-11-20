@@ -37,7 +37,7 @@ public sealed class HistoryMessageWrappingUiContractTests
             root,
             "src",
             "CSharpGit.Presentation",
-            "MainPage.ConfirmationDialogs.cs"));
+            "Workflows", "RepositoryConfirmationController.cs"));
         var appHost = File.ReadAllText(Path.Combine(
             root,
             "src",
