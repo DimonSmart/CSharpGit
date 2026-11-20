@@ -4,6 +4,14 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Repository Clone and Create dialog workflows are now owned by separate window-scoped
+`Workflows/RepositoryCloneWorkflow` and `Workflows/RepositoryCreationWorkflow`.
+They coordinate admission leases, draft confirmation and repository switch via narrow
+callbacks. The old `MainPage.RepositoryCloning.cs` and `MainPage.RepositoryCreation.cs`
+are removed. Page compatibility properties for active workflows remain until the
+repository-switch workflow itself moves in phase 3.
+
+
 Commit empty-index and Working Tree discard confirmations now belong to
 `Workflows/RepositoryConfirmationController`. It owns subscriptions and cancellation
 via the window dialog gate, with repository-identity checks before commands.

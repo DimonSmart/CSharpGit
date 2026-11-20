@@ -391,8 +391,10 @@ public sealed partial class MainPage : Page
             case RepositoryToolbarAction.RefreshIndicator:
                 RunPageUiOperation(_manualRefresh.RefreshAsync, "Repository refresh indicator"); break;
             case RepositoryToolbarAction.OpenRepository: OpenRepository_Click(this, args); break;
-            case RepositoryToolbarAction.CloneRepository: CloneRepository_Click(this, args); break;
-            case RepositoryToolbarAction.CreateRepository: CreateRepository_Click(this, args); break;
+            case RepositoryToolbarAction.CloneRepository:
+                RunPageUiOperation(_cloneWorkflow.ShowAsync, "CloneRepository_Click"); break;
+            case RepositoryToolbarAction.CreateRepository:
+                RunPageUiOperation(_creationWorkflow.ShowAsync, "CreateRepository_Click"); break;
             case RepositoryToolbarAction.Repositories: Repositories_Click(this, args); break;
             case RepositoryToolbarAction.CloseRepository: CloseRepository_Click(this, args); break;
             case RepositoryToolbarAction.RepositorySettings: _settingsWindowController.Open(SettingsSection.Identity); break;

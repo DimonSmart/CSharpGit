@@ -26,8 +26,8 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
             new RepositorySelectorActions(
                 TrySwitchRepositoryAsync,
                 OpenRepositoryPickerAsync,
-                ShowCloneRepositoryAsync,
-                ShowCreateRepositoryAsync,
+                () => _cloneWorkflow.ShowAsync(),
+                () => _creationWorkflow.ShowAsync(),
                 TryCloseRepositoryAsync,
                 path => OpenFolderInDesktopShellAsync(path, "Could not open repository folder"),
                 CopyTextAsync,

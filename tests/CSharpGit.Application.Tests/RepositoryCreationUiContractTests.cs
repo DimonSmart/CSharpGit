@@ -18,7 +18,7 @@ public sealed class RepositoryCreationUiContractTests
         var recentIntegration = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
         var workflow = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.RepositoryCreation.cs"));
+            root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryCreationWorkflow.cs"));
 
         Assert.Contains("Select folder…", mainXaml);
         Assert.Contains("Create repository…", mainXaml);
@@ -27,9 +27,9 @@ public sealed class RepositoryCreationUiContractTests
         Assert.Contains("Create a new local repository…", recentXaml);
         Assert.Contains("CreateRepositoryCommand", recentXaml);
         Assert.Contains("CreateRepositoryCommand", recentViewModel);
-        Assert.Contains("ShowCreateRepositoryAsync", recentIntegration);
-        Assert.Contains("ShowCreateRepositoryAsync", workflow);
-        Assert.Equal(1, Count(workflow, "private async Task ShowCreateRepositoryAsync()"));
+        Assert.Contains("() => _creationWorkflow.ShowAsync()", recentIntegration);
+        Assert.Contains("internal async Task ShowAsync()", workflow);
+        Assert.Equal(1, Count(workflow, "internal async Task ShowAsync()"));
     }
 
     [Fact]
@@ -37,7 +37,7 @@ public sealed class RepositoryCreationUiContractTests
     {
         var root = FindRepositoryRoot();
         var workflow = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.RepositoryCreation.cs"));
+            root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryCreationWorkflow.cs"));
         var viewModel = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "ViewModels", "CreateRepositoryViewModel.cs"));
 
@@ -51,9 +51,9 @@ public sealed class RepositoryCreationUiContractTests
         Assert.Contains("CloseButtonText = \"Cancel\"", workflow);
         Assert.Contains("DefaultButton = ContentDialogButton.Primary", workflow);
         Assert.Contains("IsPrimaryButtonEnabled", workflow);
-        Assert.Contains("await ShowPageDialogAsync(dialog) == ContentDialogResult.Primary", workflow);
+        Assert.Contains("await _showDialog(dialog) == ContentDialogResult.Primary", workflow);
         Assert.DoesNotContain("await dialog.ShowAsync()", workflow);
-        Assert.Contains("if (IsShuttingDown) return;", workflow);
+        Assert.Contains("if (_isShuttingDown()) return;", workflow);
 
         Assert.Contains(
             "RepositoryCreationKind.WorkingTree",
@@ -68,7 +68,7 @@ public sealed class RepositoryCreationUiContractTests
     {
         var root = FindRepositoryRoot();
         var workflow = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.RepositoryCreation.cs"));
+            root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryCreationWorkflow.cs"));
         var openViewModel = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var mainPage = File.ReadAllText(Path.Combine(
@@ -76,7 +76,7 @@ public sealed class RepositoryCreationUiContractTests
         var switching = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "MainPage.RepositorySwitching.cs"));
 
-        Assert.Contains("ConfirmDiscardCommitMessageAsync(closing: false)", workflow);
+        Assert.Contains("_confirmDiscardDraft()", workflow);
         Assert.Contains("Discard commit message?", switching);
         Assert.Contains(
             "Opening another repository will discard the current commit message.",
@@ -91,7 +91,7 @@ public sealed class RepositoryCreationUiContractTests
                 "_createRepositoryViewModel.CreateAsync()",
                 StringComparison.Ordinal));
 
-        Assert.Contains("SwitchRepositoryCoreAsync(path, discardDraft, admission)", workflow);
+        Assert.Contains("_switchRepository(path, discardDraft, admission)", workflow);
         Assert.Contains("TryBeginRepositoryLifecycle()", workflow);
         Assert.Contains("OpenRepositoryPathAsync", switching);
         Assert.Contains("OpenRepositoryPathAsync", openViewModel);
@@ -110,7 +110,7 @@ public sealed class RepositoryCreationUiContractTests
     {
         var root = FindRepositoryRoot();
         var workflow = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.RepositoryCreation.cs"));
+            root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryCreationWorkflow.cs"));
 
         Assert.Contains(
             "_createRepositoryViewModel.RepositoryType",

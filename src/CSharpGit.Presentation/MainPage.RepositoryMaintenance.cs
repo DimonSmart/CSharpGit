@@ -17,6 +17,12 @@ public sealed partial class MainPage
     private Dialogs.GitCommandFeedbackController _feedback = null!;
     private readonly Workflows.RepositoryManualRefreshController _manualRefresh = null!;
     private readonly Workflows.RepositoryConfirmationController _confirmationController = null!;
+    private readonly CloneRepositoryViewModel _cloneRepositoryViewModel = null!;
+    private readonly CreateRepositoryViewModel _createRepositoryViewModel = null!;
+    private readonly Workflows.RepositoryCloneWorkflow _cloneWorkflow = null!;
+    private readonly Workflows.RepositoryCreationWorkflow _creationWorkflow = null!;
+    private bool _repositoryCloningWorkflowActive => _cloneWorkflow?.IsActive == true;
+    private bool _repositoryCreationWorkflowActive => _creationWorkflow?.IsActive == true;
     private readonly Workflows.RecentRepositoryPickerWorkflow _repositoryPicker = null!;
     private readonly IDesktopShellService _desktopShellService = null!;
     private IAppSettingsService _recentRepositorySettings = null!;
@@ -138,8 +144,8 @@ public sealed partial class MainPage
             _desktopShellService.OpenFolderDescription,
             new StartScreenActions(
                 OpenRepositoryPickerAsync,
-                ShowCloneRepositoryAsync,
-                ShowCreateRepositoryAsync,
+                () => _cloneWorkflow.ShowAsync(),
+                () => _creationWorkflow.ShowAsync(),
                 TrySwitchRepositoryAsync,
                 ShowUnavailableRepositoryAsync,
                 path => OpenFolderInDesktopShellAsync(path, "Could not open repository folder"),
@@ -161,6 +167,25 @@ public sealed partial class MainPage
             _gitCommandActivitySource, _gitConsoleSettings,
             FloatingGitCommandFeedbackView, GitCommandFeedbackModalHost,
             RootLayout, GitConsoleHost, DispatcherQueue, () => IsShuttingDown);
+        _cloneWorkflow = new Workflows.RepositoryCloneWorkflow(
+            _viewModel, _cloneRepositoryViewModel,
+            () => _repositoryCreationWorkflowActive,
+            () => IsShuttingDown,
+            () => ConfirmDiscardCommitMessageAsync(closing: false),
+            SwitchRepositoryCoreAsync,
+            () => XamlRoot,
+            ShowPageDialogAsync,
+            (operation, description) => RunPageUiOperation(operation, description),
+            _feedback);
+        _creationWorkflow = new Workflows.RepositoryCreationWorkflow(
+            _viewModel, _createRepositoryViewModel,
+            () => _repositoryCloningWorkflowActive,
+            () => IsShuttingDown,
+            () => ConfirmDiscardCommitMessageAsync(closing: false),
+            SwitchRepositoryCoreAsync,
+            () => XamlRoot,
+            ShowPageDialogAsync,
+            (operation, description) => RunPageUiOperation(operation, description));
         _feedback.InitializeGitCommandFeedback();
         GitConsoleHost.Configure(
             _gitCommandActivitySource, _gitConsoleSettings, RootLayout,

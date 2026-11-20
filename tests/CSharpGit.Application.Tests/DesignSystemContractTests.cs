@@ -213,7 +213,7 @@ public sealed class DesignSystemContractTests
 
         foreach (var file in new[]
         {
-            "MainPage.RepositoryCloning.cs", "MainPage.RepositoryCreation.cs",
+            "Workflows/RepositoryCloneWorkflow.cs", "Workflows/RepositoryCreationWorkflow.cs",
             "MainPage.ForcePush.cs", "MainPage.Stashes.cs", "MainPage.Worktrees.cs",
             "MainPage.BranchDeletion.cs", "MainPage.Tags.cs", "Dialogs/AboutUpdateDialogController.cs"
         })
