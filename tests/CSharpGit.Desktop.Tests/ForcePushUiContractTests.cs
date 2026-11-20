@@ -107,7 +107,7 @@ public sealed class ForcePushUiContractTests
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"))
             + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml"));
-        var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Dialogs.cs"));
+        var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Dialogs", "PageDialogController.cs"));
 
         Assert.DoesNotContain("GitOperationsDialog", xaml + dialogs, StringComparison.Ordinal);
         Assert.DoesNotContain("More Git operations…", xaml, StringComparison.Ordinal);

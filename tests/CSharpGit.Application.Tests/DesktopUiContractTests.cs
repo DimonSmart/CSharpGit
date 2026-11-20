@@ -51,7 +51,7 @@ public sealed class DesktopUiContractTests
         var root = FindRepositoryRoot();
         var mainXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
-        var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Dialogs.cs"));
+        var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Dialogs", "PageDialogController.cs"));
         var settingsWindow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsWindowController.cs"));
         var settingsXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml"));
         var settingsPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "SettingsPage.xaml.cs"));
