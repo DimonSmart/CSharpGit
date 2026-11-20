@@ -74,7 +74,7 @@ public sealed class HistoryDiffUiContractTests
     {
         var root = FindRepositoryRoot();
         var lazy = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs"));
-        var overlays = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.LoadingOverlays.cs"));
+        var overlays = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "CommitLoadingOverlayController.cs"));
 
         Assert.Contains("ChangedFilesDebounceMilliseconds = 120", lazy);
         Assert.Contains("_changedFilesLoadCts", lazy);
