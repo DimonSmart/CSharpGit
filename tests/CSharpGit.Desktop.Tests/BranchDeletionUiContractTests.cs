@@ -91,7 +91,7 @@ public sealed class BranchDeletionUiContractTests
         Assert.Contains("Delete all branches in this folder…", menu, StringComparison.Ordinal);
         Assert.Contains("Delete all remote branches in this folder…", menu, StringComparison.Ordinal);
         Assert.Contains("!_viewModel.IsBusy", menu, StringComparison.Ordinal);
-        Assert.Contains("ConfirmDeleteBranchFolderAsync(node, folderInfo)", menu, StringComparison.Ordinal);
+        Assert.Contains("_branchFolderDeletion.ConfirmDeleteAsync(node, folderInfo)", menu, StringComparison.Ordinal);
         Assert.DoesNotContain("case RepositoryTreeNodeKind.Group when node.Name == \"Branches\"", menu, StringComparison.Ordinal);
         Assert.Contains("case RepositoryTreeNodeKind.Remote when node.Value is GitRemote remote:", menu, StringComparison.Ordinal);
         Assert.Contains("Remove remote…", menu, StringComparison.Ordinal);
@@ -102,7 +102,7 @@ public sealed class BranchDeletionUiContractTests
     public void BranchFolderDeletionLeavesTreeTranslationInViewAndMutationInFeature()
     {
         var root = FindRepositoryRoot();
-        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchFolderDeletion.cs"));
+        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "BranchFolderDeletionController.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "BranchesViewModel.cs"));
         var planner = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "BranchFolderDeletionPlanning.cs"));
 

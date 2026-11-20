@@ -17,17 +17,17 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
 
     private void MainPage_Loaded(object sender, RoutedEventArgs args)
     {
-        InitializeCommitDetailsSurface();
-        InitializeConfirmationDialogs();
-        InitializeBranchRename();
-        InitializeBranchDragDrop();
+        _commitDetailsLayout.Initialize();
+        _confirmationController.Initialize();
+        _branchRename.Initialize();
+        _branchDragDrop.Initialize();
         RepositoryToolbar.Configure(HandleRepositoryToolbarAction);
         RepositoryHeader.Configure(_viewModel, _recentRepositorySettings, _desktopShellService,
             new RepositorySelectorActions(
                 TrySwitchRepositoryAsync,
                 OpenRepositoryPickerAsync,
-                ShowCloneRepositoryAsync,
-                ShowCreateRepositoryAsync,
+                () => _cloneWorkflow.ShowAsync(),
+                () => _creationWorkflow.ShowAsync(),
                 TryCloseRepositoryAsync,
                 path => OpenFolderInDesktopShellAsync(path, "Could not open repository folder"),
                 CopyTextAsync,
@@ -43,13 +43,13 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
     public Task PrepareForShutdown()
     {
         if (Interlocked.Exchange(ref _shutdownStarted, 1) != 0) return Task.CompletedTask;
-        _pageDialogLifetime.Cancel();
-        ShutdownRepositoryChangeMonitoring();
+        _pageDialogs.Shutdown();
+        _repositoryRefresh.ShutdownRepositoryChangeMonitoring();
         // Stop page-owned cancelable previews before waiting for diagnostics.
         // Do not cancel Git mutations: close admission already protects them.
-        CancelRepositoryFilePreview();
-        CancelCommitImageDiff(clearSurface: false);
-        CancelWorkingTreeImageDiff();
+        _repositoryFilePreview.Cancel();
+        _commitImageDiff.Cancel(clearSurface: false);
+        _workingTreeImageDiff.Cancel();
         _cloneRepositoryViewModel.Cancel();
         return HistoryView.StopHistoryPerformanceCaptureOnShutdown();
     }
@@ -58,7 +58,7 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
     {
         if (Interlocked.Exchange(ref _shutdownFinalized, 1) != 0) return;
         Volatile.Write(ref _shutdownStarted, 1);
-        _pageDialogLifetime.Cancel();
+        _pageDialogs.Shutdown();
         _cloneRepositoryViewModel.Cancel();
         Loaded -= RunDesktopCheckWhenRequested;
         _viewModel.WorkingTree.Changes.CollectionChanged -= RepositoryPresentationChanges_CollectionChanged;
@@ -68,19 +68,24 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         _viewModel.Tags.Items.CollectionChanged -= RepositoryPresentationTags_CollectionChanged;
         _viewModel.Stashes.Items.CollectionChanged -= RepositoryPresentationStashes_CollectionChanged;
         DetachRepositoryTreeStateTracking();
+        ShutdownRepositoryHistoryRewriteMenus();
         WorkingTreeCommitEditor.StashRequested -= CreateStash_Click;
         HistoryView.Shutdown();
-        ShutdownGitConsole();
+        GitConsoleHost.Shutdown();
+        _feedback.ShutdownGitCommandFeedback();
         StartScreenHost.ShutdownRecentRepositories();
         RepositoryHeader.Shutdown();
+        _branchDragDrop.Shutdown();
+        _branchRename.Shutdown();
+        _commitDetailsLayout.Shutdown();
         RepositoryToolbar.Shutdown();
-        ShutdownRepositoryChangeMonitoring();
-        _changedFilesViewport?.Dispose();
+        _repositoryRefresh.ShutdownRepositoryChangeMonitoring();
+        _changesTree?.Shutdown();
         _unstagedViewport?.Dispose();
         _stagedViewport?.Dispose();
         _commitSummaryViewport?.Dispose();
         _stashSummaryViewport?.Dispose();
-        ShutdownWorktreeSupport();
+        _worktrees.Shutdown();
         _settingsWindowController.Shutdown();
 
         _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
@@ -89,7 +94,7 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         _viewModel.History.PropertyChanged -= HistoryViewModel_PropertyChanged;
         _viewModel.History.CommitLookupCompleted -= History_CommitLookupCompleted;
         _viewModel.CommitDetails.PropertyChanged -= ChangesViewModel_PropertyChanged;
-        _viewModel.CommitCreation.PropertyChanged -= CommitCreationViewModel_PropertyChanged;
+        _confirmationController.Shutdown();
         _viewModel.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
         _viewModel.CommitDetails.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
         _viewModel.History.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
@@ -97,8 +102,6 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         _viewModel.WorkingTree.PropertyChanged -= WorkingTreeFileOpening_PropertyChanged;
         _fileActions.PropertyChanged -= FileActions_PropertyChanged;
         ChangedFilesTree.RightTapped -= ChangedFilesTree_RightTapped;
-        ChangedFilesTree.Expanding -= ChangedFilesTree_Expanding;
-        ChangedFilesTree.Collapsed -= ChangedFilesTree_Collapsed;
         UnstagedChangesTree.Expanding -= WorkingTreeTree_Expanding;
         UnstagedChangesTree.Collapsed -= WorkingTreeTree_Collapsed;
         StagedChangesTree.Expanding -= WorkingTreeTree_Expanding;
@@ -109,7 +112,6 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         UnstagedChangesList.DoubleTapped -= WorkingTreeChanges_DoubleTapped;
         StagedChangesList.DoubleTapped -= WorkingTreeChanges_DoubleTapped;
         // Window DI scope owns disposal of resolved feature models.
-        _viewModel.WorkingTree.PropertyChanged -= WorkingTreeConfirmation_PropertyChanged;
         _repositoryFilesViewModel.PropertyChanged -= RepositoryFilesViewModel_PropertyChanged;
 
         _viewModel.PropertyChanged -= RepositoryMaintenanceViewModel_PropertyChanged;

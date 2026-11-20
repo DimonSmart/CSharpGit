@@ -4,17 +4,43 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Windows.System;
 
-namespace CSharpGit.Presentation;
+using CSharpGit.Presentation.ViewModels;
+using CSharpGit.Presentation.Views;
 
-public sealed partial class MainPage
+namespace CSharpGit.Presentation.Workflows;
+
+// One window-owned workflow for F2, context-menu and drag-drop branch renaming.
+internal sealed class BranchRenameController(
+    OpenRepositoryViewModel viewModel,
+    WorktreesViewModel worktreesViewModel,
+    TreeView tree,
+    Func<XamlRoot?> xamlRoot,
+    Func<ContentDialog, Task<ContentDialogResult>> showDialog,
+    Func<bool> isShuttingDown,
+    Action<Func<Task>, string> runUiOperation)
 {
-    private void InitializeBranchRename()
+    private readonly OpenRepositoryViewModel _viewModel = viewModel;
+    private readonly WorktreesViewModel _worktreesViewModel = worktreesViewModel;
+    private readonly TreeView _tree = tree;
+    private readonly Func<XamlRoot?> _xamlRoot = xamlRoot;
+    private readonly Func<ContentDialog, Task<ContentDialogResult>> _showDialog = showDialog;
+    private readonly Func<bool> _isShuttingDown = isShuttingDown;
+    private readonly Action<Func<Task>, string> _runUiOperation = runUiOperation;
+    private TreeView RepositoryTree => _tree;
+    private static RepositoryTreeNode? ResolveNode(object? value) => RepositoryExplorerView.ResolveNode(value);
+
+    internal Task RenameAsync(GitBranch branch) => RenameBranchAsync(branch);
+    internal Task ExecuteAsync(GitBranch branch, string newName) => ExecuteBranchRenameAsync(branch, newName);
+
+    internal void Shutdown() => RepositoryTree.KeyDown -= RepositoryTree_KeyDown;
+
+    internal void Initialize()
     {
         RepositoryTree.KeyDown -= RepositoryTree_KeyDown;
         RepositoryTree.KeyDown += RepositoryTree_KeyDown;
     }
 
-    private bool CanRenameBranch() => _viewModel.Branches.CanRename;
+    internal bool CanRenameBranch() => _viewModel.Branches.CanRename;
 
     private void RepositoryTree_KeyDown(object sender, KeyRoutedEventArgs e)
     {
@@ -26,7 +52,7 @@ public sealed partial class MainPage
         e.Handled = true;
         if (!CanRenameBranch()) return;
 
-        RunPageUiOperation(() => RenameBranchAsync(branch), "Rename branch");
+        _runUiOperation(() => RenameBranchAsync(branch), "Rename branch");
     }
 
     private async Task RenameBranchAsync(GitBranch branch)
@@ -44,7 +70,7 @@ public sealed partial class MainPage
         };
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "Rename branch",
             Content = nameBox,
             PrimaryButtonText = "Rename",
@@ -62,8 +88,8 @@ public sealed partial class MainPage
         nameBox.TextChanged += (_, _) => UpdatePrimaryButton();
         UpdatePrimaryButton();
 
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
-            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+        if (await _showDialog(dialog) != ContentDialogResult.Primary
+            || _isShuttingDown() || !ReferenceEquals(repository, _viewModel.Repository)
             || !CanRenameBranch()) return;
 
         var newName = nameBox.Text.Trim();

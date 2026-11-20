@@ -2,13 +2,29 @@ using CSharpGit.Domain;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace CSharpGit.Presentation;
+using CSharpGit.Presentation;
+using CSharpGit.Presentation.ViewModels;
 
-public sealed partial class MainPage
+namespace CSharpGit.Presentation.Workflows;
+
+// Owns the two branch-folder deletion confirmation flows and partial-failure reports.
+internal sealed class BranchFolderDeletionController(
+    OpenRepositoryViewModel viewModel,
+    Func<XamlRoot?> xamlRoot,
+    Func<ContentDialog, Task<ContentDialogResult>> showDialog,
+    Func<bool> isShuttingDown,
+    Func<string, string, Task> showError,
+    Func<string, string, Task> showInformation)
 {
+    private readonly OpenRepositoryViewModel _viewModel = viewModel;
+    private readonly Func<XamlRoot?> _xamlRoot = xamlRoot;
+    private readonly Func<ContentDialog, Task<ContentDialogResult>> _showDialog = showDialog;
+    private readonly Func<bool> _isShuttingDown = isShuttingDown;
+    private readonly Func<string, string, Task> _showError = showError;
+    private readonly Func<string, string, Task> _showInformation = showInformation;
     private const double BranchFolderListMaxHeight = 360;
 
-    private async Task ConfirmDeleteBranchFolderAsync(
+    internal async Task ConfirmDeleteAsync(
         RepositoryTreeNode folderNode,
         BranchFolderInfo folderInfo)
     {
@@ -77,7 +93,7 @@ public sealed partial class MainPage
 
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = $"Delete branches in '{folderInfo.Prefix}'?",
             Content = content,
             PrimaryButtonText = $"Delete {plan.Attempted} branches",
@@ -85,13 +101,13 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Close
         };
 
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary)
+        if (await _showDialog(dialog) != ContentDialogResult.Primary)
             return;
 
         var deletionMode = forceDeleteCheckBox.IsChecked == true
             ? BranchDeletionMode.Force
             : BranchDeletionMode.Safe;
-        if (IsShuttingDown || !ReferenceEquals(originalRepository, _viewModel.Repository)
+        if (_isShuttingDown() || !ReferenceEquals(originalRepository, _viewModel.Repository)
             || _viewModel.IsBusy) return;
         var repository = originalRepository;
 
@@ -133,7 +149,7 @@ public sealed partial class MainPage
         }
         catch (InvalidOperationException exception)
         {
-            await ShowErrorAsync(
+            await _showError(
                 "Could not delete remote branches",
                 $"{exception.Message}\n\nRefresh the repository and try again.");
             return;
@@ -141,7 +157,7 @@ public sealed partial class MainPage
 
         if (targets.Count == 0)
         {
-            await ShowInformationAsync(
+            await _showInformation(
                 "No remote branches to delete",
                 $"The folder '{folderInfo.RemoteName}/{folderInfo.Prefix}' contains no remote branch leaves.");
             return;
@@ -161,7 +177,7 @@ public sealed partial class MainPage
         var folderDisplay = $"{folderInfo.RemoteName}/{folderInfo.Prefix}";
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = $"Delete remote branches in '{folderDisplay}'?",
             Content = content,
             PrimaryButtonText = $"Delete {targets.Count} branches",
@@ -169,10 +185,10 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Close
         };
 
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary)
+        if (await _showDialog(dialog) != ContentDialogResult.Primary)
             return;
 
-        if (IsShuttingDown || !ReferenceEquals(originalRepository, _viewModel.Repository)
+        if (_isShuttingDown() || !ReferenceEquals(originalRepository, _viewModel.Repository)
             || _viewModel.IsBusy) return;
         var repository = originalRepository;
 
@@ -227,13 +243,13 @@ public sealed partial class MainPage
 
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = $"No branches can be deleted from '{folderInfo.Prefix}'.",
             Content = content,
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close
         };
-        await ShowPageDialogAsync(dialog);
+        await _showDialog(dialog);
     }
 
     private async Task ShowBranchFolderDeletionFailuresAsync(
@@ -281,13 +297,13 @@ public sealed partial class MainPage
 
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = remote ? "Some remote branches were not deleted" : "Some branches were not deleted",
             Content = content,
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close
         };
-        await ShowPageDialogAsync(dialog);
+        await _showDialog(dialog);
     }
 
     private static ScrollViewer CreateBoundedBranchList(UIElement content) =>

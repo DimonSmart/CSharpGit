@@ -131,7 +131,8 @@ public sealed class DesignSystemContractTests
         Assert.Contains("SetActive(active)", changes);
         Assert.Contains("UpdateRepositoryFilesViewActivity();", changes);
         Assert.Contains("UpdateChangesViewActivity();", changes);
-        Assert.Contains("Changes ({_commitFiles.Count})", changes);
+        var changedTree = Read(root, "src", "CSharpGit.Presentation", "Workflows", "CommitChangedFileTreeController.cs");
+        Assert.Contains("Changes ({_commitFiles.Count})", changedTree);
         var navigation = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs");
         Assert.Contains("\"Tracked files\"", navigation);
         Assert.Contains("\"Stash\"", mainCode + changes + files + 
@@ -213,9 +214,9 @@ public sealed class DesignSystemContractTests
 
         foreach (var file in new[]
         {
-            "MainPage.RepositoryCloning.cs", "MainPage.RepositoryCreation.cs",
-            "MainPage.ForcePush.cs", "MainPage.Stashes.cs", "MainPage.Worktrees.cs",
-            "MainPage.BranchDeletion.cs", "MainPage.Tags.cs", "MainPage.About.cs"
+            "Workflows/RepositoryCloneWorkflow.cs", "Workflows/RepositoryCreationWorkflow.cs",
+            "MainPage.ForcePush.cs", "Workflows/StashDialogController.cs", "Workflows/WorktreeController.cs",
+            "MainPage.BranchDeletion.cs", "MainPage.Tags.cs", "Dialogs/AboutUpdateDialogController.cs"
         })
         {
             var dialog = Read(root, "src", "CSharpGit.Presentation", file);

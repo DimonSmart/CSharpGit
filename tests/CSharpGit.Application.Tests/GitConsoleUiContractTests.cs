@@ -30,8 +30,9 @@ public sealed class GitConsoleUiContractTests
         Assert.Contains("All commands", consoleCode);
         Assert.DoesNotContain("Run again", consoleXaml, StringComparison.OrdinalIgnoreCase);
 
-        var pageIntegration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.GitConsole.cs"));
-        Assert.Contains("InitializeGitConsole", pageIntegration);
+        var pageIntegration = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
+        Assert.False(File.Exists(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.GitConsole.cs")));
+        Assert.Contains("GitConsoleHost.Configure(", pageIntegration);
         Assert.Contains("GitConsoleAutoOpenMode.Always", integration);
         Assert.Contains("GitConsoleAutoOpenMode.OnErrors", integration);
         Assert.Contains("GitCommandKind.User", integration);

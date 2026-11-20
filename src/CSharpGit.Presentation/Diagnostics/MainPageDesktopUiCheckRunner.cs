@@ -82,7 +82,7 @@ public sealed partial class MainPage
                 Check(_page._viewModel.WorkingTree.Changes.Count > 0, $"working tree changes were not loaded: {_page._viewModel.ErrorMessage}", failures);
                 Check(_page._viewModel.History.Rows.Count > 0, $"history was not loaded: {_page._viewModel.ErrorMessage}", failures);
                 await WaitUntilAsync(
-                    () => _page.RepositoryWorkspace.ActualWidth > 0 && _page.RepositoryWorkspace.ActualHeight > 0 && _page.HistoryList.ActualWidth > 0 && _page.HistoryList.ActualHeight > 0,
+                    () => _page.RepositoryWorkspace.ActualWidth > 0 && _page.RepositoryWorkspace.ActualHeight > 0 && _page.HistoryView.List.ActualWidth > 0 && _page.HistoryView.List.ActualHeight > 0,
                     TimeSpan.FromSeconds(10));
                 Check(_page._viewModel.Repository is not null, "repository did not open", failures);
                 Check(_page._viewModel.Repository?.IsWorktree == (Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_WORKTREE") == "1"), "repository kind is incorrect", failures);
@@ -105,7 +105,7 @@ public sealed partial class MainPage
                 await WaitUntilAsync(() => _page.RequestedTheme == ElementTheme.Light, TimeSpan.FromSeconds(5));
                 Check(_page.RequestedTheme == ElementTheme.Light, "Light theme was not applied to the main root", failures);
 
-                _page.OpenSettingsWindow();
+                _page._settingsWindowController.Open(SettingsSection.General);
                 await WaitUntilAsync(() => _page._settingsWindowController.CurrentPage is { RequestedTheme: ElementTheme.Light }, TimeSpan.FromSeconds(5));
                 Check(_page._settingsWindowController.CurrentPage is { RequestedTheme: ElementTheme.Light }, "new settings root did not receive the current theme", failures);
 
@@ -130,20 +130,20 @@ public sealed partial class MainPage
                 Check(_page.RequestedTheme == ElementTheme.Default, "Dark to System did not clear the main root override", failures);
 
                 Check(_page.RepositoryWorkspace.ActualWidth > 0 && _page.RepositoryWorkspace.ActualHeight > 0, "workspace was not laid out", failures);
-                Check(_page.HistoryList.ActualWidth > 0 && _page.HistoryList.ActualHeight > 0, "history list was not laid out", failures);
+                Check(_page.HistoryView.List.ActualWidth > 0 && _page.HistoryView.List.ActualHeight > 0, "history list was not laid out", failures);
                 Check(_page.RepositoryTree.ActualWidth > 0 && _page.RepositoryExplorer.RootsForCheck.Count >= 4, "repository tree was not laid out", failures);
                 Check(_page.DetailsScroller.HorizontalScrollBarVisibility == ScrollBarVisibility.Disabled && _page.DetailsScroller.VerticalScrollBarVisibility == ScrollBarVisibility.Auto, "detail message wrapping is not configured", failures);
                 await WaitUntilAsync(
-                    () => _page._commitDetailsView is { ActualWidth: > 0 } && _page.DetailsScroller.ViewportWidth > 0,
+                    () => _page.CommitDetailsContent is { ActualWidth: > 0 } && _page.DetailsScroller.ViewportWidth > 0,
                     TimeSpan.FromSeconds(5));
-                var commitMessageText = _page._commitDetailsView is null ? null : FindDescendant<TextBlock>(_page._commitDetailsView);
+                var commitMessageText = _page.CommitDetailsContent is null ? null : FindDescendant<TextBlock>(_page.CommitDetailsContent);
                 var historyOrigin = _page.HistoryPane.TransformToVisual(null).TransformPoint(default);
                 var availableDetailsWidth = ((Microsoft.UI.Xaml.Application.Current as App)?.MainWindowClientWidth ?? 0) /
                                             (_page.XamlRoot?.RasterizationScale ?? 1) - historyOrigin.X;
-                Check(_page._commitDetailsView is not null && _page._commitDetailsView.ActualWidth <= availableDetailsWidth + 1, "commit details exceed the visible window viewport", failures);
+                Check(_page.CommitDetailsContent is not null && _page.CommitDetailsContent.ActualWidth <= availableDetailsWidth + 1, "commit details exceed the visible window viewport", failures);
                 Check(
                     commitMessageText is not null && commitMessageText.ActualHeight > commitMessageText.FontSize * 2,
-                    $"long commit message did not wrap to multiple lines: viewport={_page.DetailsScroller.ViewportWidth}, details={_page._commitDetailsView?.ActualWidth}, text={commitMessageText?.ActualWidth}x{commitMessageText?.ActualHeight}, font={commitMessageText?.FontSize}, length={commitMessageText?.Text.Length}, window={(Microsoft.UI.Xaml.Application.Current as App)?.MainWindowClientWidth}, scale={_page.XamlRoot?.RasterizationScale}, historyOrigin={historyOrigin.X}",
+                    $"long commit message did not wrap to multiple lines: viewport={_page.DetailsScroller.ViewportWidth}, details={_page.CommitDetailsContent?.ActualWidth}, text={commitMessageText?.ActualWidth}x{commitMessageText?.ActualHeight}, font={commitMessageText?.FontSize}, length={commitMessageText?.Text.Length}, window={(Microsoft.UI.Xaml.Application.Current as App)?.MainWindowClientWidth}, scale={_page.XamlRoot?.RasterizationScale}, historyOrigin={historyOrigin.X}",
                     failures);
                 if (Microsoft.UI.Xaml.Application.Current is App resizeCheckApp && commitMessageText is not null)
                 {
@@ -152,7 +152,7 @@ public sealed partial class MainPage
                     resizeCheckApp.ResizeMainWindowForCheck(700, 900);
                     await WaitUntilAsync(
                         () => resizeCheckApp.MainWindowClientWidth < 800 &&
-                              _page._commitDetailsView!.ActualWidth < availableDetailsWidth - 200 &&
+                              _page.CommitDetailsContent!.ActualWidth < availableDetailsWidth - 200 &&
                               commitMessageText.ActualHeight > wideMessageHeight,
                         TimeSpan.FromSeconds(5));
                     var narrowMessageHeight = commitMessageText.ActualHeight;
@@ -160,7 +160,7 @@ public sealed partial class MainPage
                         "commit message moved away from its left edge after shrinking the window", failures);
                     resizeCheckApp.ResizeMainWindowForCheck(1400, 900);
                     await WaitUntilAsync(
-                        () => _page._commitDetailsView!.ActualWidth >= availableDetailsWidth - 1 &&
+                        () => _page.CommitDetailsContent!.ActualWidth >= availableDetailsWidth - 1 &&
                               commitMessageText.ActualHeight < narrowMessageHeight,
                         TimeSpan.FromSeconds(5));
                     Check(Math.Abs(commitMessageText.TransformToVisual(_page.HistoryPane).TransformPoint(default).X - messageLeft) <= 1,

@@ -1,34 +1,49 @@
 using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
+using CSharpGit.Presentation;
+using CSharpGit.Presentation.Dialogs;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace CSharpGit.Presentation;
+namespace CSharpGit.Presentation.Workflows;
 
-public sealed partial class MainPage
+/// <summary>Owns the repository creation UI workflow and its admission/disposal lifecycle for one window.</summary>
+internal sealed class RepositoryCreationWorkflow(
+    OpenRepositoryViewModel viewModel,
+    CreateRepositoryViewModel workflowViewModel,
+    Func<bool> otherWorkflowActive,
+    Func<bool> isShuttingDown,
+    Func<Task<bool>> confirmDiscardDraft,
+    Func<string, bool, OpenRepositoryViewModel.UserGitOperationLease?, Task<bool>> switchRepository,
+    Func<XamlRoot?> xamlRoot,
+    Func<ContentDialog, Task<ContentDialogResult>> showDialog,
+    Action<Func<Task>, string> runUiOperation)
 {
-    private readonly CreateRepositoryViewModel _createRepositoryViewModel = null!;
-    private bool _repositoryCreationWorkflowActive;
+    private readonly OpenRepositoryViewModel _viewModel = viewModel;
+    private readonly CreateRepositoryViewModel _createRepositoryViewModel = workflowViewModel;
+    private readonly Func<bool> _otherWorkflowActive = otherWorkflowActive;
+    private readonly Func<bool> _isShuttingDown = isShuttingDown;
+    private readonly Func<Task<bool>> _confirmDiscardDraft = confirmDiscardDraft;
+    private readonly Func<string, bool, OpenRepositoryViewModel.UserGitOperationLease?, Task<bool>> _switchRepository = switchRepository;
+    private readonly Func<XamlRoot?> _xamlRoot = xamlRoot;
+    private readonly Func<ContentDialog, Task<ContentDialogResult>> _showDialog = showDialog;
+    private readonly Action<Func<Task>, string> _runUiOperation = runUiOperation;
+    private bool _active;
+    internal bool IsActive => _active;
 
-    private void CreateRepository_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(() => CreateRepository_ClickCoreAsync(sender, e), "CreateRepository_Click");
-
-    private async Task CreateRepository_ClickCoreAsync(object sender, RoutedEventArgs e) =>
-        await ShowCreateRepositoryAsync();
-
-    private async Task ShowCreateRepositoryAsync()
+    internal async Task ShowAsync()
     {
-        if (IsShuttingDown || _repositoryCreationWorkflowActive
-            || _repositoryCloningWorkflowActive
+        if (_isShuttingDown() || _active
+            || _otherWorkflowActive()
             || _viewModel.IsBusy)
             return;
 
-        _repositoryCreationWorkflowActive = true;
+        _active = true;
         try
         {
             _createRepositoryViewModel.Reset();
-            if (!await ShowCreateRepositoryDialogAsync() || IsShuttingDown)
+            if (!await ShowCreateRepositoryDialogAsync() || _isShuttingDown())
                 return;
 
             var opensWorkspace =
@@ -40,12 +55,12 @@ public sealed partial class MainPage
                 && _viewModel.CommitCreation.HasUnappliedCommitMessage)
             {
                 discardDraft =
-                    await ConfirmDiscardCommitMessageAsync(closing: false);
-                if (!discardDraft || IsShuttingDown)
+                    await _confirmDiscardDraft();
+                if (!discardDraft || _isShuttingDown())
                     return;
             }
 
-            if (IsShuttingDown) return;
+            if (_isShuttingDown()) return;
             using var admission = _viewModel.TryBeginRepositoryLifecycle();
             if (admission is null) return;
 
@@ -59,7 +74,7 @@ public sealed partial class MainPage
                 return;
             }
 
-            if (IsShuttingDown) return;
+            if (_isShuttingDown()) return;
             if (!created)
             {
                 await ShowRepositoryCreationMessageAsync(
@@ -78,7 +93,7 @@ public sealed partial class MainPage
                 return;
             }
 
-            var opened = await SwitchRepositoryCoreAsync(path, discardDraft, admission);
+            var opened = await _switchRepository(path, discardDraft, admission);
             if (!opened)
             {
                 await ShowRepositoryCreationMessageAsync(
@@ -93,7 +108,7 @@ public sealed partial class MainPage
         }
         finally
         {
-            _repositoryCreationWorkflowActive = false;
+            _active = false;
         }
     }
 
@@ -176,7 +191,7 @@ public sealed partial class MainPage
 
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "Create new repository",
             Content = content,
             PrimaryButtonText = "Create",
@@ -220,7 +235,7 @@ public sealed partial class MainPage
         directoryBox.TextChanged += (_, _) =>
             _createRepositoryViewModel.Directory = directoryBox.Text;
         browseButton.Click += (_, _) =>
-            RunPageUiOperation(BrowseForCreationAsync, "Create repository folder picker");
+            _runUiOperation(BrowseForCreationAsync, "Create repository folder picker");
 
         async Task BrowseForCreationAsync()
         {
@@ -242,8 +257,8 @@ public sealed partial class MainPage
         try
         {
             Synchronize();
-            return await ShowPageDialogAsync(dialog) == ContentDialogResult.Primary
-                && !IsShuttingDown;
+            return await _showDialog(dialog) == ContentDialogResult.Primary
+                && !_isShuttingDown();
         }
         finally
         {
@@ -258,7 +273,7 @@ public sealed partial class MainPage
     {
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = title,
             Content = new TextBlock
             {
@@ -268,6 +283,6 @@ public sealed partial class MainPage
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close
         };
-        await ShowPageDialogAsync(dialog);
+        await _showDialog(dialog);
     }
 }

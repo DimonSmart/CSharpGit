@@ -95,13 +95,14 @@ public sealed class PresentationFeatureArchitectureTests
     public void RepositoryFilesOwnsVisualCompositionWithoutOwningGitOperations()
     {
         var page = Read("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
-        var preview = Read("src/CSharpGit.Presentation/MainPage.RepositoryFilePreview.cs");
+        var preview = Read("src/CSharpGit.Presentation/Workflows/RepositoryFilePreviewController.cs");
         var surface = Read("src/CSharpGit.Presentation/Controls/RepositoryFilesSurface.cs");
 
         Assert.Contains("new RepositoryFilesSurface(_repositoryFilesViewModel)", page);
         Assert.Contains("SearchBox.TextChanged += RepositoryFilesSearch_TextChanged", page);
         Assert.Contains("FileTree.SelectionChanged += RepositoryFilesTree_SelectionChanged", page);
-        Assert.Contains("_repositoryFilesSurface?.PreviewHost", preview);
+        Assert.Contains("() => _repositoryFilesSurface?.PreviewHost", page);
+        Assert.Contains("_previewHost()", preview);
         Assert.DoesNotContain("private Grid BuildRepositoryFilesSplitBody", preview);
         Assert.DoesNotContain("new GridSplitter", page);
         Assert.Contains("new GridSplitter", surface);

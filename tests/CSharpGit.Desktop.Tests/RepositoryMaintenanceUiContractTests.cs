@@ -103,7 +103,7 @@ public sealed class RepositoryMaintenanceUiContractTests
 
         Assert.Contains("View Git console", dialog, StringComparison.Ordinal);
         Assert.Contains("_openConsole()", dialog, StringComparison.Ordinal);
-        Assert.Contains("OpenGitConsole(null, manualOpen: true)", source, StringComparison.Ordinal);
+        Assert.Contains("GitConsoleHost.Open(null, manualOpen: true)", source, StringComparison.Ordinal);
     }
 
     private static string ReadSource(string relativePath) =>

@@ -24,7 +24,7 @@ public sealed partial class MainPage
     private bool _repositoryFilesHandlingUserSelection;
     private readonly RepositoryFilesTreeSelectionRouter<RepositorySnapshotTreeNode> _repositoryFilesSelectionRouter = new();
     private long _repositoryFilesActivationRevision;
-    private long _repositoryFilePreviewStartedActivation = -1;
+    private readonly Workflows.RepositoryFilePreviewController _repositoryFilePreview = null!;
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
@@ -45,6 +45,15 @@ public sealed partial class MainPage
         _repositoryFilesViewModel = repositoryFilesViewModel
             ?? throw new ArgumentNullException(nameof(repositoryFilesViewModel));
         _repositoryFilesViewModel.Attach(_viewModel.CommitDetails);
+        _repositoryFilePreview = new Workflows.RepositoryFilePreviewController(
+            _viewModel, _repositoryFilesViewModel, _fileVersionService,
+            () => _repositoryFilesSurface?.PreviewHost,
+            () => IsShuttingDown,
+            () => IsRepositoryFilesActive,
+            () => _repositoryFilesActivationRevision,
+            (operation, description) => RunPageUiOperation(operation, description),
+            ReportUiFailure,
+            UserFacingFileError);
         InitializeRepositoryFiles();
     }
 
@@ -135,7 +144,7 @@ public sealed partial class MainPage
         if (!IsRepositoryFilesActive)
         {
             ++_repositoryFilesActivationRevision;
-            CancelRepositoryFilePreview();
+            _repositoryFilePreview.Cancel();
             RunPageUiOperation(() => _repositoryFilesViewModel.SetActiveAsync(false),
                 "Repository files deactivation");
             return;
@@ -160,7 +169,7 @@ public sealed partial class MainPage
         // Rebuilding may have generated no SelectionRevision (same selected node).
         // Resume the preview cancelled on tab deactivation, but not if RefreshAsync
         // has already started it through a genuine selection change.
-        if (_repositoryFilePreviewStartedActivation != activation)
+        if (_repositoryFilePreview.StartedActivation != activation)
             ApplyRepositoryFileSelectionFromViewModel();
     }
 
@@ -225,11 +234,11 @@ public sealed partial class MainPage
 
         if (_repositoryFilesViewModel.SelectedPath is not { } path)
         {
-            ClearRepositoryFileSelection();
+            _repositoryFilePreview.ClearSelection();
             return;
         }
 
-        ApplyRepositoryFileSelection(
+        _repositoryFilePreview.ApplySelection(
             path,
             _repositoryFilesViewModel.SelectedLineNumber,
             _repositoryFilesViewModel.SelectedEntry);
@@ -523,7 +532,7 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Primary
         };
         if (await dialog.ShowAsync() == ContentDialogResult.Primary)
-            OpenSettingsWindow(SettingsSection.GitTools);
+            _settingsWindowController.Open(SettingsSection.GitTools);
     }
 
     private void RepositoryChangedFiles_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
