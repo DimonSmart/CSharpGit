@@ -7,9 +7,9 @@ public sealed class BranchDragDropUiContractTests
     {
         var root = FindRepositoryRoot();
         var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
-        var dragDrop = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchDragDrop.cs"));
+        var dragDrop = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "BranchDragDropController.cs"));
 
-        Assert.Contains("InitializeBranchDragDrop();", lifecycle, StringComparison.Ordinal);
+        Assert.Contains("_branchDragDrop.Initialize();", lifecycle, StringComparison.Ordinal);
         Assert.Contains("RepositoryTree.CanDragItems = true;", dragDrop, StringComparison.Ordinal);
         Assert.Contains("RepositoryTree.AllowDrop = true;", dragDrop, StringComparison.Ordinal);
         Assert.Contains("RepositoryTree.CanReorderItems = false;", dragDrop, StringComparison.Ordinal);
@@ -51,7 +51,7 @@ public sealed class BranchDragDropUiContractTests
     {
         var root = FindRepositoryRoot();
         var dragDrop = ReadDragDrop();
-        var rename = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchRename.cs"));
+        var rename = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "BranchRenameController.cs"));
 
         Assert.Contains("if (sourceBranch is null || target is null || !CanRenameBranch()) return;", dragDrop, StringComparison.Ordinal);
         Assert.Contains("BranchMovePlanning.BuildTargetName(sourceBranch, destinationPrefix)", dragDrop, StringComparison.Ordinal);
@@ -81,7 +81,7 @@ public sealed class BranchDragDropUiContractTests
     private static string ReadDragDrop()
     {
         var root = FindRepositoryRoot();
-        return File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchDragDrop.cs"));
+        return File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "BranchDragDropController.cs"));
     }
 
     private static string FindRepositoryRoot()

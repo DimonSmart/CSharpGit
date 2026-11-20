@@ -19,8 +19,8 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
     {
         _commitDetailsLayout.Initialize();
         _confirmationController.Initialize();
-        InitializeBranchRename();
-        InitializeBranchDragDrop();
+        _branchRename.Initialize();
+        _branchDragDrop.Initialize();
         RepositoryToolbar.Configure(HandleRepositoryToolbarAction);
         RepositoryHeader.Configure(_viewModel, _recentRepositorySettings, _desktopShellService,
             new RepositorySelectorActions(
@@ -74,6 +74,8 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         _feedback.ShutdownGitCommandFeedback();
         StartScreenHost.ShutdownRecentRepositories();
         RepositoryHeader.Shutdown();
+        _branchDragDrop.Shutdown();
+        _branchRename.Shutdown();
         _commitDetailsLayout.Shutdown();
         RepositoryToolbar.Shutdown();
         _repositoryRefresh.ShutdownRepositoryChangeMonitoring();

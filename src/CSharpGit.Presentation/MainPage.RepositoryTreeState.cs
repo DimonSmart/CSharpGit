@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml.Controls;
+using CSharpGit.Domain;
 
 namespace CSharpGit.Presentation;
 
@@ -27,6 +28,11 @@ public sealed partial class MainPage
     private static T? FindNamedDescendant<T>(Microsoft.UI.Xaml.DependencyObject root, string name)
         where T : Microsoft.UI.Xaml.FrameworkElement =>
         Dialogs.PageDialogController.FindNamedDescendant<T>(root, name);
+
+    private bool CanRenameBranch() => _branchRename.CanRenameBranch();
+    private Task RenameBranchAsync(GitBranch branch) => _branchRename.RenameAsync(branch);
+    private Task ExecuteBranchRenameAsync(GitBranch branch, string name) =>
+        _branchRename.ExecuteAsync(branch, name);
 
     // Phase-3 Git-reference menus still use the TreeView through this narrow UI adapter.
     internal TreeView RepositoryTree => RepositoryExplorer.TreeControl;

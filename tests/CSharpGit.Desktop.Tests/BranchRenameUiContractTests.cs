@@ -7,11 +7,11 @@ public sealed class BranchRenameUiContractTests
     {
         var root = FindRepositoryRoot();
         var menu = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchDeletion.cs"));
-        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchRename.cs"));
+        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "BranchRenameController.cs"));
 
         Assert.Contains("AddMenuItem(flyout, \"Rename…\", CanRenameBranch(), () => RenameBranchAsync(branch));", menu, StringComparison.Ordinal);
         Assert.Equal(1, CountOccurrences(menu, "\"Rename…\""));
-        Assert.Contains("private bool CanRenameBranch() => _viewModel.Branches.CanRename;", workflow, StringComparison.Ordinal);
+        Assert.Contains("internal bool CanRenameBranch() => _viewModel.Branches.CanRename;", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("branch.IsCurrent", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("FindWorktreeForBranch", workflow, StringComparison.Ordinal);
     }
@@ -21,15 +21,15 @@ public sealed class BranchRenameUiContractTests
     {
         var root = FindRepositoryRoot();
         var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
-        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchRename.cs"));
+        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "BranchRenameController.cs"));
 
-        Assert.Contains("InitializeBranchRename();", lifecycle, StringComparison.Ordinal);
+        Assert.Contains("_branchRename.Initialize();", lifecycle, StringComparison.Ordinal);
         Assert.Contains("RepositoryTree.KeyDown += RepositoryTree_KeyDown;", workflow, StringComparison.Ordinal);
         Assert.Contains("e.Key != VirtualKey.F2", workflow, StringComparison.Ordinal);
         Assert.Contains("ResolveNode(RepositoryTree.SelectedItem)", workflow, StringComparison.Ordinal);
         Assert.Contains("RepositoryTreeNodeKind.LocalBranch", workflow, StringComparison.Ordinal);
         Assert.Contains("node.Value is not GitBranch branch", workflow, StringComparison.Ordinal);
-        Assert.Contains("RunPageUiOperation(() => RenameBranchAsync(branch)", workflow, StringComparison.Ordinal);
+        Assert.Contains("_runUiOperation(() => RenameBranchAsync(branch)", workflow, StringComparison.Ordinal);
         Assert.Contains("e.Handled = true;", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("_viewModel.SelectedLocalBranch", workflow, StringComparison.Ordinal);
     }
@@ -38,7 +38,7 @@ public sealed class BranchRenameUiContractTests
     public void RenameUsesMutationPipelineAndMovesScopedReferenceBeforeRefreshCompletes()
     {
         var root = FindRepositoryRoot();
-        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchRename.cs"));
+        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "BranchRenameController.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "BranchesViewModel.cs"));
 
         Assert.Contains("Title = \"Rename branch\"", workflow, StringComparison.Ordinal);

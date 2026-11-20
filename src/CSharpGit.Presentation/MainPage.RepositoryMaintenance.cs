@@ -17,6 +17,8 @@ public sealed partial class MainPage
     private Dialogs.GitCommandFeedbackController _feedback = null!;
     private readonly Workflows.RepositoryManualRefreshController _manualRefresh = null!;
     private readonly Workflows.RepositoryConfirmationController _confirmationController = null!;
+    private readonly Workflows.BranchRenameController _branchRename = null!;
+    private readonly Workflows.BranchDragDropController _branchDragDrop = null!;
     private readonly CloneRepositoryViewModel _cloneRepositoryViewModel = null!;
     private readonly CreateRepositoryViewModel _createRepositoryViewModel = null!;
     private readonly Workflows.RepositoryCloneWorkflow _cloneWorkflow = null!;
@@ -85,6 +87,18 @@ public sealed partial class MainPage
         _gitConsoleSettings = appSettings;
         _gitCommandActivitySource = gitCommandActivitySource ?? throw new ArgumentNullException(nameof(gitCommandActivitySource));
         _worktreesViewModel = worktreesViewModel ?? throw new ArgumentNullException(nameof(worktreesViewModel));
+        _branchRename = new Workflows.BranchRenameController(
+            _viewModel, _worktreesViewModel, RepositoryTree,
+            () => XamlRoot,
+            ShowPageDialogAsync,
+            () => IsShuttingDown,
+            (operation, description) => RunPageUiOperation(operation, description));
+        _branchDragDrop = new Workflows.BranchDragDropController(
+            RepositoryTree,
+            _branchRename.CanRenameBranch,
+            _branchRename.ExecuteAsync,
+            () => IsShuttingDown,
+            (operation, description) => RunPageUiOperation(operation, description));
         _repositoryImageService = repositoryImageService ?? throw new ArgumentNullException(nameof(repositoryImageService));
         _authorAvatarService = authorAvatarService ?? throw new ArgumentNullException(nameof(authorAvatarService));
         _authorAvatarSettings = appSettings;

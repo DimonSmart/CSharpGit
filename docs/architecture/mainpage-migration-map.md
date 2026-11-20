@@ -4,6 +4,13 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Local branch renaming (F2/dialog) and branch drag/drop now belong to separate
+`Workflows/BranchRenameController` and `Workflows/BranchDragDropController`.
+Both own and dispose their UI event subscriptions; drag/drop requests go through
+one typed rename mutation owner. The page keeps temporary thin adapters for
+reference-menu actions until Git-reference surfaces are extracted.
+
+
 Commit changed-file tree reconciliation, expand/collapse state, selection synchronization
 and viewport lifetime now belong to `Workflows/CommitChangedFileTreeController`.
 The owner explicitly detaches its collection and tree subscriptions on shutdown;
