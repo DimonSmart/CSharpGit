@@ -31,14 +31,14 @@ public sealed class SelectedCommitActionsContractTests
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var bulk = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "BulkObservableCollection.cs"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
-        var coalescing = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryRefresh.cs"));
+        var coalescing = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryPresentationRefreshController.cs"));
 
         var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs"));
         Assert.Contains("WorkingTree.ApplyRepositoryState(repository, state.Changes)", viewModel);
         Assert.Contains("ReplaceAll(snapshot)", workingTree);
         Assert.Contains("NotifyCollectionChangedAction.Reset", bulk);
         Assert.Contains("QueueRepositoryPresentationRefresh(workingTreeChanged: true)", page);
-        Assert.Contains("DispatcherQueue.TryEnqueue(FlushRepositoryPresentationRefresh)", coalescing);
+        Assert.Contains("_dispatcher.TryEnqueue(FlushRepositoryPresentationRefresh)", coalescing);
     }
 
     [Fact]
