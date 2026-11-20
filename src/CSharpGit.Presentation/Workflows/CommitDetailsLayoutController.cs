@@ -9,12 +9,14 @@ internal sealed class CommitDetailsLayoutController(
     ScrollViewer detailsScroller,
     FrameworkElement historyPane,
     CommitDetailsView commitDetailsView,
+    Func<XamlRoot?> xamlRoot,
     Func<double> mainWindowClientWidth)
 {
     private readonly ScrollViewer _detailsScroller = detailsScroller;
     private readonly FrameworkElement _historyPane = historyPane;
     private readonly CommitDetailsView _commitDetailsView = commitDetailsView;
     private readonly Func<double> _mainWindowClientWidth = mainWindowClientWidth;
+    private readonly Func<XamlRoot?> _xamlRoot = xamlRoot;
     private XamlRoot? _root;
     private bool _initialized;
 
@@ -27,14 +29,23 @@ internal sealed class CommitDetailsLayoutController(
         _detailsScroller.HorizontalContentAlignment = HorizontalAlignment.Stretch;
         _detailsScroller.SizeChanged += DetailsScroller_SizeChanged;
         _historyPane.SizeChanged += DetailsScroller_SizeChanged;
-        _root = _detailsScroller.XamlRoot;
-        if (_root is not null)
-            _root.Changed += XamlRoot_Changed;
+        EnsureRootSubscription();
         QueueLayout();
     }
 
     internal void QueueLayout() =>
         _detailsScroller.DispatcherQueue.TryEnqueue(ConstrainCommitDetailsToViewport);
+
+    private void EnsureRootSubscription()
+    {
+        var currentRoot = _xamlRoot() ?? _detailsScroller.XamlRoot;
+        if (ReferenceEquals(_root, currentRoot)) return;
+        if (_root is not null)
+            _root.Changed -= XamlRoot_Changed;
+        _root = currentRoot;
+        if (_initialized && _root is not null)
+            _root.Changed += XamlRoot_Changed;
+    }
 
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args) => QueueLayout();
 
@@ -43,6 +54,8 @@ internal sealed class CommitDetailsLayoutController(
 
     private void ConstrainCommitDetailsToViewport()
     {
+        if (!_initialized) return;
+        EnsureRootSubscription();
         if (_root is null) return;
 
         var origin = _historyPane.TransformToVisual(null).TransformPoint(default);

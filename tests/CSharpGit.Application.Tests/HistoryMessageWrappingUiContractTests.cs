@@ -70,6 +70,8 @@ public sealed class HistoryMessageWrappingUiContractTests
         Assert.Contains("CommitDetailsView commitDetailsView", detailsHost);
         Assert.False(File.Exists(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitCopy.cs")));
         Assert.Contains("_root.Changed -= XamlRoot_Changed", detailsHost);
+        Assert.Contains("EnsureRootSubscription();", detailsHost);
+        Assert.Contains("var currentRoot = _xamlRoot() ?? _detailsScroller.XamlRoot", detailsHost);
         Assert.Contains("_detailsScroller.HorizontalScrollMode = ScrollMode.Disabled", detailsHost);
         Assert.Contains("_detailsScroller.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled", detailsHost);
         Assert.Contains("_detailsScroller.SizeChanged += DetailsScroller_SizeChanged", detailsHost);

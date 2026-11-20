@@ -69,6 +69,7 @@ public sealed partial class MainPage
     {
         _commitDetailsLayout = new Workflows.CommitDetailsLayoutController(
             DetailsScroller, HistoryPane, CommitDetailsContent,
+            () => XamlRoot,
             () => Microsoft.UI.Xaml.Application.Current is App app
                 ? app.MainWindowClientWidth : 0);
         InstallRepositoryHistoryRewriteMenus();
