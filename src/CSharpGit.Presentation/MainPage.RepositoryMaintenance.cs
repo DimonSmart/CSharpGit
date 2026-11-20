@@ -10,7 +10,7 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage
 {
     private readonly RepositoryMaintenanceViewModel _repositoryMaintenance = null!;
-    private readonly Dialogs.AboutUpdateDialogController _aboutUpdate;
+    private readonly Dialogs.AboutUpdateDialogController _aboutUpdate = null!;
     private readonly Workflows.RecentRepositoryPickerWorkflow _repositoryPicker = null!;
     private readonly IDesktopShellService _desktopShellService = null!;
     private IAppSettingsService _recentRepositorySettings = null!;
