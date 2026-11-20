@@ -383,7 +383,8 @@ public sealed partial class MainPage : Page
             case RepositoryToolbarAction.PushSetDefault: PushSetDefault_Click(this, args); break;
             case RepositoryToolbarAction.PushToSetDefault: PushToSetDefault_Click(this, args); break;
             case RepositoryToolbarAction.ForcePushWithLeaseSetDefault: ForcePushWithLeaseSetDefault_Click(this, args); break;
-            case RepositoryToolbarAction.RefreshIndicator: RefreshIndicator_Click(this, args); break;
+            case RepositoryToolbarAction.RefreshIndicator:
+                RunPageUiOperation(_manualRefresh.RefreshAsync, "Repository refresh indicator"); break;
             case RepositoryToolbarAction.OpenRepository: OpenRepository_Click(this, args); break;
             case RepositoryToolbarAction.CloneRepository: CloneRepository_Click(this, args); break;
             case RepositoryToolbarAction.CreateRepository: CreateRepository_Click(this, args); break;

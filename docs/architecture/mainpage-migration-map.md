@@ -4,6 +4,12 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Manual refresh action now belongs to `Workflows/RepositoryManualRefreshController`.
+It receives typed repository and safety callbacks rather than accessing MainPage;
+`MainPage.RefreshIndicator.cs` is removed. The repository monitor/refresh flight
+still owns the shared refresh state, and the toolbar owns its indicator visuals.
+
+
 The final console adapter `MainPage.GitConsole.cs` has been deleted; window
 composition configures `GitConsoleHostView` and `GitCommandFeedbackController`
 directly. Runtime commands use the host view and shutdown disposes both owners.

@@ -11,7 +11,7 @@ public sealed class ManualRefreshUiContractTests
         var refresh = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryRefresh.cs"))
             + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml.cs"));
         var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
-        var refreshAction = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RefreshIndicator.cs"));
+        var refreshAction = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryManualRefreshController.cs"));
         var monitor = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "RepositoryChangeMonitor.cs"));
         var coordinator = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "RepositoryChangeCoordinator.cs"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
@@ -62,10 +62,12 @@ public sealed class ManualRefreshUiContractTests
         Assert.Contains("RepositoryToolbar.SetRefreshPresentation(", refresh);
         Assert.Contains("RefreshProgressRing.IsActive = refreshing", refresh);
 
-        Assert.Contains("SetRefreshInProgress(true)", refreshAction);
+        Assert.Contains("_setRefreshInProgress(true)", refreshAction);
+        Assert.DoesNotContain("MainPage", refreshAction);
+        Assert.False(File.Exists(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RefreshIndicator.cs")));
         Assert.Contains("RefreshAsyncForDesktopCheck", refreshAction);
-        Assert.Contains("RefreshPresentationCollections", refreshAction);
-        Assert.Contains("SetRefreshInProgress(false)", refreshAction);
+        Assert.Contains("_refreshPresentation()", refreshAction);
+        Assert.Contains("_setRefreshInProgress(false)", refreshAction);
 
         Assert.Contains("FileSystemWatcher", monitor);
         Assert.Contains("repository.WorkingDirectory", monitor);

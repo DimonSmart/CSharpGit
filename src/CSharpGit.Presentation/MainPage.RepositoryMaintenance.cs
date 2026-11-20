@@ -15,6 +15,7 @@ public sealed partial class MainPage
     private IGitCommandActivitySource _gitCommandActivitySource = null!;
     private IAppSettingsService _gitConsoleSettings = null!;
     private Dialogs.GitCommandFeedbackController _feedback = null!;
+    private readonly Workflows.RepositoryManualRefreshController _manualRefresh = null!;
     private readonly Workflows.RecentRepositoryPickerWorkflow _repositoryPicker = null!;
     private readonly IDesktopShellService _desktopShellService = null!;
     private IAppSettingsService _recentRepositorySettings = null!;
@@ -117,6 +118,14 @@ public sealed partial class MainPage
         _viewModel.PropertyChanged += RepositoryMaintenanceViewModel_PropertyChanged;
         UpdateOptimizeRepositoryAvailability();
         InitializeRepositoryChangeMonitoring();
+        _manualRefresh = new Workflows.RepositoryManualRefreshController(
+            _viewModel,
+            () => IsShuttingDown,
+            () => _isRefreshInProgress,
+            SetRefreshInProgress,
+            RefreshPresentationCollections,
+            ReportUiFailure,
+            ShowErrorAsync);
         StartScreenHost.Configure(_viewModel, _recentRepositorySettings, _repositoryImageService,
             _desktopShellService.OpenFolderDescription,
             new StartScreenActions(
