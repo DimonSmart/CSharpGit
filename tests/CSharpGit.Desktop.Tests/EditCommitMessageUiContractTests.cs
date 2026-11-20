@@ -10,7 +10,7 @@ public sealed class EditCommitMessageUiContractTests
         Assert.Contains("Edit commit message…", actions, StringComparison.Ordinal);
         Assert.Contains("_editCommitMessageItem.Click += EditCommitMessage_Click;", actions, StringComparison.Ordinal);
         Assert.Contains("_editCommitMessageItem.IsEnabled = canMutate;", actions, StringComparison.Ordinal);
-        Assert.Contains("HistoryList.SelectedItem = row;", actions, StringComparison.Ordinal);
+        Assert.Contains("HistoryView.List.SelectedItem = row;", actions, StringComparison.Ordinal);
         Assert.Contains("_viewModel.History.SelectedRow = row;", actions, StringComparison.Ordinal);
     }
 

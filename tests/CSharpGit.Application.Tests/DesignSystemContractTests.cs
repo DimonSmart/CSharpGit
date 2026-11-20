@@ -215,7 +215,7 @@ public sealed class DesignSystemContractTests
         {
             "MainPage.RepositoryCloning.cs", "MainPage.RepositoryCreation.cs",
             "MainPage.ForcePush.cs", "MainPage.Stashes.cs", "MainPage.Worktrees.cs",
-            "MainPage.BranchDeletion.cs", "MainPage.Tags.cs", "MainPage.About.cs"
+            "MainPage.BranchDeletion.cs", "MainPage.Tags.cs", "Dialogs/AboutUpdateDialogController.cs"
         })
         {
             var dialog = Read(root, "src", "CSharpGit.Presentation", file);
