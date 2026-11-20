@@ -9,7 +9,7 @@ public sealed class CommitMetadataCopyUiContractTests
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitDetailsView.xaml"));
         var codeBehind = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitDetailsView.xaml.cs"));
         var mainPageXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
-        var wiring = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitCopy.cs"));
+        var wiring = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "CommitDetailsLayoutController.cs"));
         var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
         var history = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Domain", "History.cs"));
 
@@ -25,7 +25,7 @@ public sealed class CommitMetadataCopyUiContractTests
         Assert.Contains("<controls:CommitDetailsView x:Name=\"CommitDetailsContent\" />", mainPageXaml);
         Assert.DoesNotContain("new CommitDetailsView", wiring);
         Assert.DoesNotContain("DetailsScroller.Content =", wiring);
-        Assert.Contains("InitializeCommitDetailsSurface();", lifecycle);
+        Assert.Contains("_commitDetailsLayout.Initialize();", lifecycle);
         Assert.Contains("public bool IsRootCommit => Parents.Count == 0;", history);
         Assert.Contains("IsRootCommit ? \"—\"", history);
     }
