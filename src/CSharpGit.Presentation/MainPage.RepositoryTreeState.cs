@@ -4,6 +4,16 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
+    private readonly Workflows.RepositoryPresentationRefreshController _presentationRefresh;
+
+    public bool IsRefreshRequired => _repositoryRefresh.IsRefreshRequired;
+
+    internal Action CapturePendingMonitorDeliveryForDesktopCheck() =>
+        _repositoryRefresh.CapturePendingMonitorDeliveryForDesktopCheck();
+
+    private void QueueRepositoryPresentationRefresh(bool workingTreeChanged = false) =>
+        _presentationRefresh.Queue(workingTreeChanged);
+
     // Phase-3 Git-reference menus still use the TreeView through this narrow UI adapter.
     internal TreeView RepositoryTree => RepositoryExplorer.TreeControl;
 

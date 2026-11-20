@@ -4,6 +4,14 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Repository tree/working-tree projection updates are now coalesced by
+`Workflows/RepositoryPresentationRefreshController`. It owns the dispatch queue and
+coalescing state, with typed callbacks to update the existing visual surfaces.
+`MainPage.RepositoryRefresh.cs` is removed; the page retains only the
+`IsRefreshRequired` binding property and forwarding callbacks until the shell
+becomes composition-only.
+
+
 Commit Details viewport layout now belongs to `Workflows/CommitDetailsLayoutController`.
 It owns window-size, scroll/width and XamlRoot subscriptions and explicitly detaches
 on shutdown. `MainPage.CommitCopy.cs` is removed; native resize forwarding remains

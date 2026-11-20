@@ -55,6 +55,13 @@ public sealed partial class MainPage : Page
             RepositoryToolbar, () => IsShuttingDown,
             (operation, description) => RunPageUiOperation(operation, description));
 
+        _presentationRefresh = new Workflows.RepositoryPresentationRefreshController(
+            DispatcherQueue, () => IsShuttingDown,
+            InitializeTagSupportIfNeeded,
+            RefreshPresentationCollections,
+            SynchronizeRepositoryTree,
+            UpdateStatusBar);
+
         UnstagedChangesList.ItemsSource = _unstagedChanges;
         StagedChangesList.ItemsSource = _stagedChanges;
         CommitFilesList.ItemsSource = _commitFiles;

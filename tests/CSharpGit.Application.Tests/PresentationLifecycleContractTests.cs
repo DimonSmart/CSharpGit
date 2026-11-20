@@ -115,7 +115,7 @@ public sealed class PresentationLifecycleContractTests
         var recent = File.ReadAllText(Path.Combine(presentation, "Views", "StartScreenView.xaml.cs"));
         var gitConsole = File.ReadAllText(Path.Combine(presentation, "Views", "GitConsoleHostView.xaml.cs"));
         var refresh = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryRefreshController.cs"));
-        var refreshQueue = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryRefresh.cs"));
+        var refreshQueue = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryPresentationRefreshController.cs"));
         var coordinator = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation.Core", "RepositoryChangeCoordinator.cs"));
 
@@ -138,7 +138,7 @@ public sealed class PresentationLifecycleContractTests
         Assert.Contains("_lifetimeStop.Cancel();", coordinator, StringComparison.Ordinal);
         Assert.Contains("_dispatcher.HasThreadAccess", coordinator, StringComparison.Ordinal);
         Assert.Contains("if (_isShuttingDown() || !_repositoryChangeMonitoringInitialized) return;", refresh, StringComparison.Ordinal);
-        Assert.Contains("!IsShuttingDown && DispatcherQueue.HasThreadAccess", refreshQueue, StringComparison.Ordinal);
+        Assert.Contains("!_isShuttingDown() && _dispatcher.HasThreadAccess", refreshQueue, StringComparison.Ordinal);
         Assert.Contains("ClearRepositoryPresentationRefreshQueue();", refreshQueue, StringComparison.Ordinal);
     }
 
