@@ -36,6 +36,7 @@ public sealed partial class MainPage : Page
     private readonly Workflows.RepositoryRefreshController _repositoryRefresh;
     private readonly Dialogs.PageDialogController _pageDialogs;
     private readonly Workflows.DiffPresentationController _diffPresentation;
+    private readonly Workflows.WorkingTreeImageDiffWorkflow _workingTreeImageDiff;
 
 
     private MainPage(
@@ -57,6 +58,10 @@ public sealed partial class MainPage : Page
                 WorkingTreeLargeDiffInfo, WorkingTreeLargeDiffMessage, WorkingTreeLargeDiffButton,
                 WorkingTreeImageLoading, WorkingTreeImageDiffHost, WorkingTreeBinaryInfo,
                 WorkingTreeNoChangesInfo));
+        _workingTreeImageDiff = new Workflows.WorkingTreeImageDiffWorkflow(
+            _viewModel, () => _fileActions, () => _imageDiffService,
+            WorkingTreeImageDiffHost, () => IsShuttingDown,
+            _diffPresentation.RenderWorkingTree, ReportUiFailure);
         _commitSummaryViewport = new CollectionViewportController(DetailsScroller);
         _stashSummaryViewport = new CollectionViewportController(StashDetailsScroller);
         SynchronizeDetailsViewport();

@@ -4,6 +4,13 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+WorkingTree image-diff generation, cancellation and result publication now belong to
+`Workflows/WorkingTreeImageDiffWorkflow`, sharing `ImageDiffPreviewService` with
+Commit Details. `MainPage.WorkingTreeDiff.cs` retains selection/tree rendering but no
+image-diff async lifetime. A lazy service accessor preserves the existing shell
+constructor order without admitting work before file services are attached.
+
+
 Historical Repository Files preview now belongs to `Workflows/RepositoryFilePreviewController`.
 It owns the publication gate, cancellation, deferred selection and activation revision;
 `MainPage.RepositoryFilePreview.cs` was deleted. The files surface passes a typed preview

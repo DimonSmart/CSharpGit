@@ -49,7 +49,7 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         // Do not cancel Git mutations: close admission already protects them.
         _repositoryFilePreview.Cancel();
         _commitImageDiff.Cancel(clearSurface: false);
-        CancelWorkingTreeImageDiff();
+        _workingTreeImageDiff.Cancel();
         _cloneRepositoryViewModel.Cancel();
         return HistoryView.StopHistoryPerformanceCaptureOnShutdown();
     }

@@ -22,7 +22,8 @@ public sealed class ImageDiffUiContractTests
         Assert.Contains("NoTextualPatch", presentation);
         Assert.Contains("DeltaMissing", presentation);
         Assert.Contains("_commitImageDiff.LoadAsync", changes);
-        Assert.Contains("_imageDiffService.LoadWorkingTreeAsync", workingTree);
+        var workingImage = Read(root, "src", "CSharpGit.Presentation", "Workflows", "WorkingTreeImageDiffWorkflow.cs");
+        Assert.Contains("_imageDiffService().LoadWorkingTreeAsync", workingImage);
         Assert.Contains("RenderCommit(", presentation);
         Assert.Contains("_commit.Header.Visibility", presentation);
         Assert.Contains("RenderWorkingTree(", presentation);
@@ -80,9 +81,11 @@ public sealed class ImageDiffUiContractTests
         Assert.Contains("IsCurrentCommitImageDiffRequest", lifecycle);
         Assert.Contains("SelectedDiffCommitHash", lifecycle);
         Assert.Contains("SelectedFile?.Path", lifecycle);
-        Assert.Contains("_workingTreeImageDiffGeneration", workingTree);
-        Assert.Contains("IsCurrentWorkingTreeImageRequest", workingTree);
-        Assert.Contains("_diffPresentation.RenderWorkingTree(DiffPresentationState.LoadingImage)", workingTree);
+        var workingImage = Read(root, "src", "CSharpGit.Presentation", "Workflows", "WorkingTreeImageDiffWorkflow.cs");
+        Assert.Contains("_workingTreeImageDiffGeneration", workingImage);
+        Assert.Contains("IsCurrentWorkingTreeImageRequest", workingImage);
+        Assert.Contains("_present(DiffPresentationState.LoadingImage)", workingImage);
+        Assert.Contains("_workingTreeImageDiff.Cancel()", workingTree);
         Assert.False(File.Exists(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ImageDiff.cs")));
         Assert.Contains("generation == Volatile.Read", lifecycle);
     }
