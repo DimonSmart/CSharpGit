@@ -10,10 +10,8 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private readonly ObservableCollection<ChangedFileTreeNode> _changedFileTreeRoots = [];
     private bool _changesSurfaceInitialized;
-    private bool _changedFileTreeRefreshQueued;
-    private CollectionViewportController? _changedFilesViewport;
+    private Workflows.CommitChangedFileTreeController? _changesTree;
     private CollectionViewportController? _commitSummaryViewport;
     private CollectionViewportController? _stashSummaryViewport;
 
@@ -25,14 +23,13 @@ public sealed partial class MainPage
         if (_changesSurfaceInitialized) return;
         _changesSurfaceInitialized = true;
 
-        ChangedFilesTree.ItemsSource = _changedFileTreeRoots;
-        _changedFilesViewport = new CollectionViewportController(ChangedFilesTree);
-        ChangedFilesTree.Expanding += ChangedFilesTree_Expanding;
-        ChangedFilesTree.Collapsed += ChangedFilesTree_Collapsed;
-        _commitFiles.CollectionChanged += CommitFiles_CollectionChanged;
+        _changesTree = new Workflows.CommitChangedFileTreeController(
+            _viewModel.CommitDetails, _commitFiles, ChangedFilesTree,
+            ChangesTabControl, DispatcherQueue, SelectedDetailsViewportKey);
+        _changesTree.Initialize();
         _viewModel.CommitDetails.PropertyChanged += ChangesViewModel_PropertyChanged;
 
-        RebuildChangedFileTree();
+        _changesTree.Rebuild();
         RebuildCompactDiff();
         UpdateChangesViewActivity();
     }
@@ -48,20 +45,6 @@ public sealed partial class MainPage
         var active = ReferenceEquals(DetailsTabs.SelectedItem, ChangesTabControl);
         _viewModel.CommitDetails.SetActive(active);
         if (!active) _commitImageDiff.Cancel(clearSurface: true);
-    }
-
-    private void CommitFiles_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs args)
-    {
-        if (!_changesSurfaceInitialized || _changedFileTreeRefreshQueued) return;
-        _changedFileTreeRefreshQueued = true;
-        if (DispatcherQueue.TryEnqueue(() =>
-        {
-            _changedFileTreeRefreshQueued = false;
-            RebuildChangedFileTree();
-        })) return;
-
-        _changedFileTreeRefreshQueued = false;
-        RebuildChangedFileTree();
     }
 
     private void ChangesViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
@@ -83,26 +66,12 @@ public sealed partial class MainPage
                 _viewModel.CommitDetails.SelectedFile is null
                     ? DiffPresentationState.NothingSelected
                     : DiffPresentationState.LoadingDiff);
-            SyncChangedFileTreeSelection();
+            _changesTree?.SyncSelection();
         }
         else if (args.PropertyName == nameof(CommitDetailsViewModel.ChangedFiles))
         {
-            EnsureCurrentCommitFileSelection();
+            _changesTree?.EnsureCurrentFileSelection();
         }
-    }
-
-    private void RebuildChangedFileTree()
-    {
-        if (!_changesSurfaceInitialized) return;
-
-        var entries = _commitFiles.Select(row => new ChangedFileTreeEntry(row.Status, row.File));
-        ChangedFileTreeSynchronizer.Reconcile(_changedFileTreeRoots, entries);
-        ObserveChangedFilesViewport();
-
-        if (ChangesTabControl is { } changesTab)
-            changesTab.Header = _commitFiles.Count == 0 ? "Changes" : $"Changes ({_commitFiles.Count})";
-        EnsureCurrentCommitFileSelection();
-        SyncChangedFileTreeSelection();
     }
 
     private void RebuildCompactDiff()
@@ -148,73 +117,6 @@ public sealed partial class MainPage
         }
     }
 
-    private void EnsureCurrentCommitFileSelection()
-    {
-        if (!_viewModel.CommitDetails.IsChangesViewActive) return;
-        var files = _viewModel.CommitDetails.ChangedFiles;
-        if (files.Count == 0)
-        {
-            if (_viewModel.CommitDetails.SelectedFile is not null)
-                _viewModel.CommitDetails.SelectedFile = null;
-            return;
-        }
-
-        var selected = _viewModel.CommitDetails.SelectedFile;
-        var current = selected is null
-            ? files[0]
-            : files.FirstOrDefault(file => string.Equals(file.Path, selected.Path, StringComparison.Ordinal)) ?? files[0];
-
-        if (ReferenceEquals(selected, current)) return;
-        _viewModel.CommitDetails.SelectedFile = current;
-    }
-
-    private void SyncChangedFileTreeSelection()
-    {
-        if (!_changesSurfaceInitialized) return;
-        var selected = _viewModel.CommitDetails.SelectedFile;
-        var node = selected is null
-            ? null
-            : FindChangedFileNode(_changedFileTreeRoots, selected.Path);
-        if (!ReferenceEquals(ChangedFilesTree.SelectedItem, node))
-            ChangedFilesTree.SelectedItem = node;
-    }
-
-    private void ChangedFilesTree_Expanding(TreeView sender, TreeViewExpandingEventArgs args)
-    {
-        if (ResolveChangedFileNode(args.Item) is { } node) node.IsExpanded = true;
-        ObserveChangedFilesViewport();
-    }
-
-    private void ChangedFilesTree_Collapsed(TreeView sender, TreeViewCollapsedEventArgs args)
-    {
-        if (ResolveChangedFileNode(args.Item) is { } node) node.IsExpanded = false;
-        ObserveChangedFilesViewport();
-    }
-
-    private void ObserveChangedFilesViewport() =>
-        _changedFilesViewport?.Observe(
-            SelectedDetailsViewportKey(), CountVisibleChangedFileNodes(_changedFileTreeRoots));
-
-    private static int CountVisibleChangedFileNodes(IEnumerable<ChangedFileTreeNode> nodes)
-    {
-        var count = 0;
-        foreach (var node in nodes)
-        {
-            count++;
-            if (node.IsExpanded) count += CountVisibleChangedFileNodes(node.Children);
-        }
-        return count;
-    }
-
-    private string? SelectedDetailsViewportKey()
-    {
-        var details = _viewModel.CommitDetails;
-        var selectedCommit = details.SelectedObjectCommit;
-        return selectedCommit is null
-            ? null
-            : $"{_viewModel.Repository?.GitDirectory}|{(details.HasSelectedStash ? "stash" : "commit")}|{selectedCommit}";
-    }
-
     private void SynchronizeDetailsViewport()
     {
         var details = _viewModel.CommitDetails;
@@ -228,7 +130,7 @@ public sealed partial class MainPage
 
     private void ChangedFilesTree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
     {
-        var node = ResolveChangedFileNode(args.InvokedItem);
+        var node = Workflows.CommitChangedFileTreeController.ResolveChangedFileNode(args.InvokedItem);
         if (node?.Entry is null) return;
 
         if (!ReferenceEquals(_viewModel.CommitDetails.SelectedFile, node.Entry.File) && _viewModel.CommitDetails.SelectedFile == node.Entry.File)
@@ -236,25 +138,13 @@ public sealed partial class MainPage
         _viewModel.CommitDetails.SelectedFile = node.Entry.File;
     }
 
-    private static ChangedFileTreeNode? ResolveChangedFileNode(object? value) => value switch
+    private string? SelectedDetailsViewportKey()
     {
-        ChangedFileTreeNode node => node,
-        TreeViewNode { Content: ChangedFileTreeNode node } => node,
-        TreeViewItem { DataContext: ChangedFileTreeNode node } => node,
-        FrameworkElement { DataContext: ChangedFileTreeNode node } => node,
-        _ => null
-    };
-
-    private static ChangedFileTreeNode? FindChangedFileNode(
-        IEnumerable<ChangedFileTreeNode> nodes,
-        string path)
-    {
-        foreach (var node in nodes)
-        {
-            if (node.Entry is not null && string.Equals(node.Entry.File.Path, path, StringComparison.Ordinal))
-                return node;
-            if (FindChangedFileNode(node.Children, path) is { } match) return match;
-        }
-        return null;
+        var details = _viewModel.CommitDetails;
+        var selectedCommit = details.SelectedObjectCommit;
+        return selectedCommit is null
+            ? null
+            : $"{_viewModel.Repository?.GitDirectory}|{(details.HasSelectedStash ? "stash" : "commit")}|{selectedCommit}";
     }
+
 }

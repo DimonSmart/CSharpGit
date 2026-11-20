@@ -25,7 +25,8 @@ public sealed class HistoryDiffUiContractTests
         Assert.Contains("new DiffLogicalText(snapshot)", selectableDiffCode);
         Assert.DoesNotContain("<PivotItem Header=\"Diff\">", xaml);
         Assert.DoesNotContain("ItemsSource=\"{Binding SelectedCommit.Files}\"", xaml);
-        Assert.Contains("ChangedFileTreeSynchronizer.Reconcile", changes);
+        var changedFilesTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "CommitChangedFileTreeController.cs"));
+        Assert.Contains("ChangedFileTreeSynchronizer.Reconcile", changedFilesTree);
         Assert.Contains("CompactDiffLine.Build", changes);
         Assert.Contains("PathTreeBuilder.Build", tree);
         Assert.Contains("CollapseSingleChildFolderChains: true", tree);

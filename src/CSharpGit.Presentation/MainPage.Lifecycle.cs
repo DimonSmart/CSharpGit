@@ -77,7 +77,7 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         _commitDetailsLayout.Shutdown();
         RepositoryToolbar.Shutdown();
         _repositoryRefresh.ShutdownRepositoryChangeMonitoring();
-        _changedFilesViewport?.Dispose();
+        _changesTree?.Shutdown();
         _unstagedViewport?.Dispose();
         _stagedViewport?.Dispose();
         _commitSummaryViewport?.Dispose();
@@ -99,8 +99,6 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         _viewModel.WorkingTree.PropertyChanged -= WorkingTreeFileOpening_PropertyChanged;
         _fileActions.PropertyChanged -= FileActions_PropertyChanged;
         ChangedFilesTree.RightTapped -= ChangedFilesTree_RightTapped;
-        ChangedFilesTree.Expanding -= ChangedFilesTree_Expanding;
-        ChangedFilesTree.Collapsed -= ChangedFilesTree_Collapsed;
         UnstagedChangesTree.Expanding -= WorkingTreeTree_Expanding;
         UnstagedChangesTree.Collapsed -= WorkingTreeTree_Collapsed;
         StagedChangesTree.Expanding -= WorkingTreeTree_Expanding;

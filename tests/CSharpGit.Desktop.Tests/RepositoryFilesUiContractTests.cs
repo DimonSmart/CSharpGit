@@ -80,7 +80,8 @@ public sealed class RepositoryFilesUiContractTests
         Assert.Contains("ItemsSource = viewModel.TreeRoots", visual, StringComparison.Ordinal);
         Assert.Contains("RepositorySnapshotTreeSynchronizer.Reconcile(TreeRoots, _snapshot, query)", feature, StringComparison.Ordinal);
         Assert.DoesNotContain("_repositoryFilesTree.ItemsSource = null", filesSurface, StringComparison.Ordinal);
-        Assert.Contains("ChangedFileTreeSynchronizer.Reconcile(_changedFileTreeRoots, entries)", changesSurface, StringComparison.Ordinal);
+        var changedFilesTree = File.ReadAllText(Path.Combine(presentation, "Workflows", "CommitChangedFileTreeController.cs"));
+        Assert.Contains("ChangedFileTreeSynchronizer.Reconcile(_roots, entries)", changedFilesTree, StringComparison.Ordinal);
         Assert.DoesNotContain("_changedFileTreeRoots.Clear()", changesSurface, StringComparison.Ordinal);
     }
 

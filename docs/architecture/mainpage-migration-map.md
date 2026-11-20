@@ -4,6 +4,12 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Commit changed-file tree reconciliation, expand/collapse state, selection synchronization
+and viewport lifetime now belong to `Workflows/CommitChangedFileTreeController`.
+The owner explicitly detaches its collection and tree subscriptions on shutdown;
+`MainPage.Changes.cs` retains only the Commit diff and tab-activity choreography.
+
+
 WorkingTree image-diff generation, cancellation and result publication now belong to
 `Workflows/WorkingTreeImageDiffWorkflow`, sharing `ImageDiffPreviewService` with
 Commit Details. `MainPage.WorkingTreeDiff.cs` retains selection/tree rendering but no
