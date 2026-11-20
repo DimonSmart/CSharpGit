@@ -84,7 +84,7 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         _stagedViewport?.Dispose();
         _commitSummaryViewport?.Dispose();
         _stashSummaryViewport?.Dispose();
-        ShutdownWorktreeSupport();
+        _worktrees.Shutdown();
         _settingsWindowController.Shutdown();
 
         _viewModel.PropertyChanged -= ViewModel_PropertyChanged;

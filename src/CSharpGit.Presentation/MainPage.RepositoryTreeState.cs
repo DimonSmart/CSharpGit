@@ -51,6 +51,8 @@ public sealed partial class MainPage
 
     private Task ConfirmDropStashAsync(GitStash stash) => _stashDialogs.ConfirmDropAsync(stash);
 
+    internal Task OpenInitialRepositoryAsync() => _viewModel.OpenRepositoryAsyncForDesktopCheck();
+
     // Phase-3 Git-reference menus still use the TreeView through this narrow UI adapter.
     internal TreeView RepositoryTree => RepositoryExplorer.TreeControl;
 

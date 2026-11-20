@@ -4,6 +4,12 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+All worktree mutations and dialogs, menu building, worktree-model subscription and
+process relaunch are now in `Workflows/WorktreeController`. The page provides the
+window shell dependencies and retains only the XAML right-tap entry point; the old
+`MainPage.Worktrees.cs` is removed. The model stays the owner of Git operations.
+
+
 Commit message rewrite dialog, conflict-pending OIDs and post-rebase selection
 restoration are now owned by `Workflows/EditCommitMessageController`.
 It calls the existing CommitActionsViewModel mutation and preserves selection

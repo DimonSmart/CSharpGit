@@ -18,6 +18,7 @@ public sealed partial class MainPage
     private readonly Workflows.RepositoryManualRefreshController _manualRefresh = null!;
     private readonly Workflows.RepositoryConfirmationController _confirmationController = null!;
     private readonly Workflows.BranchRenameController _branchRename = null!;
+    private readonly Workflows.WorktreeController _worktrees = null!;
     private readonly Workflows.BranchDragDropController _branchDragDrop = null!;
     private readonly Workflows.StashDialogController _stashDialogs = null!;
     private readonly Workflows.BranchFolderDeletionController _branchFolderDeletion = null!;
@@ -100,6 +101,12 @@ public sealed partial class MainPage
         _gitConsoleSettings = appSettings;
         _gitCommandActivitySource = gitCommandActivitySource ?? throw new ArgumentNullException(nameof(gitCommandActivitySource));
         _worktreesViewModel = worktreesViewModel ?? throw new ArgumentNullException(nameof(worktreesViewModel));
+        _worktrees = new Workflows.WorktreeController(
+            _viewModel, _worktreesViewModel, _desktopShellService,
+            () => XamlRoot, ShowPageDialogAsync, () => IsShuttingDown,
+            SynchronizeWorktreePresentation, ShowErrorAsync,
+            OpenFolderInDesktopShellAsync, CopyTextAsync,
+            AddMenuItem, AddMenuItem);
         _branchRename = new Workflows.BranchRenameController(
             _viewModel, _worktreesViewModel, RepositoryTree,
             () => XamlRoot,
@@ -225,7 +232,7 @@ public sealed partial class MainPage
             _feedback.RouteGitCommandFeedback,
             _feedback.RenderGitCommandFeedback,
             () => GitCommandFeedbackModalHost.Visibility == Visibility.Visible);
-        InitializeWorktreeSupport();
+        _worktrees.Initialize();
     }
 
     private Task OpenRepositoryPickerAsync() => _repositoryPicker.OpenAsync();
