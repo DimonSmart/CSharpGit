@@ -68,6 +68,7 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         _viewModel.Tags.Items.CollectionChanged -= RepositoryPresentationTags_CollectionChanged;
         _viewModel.Stashes.Items.CollectionChanged -= RepositoryPresentationStashes_CollectionChanged;
         DetachRepositoryTreeStateTracking();
+        ShutdownRepositoryHistoryRewriteMenus();
         WorkingTreeCommitEditor.StashRequested -= CreateStash_Click;
         HistoryView.Shutdown();
         GitConsoleHost.Shutdown();

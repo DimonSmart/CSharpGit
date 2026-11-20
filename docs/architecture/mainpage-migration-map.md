@@ -4,6 +4,12 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Destructive path-history rewrite confirmation, operation admission, error reporting
+and invalidation are now owned by `Workflows/HistoryRewriteController`.
+`MainPage.HistoryRewrite.cs` retains only right-tap routing and menu composition;
+all lifecycle event registrations are explicitly detached at window shutdown.
+
+
 Repository switch and close admission, commit-draft confirmation, lifecycle continuation
 and successful-transition projections are now owned by
 `Workflows/RepositorySwitchController`. The page retains the two button handlers,

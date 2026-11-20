@@ -20,6 +20,7 @@ public sealed partial class MainPage
     private readonly Workflows.BranchRenameController _branchRename = null!;
     private readonly Workflows.WorktreeController _worktrees = null!;
     private readonly Workflows.RepositorySwitchController _repositorySwitch = null!;
+    private readonly Workflows.HistoryRewriteController _historyRewrite = null!;
     private readonly Workflows.BranchDragDropController _branchDragDrop = null!;
     private readonly Workflows.StashDialogController _stashDialogs = null!;
     private readonly Workflows.BranchFolderDeletionController _branchFolderDeletion = null!;
@@ -86,6 +87,12 @@ public sealed partial class MainPage
             () => XamlRoot,
             () => Microsoft.UI.Xaml.Application.Current is App app
                 ? app.MainWindowClientWidth : 0);
+        _historyRewrite = new Workflows.HistoryRewriteController(
+            _viewModel, _repositoryFilesViewModel, _repositoryFilePreview,
+            () => IsShuttingDown, () => XamlRoot, ShowPageDialogAsync,
+            RestoreCommitActionSelectionAsync,
+            UpdateRepositoryFilesModeSurface, UpdateHistoryScopePresentation,
+            () => { HistoryPane.Visibility = Visibility.Visible; WorkingTreePane.Visibility = Visibility.Collapsed; });
         InstallRepositoryHistoryRewriteMenus();
         _stashDialogs = new Workflows.StashDialogController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
