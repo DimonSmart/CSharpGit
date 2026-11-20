@@ -21,6 +21,7 @@ public sealed partial class MainPage
     private readonly Workflows.BranchDragDropController _branchDragDrop = null!;
     private readonly Workflows.StashDialogController _stashDialogs = null!;
     private readonly Workflows.BranchFolderDeletionController _branchFolderDeletion = null!;
+    private readonly Workflows.EditCommitMessageController _editCommitMessage = null!;
     private readonly CloneRepositoryViewModel _cloneRepositoryViewModel = null!;
     private readonly CreateRepositoryViewModel _createRepositoryViewModel = null!;
     private readonly Workflows.RepositoryCloneWorkflow _cloneWorkflow = null!;
@@ -80,6 +81,10 @@ public sealed partial class MainPage
         _stashDialogs = new Workflows.StashDialogController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
             () => IsShuttingDown, ExecuteCommandAsync);
+        _editCommitMessage = new Workflows.EditCommitMessageController(
+            _viewModel, () => XamlRoot, ShowPageDialogAsync,
+            () => IsShuttingDown, HandleCommitActionExecutionResultAsync,
+            RestoreCommitActionSelectionAsync);
         _branchFolderDeletion = new Workflows.BranchFolderDeletionController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
             () => IsShuttingDown, ShowErrorAsync, ShowInformationAsync);

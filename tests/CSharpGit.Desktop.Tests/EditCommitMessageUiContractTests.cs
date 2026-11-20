@@ -8,7 +8,8 @@ public sealed class EditCommitMessageUiContractTests
         var actions = Read("src", "CSharpGit.Presentation", "MainPage.CommitActions.cs");
 
         Assert.Contains("Edit commit message…", actions, StringComparison.Ordinal);
-        Assert.Contains("_editCommitMessageItem.Click += EditCommitMessage_Click;", actions, StringComparison.Ordinal);
+        Assert.Contains("_editCommitMessageItem.Click += (_, _) =>", actions, StringComparison.Ordinal);
+        Assert.Contains("_editCommitMessage.EditAsync", actions, StringComparison.Ordinal);
         Assert.Contains("_editCommitMessageItem.IsEnabled = canMutate;", actions, StringComparison.Ordinal);
         Assert.Contains("HistoryView.List.SelectedItem = row;", actions, StringComparison.Ordinal);
         Assert.Contains("_viewModel.History.SelectedRow = row;", actions, StringComparison.Ordinal);
@@ -17,7 +18,7 @@ public sealed class EditCommitMessageUiContractTests
     [Fact]
     public void DialogUsesFullMultilineMessageAndGuardsPrimaryAction()
     {
-        var workflow = Read("src", "CSharpGit.Presentation", "MainPage.EditCommitMessage.cs");
+        var workflow = Read("src", "CSharpGit.Presentation", "Workflows", "EditCommitMessageController.cs");
 
         Assert.Contains("Text = originalMessage", workflow, StringComparison.Ordinal);
         Assert.Contains("var originalMessage = commit.Message;", workflow, StringComparison.Ordinal);
@@ -37,7 +38,7 @@ public sealed class EditCommitMessageUiContractTests
     [Fact]
     public void UiDelegatesGitSemanticsAndRestoresServiceComputedSelection()
     {
-        var workflow = Read("src", "CSharpGit.Presentation", "MainPage.EditCommitMessage.cs");
+        var workflow = Read("src", "CSharpGit.Presentation", "Workflows", "EditCommitMessageController.cs");
         var actions = Read("src", "CSharpGit.Presentation", "MainPage.CommitActions.cs");
         var page = Read("src", "CSharpGit.Presentation", "MainPage.xaml.cs");
         var rewriteOwner = Read("src", "CSharpGit.Presentation.Core", "ViewModels", "CommitActionsViewModel.cs");
@@ -48,7 +49,8 @@ public sealed class EditCommitMessageUiContractTests
         Assert.Contains("result.ConflictNewCommit", workflow, StringComparison.Ordinal);
         Assert.Contains("result.ConflictOldCommit", workflow, StringComparison.Ordinal);
         Assert.Contains("_pendingEditedCommitHash = result.ConflictNewCommit;", workflow, StringComparison.Ordinal);
-        Assert.Contains("RestorePendingEditedCommitSelectionAsync", page, StringComparison.Ordinal);
+        Assert.Contains("_editCommitMessage.RestorePendingEditedCommitSelectionAsync", page, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "MainPage.EditCommitMessage.cs")));
         Assert.Contains("private async Task<bool> RestoreCommitActionSelectionAsync", actions, StringComparison.Ordinal);
         Assert.DoesNotContain("git rebase", workflow, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("git commit", workflow, StringComparison.OrdinalIgnoreCase);

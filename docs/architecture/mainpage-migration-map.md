@@ -4,6 +4,13 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Commit message rewrite dialog, conflict-pending OIDs and post-rebase selection
+restoration are now owned by `Workflows/EditCommitMessageController`.
+It calls the existing CommitActionsViewModel mutation and preserves selection
+callbacks; the history context-menu handler invokes it directly. The old
+`MainPage.EditCommitMessage.cs` partial is removed.
+
+
 Local and remote branch-folder delete dialogs, candidate planning, partial-failure
 reporting and safe confirmation now belong to `Workflows/BranchFolderDeletionController`.
 The model remains the sole owner of Git deletion; the controller validates repository

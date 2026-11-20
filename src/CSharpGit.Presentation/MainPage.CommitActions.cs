@@ -36,7 +36,8 @@ public sealed partial class MainPage
         _revertItem = new MenuFlyoutItem { Text = "Revert" };
         _revertItem.Click += RevertCommit_Click;
         _editCommitMessageItem = new MenuFlyoutItem { Text = "Edit commit message…" };
-        _editCommitMessageItem.Click += EditCommitMessage_Click;
+        _editCommitMessageItem.Click += (_, _) =>
+            RunPageUiOperation(_editCommitMessage.EditAsync, "EditCommitMessage_Click");
         _fixupIntoPreviousCommitItem = new MenuFlyoutItem { Text = "Fixup into previous commit" };
         _fixupIntoPreviousCommitItem.Click += FixupIntoPreviousCommit_Click;
         _interactiveRebaseFromHereItem = new MenuFlyoutItem { Text = "Interactive rebase from here…" };

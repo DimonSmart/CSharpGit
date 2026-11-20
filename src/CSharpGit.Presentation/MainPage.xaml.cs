@@ -163,8 +163,8 @@ public sealed partial class MainPage : Page
             _wasBusy = _viewModel.IsBusy;
             UpdateStatusBar();
             UpdateLoadMoreHistoryAvailability();
-            if (becameIdle && ShouldRestorePendingEditedCommitSelection)
-                RunPageUiOperation(RestorePendingEditedCommitSelectionAsync,
+            if (becameIdle && _editCommitMessage.ShouldRestorePendingEditedCommitSelection)
+                RunPageUiOperation(_editCommitMessage.RestorePendingEditedCommitSelectionAsync,
                     "Restore edited commit selection");
             if (becameIdle && _repositoryFilePreview.HasPending)
                 RunPageUiOperation(_repositoryFilePreview.ResumeAsync, "Resume repository file preview");
