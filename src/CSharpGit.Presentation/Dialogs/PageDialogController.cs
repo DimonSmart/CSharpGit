@@ -27,7 +27,7 @@ internal sealed class PageDialogController(Page page, OpenRepositoryViewModel vi
                 if (_isShuttingDown() || _page.XamlRoot is null)
                     return ContentDialogResult.None;
 
-                dialog._page.XamlRoot = _page.XamlRoot;
+                dialog.XamlRoot = _page.XamlRoot;
                 return await dialog.ShowAsync();
             },
             ContentDialogResult.None,
@@ -46,7 +46,7 @@ internal sealed class PageDialogController(Page page, OpenRepositoryViewModel vi
                     "InteractiveRebaseTodoEditor") is not { } editor)
                 return;
 
-            var rootSize = sender._page.XamlRoot?.Size;
+            var rootSize = sender.XamlRoot?.Size;
             var viewportWidth = rootSize?.Width ?? _page.ActualWidth;
             var viewportHeight = rootSize?.Height ?? _page.ActualHeight;
 
@@ -111,7 +111,7 @@ internal sealed class PageDialogController(Page page, OpenRepositoryViewModel vi
             throw new InvalidOperationException($"Page dialog resource '{key}' was not found.");
 
         dialog.DataContext = _viewModel;
-        dialog._page.XamlRoot = _page.XamlRoot;
+        dialog.XamlRoot = _page.XamlRoot;
         return dialog;
     }
 }
