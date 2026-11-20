@@ -161,8 +161,8 @@ public sealed partial class MainPage : Page
             if (becameIdle && ShouldRestorePendingEditedCommitSelection)
                 RunPageUiOperation(RestorePendingEditedCommitSelectionAsync,
                     "Restore edited commit selection");
-            if (becameIdle && _pendingRepositoryPreviewSelection is not null)
-                RunPageUiOperation(ResumeDeferredRepositoryPreviewAsync, "Resume repository file preview");
+            if (becameIdle && _repositoryFilePreview.HasPending)
+                RunPageUiOperation(_repositoryFilePreview.ResumeAsync, "Resume repository file preview");
             if (becameIdle && _commitImageDiff.HasPending)
                 RunPageUiOperation(_commitImageDiff.ResumeAsync, "Resume commit image preview");
             if (becameIdle && _repositoryTreeNavigation.HasPendingCheckout)

@@ -47,7 +47,7 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         _repositoryRefresh.ShutdownRepositoryChangeMonitoring();
         // Stop page-owned cancelable previews before waiting for diagnostics.
         // Do not cancel Git mutations: close admission already protects them.
-        CancelRepositoryFilePreview();
+        _repositoryFilePreview.Cancel();
         _commitImageDiff.Cancel(clearSurface: false);
         CancelWorkingTreeImageDiff();
         _cloneRepositoryViewModel.Cancel();

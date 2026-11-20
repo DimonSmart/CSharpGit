@@ -2,69 +2,91 @@ using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.Controls;
 using CSharpGit.Presentation.Previewing;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
+using CSharpGit.Presentation.ViewModels;
 
-namespace CSharpGit.Presentation;
+namespace CSharpGit.Presentation.Workflows;
 
-public sealed partial class MainPage
+// Owns lazy file preview admission, cancellation and publication against snapshot identity.
+internal sealed class RepositoryFilePreviewController(
+    OpenRepositoryViewModel viewModel,
+    RepositoryFilesViewModel repositoryFiles,
+    IRepositoryFileVersionService fileVersionService,
+    Func<FilePreviewHost?> previewHost,
+    Func<bool> isShuttingDown,
+    Func<bool> isFilesActive,
+    Func<long> activationRevision,
+    Action<Func<Task>,string> runUiOperation,
+    Action<Exception,string> reportFailure,
+    Func<Exception,string> userFacingFileError)
 {
+    private readonly OpenRepositoryViewModel _viewModel = viewModel;
+    private readonly RepositoryFilesViewModel _repositoryFilesViewModel = repositoryFiles;
+    private readonly IRepositoryFileVersionService _fileVersionService = fileVersionService;
+    private readonly Func<FilePreviewHost?> _previewHost = previewHost;
+    private readonly Func<bool> _isShuttingDown = isShuttingDown;
+    private readonly Func<bool> _isFilesActive = isFilesActive;
+    private readonly Func<long> _activationRevision = activationRevision;
+    private readonly Action<Func<Task>,string> _runUiOperation = runUiOperation;
+    private readonly Action<Exception,string> _reportFailure = reportFailure;
+    private readonly Func<Exception,string> _userFacingFileError = userFacingFileError;
+
     private readonly FilePreviewService _repositoryFilePreviewService = new();
     private readonly PreviewPublicationGate<RepositoryPreviewContext> _repositoryPreviewGate = new();
-    private FilePreviewHost? _repositoryFilePreviewHost => _repositoryFilesSurface?.PreviewHost;
     private RepositoryFileSelection? _pendingRepositoryPreviewSelection;
+    internal bool HasPending => _pendingRepositoryPreviewSelection is not null;
+    internal long StartedActivation { get; private set; } = -1;
 
-    private void ApplyRepositoryFileSelection(
+    internal void ApplySelection(
         string path,
         int? lineNumber,
         RepositorySnapshotEntry? entry)
     {
-        if (IsShuttingDown || _repositoryFilePreviewHost is null) return;
+        if (_isShuttingDown() || _previewHost() is null) return;
         _pendingRepositoryPreviewSelection = null;
 
         if (entry is null)
         {
             _repositoryPreviewGate.Cancel();
-            _repositoryFilePreviewHost.ShowFolder();
+            _previewHost().ShowFolder();
             return;
         }
 
         switch (entry.Kind)
         {
             case RepositorySnapshotEntryKind.File:
-                RunPageUiOperation(
-                    () => LoadRepositoryFilePreviewAsync(
+                _runUiOperation(
+                    () => LoadAsync(
                         new RepositoryFileSelection(path, lineNumber, entry)),
                     "Repository file preview");
                 break;
             case RepositorySnapshotEntryKind.Symlink:
                 _repositoryPreviewGate.Cancel();
-                _repositoryFilePreviewHost.ShowUnsupported("Symlink preview is not available.");
+                _previewHost().ShowUnsupported("Symlink preview is not available.");
                 break;
             case RepositorySnapshotEntryKind.Submodule:
                 _repositoryPreviewGate.Cancel();
-                _repositoryFilePreviewHost.ShowUnsupported("Submodule preview is not available.");
+                _previewHost().ShowUnsupported("Submodule preview is not available.");
                 break;
             default:
                 _repositoryPreviewGate.Cancel();
-                _repositoryFilePreviewHost.ShowUnsupported("This Git entry type cannot be previewed.");
+                _previewHost().ShowUnsupported("This Git entry type cannot be previewed.");
                 break;
         }
     }
 
-    private void ClearRepositoryFileSelection()
+    internal void ClearSelection()
     {
         _repositoryPreviewGate.Cancel();
-        _repositoryFilePreviewHost?.ShowNothingSelected();
+        _previewHost()?.ShowNothingSelected();
     }
 
-    private void CancelRepositoryFilePreview() => _repositoryPreviewGate.Cancel();
+    internal void Cancel() => _repositoryPreviewGate.Cancel();
 
-    private async Task LoadRepositoryFilePreviewAsync(RepositoryFileSelection selection)
+    private async Task LoadAsync(RepositoryFileSelection selection)
     {
         var repository = _repositoryFilesViewModel.CurrentRepository;
         var commitHash = _repositoryFilesViewModel.CurrentCommit;
-        if (IsShuttingDown || repository is null
+        if (_isShuttingDown() || repository is null
             || string.IsNullOrWhiteSpace(commitHash)
             || selection.Entry is not { Kind: RepositorySnapshotEntryKind.File } entry
             || _fileVersionService is null
@@ -77,7 +99,7 @@ public sealed partial class MainPage
         if (admission is null)
         {
             _pendingRepositoryPreviewSelection = selection;
-            _repositoryFilePreviewHost?.ShowUnsupported("Waiting for the current Git operation.");
+            _previewHost()?.ShowUnsupported("Waiting for the current Git operation.");
             return;
         }
 
@@ -88,8 +110,8 @@ public sealed partial class MainPage
             selection.Path,
             selection.LineNumber);
         var lease = _repositoryPreviewGate.Begin(context);
-        _repositoryFilePreviewStartedActivation = _repositoryFilesActivationRevision;
-        _repositoryFilePreviewHost?.ShowLoading(selection.Path);
+        StartedActivation = _activationRevision();
+        _previewHost()?.ShowLoading(selection.Path);
 
         try
         {
@@ -99,7 +121,7 @@ public sealed partial class MainPage
             if (version is null || !CanPublishRepositoryPreview(lease)) return;
             if (!version.CanOpen)
             {
-                _repositoryFilePreviewHost?.ShowUnsupported(
+                _previewHost()?.ShowUnsupported(
                     version.UnavailableReason ?? "This historical entry cannot be previewed.");
                 return;
             }
@@ -116,34 +138,34 @@ public sealed partial class MainPage
                 materialized.Path,
                 lease.CancellationToken);
             if (!CanPublishRepositoryPreview(lease)) return;
-            _repositoryFilePreviewHost?.Show(content);
+            _previewHost()?.Show(content);
         }
-        catch (OperationCanceledException) when (lease.CancellationToken.IsCancellationRequested || IsShuttingDown)
+        catch (OperationCanceledException) when (lease.CancellationToken.IsCancellationRequested || _isShuttingDown())
         {
         }
         catch (Exception exception)
         {
-            ReportUiFailure(exception, "Repository file preview");
+            _reportFailure(exception, "Repository file preview");
             if (CanPublishRepositoryPreview(lease))
-                _repositoryFilePreviewHost?.ShowError(UserFacingFileError(exception));
+                _previewHost()?.ShowError(_userFacingFileError(exception));
         }
     }
 
-    private async Task ResumeDeferredRepositoryPreviewAsync()
+    internal async Task ResumeAsync()
     {
         await Task.Yield();
         var pending = _pendingRepositoryPreviewSelection;
-        if (pending is null || IsShuttingDown || !IsRepositoryFilesActive
+        if (pending is null || _isShuttingDown() || !_isFilesActive()
             || !string.Equals(_repositoryFilesViewModel.SelectedPath, pending.Path, StringComparison.Ordinal)
             || !ReferenceEquals(_repositoryFilesViewModel.SelectedEntry, pending.Entry))
             return;
         _pendingRepositoryPreviewSelection = null;
-        await LoadRepositoryFilePreviewAsync(pending);
+        await LoadAsync(pending);
     }
 
     private bool CanPublishRepositoryPreview(PreviewLease<RepositoryPreviewContext> lease)
     {
-        if (IsShuttingDown || !IsRepositoryFilesActive
+        if (_isShuttingDown() || !_isFilesActive()
             || _repositoryFilesViewModel.SelectedPath is not { } path)
         {
             return false;
@@ -151,7 +173,7 @@ public sealed partial class MainPage
 
         var repository = _repositoryFilesViewModel.CurrentRepository;
         var commitHash = _repositoryFilesViewModel.CurrentCommit;
-        if (IsShuttingDown || repository is null
+        if (_isShuttingDown() || repository is null
             || string.IsNullOrWhiteSpace(commitHash)
             || !_repositoryFilesViewModel.SnapshotMatchesSelection)
         {

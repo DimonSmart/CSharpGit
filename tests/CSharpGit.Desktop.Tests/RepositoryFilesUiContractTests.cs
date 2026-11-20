@@ -24,7 +24,7 @@ public sealed class RepositoryFilesUiContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
-        var previewSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFilePreview.cs"));
+        var previewSurface = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryFilePreviewController.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
 
         Assert.DoesNotContain("IRepositorySnapshotService", filesSurface, StringComparison.Ordinal);
@@ -106,7 +106,7 @@ public sealed class RepositoryFilesUiContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
-        var previewSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFilePreview.cs"));
+        var previewSurface = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryFilePreviewController.cs"));
         var treeStyles = File.ReadAllText(Path.Combine(presentation, "Styles", "RepositoryTree.xaml"));
         var previewHost = File.ReadAllText(Path.Combine(presentation, "Controls", "FilePreviewHost.cs"));
         var previewService = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "Previewing", "FilePreviewService.cs"));
@@ -117,12 +117,14 @@ public sealed class RepositoryFilesUiContractTests
         Assert.Contains("new RepositoryFilesSurface(_repositoryFilesViewModel)", filesSurface, StringComparison.Ordinal);
         Assert.Contains("new GridSplitter", visual, StringComparison.Ordinal);
         Assert.Contains("new FilePreviewHost()", visual, StringComparison.Ordinal);
-        Assert.Contains("_repositoryFilesSurface?.PreviewHost", previewSurface, StringComparison.Ordinal);
+        Assert.Contains("_previewHost()", previewSurface, StringComparison.Ordinal);
+        Assert.Contains("() => _repositoryFilesSurface?.PreviewHost", filesSurface, StringComparison.Ordinal);
         Assert.Contains("FilePreviewService", previewService, StringComparison.Ordinal);
         Assert.Contains("TextPreviewContent", previewHost, StringComparison.Ordinal);
         Assert.Contains("ImagePreviewContent", previewHost, StringComparison.Ordinal);
         Assert.Contains("BinaryPreviewContent", previewHost, StringComparison.Ordinal);
         Assert.Contains("RepositoryFilesTree_SelectionChanged", filesSurface, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(presentation, "MainPage.RepositoryFilePreview.cs")));
         Assert.Contains("RepositoryContentResults_SelectionChanged", filesSurface, StringComparison.Ordinal);
         Assert.Contains("SnapshotMatchesSelection", filesSurface, StringComparison.Ordinal);
     }

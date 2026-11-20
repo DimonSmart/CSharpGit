@@ -4,6 +4,12 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Historical Repository Files preview now belongs to `Workflows/RepositoryFilePreviewController`.
+It owns the publication gate, cancellation, deferred selection and activation revision;
+`MainPage.RepositoryFilePreview.cs` was deleted. The files surface passes a typed preview
+host accessor and maintains its separate search/tree-selection lifecycle.
+
+
 Text/binary/image diff state-to-visual mapping is now owned by
 `Workflows/DiffPresentationController`, with separate typed Commit and WorkingTree
 control groups. The old `MainPage.DiffPresentation.cs` was deleted; change and file
