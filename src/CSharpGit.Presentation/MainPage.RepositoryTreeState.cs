@@ -14,6 +14,17 @@ public sealed partial class MainPage
         InitializeLoadingOverlays();
     }
 
+    private Workflows.CommitLoadingOverlayController? _loadingOverlay;
+
+    private void InitializeLoadingOverlays()
+    {
+        _loadingOverlay ??= new Workflows.CommitLoadingOverlayController(
+            _viewModel, ChangedFilesTree, CompactDiffViewer, RootLayout);
+        _loadingOverlay.Initialize();
+    }
+
+    private void DetachLoadingOverlays() => _loadingOverlay?.Shutdown();
+
     private void SynchronizeRepositoryTree() => RepositoryExplorer.ReconcileRepository();
 
     private void SynchronizeWorktreePresentation() => RepositoryExplorer.ReconcileWorktrees();

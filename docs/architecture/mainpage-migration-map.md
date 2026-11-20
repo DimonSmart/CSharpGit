@@ -4,6 +4,13 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Commit Details loading overlays now belong to
+`Workflows/CommitLoadingOverlayController`. This controller owns visual changes,
+loading rings and the Commit Details subscription, while MainPage holds only a
+window-lifetime adapter until the final Commit Details view migration.
+`MainPage.LoadingOverlays.cs` is removed.
+
+
 Repository Clone and Create dialog workflows are now owned by separate window-scoped
 `Workflows/RepositoryCloneWorkflow` and `Workflows/RepositoryCreationWorkflow`.
 They coordinate admission leases, draft confirmation and repository switch via narrow
