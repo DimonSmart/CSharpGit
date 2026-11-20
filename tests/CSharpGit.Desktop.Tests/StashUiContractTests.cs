@@ -27,7 +27,7 @@ public sealed class StashUiContractTests
         var editorCode = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeCommitEditorView.xaml.cs");
         var composer = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs");
         var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
-        var stashPage = Read(root, "src", "CSharpGit.Presentation", "MainPage.Stashes.cs");
+        var stashPage = Read(root, "src", "CSharpGit.Presentation", "Workflows", "StashDialogController.cs");
         var stashViewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "StashesViewModel.cs");
 
         Assert.Contains("<views:WorkingTreeCommitEditorView", xaml, StringComparison.Ordinal);
@@ -38,6 +38,7 @@ public sealed class StashUiContractTests
         Assert.DoesNotContain("IsEnabled=\"{Binding CanCreateStash}\"", editor, StringComparison.Ordinal);
         Assert.Contains("StashRequested?.Invoke", editorCode, StringComparison.Ordinal);
         Assert.Contains("WorkingTreeCommitEditor.StashRequested += CreateStash_Click;", composer, StringComparison.Ordinal);
+        Assert.Contains("new Workflows.StashDialogController(", composer, StringComparison.Ordinal);
         var navigation = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs");
         Assert.Contains("\"Stash…\"", navigation, StringComparison.Ordinal);
         Assert.Contains("ShowCreateStashDialogAsync", navigation, StringComparison.Ordinal);
@@ -62,7 +63,7 @@ public sealed class StashUiContractTests
     {
         var root = FindRepositoryRoot();
         var menu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
-        var stashPage = Read(root, "src", "CSharpGit.Presentation", "MainPage.Stashes.cs");
+        var stashPage = Read(root, "src", "CSharpGit.Presentation", "Workflows", "StashDialogController.cs");
         var stashViewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "StashesViewModel.cs");
 
         Assert.Contains("\"Stash selected…\"", menu, StringComparison.Ordinal);
@@ -116,7 +117,7 @@ public sealed class StashUiContractTests
     {
         var root = FindRepositoryRoot();
         var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
-        var stashPage = Read(root, "src", "CSharpGit.Presentation", "MainPage.Stashes.cs");
+        var stashPage = Read(root, "src", "CSharpGit.Presentation", "Workflows", "StashDialogController.cs");
         var stashViewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "StashesViewModel.cs");
 
         var navigation = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs");
@@ -155,8 +156,8 @@ public sealed class StashUiContractTests
 
     private static string SliceSelectedDialog(string source)
     {
-        var start = source.IndexOf("private async Task ShowCreateSelectedStashDialogAsync", StringComparison.Ordinal);
-        var end = source.IndexOf("private void DropSelectedStash_Click", start, StringComparison.Ordinal);
+        var start = source.IndexOf("internal async Task ShowCreateSelectedAsync", StringComparison.Ordinal);
+        var end = source.IndexOf("internal async Task ConfirmDropAsync", start, StringComparison.Ordinal);
         Assert.True(start >= 0 && end > start);
         return source[start..end];
     }

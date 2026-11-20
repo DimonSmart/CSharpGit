@@ -19,6 +19,7 @@ public sealed partial class MainPage
     private readonly Workflows.RepositoryConfirmationController _confirmationController = null!;
     private readonly Workflows.BranchRenameController _branchRename = null!;
     private readonly Workflows.BranchDragDropController _branchDragDrop = null!;
+    private readonly Workflows.StashDialogController _stashDialogs = null!;
     private readonly CloneRepositoryViewModel _cloneRepositoryViewModel = null!;
     private readonly CreateRepositoryViewModel _createRepositoryViewModel = null!;
     private readonly Workflows.RepositoryCloneWorkflow _cloneWorkflow = null!;
@@ -75,6 +76,9 @@ public sealed partial class MainPage
             () => Microsoft.UI.Xaml.Application.Current is App app
                 ? app.MainWindowClientWidth : 0);
         InstallRepositoryHistoryRewriteMenus();
+        _stashDialogs = new Workflows.StashDialogController(
+            _viewModel, () => XamlRoot, ShowPageDialogAsync,
+            () => IsShuttingDown, ExecuteCommandAsync);
         WorkingTreeCommitEditor.StashRequested += CreateStash_Click;
         _createRepositoryViewModel = createRepositoryViewModel
             ?? throw new ArgumentNullException(nameof(createRepositoryViewModel));

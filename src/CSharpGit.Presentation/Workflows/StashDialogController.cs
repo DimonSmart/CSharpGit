@@ -1,16 +1,28 @@
+using System.Windows.Input;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
+using CSharpGit.Presentation;
+using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace CSharpGit.Presentation;
+namespace CSharpGit.Presentation.Workflows;
 
-public sealed partial class MainPage
+// Window-scoped owner of stash creation/selection and safe destructive confirmation.
+internal sealed class StashDialogController(
+    OpenRepositoryViewModel viewModel,
+    Func<XamlRoot?> xamlRoot,
+    Func<ContentDialog, Task<ContentDialogResult>> showDialog,
+    Func<bool> isShuttingDown,
+    Func<ICommand, Task> executeCommand)
 {
-    private void CreateStash_Click(object sender, RoutedEventArgs args) =>
-        RunPageUiOperation(ShowCreateStashDialogAsync, "Create stash");
+    private readonly OpenRepositoryViewModel _viewModel = viewModel;
+    private readonly Func<XamlRoot?> _xamlRoot = xamlRoot;
+    private readonly Func<ContentDialog, Task<ContentDialogResult>> _showDialog = showDialog;
+    private readonly Func<bool> _isShuttingDown = isShuttingDown;
+    private readonly Func<ICommand, Task> _executeCommand = executeCommand;
 
-    private async Task ShowCreateStashDialogAsync()
+    internal async Task ShowCreateAsync()
     {
         var repository = _viewModel.Repository;
         if (repository is null || !_viewModel.Stashes.CanCreateStash) return;
@@ -50,7 +62,7 @@ public sealed partial class MainPage
 
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "Stash changes",
             Content = content,
             PrimaryButtonText = "Stash",
@@ -79,8 +91,8 @@ public sealed partial class MainPage
         includeUntracked.Unchecked += (_, _) => UpdateState();
         UpdateState();
 
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
-            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+        if (await _showDialog(dialog) != ContentDialogResult.Primary
+            || _isShuttingDown() || !ReferenceEquals(repository, _viewModel.Repository)
             || !_viewModel.Stashes.CanCreateStash) return;
 
         var selectedScope = stagedOnly.IsChecked == true
@@ -93,7 +105,7 @@ public sealed partial class MainPage
                 IncludeUntracked: includeUntracked.IsChecked == true));
     }
 
-    private async Task ShowCreateSelectedStashDialogAsync(
+    internal async Task ShowCreateSelectedAsync(
         IReadOnlyCollection<WorkingTreeChange> changes)
     {
         var repository = _viewModel.Repository;
@@ -129,7 +141,7 @@ public sealed partial class MainPage
 
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "Stash selected changes",
             Content = content,
             PrimaryButtonText = "Stash",
@@ -138,19 +150,13 @@ public sealed partial class MainPage
             IsPrimaryButtonEnabled = snapshot.Length > 0
         };
 
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
-            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+        if (await _showDialog(dialog) != ContentDialogResult.Primary
+            || _isShuttingDown() || !ReferenceEquals(repository, _viewModel.Repository)
             || !_viewModel.Stashes.CanCreateSelectedStash(snapshot)) return;
         await _viewModel.Stashes.CreateSelectedStashAsync(snapshot, message.Text);
     }
 
-    private void DropSelectedStash_Click(object sender, RoutedEventArgs args)
-    {
-        if (_viewModel.Stashes.SelectedStash is { } stash)
-            RunPageUiOperation(() => ConfirmDropStashAsync(stash), "Drop stash");
-    }
-
-    private async Task ConfirmDropStashAsync(GitStash stash)
+    internal async Task ConfirmDropAsync(GitStash stash)
     {
         var repository = _viewModel.Repository;
         if (repository is null || !_viewModel.Stashes.DropCommand.CanExecute(null)) return;
@@ -174,7 +180,7 @@ public sealed partial class MainPage
 
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "Drop stash?",
             Content = content,
             PrimaryButtonText = "Drop stash",
@@ -182,12 +188,12 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Close
         };
 
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
-            || IsShuttingDown
+        if (await _showDialog(dialog) != ContentDialogResult.Primary
+            || _isShuttingDown()
             || !ReferenceEquals(repository, _viewModel.Repository)
             || !string.Equals(stash.Commit, _viewModel.Stashes.SelectedStash?.Commit, StringComparison.Ordinal)
             || !_viewModel.Stashes.DropCommand.CanExecute(null))
             return;
-        await ExecuteCommandAsync(_viewModel.Stashes.DropCommand);
+        await _executeCommand(_viewModel.Stashes.DropCommand);
     }
 }

@@ -4,6 +4,13 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Stash creation (repository-wide and selected paths) and destructive drop confirmation
+are now owned by `Workflows/StashDialogController`. Its operations share the
+window dialog gate, revalidate repository identity and selection after confirmation,
+and dispatch to the existing StashesViewModel. `MainPage.Stashes.cs` was removed;
+XAML and reference-menu entry points retain only thin forwarding adapters.
+
+
 Local branch renaming (F2/dialog) and branch drag/drop now belong to separate
 `Workflows/BranchRenameController` and `Workflows/BranchDragDropController`.
 Both own and dispose their UI event subscriptions; drag/drop requests go through
