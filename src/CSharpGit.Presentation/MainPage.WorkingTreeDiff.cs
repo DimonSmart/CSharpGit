@@ -365,7 +365,7 @@ public sealed partial class MainPage
 
         try
         {
-            var imageResult = await ImageDiffService.LoadWorkingTreeAsync(
+            var imageResult = await _imageDiffService.LoadWorkingTreeAsync(
                 repository,
                 change,
                 kind,

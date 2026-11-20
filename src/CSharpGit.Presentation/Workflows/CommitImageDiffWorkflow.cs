@@ -1,31 +1,41 @@
 using CSharpGit.Domain;
+using CSharpGit.Presentation.Controls;
 using CSharpGit.Presentation.Previewing;
 using CSharpGit.Presentation.ViewModels;
-using Microsoft.UI.Xaml;
 
-namespace CSharpGit.Presentation;
+namespace CSharpGit.Presentation.Workflows;
 
-public sealed partial class MainPage
+// Owns image diff cancellation, Git admission and selection/generation-safe publication.
+internal sealed class CommitImageDiffWorkflow(
+    OpenRepositoryViewModel viewModel,
+    FileActionsViewModel fileActions,
+    ImageDiffPreviewService imageDiffService,
+    ImageDiffPreviewHost imageHost,
+    Func<bool> isShuttingDown,
+    Action<DiffPresentationState> present,
+    Action<Exception, string> reportFailure)
 {
-    private ImageDiffPreviewService? _imageDiffPreviewService;
+    private readonly OpenRepositoryViewModel _viewModel = viewModel;
+    private readonly FileActionsViewModel _fileActions = fileActions;
+    private readonly ImageDiffPreviewService _imageDiffService = imageDiffService;
+    private readonly ImageDiffPreviewHost _imageHost = imageHost;
+    private readonly Func<bool> _isShuttingDown = isShuttingDown;
+    private readonly Action<DiffPresentationState> _present = present;
+    private readonly Action<Exception, string> _reportFailure = reportFailure;
+
     private CancellationTokenSource? _commitImageDiffCts;
     private long _commitImageDiffGeneration;
     private bool _pendingCommitImageDiff;
+    internal bool HasPending => _pendingCommitImageDiff;
 
-    private ImageDiffPreviewService ImageDiffService =>
-        _imageDiffPreviewService ??= new ImageDiffPreviewService(
-            _fileVersionService,
-            _fileActions.PathResolver,
-            SharedImageMetadataReader.Instance);
-
-    private async Task LoadCommitImageDiffAsync()
+    internal async Task LoadAsync()
     {
         var repository = _viewModel.Repository;
         var commitHash = _viewModel.CommitDetails.SelectedDiffCommitHash;
         var file = _viewModel.CommitDetails.SelectedFile;
-        if (IsShuttingDown || repository is null || string.IsNullOrWhiteSpace(commitHash) || file is null || _viewModel.CommitDetails.SelectedDiff?.IsBinary != true)
+        if (_isShuttingDown() || repository is null || string.IsNullOrWhiteSpace(commitHash) || file is null || _viewModel.CommitDetails.SelectedDiff?.IsBinary != true)
         {
-            SetCommitDiffPresentationState(DiffPresentationState.None);
+            _present(DiffPresentationState.None);
             return;
         }
 
@@ -33,7 +43,7 @@ public sealed partial class MainPage
         if (admission is null)
         {
             _pendingCommitImageDiff = true;
-            SetCommitDiffPresentationState(DiffPresentationState.Unavailable);
+            _present(DiffPresentationState.Unavailable);
             return;
         }
         _pendingCommitImageDiff = false;
@@ -43,11 +53,11 @@ public sealed partial class MainPage
         var previous = Interlocked.Exchange(ref _commitImageDiffCts, cts);
         previous?.Cancel();
         previous?.Dispose();
-        SetCommitDiffPresentationState(DiffPresentationState.LoadingImage);
+        _present(DiffPresentationState.LoadingImage);
 
         try
         {
-            var result = await ImageDiffService.LoadCommitAsync(
+            var result = await _imageDiffService.LoadCommitAsync(
                 repository,
                 commitHash,
                 file.Path,
@@ -61,21 +71,21 @@ public sealed partial class MainPage
 
             if (result.Content is null)
             {
-                SetCommitDiffPresentationState(DiffPresentationState.OtherBinary);
+                _present(DiffPresentationState.OtherBinary);
                 return;
             }
 
-            CommitImageDiffHost.Show(result.Content);
-            SetCommitDiffPresentationState(DiffPresentationState.Image);
+            _imageHost.Show(result.Content);
+            _present(DiffPresentationState.Image);
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested)
         {
         }
         catch (Exception exception)
         {
-            ReportUiFailure(exception, "Commit image diff");
+            _reportFailure(exception, "Commit image diff");
             if (IsCurrentCommitImageDiffRequest(repository, commitHash, file.Path, generation, cts))
-                SetCommitDiffPresentationState(DiffPresentationState.Unavailable);
+                _present(DiffPresentationState.Unavailable);
         }
         finally
         {
@@ -87,11 +97,11 @@ public sealed partial class MainPage
         }
     }
 
-    private async Task ResumeDeferredCommitImageDiffAsync()
+    internal async Task ResumeAsync()
     {
         await Task.Yield();
-        if (_pendingCommitImageDiff && !IsShuttingDown)
-            await LoadCommitImageDiffAsync();
+        if (_pendingCommitImageDiff && !_isShuttingDown())
+            await LoadAsync();
     }
 
     private bool IsCurrentCommitImageDiffRequest(
@@ -100,7 +110,7 @@ public sealed partial class MainPage
         string path,
         long generation,
         CancellationTokenSource cancellation) =>
-        !IsShuttingDown
+        !_isShuttingDown()
         && !cancellation.IsCancellationRequested
         && generation == Volatile.Read(ref _commitImageDiffGeneration)
         && _viewModel.CommitDetails.IsChangesViewActive
@@ -109,7 +119,7 @@ public sealed partial class MainPage
         && string.Equals(path, _viewModel.CommitDetails.SelectedFile?.Path, StringComparison.Ordinal)
         && _viewModel.CommitDetails.SelectedDiff?.IsBinary == true;
 
-    private void CancelCommitImageDiff(bool clearSurface)
+    internal void Cancel(bool clearSurface)
     {
         _pendingCommitImageDiff = false;
         Interlocked.Increment(ref _commitImageDiffGeneration);
@@ -117,7 +127,6 @@ public sealed partial class MainPage
         cancellation?.Cancel();
         cancellation?.Dispose();
         if (clearSurface)
-            SetCommitDiffPresentationState(DiffPresentationState.None);
+            _present(DiffPresentationState.None);
     }
-
 }

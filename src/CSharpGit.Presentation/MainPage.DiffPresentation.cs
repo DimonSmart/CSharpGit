@@ -4,24 +4,6 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private enum DiffPresentationState
-    {
-        None,
-        NothingSelected,
-        LoadingDiff,
-        LargeDiff,
-        LoadingImage,
-        Text,
-        Image,
-        OtherBinary,
-        NoTextualPatch,
-        NoNetStashDiff,
-        DeltaMissing,
-        Unavailable,
-        Error
-    }
-
-
     private void SetCommitDiffPresentationState(DiffPresentationState state)
     {
         CommitDiffHeader.Visibility =

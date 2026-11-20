@@ -4,6 +4,13 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Commit image-diff admission, deferred resume, cancellation and generation-safe publication
+are now owned by `Workflows/CommitImageDiffWorkflow`. The shared
+`ImageDiffPreviewService` is composed once per window for commit and working-tree
+previews. The presentation-state enum is a separate internal type; the old
+`MainPage.ImageDiff.cs` is deleted.
+
+
 The page-local modal gate, dialog lifetime cancellation and interactive rebase
 editor workflow are now owned by `Dialogs/PageDialogController` with a normal
 `Page` visual-surface reference rather than a dependency on `MainPage`.

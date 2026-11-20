@@ -47,7 +47,7 @@ public sealed partial class MainPage
     {
         var active = ReferenceEquals(DetailsTabs.SelectedItem, ChangesTabControl);
         _viewModel.CommitDetails.SetActive(active);
-        if (!active) CancelCommitImageDiff(clearSurface: true);
+        if (!active) _commitImageDiff.Cancel(clearSurface: true);
     }
 
     private void CommitFiles_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs args)
@@ -77,7 +77,7 @@ public sealed partial class MainPage
         }
         else if (args.PropertyName == nameof(CommitDetailsViewModel.SelectedFile))
         {
-            CancelCommitImageDiff(clearSurface: true);
+            _commitImageDiff.Cancel(clearSurface: true);
             CompactDiffViewer.Clear();
             SetCommitDiffPresentationState(
                 _viewModel.CommitDetails.SelectedFile is null
@@ -109,7 +109,7 @@ public sealed partial class MainPage
     {
         if (!_changesSurfaceInitialized) return;
 
-        CancelCommitImageDiff(clearSurface: false);
+        _commitImageDiff.Cancel(clearSurface: false);
         if (_viewModel.CommitDetails.SelectedDiff is not { } diff)
         {
             CompactDiffViewer.Clear();
@@ -133,7 +133,7 @@ public sealed partial class MainPage
         {
             case DiffContentPresentation.Binary:
                 CompactDiffViewer.Clear();
-                RunPageUiOperation(LoadCommitImageDiffAsync, "Commit image diff");
+                RunPageUiOperation(_commitImageDiff.LoadAsync, "Commit image diff");
                 return;
             case DiffContentPresentation.NoTextualPatch:
                 CompactDiffViewer.Clear();

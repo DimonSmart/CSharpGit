@@ -2,6 +2,7 @@ using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.ViewModels;
+using CSharpGit.Presentation.Previewing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -15,6 +16,8 @@ public sealed partial class MainPage
     private readonly IRepositoryFileVersionService _fileVersionService = null!;
     private readonly IExternalGitToolService _externalGitToolService = null!;
     private readonly FileActionsViewModel _fileActions = null!;
+    private readonly ImageDiffPreviewService _imageDiffService = null!;
+    private readonly Workflows.CommitImageDiffWorkflow _commitImageDiff = null!;
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
@@ -29,6 +32,13 @@ public sealed partial class MainPage
         _externalGitToolService = externalGitToolService ?? throw new ArgumentNullException(nameof(externalGitToolService));
         _fileActions = fileActions ?? throw new ArgumentNullException(nameof(fileActions));
         _fileActions.Attach(_viewModel);
+        _imageDiffService = new ImageDiffPreviewService(
+            _fileVersionService, _fileActions.PathResolver, SharedImageMetadataReader.Instance);
+        _commitImageDiff = new Workflows.CommitImageDiffWorkflow(
+            _viewModel, _fileActions, _imageDiffService, CommitImageDiffHost,
+            () => IsShuttingDown,
+            SetCommitDiffPresentationState,
+            ReportUiFailure);
         InitializeFileOpening();
     }
 
