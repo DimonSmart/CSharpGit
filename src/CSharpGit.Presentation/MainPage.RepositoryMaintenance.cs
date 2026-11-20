@@ -117,12 +117,12 @@ public sealed partial class MainPage
         _repositoryMaintenance.PropertyChanged += RepositoryMaintenance_PropertyChanged;
         _viewModel.PropertyChanged += RepositoryMaintenanceViewModel_PropertyChanged;
         UpdateOptimizeRepositoryAvailability();
-        InitializeRepositoryChangeMonitoring();
+        _repositoryRefresh.InitializeRepositoryChangeMonitoring();
         _manualRefresh = new Workflows.RepositoryManualRefreshController(
             _viewModel,
             () => IsShuttingDown,
-            () => _isRefreshInProgress,
-            SetRefreshInProgress,
+            () => _repositoryRefresh.IsRefreshInProgress,
+            _repositoryRefresh.SetRefreshInProgress,
             RefreshPresentationCollections,
             ReportUiFailure,
             ShowErrorAsync);

@@ -44,7 +44,7 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
     {
         if (Interlocked.Exchange(ref _shutdownStarted, 1) != 0) return Task.CompletedTask;
         _pageDialogLifetime.Cancel();
-        ShutdownRepositoryChangeMonitoring();
+        _repositoryRefresh.ShutdownRepositoryChangeMonitoring();
         // Stop page-owned cancelable previews before waiting for diagnostics.
         // Do not cancel Git mutations: close admission already protects them.
         CancelRepositoryFilePreview();
@@ -75,7 +75,7 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         StartScreenHost.ShutdownRecentRepositories();
         RepositoryHeader.Shutdown();
         RepositoryToolbar.Shutdown();
-        ShutdownRepositoryChangeMonitoring();
+        _repositoryRefresh.ShutdownRepositoryChangeMonitoring();
         _changedFilesViewport?.Dispose();
         _unstagedViewport?.Dispose();
         _stagedViewport?.Dispose();

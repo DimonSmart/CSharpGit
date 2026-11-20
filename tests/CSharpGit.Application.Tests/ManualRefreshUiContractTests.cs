@@ -8,7 +8,8 @@ public sealed class ManualRefreshUiContractTests
         var root = FindRepositoryRoot();
         var app = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml"));
-        var refresh = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryRefresh.cs"))
+        var refresh = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryRefreshController.cs"))
+            + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryRefresh.cs"))
             + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml.cs"));
         var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
         var refreshAction = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryManualRefreshController.cs"));
@@ -24,7 +25,7 @@ public sealed class ManualRefreshUiContractTests
         Assert.Contains("mainPage.Loaded += RunDesktopCloseCheckWhenLoaded", app);
         Assert.DoesNotContain("RefreshWhenActivatedAsync", app);
         Assert.DoesNotContain("InitializeRepositoryChangeMonitoring()", app);
-        Assert.Contains("InitializeRepositoryChangeMonitoring();", composition);
+        Assert.Contains("_repositoryRefresh.InitializeRepositoryChangeMonitoring();", composition);
 
         Assert.Contains("x:Name=\"RefreshButton\"", xaml);
         Assert.Contains("Click=\"RefreshIndicator_Click\"", xaml);
@@ -59,7 +60,7 @@ public sealed class ManualRefreshUiContractTests
         Assert.Contains("Repository has changed externally. Refresh to see the latest state.", refresh);
         Assert.Contains("RefreshRequiredIcon.Visibility", refresh);
         Assert.Contains("Microsoft.UI.Colors.Goldenrod", refresh);
-        Assert.Contains("RepositoryToolbar.SetRefreshPresentation(", refresh);
+        Assert.Contains("_toolbar.SetRefreshPresentation(", refresh);
         Assert.Contains("RefreshProgressRing.IsActive = refreshing", refresh);
 
         Assert.Contains("_setRefreshInProgress(true)", refreshAction);
@@ -97,7 +98,7 @@ public sealed class ManualRefreshUiContractTests
         Assert.False(File.Exists(Path.Combine(application, "Abstractions", "IRepositoryStateSession.cs")));
         Assert.DoesNotContain("IRepositoryStateSession", app, StringComparison.Ordinal);
 
-        Assert.Contains("ShutdownRepositoryChangeMonitoring();", lifecycle);
+        Assert.Contains("_repositoryRefresh.ShutdownRepositoryChangeMonitoring();", lifecycle);
         Assert.Contains("IDD-0018", intentIndex);
     }
 

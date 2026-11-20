@@ -4,6 +4,13 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+The watcher/refresh baseline lifecycle, mutation-followup queue and refresh toolbar
+indicator now belong to per-window `Workflows/RepositoryRefreshController`, with
+explicit subscription/shutdown ownership. `MainPage.RepositoryRefresh.cs` retains
+only temporary UI collection projection queueing; it will be removed when those
+projections migrate to Working Tree and Files owners.
+
+
 Manual refresh action now belongs to `Workflows/RepositoryManualRefreshController`.
 It receives typed repository and safety callbacks rather than accessing MainPage;
 `MainPage.RefreshIndicator.cs` is removed. The repository monitor/refresh flight

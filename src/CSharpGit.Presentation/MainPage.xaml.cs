@@ -33,6 +33,7 @@ public sealed partial class MainPage : Page
     private bool _wasBusy;
     private readonly WorkspaceNavigator _workspaceNavigator;
     private RepositoryTreeNavigationCoordinator _repositoryTreeNavigation => _workspaceNavigator.Interactions;
+    private readonly Workflows.RepositoryRefreshController _repositoryRefresh;
 
 
     private MainPage(
@@ -46,9 +47,13 @@ public sealed partial class MainPage : Page
         _stashSummaryViewport = new CollectionViewportController(StashDetailsScroller);
         SynchronizeDetailsViewport();
         _workspaceNavigator = workspaceNavigator ?? throw new ArgumentNullException(nameof(workspaceNavigator));
-        _repositoryChangeCoordinator = new RepositoryChangeCoordinator(
-            workingTreeStatusReader ?? throw new ArgumentNullException(nameof(workingTreeStatusReader)),
-            new UiDispatcher(DispatcherQueue));
+        _repositoryRefresh = new Workflows.RepositoryRefreshController(
+            _viewModel,
+            new RepositoryChangeCoordinator(
+                workingTreeStatusReader ?? throw new ArgumentNullException(nameof(workingTreeStatusReader)),
+                new UiDispatcher(DispatcherQueue)),
+            RepositoryToolbar, () => IsShuttingDown,
+            (operation, description) => RunPageUiOperation(operation, description));
 
         UnstagedChangesList.ItemsSource = _unstagedChanges;
         StagedChangesList.ItemsSource = _stagedChanges;
