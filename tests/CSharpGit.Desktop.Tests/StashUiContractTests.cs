@@ -142,7 +142,7 @@ public sealed class StashUiContractTests
         var root = FindRepositoryRoot();
         var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
         var changes = Read(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs");
-        var presentation = Read(root, "src", "CSharpGit.Presentation", "MainPage.DiffPresentation.cs");
+        var presentation = Read(root, "src", "CSharpGit.Presentation", "Workflows", "DiffPresentationController.cs");
         var detailsViewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs");
 
         Assert.Contains("GetChangedFileDisplayStatus(file)", page, StringComparison.Ordinal);

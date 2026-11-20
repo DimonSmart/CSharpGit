@@ -7,6 +7,7 @@ public sealed class CollectionViewportUiContractTests
     {
         var root = FindRepositoryRoot();
         var changes = Read(root, "MainPage.Changes.cs");
+        var changedTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "CommitChangedFileTreeController.cs"));
         var workingTree = Read(root, "MainPage.WorkingTreeDiff.cs");
         var page = Read(root, "MainPage.xaml.cs");
         var lifecycle = Read(root, "MainPage.Lifecycle.cs");
@@ -19,11 +20,11 @@ public sealed class CollectionViewportUiContractTests
         var xaml = File.ReadAllText(Path.Combine(root,
             "src", "CSharpGit.Presentation", "MainPage.xaml"));
 
-        Assert.Contains("_changedFilesViewport?.Observe", changes);
-        Assert.Contains("CountVisibleChangedFileNodes", changes);
-        Assert.Contains("ChangedFilesTree_Collapsed", changes);
+        Assert.Contains("_viewport?.Observe", changedTree);
+        Assert.Contains("CountVisibleChangedFileNodes", changedTree);
+        Assert.Contains("ChangedFilesTree_Collapsed", changedTree);
         Assert.Contains("SelectedDetailsViewportKey()", changes);
-        Assert.Contains("ChangedFilesTree.SelectedItem = node", changes);
+        Assert.Contains("_tree.SelectedItem = node", changedTree);
         Assert.Contains("_unstagedViewport?.Observe", workingTree);
         Assert.Contains("_stagedViewport?.Observe", workingTree);
         Assert.Contains("CountVisibleWorkingTreeNodes", workingTree);
@@ -33,7 +34,8 @@ public sealed class CollectionViewportUiContractTests
         Assert.Contains("x:Name=\"StashDetailsScroller\"", xaml);
         Assert.Contains("_commitSummaryViewport?.Dispose()", lifecycle);
         Assert.Contains("_stashSummaryViewport?.Dispose()", lifecycle);
-        Assert.Contains("_changedFilesViewport?.Dispose()", lifecycle);
+        Assert.Contains("_viewport?.Dispose()", changedTree);
+        Assert.Contains("_changesTree?.Shutdown()", lifecycle);
         Assert.Contains("HistoryRows_ViewportCollectionChanged", history);
         Assert.Contains("_historyViewport?.CancelPendingAdjustment()", history);
         Assert.Contains("ObserveTreeViewport()", explorer);
