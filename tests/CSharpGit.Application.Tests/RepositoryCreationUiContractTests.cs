@@ -74,7 +74,7 @@ public sealed class RepositoryCreationUiContractTests
         var mainPage = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var switching = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.RepositorySwitching.cs"));
+            root, "src", "CSharpGit.Presentation", "Workflows", "RepositorySwitchController.cs"));
 
         Assert.Contains("_confirmDiscardDraft()", workflow);
         Assert.Contains("Discard commit message?", switching);

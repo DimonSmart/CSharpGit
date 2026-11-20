@@ -8,7 +8,7 @@ public sealed class RepositoryTreeIncrementalContractTests
         var root = FindRepositoryRoot();
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var refresh = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryPresentationRefreshController.cs"));
-        var worktrees = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Worktrees.cs"));
+        var worktrees = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "WorktreeController.cs"));
         var tags = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Tags.cs"));
 
         Assert.DoesNotContain("_repositoryTreeRoots.Clear();", ExtractMethod(page, "private void RebuildRepositoryTree()"), StringComparison.Ordinal);
@@ -19,7 +19,7 @@ public sealed class RepositoryTreeIncrementalContractTests
         Assert.DoesNotContain("root.Children.Clear();", tags, StringComparison.Ordinal);
         Assert.DoesNotContain("RemoveWorktreeRoot();", worktrees, StringComparison.Ordinal);
         Assert.DoesNotContain("InstallWorktreeRoot();", worktrees, StringComparison.Ordinal);
-        Assert.Contains("SynchronizeWorktreePresentation();", worktrees, StringComparison.Ordinal);
+        Assert.Contains("_synchronizePresentation();", worktrees, StringComparison.Ordinal);
     }
 
     [Fact]
