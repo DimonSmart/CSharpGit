@@ -18,7 +18,7 @@ public sealed class RepositoryCloningUiContractTests
         var switching = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "Views", "RepositorySelectorView.xaml.cs"));
         var workflow = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.RepositoryCloning.cs"));
+            root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryCloneWorkflow.cs"));
 
         Assert.Contains("Clone repository…", mainXaml);
         Assert.Contains("CloneRepository_Click", mainXaml);
@@ -29,7 +29,7 @@ public sealed class RepositoryCloningUiContractTests
         Assert.Contains("Text=\"Clone repository…\"", mainXaml);
         Assert.Contains("Icon.Glyph.Clone", mainXaml);
         Assert.Contains("RepositorySelectorCloneRepository_Click", switching);
-        Assert.Equal(1, Count(workflow, "private async Task ShowCloneRepositoryAsync()"));
+        Assert.Equal(1, Count(workflow, "internal async Task ShowAsync()"));
     }
 
     [Fact]
@@ -77,11 +77,11 @@ public sealed class RepositoryCloningUiContractTests
     {
         var root = FindRepositoryRoot();
         var workflow = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.RepositoryCloning.cs"));
+            root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryCloneWorkflow.cs"));
 
-        Assert.Contains("ConfirmDiscardCommitMessageAsync(closing: false)", workflow);
+        Assert.Contains("_confirmDiscardDraft()", workflow);
         Assert.Contains("_cloneRepositoryViewModel.CloneAsync()", workflow);
-        Assert.Contains("SwitchRepositoryCoreAsync(path, discardDraft, _cloneWorkflowAdmission)", workflow);
+        Assert.Contains("_switchRepository(path, discardDraft, _cloneWorkflowAdmission)", workflow);
         Assert.Contains("TryBeginRepositoryLifecycle()", workflow);
         Assert.Contains("Repository cloned, but could not be opened.", workflow);
         Assert.Contains("_cloneRepositoryViewModel.Cancel()", workflow);
@@ -89,7 +89,7 @@ public sealed class RepositoryCloningUiContractTests
 
         Assert.True(
             workflow.IndexOf(
-                "ConfirmDiscardCommitMessageAsync(closing: false)",
+                "_confirmDiscardDraft()",
                 StringComparison.Ordinal)
             < workflow.IndexOf(
                 "_cloneRepositoryViewModel.CloneAsync()",
@@ -101,7 +101,7 @@ public sealed class RepositoryCloningUiContractTests
     {
         var root = FindRepositoryRoot();
         var workflow = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.RepositoryCloning.cs"));
+            root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryCloneWorkflow.cs"));
 
         Assert.Contains("Header = \"Repository URL\"", workflow);
         Assert.Contains("Header = \"Local directory\"", workflow);
@@ -112,10 +112,10 @@ public sealed class RepositoryCloningUiContractTests
         Assert.Contains("Cloning {_cloneRepositoryViewModel.RepositoryDisplayName}…", workflow);
         Assert.Contains("repositoryUrlBox.IsEnabled = !busy", workflow);
         Assert.Contains("localDirectoryBox.IsEnabled = !busy", workflow);
-        Assert.Contains("await ShowPageDialogAsync(dialog);", workflow);
+        Assert.Contains("await _showDialog(dialog);", workflow);
         Assert.DoesNotContain("await dialog.ShowAsync()", workflow);
-        Assert.Contains("return succeeded && !IsShuttingDown;", workflow);
-        Assert.Contains("if (!cloned || IsShuttingDown)", workflow);
+        Assert.Contains("return succeeded && !_isShuttingDown();", workflow);
+        Assert.Contains("if (!cloned || _isShuttingDown())", workflow);
     }
 
     [Fact]
