@@ -4,6 +4,10 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Settings entry points now belong to `SettingsWindowController` with a window-scoped
+repository/admission context. `MainPage.Settings.cs` has been deleted; toolbar,
+start screen and Git tool actions invoke typed controller entry points directly.
+
 The About/self-update UI is now owned by `Dialogs/AboutUpdateDialogController`.
 `MainPage.About.cs` was removed; the start screen and toolbar invoke that window-scoped
 workflow. The controller receives narrow dialog and close callbacks; the final

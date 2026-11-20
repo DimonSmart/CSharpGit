@@ -270,7 +270,7 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Primary
         };
         if (await ShowPageDialogAsync(dialog) == ContentDialogResult.Primary)
-            OpenSettingsWindow(SettingsSection.GitTools);
+            _settingsWindowController.Open(SettingsSection.GitTools);
     }
 
     private void ChangedFilesTree_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args) =>

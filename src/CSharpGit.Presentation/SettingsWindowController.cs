@@ -17,6 +17,8 @@ public sealed class SettingsWindowController : IDisposable
     private readonly IDesktopShellService _desktopShellService;
     private readonly IFolderPicker _folderPicker;
     private readonly IUiDispatcher _uiDispatcher;
+    private Func<Repository?>? _repositoryAccessor;
+    private Func<Repository?, IDisposable?>? _gitAdmission;
     private Window? _window;
     private SettingsPage? _page;
     private IDisposable? _themeRegistration;
@@ -40,6 +42,26 @@ public sealed class SettingsWindowController : IDisposable
         _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
         _folderPicker = folderPicker ?? throw new ArgumentNullException(nameof(folderPicker));
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
+    }
+
+    // Window-scoped context, supplied once by the composition root.
+    internal void ConfigureWindowContext(
+        Func<Repository?> repositoryAccessor,
+        Func<Repository?, IDisposable?> gitAdmission)
+    {
+        if (_repositoryAccessor is not null)
+            throw new InvalidOperationException("Settings controller is already configured.");
+        _repositoryAccessor = repositoryAccessor ?? throw new ArgumentNullException(nameof(repositoryAccessor));
+        _gitAdmission = gitAdmission ?? throw new ArgumentNullException(nameof(gitAdmission));
+    }
+
+    internal void Open(SettingsSection section, bool focusPullStrategy = false)
+    {
+        var repositoryAccessor = _repositoryAccessor
+            ?? throw new InvalidOperationException("Settings controller is not configured.");
+        var gitAdmission = _gitAdmission
+            ?? throw new InvalidOperationException("Settings controller is not configured.");
+        Show(section, repositoryAccessor, gitAdmission, focusPullStrategy);
     }
 
     internal bool AutoSetupRemoteOnPush => _settings.AutoSetupRemoteOnPush;

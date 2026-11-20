@@ -375,7 +375,7 @@ public sealed partial class MainPage : Page
             case RepositoryToolbarAction.PullFastForwardOnly: PullFastForwardOnly_Click(this, args); break;
             case RepositoryToolbarAction.PullMerge: PullMerge_Click(this, args); break;
             case RepositoryToolbarAction.PullRebase: PullRebase_Click(this, args); break;
-            case RepositoryToolbarAction.PullSettings: PullSettings_Click(this, args); break;
+            case RepositoryToolbarAction.PullSettings: _settingsWindowController.Open(SettingsSection.General, focusPullStrategy: true); break;
             case RepositoryToolbarAction.PushPrimary: PushPrimary_Click(this, args); break;
             case RepositoryToolbarAction.Push: Push_Click(this, args); break;
             case RepositoryToolbarAction.PushTo: PushTo_Click(this, args); break;
@@ -389,9 +389,9 @@ public sealed partial class MainPage : Page
             case RepositoryToolbarAction.CreateRepository: CreateRepository_Click(this, args); break;
             case RepositoryToolbarAction.Repositories: Repositories_Click(this, args); break;
             case RepositoryToolbarAction.CloseRepository: CloseRepository_Click(this, args); break;
-            case RepositoryToolbarAction.RepositorySettings: RepositorySettings_Click(this, args); break;
+            case RepositoryToolbarAction.RepositorySettings: _settingsWindowController.Open(SettingsSection.Identity); break;
             case RepositoryToolbarAction.OptimizeRepository: OptimizeRepository_Click(this, args); break;
-            case RepositoryToolbarAction.Settings: Settings_Click(this, args); break;
+            case RepositoryToolbarAction.Settings: _settingsWindowController.Open(SettingsSection.General); break;
             case RepositoryToolbarAction.About:
                 RunPageUiOperation(_aboutUpdate.ShowAboutAsync, "About dialog"); break;
             default: throw new ArgumentOutOfRangeException(nameof(action), action, null);

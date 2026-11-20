@@ -10,6 +10,7 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage
 {
     private readonly RepositoryMaintenanceViewModel _repositoryMaintenance = null!;
+    private SettingsWindowController _settingsWindowController = null!;
     private readonly Dialogs.AboutUpdateDialogController _aboutUpdate = null!;
     private readonly Workflows.RecentRepositoryPickerWorkflow _repositoryPicker = null!;
     private readonly IDesktopShellService _desktopShellService = null!;
@@ -78,6 +79,8 @@ public sealed partial class MainPage
             TrySwitchRepositoryAsync,
             ShowPageDialogAsync);
         _settingsWindowController = settingsWindowController ?? throw new ArgumentNullException(nameof(settingsWindowController));
+        _settingsWindowController.ConfigureWindowContext(
+            () => _viewModel.Repository, _viewModel.TryBeginGitSettingsOperation);
         _aboutUpdate = new Dialogs.AboutUpdateDialogController(
             applicationVersionProvider ?? throw new ArgumentNullException(nameof(applicationVersionProvider)),
             updateCheckService ?? throw new ArgumentNullException(nameof(updateCheckService)),
@@ -121,7 +124,7 @@ public sealed partial class MainPage
                 ShowUnavailableRepositoryAsync,
                 path => OpenFolderInDesktopShellAsync(path, "Could not open repository folder"),
                 CopyTextAsync,
-                () => OpenSettingsWindow(SettingsSection.General),
+                () => _settingsWindowController.Open(SettingsSection.General),
                 _aboutUpdate.ShowAboutAsync));
         HistoryView.Configure(_viewModel.History, _workspaceNavigator,
             () => _viewModel.IsBusy, _authorAvatarService, _authorAvatarSettings);
