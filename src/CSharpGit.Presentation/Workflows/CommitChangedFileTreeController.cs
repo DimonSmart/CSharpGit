@@ -24,6 +24,7 @@ internal sealed class CommitChangedFileTreeController(
     private readonly DispatcherQueue _dispatcher = dispatcher;
     private readonly Func<string?> _viewportKey = viewportKey;
     private readonly ObservableCollection<ChangedFileTreeNode> _roots = [];
+    internal IReadOnlyList<ChangedFileTreeNode> Roots => _roots;
     private CollectionViewportController? _viewport;
     private bool _initialized;
     private bool _refreshQueued;

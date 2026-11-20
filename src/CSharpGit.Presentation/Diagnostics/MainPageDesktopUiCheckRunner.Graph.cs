@@ -393,10 +393,10 @@ public sealed partial class MainPage
             {
                 _page.DetailsTabs.SelectedIndex = 1;
                 await WaitUntilAsync(
-                    () => _page._changedFileTreeRoots.Count > 0 && _page.ChangedFilesTree.ActualHeight > 0,
+                    () => (_page._changesTree?.Roots.Count ?? 0) > 0 && _page.ChangedFilesTree.ActualHeight > 0,
                     TimeSpan.FromSeconds(10));
 
-                if (_page._changedFileTreeRoots.FirstOrDefault() is { } firstChangedFile)
+                if (_page._changesTree?.Roots.FirstOrDefault() is { } firstChangedFile)
                 {
                     await WaitUntilAsync(
                         () => _page.ChangedFilesTree.ContainerFromItem(firstChangedFile) is TreeViewItem,

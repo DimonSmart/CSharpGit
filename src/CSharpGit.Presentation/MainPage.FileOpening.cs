@@ -289,7 +289,7 @@ public sealed partial class MainPage
     private async Task ChangedFilesTree_DoubleTappedCoreAsync(object sender, DoubleTappedRoutedEventArgs args)
     {
         var source = args.OriginalSource as FrameworkElement;
-        var node = ResolveChangedFileNode(source?.DataContext);
+        var node = Workflows.CommitChangedFileTreeController.ResolveChangedFileNode(source?.DataContext);
         if (node?.Entry is null) return;
         var request = CaptureCommitRequest(node.Entry.File.Path);
         if (request is null) return;
@@ -322,7 +322,7 @@ public sealed partial class MainPage
     private async Task ChangedFilesTree_RightTappedCoreAsync(object sender, RightTappedRoutedEventArgs args)
     {
         var source = args.OriginalSource as FrameworkElement;
-        var node = ResolveChangedFileNode(source?.DataContext);
+        var node = Workflows.CommitChangedFileTreeController.ResolveChangedFileNode(source?.DataContext);
         if (source is null || node?.Entry is null) return;
         var request = CaptureCommitRequest(node.Entry.File.Path);
         if (request is null) return;
