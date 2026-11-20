@@ -10,6 +10,7 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage
 {
     private readonly RepositoryMaintenanceViewModel _repositoryMaintenance = null!;
+    private readonly Dialogs.AboutUpdateDialogController _aboutUpdate;
     private readonly Workflows.RecentRepositoryPickerWorkflow _repositoryPicker = null!;
     private readonly IDesktopShellService _desktopShellService = null!;
     private IAppSettingsService _recentRepositorySettings = null!;
@@ -18,6 +19,7 @@ public sealed partial class MainPage
     private IAppSettingsService _authorAvatarSettings = null!;
 
     internal bool IsRepositoryMaintenanceInProgress => _repositoryMaintenance.IsRunning;
+    internal bool IsApplicationUpdateInProgress => _aboutUpdate.IsRunning;
 
     public MainPage(
         OpenRepositoryViewModel viewModel,
@@ -76,11 +78,26 @@ public sealed partial class MainPage
             TrySwitchRepositoryAsync,
             ShowPageDialogAsync);
         _settingsWindowController = settingsWindowController ?? throw new ArgumentNullException(nameof(settingsWindowController));
-        _applicationVersionProvider = applicationVersionProvider ?? throw new ArgumentNullException(nameof(applicationVersionProvider));
-        _updateCheckService = updateCheckService ?? throw new ArgumentNullException(nameof(updateCheckService));
-        _applicationUpdateInstaller = applicationUpdateInstaller ?? throw new ArgumentNullException(nameof(applicationUpdateInstaller));
-        _systemUriLauncher = systemUriLauncher ?? throw new ArgumentNullException(nameof(systemUriLauncher));
-        _applicationUpdateActivity = updateActivityState ?? throw new ArgumentNullException(nameof(updateActivityState));
+        _aboutUpdate = new Dialogs.AboutUpdateDialogController(
+            applicationVersionProvider ?? throw new ArgumentNullException(nameof(applicationVersionProvider)),
+            updateCheckService ?? throw new ArgumentNullException(nameof(updateCheckService)),
+            applicationUpdateInstaller ?? throw new ArgumentNullException(nameof(applicationUpdateInstaller)),
+            systemUriLauncher ?? throw new ArgumentNullException(nameof(systemUriLauncher)),
+            updateActivityState ?? throw new ArgumentNullException(nameof(updateActivityState)),
+            () => XamlRoot,
+            ShowPageDialogAsync,
+            (operation, description) => RunPageUiOperation(operation, description),
+            ReportUiFailure,
+            () => IsShuttingDown,
+            () => IsHistoryRewriteInProgress,
+            () => IsRepositoryMaintenanceInProgress,
+            () => _viewModel.CommitCreation.HasUnappliedCommitMessage,
+            ConfirmCloseAsync,
+            () =>
+            {
+                if (Microsoft.UI.Xaml.Application.Current is App app)
+                    app.CompleteApplicationUpdateRestart(this);
+            });
 
         RepositoryExplorer.Configure(_viewModel, _worktreesViewModel, _workspaceNavigator);
         RepositoryExplorer.NavigateRequested += (node, version) =>
@@ -105,7 +122,7 @@ public sealed partial class MainPage
                 path => OpenFolderInDesktopShellAsync(path, "Could not open repository folder"),
                 CopyTextAsync,
                 () => OpenSettingsWindow(SettingsSection.General),
-                ShowAboutAsync));
+                _aboutUpdate.ShowAboutAsync));
         HistoryView.Configure(_viewModel.History, _workspaceNavigator,
             () => _viewModel.IsBusy, _authorAvatarService, _authorAvatarSettings);
         HistoryView.ConfigurePerformance(

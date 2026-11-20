@@ -4,6 +4,12 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+The About/self-update UI is now owned by `Dialogs/AboutUpdateDialogController`.
+`MainPage.About.cs` was removed; the start screen and toolbar invoke that window-scoped
+workflow. The controller receives narrow dialog and close callbacks; the final
+window-composition migration will remove those remaining page callback adapters.
+
+
 The phase-2 `MainPage.HistoryPerformanceDiagnostics.cs` forwarding adapter
 has been removed: window composition now configures the owner
 `HistoryView.ConfigurePerformance` directly, and shutdown calls

@@ -392,7 +392,8 @@ public sealed partial class MainPage : Page
             case RepositoryToolbarAction.RepositorySettings: RepositorySettings_Click(this, args); break;
             case RepositoryToolbarAction.OptimizeRepository: OptimizeRepository_Click(this, args); break;
             case RepositoryToolbarAction.Settings: Settings_Click(this, args); break;
-            case RepositoryToolbarAction.About: About_Click(this, args); break;
+            case RepositoryToolbarAction.About:
+                RunPageUiOperation(_aboutUpdate.ShowAboutAsync, "About dialog"); break;
             default: throw new ArgumentOutOfRangeException(nameof(action), action, null);
         }
     }
