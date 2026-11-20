@@ -70,7 +70,8 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         DetachRepositoryTreeStateTracking();
         WorkingTreeCommitEditor.StashRequested -= CreateStash_Click;
         HistoryView.Shutdown();
-        ShutdownGitConsole();
+        GitConsoleHost.Shutdown();
+        _feedback.ShutdownGitCommandFeedback();
         StartScreenHost.ShutdownRecentRepositories();
         RepositoryHeader.Shutdown();
         RepositoryToolbar.Shutdown();

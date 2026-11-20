@@ -4,6 +4,14 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+The final console adapter `MainPage.GitConsole.cs` has been deleted; window
+composition configures `GitConsoleHostView` and `GitCommandFeedbackController`
+directly. Runtime commands use the host view and shutdown disposes both owners.
+The two read-only `MainPage.HistoryDisplayMode.cs` visual accessors were also
+removed; existing commit actions and desktop diagnostics address `HistoryView`
+directly until their full phase-3 feature extraction.
+
+
 `Dialogs/GitCommandFeedbackController` now owns the Git command feedback coordinator,
 modal presentation, settings subscriptions and countdown timer. The former
 `MainPage.GitCommandFeedback.cs` is deleted. The console host retains only typed

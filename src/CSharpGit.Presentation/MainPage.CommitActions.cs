@@ -70,8 +70,8 @@ public sealed partial class MainPage
         _commitActionsFlyout.Items.Add(_resetItem);
         _commitActionsFlyout.Opening += (_, _) => UpdateCommitActionAvailability();
 
-        HistoryList.ContextFlyout = _commitActionsFlyout;
-        HistoryList.RightTapped += HistoryList_RightTapped;
+        HistoryView.List.ContextFlyout = _commitActionsFlyout;
+        HistoryView.List.RightTapped += HistoryList_RightTapped;
         InitializeTagSupportIfNeeded();
     }
 
@@ -83,7 +83,7 @@ public sealed partial class MainPage
 
         if (current is ListViewItem { Content: HistoryRow row })
         {
-            HistoryList.SelectedItem = row;
+            HistoryView.List.SelectedItem = row;
             _viewModel.History.SelectedRow = row;
         }
 
@@ -367,8 +367,8 @@ public sealed partial class MainPage
         if (IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository) || row is null)
             return false;
 
-        HistoryList.SelectedItem = row;
-        HistoryList.ScrollIntoView(row);
+        HistoryView.List.SelectedItem = row;
+        HistoryView.List.ScrollIntoView(row);
         return true;
     }
 

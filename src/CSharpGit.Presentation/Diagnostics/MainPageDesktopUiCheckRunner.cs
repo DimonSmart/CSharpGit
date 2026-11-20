@@ -82,7 +82,7 @@ public sealed partial class MainPage
                 Check(_page._viewModel.WorkingTree.Changes.Count > 0, $"working tree changes were not loaded: {_page._viewModel.ErrorMessage}", failures);
                 Check(_page._viewModel.History.Rows.Count > 0, $"history was not loaded: {_page._viewModel.ErrorMessage}", failures);
                 await WaitUntilAsync(
-                    () => _page.RepositoryWorkspace.ActualWidth > 0 && _page.RepositoryWorkspace.ActualHeight > 0 && _page.HistoryList.ActualWidth > 0 && _page.HistoryList.ActualHeight > 0,
+                    () => _page.RepositoryWorkspace.ActualWidth > 0 && _page.RepositoryWorkspace.ActualHeight > 0 && _page.HistoryView.List.ActualWidth > 0 && _page.HistoryView.List.ActualHeight > 0,
                     TimeSpan.FromSeconds(10));
                 Check(_page._viewModel.Repository is not null, "repository did not open", failures);
                 Check(_page._viewModel.Repository?.IsWorktree == (Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_WORKTREE") == "1"), "repository kind is incorrect", failures);
@@ -130,7 +130,7 @@ public sealed partial class MainPage
                 Check(_page.RequestedTheme == ElementTheme.Default, "Dark to System did not clear the main root override", failures);
 
                 Check(_page.RepositoryWorkspace.ActualWidth > 0 && _page.RepositoryWorkspace.ActualHeight > 0, "workspace was not laid out", failures);
-                Check(_page.HistoryList.ActualWidth > 0 && _page.HistoryList.ActualHeight > 0, "history list was not laid out", failures);
+                Check(_page.HistoryView.List.ActualWidth > 0 && _page.HistoryView.List.ActualHeight > 0, "history list was not laid out", failures);
                 Check(_page.RepositoryTree.ActualWidth > 0 && _page.RepositoryExplorer.RootsForCheck.Count >= 4, "repository tree was not laid out", failures);
                 Check(_page.DetailsScroller.HorizontalScrollBarVisibility == ScrollBarVisibility.Disabled && _page.DetailsScroller.VerticalScrollBarVisibility == ScrollBarVisibility.Auto, "detail message wrapping is not configured", failures);
                 await WaitUntilAsync(

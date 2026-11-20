@@ -12,6 +12,9 @@ public sealed partial class MainPage
     private readonly RepositoryMaintenanceViewModel _repositoryMaintenance = null!;
     private SettingsWindowController _settingsWindowController = null!;
     private readonly Dialogs.AboutUpdateDialogController _aboutUpdate = null!;
+    private IGitCommandActivitySource _gitCommandActivitySource = null!;
+    private IAppSettingsService _gitConsoleSettings = null!;
+    private Dialogs.GitCommandFeedbackController _feedback = null!;
     private readonly Workflows.RecentRepositoryPickerWorkflow _repositoryPicker = null!;
     private readonly IDesktopShellService _desktopShellService = null!;
     private IAppSettingsService _recentRepositorySettings = null!;
@@ -137,7 +140,16 @@ public sealed partial class MainPage
             ShowErrorAsync,
             async dialog => { await ShowPageDialogAsync(dialog); },
             ReportUiFailure);
-        InitializeGitConsole();
+        _feedback = new Dialogs.GitCommandFeedbackController(
+            _gitCommandActivitySource, _gitConsoleSettings,
+            FloatingGitCommandFeedbackView, GitCommandFeedbackModalHost,
+            RootLayout, GitConsoleHost, DispatcherQueue, () => IsShuttingDown);
+        _feedback.InitializeGitCommandFeedback();
+        GitConsoleHost.Configure(
+            _gitCommandActivitySource, _gitConsoleSettings, RootLayout,
+            _feedback.RouteGitCommandFeedback,
+            _feedback.RenderGitCommandFeedback,
+            () => GitCommandFeedbackModalHost.Visibility == Visibility.Visible);
         InitializeWorktreeSupport();
     }
 
@@ -177,7 +189,7 @@ public sealed partial class MainPage
 
         if (XamlRoot is not { } root) return;
         var dialog = new RepositoryMaintenanceDialog(
-            root, () => OpenGitConsole(null, manualOpen: true));
+            root, () => GitConsoleHost.Open(null, manualOpen: true));
 
         try
         {
