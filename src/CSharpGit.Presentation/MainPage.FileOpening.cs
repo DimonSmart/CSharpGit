@@ -37,7 +37,7 @@ public sealed partial class MainPage
         _commitImageDiff = new Workflows.CommitImageDiffWorkflow(
             _viewModel, _fileActions, _imageDiffService, CommitImageDiffHost,
             () => IsShuttingDown,
-            SetCommitDiffPresentationState,
+            _diffPresentation.RenderCommit,
             ReportUiFailure);
         InitializeFileOpening();
     }

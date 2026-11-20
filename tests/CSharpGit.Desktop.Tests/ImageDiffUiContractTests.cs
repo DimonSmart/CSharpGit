@@ -10,7 +10,7 @@ public sealed class ImageDiffUiContractTests
         var changes = Read(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs");
         var workingTree = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs");
         var lifecycle = Read(root, "src", "CSharpGit.Presentation", "Workflows", "CommitImageDiffWorkflow.cs");
-        var presentation = Read(root, "src", "CSharpGit.Presentation", "MainPage.DiffPresentation.cs");
+        var presentation = Read(root, "src", "CSharpGit.Presentation", "Workflows", "DiffPresentationController.cs");
 
         Assert.Contains("x:Name=\"CommitDiffHeader\"", xaml);
         Assert.Contains("x:Name=\"CommitTextDiffHeader\"", xaml);
@@ -23,9 +23,10 @@ public sealed class ImageDiffUiContractTests
         Assert.Contains("DeltaMissing", presentation);
         Assert.Contains("_commitImageDiff.LoadAsync", changes);
         Assert.Contains("_imageDiffService.LoadWorkingTreeAsync", workingTree);
-        Assert.Contains("SetCommitDiffPresentationState", presentation);
-        Assert.Contains("CommitDiffHeader.Visibility", presentation);
-        Assert.Contains("SetWorkingTreeDiffPresentationState", presentation);
+        Assert.Contains("RenderCommit(", presentation);
+        Assert.Contains("_commit.Header.Visibility", presentation);
+        Assert.Contains("RenderWorkingTree(", presentation);
+        Assert.False(File.Exists(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.DiffPresentation.cs")));
     }
 
     [Fact]
@@ -81,7 +82,7 @@ public sealed class ImageDiffUiContractTests
         Assert.Contains("SelectedFile?.Path", lifecycle);
         Assert.Contains("_workingTreeImageDiffGeneration", workingTree);
         Assert.Contains("IsCurrentWorkingTreeImageRequest", workingTree);
-        Assert.Contains("SetWorkingTreeDiffPresentationState(DiffPresentationState.LoadingImage)", workingTree);
+        Assert.Contains("_diffPresentation.RenderWorkingTree(DiffPresentationState.LoadingImage)", workingTree);
         Assert.False(File.Exists(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ImageDiff.cs")));
         Assert.Contains("generation == Volatile.Read", lifecycle);
     }

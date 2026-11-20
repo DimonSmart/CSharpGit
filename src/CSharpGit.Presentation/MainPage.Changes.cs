@@ -79,7 +79,7 @@ public sealed partial class MainPage
         {
             _commitImageDiff.Cancel(clearSurface: true);
             CompactDiffViewer.Clear();
-            SetCommitDiffPresentationState(
+            _diffPresentation.RenderCommit(
                 _viewModel.CommitDetails.SelectedFile is null
                     ? DiffPresentationState.NothingSelected
                     : DiffPresentationState.LoadingDiff);
@@ -122,7 +122,7 @@ public sealed partial class MainPage
                     : !string.IsNullOrWhiteSpace(_viewModel.CommitDetails.DiffLoadErrorMessage)
                         ? DiffPresentationState.Error
                         : DiffPresentationState.LoadingDiff;
-            SetCommitDiffPresentationState(state);
+            _diffPresentation.RenderCommit(state);
             return;
         }
 
@@ -137,11 +137,11 @@ public sealed partial class MainPage
                 return;
             case DiffContentPresentation.NoTextualPatch:
                 CompactDiffViewer.Clear();
-                SetCommitDiffPresentationState(DiffPresentationState.NoTextualPatch);
+                _diffPresentation.RenderCommit(DiffPresentationState.NoTextualPatch);
                 return;
             case DiffContentPresentation.Text:
                 CompactDiffViewer.SetLines(compactLines, diff.Diagnostics);
-                SetCommitDiffPresentationState(DiffPresentationState.Text);
+                _diffPresentation.RenderCommit(DiffPresentationState.Text);
                 return;
             default:
                 throw new ArgumentOutOfRangeException();

@@ -96,7 +96,7 @@ public sealed class HistoryDiffUiContractTests
     {
         var root = FindRepositoryRoot();
         var changes = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs"));
-        var presentation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.DiffPresentation.cs"));
+        var presentation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "DiffPresentationController.cs"));
         var lazy = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs"));
 
         Assert.Contains("DiffPresentationResolver.Resolve", changes);

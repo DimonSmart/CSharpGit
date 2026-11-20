@@ -4,6 +4,12 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Text/binary/image diff state-to-visual mapping is now owned by
+`Workflows/DiffPresentationController`, with separate typed Commit and WorkingTree
+control groups. The old `MainPage.DiffPresentation.cs` was deleted; change and file
+preview event paths call the controller directly rather than delegating to a page method.
+
+
 Commit image-diff admission, deferred resume, cancellation and generation-safe publication
 are now owned by `Workflows/CommitImageDiffWorkflow`. The shared
 `ImageDiffPreviewService` is composed once per window for commit and working-tree

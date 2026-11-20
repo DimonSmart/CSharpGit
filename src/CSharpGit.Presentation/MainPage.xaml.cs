@@ -35,6 +35,7 @@ public sealed partial class MainPage : Page
     private RepositoryTreeNavigationCoordinator _repositoryTreeNavigation => _workspaceNavigator.Interactions;
     private readonly Workflows.RepositoryRefreshController _repositoryRefresh;
     private readonly Dialogs.PageDialogController _pageDialogs;
+    private readonly Workflows.DiffPresentationController _diffPresentation;
 
 
     private MainPage(
@@ -45,6 +46,17 @@ public sealed partial class MainPage : Page
         InitializeComponent();
         DataContext = _viewModel = viewModel;
         _pageDialogs = new Dialogs.PageDialogController(this, _viewModel, () => IsShuttingDown);
+        _diffPresentation = new Workflows.DiffPresentationController(
+            _viewModel,
+            new Workflows.DiffPresentationController.CommitControls(
+                CommitDiffHeader, CommitTextDiffHeader, CompactDiffViewer,
+                CommitLargeDiffInfo, CommitLargeDiffMessage, CommitLargeDiffButton,
+                CommitImageLoading, CommitImageDiffHost, CommitBinaryInfo),
+            new Workflows.DiffPresentationController.WorkingTreeControls(
+                WorkingTreeTextDiffHeader, WorkingTreeDiffViewer, WorkingTreeDiffLoading,
+                WorkingTreeLargeDiffInfo, WorkingTreeLargeDiffMessage, WorkingTreeLargeDiffButton,
+                WorkingTreeImageLoading, WorkingTreeImageDiffHost, WorkingTreeBinaryInfo,
+                WorkingTreeNoChangesInfo));
         _commitSummaryViewport = new CollectionViewportController(DetailsScroller);
         _stashSummaryViewport = new CollectionViewportController(StashDetailsScroller);
         SynchronizeDetailsViewport();
