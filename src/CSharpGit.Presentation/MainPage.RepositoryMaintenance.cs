@@ -19,6 +19,7 @@ public sealed partial class MainPage
     private readonly Workflows.RepositoryConfirmationController _confirmationController = null!;
     private readonly Workflows.BranchRenameController _branchRename = null!;
     private readonly Workflows.WorktreeController _worktrees = null!;
+    private readonly Workflows.RepositorySwitchController _repositorySwitch = null!;
     private readonly Workflows.BranchDragDropController _branchDragDrop = null!;
     private readonly Workflows.StashDialogController _stashDialogs = null!;
     private readonly Workflows.BranchFolderDeletionController _branchFolderDeletion = null!;
@@ -73,6 +74,13 @@ public sealed partial class MainPage
             repositoryFilesViewModel,
             workspaceNavigator)
     {
+        _repositorySwitch = new Workflows.RepositorySwitchController(
+            _viewModel,
+            () => _repositoryCloningWorkflowActive,
+            () => _repositoryCreationWorkflowActive,
+            () => IsShuttingDown,
+            () => XamlRoot, ShowPageDialogAsync,
+            RefreshPresentationCollections, RepositoryHeader.Refresh);
         _commitDetailsLayout = new Workflows.CommitDetailsLayoutController(
             DetailsScroller, HistoryPane, CommitDetailsContent,
             () => XamlRoot,

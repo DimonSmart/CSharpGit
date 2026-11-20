@@ -16,6 +16,7 @@ public sealed class RepositorySwitchingContractTests
         var switching = File.ReadAllText(Path.Combine(
             presentation,
             "MainPage.RepositorySwitching.cs"));
+        var lifecycleOwner = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositorySwitchController.cs"));
         var recent = File.ReadAllText(Path.Combine(
             presentation,
             "Workflows", "RecentRepositoryPickerWorkflow.cs"));
@@ -44,8 +45,10 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("SwitchRepositoryCoreAsync", switching);
         Assert.Contains("TryCloseRepositoryAsync", switching);
         Assert.Contains("ConfirmDiscardCommitMessageAsync", switching);
-        Assert.Contains("if (!opened || IsShuttingDown) return false;", switching);
-        Assert.Contains("_viewModel.CommitCreation.CommitMessage = string.Empty;", switching);
+        Assert.Contains("internal async Task<bool> TrySwitchAsync", lifecycleOwner);
+        Assert.Contains("private bool CloseCore", lifecycleOwner);
+        Assert.Contains("if (!opened || _isShuttingDown()) return false;", lifecycleOwner);
+        Assert.Contains("_viewModel.CommitCreation.CommitMessage = string.Empty;", lifecycleOwner);
 
         var launcher = File.ReadAllText(Path.Combine(presentation, "Views", "StartScreenView.xaml.cs"));
         Assert.Contains("await _actions.SwitchRepository(item.Path);", launcher);

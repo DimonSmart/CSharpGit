@@ -4,6 +4,13 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Repository switch and close admission, commit-draft confirmation, lifecycle continuation
+and successful-transition projections are now owned by
+`Workflows/RepositorySwitchController`. The page retains the two button handlers,
+public desktop check seams, and shell helpers while existing creation/clone
+workflows call through typed forwarding methods.
+
+
 All worktree mutations and dialogs, menu building, worktree-model subscription and
 process relaunch are now in `Workflows/WorktreeController`. The page provides the
 window shell dependencies and retains only the XAML right-tap entry point; the old
