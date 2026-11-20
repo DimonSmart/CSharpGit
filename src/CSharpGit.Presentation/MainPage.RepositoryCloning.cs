@@ -288,8 +288,7 @@ public sealed partial class MainPage
             _cloneRepositoryViewModel.PropertyChanged -= changed;
             if (cloneFeedback is not null)
             {
-                _cloneFeedbackView = null;
-                cloneFeedback.Visibility = Visibility.Collapsed;
+                _feedback.ReleaseCloneGitCommandFeedback(cloneFeedback);
             }
         }
     }
