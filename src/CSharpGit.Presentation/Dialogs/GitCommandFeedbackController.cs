@@ -179,6 +179,13 @@ internal sealed class GitCommandFeedbackController(
         return view;
     }
 
+    internal void ReleaseCloneGitCommandFeedback(GitCommandFeedbackView view)
+    {
+        if (ReferenceEquals(_cloneFeedbackView, view))
+            _cloneFeedbackView = null;
+        view.Visibility = Visibility.Collapsed;
+    }
+
     private void RemoveFloatingGitCommandFeedback()
     {
         _modalHost.Visibility = Visibility.Collapsed;
