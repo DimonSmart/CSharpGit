@@ -24,7 +24,7 @@ public sealed class RepositorySwitchingContractTests
             "MainPage.RepositoryCreation.cs"));
         var refresh = File.ReadAllText(Path.Combine(
             presentation,
-            "MainPage.RepositoryRefresh.cs"));
+            "Workflows", "RepositoryRefreshController.cs"));
         var coordinator = File.ReadAllText(Path.Combine(
             root,
             "src",
