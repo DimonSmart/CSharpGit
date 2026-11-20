@@ -19,6 +19,7 @@ public sealed partial class MainPage
     private readonly Workflows.RepositoryConfirmationController _confirmationController = null!;
     private readonly Workflows.BranchRenameController _branchRename = null!;
     private readonly Workflows.WorktreeController _worktrees = null!;
+    private WorktreesViewModel _worktreesViewModel = null!;
     private readonly Workflows.RepositorySwitchController _repositorySwitch = null!;
     private readonly Workflows.HistoryRewriteController _historyRewrite = null!;
     private readonly Workflows.BranchDragDropController _branchDragDrop = null!;
