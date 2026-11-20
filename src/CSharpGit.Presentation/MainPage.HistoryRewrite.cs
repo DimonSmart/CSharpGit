@@ -142,7 +142,7 @@ public sealed partial class MainPage
         _repositoryFilesViewModel.Invalidate(
             "Rewriting repository history…",
             loading: true);
-        ClearRepositoryFileSelection();
+        _repositoryFilePreview.ClearSelection();
         UpdateRepositoryFilesModeSurface();
 
         UpdateHistoryScopePresentation();

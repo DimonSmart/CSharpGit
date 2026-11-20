@@ -41,13 +41,14 @@ internal sealed class RepositoryFilePreviewController(
         int? lineNumber,
         RepositorySnapshotEntry? entry)
     {
-        if (_isShuttingDown() || _previewHost() is null) return;
+        var host = _previewHost();
+        if (_isShuttingDown() || host is null) return;
         _pendingRepositoryPreviewSelection = null;
 
         if (entry is null)
         {
             _repositoryPreviewGate.Cancel();
-            _previewHost().ShowFolder();
+            host.ShowFolder();
             return;
         }
 
@@ -61,15 +62,15 @@ internal sealed class RepositoryFilePreviewController(
                 break;
             case RepositorySnapshotEntryKind.Symlink:
                 _repositoryPreviewGate.Cancel();
-                _previewHost().ShowUnsupported("Symlink preview is not available.");
+                host.ShowUnsupported("Symlink preview is not available.");
                 break;
             case RepositorySnapshotEntryKind.Submodule:
                 _repositoryPreviewGate.Cancel();
-                _previewHost().ShowUnsupported("Submodule preview is not available.");
+                host.ShowUnsupported("Submodule preview is not available.");
                 break;
             default:
                 _repositoryPreviewGate.Cancel();
-                _previewHost().ShowUnsupported("This Git entry type cannot be previewed.");
+                host.ShowUnsupported("This Git entry type cannot be previewed.");
                 break;
         }
     }
