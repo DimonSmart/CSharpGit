@@ -4,6 +4,12 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Commit empty-index and Working Tree discard confirmations now belong to
+`Workflows/RepositoryConfirmationController`. It owns subscriptions and cancellation
+via the window dialog gate, with repository-identity checks before commands.
+`MainPage.ConfirmationDialogs.cs` is removed and shutdown detaches its listeners.
+
+
 The watcher/refresh baseline lifecycle, mutation-followup queue and refresh toolbar
 indicator now belong to per-window `Workflows/RepositoryRefreshController`, with
 explicit subscription/shutdown ownership. `MainPage.RepositoryRefresh.cs` retains

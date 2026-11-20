@@ -16,6 +16,7 @@ public sealed partial class MainPage
     private IAppSettingsService _gitConsoleSettings = null!;
     private Dialogs.GitCommandFeedbackController _feedback = null!;
     private readonly Workflows.RepositoryManualRefreshController _manualRefresh = null!;
+    private readonly Workflows.RepositoryConfirmationController _confirmationController = null!;
     private readonly Workflows.RecentRepositoryPickerWorkflow _repositoryPicker = null!;
     private readonly IDesktopShellService _desktopShellService = null!;
     private IAppSettingsService _recentRepositorySettings = null!;
@@ -118,6 +119,13 @@ public sealed partial class MainPage
         _viewModel.PropertyChanged += RepositoryMaintenanceViewModel_PropertyChanged;
         UpdateOptimizeRepositoryAvailability();
         _repositoryRefresh.InitializeRepositoryChangeMonitoring();
+        _confirmationController = new Workflows.RepositoryConfirmationController(
+            _viewModel,
+            () => XamlRoot,
+            ShowPageDialogAsync,
+            (operation, description) => RunPageUiOperation(operation, description),
+            ExecuteCommandAsync,
+            () => IsShuttingDown);
         _manualRefresh = new Workflows.RepositoryManualRefreshController(
             _viewModel,
             () => IsShuttingDown,

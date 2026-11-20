@@ -18,7 +18,7 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
     private void MainPage_Loaded(object sender, RoutedEventArgs args)
     {
         InitializeCommitDetailsSurface();
-        InitializeConfirmationDialogs();
+        _confirmationController.Initialize();
         InitializeBranchRename();
         InitializeBranchDragDrop();
         RepositoryToolbar.Configure(HandleRepositoryToolbarAction);
@@ -90,7 +90,7 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         _viewModel.History.PropertyChanged -= HistoryViewModel_PropertyChanged;
         _viewModel.History.CommitLookupCompleted -= History_CommitLookupCompleted;
         _viewModel.CommitDetails.PropertyChanged -= ChangesViewModel_PropertyChanged;
-        _viewModel.CommitCreation.PropertyChanged -= CommitCreationViewModel_PropertyChanged;
+        _confirmationController.Shutdown();
         _viewModel.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
         _viewModel.CommitDetails.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
         _viewModel.History.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
@@ -110,7 +110,6 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         UnstagedChangesList.DoubleTapped -= WorkingTreeChanges_DoubleTapped;
         StagedChangesList.DoubleTapped -= WorkingTreeChanges_DoubleTapped;
         // Window DI scope owns disposal of resolved feature models.
-        _viewModel.WorkingTree.PropertyChanged -= WorkingTreeConfirmation_PropertyChanged;
         _repositoryFilesViewModel.PropertyChanged -= RepositoryFilesViewModel_PropertyChanged;
 
         _viewModel.PropertyChanged -= RepositoryMaintenanceViewModel_PropertyChanged;

@@ -258,7 +258,7 @@ public sealed class WorkingTreeDiscardContractTests
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"))
             + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml"));
-        var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ConfirmationDialogs.cs"));
+        var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryConfirmationController.cs"));
         var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs"));
 
         var menu = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs"));
@@ -270,6 +270,7 @@ public sealed class WorkingTreeDiscardContractTests
         Assert.DoesNotContain("Title=\"Discard unstaged changes?\"", xaml);
 
         Assert.Contains("new ContentDialog", dialogs);
+        Assert.False(File.Exists(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ConfirmationDialogs.cs")));
         Assert.Contains("Title = \"Discard changes?\"", dialogs);
         Assert.Contains("PrimaryButtonText = \"Discard\"", dialogs);
         Assert.Contains("CloseButtonText = \"Cancel\"", dialogs);
