@@ -27,7 +27,7 @@ public sealed class HistoryMessageWrappingUiContractTests
             root,
             "src",
             "CSharpGit.Presentation",
-            "MainPage.CommitCopy.cs"));
+            "Workflows", "CommitDetailsLayoutController.cs"));
         var lifecycle = File.ReadAllText(Path.Combine(
             root,
             "src",
@@ -67,20 +67,22 @@ public sealed class HistoryMessageWrappingUiContractTests
 
         Assert.DoesNotContain("new CommitDetailsView", detailsHost);
         Assert.DoesNotContain("DetailsScroller.Content =", detailsHost);
-        Assert.Contains("_commitDetailsView = CommitDetailsContent", detailsHost);
-        Assert.Contains("DetailsScroller.HorizontalScrollMode = ScrollMode.Disabled", detailsHost);
-        Assert.Contains("DetailsScroller.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled", detailsHost);
-        Assert.Contains("DetailsScroller.SizeChanged += DetailsScroller_SizeChanged", detailsHost);
-        Assert.Contains("DetailsScroller.DispatcherQueue.TryEnqueue(ConstrainCommitDetailsToViewport)", detailsHost);
+        Assert.Contains("CommitDetailsView commitDetailsView", detailsHost);
+        Assert.False(File.Exists(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitCopy.cs")));
+        Assert.Contains("_root.Changed -= XamlRoot_Changed", detailsHost);
+        Assert.Contains("_detailsScroller.HorizontalScrollMode = ScrollMode.Disabled", detailsHost);
+        Assert.Contains("_detailsScroller.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled", detailsHost);
+        Assert.Contains("_detailsScroller.SizeChanged += DetailsScroller_SizeChanged", detailsHost);
+        Assert.Contains("_detailsScroller.DispatcherQueue.TryEnqueue(ConstrainCommitDetailsToViewport)", detailsHost);
         Assert.DoesNotContain("ActualWidth", detailsHost);
-        Assert.Contains("HistoryPane.TransformToVisual(null).TransformPoint(default)", detailsHost);
-        Assert.Contains("XamlRoot.RasterizationScale", detailsHost);
-        Assert.Contains("app.MainWindowClientWidth / rasterizationScale", detailsHost);
+        Assert.Contains("_historyPane.TransformToVisual(null).TransformPoint(default)", detailsHost);
+        Assert.Contains("_root.RasterizationScale", detailsHost);
+        Assert.Contains("_mainWindowClientWidth() / rasterizationScale", detailsHost);
         Assert.Contains("var visibleWidth = windowWidth - origin.X", detailsHost);
-        Assert.Contains("DetailsScroller.Width = visibleWidth", detailsHost);
+        Assert.Contains("_detailsScroller.Width = visibleWidth", detailsHost);
         Assert.Contains("if (eventArgs.DidSizeChange) mainPage.QueueCommitDetailsLayout()", appHost);
         Assert.Contains("!double.IsFinite(_commitDetailsView.Width)", detailsHost);
-        Assert.Contains("InitializeCommitDetailsSurface();", lifecycle);
+        Assert.Contains("_commitDetailsLayout.Initialize();", lifecycle);
         Assert.DoesNotContain("InitializeCommitDetailsSurface", confirmationDialogs);
         Assert.Contains("internal double MainWindowClientWidth => _window?.AppWindow.ClientSize.Width ?? 0", appHost);
     }

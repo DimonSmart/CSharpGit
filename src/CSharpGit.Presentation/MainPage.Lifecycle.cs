@@ -17,7 +17,7 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
 
     private void MainPage_Loaded(object sender, RoutedEventArgs args)
     {
-        InitializeCommitDetailsSurface();
+        _commitDetailsLayout.Initialize();
         _confirmationController.Initialize();
         InitializeBranchRename();
         InitializeBranchDragDrop();
@@ -74,6 +74,7 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         _feedback.ShutdownGitCommandFeedback();
         StartScreenHost.ShutdownRecentRepositories();
         RepositoryHeader.Shutdown();
+        _commitDetailsLayout.Shutdown();
         RepositoryToolbar.Shutdown();
         _repositoryRefresh.ShutdownRepositoryChangeMonitoring();
         _changedFilesViewport?.Dispose();

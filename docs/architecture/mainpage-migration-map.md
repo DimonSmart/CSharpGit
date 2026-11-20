@@ -4,6 +4,12 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Commit Details viewport layout now belongs to `Workflows/CommitDetailsLayoutController`.
+It owns window-size, scroll/width and XamlRoot subscriptions and explicitly detaches
+on shutdown. `MainPage.CommitCopy.cs` is removed; native resize forwarding remains
+as a narrow shell adapter until final root composition migration.
+
+
 Commit Details loading overlays now belong to
 `Workflows/CommitLoadingOverlayController`. This controller owns visual changes,
 loading rings and the Commit Details subscription, while MainPage holds only a

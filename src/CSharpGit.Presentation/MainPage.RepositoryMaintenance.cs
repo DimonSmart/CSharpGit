@@ -21,6 +21,7 @@ public sealed partial class MainPage
     private readonly CreateRepositoryViewModel _createRepositoryViewModel = null!;
     private readonly Workflows.RepositoryCloneWorkflow _cloneWorkflow = null!;
     private readonly Workflows.RepositoryCreationWorkflow _creationWorkflow = null!;
+    private readonly Workflows.CommitDetailsLayoutController _commitDetailsLayout = null!;
     private bool _repositoryCloningWorkflowActive => _cloneWorkflow?.IsActive == true;
     private bool _repositoryCreationWorkflowActive => _creationWorkflow?.IsActive == true;
     private readonly Workflows.RecentRepositoryPickerWorkflow _repositoryPicker = null!;
@@ -66,6 +67,10 @@ public sealed partial class MainPage
             repositoryFilesViewModel,
             workspaceNavigator)
     {
+        _commitDetailsLayout = new Workflows.CommitDetailsLayoutController(
+            DetailsScroller, HistoryPane, CommitDetailsContent,
+            () => Microsoft.UI.Xaml.Application.Current is App app
+                ? app.MainWindowClientWidth : 0);
         InstallRepositoryHistoryRewriteMenus();
         WorkingTreeCommitEditor.StashRequested += CreateStash_Click;
         _createRepositoryViewModel = createRepositoryViewModel

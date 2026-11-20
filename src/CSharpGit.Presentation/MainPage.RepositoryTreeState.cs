@@ -25,6 +25,9 @@ public sealed partial class MainPage
 
     private void DetachLoadingOverlays() => _loadingOverlay?.Shutdown();
 
+    // Temporary shell adapter for native resize callbacks until the XAML shell is extracted.
+    internal void QueueCommitDetailsLayout() => _commitDetailsLayout.QueueLayout();
+
     private void SynchronizeRepositoryTree() => RepositoryExplorer.ReconcileRepository();
 
     private void SynchronizeWorktreePresentation() => RepositoryExplorer.ReconcileWorktrees();
