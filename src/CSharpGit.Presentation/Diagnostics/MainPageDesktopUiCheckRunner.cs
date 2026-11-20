@@ -105,7 +105,7 @@ public sealed partial class MainPage
                 await WaitUntilAsync(() => _page.RequestedTheme == ElementTheme.Light, TimeSpan.FromSeconds(5));
                 Check(_page.RequestedTheme == ElementTheme.Light, "Light theme was not applied to the main root", failures);
 
-                _page.OpenSettingsWindow();
+                _page._settingsWindowController.Open(SettingsSection.General);
                 await WaitUntilAsync(() => _page._settingsWindowController.CurrentPage is { RequestedTheme: ElementTheme.Light }, TimeSpan.FromSeconds(5));
                 Check(_page._settingsWindowController.CurrentPage is { RequestedTheme: ElementTheme.Light }, "new settings root did not receive the current theme", failures);
 
