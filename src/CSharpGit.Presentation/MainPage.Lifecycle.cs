@@ -43,7 +43,7 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
     public Task PrepareForShutdown()
     {
         if (Interlocked.Exchange(ref _shutdownStarted, 1) != 0) return Task.CompletedTask;
-        _pageDialogLifetime.Cancel();
+        _pageDialogs.Shutdown();
         _repositoryRefresh.ShutdownRepositoryChangeMonitoring();
         // Stop page-owned cancelable previews before waiting for diagnostics.
         // Do not cancel Git mutations: close admission already protects them.
@@ -58,7 +58,7 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
     {
         if (Interlocked.Exchange(ref _shutdownFinalized, 1) != 0) return;
         Volatile.Write(ref _shutdownStarted, 1);
-        _pageDialogLifetime.Cancel();
+        _pageDialogs.Shutdown();
         _cloneRepositoryViewModel.Cancel();
         Loaded -= RunDesktopCheckWhenRequested;
         _viewModel.WorkingTree.Changes.CollectionChanged -= RepositoryPresentationChanges_CollectionChanged;

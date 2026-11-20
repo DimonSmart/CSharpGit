@@ -4,6 +4,13 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+The page-local modal gate, dialog lifetime cancellation and interactive rebase
+editor workflow are now owned by `Dialogs/PageDialogController` with a normal
+`Page` visual-surface reference rather than a dependency on `MainPage`.
+`MainPage.Dialogs.cs` is removed. Legacy call sites use thin shell adapters
+until their respective feature views are migrated.
+
+
 Repository tree/working-tree projection updates are now coalesced by
 `Workflows/RepositoryPresentationRefreshController`. It owns the dispatch queue and
 coalescing state, with typed callbacks to update the existing visual surfaces.

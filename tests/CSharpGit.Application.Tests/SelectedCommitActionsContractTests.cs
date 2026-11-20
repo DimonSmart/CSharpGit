@@ -75,7 +75,7 @@ public sealed class SelectedCommitActionsContractTests
         var root = FindRepositoryRoot();
         var appXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml"));
         var actions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
-        var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Dialogs.cs"));
+        var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Dialogs", "PageDialogController.cs"));
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var rebaseViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "InteractiveRebaseViewModel.cs"));

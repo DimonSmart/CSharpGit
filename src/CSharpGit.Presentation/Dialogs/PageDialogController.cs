@@ -4,22 +4,30 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 
-namespace CSharpGit.Presentation;
+using CSharpGit.Presentation.ViewModels;
 
-public sealed partial class MainPage
+namespace CSharpGit.Presentation.Dialogs;
+
+// Owns page-scoped modal serialization, cancellation and rebase editor layout.
+internal sealed class PageDialogController(Page page, OpenRepositoryViewModel viewModel, Func<bool> isShuttingDown)
 {
-    private ContentDialog InteractiveRebaseDialog => GetPageDialog("InteractiveRebaseDialog");
+    private readonly Page _page = page;
+    private readonly OpenRepositoryViewModel _viewModel = viewModel;
+    private readonly Func<bool> _isShuttingDown = isShuttingDown;
+    private ContentDialog InteractiveRebaseDialog => GetDialog("InteractiveRebaseDialog");
     private readonly UiPageDialogGate _pageDialogGate = new();
     private readonly CancellationTokenSource _pageDialogLifetime = new();
 
-    private Task<ContentDialogResult> ShowPageDialogAsync(ContentDialog dialog) =>
+    internal void Shutdown() => _pageDialogLifetime.Cancel();
+
+    internal Task<ContentDialogResult> ShowAsync(ContentDialog dialog) =>
         _pageDialogGate.ExecuteAsync(
             async () =>
             {
-                if (IsShuttingDown || XamlRoot is null)
+                if (_isShuttingDown() || _page.XamlRoot is null)
                     return ContentDialogResult.None;
 
-                dialog.XamlRoot = XamlRoot;
+                dialog._page.XamlRoot = _page.XamlRoot;
                 return await dialog.ShowAsync();
             },
             ContentDialogResult.None,
@@ -27,7 +35,7 @@ public sealed partial class MainPage
 
 
 
-    private async Task ShowInteractiveRebaseEditorAsync()
+    internal async Task ShowInteractiveRebaseEditorAsync()
     {
         var dialog = InteractiveRebaseDialog;
 
@@ -38,9 +46,9 @@ public sealed partial class MainPage
                     "InteractiveRebaseTodoEditor") is not { } editor)
                 return;
 
-            var rootSize = sender.XamlRoot?.Size;
-            var viewportWidth = rootSize?.Width ?? ActualWidth;
-            var viewportHeight = rootSize?.Height ?? ActualHeight;
+            var rootSize = sender._page.XamlRoot?.Size;
+            var viewportWidth = rootSize?.Width ?? _page.ActualWidth;
+            var viewportHeight = rootSize?.Height ?? _page.ActualHeight;
 
             var availableDialogWidth = Math.Max(320d, viewportWidth - 96d);
             var dialogWidth = Math.Min(1200d, availableDialogWidth);
@@ -62,14 +70,14 @@ public sealed partial class MainPage
         ContentDialogResult result;
         try
         {
-            result = await ShowPageDialogAsync(dialog);
+            result = await ShowAsync(dialog);
         }
         finally
         {
             dialog.Opened -= Dialog_Opened;
         }
 
-        if (result != ContentDialogResult.Primary || IsShuttingDown
+        if (result != ContentDialogResult.Primary || _isShuttingDown()
             || !ReferenceEquals(repository, _viewModel.Repository))
             return;
 
@@ -81,7 +89,7 @@ public sealed partial class MainPage
         }
     }
 
-    private static T? FindNamedDescendant<T>(DependencyObject root, string name)
+    internal static T? FindNamedDescendant<T>(DependencyObject root, string name)
         where T : FrameworkElement
     {
         if (root is T element && string.Equals(element.Name, name, StringComparison.Ordinal))
@@ -97,13 +105,13 @@ public sealed partial class MainPage
         return null;
     }
 
-    private ContentDialog GetPageDialog(string key)
+    internal ContentDialog GetDialog(string key)
     {
-        if (Resources[key] is not ContentDialog dialog)
+        if (_page.Resources[key] is not ContentDialog dialog)
             throw new InvalidOperationException($"Page dialog resource '{key}' was not found.");
 
         dialog.DataContext = _viewModel;
-        dialog.XamlRoot = XamlRoot;
+        dialog._page.XamlRoot = _page.XamlRoot;
         return dialog;
     }
 }

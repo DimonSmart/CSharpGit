@@ -34,6 +34,7 @@ public sealed partial class MainPage : Page
     private readonly WorkspaceNavigator _workspaceNavigator;
     private RepositoryTreeNavigationCoordinator _repositoryTreeNavigation => _workspaceNavigator.Interactions;
     private readonly Workflows.RepositoryRefreshController _repositoryRefresh;
+    private readonly Dialogs.PageDialogController _pageDialogs;
 
 
     private MainPage(
@@ -43,6 +44,7 @@ public sealed partial class MainPage : Page
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
+        _pageDialogs = new Dialogs.PageDialogController(this, _viewModel, () => IsShuttingDown);
         _commitSummaryViewport = new CollectionViewportController(DetailsScroller);
         _stashSummaryViewport = new CollectionViewportController(StashDetailsScroller);
         SynchronizeDetailsViewport();

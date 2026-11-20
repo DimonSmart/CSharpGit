@@ -14,6 +14,20 @@ public sealed partial class MainPage
     private void QueueRepositoryPresentationRefresh(bool workingTreeChanged = false) =>
         _presentationRefresh.Queue(workingTreeChanged);
 
+    private ContentDialog InteractiveRebaseDialog => _pageDialogs.GetDialog("InteractiveRebaseDialog");
+
+    private Task<ContentDialogResult> ShowPageDialogAsync(ContentDialog dialog) =>
+        _pageDialogs.ShowAsync(dialog);
+
+    private Task ShowInteractiveRebaseEditorAsync() =>
+        _pageDialogs.ShowInteractiveRebaseEditorAsync();
+
+    private ContentDialog GetPageDialog(string key) => _pageDialogs.GetDialog(key);
+
+    private static T? FindNamedDescendant<T>(Microsoft.UI.Xaml.DependencyObject root, string name)
+        where T : Microsoft.UI.Xaml.FrameworkElement =>
+        Dialogs.PageDialogController.FindNamedDescendant<T>(root, name);
+
     // Phase-3 Git-reference menus still use the TreeView through this narrow UI adapter.
     internal TreeView RepositoryTree => RepositoryExplorer.TreeControl;
 
