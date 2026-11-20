@@ -4,6 +4,13 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+`Dialogs/GitCommandFeedbackController` now owns the Git command feedback coordinator,
+modal presentation, settings subscriptions and countdown timer. The former
+`MainPage.GitCommandFeedback.cs` is deleted. The console host retains only typed
+callbacks to this window-scoped owner; the final window composition step will
+eliminate the remaining `MainPage.GitConsole.cs` adapter.
+
+
 Settings entry points now belong to `SettingsWindowController` with a window-scoped
 repository/admission context. `MainPage.Settings.cs` has been deleted; toolbar,
 start screen and Git tool actions invoke typed controller entry points directly.

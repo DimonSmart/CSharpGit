@@ -9,17 +9,21 @@ public sealed partial class MainPage
     // This bridge is deleted when GitCommandFeedback moves to its own controller.
     private IGitCommandActivitySource _gitCommandActivitySource = null!;
     private IAppSettingsService _gitConsoleSettings = null!;
-    private bool _gitConsoleOpen => GitConsoleHost.IsOpen;
+    private Dialogs.GitCommandFeedbackController _feedback = null!;
 
     private void InitializeGitConsole()
     {
-        InitializeGitCommandFeedback();
+        _feedback = new Dialogs.GitCommandFeedbackController(
+            _gitCommandActivitySource, _gitConsoleSettings,
+            FloatingGitCommandFeedbackView, GitCommandFeedbackModalHost,
+            RootLayout, GitConsoleHost, DispatcherQueue, () => IsShuttingDown);
+        _feedback.InitializeGitCommandFeedback();
         GitConsoleHost.Configure(
             _gitCommandActivitySource,
             _gitConsoleSettings,
             RootLayout,
-            RouteGitCommandFeedback,
-            RenderGitCommandFeedback,
+            _feedback.RouteGitCommandFeedback,
+            _feedback.RenderGitCommandFeedback,
             () => GitCommandFeedbackModalHost.Visibility == Visibility.Visible);
     }
 
@@ -31,6 +35,6 @@ public sealed partial class MainPage
     private void ShutdownGitConsole()
     {
         GitConsoleHost.Shutdown();
-        ShutdownGitCommandFeedback();
+        _feedback.ShutdownGitCommandFeedback();
     }
 }

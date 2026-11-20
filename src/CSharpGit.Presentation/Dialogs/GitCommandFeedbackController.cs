@@ -1,48 +1,74 @@
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Presentation.Controls;
+using CSharpGit.Presentation.Views;
+using CSharpGit.Presentation;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace CSharpGit.Presentation;
+namespace CSharpGit.Presentation.Dialogs;
 
-public sealed partial class MainPage
+// Window-scoped owner of modal Git command feedback, independent of the console view.
+internal sealed class GitCommandFeedbackController(
+    IGitCommandActivitySource activitySource,
+    IAppSettingsService settings,
+    GitCommandFeedbackView floatingView,
+    FrameworkElement modalHost,
+    FrameworkElement rootLayout,
+    GitConsoleHostView console,
+    Microsoft.UI.Dispatching.DispatcherQueue dispatcher,
+    Func<bool> isShuttingDown)
 {
+    private readonly IGitCommandActivitySource _activitySource = activitySource;
+    private readonly IAppSettingsService _settings = settings;
+    private readonly GitCommandFeedbackView _floatingHost = floatingView;
+    private readonly FrameworkElement _modalHost = modalHost;
+    private readonly FrameworkElement _rootLayout = rootLayout;
+    private readonly GitConsoleHostView _console = console;
+    private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcher = dispatcher;
+    private readonly Func<bool> _isShuttingDown = isShuttingDown;
+
     private GitCommandFeedbackCoordinator? _commandFeedback;
     private DispatcherTimer? _commandFeedbackTimer;
     private GitCommandFeedbackView? _floatingFeedbackView;
     private GitCommandFeedbackView? _cloneFeedbackView;
     private volatile bool _cloneDialogFeedbackActive;
 
-    private void InitializeGitCommandFeedback()
+    internal bool CloneDialogFeedbackActive
     {
-        _commandFeedback = new GitCommandFeedbackCoordinator(_gitCommandActivitySource);
-        _floatingFeedbackView = FloatingGitCommandFeedbackView;
+        get => _cloneDialogFeedbackActive;
+        set => _cloneDialogFeedbackActive = value;
+    }
+
+    internal void InitializeGitCommandFeedback()
+    {
+        _commandFeedback = new GitCommandFeedbackCoordinator(_activitySource);
+        _floatingFeedbackView = _floatingHost;
         WireGitCommandFeedback(_floatingFeedbackView);
         _commandFeedbackTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(75)
         };
         _commandFeedbackTimer.Tick += (_, _) => RenderGitCommandFeedback();
-        _gitConsoleSettings.Changed += GitCommandFeedbackSettingsChanged;
+        _settings.Changed += GitCommandFeedbackSettingsChanged;
         ApplyGitCommandFeedbackSettings();
     }
 
     private void GitCommandFeedbackSettingsChanged(object? sender, EventArgs args)
     {
-        if (IsShuttingDown) return;
-        if (DispatcherQueue.HasThreadAccess)
+        if (_isShuttingDown()) return;
+        if (_dispatcher.HasThreadAccess)
             ApplyGitCommandFeedbackSettings();
         else
-            DispatcherQueue.TryEnqueue(ApplyGitCommandFeedbackSettings);
+            _dispatcher.TryEnqueue(ApplyGitCommandFeedbackSettings);
     }
 
     private void ApplyGitCommandFeedbackSettings()
     {
-        if (IsShuttingDown || _commandFeedback is null) return;
-        var enabled = _gitConsoleSettings.ShowGitCommandProgressDialog;
+        if (_isShuttingDown() || _commandFeedback is null) return;
+        var enabled = _settings.ShowGitCommandProgressDialog;
         _commandFeedback.Configure(
-            enabled, _gitConsoleSettings.AutoCloseSuccessfulGitCommandFeedback,
-            _gitConsoleSettings.SuccessfulGitCommandFeedbackDurationSeconds);
+            enabled, _settings.AutoCloseSuccessfulGitCommandFeedback,
+            _settings.SuccessfulGitCommandFeedbackDurationSeconds);
 
         if (enabled)
             _commandFeedbackTimer?.Start();
@@ -56,17 +82,17 @@ public sealed partial class MainPage
         RenderGitCommandFeedback();
     }
 
-    private bool RouteGitCommandFeedback(GitCommandActivityChangedEventArgs args) =>
+    internal bool RouteGitCommandFeedback(GitCommandActivityChangedEventArgs args) =>
         _commandFeedback?.Handle(args, _cloneDialogFeedbackActive) == true;
 
-    private void RenderGitCommandFeedback()
+    internal void RenderGitCommandFeedback()
     {
-        if (IsShuttingDown) return;
+        if (_isShuttingDown()) return;
         var state = _commandFeedback?.Capture(
-            presentationAvailable: !_gitConsoleOpen || _cloneDialogFeedbackActive);
+            presentationAvailable: !_console.IsOpen || _cloneDialogFeedbackActive);
         if (state is not { IsVisible: true })
         {
-            GitCommandFeedbackModalHost.Visibility = Visibility.Collapsed;
+            _modalHost.Visibility = Visibility.Collapsed;
             if (_cloneFeedbackView is not null)
                 _cloneFeedbackView.Visibility = Visibility.Collapsed;
             return;
@@ -74,7 +100,7 @@ public sealed partial class MainPage
 
         if (state.Owner == GitCommandFeedbackOwner.EmbeddedClone)
         {
-            GitCommandFeedbackModalHost.Visibility = Visibility.Collapsed;
+            _modalHost.Visibility = Visibility.Collapsed;
             if (_cloneFeedbackView is not null && _cloneDialogFeedbackActive)
             {
                 _cloneFeedbackView.Apply(state);
@@ -87,20 +113,20 @@ public sealed partial class MainPage
             _cloneFeedbackView.Visibility = Visibility.Collapsed;
 
         // Git Console remains the explicit destination for this activity.
-        if (_gitConsoleOpen)
+        if (_console.IsOpen)
         {
-            GitCommandFeedbackModalHost.Visibility = Visibility.Collapsed;
+            _modalHost.Visibility = Visibility.Collapsed;
             return;
         }
 
         if (_floatingFeedbackView is null) return;
-        _floatingFeedbackView.Width = Math.Min(480, Math.Max(180, RootLayout.ActualWidth - 32));
+        _floatingFeedbackView.Width = Math.Min(480, Math.Max(180, _rootLayout.ActualWidth - 32));
         _floatingFeedbackView.Apply(state);
         // Focus the modal host itself, not a text box: merely opening the dialog
         // must not pause the success countdown as though the user interacted.
-        if (GitCommandFeedbackModalHost.Visibility != Visibility.Visible)
+        if (_modalHost.Visibility != Visibility.Visible)
         {
-            GitCommandFeedbackModalHost.Visibility = Visibility.Visible;
+            _modalHost.Visibility = Visibility.Visible;
             _floatingFeedbackView.Focus(FocusState.Programmatic);
         }
     }
@@ -124,7 +150,7 @@ public sealed partial class MainPage
         {
             // Get(id) can still return a detached Running activity. Only actual
             // Console history rows can be selected, never an approximate match.
-            if (!_gitCommandActivitySource.GetSnapshot(GitCommandFilter.AllCommands)
+            if (!_activitySource.GetSnapshot(GitCommandFilter.AllCommands)
                     .Any(item => item.Id == id))
             {
                 view.ShowUnavailableMessage();
@@ -132,15 +158,15 @@ public sealed partial class MainPage
             }
             _commandFeedback?.Dismiss(id);
             RenderGitCommandFeedback();
-            OpenGitConsole(id, manualOpen: true);
+            _console.Open(id, manualOpen: true);
         };
         view.InteractionChanged += (hovered, focused) =>
             _commandFeedback?.Interacting(hovered, focused);
     }
 
-    private GitCommandFeedbackView? CreateCloneGitCommandFeedback()
+    internal GitCommandFeedbackView? CreateCloneGitCommandFeedback()
     {
-        if (!_gitConsoleSettings.ShowGitCommandProgressDialog)
+        if (!_settings.ShowGitCommandProgressDialog)
             return null;
         var view = new GitCommandFeedbackView
         {
@@ -155,12 +181,12 @@ public sealed partial class MainPage
 
     private void RemoveFloatingGitCommandFeedback()
     {
-        GitCommandFeedbackModalHost.Visibility = Visibility.Collapsed;
+        _modalHost.Visibility = Visibility.Collapsed;
     }
 
-    private void ShutdownGitCommandFeedback()
+    internal void ShutdownGitCommandFeedback()
     {
-        _gitConsoleSettings.Changed -= GitCommandFeedbackSettingsChanged;
+        _settings.Changed -= GitCommandFeedbackSettingsChanged;
         _commandFeedback?.Configure(false, false);
         _commandFeedbackTimer?.Stop();
         RemoveFloatingGitCommandFeedback();

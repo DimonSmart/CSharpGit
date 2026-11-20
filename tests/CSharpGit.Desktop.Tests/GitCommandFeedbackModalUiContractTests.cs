@@ -14,11 +14,12 @@ public sealed class GitCommandFeedbackModalUiContractTests
         Assert.Contains("x:Name=\"FloatingGitCommandFeedbackView\"", xaml, StringComparison.Ordinal);
 
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var feedback = File.ReadAllText(Path.Combine(presentation, "MainPage.GitCommandFeedback.cs"));
+        var feedback = File.ReadAllText(Path.Combine(presentation, "Dialogs", "GitCommandFeedbackController.cs"));
         Assert.DoesNotContain("RootLayout.Children.Insert(", feedback, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(presentation, "MainPage.GitCommandFeedback.cs")));
         Assert.Contains("_floatingFeedbackView.Focus(FocusState.Programmatic)", feedback, StringComparison.Ordinal);
-        Assert.Contains("GitCommandFeedbackModalHost.Visibility = Visibility.Visible", feedback, StringComparison.Ordinal);
-        Assert.Contains("GitCommandFeedbackModalHost.Visibility = Visibility.Collapsed", feedback, StringComparison.Ordinal);
+        Assert.Contains("_modalHost.Visibility = Visibility.Visible", feedback, StringComparison.Ordinal);
+        Assert.Contains("_modalHost.Visibility = Visibility.Collapsed", feedback, StringComparison.Ordinal);
 
         var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
         var console = File.ReadAllText(Path.Combine(presentation, "Views", "GitConsoleHostView.xaml.cs"));
@@ -72,7 +73,7 @@ public sealed class GitCommandFeedbackModalUiContractTests
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var xaml = File.ReadAllText(Path.Combine(presentation, "Controls", "GitCommandFeedbackView.xaml"));
         var view = File.ReadAllText(Path.Combine(presentation, "Controls", "GitCommandFeedbackView.xaml.cs"));
-        var page = File.ReadAllText(Path.Combine(presentation, "MainPage.GitCommandFeedback.cs"));
+        var page = File.ReadAllText(Path.Combine(presentation, "Dialogs", "GitCommandFeedbackController.cs"));
 
         Assert.Contains("Press Esc to cancel auto-close", xaml, StringComparison.Ordinal);
         Assert.Contains("AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(Feedback_KeyDown), handledEventsToo: true)", view, StringComparison.Ordinal);

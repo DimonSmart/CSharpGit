@@ -151,7 +151,7 @@ public sealed partial class MainPage
         content.Children.Add(repositoryUrlBox);
         content.Children.Add(localDirectoryRow);
         content.Children.Add(progressRow);
-        var cloneFeedback = CreateCloneGitCommandFeedback();
+        var cloneFeedback = _feedback.CreateCloneGitCommandFeedback();
         if (cloneFeedback is not null)
             content.Children.Add(cloneFeedback);
         content.Children.Add(error);
@@ -275,7 +275,7 @@ public sealed partial class MainPage
         };
 
         _cloneRepositoryViewModel.PropertyChanged += changed;
-        _cloneDialogFeedbackActive = cloneFeedback is not null;
+        _feedback.CloneDialogFeedbackActive = cloneFeedback is not null;
         try
         {
             Synchronize();
@@ -284,7 +284,7 @@ public sealed partial class MainPage
         }
         finally
         {
-            _cloneDialogFeedbackActive = false;
+            _feedback.CloneDialogFeedbackActive = false;
             _cloneRepositoryViewModel.PropertyChanged -= changed;
             if (cloneFeedback is not null)
             {
