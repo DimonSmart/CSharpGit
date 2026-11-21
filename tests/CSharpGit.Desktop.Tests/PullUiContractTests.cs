@@ -100,6 +100,23 @@ public sealed class PullUiContractTests
         Assert.DoesNotContain("_syncService.PullAsync", lifecycle, StringComparison.Ordinal);
     }
 
+
+    [Fact]
+    public void PullFailureUsesBoundedScrollableAndNormalizedErrorPresentation()
+    {
+        var root = FindRepositoryRoot();
+        var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+        var syncService = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitRepositorySyncService.cs"));
+
+        Assert.Contains("Text = new GitOutputDisplayBuffer().Reset(message)", mainPage, StringComparison.Ordinal);
+        Assert.Contains("TextWrapping = TextWrapping.NoWrap", mainPage, StringComparison.Ordinal);
+        Assert.Contains("Content = new ScrollViewer", mainPage, StringComparison.Ordinal);
+        Assert.Contains("MaxHeight = 400", mainPage, StringComparison.Ordinal);
+        Assert.Contains("HorizontalScrollBarVisibility = ScrollBarVisibility.Auto", mainPage, StringComparison.Ordinal);
+        Assert.Contains("VerticalScrollBarVisibility = ScrollBarVisibility.Auto", mainPage, StringComparison.Ordinal);
+        Assert.Contains(@"Git pull failed (exit {execution.ExitCode}):\n{diagnostic}", syncService, StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

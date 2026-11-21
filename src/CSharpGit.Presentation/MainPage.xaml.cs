@@ -346,11 +346,26 @@ public sealed partial class MainPage : Page
         if (IsShuttingDown || XamlRoot is null) return;
         try
         {
+            // Git progress uses CR to rewrite its current line. Preserve that
+            // terminal behavior at the presentation boundary, not in Git results.
+            var details = new TextBlock
+            {
+                Text = new GitOutputDisplayBuffer().Reset(message),
+                TextWrapping = TextWrapping.NoWrap,
+                IsTextSelectionEnabled = true
+            };
             var dialog = new ContentDialog
             {
                 XamlRoot = XamlRoot,
                 Title = title,
-                Content = message,
+                Content = new ScrollViewer
+                {
+                    Content = details,
+                    MaxWidth = 720,
+                    MaxHeight = 400,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+                },
                 CloseButtonText = "Close",
                 DefaultButton = ContentDialogButton.Close
             };

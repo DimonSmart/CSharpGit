@@ -207,7 +207,7 @@ internal sealed partial class GitRepositorySyncService : IRepositorySyncService
                 PullCompletionKind.Unknown, RepositoryOperation.None, false,
                 refused
                     ? "Fast-forward is not possible because the local and upstream branches have diverged. Choose Merge or Rebase."
-                    : $"Git pull failed (exit {execution.ExitCode}): {diagnostic}");
+                    : $"Git pull failed (exit {execution.ExitCode}):\n{diagnostic}");
         }
 
         var after = (await _runner.RunOptionalAsync(
