@@ -59,7 +59,7 @@ public sealed record WorkingTreeDiscardResult(
 public static class WorkingTreeDiscard
 {
     public static bool IsEligible(WorkingTreeChange change) =>
-        change.IsUnstaged && !change.IsConflicted;
+        change.IsUnstaged && !change.IsConflicted && !change.IsSubmodule;
 
     public static bool CanDiscardSelected(IEnumerable<WorkingTreeChange> changes)
     {

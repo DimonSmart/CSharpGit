@@ -23,6 +23,8 @@ private readonly GitRepositoryCommandRunner _runner;
         CancellationToken cancellationToken = default)
     {
         GitPathValidator.ValidateChange(change);
+        if (change.IsSubmodule && !change.CanStageGitlink)
+            throw new InvalidOperationException("No changed submodule commit to stage. Commit internal changes in the submodule first.");
         return _runner.RunMutationAsync(
             repository,
             cancellationToken,
@@ -87,6 +89,8 @@ private readonly GitRepositoryCommandRunner _runner;
         foreach (var change in changes)
         {
             GitPathValidator.ValidateChange(change);
+            if (change.IsSubmodule)
+                throw new InvalidOperationException("Discard cannot change submodules from the parent repository.");
             if (!change.IsUnstaged)
                 throw new InvalidOperationException(
                     "Only unstaged working-tree changes can be discarded.");
@@ -118,6 +122,8 @@ private readonly GitRepositoryCommandRunner _runner;
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(change);
         GitPathValidator.ValidateChange(change);
+        if (change.IsSubmodule)
+            throw new InvalidOperationException("Discard cannot change submodules from the parent repository.");
 
         if (!change.IsUnstaged)
             throw new InvalidOperationException(
@@ -169,6 +175,8 @@ private readonly GitRepositoryCommandRunner _runner;
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(change);
         GitPathValidator.ValidateChange(change);
+        if (change.IsSubmodule)
+            throw new InvalidOperationException("Discard cannot change submodules from the parent repository. Unstage the gitlink instead.");
 
         if (!change.IsStaged)
             throw new InvalidOperationException(

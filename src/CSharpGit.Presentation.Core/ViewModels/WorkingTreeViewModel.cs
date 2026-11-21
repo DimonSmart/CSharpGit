@@ -58,8 +58,9 @@ public sealed class WorkingTreeViewModel : INotifyPropertyChanged, IDisposable
 
         StageCommand = new AsyncCommand(StageActiveAsync, CanStageActive);
         UnstageCommand = new AsyncCommand(UnstageActiveAsync, CanUnstageActive);
-        StageSelectedCommand = new AsyncCommand(StageSelectedAsync, () => CanRunWorkingTreeMutation && _selectedUnstagedChanges.Count > 0);
-        StageAllCommand = new AsyncCommand(StageAllAsync, () => CanRunWorkingTreeMutation && Changes.Any(change => change.IsUnstaged));
+        StageSelectedCommand = new AsyncCommand(StageSelectedAsync, () => CanRunWorkingTreeMutation && _selectedUnstagedChanges.Any(change => !change.IsSubmodule || change.CanStageGitlink));
+        StageAllCommand = new AsyncCommand(StageAllAsync, () => CanRunWorkingTreeMutation && Changes.Any(change => change.IsUnstaged && (!change.IsSubmodule || change.CanStageGitlink)));
+
         UnstageSelectedCommand = new AsyncCommand(UnstageSelectedAsync, () => CanRunWorkingTreeMutation && _selectedStagedChanges.Count > 0);
         UnstageAllCommand = new AsyncCommand(UnstageAllAsync, () => CanRunWorkingTreeMutation && Changes.Any(change => change.IsStaged));
         RequestDiscardSelectedCommand = new AsyncCommand(RequestDiscardSelectedAsync, CanRequestDiscardSelected);
@@ -393,7 +394,7 @@ public sealed class WorkingTreeViewModel : INotifyPropertyChanged, IDisposable
     public bool CanStageChanges(IReadOnlyCollection<WorkingTreeChange> changes)
     {
         ArgumentNullException.ThrowIfNull(changes);
-        return CanRunWorkingTreeMutation && changes.Count > 0;
+        return CanRunWorkingTreeMutation && changes.Any(change => !change.IsSubmodule || change.CanStageGitlink);
     }
 
     public bool CanUnstageChanges(IReadOnlyCollection<WorkingTreeChange> changes)
@@ -457,7 +458,8 @@ public sealed class WorkingTreeViewModel : INotifyPropertyChanged, IDisposable
                _context.IsBusy == false &&
                !IsMutationBusy &&
                change.IsStaged &&
-               !change.IsConflicted;
+               !change.IsConflicted &&
+               !change.IsSubmodule;
     }
 
     public Task DiscardAllFileChangesAsync(WorkingTreeChange change)
@@ -507,7 +509,8 @@ public sealed class WorkingTreeViewModel : INotifyPropertyChanged, IDisposable
     private bool CanStageActive() =>
         CanRunWorkingTreeMutation &&
         SelectedDiffKind == WorkingTreeDiffKind.Unstaged &&
-        SelectedChange is { IsUnstaged: true };
+        SelectedChange is { IsUnstaged: true } change &&
+        (!change.IsSubmodule || change.CanStageGitlink);
 
     private bool CanUnstageActive() =>
         CanRunWorkingTreeMutation &&
