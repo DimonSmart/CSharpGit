@@ -59,7 +59,7 @@ public sealed class SubmoduleIntegrationTests : IDisposable
         Assert.Null(info.Branch);
         Assert.True(info.CanOpen);
         Assert.True(File.Exists(Path.Combine(clone, ModulePath, "lib.txt")));
-        Assert.True((await OpenAsync(Path.Combine(clone, ModulePath))).RepositoryRoot.EndsWith(ModulePath, StringComparison.Ordinal));
+        Assert.EndsWith(ModulePath, (await OpenAsync(Path.Combine(clone, ModulePath))).RepositoryRoot, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public sealed class SubmoduleIntegrationTests : IDisposable
         var childPath = Path.Combine(clone, ModulePath);
         var extra = AppendChildCommit(childPath, "new commit");
         var status = await GitTestServices.CreateRepositoryStateService().ReadAsync(repository);
-        var change = Assert.Single(status.Changes.Where(candidate => candidate.Path == ModulePath));
+        var change = Assert.Single(status.Changes, candidate => candidate.Path == ModulePath);
 
         Assert.True(change.IsSubmodule);
         Assert.True(change.SubmoduleCommitChanged);
@@ -84,7 +84,7 @@ public sealed class SubmoduleIntegrationTests : IDisposable
         Assert.Contains(ModulePath, RunGit(clone, "diff", "--cached", "--name-only"));
 
         var staged = await GitTestServices.CreateRepositoryStateService().ReadAsync(repository);
-        await workingTree.UnstageFileAsync(repository, Assert.Single(staged.Changes.Where(item => item.Path == ModulePath)));
+        await workingTree.UnstageFileAsync(repository, Assert.Single(staged.Changes, item => item.Path == ModulePath));
         Assert.Equal(Head(parent), Head(clone));
         Assert.Equal(extra, Head(childPath));
         Assert.Equal(Head(Path.Combine(parent, ModulePath)), RunGit(clone, "rev-parse", ":" + ModulePath).Trim());
@@ -103,7 +103,7 @@ public sealed class SubmoduleIntegrationTests : IDisposable
         var untracked = Path.Combine(child, "untracked.tmp");
         await File.WriteAllTextAsync(untracked, "private\n");
         var status = await GitTestServices.CreateRepositoryStateService().ReadAsync(repository);
-        var change = Assert.Single(status.Changes.Where(candidate => candidate.Path == ModulePath));
+        var change = Assert.Single(status.Changes, candidate => candidate.Path == ModulePath);
 
         Assert.True(change.IsSubmodule);
         Assert.False(change.SubmoduleCommitChanged);
@@ -246,7 +246,7 @@ public sealed class SubmoduleIntegrationTests : IDisposable
         var changed = AppendChildCommit(Path.Combine(clone, ModulePath), "new");
 
         var snapshot = await GitTestServices.CreateRepositorySnapshotService().ReadTreeAsync(repository, Head(clone));
-        var gitlink = Assert.Single(snapshot.Where(entry => entry.Kind == RepositorySnapshotEntryKind.Submodule));
+        var gitlink = Assert.Single(snapshot, entry => entry.Kind == RepositorySnapshotEntryKind.Submodule);
 
         Assert.Equal(initial, gitlink.ObjectId);
         Assert.NotEqual(changed, gitlink.ObjectId);
