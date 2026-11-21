@@ -83,9 +83,10 @@ public sealed partial class MainPage
             flyout.Items.Add(new MenuFlyoutSeparator());
             if (!string.IsNullOrWhiteSpace(info?.Url))
                 AddMenuItem(flyout, "Copy URL", true, () => CopyTextAsync(info.Url!));
-            AddMenuItem(flyout, "Copy Recorded Commit Hash", true,
-                () => CopyTextAsync(info?.RecordedCommit ?? entry.ObjectId));
-            if (!string.Equals(info?.RecordedCommit, entry.ObjectId, StringComparison.Ordinal))
+            if (info is not null)
+                AddMenuItem(flyout, "Copy Recorded Commit Hash", true,
+                    () => CopyTextAsync(info.RecordedCommit));
+            if (info is null || !string.Equals(info.RecordedCommit, entry.ObjectId, StringComparison.Ordinal))
                 AddMenuItem(flyout, "Copy Historical Commit Hash", true,
                     () => CopyTextAsync(entry.ObjectId));
             flyout.ShowAt(target);
@@ -138,7 +139,6 @@ public sealed partial class MainPage
         };
         var started = false;
         var finished = false;
-        var succeeded = false;
         string? failure = null;
         dialog.Loaded += (_, _) =>
         {
@@ -146,7 +146,7 @@ public sealed partial class MainPage
             started = true;
             RunPageUiOperation(async () =>
             {
-                try { await mutation(cancellation.Token); succeeded = true; }
+                try { await mutation(cancellation.Token); }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
                 catch (Exception exception) { failure = exception.Message; }
                 finally
@@ -166,12 +166,18 @@ public sealed partial class MainPage
         await ShowPageDialogAsync(dialog);
         lease.Dispose();
         if (IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)) return;
-        if (succeeded)
+        // A cancelled or failed recursive update may have changed earlier submodules.
+        // Always reconcile the UI with Git, including partial success.
+        try
         {
             await _viewModel.RefreshAsyncForDesktopCheck();
             await _repositoryFilesViewModel.RefreshAsync();
         }
-        else if (failure is not null)
+        catch (Exception exception)
+        {
+            await ShowErrorAsync(title + " refresh failed", exception.Message);
+        }
+        if (failure is not null)
             await ShowErrorAsync(title + " failed", failure);
     }
 }

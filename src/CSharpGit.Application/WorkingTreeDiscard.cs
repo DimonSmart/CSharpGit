@@ -22,6 +22,7 @@ public sealed record WorkingTreeDiscardRequest(
     string? FolderPath = null)
 {
     public int UntrackedCount => Changes.Count(IsUntracked);
+    public int ExcludedSubmoduleCount { get; init; }
 
     public string ConfirmationMessage
     {
@@ -38,10 +39,18 @@ public sealed record WorkingTreeDiscardRequest(
                 _ => $"Discard changes in {count} {files}?"
             };
 
-            if (UntrackedCount == 0) return firstLine;
-
-            var untrackedFiles = UntrackedCount == 1 ? "file" : "files";
-            return $"{firstLine}{Environment.NewLine}{UntrackedCount} untracked {untrackedFiles} will be permanently deleted.";
+            var text = firstLine;
+            if (UntrackedCount > 0)
+            {
+                var untrackedFiles = UntrackedCount == 1 ? "file" : "files";
+                text += $"{Environment.NewLine}{UntrackedCount} untracked {untrackedFiles} will be permanently deleted.";
+            }
+            if (ExcludedSubmoduleCount > 0)
+            {
+                var label = ExcludedSubmoduleCount == 1 ? "submodule" : "submodules";
+                text += $"{Environment.NewLine}{ExcludedSubmoduleCount} {label} excluded; internal changes will be left untouched.";
+            }
+            return text;
         }
     }
 
@@ -92,10 +101,14 @@ public static class WorkingTreeDiscard
     public static WorkingTreeDiscardRequest? CreateAll(IEnumerable<WorkingTreeChange> changes)
     {
         ArgumentNullException.ThrowIfNull(changes);
-        var snapshot = changes.Where(IsEligible).ToArray();
+        var all = changes.ToArray();
+        var snapshot = all.Where(IsEligible).ToArray();
         return snapshot.Length == 0
             ? null
-            : CreateRequest(WorkingTreeDiscardScope.All, snapshot);
+            : CreateRequest(WorkingTreeDiscardScope.All, snapshot) with
+            {
+                ExcludedSubmoduleCount = all.Count(change => change.IsSubmodule)
+            };
     }
 
     public static async Task<IReadOnlyList<WorkingTreeDiscardResult>> ExecuteAsync(
@@ -124,9 +137,11 @@ public static class WorkingTreeDiscard
                 results[index] = new WorkingTreeDiscardResult(
                     change,
                     WorkingTreeDiscardOutcome.Failed,
-                    change.IsConflicted
-                        ? "Conflict paths must be handled by the conflict workflow."
-                        : "The path is not an unstaged working-tree change.");
+                    change.IsSubmodule
+                        ? "Submodule changes must be managed in the submodule repository."
+                        : change.IsConflicted
+                            ? "Conflict paths must be handled by the conflict workflow."
+                            : "The path is not an unstaged working-tree change.");
                 continue;
             }
 

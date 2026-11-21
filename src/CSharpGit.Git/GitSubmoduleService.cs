@@ -161,17 +161,22 @@ internal sealed class GitSubmoduleService(GitRepositoryCommandRunner runner) : I
 
     private static List<(string Path, string Commit)> ParseGitlinks(string output)
     {
-        var result = new List<(string, string)>();
+        // An unresolved gitlink has several index stages and no stage 0.
+        // Keep it visible; porcelain v2 supplies the conflict flag.
+        var selected = new Dictionary<string, (string Commit, int Priority)>(StringComparer.Ordinal);
         foreach (var record in output.Split('\0', StringSplitOptions.RemoveEmptyEntries))
         {
             var tab = record.IndexOf('\t');
             if (tab < 0) continue;
             var metadata = record[..tab].Split(' ');
-            if (metadata.Length != 3 || metadata[0] != "160000" || metadata[2] != "0")
-                continue;
-            result.Add((record[(tab + 1)..], metadata[1]));
+            if (metadata.Length != 3 || metadata[0] != "160000") continue;
+            if (!int.TryParse(metadata[2], out var stage) || stage is < 0 or > 3) continue;
+            var path = record[(tab + 1)..];
+            var priority = stage switch { 0 => 4, 2 => 3, 3 => 2, _ => 1 };
+            if (!selected.TryGetValue(path, out var previous) || priority > previous.Priority)
+                selected[path] = (metadata[1], priority);
         }
-        return result;
+        return selected.Select(entry => (entry.Key, entry.Value.Commit)).ToList();
     }
 
     private async Task<Dictionary<string, string>> ReadUrlsAsync(

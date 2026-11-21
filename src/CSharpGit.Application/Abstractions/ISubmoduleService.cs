@@ -18,8 +18,8 @@ public sealed record SubmoduleInfo(
     public bool HasLocalChanges => ModifiedContent || UntrackedContent;
     public bool CanOpen => IsInitialized && !IsConflicted && ErrorMessage is null;
 
-    public string StatusText => ErrorMessage is not null ? "Error: " + ErrorMessage
-        : IsConflicted ? "Gitlink conflict"
+    public string StatusText => IsConflicted ? "Gitlink conflict"
+        : ErrorMessage is not null ? "Error: " + ErrorMessage
         : !IsInitialized ? "Not initialized"
         : $"{(HasCommitChange ? "Different commit" : "Recorded commit")}" +
           (HasLocalChanges ? " · uncommitted changes" : "");
