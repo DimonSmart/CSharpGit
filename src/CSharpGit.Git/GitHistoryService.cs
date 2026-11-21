@@ -68,7 +68,7 @@ public sealed class GitHistoryService : IHistoryService
                 repository.WorkingDirectory,
                 "ChangedFiles",
                 cancellationToken,
-                "diff-tree", "--root", "--no-commit-id", "--raw", "--numstat", "-r", "-z",
+                "diff-tree", "--root", "--no-commit-id", "--raw", "--numstat", "--no-abbrev", "-r", "-z",
                 "--find-renames", "--find-copies", commitHash);
         }
         else
@@ -77,7 +77,7 @@ public sealed class GitHistoryService : IHistoryService
                 repository.WorkingDirectory,
                 "ChangedFiles",
                 cancellationToken,
-                "diff", "--raw", "--numstat", "-z", "--no-ext-diff",
+                "diff", "--raw", "--numstat", "--no-abbrev", "-z", "--no-ext-diff",
                 "--find-renames", "--find-copies", parentHash, commitHash);
         }
 
@@ -90,13 +90,19 @@ public sealed class GitHistoryService : IHistoryService
                 string.Equals(candidate.OldPath, entry.OldPath, StringComparison.Ordinal));
             stat ??= stats.FirstOrDefault(candidate => string.Equals(candidate.NewPath, entry.NewPath, StringComparison.Ordinal));
 
+            var isSubmodule = entry.OldMode == "160000" || entry.NewMode == "160000";
             files.Add(new ChangedFile(
                 entry.NewPath,
-                stat?.AddedLines,
-                stat?.RemovedLines,
-                stat?.IsBinary ?? false,
+                isSubmodule ? null : stat?.AddedLines,
+                isSubmodule ? null : stat?.RemovedLines,
+                !isSubmodule && stat?.IsBinary == true,
                 entry.Status is 'R' or 'C' ? entry.OldPath : null,
-                entry.Status.ToString()));
+                entry.Status.ToString())
+            {
+                IsSubmodule = isSubmodule,
+                PreviousSubmoduleCommit = isSubmodule ? entry.OldObject : null,
+                NewSubmoduleCommit = isSubmodule ? entry.NewObject : null
+            });
         }
         return files;
     }
@@ -142,6 +148,14 @@ public sealed class GitHistoryService : IHistoryService
         if (parentHash is not null) ValidateObjectName(parentHash);
         ValidateGitPath(file.Path);
         if (file.OriginalPath is not null) ValidateGitPath(file.OriginalPath);
+
+        if (file.IsSubmodule)
+            return new FileDiff(file.Path, false,
+            [
+                new DiffLine("Submodule commit reference (historical gitlink)", DiffLineKind.Header),
+                new DiffLine($"{FormatGitlinkObject(file.PreviousSubmoduleCommit)} → {FormatGitlinkObject(file.NewSubmoduleCommit)}",
+                    DiffLineKind.Header)
+            ]);
 
         var paths = file.OriginalPath is { } originalPath &&
                     !string.Equals(originalPath, file.Path, StringComparison.Ordinal)
@@ -204,7 +218,9 @@ public sealed class GitHistoryService : IHistoryService
             var newPath = firstPath;
             if (status is 'R' or 'C' && index + 1 < records.Length)
                 newPath = records[++index];
-            yield return new RawDiffEntry(status, oldPath, newPath);
+            yield return new RawDiffEntry(
+                status, oldPath, newPath,
+                metadata[0].TrimStart(':'), metadata[1], metadata[2], metadata[3]);
         }
     }
 
@@ -246,6 +262,13 @@ public sealed class GitHistoryService : IHistoryService
             throw new ArgumentException("Invalid Git file path.", nameof(path));
     }
 
-    private sealed record RawDiffEntry(char Status, string OldPath, string NewPath);
+    private static string FormatGitlinkObject(string? hash) =>
+        string.IsNullOrWhiteSpace(hash) || hash.All(character => character == '0')
+            ? "(none)"
+            : hash[..Math.Min(12, hash.Length)];
+
+    private sealed record RawDiffEntry(
+        char Status, string OldPath, string NewPath,
+        string OldMode, string NewMode, string OldObject, string NewObject);
     private sealed record NumStatEntry(string OldPath, string NewPath, int? AddedLines, int? RemovedLines, bool IsBinary);
 }

@@ -89,7 +89,9 @@ public sealed class ChangedFileTreeNode : INotifyPropertyChanged
         Array.Empty<RepositoryTreeGuideSegmentKind>();
     public int AddedLines => _addedLines;
     public int RemovedLines => _removedLines;
-    public string Status => Entry?.Status ?? string.Empty;
+    public string Status => Entry is { File.IsSubmodule: true } submodule
+        ? $"▣ {submodule.Status}"
+        : Entry?.Status ?? string.Empty;
     public string AddedDisplay => Entry is not null
         ? Entry.File.AddedLines is { } value ? $"+{value}" : string.Empty
         : AddedLines > 0 ? $"+{AddedLines}" : string.Empty;

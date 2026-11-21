@@ -254,6 +254,37 @@ public sealed class SubmoduleIntegrationTests : IDisposable
     }
 
     [Fact]
+    public async Task ParentHistoryRendersGitlinkChangeAsOldAndNewCommitHashes()
+    {
+        var (parent, source) = CreatePair();
+        var clone = Clone(parent, "historical-diff");
+        var repository = await OpenAsync(clone);
+        await Service().InitializeAsync(repository, ModulePath);
+        var oldHash = Head(source);
+        var child = Path.Combine(clone, ModulePath);
+        var newHash = AppendChildCommit(child, "parent-gitlink");
+        RunGit(clone, "config", "user.email", "submodule-tests@example.invalid");
+        RunGit(clone, "config", "user.name", "Submodule Integration Tests");
+        RunGit(clone, "add", "--", ModulePath);
+        RunGit(clone, "commit", "-m", "Advance gitlink");
+
+        var commit = Head(clone);
+        var previous = RunGit(clone, "rev-parse", "HEAD^").Trim();
+        var history = GitTestServices.CreateHistoryService();
+        var details = await history.ReadCommitAsync(repository, commit);
+        var entry = Assert.Single(details.Files, file => file.Path == ModulePath);
+        Assert.True(entry.IsSubmodule);
+        Assert.Equal(oldHash, entry.PreviousSubmoduleCommit);
+        Assert.Equal(newHash, entry.NewSubmoduleCommit);
+
+        var diff = await history.ReadDiffAsync(repository, commit, previous, entry);
+        Assert.False(diff.IsBinary);
+        Assert.Contains(diff.Lines, line =>
+            line.Text.Contains(oldHash[..12], StringComparison.Ordinal)
+            && line.Text.Contains(newHash[..12], StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task RecursiveUpdateInitializesNestedSubmodules()
     {
         var nested = Init("nested");
