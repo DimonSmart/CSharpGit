@@ -349,10 +349,13 @@ public sealed partial class MainPage
 
     private void RepositoryFilesTree_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
     {
-        if (SelectedRepositorySnapshotEntry() is not { Kind: RepositorySnapshotEntryKind.File } entry)
+        if (SelectedRepositorySnapshotEntry() is not { } entry) return;
+        if (entry.Kind == RepositorySnapshotEntryKind.Submodule)
+            RunPageUiOperation(() => OpenSelectedSubmoduleAsync(entry), "Open submodule");
+        else if (entry.Kind == RepositorySnapshotEntryKind.File)
+            RunPageUiOperation(() => OpenRepositorySnapshotFileAsync(entry, openInEditor: false), "Repository file opening");
+        else
             return;
-
-        RunPageUiOperation(() => OpenRepositorySnapshotFileAsync(entry, openInEditor: false), "Repository file opening");
         args.Handled = true;
     }
 
@@ -364,7 +367,10 @@ public sealed partial class MainPage
             return;
         }
 
-        ShowRepositorySnapshotFileMenu(source, entry);
+        if (entry.Kind == RepositorySnapshotEntryKind.Submodule)
+            RunPageUiOperation(() => ShowSubmoduleMenuAsync(source, entry), "Submodule menu");
+        else
+            ShowRepositorySnapshotFileMenu(source, entry);
         args.Handled = true;
     }
 
