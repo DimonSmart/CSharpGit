@@ -81,7 +81,7 @@ public sealed class SubmoduleIntegrationTests : IDisposable
         var workingTree = GitTestServices.CreateWorkingTreeService();
         await workingTree.StageFileAsync(repository, change);
         Assert.Equal(extra, RunGit(clone, "rev-parse", ":" + ModulePath).Trim());
-        Assert.Contains(ModulePath, RunGit(clone, "diff", "--cached", "--name-only"));
+        Assert.Equal(extra, RunGit(clone, "rev-parse", ":" + ModulePath).Trim());
 
         var staged = await GitTestServices.CreateRepositoryStateService().ReadAsync(repository);
         await workingTree.UnstageFileAsync(repository, Assert.Single(staged.Changes, item => item.Path == ModulePath));

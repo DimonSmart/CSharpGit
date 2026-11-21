@@ -169,6 +169,15 @@ public sealed class CloneRepositoryViewModelTests : IDisposable
     {
         public string? RepositoryUrl { get; private set; }
         public string? TargetPath { get; private set; }
+        public bool Recursive { get; private set; }
+
+        public Task CloneWithSubmodulesAsync(
+            string repositoryUrl, string targetPath, bool initializeSubmodules,
+            CancellationToken cancellationToken = default)
+        {
+            Recursive = initializeSubmodules;
+            return CloneAsync(repositoryUrl, targetPath, cancellationToken);
+        }
 
         public Task CloneAsync(
             string repositoryUrl,
@@ -186,6 +195,11 @@ public sealed class CloneRepositoryViewModelTests : IDisposable
     {
         public TaskCompletionSource<bool> Started { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task CloneWithSubmodulesAsync(
+            string repositoryUrl, string targetPath, bool initializeSubmodules,
+            CancellationToken cancellationToken = default) =>
+            CloneAsync(repositoryUrl, targetPath, cancellationToken);
 
         public async Task CloneAsync(
             string repositoryUrl,
