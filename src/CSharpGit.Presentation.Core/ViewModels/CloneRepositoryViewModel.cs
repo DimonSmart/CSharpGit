@@ -15,6 +15,7 @@ public sealed class CloneRepositoryViewModel : INotifyPropertyChanged
     private string _localDirectory = string.Empty;
     private bool _targetIsUserOwned;
     private bool _isBusy;
+    private bool _initializeSubmodules;
     private string? _errorMessage;
     private string? _clonedPath;
     private CancellationTokenSource? _activeCloneCancellation;
@@ -69,6 +70,17 @@ public sealed class CloneRepositoryViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool InitializeSubmodules
+    {
+        get => _initializeSubmodules;
+        set
+        {
+            if (_initializeSubmodules == value) return;
+            _initializeSubmodules = value;
+            Notify();
+        }
+    }
+
     public bool CanClone =>
         !IsBusy
         && !string.IsNullOrWhiteSpace(RepositoryUrl)
@@ -105,6 +117,7 @@ public sealed class CloneRepositoryViewModel : INotifyPropertyChanged
         Cancel();
         _targetIsUserOwned = false;
         _repositoryUrl = string.Empty;
+        InitializeSubmodules = false;
         Notify(nameof(RepositoryUrl));
         Notify(nameof(RepositoryDisplayName));
         SetLocalDirectory(string.Empty, userOwned: false);
@@ -148,10 +161,12 @@ public sealed class CloneRepositoryViewModel : INotifyPropertyChanged
         _activeCloneCancellation = linkedCancellation;
         try
         {
-            await _cloneService.CloneAsync(
-                RepositoryUrl.Trim(),
-                LocalDirectory,
-                linkedCancellation.Token);
+            if (InitializeSubmodules)
+                await _cloneService.CloneWithSubmodulesAsync(
+                    RepositoryUrl.Trim(), LocalDirectory, true, linkedCancellation.Token);
+            else
+                await _cloneService.CloneAsync(
+                    RepositoryUrl.Trim(), LocalDirectory, linkedCancellation.Token);
             ClonedPath = Path.TrimEndingDirectorySeparator(
                 Path.GetFullPath(LocalDirectory.Trim()));
             return true;

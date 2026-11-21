@@ -99,6 +99,12 @@ public sealed partial class MainPage
         Grid.SetColumn(browseButton, 1);
         localDirectoryRow.Children.Add(browseButton);
 
+        var initializeSubmodulesBox = new CheckBox
+        {
+            Content = "Initialize submodules",
+            IsChecked = _cloneRepositoryViewModel.InitializeSubmodules
+        };
+
         var progress = new ProgressRing
         {
             Width = 20,
@@ -150,6 +156,7 @@ public sealed partial class MainPage
         };
         content.Children.Add(repositoryUrlBox);
         content.Children.Add(localDirectoryRow);
+        content.Children.Add(initializeSubmodulesBox);
         content.Children.Add(progressRow);
         var cloneFeedback = CreateCloneGitCommandFeedback();
         if (cloneFeedback is not null)
@@ -192,6 +199,7 @@ public sealed partial class MainPage
             repositoryUrlBox.IsEnabled = !busy;
             localDirectoryBox.IsEnabled = !busy;
             browseButton.IsEnabled = !busy;
+            initializeSubmodulesBox.IsEnabled = !busy;
             cloneButton.IsEnabled = _cloneRepositoryViewModel.CanClone;
             progress.IsActive = busy;
             progressRow.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
@@ -216,6 +224,8 @@ public sealed partial class MainPage
             if (!synchronizing)
                 _cloneRepositoryViewModel.LocalDirectory = localDirectoryBox.Text;
         };
+        initializeSubmodulesBox.Checked += (_, _) => _cloneRepositoryViewModel.InitializeSubmodules = true;
+        initializeSubmodulesBox.Unchecked += (_, _) => _cloneRepositoryViewModel.InitializeSubmodules = false;
         browseButton.Click += (_, _) =>
             RunPageUiOperation(BrowseForCloneAsync, "Clone repository folder picker");
 
