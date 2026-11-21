@@ -12,6 +12,7 @@ namespace CSharpGit.Presentation.Controls;
 public sealed partial class GitCommandFeedbackView : UserControl
 {
     private GitCommandFeedbackSnapshot? _current;
+    private readonly GitOutputTextBoxPresenter _outputPresenter;
     private bool _hovered;
     private bool _focused;
     private readonly PathFigure _countdownFigure = new()
@@ -32,6 +33,7 @@ public sealed partial class GitCommandFeedbackView : UserControl
     public GitCommandFeedbackView()
     {
         InitializeComponent();
+        _outputPresenter = new GitOutputTextBoxPresenter(OutputText);
         _countdownFigure.Segments.Add(_countdownFirstArc);
         var geometry = new PathGeometry();
         geometry.Figures.Add(_countdownFigure);
@@ -64,13 +66,10 @@ public sealed partial class GitCommandFeedbackView : UserControl
             HintText.Visibility = Visibility.Collapsed;
         }
 
-        // Do not reset an actively selected preview or its scroll position on
-        // each progress tick. New data is displayed when focus is released.
-        if (changedActivity || !_focused)
-        {
-            if (OutputText.Text != state.PreviewText)
-                OutputText.Text = state.PreviewText;
-        }
+        if (changedActivity)
+            _outputPresenter.Reset(state.PreviewText);
+        else
+            _outputPresenter.Update(state.PreviewText);
 
         ResultDetails.Text = GitCommandConsoleItem.FormatDuration(state.Duration);
         if (state.Status == GitCommandStatus.Failed && state.ExitCode is { } exitCode)
@@ -173,7 +172,5 @@ public sealed partial class GitCommandFeedbackView : UserControl
     {
         _focused = false;
         InteractionChanged?.Invoke(_hovered, _focused);
-        if (_current is { } state && OutputText.Text != state.PreviewText)
-            OutputText.Text = state.PreviewText;
     }
 }

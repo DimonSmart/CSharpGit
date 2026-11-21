@@ -13,6 +13,8 @@ public sealed partial class GitConsoleView : UserControl
     private readonly GitCommandConsoleState _state = new();
     private readonly GitOutputDisplayBuffer _standardOutputDisplay = new();
     private readonly GitOutputDisplayBuffer _standardErrorDisplay = new();
+    private readonly GitOutputTextBoxPresenter _standardOutputPresenter;
+    private readonly GitOutputTextBoxPresenter _standardErrorPresenter;
     private readonly object _outputSync = new();
     private readonly StringBuilder _pendingStandardOutput = new();
     private readonly StringBuilder _pendingStandardError = new();
@@ -32,6 +34,8 @@ public sealed partial class GitConsoleView : UserControl
     public GitConsoleView()
     {
         InitializeComponent();
+        _standardOutputPresenter = new GitOutputTextBoxPresenter(StandardOutputText);
+        _standardErrorPresenter = new GitOutputTextBoxPresenter(StandardErrorText);
         CommandList.ItemsSource = _state.Items;
         FilterComboBox.ItemsSource = new[] { "User commands", "All commands" };
         FilterComboBox.SelectedIndex = 0;
@@ -306,21 +310,21 @@ public sealed partial class GitConsoleView : UserControl
         if (pending.StandardOutputResync)
         {
             if (snapshot is not null)
-                ResetOutputText(StandardOutputText, _standardOutputDisplay, snapshot.StandardOutput);
+                RefreshOutputText(_standardOutputPresenter, _standardOutputDisplay, snapshot.StandardOutput);
         }
         else
         {
-            ApplyOutputChunk(StandardOutputText, _standardOutputDisplay, pending.StandardOutput);
+            ApplyOutputChunk(_standardOutputPresenter, _standardOutputDisplay, pending.StandardOutput);
         }
 
         if (pending.StandardErrorResync)
         {
             if (snapshot is not null)
-                ResetOutputText(StandardErrorText, _standardErrorDisplay, snapshot.StandardError);
+                RefreshOutputText(_standardErrorPresenter, _standardErrorDisplay, snapshot.StandardError);
         }
         else
         {
-            ApplyOutputChunk(StandardErrorText, _standardErrorDisplay, pending.StandardError);
+            ApplyOutputChunk(_standardErrorPresenter, _standardErrorDisplay, pending.StandardError);
         }
     }
 
@@ -343,25 +347,21 @@ public sealed partial class GitConsoleView : UserControl
         _pendingStandardErrorResync = false;
     }
 
-    private static void ApplyOutputChunk(TextBox textBox, GitOutputDisplayBuffer display, string chunk)
+    private static void ApplyOutputChunk(
+        GitOutputTextBoxPresenter presenter, GitOutputDisplayBuffer display, string chunk)
     {
         if (chunk.Length == 0) return;
         var delta = display.Append(chunk);
-        if (!delta.HasChange) return;
-
-        if (delta.ReplaceFrom is { } replaceFrom)
-        {
-            textBox.Select(replaceFrom, textBox.Text.Length - replaceFrom);
-            textBox.SelectedText = delta.Text;
-            return;
-        }
-
-        textBox.Select(textBox.Text.Length, 0);
-        textBox.SelectedText = delta.Text;
+        presenter.ApplyDelta(display, delta);
     }
 
-    private static void ResetOutputText(TextBox textBox, GitOutputDisplayBuffer display, string rawText) =>
-        textBox.Text = display.Reset(rawText);
+    private static void ResetOutputText(
+        GitOutputTextBoxPresenter presenter, GitOutputDisplayBuffer display, string rawText) =>
+        presenter.Reset(display.Reset(rawText));
+
+    private static void RefreshOutputText(
+        GitOutputTextBoxPresenter presenter, GitOutputDisplayBuffer display, string rawText) =>
+        presenter.Update(display.Reset(rawText));
 
     private void ShowDetails(GitCommandActivity? activity)
     {
@@ -371,8 +371,8 @@ public sealed partial class GitConsoleView : UserControl
         StartedText.Text = activity is null ? string.Empty : activity.StartedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss zzz");
         DurationText.Text = activity is null ? string.Empty : FormatDuration(activity.Duration);
         ExitCodeText.Text = activity?.ExitCode?.ToString() ?? (activity?.Status == GitCommandStatus.Running ? "running" : string.Empty);
-        ResetOutputText(StandardOutputText, _standardOutputDisplay, activity?.StandardOutput ?? string.Empty);
-        ResetOutputText(StandardErrorText, _standardErrorDisplay, activity?.StandardError ?? string.Empty);
+        ResetOutputText(_standardOutputPresenter, _standardOutputDisplay, activity?.StandardOutput ?? string.Empty);
+        ResetOutputText(_standardErrorPresenter, _standardErrorDisplay, activity?.StandardError ?? string.Empty);
         StandardOutputText.IsEnabled = hasActivity;
         StandardErrorText.IsEnabled = hasActivity;
     }
