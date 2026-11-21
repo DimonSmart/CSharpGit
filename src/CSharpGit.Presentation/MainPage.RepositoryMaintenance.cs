@@ -28,6 +28,7 @@ public sealed partial class MainPage
         IRepositoryFileVersionService fileVersionService,
         IExternalGitToolService externalGitToolService,
         RepositoryFilesViewModel repositoryFilesViewModel,
+        ISubmoduleService submoduleService,
         FileActionsViewModel fileActions,
         RepositoryMaintenanceViewModel repositoryMaintenance,
         IAppSettingsService appSettings,
@@ -61,6 +62,7 @@ public sealed partial class MainPage
         _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
         _repositoryMaintenance = repositoryMaintenance
             ?? throw new ArgumentNullException(nameof(repositoryMaintenance));
+        _submoduleService = submoduleService ?? throw new ArgumentNullException(nameof(submoduleService));
         _recentRepositorySettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
         _gitConsoleSettings = appSettings;
         _gitCommandActivitySource = gitCommandActivitySource ?? throw new ArgumentNullException(nameof(gitCommandActivitySource));
