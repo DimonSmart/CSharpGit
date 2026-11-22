@@ -16,15 +16,16 @@ public sealed class RepositorySwitchingContractTests
         var switching = File.ReadAllText(Path.Combine(
             presentation,
             "MainPage.RepositorySwitching.cs"));
+        var lifecycleOwner = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositorySwitchController.cs"));
         var recent = File.ReadAllText(Path.Combine(
             presentation,
             "Workflows", "RecentRepositoryPickerWorkflow.cs"));
         var creation = File.ReadAllText(Path.Combine(
             presentation,
-            "MainPage.RepositoryCreation.cs"));
+            "Workflows", "RepositoryCreationWorkflow.cs"));
         var refresh = File.ReadAllText(Path.Combine(
             presentation,
-            "MainPage.RepositoryRefresh.cs"));
+            "Workflows", "RepositoryRefreshController.cs"));
         var coordinator = File.ReadAllText(Path.Combine(
             root,
             "src",
@@ -44,8 +45,10 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("SwitchRepositoryCoreAsync", switching);
         Assert.Contains("TryCloseRepositoryAsync", switching);
         Assert.Contains("ConfirmDiscardCommitMessageAsync", switching);
-        Assert.Contains("if (!opened || IsShuttingDown) return false;", switching);
-        Assert.Contains("_viewModel.CommitCreation.CommitMessage = string.Empty;", switching);
+        Assert.Contains("internal async Task<bool> TrySwitchAsync", lifecycleOwner);
+        Assert.Contains("private bool CloseCore", lifecycleOwner);
+        Assert.Contains("if (!opened || _isShuttingDown()) return false;", lifecycleOwner);
+        Assert.Contains("_viewModel.CommitCreation.CommitMessage = string.Empty;", lifecycleOwner);
 
         var launcher = File.ReadAllText(Path.Combine(presentation, "Views", "StartScreenView.xaml.cs"));
         Assert.Contains("await _actions.SwitchRepository(item.Path);", launcher);
@@ -53,7 +56,7 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("if (!string.IsNullOrEmpty(path) && canChangeRepository())", recent);
         Assert.DoesNotContain("QueuePath(item.Path)", recent);
 
-        Assert.Contains("SwitchRepositoryCoreAsync(path, discardDraft, admission)", creation);
+        Assert.Contains("_switchRepository(path, discardDraft, admission)", creation);
         Assert.Contains("TryBeginRepositoryLifecycle()", creation);
         Assert.DoesNotContain("ConfirmDiscardCommitMessageForRepositorySwitchAsync", creation);
 
@@ -107,7 +110,7 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("_desktopShellService.OpenTerminalAsync(path)", switching);
         Assert.Contains("RepositorySelectorOpenTerminalButton.IsEnabled", switching);
         var shellComposition = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
-        Assert.Contains("ShowCreateRepositoryAsync", shellComposition);
+        Assert.Contains("_creationWorkflow.ShowAsync()", shellComposition);
         Assert.Contains("ShowUnavailableRepositoryAsync", switchingWorkflow);
 
         Assert.Contains("e.Key == VirtualKey.O", page);

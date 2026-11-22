@@ -75,7 +75,10 @@ public sealed class PresentationFeatureArchitectureTests
         Assert.DoesNotContain("_repositoryMaintenance.Dispose()", lifecycle);
         Assert.DoesNotContain("_viewModel.Dispose()", lifecycle);
         Assert.Contains("_fileActions.PropertyChanged -= FileActions_PropertyChanged", lifecycle);
-        Assert.Contains("_repositoryMaintenance.PropertyChanged -= RepositoryMaintenance_PropertyChanged", lifecycle);
+        var maintenanceController = Read("src/CSharpGit.Presentation/Workflows/RepositoryMaintenanceController.cs");
+        Assert.Contains("_maintenanceController.Shutdown()", lifecycle);
+        Assert.Contains("_maintenance.PropertyChanged -= Maintenance_PropertyChanged", maintenanceController);
+        Assert.Contains("_repository.PropertyChanged -= Repository_PropertyChanged", maintenanceController);
         Assert.Contains("content.CompleteShutdown();", session);
         Assert.Contains("finally { scope.Dispose(); }", session);
     }
@@ -95,13 +98,14 @@ public sealed class PresentationFeatureArchitectureTests
     public void RepositoryFilesOwnsVisualCompositionWithoutOwningGitOperations()
     {
         var page = Read("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
-        var preview = Read("src/CSharpGit.Presentation/MainPage.RepositoryFilePreview.cs");
+        var preview = Read("src/CSharpGit.Presentation/Workflows/RepositoryFilePreviewController.cs");
         var surface = Read("src/CSharpGit.Presentation/Controls/RepositoryFilesSurface.cs");
 
         Assert.Contains("new RepositoryFilesSurface(_repositoryFilesViewModel)", page);
         Assert.Contains("SearchBox.TextChanged += RepositoryFilesSearch_TextChanged", page);
         Assert.Contains("FileTree.SelectionChanged += RepositoryFilesTree_SelectionChanged", page);
-        Assert.Contains("_repositoryFilesSurface?.PreviewHost", preview);
+        Assert.Contains("() => _repositoryFilesSurface?.PreviewHost", page);
+        Assert.Contains("_previewHost()", preview);
         Assert.DoesNotContain("private Grid BuildRepositoryFilesSplitBody", preview);
         Assert.DoesNotContain("new GridSplitter", page);
         Assert.Contains("new GridSplitter", surface);

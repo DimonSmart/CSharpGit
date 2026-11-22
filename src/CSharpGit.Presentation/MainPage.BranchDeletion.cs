@@ -24,11 +24,11 @@ public sealed partial class MainPage
         {
             case RepositoryTreeNodeKind.LocalBranch when node.Value is GitBranch branch:
             {
-                var branchWorktree = FindWorktreeForBranch(branch.Name);
+                var branchWorktree = _worktrees.FindWorktreeForBranch(branch.Name);
                 if (branchWorktree is { IsCurrent: false })
                 {
-                    AddMenuItem(flyout, "Open Worktree", !_worktreesViewModel.IsBusy, () => OpenWorktreeAsync(branchWorktree));
-                    AddMenuItem(flyout, "Open Worktree Folder", !_worktreesViewModel.IsBusy, () => OpenWorktreeFolderAsync(branchWorktree));
+                    AddMenuItem(flyout, "Open Worktree", !_worktreesViewModel.IsBusy, () => _worktrees.OpenWorktreeAsync(branchWorktree));
+                    AddMenuItem(flyout, "Open Worktree Folder", !_worktreesViewModel.IsBusy, () => _worktrees.OpenWorktreeFolderAsync(branchWorktree));
                 }
                 else
                 {
@@ -38,7 +38,7 @@ public sealed partial class MainPage
                         await ExecuteCommandAsync(_viewModel.Branches.SwitchBranchCommand);
                     });
                     if (branchWorktree is null)
-                        AddMenuItem(flyout, "Open in New Worktree…", _worktreesViewModel.CanMutate, () => CreateWorktreeFromBranchAsync(branch));
+                        AddMenuItem(flyout, "Open in New Worktree…", _worktreesViewModel.CanMutate, () => _worktrees.CreateWorktreeFromBranchAsync(branch));
                 }
 
                 AddMenuItem(flyout, "Create branch from here…", !_viewModel.IsBusy, () => CreateBranchFromAsync(branch.Name));
@@ -70,17 +70,17 @@ public sealed partial class MainPage
                         ? "Delete all branches in this folder…"
                         : "Delete all remote branches in this folder…",
                     !_viewModel.IsBusy,
-                    () => ConfirmDeleteBranchFolderAsync(node, folderInfo));
+                    () => _branchFolderDeletion.ConfirmDeleteAsync(node, folderInfo));
                 break;
 
             case RepositoryTreeNodeKind.Worktree when node.Value is WorktreeInfo worktree:
-                PopulateWorktreeMenu(flyout, worktree);
+                _worktrees.PopulateWorktreeMenu(flyout, worktree);
                 break;
 
             case RepositoryTreeNodeKind.Group when node.Name == "Worktrees":
-                AddMenuItem(flyout, "New Worktree…", _worktreesViewModel.CanMutate, CreateNewWorktreeAsync);
+                AddMenuItem(flyout, "New Worktree…", _worktreesViewModel.CanMutate, _worktrees.CreateNewWorktreeAsync);
                 flyout.Items.Add(new MenuFlyoutSeparator());
-                AddMenuItem(flyout, "Prune Worktrees", _worktreesViewModel.CanMutate, PruneWorktreesAsync);
+                AddMenuItem(flyout, "Prune Worktrees", _worktreesViewModel.CanMutate, _worktrees.PruneWorktreesAsync);
                 break;
 
             case RepositoryTreeNodeKind.Remote when node.Value is GitRemote remote:

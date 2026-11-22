@@ -1,52 +1,69 @@
 using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
+using CSharpGit.Presentation;
+using CSharpGit.Presentation.Dialogs;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace CSharpGit.Presentation;
+namespace CSharpGit.Presentation.Workflows;
 
-public sealed partial class MainPage
+/// <summary>Owns the repository cloning UI workflow and its admission/disposal lifecycle for one window.</summary>
+internal sealed class RepositoryCloneWorkflow(
+    OpenRepositoryViewModel viewModel,
+    CloneRepositoryViewModel workflowViewModel,
+    Func<bool> otherWorkflowActive,
+    Func<bool> isShuttingDown,
+    Func<Task<bool>> confirmDiscardDraft,
+    Func<string, bool, OpenRepositoryViewModel.UserGitOperationLease?, Task<bool>> switchRepository,
+    Func<XamlRoot?> xamlRoot,
+    Func<ContentDialog, Task<ContentDialogResult>> showDialog,
+    Action<Func<Task>, string> runUiOperation,
+    GitCommandFeedbackController feedback)
 {
-    private readonly CloneRepositoryViewModel _cloneRepositoryViewModel = null!;
-    private bool _repositoryCloningWorkflowActive;
+    private readonly OpenRepositoryViewModel _viewModel = viewModel;
+    private readonly CloneRepositoryViewModel _cloneRepositoryViewModel = workflowViewModel;
+    private readonly Func<bool> _otherWorkflowActive = otherWorkflowActive;
+    private readonly Func<bool> _isShuttingDown = isShuttingDown;
+    private readonly Func<Task<bool>> _confirmDiscardDraft = confirmDiscardDraft;
+    private readonly Func<string, bool, OpenRepositoryViewModel.UserGitOperationLease?, Task<bool>> _switchRepository = switchRepository;
+    private readonly Func<XamlRoot?> _xamlRoot = xamlRoot;
+    private readonly Func<ContentDialog, Task<ContentDialogResult>> _showDialog = showDialog;
+    private readonly Action<Func<Task>, string> _runUiOperation = runUiOperation;
+    private readonly GitCommandFeedbackController _feedback = feedback;
+    private bool _active;
+    internal bool IsActive => _active;
     private OpenRepositoryViewModel.UserGitOperationLease? _cloneWorkflowAdmission;
 
-    private void CloneRepository_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(() => CloneRepository_ClickCoreAsync(sender, e), "CloneRepository_Click");
-
-    private async Task CloneRepository_ClickCoreAsync(object sender, RoutedEventArgs e) =>
-        await ShowCloneRepositoryAsync();
-
-    private async Task ShowCloneRepositoryAsync()
+    internal async Task ShowAsync()
     {
-        if (IsShuttingDown || _repositoryCloningWorkflowActive
-            || _repositoryCreationWorkflowActive
+        if (_isShuttingDown() || _active
+            || _otherWorkflowActive()
             || _viewModel.IsBusy
             || !_viewModel.CanChangeRepository)
             return;
 
-        _repositoryCloningWorkflowActive = true;
+        _active = true;
         try
         {
             var discardDraft = false;
             if (_viewModel.Repository is not null
                 && _viewModel.CommitCreation.HasUnappliedCommitMessage)
             {
-                discardDraft = await ConfirmDiscardCommitMessageAsync(closing: false);
+                discardDraft = await _confirmDiscardDraft();
                 if (!discardDraft)
                     return;
             }
 
-            if (IsShuttingDown) return;
+            if (_isShuttingDown()) return;
             _cloneRepositoryViewModel.Reset();
             var cloned = await ShowCloneRepositoryDialogAsync();
-            if (!cloned || IsShuttingDown)
+            if (!cloned || _isShuttingDown())
                 return;
 
             var path = _cloneRepositoryViewModel.ClonedPath!;
-            var opened = await SwitchRepositoryCoreAsync(path, discardDraft, _cloneWorkflowAdmission);
-            if (opened || IsShuttingDown)
+            var opened = await _switchRepository(path, discardDraft, _cloneWorkflowAdmission);
+            if (opened || _isShuttingDown())
                 return;
 
             await ShowRepositoryCloneMessageAsync(
@@ -61,7 +78,7 @@ public sealed partial class MainPage
         {
             _cloneWorkflowAdmission?.Dispose();
             _cloneWorkflowAdmission = null;
-            _repositoryCloningWorkflowActive = false;
+            _active = false;
         }
     }
 
@@ -158,7 +175,7 @@ public sealed partial class MainPage
         content.Children.Add(localDirectoryRow);
         content.Children.Add(initializeSubmodulesBox);
         content.Children.Add(progressRow);
-        var cloneFeedback = CreateCloneGitCommandFeedback();
+        var cloneFeedback = _feedback.CreateCloneGitCommandFeedback();
         if (cloneFeedback is not null)
             content.Children.Add(cloneFeedback);
         content.Children.Add(error);
@@ -166,7 +183,7 @@ public sealed partial class MainPage
 
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "Clone repository",
             Content = content
         };
@@ -227,7 +244,7 @@ public sealed partial class MainPage
         initializeSubmodulesBox.Checked += (_, _) => _cloneRepositoryViewModel.InitializeSubmodules = true;
         initializeSubmodulesBox.Unchecked += (_, _) => _cloneRepositoryViewModel.InitializeSubmodules = false;
         browseButton.Click += (_, _) =>
-            RunPageUiOperation(BrowseForCloneAsync, "Clone repository folder picker");
+            _runUiOperation(BrowseForCloneAsync, "Clone repository folder picker");
 
         async Task BrowseForCloneAsync()
         {
@@ -245,11 +262,11 @@ public sealed partial class MainPage
                 dialog.Hide();
         };
         cloneButton.Click += (_, _) =>
-            RunPageUiOperation(CloneFromDialogAsync, "Clone repository");
+            _runUiOperation(CloneFromDialogAsync, "Clone repository");
 
         async Task CloneFromDialogAsync()
         {
-            if (!_cloneRepositoryViewModel.CanClone || IsShuttingDown)
+            if (!_cloneRepositoryViewModel.CanClone || _isShuttingDown())
                 return;
 
             OpenRepositoryViewModel.UserGitOperationLease? admission =
@@ -258,7 +275,7 @@ public sealed partial class MainPage
 
             try
             {
-                if (await _cloneRepositoryViewModel.CloneAsync() && !IsShuttingDown)
+                if (await _cloneRepositoryViewModel.CloneAsync() && !_isShuttingDown())
                 {
                     _cloneWorkflowAdmission = admission;
                     admission = null;
@@ -268,7 +285,7 @@ public sealed partial class MainPage
             }
             catch (OperationCanceledException)
             {
-                if (!IsShuttingDown)
+                if (!_isShuttingDown())
                     dialog.Hide();
             }
             finally
@@ -285,21 +302,20 @@ public sealed partial class MainPage
         };
 
         _cloneRepositoryViewModel.PropertyChanged += changed;
-        _cloneDialogFeedbackActive = cloneFeedback is not null;
+        _feedback.CloneDialogFeedbackActive = cloneFeedback is not null;
         try
         {
             Synchronize();
-            await ShowPageDialogAsync(dialog);
-            return succeeded && !IsShuttingDown;
+            await _showDialog(dialog);
+            return succeeded && !_isShuttingDown();
         }
         finally
         {
-            _cloneDialogFeedbackActive = false;
+            _feedback.CloneDialogFeedbackActive = false;
             _cloneRepositoryViewModel.PropertyChanged -= changed;
             if (cloneFeedback is not null)
             {
-                _cloneFeedbackView = null;
-                cloneFeedback.Visibility = Visibility.Collapsed;
+                _feedback.ReleaseCloneGitCommandFeedback(cloneFeedback);
             }
         }
     }
@@ -308,7 +324,7 @@ public sealed partial class MainPage
     {
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = title,
             Content = new TextBlock
             {
@@ -318,6 +334,6 @@ public sealed partial class MainPage
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close
         };
-        await ShowPageDialogAsync(dialog);
+        await _showDialog(dialog);
     }
 }

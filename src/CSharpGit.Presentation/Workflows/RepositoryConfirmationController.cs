@@ -1,18 +1,33 @@
 using System.ComponentModel;
+using System.Windows.Input;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace CSharpGit.Presentation;
+namespace CSharpGit.Presentation.Workflows;
 
-public sealed partial class MainPage
+// Per-window owner of discard and empty-index confirmation dialogs and subscriptions.
+internal sealed class RepositoryConfirmationController(
+    OpenRepositoryViewModel viewModel,
+    Func<XamlRoot?> xamlRoot,
+    Func<ContentDialog, Task<ContentDialogResult>> showDialog,
+    Action<Func<Task>, string> runUiOperation,
+    Func<ICommand, Task> executeCommand,
+    Func<bool> isShuttingDown)
 {
+    private readonly OpenRepositoryViewModel _viewModel = viewModel;
+    private readonly Func<XamlRoot?> _xamlRoot = xamlRoot;
+    private readonly Func<ContentDialog, Task<ContentDialogResult>> _showDialog = showDialog;
+    private readonly Action<Func<Task>, string> _runUiOperation = runUiOperation;
+    private readonly Func<ICommand, Task> _executeCommand = executeCommand;
+    private readonly Func<bool> _isShuttingDown = isShuttingDown;
+
     private bool _confirmationDialogsInitialized;
     private bool _discardConfirmationOpen;
     private bool _emptyIndexConfirmationOpen;
 
-    private void InitializeConfirmationDialogs()
+    internal void Initialize()
     {
         if (_confirmationDialogsInitialized) return;
         _confirmationDialogsInitialized = true;
@@ -20,12 +35,20 @@ public sealed partial class MainPage
         _viewModel.WorkingTree.PropertyChanged += WorkingTreeConfirmation_PropertyChanged;
     }
 
+    internal void Shutdown()
+    {
+        if (!_confirmationDialogsInitialized) return;
+        _confirmationDialogsInitialized = false;
+        _viewModel.CommitCreation.PropertyChanged -= CommitCreationViewModel_PropertyChanged;
+        _viewModel.WorkingTree.PropertyChanged -= WorkingTreeConfirmation_PropertyChanged;
+    }
+
     private void CommitCreationViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (args.PropertyName == nameof(CommitCreationViewModel.IsEmptyIndexChoiceOpen) &&
             _viewModel.CommitCreation.IsEmptyIndexChoiceOpen)
         {
-            RunPageUiOperation(ShowEmptyIndexChoiceAsync, "Empty index confirmation");
+            _runUiOperation(ShowEmptyIndexChoiceAsync, "Empty index confirmation");
         }
     }
 
@@ -34,13 +57,13 @@ public sealed partial class MainPage
         if (args.PropertyName == nameof(WorkingTreeViewModel.BatchDiscardConfirmationMessage) &&
             !string.IsNullOrWhiteSpace(_viewModel.WorkingTree.BatchDiscardConfirmationMessage))
         {
-            RunPageUiOperation(ShowDiscardConfirmationAsync, "Discard confirmation");
+            _runUiOperation(ShowDiscardConfirmationAsync, "Discard confirmation");
         }
     }
 
     private async Task ShowDiscardConfirmationAsync()
     {
-        if (IsShuttingDown || _discardConfirmationOpen) return;
+        if (_isShuttingDown() || _discardConfirmationOpen) return;
         var message = _viewModel.WorkingTree.BatchDiscardConfirmationMessage;
         if (string.IsNullOrWhiteSpace(message)) return;
 
@@ -67,7 +90,7 @@ public sealed partial class MainPage
 
             var dialog = new ContentDialog
             {
-                XamlRoot = XamlRoot,
+                XamlRoot = _xamlRoot(),
                 Title = "Discard changes?",
                 Content = content,
                 PrimaryButtonText = "Discard",
@@ -75,9 +98,9 @@ public sealed partial class MainPage
                 DefaultButton = ContentDialogButton.Close
             };
 
-            var result = await ShowPageDialogAsync(dialog);
-            if (!IsShuttingDown && ReferenceEquals(repository, _viewModel.Repository))
-                await ExecuteCommandAsync(result == ContentDialogResult.Primary
+            var result = await _showDialog(dialog);
+            if (!_isShuttingDown() && ReferenceEquals(repository, _viewModel.Repository))
+                await _executeCommand(result == ContentDialogResult.Primary
                     ? _viewModel.WorkingTree.ConfirmBatchDiscardCommand
                     : _viewModel.WorkingTree.CancelBatchDiscardCommand);
         }
@@ -85,9 +108,9 @@ public sealed partial class MainPage
         {
             try
             {
-                if (!IsShuttingDown && ReferenceEquals(repository, _viewModel.Repository)
+                if (!_isShuttingDown() && ReferenceEquals(repository, _viewModel.Repository)
                     && !string.IsNullOrWhiteSpace(_viewModel.WorkingTree.BatchDiscardConfirmationMessage))
-                    await ExecuteCommandAsync(_viewModel.WorkingTree.CancelBatchDiscardCommand);
+                    await _executeCommand(_viewModel.WorkingTree.CancelBatchDiscardCommand);
             }
             finally { _discardConfirmationOpen = false; }
         }
@@ -95,7 +118,7 @@ public sealed partial class MainPage
 
     private async Task ShowEmptyIndexChoiceAsync()
     {
-        if (IsShuttingDown || _emptyIndexConfirmationOpen || !_viewModel.CommitCreation.IsEmptyIndexChoiceOpen) return;
+        if (_isShuttingDown() || _emptyIndexConfirmationOpen || !_viewModel.CommitCreation.IsEmptyIndexChoiceOpen) return;
 
         var repository = _viewModel.Repository;
         _emptyIndexConfirmationOpen = true;
@@ -103,7 +126,7 @@ public sealed partial class MainPage
         {
             var dialog = new ContentDialog
             {
-                XamlRoot = XamlRoot,
+                XamlRoot = _xamlRoot(),
                 Title = "Nothing is staged",
                 Content = "There are working-tree changes, but nothing is staged for commit.",
                 PrimaryButtonText = "Stage all and commit",
@@ -112,8 +135,8 @@ public sealed partial class MainPage
                 DefaultButton = ContentDialogButton.Close
             };
 
-            var result = await ShowPageDialogAsync(dialog);
-            if (!IsShuttingDown && ReferenceEquals(repository, _viewModel.Repository))
+            var result = await _showDialog(dialog);
+            if (!_isShuttingDown() && ReferenceEquals(repository, _viewModel.Repository))
             {
                 var command = result switch
                 {
@@ -121,16 +144,16 @@ public sealed partial class MainPage
                     ContentDialogResult.Secondary => _viewModel.CommitCreation.ConfirmEmptyCommitCommand,
                     _ => _viewModel.CommitCreation.CancelCommitCommand
                 };
-                await ExecuteCommandAsync(command);
+                await _executeCommand(command);
             }
         }
         finally
         {
             try
             {
-                if (!IsShuttingDown && ReferenceEquals(repository, _viewModel.Repository)
+                if (!_isShuttingDown() && ReferenceEquals(repository, _viewModel.Repository)
                     && _viewModel.CommitCreation.IsEmptyIndexChoiceOpen)
-                    await ExecuteCommandAsync(_viewModel.CommitCreation.CancelCommitCommand);
+                    await _executeCommand(_viewModel.CommitCreation.CancelCommitCommand);
             }
             finally { _emptyIndexConfirmationOpen = false; }
         }

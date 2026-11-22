@@ -33,6 +33,10 @@ public sealed partial class MainPage : Page
     private bool _wasBusy;
     private readonly WorkspaceNavigator _workspaceNavigator;
     private RepositoryTreeNavigationCoordinator _repositoryTreeNavigation => _workspaceNavigator.Interactions;
+    private readonly Workflows.RepositoryRefreshController _repositoryRefresh;
+    private readonly Dialogs.PageDialogController _pageDialogs;
+    private readonly Workflows.DiffPresentationController _diffPresentation;
+    private readonly Workflows.WorkingTreeImageDiffWorkflow _workingTreeImageDiff;
 
 
     private MainPage(
@@ -42,13 +46,40 @@ public sealed partial class MainPage : Page
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
+        _pageDialogs = new Dialogs.PageDialogController(this, _viewModel, () => IsShuttingDown);
+        _diffPresentation = new Workflows.DiffPresentationController(
+            _viewModel,
+            new Workflows.DiffPresentationController.CommitControls(
+                CommitDiffHeader, CommitTextDiffHeader, CompactDiffViewer,
+                CommitLargeDiffInfo, CommitLargeDiffMessage, CommitLargeDiffButton,
+                CommitImageLoading, CommitImageDiffHost, CommitBinaryInfo),
+            new Workflows.DiffPresentationController.WorkingTreeControls(
+                WorkingTreeTextDiffHeader, WorkingTreeDiffViewer, WorkingTreeDiffLoading,
+                WorkingTreeLargeDiffInfo, WorkingTreeLargeDiffMessage, WorkingTreeLargeDiffButton,
+                WorkingTreeImageLoading, WorkingTreeImageDiffHost, WorkingTreeBinaryInfo,
+                WorkingTreeNoChangesInfo));
+        _workingTreeImageDiff = new Workflows.WorkingTreeImageDiffWorkflow(
+            _viewModel, () => _fileActions, () => _imageDiffService,
+            WorkingTreeImageDiffHost, () => IsShuttingDown,
+            _diffPresentation.RenderWorkingTree, ReportUiFailure);
         _commitSummaryViewport = new CollectionViewportController(DetailsScroller);
         _stashSummaryViewport = new CollectionViewportController(StashDetailsScroller);
         SynchronizeDetailsViewport();
         _workspaceNavigator = workspaceNavigator ?? throw new ArgumentNullException(nameof(workspaceNavigator));
-        _repositoryChangeCoordinator = new RepositoryChangeCoordinator(
-            workingTreeStatusReader ?? throw new ArgumentNullException(nameof(workingTreeStatusReader)),
-            new UiDispatcher(DispatcherQueue));
+        _repositoryRefresh = new Workflows.RepositoryRefreshController(
+            _viewModel,
+            new RepositoryChangeCoordinator(
+                workingTreeStatusReader ?? throw new ArgumentNullException(nameof(workingTreeStatusReader)),
+                new UiDispatcher(DispatcherQueue)),
+            RepositoryToolbar, () => IsShuttingDown,
+            (operation, description) => RunPageUiOperation(operation, description));
+
+        _presentationRefresh = new Workflows.RepositoryPresentationRefreshController(
+            DispatcherQueue, () => IsShuttingDown,
+            InitializeTagSupportIfNeeded,
+            RefreshPresentationCollections,
+            SynchronizeRepositoryTree,
+            UpdateStatusBar);
 
         UnstagedChangesList.ItemsSource = _unstagedChanges;
         StagedChangesList.ItemsSource = _stagedChanges;
@@ -132,13 +163,13 @@ public sealed partial class MainPage : Page
             _wasBusy = _viewModel.IsBusy;
             UpdateStatusBar();
             UpdateLoadMoreHistoryAvailability();
-            if (becameIdle && ShouldRestorePendingEditedCommitSelection)
-                RunPageUiOperation(RestorePendingEditedCommitSelectionAsync,
+            if (becameIdle && _editCommitMessage.ShouldRestorePendingEditedCommitSelection)
+                RunPageUiOperation(_editCommitMessage.RestorePendingEditedCommitSelectionAsync,
                     "Restore edited commit selection");
-            if (becameIdle && _pendingRepositoryPreviewSelection is not null)
-                RunPageUiOperation(ResumeDeferredRepositoryPreviewAsync, "Resume repository file preview");
-            if (becameIdle && _pendingCommitImageDiff)
-                RunPageUiOperation(ResumeDeferredCommitImageDiffAsync, "Resume commit image preview");
+            if (becameIdle && _repositoryFilePreview.HasPending)
+                RunPageUiOperation(_repositoryFilePreview.ResumeAsync, "Resume repository file preview");
+            if (becameIdle && _commitImageDiff.HasPending)
+                RunPageUiOperation(_commitImageDiff.ResumeAsync, "Resume commit image preview");
             if (becameIdle && _repositoryTreeNavigation.HasPendingCheckout)
                 RunPageUiOperation(ResumePendingRepositoryTreeCheckoutAsync, "Resume branch checkout");
             else if (becameIdle && _repositoryTreeNavigation.HasPendingReference)
@@ -390,7 +421,7 @@ public sealed partial class MainPage : Page
             case RepositoryToolbarAction.PullFastForwardOnly: PullFastForwardOnly_Click(this, args); break;
             case RepositoryToolbarAction.PullMerge: PullMerge_Click(this, args); break;
             case RepositoryToolbarAction.PullRebase: PullRebase_Click(this, args); break;
-            case RepositoryToolbarAction.PullSettings: PullSettings_Click(this, args); break;
+            case RepositoryToolbarAction.PullSettings: _settingsWindowController.Open(SettingsSection.General, focusPullStrategy: true); break;
             case RepositoryToolbarAction.PushPrimary: PushPrimary_Click(this, args); break;
             case RepositoryToolbarAction.Push: Push_Click(this, args); break;
             case RepositoryToolbarAction.PushTo: PushTo_Click(this, args); break;
@@ -398,16 +429,20 @@ public sealed partial class MainPage : Page
             case RepositoryToolbarAction.PushSetDefault: PushSetDefault_Click(this, args); break;
             case RepositoryToolbarAction.PushToSetDefault: PushToSetDefault_Click(this, args); break;
             case RepositoryToolbarAction.ForcePushWithLeaseSetDefault: ForcePushWithLeaseSetDefault_Click(this, args); break;
-            case RepositoryToolbarAction.RefreshIndicator: RefreshIndicator_Click(this, args); break;
+            case RepositoryToolbarAction.RefreshIndicator:
+                RunPageUiOperation(_manualRefresh.RefreshAsync, "Repository refresh indicator"); break;
             case RepositoryToolbarAction.OpenRepository: OpenRepository_Click(this, args); break;
-            case RepositoryToolbarAction.CloneRepository: CloneRepository_Click(this, args); break;
-            case RepositoryToolbarAction.CreateRepository: CreateRepository_Click(this, args); break;
+            case RepositoryToolbarAction.CloneRepository:
+                RunPageUiOperation(_cloneWorkflow.ShowAsync, "CloneRepository_Click"); break;
+            case RepositoryToolbarAction.CreateRepository:
+                RunPageUiOperation(_creationWorkflow.ShowAsync, "CreateRepository_Click"); break;
             case RepositoryToolbarAction.Repositories: Repositories_Click(this, args); break;
             case RepositoryToolbarAction.CloseRepository: CloseRepository_Click(this, args); break;
-            case RepositoryToolbarAction.RepositorySettings: RepositorySettings_Click(this, args); break;
+            case RepositoryToolbarAction.RepositorySettings: _settingsWindowController.Open(SettingsSection.Identity); break;
             case RepositoryToolbarAction.OptimizeRepository: OptimizeRepository_Click(this, args); break;
-            case RepositoryToolbarAction.Settings: Settings_Click(this, args); break;
-            case RepositoryToolbarAction.About: About_Click(this, args); break;
+            case RepositoryToolbarAction.Settings: _settingsWindowController.Open(SettingsSection.General); break;
+            case RepositoryToolbarAction.About:
+                RunPageUiOperation(_aboutUpdate.ShowAboutAsync, "About dialog"); break;
             default: throw new ArgumentOutOfRangeException(nameof(action), action, null);
         }
     }

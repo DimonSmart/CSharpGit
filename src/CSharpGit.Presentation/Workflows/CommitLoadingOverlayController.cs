@@ -3,21 +3,31 @@ using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace CSharpGit.Presentation;
+namespace CSharpGit.Presentation.Workflows;
 
-public sealed partial class MainPage
+// Owns Commit Details loading overlays and their subscription for a window.
+internal sealed class CommitLoadingOverlayController(
+    OpenRepositoryViewModel viewModel,
+    FrameworkElement changedFilesTree,
+    FrameworkElement compactDiffViewer,
+    Grid rootLayout)
 {
+    private readonly OpenRepositoryViewModel _viewModel = viewModel;
+    private readonly FrameworkElement _changedFilesTree = changedFilesTree;
+    private readonly FrameworkElement _compactDiffViewer = compactDiffViewer;
+    private readonly Grid _rootLayout = rootLayout;
+
     private bool _loadingOverlaysInitialized;
     private Grid? _changesLoadingOverlay;
     private Grid? _diffLoadingOverlay;
     private ProgressRing? _changesLoadingRing;
     private ProgressRing? _diffLoadingRing;
 
-    private void InitializeLoadingOverlays()
+    internal void Initialize()
     {
         if (_loadingOverlaysInitialized || _viewModel is null) return;
-        if (ChangedFilesTree.Parent is not Grid filesViewer) return;
-        if (CompactDiffViewer.Parent is not Grid diffViewer) return;
+        if (_changedFilesTree.Parent is not Grid filesViewer) return;
+        if (_compactDiffViewer.Parent is not Grid diffViewer) return;
 
         _changesLoadingOverlay = CreateLoadingOverlay("Loading changes…", out _changesLoadingRing);
         Grid.SetRow(_changesLoadingOverlay, 1);
@@ -56,7 +66,7 @@ public sealed partial class MainPage
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
-            Background = RootLayout.Background
+            Background = _rootLayout.Background
         };
         overlay.Children.Add(content);
         return overlay;
@@ -79,7 +89,7 @@ public sealed partial class MainPage
         _diffLoadingRing!.IsActive = _viewModel.CommitDetails.IsDiffLoading;
     }
 
-    private void DetachLoadingOverlays()
+    internal void Shutdown()
     {
         if (!_loadingOverlaysInitialized) return;
         _viewModel.CommitDetails.PropertyChanged -= LoadingOverlayViewModel_PropertyChanged;

@@ -36,7 +36,8 @@ public sealed partial class MainPage
         _revertItem = new MenuFlyoutItem { Text = "Revert" };
         _revertItem.Click += RevertCommit_Click;
         _editCommitMessageItem = new MenuFlyoutItem { Text = "Edit commit message…" };
-        _editCommitMessageItem.Click += EditCommitMessage_Click;
+        _editCommitMessageItem.Click += (_, _) =>
+            RunPageUiOperation(_editCommitMessage.EditAsync, "EditCommitMessage_Click");
         _fixupIntoPreviousCommitItem = new MenuFlyoutItem { Text = "Fixup into previous commit" };
         _fixupIntoPreviousCommitItem.Click += FixupIntoPreviousCommit_Click;
         _interactiveRebaseFromHereItem = new MenuFlyoutItem { Text = "Interactive rebase from here…" };
@@ -70,8 +71,8 @@ public sealed partial class MainPage
         _commitActionsFlyout.Items.Add(_resetItem);
         _commitActionsFlyout.Opening += (_, _) => UpdateCommitActionAvailability();
 
-        HistoryList.ContextFlyout = _commitActionsFlyout;
-        HistoryList.RightTapped += HistoryList_RightTapped;
+        HistoryView.List.ContextFlyout = _commitActionsFlyout;
+        HistoryView.List.RightTapped += HistoryList_RightTapped;
         InitializeTagSupportIfNeeded();
     }
 
@@ -83,7 +84,7 @@ public sealed partial class MainPage
 
         if (current is ListViewItem { Content: HistoryRow row })
         {
-            HistoryList.SelectedItem = row;
+            HistoryView.List.SelectedItem = row;
             _viewModel.History.SelectedRow = row;
         }
 
@@ -367,8 +368,8 @@ public sealed partial class MainPage
         if (IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository) || row is null)
             return false;
 
-        HistoryList.SelectedItem = row;
-        HistoryList.ScrollIntoView(row);
+        HistoryView.List.SelectedItem = row;
+        HistoryView.List.ScrollIntoView(row);
         return true;
     }
 

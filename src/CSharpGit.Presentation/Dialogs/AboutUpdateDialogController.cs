@@ -3,22 +3,45 @@ using CSharpGit.Application.Abstractions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace CSharpGit.Presentation;
+namespace CSharpGit.Presentation.Dialogs;
 
-public sealed partial class MainPage
+// One instance per window. GitHub/Homebrew work stays behind application services.
+internal sealed class AboutUpdateDialogController(
+    IApplicationVersionProvider applicationVersionProvider,
+    IUpdateCheckService updateCheckService,
+    IApplicationUpdateInstaller applicationUpdateInstaller,
+    ISystemUriLauncher systemUriLauncher,
+    ApplicationUpdateActivityState applicationUpdateActivity,
+    Func<XamlRoot?> xamlRoot,
+    Func<ContentDialog, Task<ContentDialogResult>> showDialog,
+    Action<Func<Task>, string> runUiOperation,
+    Action<Exception, string> reportUiFailure,
+    Func<bool> isShuttingDown,
+    Func<bool> isHistoryRewriteInProgress,
+    Func<bool> isRepositoryMaintenanceInProgress,
+    Func<bool> hasUnappliedCommitMessage,
+    Func<Task<bool>> confirmCloseAsync,
+    Action completeRestart)
 {
-    private readonly IApplicationVersionProvider _applicationVersionProvider = null!;
-    private readonly IUpdateCheckService _updateCheckService = null!;
-    private readonly IApplicationUpdateInstaller _applicationUpdateInstaller = null!;
-    private readonly ISystemUriLauncher _systemUriLauncher = null!;
-    private readonly ApplicationUpdateActivityState _applicationUpdateActivity = null!;
+    private readonly IApplicationVersionProvider _applicationVersionProvider = applicationVersionProvider;
+    private readonly IUpdateCheckService _updateCheckService = updateCheckService;
+    private readonly IApplicationUpdateInstaller _applicationUpdateInstaller = applicationUpdateInstaller;
+    private readonly ISystemUriLauncher _systemUriLauncher = systemUriLauncher;
+    private readonly ApplicationUpdateActivityState _applicationUpdateActivity = applicationUpdateActivity;
+    private readonly Func<XamlRoot?> _xamlRoot = xamlRoot;
+    private readonly Func<ContentDialog, Task<ContentDialogResult>> _showDialog = showDialog;
+    private readonly Action<Func<Task>, string> _runUiOperation = runUiOperation;
+    private readonly Action<Exception, string> _reportUiFailure = reportUiFailure;
+    private readonly Func<bool> _isShuttingDown = isShuttingDown;
+    private readonly Func<bool> _isHistoryRewriteInProgress = isHistoryRewriteInProgress;
+    private readonly Func<bool> _isRepositoryMaintenanceInProgress = isRepositoryMaintenanceInProgress;
+    private readonly Func<bool> _hasUnappliedCommitMessage = hasUnappliedCommitMessage;
+    private readonly Func<Task<bool>> _confirmCloseAsync = confirmCloseAsync;
+    private readonly Action _completeRestart = completeRestart;
 
-    internal bool IsApplicationUpdateInProgress => _applicationUpdateActivity.IsRunning;
+    internal bool IsRunning => _applicationUpdateActivity.IsRunning;
 
-    private void About_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(ShowAboutAsync, "About dialog");
-
-    private async Task ShowAboutAsync()
+    internal async Task ShowAboutAsync()
     {
         using var cancellation = new CancellationTokenSource();
         var dialogLifetime = cancellation.Token;
@@ -54,7 +77,7 @@ public sealed partial class MainPage
 
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "About CSharpGit",
             Content = content,
             CloseButtonText = "Close",
@@ -65,22 +88,22 @@ public sealed partial class MainPage
         ReleaseVersion? availableVersion = null;
 
         releaseButton.Click += (_, _) =>
-            RunPageUiOperation(OpenReleasePageAsync, "Open release page");
+            _runUiOperation(OpenReleasePageAsync, "Open release page");
 
         async Task OpenReleasePageAsync()
         {
             var uri = releasePageUri;
-            if (uri is null || dialogLifetime.IsCancellationRequested || IsShuttingDown) return;
+            if (uri is null || dialogLifetime.IsCancellationRequested || _isShuttingDown()) return;
             try { await _systemUriLauncher.OpenUriAsync(uri); }
             catch (Exception exception)
             {
-                ReportUiFailure(exception, "Open release page");
-                if (!dialogLifetime.IsCancellationRequested && !IsShuttingDown)
+                _reportUiFailure(exception, "Open release page");
+                if (!dialogLifetime.IsCancellationRequested && !_isShuttingDown())
                     statusText.Text = "Unable to open release page.";
             }
         }
 
-        updateButton.Click += (_, _) => RunPageUiOperation(async () =>
+        updateButton.Click += (_, _) => _runUiOperation(async () =>
         {
             if (availableVersion is not { } version) return;
             dialog.Hide();
@@ -89,14 +112,14 @@ public sealed partial class MainPage
         }, "Application update");
 
         void Dialog_Opened(ContentDialog sender, ContentDialogOpenedEventArgs args) =>
-            RunPageUiOperation(CheckUpdateOnDialogOpenAsync, "Check for application updates");
+            _runUiOperation(CheckUpdateOnDialogOpenAsync, "Check for application updates");
 
         async Task CheckUpdateOnDialogOpenAsync()
         {
             try
             {
                 var result = await _updateCheckService.CheckAsync(dialogLifetime);
-                if (dialogLifetime.IsCancellationRequested || IsShuttingDown) return;
+                if (dialogLifetime.IsCancellationRequested || _isShuttingDown()) return;
 
                 switch (result.Status)
                 {
@@ -116,7 +139,7 @@ public sealed partial class MainPage
 
                         var availability = await _applicationUpdateInstaller.GetAvailabilityAsync(
                             dialogLifetime);
-                        if (dialogLifetime.IsCancellationRequested || IsShuttingDown) return;
+                        if (dialogLifetime.IsCancellationRequested || _isShuttingDown()) return;
                         updateButton.Visibility = availability.IsAvailable
                             ? Visibility.Visible
                             : Visibility.Collapsed;
@@ -127,13 +150,13 @@ public sealed partial class MainPage
                         break;
                 }
             }
-            catch (OperationCanceledException) when (dialogLifetime.IsCancellationRequested || IsShuttingDown)
+            catch (OperationCanceledException) when (dialogLifetime.IsCancellationRequested || _isShuttingDown())
             {
             }
             catch (Exception exception)
             {
-                ReportUiFailure(exception, "Check for application updates");
-                if (!dialogLifetime.IsCancellationRequested && !IsShuttingDown)
+                _reportUiFailure(exception, "Check for application updates");
+                if (!dialogLifetime.IsCancellationRequested && !_isShuttingDown())
                     statusText.Text = "Unable to check for updates.";
             }
         }
@@ -143,7 +166,7 @@ public sealed partial class MainPage
 
         dialog.Opened += Dialog_Opened;
         dialog.Closed += Dialog_Closed;
-        try { await ShowPageDialogAsync(dialog); }
+        try { await _showDialog(dialog); }
         finally
         {
             dialog.Opened -= Dialog_Opened;
@@ -159,7 +182,7 @@ public sealed partial class MainPage
 
         try
         {
-            if (IsHistoryRewriteInProgress || IsRepositoryMaintenanceInProgress)
+            if (_isHistoryRewriteInProgress() || _isRepositoryMaintenanceInProgress())
             {
                 await ShowUpdateMessageAsync(
                     "Update unavailable",
@@ -167,7 +190,7 @@ public sealed partial class MainPage
                 return;
             }
 
-            if (_viewModel.CommitCreation.HasUnappliedCommitMessage && !await ConfirmCloseAsync())
+            if (_hasUnappliedCommitMessage() && !await _confirmCloseAsync())
                 return;
 
             using var cancellation = new CancellationTokenSource();
@@ -190,7 +213,7 @@ public sealed partial class MainPage
             var dialogOpen = true;
             var progressDialog = new ContentDialog
             {
-                XamlRoot = XamlRoot,
+                XamlRoot = _xamlRoot(),
                 Title = "Updating CSharpGit",
                 Content = content,
                 CloseButtonText = "Cancel",
@@ -243,8 +266,7 @@ public sealed partial class MainPage
             if (result.Status == ApplicationUpdateResultStatus.Succeeded)
             {
                 _applicationUpdateActivity.End();
-                if (Microsoft.UI.Xaml.Application.Current is App app)
-                    app.CompleteApplicationUpdateRestart(this);
+                _completeRestart();
                 return;
             }
 
@@ -264,7 +286,7 @@ public sealed partial class MainPage
     {
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = title,
             Content = new TextBlock
             {
@@ -274,6 +296,6 @@ public sealed partial class MainPage
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close
         };
-        await ShowPageDialogAsync(dialog);
+        await _showDialog(dialog);
     }
 }

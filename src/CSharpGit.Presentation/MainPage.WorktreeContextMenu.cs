@@ -13,7 +13,7 @@ public sealed partial class MainPage
         RightTappedRoutedEventArgs args)
     {
         var flyout = new MenuFlyout();
-        PopulateWorktreeMenu(flyout, worktree);
+        _worktrees.PopulateWorktreeMenu(flyout, worktree);
         flyout.ShowAt(source, args.GetPosition(source));
         args.Handled = true;
     }

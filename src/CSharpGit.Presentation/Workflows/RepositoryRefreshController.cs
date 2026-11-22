@@ -1,30 +1,37 @@
 using System.ComponentModel;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.ViewModels;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
+using CSharpGit.Presentation.Views;
 
-namespace CSharpGit.Presentation;
+namespace CSharpGit.Presentation.Workflows;
 
-public sealed partial class MainPage
+// Per-window watcher, baseline and refresh-indicator owner. Does not depend on MainPage.
+internal sealed class RepositoryRefreshController(
+    OpenRepositoryViewModel viewModel,
+    RepositoryChangeCoordinator repositoryChangeCoordinator,
+    RepositoryToolbarView toolbar,
+    Func<bool> isShuttingDown,
+    Action<Func<Task>, string> runUiOperation)
 {
+    private readonly OpenRepositoryViewModel _viewModel = viewModel;
+    private readonly RepositoryChangeCoordinator _repositoryChangeCoordinator = repositoryChangeCoordinator;
+    private readonly RepositoryToolbarView _toolbar = toolbar;
+    private readonly Func<bool> _isShuttingDown = isShuttingDown;
+    private readonly Action<Func<Task>, string> _runUiOperation = runUiOperation;
+
     private const string RefreshRepositoryTooltip = "Refresh repository.";
     private const string ExternalRepositoryChangeTooltip = "Repository has changed externally. Refresh to see the latest state.";
     private const string RefreshingRepositoryTooltip = "Refreshing repository…";
 
-    private readonly RepositoryChangeCoordinator _repositoryChangeCoordinator;
     private bool _repositoryChangeMonitoringInitialized;
+    internal bool IsRefreshInProgress => _isRefreshInProgress;
     private bool _isRefreshInProgress;
-    private bool _repositoryPresentationRefreshQueued;
-    private bool _repositoryTreePresentationDirty;
-    private bool _workingTreePresentationDirty;
 
-    public bool IsRefreshRequired => _repositoryChangeCoordinator.IsRefreshRequired;
+    internal bool IsRefreshRequired => _repositoryChangeCoordinator.IsRefreshRequired;
 
-    private void InitializeRepositoryChangeMonitoring()
+    internal void InitializeRepositoryChangeMonitoring()
     {
-        if (IsShuttingDown || _repositoryChangeMonitoringInitialized) return;
+        if (_isShuttingDown() || _repositoryChangeMonitoringInitialized) return;
         _repositoryChangeMonitoringInitialized = true;
 
         _repositoryChangeCoordinator.RefreshRequirementChanged += UpdateRefreshIndicator;
@@ -39,7 +46,7 @@ public sealed partial class MainPage
         UpdateRefreshIndicator();
     }
 
-    private void ShutdownRepositoryChangeMonitoring()
+    internal void ShutdownRepositoryChangeMonitoring()
     {
         if (!_repositoryChangeMonitoringInitialized) return;
         _repositoryChangeMonitoringInitialized = false;
@@ -57,7 +64,7 @@ public sealed partial class MainPage
         object? sender,
         PropertyChangedEventArgs eventArgs)
     {
-        if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
+        if (_isShuttingDown() || !_repositoryChangeMonitoringInitialized) return;
 
         if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.Repository))
             UpdateRepositoryChangeMonitor();
@@ -87,9 +94,9 @@ public sealed partial class MainPage
 
     private void QueueOwnedFollowupRefresh()
     {
-        if (IsShuttingDown || _ownedFollowupRefreshQueued) return;
+        if (_isShuttingDown() || _ownedFollowupRefreshQueued) return;
         _ownedFollowupRefreshQueued = true;
-        RunPageUiOperation(RefreshAfterOwnedMutationAsync, "Post-mutation repository reconciliation");
+        _runUiOperation(RefreshAfterOwnedMutationAsync, "Post-mutation repository reconciliation");
     }
 
     private async Task RefreshAfterOwnedMutationAsync()
@@ -99,7 +106,7 @@ public sealed partial class MainPage
         {
             // Let delayed FileSystemWatcher notifications coalesce first.
             await Task.Delay(RepositoryChangeMonitor.DebounceDelay);
-            if (IsShuttingDown || repository is null
+            if (_isShuttingDown() || repository is null
                 || !ReferenceEquals(repository, _viewModel.Repository)) return;
 
             await _viewModel.RefreshAsyncForDesktopCheck();
@@ -112,7 +119,7 @@ public sealed partial class MainPage
 
     private void UpdateRepositoryChangeMonitor()
     {
-        if (IsShuttingDown || !_repositoryChangeMonitoringInitialized) return;
+        if (_isShuttingDown() || !_repositoryChangeMonitoringInitialized) return;
         _repositoryChangeCoordinator.ChangeRepository(
             _viewModel.Repository,
             _viewModel.DisplayedWorkingTreeStatusSnapshot,
@@ -123,9 +130,9 @@ public sealed partial class MainPage
     internal Action CapturePendingMonitorDeliveryForDesktopCheck() =>
         _repositoryChangeCoordinator.CapturePendingMonitorDeliveryForDesktopCheck();
 
-    private void SetRefreshInProgress(bool value)
+    internal void SetRefreshInProgress(bool value)
     {
-        if (IsShuttingDown) return;
+        if (_isShuttingDown()) return;
         if (_isRefreshInProgress == value) return;
         _isRefreshInProgress = value;
         UpdateRefreshIndicator();
@@ -140,7 +147,7 @@ public sealed partial class MainPage
                 : RefreshIndicatorState.UpToDate;
         var isRefreshing = state == RefreshIndicatorState.Refreshing;
 
-        RepositoryToolbar.SetRefreshPresentation(
+        _toolbar.SetRefreshPresentation(
             isRefreshing,
             state == RefreshIndicatorState.RefreshRequired,
             state switch
@@ -156,52 +163,5 @@ public sealed partial class MainPage
         UpToDate,
         RefreshRequired,
         Refreshing
-    }
-
-    private void QueueRepositoryPresentationRefresh(bool workingTreeChanged = false)
-    {
-        if (IsShuttingDown) return;
-
-        if (workingTreeChanged) _workingTreePresentationDirty = true;
-        else _repositoryTreePresentationDirty = true;
-        if (_repositoryPresentationRefreshQueued) return;
-
-        _repositoryPresentationRefreshQueued = true;
-        if (DispatcherQueue.TryEnqueue(FlushRepositoryPresentationRefresh)) return;
-
-        if (!IsShuttingDown && DispatcherQueue.HasThreadAccess)
-        {
-            FlushRepositoryPresentationRefresh();
-            return;
-        }
-
-        ClearRepositoryPresentationRefreshQueue();
-    }
-
-    private void FlushRepositoryPresentationRefresh()
-    {
-        if (IsShuttingDown)
-        {
-            ClearRepositoryPresentationRefreshQueue();
-            return;
-        }
-
-        _repositoryPresentationRefreshQueued = false;
-        var refreshWorkingTree = _workingTreePresentationDirty;
-        var refreshRepositoryTree = _repositoryTreePresentationDirty;
-        _workingTreePresentationDirty = false;
-        _repositoryTreePresentationDirty = false;
-        InitializeTagSupportIfNeeded();
-
-        if (refreshWorkingTree) RefreshPresentationCollections();
-        if (refreshRepositoryTree) SynchronizeRepositoryTree();
-        UpdateStatusBar();
-    }
-
-    private void ClearRepositoryPresentationRefreshQueue()
-    {
-        _repositoryPresentationRefreshQueued = false;
-        _workingTreePresentationDirty = false;
-        _repositoryTreePresentationDirty = false;
     }
 }

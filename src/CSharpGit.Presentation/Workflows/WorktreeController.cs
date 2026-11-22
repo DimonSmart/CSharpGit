@@ -3,24 +3,56 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
 using CSharpGit.Domain;
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 
-namespace CSharpGit.Presentation;
+namespace CSharpGit.Presentation.Workflows;
 
-public sealed partial class MainPage
+// Window-scoped worktree actions and dialogs; all mutations remain in WorktreesViewModel.
+internal sealed class WorktreeController(
+    OpenRepositoryViewModel viewModel,
+    WorktreesViewModel worktrees,
+    IDesktopShellService desktopShell,
+    Func<XamlRoot?> xamlRoot,
+    Func<ContentDialog, Task<ContentDialogResult>> showDialog,
+    Func<bool> isShuttingDown,
+    Action synchronizePresentation,
+    Func<string, string, Task> showError,
+    Func<string, string, Task> openFolder,
+    Func<string, Task> copyText,
+    Action<MenuFlyout, string, bool, Func<Task>> addMenuItemFixed,
+    Action<MenuFlyout, string, Func<bool>, Func<Task>> addMenuItemDynamic)
 {
-    private WorktreesViewModel _worktreesViewModel = null!;
+    private readonly OpenRepositoryViewModel _viewModel = viewModel;
+    private readonly WorktreesViewModel _worktreesViewModel = worktrees;
+    private readonly IDesktopShellService _desktopShellService = desktopShell;
+    private readonly Func<XamlRoot?> _xamlRoot = xamlRoot;
+    private readonly Func<ContentDialog, Task<ContentDialogResult>> _showDialog = showDialog;
+    private readonly Func<bool> _isShuttingDown = isShuttingDown;
+    private readonly Action _synchronizePresentation = synchronizePresentation;
+    private readonly Func<string, string, Task> _showError = showError;
+    private readonly Func<string, string, Task> _openFolder = openFolder;
+    private readonly Func<string, Task> _copyText = copyText;
+    private readonly Action<MenuFlyout, string, bool, Func<Task>> _addMenuItemFixed = addMenuItemFixed;
+    private readonly Action<MenuFlyout, string, Func<bool>, Func<Task>> _addMenuItemDynamic = addMenuItemDynamic;
+
+    private void AddMenuItem(MenuFlyout flyout, string text, bool enabled, Func<Task> action) =>
+        _addMenuItemFixed(flyout, text, enabled, action);
+
+    private void AddMenuItem(MenuFlyout flyout, string text, Func<bool> canExecute, Func<Task> action) =>
+        _addMenuItemDynamic(flyout, text, canExecute, action);
+
     private bool _worktreeShutdown;
 
-    private void InitializeWorktreeSupport()
+    internal void Initialize()
     {
         _worktreeShutdown = false;
         _worktreesViewModel.PropertyChanged += WorktreesViewModel_PropertyChanged;
         _worktreesViewModel.Attach(_viewModel);
     }
 
-    private void ShutdownWorktreeSupport()
+    internal void Shutdown()
     {
         if (_worktreeShutdown) return;
         _worktreeShutdown = true;
@@ -28,26 +60,24 @@ public sealed partial class MainPage
         _worktreesViewModel.Dispose();
     }
 
-    internal Task OpenInitialRepositoryAsync() => _viewModel.OpenRepositoryAsyncForDesktopCheck();
-
     private void WorktreesViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (_worktreeShutdown) return;
         if (args.PropertyName == nameof(WorktreesViewModel.Worktrees))
-            SynchronizeWorktreePresentation();
+            _synchronizePresentation();
     }
 
-    private WorktreeInfo? FindWorktreeForBranch(string branch) =>
+    internal WorktreeInfo? FindWorktreeForBranch(string branch) =>
         _worktreesViewModel.FindWorktreeForBranch(branch);
 
-    private async Task CreateWorktreeFromBranchAsync(GitBranch branch)
+    internal async Task CreateWorktreeFromBranchAsync(GitBranch branch)
     {
         var repository = _viewModel.Repository;
         if (repository is null || !_worktreesViewModel.CanMutate) return;
 
         if (FindWorktreeForBranch(branch.Name) is { } existing)
         {
-            await ShowErrorAsync(
+            await _showError(
                 "Branch already has a worktree",
                 $"Branch '{branch.Name}' is already checked out in '{existing.Path}'.");
             return;
@@ -65,7 +95,7 @@ public sealed partial class MainPage
 
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "Open in New Worktree",
             Content = content,
             PrimaryButtonText = "Create and Open",
@@ -73,9 +103,9 @@ public sealed partial class MainPage
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary
         };
-        var result = await ShowPageDialogAsync(dialog);
+        var result = await _showDialog(dialog);
         if (result is not ContentDialogResult.Primary and not ContentDialogResult.Secondary
-            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+            || _isShuttingDown() || !ReferenceEquals(repository, _viewModel.Repository)
             || !_worktreesViewModel.CanMutate) return;
 
         var operation = await _worktreesViewModel.CreateFromBranchAsync(
@@ -92,7 +122,7 @@ public sealed partial class MainPage
             OpenWorktreeInNewInstance(path);
     }
 
-    private async Task CreateNewWorktreeAsync()
+    internal async Task CreateNewWorktreeAsync()
     {
         var repository = _viewModel.Repository;
         if (repository is null || !_worktreesViewModel.CanMutate) return;
@@ -129,7 +159,7 @@ public sealed partial class MainPage
 
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "New Worktree",
             Content = content,
             PrimaryButtonText = "Create and Open",
@@ -137,9 +167,9 @@ public sealed partial class MainPage
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary
         };
-        var result = await ShowPageDialogAsync(dialog);
+        var result = await _showDialog(dialog);
         if (result is not ContentDialogResult.Primary and not ContentDialogResult.Secondary
-            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+            || _isShuttingDown() || !ReferenceEquals(repository, _viewModel.Repository)
             || !_worktreesViewModel.CanMutate) return;
 
         var operation = await _worktreesViewModel.CreateNewBranchAsync(
@@ -157,7 +187,7 @@ public sealed partial class MainPage
             OpenWorktreeInNewInstance(path);
     }
 
-    private void PopulateWorktreeMenu(MenuFlyout flyout, WorktreeInfo worktree)
+    internal void PopulateWorktreeMenu(MenuFlyout flyout, WorktreeInfo worktree)
     {
         if (!worktree.IsCurrent)
             AddMenuItem(flyout, "Open", () => !_worktreesViewModel.IsBusy, () => OpenWorktreeAsync(worktree));
@@ -170,9 +200,9 @@ public sealed partial class MainPage
             flyout,
             "Copy worktree path",
             true,
-            () => CopyTextAsync(WorktreePresentation.GetPathForCopy(worktree)));
+            () => _copyText(WorktreePresentation.GetPathForCopy(worktree)));
         if (WorktreePresentation.GetBranchNameForCopy(worktree) is { } branch)
-            AddMenuItem(flyout, "Copy branch name", true, () => CopyTextAsync(branch));
+            AddMenuItem(flyout, "Copy branch name", true, () => _copyText(branch));
         flyout.Items.Add(new MenuFlyoutSeparator());
 
         if (worktree.IsLocked)
@@ -194,14 +224,14 @@ public sealed partial class MainPage
         AddMenuItem(flyout, "Prune Worktrees", () => _worktreesViewModel.CanMutate, PruneWorktreesAsync);
     }
 
-    private Task OpenWorktreeAsync(WorktreeInfo worktree)
+    internal Task OpenWorktreeAsync(WorktreeInfo worktree)
     {
         OpenWorktreeInNewInstance(worktree.Path);
         return Task.CompletedTask;
     }
 
-    private Task OpenWorktreeFolderAsync(WorktreeInfo worktree) =>
-        OpenFolderInDesktopShellAsync(worktree.Path, "Could not open worktree folder");
+    internal Task OpenWorktreeFolderAsync(WorktreeInfo worktree) =>
+        _openFolder(worktree.Path, "Could not open worktree folder");
 
     private async Task LockWorktreeAsync(WorktreeInfo worktree)
     {
@@ -211,15 +241,15 @@ public sealed partial class MainPage
         var reason = new TextBox { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"), Header = "Reason (optional)", MinWidth = 420 };
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "Lock worktree",
             Content = reason,
             PrimaryButtonText = "Lock",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary
         };
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
-            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+        if (await _showDialog(dialog) != ContentDialogResult.Primary
+            || _isShuttingDown() || !ReferenceEquals(repository, _viewModel.Repository)
             || !_worktreesViewModel.CanMutate) return;
 
         var operation = await _worktreesViewModel.LockAsync(repository, worktree, reason.Text);
@@ -242,15 +272,15 @@ public sealed partial class MainPage
 
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "Remove worktree?",
             Content = $"Remove worktree '{worktree.Path}'?",
             PrimaryButtonText = "Remove",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
-            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+        if (await _showDialog(dialog) != ContentDialogResult.Primary
+            || _isShuttingDown() || !ReferenceEquals(repository, _viewModel.Repository)
             || !_worktreesViewModel.CanMutate) return;
 
         var operation = await _worktreesViewModel.RemoveAsync(repository, worktree);
@@ -258,37 +288,37 @@ public sealed partial class MainPage
 
         var forceDialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "Worktree could not be removed",
             Content = $"{operation.ErrorMessage}\n\nForce removal can discard changes in that worktree.",
             PrimaryButtonText = "Force Remove",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await ShowPageDialogAsync(forceDialog) != ContentDialogResult.Primary
-            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+        if (await _showDialog(forceDialog) != ContentDialogResult.Primary
+            || _isShuttingDown() || !ReferenceEquals(repository, _viewModel.Repository)
             || !_worktreesViewModel.CanRemove(worktree)) return;
 
         var forced = await _worktreesViewModel.RemoveAsync(repository, worktree, force: true);
         await ShowWorktreeOperationErrorAsync(forced, "Could not force remove worktree");
     }
 
-    private async Task PruneWorktreesAsync()
+    internal async Task PruneWorktreesAsync()
     {
         var repository = _viewModel.Repository;
         if (repository is null || !_worktreesViewModel.CanMutate) return;
 
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "Prune worktrees?",
             Content = "Remove stale worktree records?",
             PrimaryButtonText = "Prune",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
-            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+        if (await _showDialog(dialog) != ContentDialogResult.Primary
+            || _isShuttingDown() || !ReferenceEquals(repository, _viewModel.Repository)
             || !_worktreesViewModel.CanMutate) return;
 
         var operation = await _worktreesViewModel.PruneAsync(repository);
@@ -302,7 +332,7 @@ public sealed partial class MainPage
         if (!operation.Failed || string.IsNullOrWhiteSpace(operation.ErrorMessage))
             return Task.CompletedTask;
 
-        return ShowErrorAsync(
+        return _showError(
             operation.ErrorTitle ?? fallbackTitle,
             operation.ErrorMessage);
     }

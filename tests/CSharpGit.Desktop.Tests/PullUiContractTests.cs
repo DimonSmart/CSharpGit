@@ -64,14 +64,14 @@ public sealed class PullUiContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var ui = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryToolbarView.xaml"));
-        var mainSettings = File.ReadAllText(Path.Combine(presentation, "MainPage.Settings.cs"));
+        var mainSettings = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
         var controller = File.ReadAllText(Path.Combine(presentation, "SettingsWindowController.cs"));
         var settingsPage = File.ReadAllText(Path.Combine(presentation, "SettingsPage.xaml.cs"));
         var settings = File.ReadAllText(Path.Combine(presentation, "SettingsPage.xaml"));
 
         Assert.Contains("PullStrategyComboBox", settings, StringComparison.Ordinal);
         Assert.Contains("ForcePullAutoStashToggle", settings, StringComparison.Ordinal);
-        Assert.Contains("OpenSettingsWindow(SettingsSection.General, focusPullStrategy: true)", mainSettings, StringComparison.Ordinal);
+        Assert.Contains("_settingsWindowController.Open(SettingsSection.General, focusPullStrategy: true)", mainSettings, StringComparison.Ordinal);
         Assert.Contains("_page?.SelectSection(section, focusPullStrategy)", controller, StringComparison.Ordinal);
         Assert.Contains("PullStrategyComboBox.StartBringIntoView()", settingsPage, StringComparison.Ordinal);
         Assert.Contains("PullStrategyComboBox.Focus(FocusState.Programmatic)", settingsPage, StringComparison.Ordinal);

@@ -25,7 +25,8 @@ public sealed class HistoryDiffUiContractTests
         Assert.Contains("new DiffLogicalText(snapshot)", selectableDiffCode);
         Assert.DoesNotContain("<PivotItem Header=\"Diff\">", xaml);
         Assert.DoesNotContain("ItemsSource=\"{Binding SelectedCommit.Files}\"", xaml);
-        Assert.Contains("ChangedFileTreeSynchronizer.Reconcile", changes);
+        var changedFilesTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "CommitChangedFileTreeController.cs"));
+        Assert.Contains("ChangedFileTreeSynchronizer.Reconcile", changedFilesTree);
         Assert.Contains("CompactDiffLine.Build", changes);
         Assert.Contains("PathTreeBuilder.Build", tree);
         Assert.Contains("CollapseSingleChildFolderChains: true", tree);
@@ -74,7 +75,7 @@ public sealed class HistoryDiffUiContractTests
     {
         var root = FindRepositoryRoot();
         var lazy = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs"));
-        var overlays = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.LoadingOverlays.cs"));
+        var overlays = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "CommitLoadingOverlayController.cs"));
 
         Assert.Contains("ChangedFilesDebounceMilliseconds = 120", lazy);
         Assert.Contains("_changedFilesLoadCts", lazy);
@@ -96,7 +97,7 @@ public sealed class HistoryDiffUiContractTests
     {
         var root = FindRepositoryRoot();
         var changes = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs"));
-        var presentation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.DiffPresentation.cs"));
+        var presentation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "DiffPresentationController.cs"));
         var lazy = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs"));
 
         Assert.Contains("DiffPresentationResolver.Resolve", changes);

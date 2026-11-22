@@ -6,28 +6,31 @@ public sealed class RepositoryHistoryRewriteUiContractTests
     public void HistoricalFileMenuExposesExplicitLocalHistoryRewriteAction()
     {
         var source = ReadSource("src/CSharpGit.Presentation/MainPage.HistoryRewrite.cs");
+        var workflow = ReadSource("src/CSharpGit.Presentation/Workflows/HistoryRewriteController.cs");
 
         Assert.Contains("Remove from repository history…", source, StringComparison.Ordinal);
         Assert.Contains("entry.Kind == RepositorySnapshotEntryKind.File", source, StringComparison.Ordinal);
-        Assert.Contains("Signed commits or tags may lose their cryptographic signatures.", source, StringComparison.Ordinal);
-        Assert.Contains("exposed password, token or API key", source, StringComparison.Ordinal);
-        Assert.Contains("Remote repositories will NOT be changed.", source, StringComparison.Ordinal);
-        Assert.Contains("Publishing rewritten history is a separate operation.", source, StringComparison.Ordinal);
+        Assert.Contains("Signed commits or tags may lose their cryptographic signatures.", workflow, StringComparison.Ordinal);
+        Assert.Contains("exposed password, token or API key", workflow, StringComparison.Ordinal);
+        Assert.Contains("Remote repositories will NOT be changed.", workflow, StringComparison.Ordinal);
+        Assert.Contains("Publishing rewritten history is a separate operation.", workflow, StringComparison.Ordinal);
     }
 
     [Fact]
     public void HistoryRewriteUsesExistingMutationWorkflowAndInvalidatesHistoricalPresentation()
     {
         var source = ReadSource("src/CSharpGit.Presentation/MainPage.HistoryRewrite.cs");
+        var workflow = ReadSource("src/CSharpGit.Presentation/Workflows/HistoryRewriteController.cs");
         var viewModel = ReadSource("src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.HistoryRewrite.cs");
         var repositoryFiles = ReadSource("src/CSharpGit.Presentation.Core/ViewModels/RepositoryFilesViewModel.cs");
 
-        Assert.Contains("_viewModel.RepositoryHistoryRewrite.RemovePathAsync", source, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.RepositoryHistoryRewrite.RemovePathAsync", workflow, StringComparison.Ordinal);
+        Assert.Contains("_historyRewrite.RemovePathAsync(entry)", source, StringComparison.Ordinal);
         Assert.Contains("localOnlyRefresh: true", viewModel, StringComparison.Ordinal);
-        Assert.Contains("_repositoryFilesViewModel.Invalidate(", source, StringComparison.Ordinal);
+        Assert.Contains("_repositoryFilesViewModel.Invalidate(", workflow, StringComparison.Ordinal);
         Assert.Contains("CancelRequests()", repositoryFiles, StringComparison.Ordinal);
         Assert.Contains("_snapshotCache.Clear()", repositoryFiles, StringComparison.Ordinal);
-        Assert.DoesNotContain("_scopedHistory", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("_scopedHistory", workflow, StringComparison.Ordinal);
         Assert.Contains("History.ResetForRepositoryMutation()", viewModel, StringComparison.Ordinal);
         Assert.Contains("CommitDetails.Invalidate()", viewModel, StringComparison.Ordinal);
         Assert.Contains("Stashes.ClearSelection()", viewModel, StringComparison.Ordinal);
@@ -44,6 +47,27 @@ public sealed class RepositoryHistoryRewriteUiContractTests
         Assert.Contains("session.IsUnsafeToClose", close, StringComparison.Ordinal);
         Assert.Contains("IsHistoryRewriteRunning: repository.RepositoryHistoryRewrite.IsInProgress", safety, StringComparison.Ordinal);
         Assert.Contains("eventArgs.Cancel = true", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SubmoduleMenuIsPreservedWhenHistoryRewriteOverridesTreeContextMenu()
+    {
+        var history = ReadSource("src/CSharpGit.Presentation/MainPage.HistoryRewrite.cs");
+        var files = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
+        var submodules = ReadSource("src/CSharpGit.Presentation/MainPage.Submodules.cs");
+        var clone = ReadSource("src/CSharpGit.Presentation/Workflows/RepositoryCloneWorkflow.cs");
+
+        Assert.Contains("entry.Kind == RepositorySnapshotEntryKind.Submodule", history, StringComparison.Ordinal);
+        Assert.Contains("ShowSubmoduleMenuAsync(source, entry)", history, StringComparison.Ordinal);
+        Assert.Contains("OpenSelectedSubmoduleAsync(entry)", files, StringComparison.Ordinal);
+        Assert.Contains("Initialize submodule", submodules, StringComparison.Ordinal);
+        Assert.Contains("Update All Submodules", submodules, StringComparison.Ordinal);
+        Assert.Contains("Content = \"Initialize submodules\"", clone, StringComparison.Ordinal);
+        Assert.Contains("initializeSubmodulesBox.IsEnabled = !busy", clone, StringComparison.Ordinal);
+        Assert.Contains("_cloneRepositoryViewModel.InitializeSubmodules = true", clone, StringComparison.Ordinal);
+        Assert.Contains("_cloneRepositoryViewModel.InitializeSubmodules = false", clone, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(FindRepositoryRoot(),
+            "src/CSharpGit.Presentation/MainPage.RepositoryCloning.cs")));
     }
 
     private static string ReadSource(string relativePath) =>

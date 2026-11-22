@@ -16,15 +16,15 @@ public sealed partial class MainPage
         {
             await _page.ShowAllHistoryAsync();
             await WaitUntilAsync(
-                () => _page.HistoryList.ActualHeight > 0 && _page.HistoryList.ActualWidth > 0,
+                () => _page.HistoryView.List.ActualHeight > 0 && _page.HistoryView.List.ActualWidth > 0,
                 TimeSpan.FromSeconds(10));
 
             var originalDetailsHeight = _page.HistoryPane.RowDefinitions[3].Height;
-            var originalItemTemplate = _page.HistoryList.ItemTemplate;
+            var originalItemTemplate = _page.HistoryView.List.ItemTemplate;
             try
             {
                 await CheckInitialHistoryGraphAsync(failures);
-                _page.HistoryList.ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["HistoryTextGraphItemTemplate"];
+                _page.HistoryView.List.ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["HistoryTextGraphItemTemplate"];
                 while (_page._viewModel.History.Rows.Count < 300 && _page._viewModel.History.HasMore)
                 {
                     if (_page._viewModel.History.LoadMoreCommand is not AsyncCommand preload)
@@ -60,10 +60,10 @@ public sealed partial class MainPage
                     {
                         if (index < 0 || index >= _page._viewModel.History.Rows.Count) continue;
                         var row = _page._viewModel.History.Rows[index];
-                        _page.HistoryList.ScrollIntoView(row);
+                        _page.HistoryView.List.ScrollIntoView(row);
                         await Task.Delay(80);
 
-                        if (_page.HistoryList.ContainerFromItem(row) is not ListViewItem container)
+                        if (_page.HistoryView.List.ContainerFromItem(row) is not ListViewItem container)
                         {
                             failures.Add($"history row {index} was not realized after scrolling");
                             continue;
@@ -105,9 +105,9 @@ public sealed partial class MainPage
 
                 if (_page._viewModel.History.Rows.FirstOrDefault() is { } first)
                 {
-                    _page.HistoryList.ScrollIntoView(first);
+                    _page.HistoryView.List.ScrollIntoView(first);
                     await Task.Delay(80);
-                    Check(_page.HistoryList.ContainerFromItem(first) is ListViewItem firstContainer
+                    Check(_page.HistoryView.List.ContainerFromItem(first) is ListViewItem firstContainer
                           && FindDescendant<CommitGraphControl>(firstContainer)?.HasCurrentRenderForCheck() == true,
                         "commit graph was stale after returning to the top of history", failures);
                     CheckAdjacentHistoryGraphSurfaces(0, failures);
@@ -141,7 +141,7 @@ public sealed partial class MainPage
             finally
             {
                 _page.HistoryPane.RowDefinitions[3].Height = originalDetailsHeight;
-                _page.HistoryList.ItemTemplate = originalItemTemplate;
+                _page.HistoryView.List.ItemTemplate = originalItemTemplate;
             }
         }
 
@@ -158,14 +158,14 @@ public sealed partial class MainPage
                 // multiple long refs: natural and allocated badge plans differ.
                 foreach (var templateKey in new[] { "HistoryItemTemplate", "HistoryTextGraphReferencesItemTemplate" })
                 {
-                    _page.HistoryList.ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources[templateKey];
-                    _page.HistoryList.ScrollIntoView(first);
+                    _page.HistoryView.List.ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources[templateKey];
+                    _page.HistoryView.List.ScrollIntoView(first);
                     await WaitUntilAsync(() =>
-                        _page.HistoryList.ContainerFromItem(first) is ListViewItem container
+                        _page.HistoryView.List.ContainerFromItem(first) is ListViewItem container
                         && FindDescendant<CommitGraphControl>(container)?.HasCurrentRenderForCheck() == true,
                         TimeSpan.FromSeconds(5));
 
-                    var graph = _page.HistoryList.ContainerFromItem(first) is ListViewItem item
+                    var graph = _page.HistoryView.List.ContainerFromItem(first) is ListViewItem item
                         ? FindDescendant<CommitGraphControl>(item) : null;
                     Check(graph?.HasCurrentRenderForCheck() == true,
                         $"{templateKey} did not paint the initial graph after reference layout settled", failures);
@@ -222,7 +222,7 @@ public sealed partial class MainPage
                 foreach (var index in indexes)
                 {
                     if (index < 0) continue;
-                    _page.HistoryList.ScrollIntoView(_page._viewModel.History.Rows[index]);
+                    _page.HistoryView.List.ScrollIntoView(_page._viewModel.History.Rows[index]);
                     await Task.Delay(90);
                 }
             }
@@ -301,8 +301,8 @@ public sealed partial class MainPage
             {
                 var firstRow = _page._viewModel.History.Rows[index];
                 var secondRow = _page._viewModel.History.Rows[index + 1];
-                if (_page.HistoryList.ContainerFromItem(firstRow) is not ListViewItem firstContainer
-                    || _page.HistoryList.ContainerFromItem(secondRow) is not ListViewItem secondContainer)
+                if (_page.HistoryView.List.ContainerFromItem(firstRow) is not ListViewItem firstContainer
+                    || _page.HistoryView.List.ContainerFromItem(secondRow) is not ListViewItem secondContainer)
                 {
                     continue;
                 }
@@ -320,10 +320,10 @@ public sealed partial class MainPage
                 Point secondContainerTop;
                 try
                 {
-                    firstGraphTop = firstGraph.TransformToVisual(_page.HistoryList).TransformPoint(new Point(0, 0));
-                    secondGraphTop = secondGraph.TransformToVisual(_page.HistoryList).TransformPoint(new Point(0, 0));
-                    firstContainerTop = firstContainer.TransformToVisual(_page.HistoryList).TransformPoint(new Point(0, 0));
-                    secondContainerTop = secondContainer.TransformToVisual(_page.HistoryList).TransformPoint(new Point(0, 0));
+                    firstGraphTop = firstGraph.TransformToVisual(_page.HistoryView.List).TransformPoint(new Point(0, 0));
+                    secondGraphTop = secondGraph.TransformToVisual(_page.HistoryView.List).TransformPoint(new Point(0, 0));
+                    firstContainerTop = firstContainer.TransformToVisual(_page.HistoryView.List).TransformPoint(new Point(0, 0));
+                    secondContainerTop = secondContainer.TransformToVisual(_page.HistoryView.List).TransformPoint(new Point(0, 0));
                 }
                 catch (InvalidOperationException)
                 {
@@ -360,11 +360,11 @@ public sealed partial class MainPage
             await _page.ShowAllHistoryAsync();
             if (_page._viewModel.History.Rows.FirstOrDefault() is { } firstHistory)
             {
-                _page.HistoryList.ScrollIntoView(firstHistory);
+                _page.HistoryView.List.ScrollIntoView(firstHistory);
                 await WaitUntilAsync(
-                    () => _page.HistoryList.ContainerFromItem(firstHistory) is ListViewItem,
+                    () => _page.HistoryView.List.ContainerFromItem(firstHistory) is ListViewItem,
                     TimeSpan.FromSeconds(5));
-                CheckActualHeight(_page.HistoryList.ContainerFromItem(firstHistory) as FrameworkElement, 23, 26, "history row", failures);
+                CheckActualHeight(_page.HistoryView.List.ContainerFromItem(firstHistory) as FrameworkElement, 23, 26, "history row", failures);
             }
 
             if (_page.RepositoryExplorer.RootsForCheck.FirstOrDefault() is { } firstRepositoryNode)
@@ -377,13 +377,13 @@ public sealed partial class MainPage
 
             CheckActualHeight(_page.RepositoryToolbar, 0, 34, "main toolbar", failures);
             CheckActualHeight(_page.HistoryView.FilterToolbar, 0, 34, "history filter toolbar", failures);
-            CheckActualHeight(_page.HistoryColumnHeader, 0, 26, "history column header", failures);
+            CheckActualHeight(_page.HistoryView.ColumnHeader, 0, 26, "history column header", failures);
             CheckActualHeight(_page.GitConsoleHost.StatusBar, 0, 22, "status bar", failures);
 
             var pivotHeader = FindDescendant<PivotHeaderItem>(_page.DetailsTabs);
             CheckActualHeight(pivotHeader, 0, 28, "details tab header", failures);
 
-            var fullyVisibleHistoryRows = CountFullyVisibleListRows(_page.HistoryList, _page._viewModel.History.Rows.Cast<object>());
+            var fullyVisibleHistoryRows = CountFullyVisibleListRows(_page.HistoryView.List, _page._viewModel.History.Rows.Cast<object>());
             Check(fullyVisibleHistoryRows >= 20,
                 $"history viewport shows only {fullyVisibleHistoryRows} fully visible rows; expected at least 20",
                 failures);
@@ -393,10 +393,10 @@ public sealed partial class MainPage
             {
                 _page.DetailsTabs.SelectedIndex = 1;
                 await WaitUntilAsync(
-                    () => _page._changedFileTreeRoots.Count > 0 && _page.ChangedFilesTree.ActualHeight > 0,
+                    () => (_page._changesTree?.Roots.Count ?? 0) > 0 && _page.ChangedFilesTree.ActualHeight > 0,
                     TimeSpan.FromSeconds(10));
 
-                if (_page._changedFileTreeRoots.FirstOrDefault() is { } firstChangedFile)
+                if (_page._changesTree?.Roots.FirstOrDefault() is { } firstChangedFile)
                 {
                     await WaitUntilAsync(
                         () => _page.ChangedFilesTree.ContainerFromItem(firstChangedFile) is TreeViewItem,

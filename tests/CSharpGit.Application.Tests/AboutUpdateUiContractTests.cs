@@ -28,7 +28,7 @@ public sealed class AboutUpdateUiContractTests
     {
         var root = FindRepositoryRoot();
         var about = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.About.cs"));
+            root, "src", "CSharpGit.Presentation", "Dialogs", "AboutUpdateDialogController.cs"));
         var app = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
         var infrastructure = File.ReadAllText(Path.Combine(
@@ -40,15 +40,17 @@ public sealed class AboutUpdateUiContractTests
         Assert.Contains("Unable to check for updates.", about);
         Assert.Contains("Update now", about);
         Assert.Contains("Open release page", about);
-        Assert.Contains("RunPageUiOperation(CheckUpdateOnDialogOpenAsync", about);
-        Assert.Contains("dialogLifetime.IsCancellationRequested || IsShuttingDown", about);
+        Assert.Contains("_runUiOperation(CheckUpdateOnDialogOpenAsync", about);
+        Assert.Contains("dialogLifetime.IsCancellationRequested || _isShuttingDown()", about);
         Assert.DoesNotContain("async void Dialog_Opened", about);
         Assert.Contains("dialog.Opened -= Dialog_Opened", about);
         Assert.Contains("_applicationVersionProvider.DisplayVersion", about);
-        Assert.Contains("IsHistoryRewriteInProgress", about);
-        Assert.Contains("IsRepositoryMaintenanceInProgress", about);
-        Assert.Contains("ConfirmCloseAsync()", about);
-        Assert.Contains("CompleteApplicationUpdateRestart", about);
+        Assert.Contains("_isHistoryRewriteInProgress()", about);
+        Assert.Contains("_isRepositoryMaintenanceInProgress()", about);
+        Assert.Contains("_confirmCloseAsync()", about);
+        Assert.Contains("_completeRestart()", about);
+        Assert.Contains("CompleteApplicationUpdateRestart", app);
+        Assert.False(File.Exists(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.About.cs")));
 
         Assert.Contains("GitHubUpdateCheckService", app);
         Assert.Contains("MacOsHomebrewUpdateInstaller", app);

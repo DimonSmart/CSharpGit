@@ -1,24 +1,39 @@
 using CSharpGit.Domain;
+using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace CSharpGit.Presentation;
+namespace CSharpGit.Presentation.Workflows;
 
-public sealed partial class MainPage
+// Owns commit-message rewrite dialog and pending selection across a rebase conflict.
+internal sealed class EditCommitMessageController(
+    OpenRepositoryViewModel viewModel,
+    Func<XamlRoot?> xamlRoot,
+    Func<ContentDialog, Task<ContentDialogResult>> showDialog,
+    Func<bool> isShuttingDown,
+    Func<CommitActionExecutionResult, Task> handleResult,
+    Func<string?, Task<bool>> restoreSelection)
 {
+    private readonly OpenRepositoryViewModel _viewModel = viewModel;
+    private readonly Func<XamlRoot?> _xamlRoot = xamlRoot;
+    private readonly Func<ContentDialog, Task<ContentDialogResult>> _showDialog = showDialog;
+    private readonly Func<bool> _isShuttingDown = isShuttingDown;
+    private readonly Func<CommitActionExecutionResult, Task> _handleResult = handleResult;
+    private readonly Func<string?, Task<bool>> _restoreSelection = restoreSelection;
+
     private string? _pendingEditedCommitHash;
     private string? _pendingOriginalEditedCommitHash;
 
-    private bool ShouldRestorePendingEditedCommitSelection =>
+    internal bool ShouldRestorePendingEditedCommitSelection =>
         _pendingOriginalEditedCommitHash is not null &&
         _viewModel.RepositoryOperations.CurrentOperation == RepositoryOperation.None;
 
-    private void EditCommitMessage_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(() => EditCommitMessage_ClickCoreAsync(sender, e), "EditCommitMessage_Click");
-
-    private async Task EditCommitMessage_ClickCoreAsync(object sender, RoutedEventArgs e)
+    internal async Task EditAsync()
     {
-        if (!TryGetCommitActionContext(out var repository, out var commit)) return;
+        var repository = _viewModel.Repository;
+        var commit = _viewModel.History.SelectedRow?.Commit;
+        if (_isShuttingDown() || repository is null || commit is null
+            || !_viewModel.CommitActions.CanMutateCommit(commit)) return;
 
         var originalMessage = commit.Message;
         var messageBox = new TextBox
@@ -50,7 +65,7 @@ public sealed partial class MainPage
 
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "Edit commit message",
             Content = content,
             PrimaryButtonText = "Change message",
@@ -71,7 +86,7 @@ public sealed partial class MainPage
         messageBox.TextChanged += (_, _) => UpdatePrimaryButton();
         UpdatePrimaryButton();
 
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary) return;
+        if (await _showDialog(dialog) != ContentDialogResult.Primary) return;
 
         var newMessage = messageBox.Text;
         if (string.IsNullOrWhiteSpace(newMessage) ||
@@ -91,10 +106,10 @@ public sealed partial class MainPage
         }
 
         ClearPendingEditedCommitSelection();
-        await HandleCommitActionExecutionResultAsync(result);
+        await _handleResult(result);
     }
 
-    private async Task RestorePendingEditedCommitSelectionAsync()
+    internal async Task RestorePendingEditedCommitSelectionAsync()
     {
         if (!ShouldRestorePendingEditedCommitSelection) return;
 
@@ -102,8 +117,8 @@ public sealed partial class MainPage
         var original = _pendingOriginalEditedCommitHash;
         ClearPendingEditedCommitSelection();
 
-        if (await RestoreCommitActionSelectionAsync(rewritten)) return;
-        await RestoreCommitActionSelectionAsync(original);
+        if (await _restoreSelection(rewritten)) return;
+        await _restoreSelection(original);
     }
 
     private void ClearPendingEditedCommitSelection()

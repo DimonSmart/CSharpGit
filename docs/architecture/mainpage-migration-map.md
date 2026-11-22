@@ -4,6 +4,165 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Destructive path-history rewrite confirmation, operation admission, error reporting
+and invalidation are now owned by `Workflows/HistoryRewriteController`.
+`MainPage.HistoryRewrite.cs` retains only right-tap routing and menu composition;
+all lifecycle event registrations are explicitly detached at window shutdown.
+
+
+Repository switch and close admission, commit-draft confirmation, lifecycle continuation
+and successful-transition projections are now owned by
+`Workflows/RepositorySwitchController`. The page retains the two button handlers,
+public desktop check seams, and shell helpers while existing creation/clone
+workflows call through typed forwarding methods.
+
+
+All worktree mutations and dialogs, menu building, worktree-model subscription and
+process relaunch are now in `Workflows/WorktreeController`. The page provides the
+window shell dependencies and retains only the XAML right-tap entry point; the old
+`MainPage.Worktrees.cs` is removed. The model stays the owner of Git operations.
+
+
+Commit message rewrite dialog, conflict-pending OIDs and post-rebase selection
+restoration are now owned by `Workflows/EditCommitMessageController`.
+It calls the existing CommitActionsViewModel mutation and preserves selection
+callbacks; the history context-menu handler invokes it directly. The old
+`MainPage.EditCommitMessage.cs` partial is removed.
+
+
+Local and remote branch-folder delete dialogs, candidate planning, partial-failure
+reporting and safe confirmation now belong to `Workflows/BranchFolderDeletionController`.
+The model remains the sole owner of Git deletion; the controller validates repository
+identity and operation state after each dialog. `MainPage.BranchFolderDeletion.cs`
+is removed and the context menu calls the window-scoped workflow directly.
+
+
+Stash creation (repository-wide and selected paths) and destructive drop confirmation
+are now owned by `Workflows/StashDialogController`. Its operations share the
+window dialog gate, revalidate repository identity and selection after confirmation,
+and dispatch to the existing StashesViewModel. `MainPage.Stashes.cs` was removed;
+XAML and reference-menu entry points retain only thin forwarding adapters.
+
+
+Local branch renaming (F2/dialog) and branch drag/drop now belong to separate
+`Workflows/BranchRenameController` and `Workflows/BranchDragDropController`.
+Both own and dispose their UI event subscriptions; drag/drop requests go through
+one typed rename mutation owner. The page keeps temporary thin adapters for
+reference-menu actions until Git-reference surfaces are extracted.
+
+
+Commit changed-file tree reconciliation, expand/collapse state, selection synchronization
+and viewport lifetime now belong to `Workflows/CommitChangedFileTreeController`.
+The owner explicitly detaches its collection and tree subscriptions on shutdown;
+`MainPage.Changes.cs` retains only the Commit diff and tab-activity choreography.
+
+
+WorkingTree image-diff generation, cancellation and result publication now belong to
+`Workflows/WorkingTreeImageDiffWorkflow`, sharing `ImageDiffPreviewService` with
+Commit Details. `MainPage.WorkingTreeDiff.cs` retains selection/tree rendering but no
+image-diff async lifetime. A lazy service accessor preserves the existing shell
+constructor order without admitting work before file services are attached.
+
+
+Historical Repository Files preview now belongs to `Workflows/RepositoryFilePreviewController`.
+It owns the publication gate, cancellation, deferred selection and activation revision;
+`MainPage.RepositoryFilePreview.cs` was deleted. The files surface passes a typed preview
+host accessor and maintains its separate search/tree-selection lifecycle.
+
+
+Text/binary/image diff state-to-visual mapping is now owned by
+`Workflows/DiffPresentationController`, with separate typed Commit and WorkingTree
+control groups. The old `MainPage.DiffPresentation.cs` was deleted; change and file
+preview event paths call the controller directly rather than delegating to a page method.
+
+
+Commit image-diff admission, deferred resume, cancellation and generation-safe publication
+are now owned by `Workflows/CommitImageDiffWorkflow`. The shared
+`ImageDiffPreviewService` is composed once per window for commit and working-tree
+previews. The presentation-state enum is a separate internal type; the old
+`MainPage.ImageDiff.cs` is deleted.
+
+
+The page-local modal gate, dialog lifetime cancellation and interactive rebase
+editor workflow are now owned by `Dialogs/PageDialogController` with a normal
+`Page` visual-surface reference rather than a dependency on `MainPage`.
+`MainPage.Dialogs.cs` is removed. Legacy call sites use thin shell adapters
+until their respective feature views are migrated.
+
+
+Repository tree/working-tree projection updates are now coalesced by
+`Workflows/RepositoryPresentationRefreshController`. It owns the dispatch queue and
+coalescing state, with typed callbacks to update the existing visual surfaces.
+`MainPage.RepositoryRefresh.cs` is removed; the page retains only the
+`IsRefreshRequired` binding property and forwarding callbacks until the shell
+becomes composition-only.
+
+
+Commit Details viewport layout now belongs to `Workflows/CommitDetailsLayoutController`.
+It owns window-size, scroll/width and XamlRoot subscriptions and explicitly detaches
+on shutdown. `MainPage.CommitCopy.cs` is removed; native resize forwarding remains
+as a narrow shell adapter until final root composition migration.
+
+
+Commit Details loading overlays now belong to
+`Workflows/CommitLoadingOverlayController`. This controller owns visual changes,
+loading rings and the Commit Details subscription, while MainPage holds only a
+window-lifetime adapter until the final Commit Details view migration.
+`MainPage.LoadingOverlays.cs` is removed.
+
+
+Repository Clone and Create dialog workflows are now owned by separate window-scoped
+`Workflows/RepositoryCloneWorkflow` and `Workflows/RepositoryCreationWorkflow`.
+They coordinate admission leases, draft confirmation and repository switch via narrow
+callbacks. The old `MainPage.RepositoryCloning.cs` and `MainPage.RepositoryCreation.cs`
+are removed. Page compatibility properties for active workflows remain until the
+repository-switch workflow itself moves in phase 3.
+
+
+Commit empty-index and Working Tree discard confirmations now belong to
+`Workflows/RepositoryConfirmationController`. It owns subscriptions and cancellation
+via the window dialog gate, with repository-identity checks before commands.
+`MainPage.ConfirmationDialogs.cs` is removed and shutdown detaches its listeners.
+
+
+The watcher/refresh baseline lifecycle, mutation-followup queue and refresh toolbar
+indicator now belong to per-window `Workflows/RepositoryRefreshController`, with
+explicit subscription/shutdown ownership. `MainPage.RepositoryRefresh.cs` retains
+only temporary UI collection projection queueing; it will be removed when those
+projections migrate to Working Tree and Files owners.
+
+
+Manual refresh action now belongs to `Workflows/RepositoryManualRefreshController`.
+It receives typed repository and safety callbacks rather than accessing MainPage;
+`MainPage.RefreshIndicator.cs` is removed. The repository monitor/refresh flight
+still owns the shared refresh state, and the toolbar owns its indicator visuals.
+
+
+The final console adapter `MainPage.GitConsole.cs` has been deleted; window
+composition configures `GitConsoleHostView` and `GitCommandFeedbackController`
+directly. Runtime commands use the host view and shutdown disposes both owners.
+The two read-only `MainPage.HistoryDisplayMode.cs` visual accessors were also
+removed; existing commit actions and desktop diagnostics address `HistoryView`
+directly until their full phase-3 feature extraction.
+
+
+`Dialogs/GitCommandFeedbackController` now owns the Git command feedback coordinator,
+modal presentation, settings subscriptions and countdown timer. The former
+`MainPage.GitCommandFeedback.cs` is deleted. The console host retains only typed
+callbacks to this window-scoped owner; the final window composition step will
+eliminate the remaining `MainPage.GitConsole.cs` adapter.
+
+
+Settings entry points now belong to `SettingsWindowController` with a window-scoped
+repository/admission context. `MainPage.Settings.cs` has been deleted; toolbar,
+start screen and Git tool actions invoke typed controller entry points directly.
+
+The About/self-update UI is now owned by `Dialogs/AboutUpdateDialogController`.
+`MainPage.About.cs` was removed; the start screen and toolbar invoke that window-scoped
+workflow. The controller receives narrow dialog and close callbacks; the final
+window-composition migration will remove those remaining page callback adapters.
+
+
 The phase-2 `MainPage.HistoryPerformanceDiagnostics.cs` forwarding adapter
 has been removed: window composition now configures the owner
 `HistoryView.ConfigurePerformance` directly, and shutdown calls

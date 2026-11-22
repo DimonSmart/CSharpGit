@@ -31,14 +31,14 @@ public sealed class SelectedCommitActionsContractTests
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var bulk = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "BulkObservableCollection.cs"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
-        var coalescing = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryRefresh.cs"));
+        var coalescing = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryPresentationRefreshController.cs"));
 
         var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs"));
         Assert.Contains("WorkingTree.ApplyRepositoryState(repository, state.Changes)", viewModel);
         Assert.Contains("ReplaceAll(snapshot)", workingTree);
         Assert.Contains("NotifyCollectionChangedAction.Reset", bulk);
         Assert.Contains("QueueRepositoryPresentationRefresh(workingTreeChanged: true)", page);
-        Assert.Contains("DispatcherQueue.TryEnqueue(FlushRepositoryPresentationRefresh)", coalescing);
+        Assert.Contains("_dispatcher.TryEnqueue(FlushRepositoryPresentationRefresh)", coalescing);
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public sealed class SelectedCommitActionsContractTests
         foreach (var label in new[] { "Copy hash", "Create branch here…", "Checkout this commit", "Cherry-pick", "Revert", "Edit commit message…", "Fixup into previous commit", "Interactive rebase from here…", "Reset current branch to here", "Soft…", "Mixed…", "Hard…" })
             Assert.Contains(label, actions);
 
-        Assert.Contains("HistoryList.RightTapped", actions);
+        Assert.Contains("HistoryView.List.RightTapped", actions);
         Assert.Contains("commit.Parents.Count > 1", actions);
         Assert.Contains("Mainline parent", actions);
         Assert.Contains("Uncommitted tracked changes will be lost", actions);
@@ -75,7 +75,7 @@ public sealed class SelectedCommitActionsContractTests
         var root = FindRepositoryRoot();
         var appXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml"));
         var actions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
-        var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Dialogs.cs"));
+        var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Dialogs", "PageDialogController.cs"));
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var rebaseViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "InteractiveRebaseViewModel.cs"));
@@ -86,7 +86,7 @@ public sealed class SelectedCommitActionsContractTests
         var editorCode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "InteractiveRebaseTodoEditor.xaml.cs"));
 
         Assert.Contains("Interactive rebase from here…", actions);
-        Assert.Contains("HistoryList.RightTapped += HistoryList_RightTapped", actions);
+        Assert.Contains("HistoryView.List.RightTapped += HistoryList_RightTapped", actions);
         Assert.Contains("var hash = commit.Hash;", actions);
         Assert.Contains("PrepareInteractiveRebaseFromCommitAsync(hash)", actions);
         Assert.Contains("var hasLocalBranch = _viewModel.CurrentBranchName is not null;", actions);

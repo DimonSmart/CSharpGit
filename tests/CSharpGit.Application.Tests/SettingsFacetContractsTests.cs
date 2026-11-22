@@ -166,6 +166,23 @@ public sealed class SettingsFacetContractsTests
                 StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void SettingsWindowControllerOwnsEntryPointsAfterPhase3Extraction()
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "CSharpGit.slnx")))
+            directory = directory.Parent;
+        Assert.NotNull(directory);
+        var presentation = Path.Combine(directory!.FullName, "src", "CSharpGit.Presentation");
+        var controller = File.ReadAllText(Path.Combine(presentation, "SettingsWindowController.cs"));
+        var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+        Assert.False(File.Exists(Path.Combine(presentation, "MainPage.Settings.cs")));
+        Assert.Contains("internal void ConfigureWindowContext(", controller);
+        Assert.Contains("internal void Open(SettingsSection section", controller);
+        Assert.Contains("_settingsWindowController.Open(SettingsSection.General)", page);
+        Assert.DoesNotContain("OpenSettingsWindow(", page);
+    }
+
     private static Type SettingsParameter<T>() =>
         typeof(T).GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
             .SelectMany(constructor => constructor.GetParameters())

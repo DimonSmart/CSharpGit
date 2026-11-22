@@ -20,8 +20,6 @@ public sealed partial class MainPage
     private readonly WorkingTreeTreeSelection _stagedTreeSelection = new();
     private readonly Dictionary<string, bool> _unstagedExpansionState = new(StringComparer.Ordinal);
     private readonly Dictionary<string, bool> _stagedExpansionState = new(StringComparer.Ordinal);
-    private CancellationTokenSource? _workingTreeImageDiffCts;
-    private long _workingTreeImageDiffGeneration;
     private bool _workingTreeSelectionSync;
     private bool _workingTreeTreeRefreshQueued;
     private bool _workingTreeTreeRefreshScheduled;
@@ -54,7 +52,7 @@ public sealed partial class MainPage
             if (WorkingTreePane.Visibility == Visibility.Visible)
                 EnsureWorkingTreeActivePreview();
             else
-                CancelWorkingTreeImageDiff();
+                _workingTreeImageDiff.Cancel();
         });
 
         RebuildWorkingTreeTrees();
@@ -237,7 +235,7 @@ public sealed partial class MainPage
         if (args.PropertyName is nameof(WorkingTreeViewModel.SelectedChange)
             or nameof(WorkingTreeViewModel.SelectedDiffKind))
         {
-            CancelWorkingTreeImageDiff();
+            _workingTreeImageDiff.Cancel();
             if (workingTree.SelectedChange is { } change && workingTree.SelectedDiffKind is { } kind)
                 UpdateWorkingTreeDiffHeader(change, kind);
             else
@@ -248,7 +246,7 @@ public sealed partial class MainPage
         if (args.PropertyName == nameof(WorkingTreeViewModel.IsDiffLoading))
         {
             if (workingTree.IsDiffLoading && workingTree.SelectedDiff is null)
-                SetWorkingTreeDiffPresentationState(DiffPresentationState.LoadingDiff);
+                _diffPresentation.RenderWorkingTree(DiffPresentationState.LoadingDiff);
             return;
         }
 
@@ -256,9 +254,9 @@ public sealed partial class MainPage
         {
             if (workingTree.IsDiffPreviewDeferred)
             {
-                CancelWorkingTreeImageDiff();
+                _workingTreeImageDiff.Cancel();
                 WorkingTreeDiffViewer.Clear();
-                SetWorkingTreeDiffPresentationState(DiffPresentationState.LargeDiff);
+                _diffPresentation.RenderWorkingTree(DiffPresentationState.LargeDiff);
             }
             return;
         }
@@ -267,9 +265,9 @@ public sealed partial class MainPage
         {
             if (!string.IsNullOrWhiteSpace(workingTree.DiffLoadErrorMessage))
             {
-                CancelWorkingTreeImageDiff();
+                _workingTreeImageDiff.Cancel();
                 WorkingTreeDiffViewer.Clear();
-                SetWorkingTreeDiffPresentationState(DiffPresentationState.Error);
+                _diffPresentation.RenderWorkingTree(DiffPresentationState.Error);
                 RunPageUiOperation(
                     () => ShowErrorAsync("Could not read working tree diff", workingTree.DiffLoadErrorMessage),
                     "Working-tree diff error");
@@ -297,21 +295,21 @@ public sealed partial class MainPage
         if (workingTree.IsDiffPreviewDeferred)
         {
             WorkingTreeDiffViewer.Clear();
-            SetWorkingTreeDiffPresentationState(DiffPresentationState.LargeDiff);
+            _diffPresentation.RenderWorkingTree(DiffPresentationState.LargeDiff);
             return;
         }
 
         if (!string.IsNullOrWhiteSpace(workingTree.DiffLoadErrorMessage))
         {
             WorkingTreeDiffViewer.Clear();
-            SetWorkingTreeDiffPresentationState(DiffPresentationState.Error);
+            _diffPresentation.RenderWorkingTree(DiffPresentationState.Error);
             return;
         }
 
         if (workingTree.SelectedDiff is not { } diff)
         {
             WorkingTreeDiffViewer.Clear();
-            SetWorkingTreeDiffPresentationState(
+            _diffPresentation.RenderWorkingTree(
                 workingTree.HasCurrentDelta(change.Path, kind.Value)
                     ? DiffPresentationState.LoadingDiff
                     : DiffPresentationState.DeltaMissing);
@@ -322,25 +320,25 @@ public sealed partial class MainPage
         {
             WorkingTreeDiffViewer.Clear();
             RunPageUiOperation(
-                () => LoadWorkingTreeImageDiffAsync(change, kind.Value),
+                () => _workingTreeImageDiff.LoadAsync(change, kind.Value),
                 "Working-tree image diff");
             return;
         }
 
-        CancelWorkingTreeImageDiff();
+        _workingTreeImageDiff.Cancel();
         var compactLines = CompactDiffLine.Build(diff.Lines);
         switch (DiffPresentationResolver.Resolve(diff, compactLines.Count))
         {
             case DiffContentPresentation.NoTextualPatch:
                 WorkingTreeDiffViewer.Clear();
-                SetWorkingTreeDiffPresentationState(
+                _diffPresentation.RenderWorkingTree(
                     workingTree.HasCurrentDelta(change.Path, kind.Value)
                         ? DiffPresentationState.NoTextualPatch
                         : DiffPresentationState.DeltaMissing);
                 return;
             case DiffContentPresentation.Text:
                 WorkingTreeDiffViewer.SetLines(compactLines, diff.Diagnostics);
-                SetWorkingTreeDiffPresentationState(DiffPresentationState.Text);
+                _diffPresentation.RenderWorkingTree(DiffPresentationState.Text);
                 return;
             case DiffContentPresentation.Binary:
                 throw new InvalidOperationException("Binary diff should have been handled before text presentation.");
@@ -348,74 +346,6 @@ public sealed partial class MainPage
                 throw new ArgumentOutOfRangeException();
         }
     }
-
-    private async Task LoadWorkingTreeImageDiffAsync(
-        WorkingTreeChange change,
-        WorkingTreeDiffKind kind)
-    {
-        if (IsShuttingDown) return;
-        CancelWorkingTreeImageDiff();
-        var repository = _viewModel.Repository;
-        if (repository is null) return;
-
-        var cancellation = new CancellationTokenSource();
-        _workingTreeImageDiffCts = cancellation;
-        var generation = ++_workingTreeImageDiffGeneration;
-        SetWorkingTreeDiffPresentationState(DiffPresentationState.LoadingImage);
-
-        try
-        {
-            var imageResult = await ImageDiffService.LoadWorkingTreeAsync(
-                repository,
-                change,
-                kind,
-                cancellation.Token);
-            if (!IsCurrentWorkingTreeImageRequest(repository, change, kind, generation, cancellation.Token))
-                return;
-
-            _fileActions.PublishWorkingTreePreview(
-                new WorkingTreeFileActionRequest(repository, change, kind),
-                imageResult.Versions);
-
-            if (imageResult.Content is null)
-            {
-                SetWorkingTreeDiffPresentationState(DiffPresentationState.OtherBinary);
-                return;
-            }
-
-            WorkingTreeImageDiffHost.Show(imageResult.Content);
-            SetWorkingTreeDiffPresentationState(DiffPresentationState.Image);
-        }
-        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
-        {
-        }
-        catch (Exception exception)
-        {
-            ReportUiFailure(exception, "Working-tree image diff");
-            if (IsCurrentWorkingTreeImageRequest(repository, change, kind, generation, CancellationToken.None))
-                SetWorkingTreeDiffPresentationState(DiffPresentationState.Unavailable);
-        }
-        finally
-        {
-            if (ReferenceEquals(_workingTreeImageDiffCts, cancellation))
-            {
-                _workingTreeImageDiffCts = null;
-                cancellation.Dispose();
-            }
-        }
-    }
-
-    private bool IsCurrentWorkingTreeImageRequest(
-        Repository repository,
-        WorkingTreeChange change,
-        WorkingTreeDiffKind kind,
-        long generation,
-        CancellationToken cancellationToken) =>
-        !IsShuttingDown &&
-        !cancellationToken.IsCancellationRequested &&
-        generation == _workingTreeImageDiffGeneration &&
-        ReferenceEquals(repository, _viewModel.Repository) &&
-        _viewModel.WorkingTree.IsActive(change, kind);
 
     private void WorkingTreeLargeDiffButton_Click(object sender, RoutedEventArgs args) =>
         RunPageUiOperation(
@@ -565,25 +495,17 @@ public sealed partial class MainPage
     private void CancelWorkingTreeDiff(bool clearViewer)
     {
         _viewModel.WorkingTree.CancelDiff();
-        CancelWorkingTreeImageDiff();
+        _workingTreeImageDiff.Cancel();
         if (clearViewer) ClearWorkingTreeDiffViewer(clearSelectionKind: false);
-    }
-
-    private void CancelWorkingTreeImageDiff()
-    {
-        _workingTreeImageDiffGeneration++;
-        var cancellation = Interlocked.Exchange(ref _workingTreeImageDiffCts, null);
-        cancellation?.Cancel();
-        cancellation?.Dispose();
     }
 
     private void ClearWorkingTreeDiffViewer(
         bool clearSelectionKind,
         DiffPresentationState state = DiffPresentationState.NothingSelected)
     {
-        CancelWorkingTreeImageDiff();
+        _workingTreeImageDiff.Cancel();
         WorkingTreeDiffViewer.Clear();
-        SetWorkingTreeDiffPresentationState(state);
+        _diffPresentation.RenderWorkingTree(state);
         WorkingTreeDiffHeader.Text = string.Empty;
         WorkingTreeDiffKindText.Text = string.Empty;
         if (clearSelectionKind)
