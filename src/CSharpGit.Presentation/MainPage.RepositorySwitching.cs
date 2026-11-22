@@ -9,22 +9,13 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage
 {
     private void OpenRepository_Click(object sender, RoutedEventArgs args) =>
-        RunPageUiOperation(() => OpenRepository_ClickCoreAsync(sender, args), "OpenRepository_Click");
-
-    private async Task OpenRepository_ClickCoreAsync(object sender, RoutedEventArgs args) =>
-        await OpenRepositoryPickerAsync();
+        RunPageUiOperation(OpenRepositoryPickerAsync, "OpenRepository_Click");
 
     private void Repositories_Click(object sender, RoutedEventArgs args) =>
-        RunPageUiOperation(() => Repositories_ClickCoreAsync(sender, args), "Repositories_Click");
-
-    private async Task Repositories_ClickCoreAsync(object sender, RoutedEventArgs args) =>
-        await TryCloseRepositoryAsync();
+        RunPageUiOperation(async () => { await TryCloseRepositoryAsync(); }, "Repositories_Click");
 
     private void CloseRepository_Click(object sender, RoutedEventArgs args) =>
-        RunPageUiOperation(() => CloseRepository_ClickCoreAsync(sender, args), "CloseRepository_Click");
-
-    private async Task CloseRepository_ClickCoreAsync(object sender, RoutedEventArgs args) =>
-        await TryCloseRepositoryAsync();
+        RunPageUiOperation(async () => { await TryCloseRepositoryAsync(); }, "CloseRepository_Click");
 
     private Task<bool> TrySwitchRepositoryAsync(string path) =>
         _repositorySwitch.TrySwitchAsync(path);
@@ -63,12 +54,4 @@ public sealed partial class MainPage
         }
     }
 
-    private static string RepositoryBranchDisplay(string? branchName) =>
-        string.IsNullOrWhiteSpace(branchName) ? "—" : branchName;
-
-    private static string RepositoryDisplayName(string path)
-    {
-        var displayName = Path.GetFileName(Path.TrimEndingDirectorySeparator(path));
-        return string.IsNullOrWhiteSpace(displayName) ? path : displayName;
-    }
 }
