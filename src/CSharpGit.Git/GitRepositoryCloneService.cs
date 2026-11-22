@@ -14,9 +14,16 @@ internal sealed class GitRepositoryCloneService : IRepositoryCloneService
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
     }
 
-    public async Task CloneAsync(
+    public Task CloneAsync(
         string repositoryUrl,
         string targetPath,
+        CancellationToken cancellationToken = default) =>
+        CloneWithSubmodulesAsync(repositoryUrl, targetPath, false, cancellationToken);
+
+    public async Task CloneWithSubmodulesAsync(
+        string repositoryUrl,
+        string targetPath,
+        bool initializeSubmodules,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -58,7 +65,9 @@ internal sealed class GitRepositoryCloneService : IRepositoryCloneService
                 GitCommandKind.User,
                 cancellationToken,
                 environment: null,
-                ["clone", "--", source, target]);
+                initializeSubmodules
+                    ? ["clone", "--recurse-submodules", "--", source, target]
+                    : ["clone", "--", source, target]);
 
             if (result.ExitCode != 0)
                 throw CreateGitFailure(result);

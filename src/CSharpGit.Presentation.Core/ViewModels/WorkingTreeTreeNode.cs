@@ -37,9 +37,11 @@ public sealed class WorkingTreeTreeNode : INotifyPropertyChanged
     public bool HasChildren => Children.Count > 0;
     public bool IsFolder => Change is null;
     public string Status { get; }
-    public string ToolTipText => Change?.OriginalPath is { } originalPath
-        ? $"{originalPath} → {Change.Path}"
-        : Path;
+    public string ToolTipText => Change is { IsSubmodule: true } submodule
+        ? $"{Path}\n{submodule.StatusDisplay}\nInternal files belong to the submodule repository."
+        : Change?.OriginalPath is { } originalPath
+            ? $"{originalPath} → {Change.Path}"
+            : Path;
 
     public bool IsExpanded
     {
@@ -112,6 +114,9 @@ public sealed class WorkingTreeTreeNode : INotifyPropertyChanged
     internal static string FormatStatus(WorkingTreeChange change, WorkingTreeDiffKind kind)
     {
         ArgumentNullException.ThrowIfNull(change);
+
+        if (change.IsSubmodule)
+            return kind == WorkingTreeDiffKind.Staged ? "▣ " + change.IndexStatus : "▣ " + change.WorkingTreeStatus;
 
         return kind switch
         {

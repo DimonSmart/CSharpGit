@@ -49,6 +49,27 @@ public sealed class RepositoryHistoryRewriteUiContractTests
         Assert.Contains("eventArgs.Cancel = true", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void SubmoduleMenuIsPreservedWhenHistoryRewriteOverridesTreeContextMenu()
+    {
+        var history = ReadSource("src/CSharpGit.Presentation/MainPage.HistoryRewrite.cs");
+        var files = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
+        var submodules = ReadSource("src/CSharpGit.Presentation/MainPage.Submodules.cs");
+        var clone = ReadSource("src/CSharpGit.Presentation/Workflows/RepositoryCloneWorkflow.cs");
+
+        Assert.Contains("entry.Kind == RepositorySnapshotEntryKind.Submodule", history, StringComparison.Ordinal);
+        Assert.Contains("ShowSubmoduleMenuAsync(source, entry)", history, StringComparison.Ordinal);
+        Assert.Contains("OpenSelectedSubmoduleAsync(entry)", files, StringComparison.Ordinal);
+        Assert.Contains("Initialize submodule", submodules, StringComparison.Ordinal);
+        Assert.Contains("Update All Submodules", submodules, StringComparison.Ordinal);
+        Assert.Contains("Content = \"Initialize submodules\"", clone, StringComparison.Ordinal);
+        Assert.Contains("initializeSubmodulesBox.IsEnabled = !busy", clone, StringComparison.Ordinal);
+        Assert.Contains("_cloneRepositoryViewModel.InitializeSubmodules = true", clone, StringComparison.Ordinal);
+        Assert.Contains("_cloneRepositoryViewModel.InitializeSubmodules = false", clone, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(FindRepositoryRoot(),
+            "src/CSharpGit.Presentation/MainPage.RepositoryCloning.cs")));
+    }
+
     private static string ReadSource(string relativePath) =>
         File.ReadAllText(Path.Combine(FindRepositoryRoot(), relativePath.Replace('/', Path.DirectorySeparatorChar)));
 

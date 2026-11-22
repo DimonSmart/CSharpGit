@@ -88,6 +88,24 @@ public sealed class GitCommandFeedbackModalUiContractTests
         Assert.DoesNotContain("DismissRequested?.Invoke", escapeHandler, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void FeedbackAndConsoleUseSharedFollowTailPresentation()
+    {
+        var root = FindRepositoryRoot();
+        var controls = Path.Combine(root, "src", "CSharpGit.Presentation", "Controls");
+        var feedbackXaml = File.ReadAllText(Path.Combine(controls, "GitCommandFeedbackView.xaml"));
+        var feedback = File.ReadAllText(Path.Combine(controls, "GitCommandFeedbackView.xaml.cs"));
+        var console = File.ReadAllText(Path.Combine(controls, "GitConsoleView.xaml.cs"));
+
+        Assert.Contains("TextWrapping=\"NoWrap\"", feedbackXaml, StringComparison.Ordinal);
+        Assert.Contains("FontSize=\"{StaticResource Font.Caption}\"", feedbackXaml, StringComparison.Ordinal);
+        Assert.Contains("new GitOutputTextBoxPresenter(OutputText)", feedback, StringComparison.Ordinal);
+        Assert.Contains("_outputPresenter.Update(state.PreviewText)", feedback, StringComparison.Ordinal);
+        Assert.Contains("new GitOutputTextBoxPresenter(StandardOutputText)", console, StringComparison.Ordinal);
+        Assert.Contains("new GitOutputTextBoxPresenter(StandardErrorText)", console, StringComparison.Ordinal);
+        Assert.Contains("presenter.ApplyDelta(display, delta)", console, StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

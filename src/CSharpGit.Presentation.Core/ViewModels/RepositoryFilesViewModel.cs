@@ -26,6 +26,7 @@ public sealed class RepositoryFilesViewModel : INotifyPropertyChanged, IDisposab
     private const int PresentationStateLimit = 12;
 
     private readonly IRepositorySnapshotService _repositorySnapshotService;
+    private readonly ISubmoduleService? _submoduleService;
     private readonly RepositorySnapshotCache _snapshotCache = new();
     private readonly Dictionary<string, RepositoryFilesPresentationState> _states = new(StringComparer.Ordinal);
     private readonly LinkedList<string> _stateLru = [];
@@ -59,10 +60,13 @@ public sealed class RepositoryFilesViewModel : INotifyPropertyChanged, IDisposab
     private Repository? _pendingSnapshotRepository;
     private int _disposed;
 
-    public RepositoryFilesViewModel(IRepositorySnapshotService repositorySnapshotService)
+    public RepositoryFilesViewModel(
+        IRepositorySnapshotService repositorySnapshotService,
+        ISubmoduleService? submoduleService = null)
     {
         _repositorySnapshotService = repositorySnapshotService
             ?? throw new ArgumentNullException(nameof(repositorySnapshotService));
+        _submoduleService = submoduleService;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -158,7 +162,7 @@ public sealed class RepositoryFilesViewModel : INotifyPropertyChanged, IDisposab
                              || !string.Equals(commitHash, _snapshotCommit, StringComparison.Ordinal);
         if (!contextChanged && _snapshotLoadedSuccessfully)
         {
-            PublishSnapshot(repository, commitHash, _snapshot);
+            await RefreshLocalSubmodulesAsync(repository, commitHash);
             return;
         }
 
@@ -178,6 +182,7 @@ public sealed class RepositoryFilesViewModel : INotifyPropertyChanged, IDisposab
         {
             if (CanPublishSnapshot(repository, commitHash, generation, cancellation))
                 PublishSnapshot(repository, commitHash, cached);
+            await RefreshLocalSubmodulesAsync(repository, commitHash);
             return;
         }
 
@@ -203,6 +208,7 @@ public sealed class RepositoryFilesViewModel : INotifyPropertyChanged, IDisposab
 
             _snapshotCache.Set(repositoryIdentity, commitHash, snapshot);
             PublishSnapshot(repository, commitHash, snapshot);
+            await RefreshLocalSubmodulesAsync(repository, commitHash);
         }
         catch (OperationCanceledException)
         {
@@ -521,6 +527,46 @@ public sealed class RepositoryFilesViewModel : INotifyPropertyChanged, IDisposab
         && IsContentSearchMode
         && ReferenceEquals(repository, _context?.Repository)
         && string.Equals(commitHash, _context?.SelectedObjectCommit, StringComparison.Ordinal);
+
+    // Snapshot ObjectId stays historical. LocalSubmodule is refreshed from Git's current index/checkout.
+    private async Task RefreshLocalSubmodulesAsync(Repository repository, string commitHash)
+    {
+        if (_submoduleService is null || !_snapshot.Any(entry => entry.Kind == RepositorySnapshotEntryKind.Submodule))
+            return;
+
+        var before = _snapshot;
+        try
+        {
+            var local = await _submoduleService.ReadAsync(repository);
+            if (!ReferenceEquals(before, _snapshot)
+                || !ReferenceEquals(repository, _snapshotRepository)
+                || !string.Equals(commitHash, _snapshotCommit, StringComparison.Ordinal)
+                || !_isActive)
+                return;
+
+            var byPath = local.ToDictionary(info => info.Path, StringComparer.Ordinal);
+            var updated = before.Select(entry =>
+                entry.Kind == RepositorySnapshotEntryKind.Submodule
+                    ? entry with
+                    {
+                        LocalSubmodule = byPath.GetValueOrDefault(entry.Path)
+                    }
+                    : entry).ToArray();
+            if (!before.SequenceEqual(updated))
+                PublishSnapshot(repository, commitHash, updated);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            // Historical file browsing must remain usable even with broken local submodules.
+            if (ReferenceEquals(before, _snapshot))
+                SetStatus($"Could not read local submodules: {exception.Message}", loading: false,
+                    errorMessage: exception.Message);
+        }
+    }
 
     private void PublishSnapshot(
         Repository repository,

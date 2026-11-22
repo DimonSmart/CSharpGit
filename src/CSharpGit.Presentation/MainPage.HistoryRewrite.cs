@@ -42,7 +42,12 @@ public sealed partial class MainPage
             return;
         }
 
-        ShowRepositorySnapshotFileMenuWithHistoryRewrite(source, entry);
+        // The history-rewrite menu replaces the normal tree handler. Preserve
+        // submodule-specific actions instead of treating gitlinks as files.
+        if (entry.Kind == RepositorySnapshotEntryKind.Submodule)
+            RunPageUiOperation(() => ShowSubmoduleMenuAsync(source, entry), "Submodule menu");
+        else
+            ShowRepositorySnapshotFileMenuWithHistoryRewrite(source, entry);
         args.Handled = true;
     }
 

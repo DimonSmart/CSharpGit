@@ -15,7 +15,11 @@ public sealed record RepositorySnapshotEntry(
     RepositorySnapshotEntryKind Kind,
     string ObjectId,
     string Mode,
-    string ObjectType);
+    string ObjectType)
+{
+    // Local checkout state, explicitly separate from ObjectId of the historical snapshot.
+    public SubmoduleInfo? LocalSubmodule { get; init; }
+}
 
 public sealed record RepositoryContentSearchMatch(
     string Path,

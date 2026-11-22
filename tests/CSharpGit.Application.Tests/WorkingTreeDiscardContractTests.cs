@@ -108,6 +108,24 @@ public sealed class WorkingTreeDiscardContractTests
     }
 
     [Fact]
+    public void DiscardAllExplicitlyReportsExcludedSubmodules()
+    {
+        var ordinary = new WorkingTreeChange("normal.cs", ' ', 'M');
+        var module = new WorkingTreeChange("libs/shared", ' ', 'M')
+        {
+            IsSubmodule = true,
+            SubmoduleModifiedContent = true
+        };
+        var request = WorkingTreeDiscard.CreateAll([ordinary, module]);
+        Assert.NotNull(request);
+        Assert.Equal(1, request.ExcludedSubmoduleCount);
+        Assert.Single(request.Changes);
+        Assert.Contains("1 submodule excluded; internal changes will be left untouched.",
+            request.ConfirmationMessage);
+        Assert.False(WorkingTreeDiscard.CanDiscardSelected([ordinary, module]));
+    }
+
+    [Fact]
     public void SelectedDiscardRejectsMixedConflictSelectionInsteadOfSilentlySkippingIt()
     {
         var ordinary = new WorkingTreeChange("ordinary.cs", ' ', 'M');

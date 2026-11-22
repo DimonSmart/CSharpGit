@@ -109,7 +109,12 @@ public sealed record ChangedFile(
     int? RemovedLines,
     bool IsBinary,
     string? OriginalPath = null,
-    string Status = "M");
+    string Status = "M")
+{
+    public bool IsSubmodule { get; init; }
+    public string? PreviousSubmoduleCommit { get; init; }
+    public string? NewSubmoduleCommit { get; init; }
+}
 
 public sealed record CommitDetails(CommitHistoryItem Commit, IReadOnlyList<ChangedFile> Files);
 

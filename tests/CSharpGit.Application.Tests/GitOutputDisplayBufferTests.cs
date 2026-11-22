@@ -1,3 +1,4 @@
+using System.Text;
 using CSharpGit.Presentation.Controls;
 
 namespace CSharpGit.Application.Tests;
@@ -163,5 +164,34 @@ public sealed class GitOutputDisplayBufferTests
                 char.IsControl(character) &&
                 character is not '\n' and not '\t',
                 $"Unexpected control character U+{(int)character:X4}."));
+    }
+
+    [Fact]
+    public void PullFailureCollapsesProgressWhilePreservingTheActualError()
+    {
+        var raw = new StringBuilder("Git pull failed (exit 1):\n");
+        raw.Append("From https://dev.azure.com/example\r\n");
+        raw.Append("remote: Azure Repos\n");
+        for (var percent = 0; percent <= 100; percent++)
+            raw.Append($"Receiving objects: {percent}% (1073/1073)\r");
+        raw.Append("\nfatal: Authentication failed.");
+
+        var display = new GitOutputDisplayBuffer().Reset(raw.ToString());
+
+        Assert.StartsWith("Git pull failed (exit 1):\n", display, StringComparison.Ordinal);
+        Assert.Contains("From https://dev.azure.com/example\n", display, StringComparison.Ordinal);
+        Assert.Contains("Receiving objects: 100% (1073/1073)\n", display, StringComparison.Ordinal);
+        Assert.DoesNotContain("Receiving objects: 18%", display, StringComparison.Ordinal);
+        Assert.Equal(1, display.Split('\n').Count(line => line.StartsWith("Receiving objects:", StringComparison.Ordinal)));
+        Assert.EndsWith("fatal: Authentication failed.", display, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LeadingCarriageReturnInDiagnosticCannotOverwritePullFailureHeader()
+    {
+        const string raw = "Git pull failed (exit 1):\n\rReceiving objects: 18%\rReceiving objects: 19%\nfatal: remote error";
+        var display = new GitOutputDisplayBuffer().Reset(raw);
+
+        Assert.Equal("Git pull failed (exit 1):\nReceiving objects: 19%\nfatal: remote error", display);
     }
 }

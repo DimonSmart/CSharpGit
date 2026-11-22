@@ -35,6 +35,28 @@ private readonly GitRepositoryCommandRunner _runner;
         ArgumentNullException.ThrowIfNull(change);
         GitPathValidator.ValidateChange(change);
 
+        if (change.IsSubmodule)
+        {
+            if (change.IsConflicted)
+                return new FileDiff(change.Path, false,
+                    [new DiffLine("Submodule gitlink conflict — resolve it with Git.", DiffLineKind.Header)]);
+            var args = new List<string> { "diff" };
+            if (kind == WorkingTreeDiffKind.Staged) args.Add("--cached");
+            args.AddRange(["--no-ext-diff", "--submodule=short", "--", GitPathValidator.LiteralPathspec(change.Path)]);
+            var output = await _runner.RunAsyncPreservingOutputEndings(
+                repository.WorkingDirectory, cancellationToken, false, args.ToArray());
+            var lines = new List<DiffLine> { new("Submodule commit reference (gitlink)", DiffLineKind.Header) };
+            foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                if (line.StartsWith("-Subproject commit ", StringComparison.Ordinal)
+                    || line.StartsWith("+Subproject commit ", StringComparison.Ordinal))
+                    lines.Add(new DiffLine(line.TrimEnd('\r'), DiffLineKind.Header));
+            if (kind == WorkingTreeDiffKind.Unstaged && change.HasSubmoduleLocalChanges)
+                lines.Add(new DiffLine("Uncommitted changes inside the submodule remain in its own working tree.", DiffLineKind.Header));
+            if (lines.Count == 1)
+                lines.Add(new DiffLine("No commit-reference change on this side of the index.", DiffLineKind.Header));
+            return new FileDiff(change.Path, false, lines);
+        }
+
         if (change.IsConflicted)
         {
             return new FileDiff(

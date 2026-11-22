@@ -328,7 +328,7 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
                 var fields = record.Split(' ', 9, StringSplitOptions.None);
                 if (fields.Length == 9)
                 {
-                    changes.Add(CreateChange(fields[8], fields[1], null));
+                    changes.Add(CreateChange(fields[8], fields[1], null, fields[2]));
                     statusEntries.Add(new WorkingTreeStatusEntry(
                         fields[8],
                         record,
@@ -343,7 +343,7 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
                 var originalPath = records.MoveNext() ? records.Current : null;
                 if (fields.Length == 10)
                 {
-                    changes.Add(CreateChange(fields[9], fields[1], originalPath));
+                    changes.Add(CreateChange(fields[9], fields[1], originalPath, fields[2]));
                     statusEntries.Add(new WorkingTreeStatusEntry(
                         fields[9],
                         record + '\0' + (originalPath ?? string.Empty),
@@ -358,7 +358,7 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
                 var fields = record.Split(' ', 11, StringSplitOptions.None);
                 if (fields.Length == 11)
                 {
-                    changes.Add(CreateChange(fields[10], fields[1], null));
+                    changes.Add(CreateChange(fields[10], fields[1], null, fields[2]));
                     statusEntries.Add(new WorkingTreeStatusEntry(
                         fields[10],
                         record,
@@ -402,11 +402,17 @@ internal sealed class GitRepositoryStateService : IRepositoryStateService
     private static bool IsSubmodule(string value) =>
         value.Length > 0 && value[0] == 'S';
 
-    private static WorkingTreeChange CreateChange(string path, string xy, string? originalPath)
+    private static WorkingTreeChange CreateChange(string path, string xy, string? originalPath, string submodule)
     {
         var indexStatus = xy.Length > 0 ? NormalizeStatus(xy[0]) : ' ';
         var workingTreeStatus = xy.Length > 1 ? NormalizeStatus(xy[1]) : ' ';
-        return new WorkingTreeChange(path, indexStatus, workingTreeStatus, originalPath);
+        return new WorkingTreeChange(path, indexStatus, workingTreeStatus, originalPath)
+        {
+            IsSubmodule = IsSubmodule(submodule),
+            SubmoduleCommitChanged = submodule.Length > 1 && submodule[1] == 'C',
+            SubmoduleModifiedContent = submodule.Length > 2 && submodule[2] == 'M',
+            SubmoduleUntrackedContent = submodule.Length > 3 && submodule[3] == 'U'
+        };
     }
 
     private static char NormalizeStatus(char value) => value == '.' ? ' ' : value;

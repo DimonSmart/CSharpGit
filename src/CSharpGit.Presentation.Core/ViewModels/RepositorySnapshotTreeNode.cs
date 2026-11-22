@@ -76,7 +76,9 @@ public sealed class RepositorySnapshotTreeNode : INotifyPropertyChanged
     public string DisplayLabel => Entry?.Kind switch
     {
         RepositorySnapshotEntryKind.Symlink => $"↗ {DisplayName}",
-        RepositorySnapshotEntryKind.Submodule => $"▣ {DisplayName}",
+        RepositorySnapshotEntryKind.Submodule => Entry.LocalSubmodule is { } info
+            ? $"▣ {DisplayName} · {info.StatusText}"
+            : $"▣ {DisplayName} · historical gitlink",
         RepositorySnapshotEntryKind.Unsupported => $"? {DisplayName}",
         _ => DisplayName
     };

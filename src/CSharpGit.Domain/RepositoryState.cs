@@ -147,6 +147,13 @@ public sealed record GitReferences(
 
 public sealed record WorkingTreeChange(string Path, char IndexStatus, char WorkingTreeStatus, string? OriginalPath = null)
 {
+    // Porcelain v2 S<c><m><u> flags are independent of the index/worktree XY pair.
+    public bool IsSubmodule { get; init; }
+    public bool SubmoduleCommitChanged { get; init; }
+    public bool SubmoduleModifiedContent { get; init; }
+    public bool SubmoduleUntrackedContent { get; init; }
+    public bool HasSubmoduleLocalChanges => SubmoduleModifiedContent || SubmoduleUntrackedContent;
+    public bool CanStageGitlink => IsSubmodule && SubmoduleCommitChanged && IsUnstaged && !IsConflicted;
     public bool IsStaged => IndexStatus is not ' ' and not '?';
     public bool IsUnstaged => WorkingTreeStatus is not ' ';
     public bool IsConflicted => IndexStatus == 'U' || WorkingTreeStatus == 'U' ||
@@ -156,7 +163,9 @@ public sealed record WorkingTreeChange(string Path, char IndexStatus, char Worki
         IndexStatus == 'R' || WorkingTreeStatus == 'R' ? FileChangeKind.Renamed :
         IndexStatus == 'D' || WorkingTreeStatus == 'D' ? FileChangeKind.Deleted :
         IndexStatus == 'A' || WorkingTreeStatus == 'A' ? FileChangeKind.Added : FileChangeKind.Modified;
-    public string StatusDisplay => $"{Kind}: {(IsStaged ? "staged" : "")}{(IsStaged && IsUnstaged ? " + " : "")}{(IsUnstaged ? "unstaged" : "")}";
+    public string StatusDisplay => IsSubmodule
+        ? $"Submodule: {(SubmoduleCommitChanged ? "commit changed; " : "")}{(SubmoduleModifiedContent ? "modified content; " : "")}{(SubmoduleUntrackedContent ? "untracked content; " : "")}{(IsStaged ? "staged gitlink" : "gitlink not staged")}"
+        : $"{Kind}: {(IsStaged ? "staged" : "")}{(IsStaged && IsUnstaged ? " + " : "")}{(IsUnstaged ? "unstaged" : "")}";
 }
 
 public sealed record RepositoryState(
