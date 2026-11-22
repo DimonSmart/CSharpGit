@@ -75,7 +75,10 @@ public sealed class PresentationFeatureArchitectureTests
         Assert.DoesNotContain("_repositoryMaintenance.Dispose()", lifecycle);
         Assert.DoesNotContain("_viewModel.Dispose()", lifecycle);
         Assert.Contains("_fileActions.PropertyChanged -= FileActions_PropertyChanged", lifecycle);
-        Assert.Contains("_repositoryMaintenance.PropertyChanged -= RepositoryMaintenance_PropertyChanged", lifecycle);
+        var maintenanceController = Read("src/CSharpGit.Presentation/Workflows/RepositoryMaintenanceController.cs");
+        Assert.Contains("_maintenanceController.Shutdown()", lifecycle);
+        Assert.Contains("_maintenance.PropertyChanged -= Maintenance_PropertyChanged", maintenanceController);
+        Assert.Contains("_repository.PropertyChanged -= Repository_PropertyChanged", maintenanceController);
         Assert.Contains("content.CompleteShutdown();", session);
         Assert.Contains("finally { scope.Dispose(); }", session);
     }
