@@ -114,8 +114,7 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
         // Window DI scope owns disposal of resolved feature models.
         _repositoryFilesViewModel.PropertyChanged -= RepositoryFilesViewModel_PropertyChanged;
 
-        _viewModel.PropertyChanged -= RepositoryMaintenanceViewModel_PropertyChanged;
-        _repositoryMaintenance.PropertyChanged -= RepositoryMaintenance_PropertyChanged;
+        _maintenanceController.Shutdown();
 
 
     }

@@ -10,6 +10,7 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage
 {
     private readonly RepositoryMaintenanceViewModel _repositoryMaintenance = null!;
+    private readonly Workflows.RepositoryMaintenanceController _maintenanceController = null!;
     private SettingsWindowController _settingsWindowController = null!;
     private readonly Dialogs.AboutUpdateDialogController _aboutUpdate = null!;
     private IGitCommandActivitySource _gitCommandActivitySource = null!;
@@ -177,9 +178,13 @@ public sealed partial class MainPage
         RepositoryExplorer.ReferenceMenuRequested += RepositoryTreeBranchDeletion_RightTapped;
 
         _repositoryMaintenance.Attach(_viewModel, () => _worktreesViewModel.RefreshAsync(throwOnError: true));
-        _repositoryMaintenance.PropertyChanged += RepositoryMaintenance_PropertyChanged;
-        _viewModel.PropertyChanged += RepositoryMaintenanceViewModel_PropertyChanged;
-        UpdateOptimizeRepositoryAvailability();
+        _maintenanceController = new Workflows.RepositoryMaintenanceController(
+            _viewModel, _repositoryMaintenance,
+            () => XamlRoot, () => IsShuttingDown,
+            RepositoryToolbar.SetOptimizeAvailability,
+            () => GitConsoleHost.Open(null, manualOpen: true),
+            ReportUiFailure);
+        _maintenanceController.Initialize();
         _repositoryRefresh.InitializeRepositoryChangeMonitoring();
         _confirmationController = new Workflows.RepositoryConfirmationController(
             _viewModel,
@@ -253,76 +258,7 @@ public sealed partial class MainPage
 
     private Task OpenRepositoryPickerAsync() => _repositoryPicker.OpenAsync();
 
-    private void RepositoryMaintenance_PropertyChanged(object? sender, PropertyChangedEventArgs args)
-    {
-        if (args.PropertyName is nameof(RepositoryMaintenanceViewModel.IsRunning)
-            or nameof(RepositoryMaintenanceViewModel.CanStart))
-            UpdateOptimizeRepositoryAvailability();
-    }
-
-    private void RepositoryMaintenanceViewModel_PropertyChanged(
-        object? sender,
-        PropertyChangedEventArgs args)
-    {
-        if (args.PropertyName == nameof(OpenRepositoryViewModel.Repository))
-            _repositoryMaintenance.Invalidate();
-
-        if (args.PropertyName is nameof(OpenRepositoryViewModel.Repository)
-            or nameof(OpenRepositoryViewModel.IsBusy)
-            or nameof(RepositoryOperationsViewModel.CurrentOperation))
-            UpdateOptimizeRepositoryAvailability();
-    }
-
-    private void UpdateOptimizeRepositoryAvailability() =>
-        RepositoryToolbar.SetOptimizeAvailability(_repositoryMaintenance.CanStart);
-
     private void OptimizeRepository_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(OptimizeRepositoryAsync, "Optimize repository");
+        RunPageUiOperation(_maintenanceController.OptimizeAsync, "Optimize repository");
 
-    private async Task OptimizeRepositoryAsync()
-    {
-        if (!_repositoryMaintenance.CanStart
-            || _viewModel.Repository is not { } repository)
-            return;
-
-        if (XamlRoot is not { } root) return;
-        var dialog = new RepositoryMaintenanceDialog(
-            root, () => GitConsoleHost.Open(null, manualOpen: true));
-
-        try
-        {
-            if (!await _repositoryMaintenance.PrepareAsync(repository))
-            {
-                if (!ReferenceEquals(repository, _viewModel.Repository) || IsShuttingDown)
-                    return;
-
-                if (_repositoryMaintenance.PreparationFailure is { } failure)
-                    await dialog.ShowMessageAsync("Could not read repository statistics", failure.Message);
-                else
-                    await dialog.ShowMessageAsync("Optimization not started",
-                        "Repository state changed before optimization could start.");
-                return;
-            }
-
-            if (!ReferenceEquals(repository, _viewModel.Repository) || IsShuttingDown)
-                return;
-
-            await dialog.ShowAsync(_repositoryMaintenance, repository);
-        }
-        catch (OperationCanceledException) when (IsShuttingDown)
-        {
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            ReportUiFailure(exception, "Repository optimization");
-            if (!IsShuttingDown && ReferenceEquals(repository, _viewModel.Repository))
-            {
-                try { await dialog.ShowMessageAsync("Optimization not started", exception.Message); }
-                catch (Exception notificationError)
-                {
-                    ReportUiFailure(notificationError, "Repository optimization error dialog");
-                }
-            }
-        }
-    }
 }

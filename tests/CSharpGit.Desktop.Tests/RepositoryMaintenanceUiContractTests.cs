@@ -45,7 +45,8 @@ public sealed class RepositoryMaintenanceUiContractTests
         var context = ReadSource("src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.RepositoryMaintenance.cs");
         Assert.Contains("RepositoryOperations.CurrentOperation == RepositoryOperation.None", context, StringComparison.Ordinal);
         Assert.Contains("!IsBusy", context, StringComparison.Ordinal);
-        Assert.Contains("_repositoryMaintenance.CanStart", source, StringComparison.Ordinal);
+        var controller = ReadSource("src/CSharpGit.Presentation/Workflows/RepositoryMaintenanceController.cs");
+        Assert.Contains("_maintenance.CanStart", controller, StringComparison.Ordinal);
         Assert.Contains("_repositoryMaintenance.IsRunning", source, StringComparison.Ordinal);
         Assert.DoesNotContain("RepositoryOperation.Merge", source, StringComparison.Ordinal);
         Assert.DoesNotContain("RepositoryOperation.Rebase", source, StringComparison.Ordinal);
@@ -104,6 +105,23 @@ public sealed class RepositoryMaintenanceUiContractTests
         Assert.Contains("View Git console", dialog, StringComparison.Ordinal);
         Assert.Contains("_openConsole()", dialog, StringComparison.Ordinal);
         Assert.Contains("GitConsoleHost.Open(null, manualOpen: true)", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MaintenanceControllerOwnsSubscriptionsAndDialog()
+    {
+        var page = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
+        var controller = ReadSource("src/CSharpGit.Presentation/Workflows/RepositoryMaintenanceController.cs");
+        var lifetime = ReadSource("src/CSharpGit.Presentation/MainPage.Lifecycle.cs");
+
+        Assert.Contains("_maintenanceController.Initialize()", page, StringComparison.Ordinal);
+        Assert.Contains("_maintenanceController.Shutdown()", lifetime, StringComparison.Ordinal);
+        Assert.Contains("_maintenance.PropertyChanged += Maintenance_PropertyChanged", controller, StringComparison.Ordinal);
+        Assert.Contains("_maintenance.PropertyChanged -= Maintenance_PropertyChanged", controller, StringComparison.Ordinal);
+        Assert.Contains("_repository.PropertyChanged += Repository_PropertyChanged", controller, StringComparison.Ordinal);
+        Assert.Contains("_repository.PropertyChanged -= Repository_PropertyChanged", controller, StringComparison.Ordinal);
+        Assert.Contains("new RepositoryMaintenanceDialog", controller, StringComparison.Ordinal);
+        Assert.DoesNotContain("new RepositoryMaintenanceDialog", page, StringComparison.Ordinal);
     }
 
     private static string ReadSource(string relativePath) =>
