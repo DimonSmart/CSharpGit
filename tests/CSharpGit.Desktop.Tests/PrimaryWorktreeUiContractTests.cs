@@ -37,6 +37,22 @@ public sealed class PrimaryWorktreeUiContractTests
         Assert.DoesNotContain("private static void OpenFolder", worktreesPage, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void WorktreeContextMenuBehaviorHasAnAccessiblePageHandler()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+        var behavior = File.ReadAllText(Path.Combine(presentation, "Controls", "WorktreeContextMenuBehavior.cs"));
+        var page = File.ReadAllText(Path.Combine(presentation, "MainPage.WorktreeContextMenu.cs"));
+        var workflow = File.ReadAllText(Path.Combine(presentation, "Workflows", "WorktreeController.cs"));
+
+        Assert.Contains("page.ShowWorktreeContextMenu(element, worktree, args)", behavior, StringComparison.Ordinal);
+        Assert.Contains("internal void ShowWorktreeContextMenu(", page, StringComparison.Ordinal);
+        Assert.Contains("_worktrees.PopulateWorktreeMenu(flyout, worktree)", page, StringComparison.Ordinal);
+        Assert.Contains("args.Handled = true", page, StringComparison.Ordinal);
+        Assert.Contains("internal void PopulateWorktreeMenu(", workflow, StringComparison.Ordinal);
+    }
+
     private static int CountOccurrences(string text, string value)
     {
         var count = 0;
