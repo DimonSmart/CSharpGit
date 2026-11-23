@@ -1,45 +1,67 @@
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace CSharpGit.Presentation;
+namespace CSharpGit.Presentation.Workflows;
 
-public sealed partial class MainPage
+internal sealed class RepositoryPushController(
+    OpenRepositoryViewModel viewModel,
+    Func<XamlRoot?> xamlRoot,
+    Func<ContentDialog, Task<ContentDialogResult>> showDialog,
+    Func<string, string, Task> showError,
+    Action refreshPresentation,
+    Func<bool> isShuttingDown)
 {
-    private async Task PushFromUiAsync()
+    private readonly OpenRepositoryViewModel _viewModel = viewModel;
+    private readonly Func<XamlRoot?> _xamlRoot = xamlRoot;
+    private readonly Func<ContentDialog, Task<ContentDialogResult>> _showDialog = showDialog;
+    private readonly Func<string, string, Task> _showError = showError;
+    private readonly Action _refreshPresentation = refreshPresentation;
+    private readonly Func<bool> _isShuttingDown = isShuttingDown;
+
+    internal Task PushPrimaryAsync() => _viewModel.RepositorySync.DefaultPushAction switch
+    {
+        PushToolbarAction.PushTo => PushToAsync(),
+        PushToolbarAction.ForcePushWithLease => ForcePushWithLeaseAsync(),
+        _ => PushAsync()
+    };
+
+    internal async Task PushAsync()
     {
         if (_viewModel.Repository is null || _viewModel.IsBusy) return;
         var repository = _viewModel.Repository;
 
         var result = await _viewModel.RepositorySync.PushAsync(repository);
-        RefreshPresentationCollections();
+        if (!IsCurrent(repository)) return;
+        _refreshPresentation();
 
         switch (result.Kind)
         {
             case PushExecutionKind.Completed:
                 return;
             case PushExecutionKind.PublishTargetRequired:
-                await OfferChoosePublishTargetAsync(
+                await OfferChoosePublishTargetAsync(repository,
                     result.Message ?? "Choose the publish target explicitly to continue.");
                 return;
             case PushExecutionKind.NonFastForwardRejected:
                 await ShowNonFastForwardDialogAsync(repository);
                 return;
             case PushExecutionKind.Unavailable:
-                await ShowErrorAsync("Push unavailable", result.Message ?? "Push is unavailable.");
+                await _showError("Push unavailable", result.Message ?? "Push is unavailable.");
                 return;
             default:
-                await ShowErrorAsync("Push failed", result.Message ?? "Push failed.");
+                await _showError("Push failed", result.Message ?? "Push failed.");
                 return;
         }
     }
 
-    private async Task OfferChoosePublishTargetAsync(string message)
+    private async Task OfferChoosePublishTargetAsync(Repository repository, string message)
     {
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "Publish target required",
             Content = message,
             PrimaryButtonText = "Choose publish target…",
@@ -47,7 +69,7 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Primary
         };
 
-        if (await ShowPageDialogAsync(dialog) == ContentDialogResult.Primary)
+        if (await _showDialog(dialog) == ContentDialogResult.Primary && IsCurrent(repository))
             await ShowPublishBranchDialogAsync();
     }
 
@@ -67,26 +89,26 @@ public sealed partial class MainPage
         await RunTargetPushAsync(repository, target, "Publish branch failed");
     }
 
-    private async Task ShowPushToDialogAsync()
+    internal async Task PushToAsync()
     {
         if (_viewModel.Repository is null || _viewModel.IsBusy) return;
 
         if (_viewModel.RepositoryOperations.CurrentOperation != RepositoryOperation.None)
         {
-            await ShowErrorAsync("Push to unavailable", "Complete or abort the current Git operation first.");
+            await _showError("Push to unavailable", "Complete or abort the current Git operation first.");
             return;
         }
 
         var currentBranch = _viewModel.Branches.LocalBranches.FirstOrDefault(branch => branch.IsCurrent);
         if (currentBranch is null)
         {
-            await ShowErrorAsync("Push to unavailable", "HEAD is detached. Push to requires a current local branch.");
+            await _showError("Push to unavailable", "HEAD is detached. Push to requires a current local branch.");
             return;
         }
 
         if (_viewModel.RepositorySync.Remotes.Count == 0)
         {
-            await ShowErrorAsync("Push to unavailable", "No Git remotes are configured for this repository.");
+            await _showError("Push to unavailable", "No Git remotes are configured for this repository.");
             return;
         }
 
@@ -107,9 +129,10 @@ public sealed partial class MainPage
         PushTargetDialogOptions options)
     {
         var preparationResult = await _viewModel.RepositorySync.PreparePublishBranchAsync(repository);
+        if (!IsCurrent(repository)) return null;
         if (!preparationResult.Succeeded || preparationResult.Preparation is not { } preparation)
         {
-            await ShowErrorAsync(
+            await _showError(
                 $"{options.Title} unavailable",
                 preparationResult.ErrorMessage ?? "Could not prepare the publish target.");
             return null;
@@ -162,7 +185,7 @@ public sealed partial class MainPage
 
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = options.Title,
             Content = content,
             PrimaryButtonText = options.PrimaryAction,
@@ -179,7 +202,7 @@ public sealed partial class MainPage
         remoteBranchBox.TextChanged += (_, _) => UpdatePrimaryState();
         UpdatePrimaryState();
 
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary) return null;
+        if (await _showDialog(dialog) != ContentDialogResult.Primary || !IsCurrent(repository)) return null;
         if (remoteCombo.SelectedItem is not GitRemote selectedRemote) return null;
 
         return new PushTargetDialogResult(
@@ -204,7 +227,8 @@ public sealed partial class MainPage
             target.RemoteBranch,
             target.SetUpstream);
 
-        RefreshPresentationCollections();
+        if (!IsCurrent(repository)) return;
+        _refreshPresentation();
         if (result.Kind == PushExecutionKind.Completed) return;
 
         if (result.Kind == PushExecutionKind.NonFastForwardRejected)
@@ -214,7 +238,7 @@ public sealed partial class MainPage
         }
 
         if (!string.IsNullOrWhiteSpace(result.Message))
-            await ShowErrorAsync(failureTitle, result.Message);
+            await _showError(failureTitle, result.Message);
     }
 
     private sealed record PushTargetDialogOptions(
@@ -231,7 +255,7 @@ public sealed partial class MainPage
     {
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "Push rejected",
             Content = "The remote history differs from your local history. This can happen after rebase or amend.",
             PrimaryButtonText = "Force push with lease…",
@@ -239,36 +263,38 @@ public sealed partial class MainPage
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close
         };
-        var result = await ShowPageDialogAsync(dialog);
+        var result = await _showDialog(dialog);
+        if (!IsCurrent(repository)) return;
         if (result == ContentDialogResult.Secondary)
         {
             await _viewModel.RepositorySync.FetchAllAsync(repository);
-            RefreshPresentationCollections();
+            if (IsCurrent(repository)) _refreshPresentation();
         }
         else if (result == ContentDialogResult.Primary)
         {
-            await RunForcePushWithLeaseAsync();
+            await ForcePushWithLeaseAsync();
         }
     }
 
-    private async Task RunForcePushWithLeaseAsync()
+    internal async Task ForcePushWithLeaseAsync()
     {
         if (_viewModel.Repository is null || _viewModel.IsBusy) return;
         if (_viewModel.RepositoryOperations.CurrentOperation != RepositoryOperation.None)
         {
-            await ShowErrorAsync("Force push with lease unavailable", "Complete or abort the current Git operation first.");
+            await _showError("Force push with lease unavailable", "Complete or abort the current Git operation first.");
             return;
         }
 
         var repository = _viewModel.Repository;
         var preparation = await _viewModel.RepositorySync.PrepareForcePushWithLeaseAsync(repository);
+        if (!IsCurrent(repository)) return;
 
         if (preparation.Kind == ForcePushPreparationKind.ExplicitTargetRequired)
         {
             var currentBranch = _viewModel.Branches.LocalBranches.FirstOrDefault(branch => branch.IsCurrent);
             if (currentBranch is null)
             {
-                await ShowErrorAsync(
+                await _showError(
                     "Force push with lease unavailable",
                     "No current local branch is available.");
                 return;
@@ -276,14 +302,14 @@ public sealed partial class MainPage
 
             if (_viewModel.RepositorySync.Remotes.Count == 0)
             {
-                await ShowErrorAsync(
+                await _showError(
                     "Force push with lease unavailable",
                     "No Git remotes are configured for this repository.");
                 return;
             }
 
             var target = await ShowForcePushTargetDialogAsync(currentBranch.Name);
-            if (target is null) return;
+            if (target is null || !IsCurrent(repository)) return;
 
             preparation = await _viewModel.RepositorySync.PrepareForcePushWithLeaseAsync(
                 repository,
@@ -298,8 +324,7 @@ public sealed partial class MainPage
             return;
         }
 
-        if (!ReferenceEquals(repository, _viewModel.Repository))
-            return;
+        if (!IsCurrent(repository)) return;
 
         var confirmation = new StackPanel { Spacing = 8, Width = 540 };
         confirmation.Children.Add(new TextBlock { Text = "Rewrite remote branch history?", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
@@ -315,24 +340,25 @@ public sealed partial class MainPage
 
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "Force push with lease",
             Content = confirmation,
             PrimaryButtonText = "Force push with lease",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary) return;
+        if (await _showDialog(dialog) != ContentDialogResult.Primary || !IsCurrent(repository)) return;
 
         var execution = await _viewModel.RepositorySync.ForcePushWithLeaseAsync(repository, snapshot);
-        RefreshPresentationCollections();
+        if (!IsCurrent(repository)) return;
+        _refreshPresentation();
 
         switch (execution.Kind)
         {
             case ForcePushExecutionKind.Completed:
                 return;
             case ForcePushExecutionKind.Cancelled:
-                await ShowErrorAsync(
+                await _showError(
                     "Force push cancelled",
                     execution.Message ?? "Force push with lease was cancelled.");
                 return;
@@ -342,7 +368,7 @@ public sealed partial class MainPage
             case ForcePushExecutionKind.StaleRepository:
                 return;
             default:
-                await ShowErrorAsync(
+                await _showError(
                     "Force push failed",
                     execution.Message ?? "Force push with lease failed.");
                 return;
@@ -355,17 +381,17 @@ public sealed partial class MainPage
     {
         var rejection = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "Force push rejected",
             Content = $"{snapshot.Remote}/{snapshot.RemoteBranch} changed after it was checked.\n\nExpected: {ShortOid(snapshot.ExpectedRemoteCommit)}\n\nThe remote branch contains a different state. Your force push was not performed.",
             PrimaryButtonText = "Fetch",
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await ShowPageDialogAsync(rejection) == ContentDialogResult.Primary)
+        if (await _showDialog(rejection) == ContentDialogResult.Primary && IsCurrent(repository))
         {
             await _viewModel.RepositorySync.FetchAsync(repository, snapshot.Remote);
-            RefreshPresentationCollections();
+            if (IsCurrent(repository)) _refreshPresentation();
         }
     }
 
@@ -403,7 +429,7 @@ public sealed partial class MainPage
 
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "Force push target",
             Content = content,
             PrimaryButtonText = "Continue",
@@ -420,7 +446,7 @@ public sealed partial class MainPage
         remoteBranchBox.TextChanged += (_, _) => UpdatePrimaryState();
         UpdatePrimaryState();
 
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary) return null;
+        if (await _showDialog(dialog) != ContentDialogResult.Primary) return null;
         if (remoteCombo.SelectedItem is not GitRemote selectedRemote) return null;
 
         return (selectedRemote.Name, remoteBranchBox.Text.Trim());
@@ -437,10 +463,13 @@ public sealed partial class MainPage
             ForcePushPreparationKind.MultiplePushDestinations => "Force push with lease unavailable",
             _ => "Force push with lease unavailable"
         };
-        await ShowErrorAsync(
+        await _showError(
             title,
             preparation.Message ?? "Force push with lease is unavailable.");
     }
+
+    private bool IsCurrent(Repository repository) =>
+        !_isShuttingDown() && ReferenceEquals(repository, _viewModel.Repository);
 
     private static string ShortOid(string oid) => oid[..Math.Min(10, oid.Length)];
     private static string FormatSubject(string? subject) => string.IsNullOrWhiteSpace(subject) ? string.Empty : $"  {subject}";

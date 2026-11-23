@@ -3,7 +3,7 @@ using CSharpGit.Presentation.Views;
 
 namespace CSharpGit.Presentation;
 
-public sealed partial class MainPage : Windowing.IWindowContentLifetime
+public sealed partial class MainPage
 {
     private int _shutdownStarted;
     private int _shutdownFinalized;
@@ -35,11 +35,6 @@ public sealed partial class MainPage : Windowing.IWindowContentLifetime
     }
 
     // Close admission is decided by WindowCloseOrchestrator; the page only shuts down UI requests.
-    Task Windowing.IWindowContentLifetime.PrepareForShutdownAsync(CancellationToken cancellationToken) =>
-        PrepareForShutdown();
-
-    void Windowing.IWindowContentLifetime.CompleteShutdown() => BeginShutdown();
-
     public Task PrepareForShutdown()
     {
         if (Interlocked.Exchange(ref _shutdownStarted, 1) != 0) return Task.CompletedTask;

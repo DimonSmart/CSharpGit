@@ -79,7 +79,7 @@ public sealed class PresentationFeatureArchitectureTests
         Assert.Contains("_maintenanceController.Shutdown()", lifecycle);
         Assert.Contains("_maintenance.PropertyChanged -= Maintenance_PropertyChanged", maintenanceController);
         Assert.Contains("_repository.PropertyChanged -= Repository_PropertyChanged", maintenanceController);
-        Assert.Contains("content.CompleteShutdown();", session);
+        Assert.Contains("completeContent();", session);
         Assert.Contains("finally { scope.Dispose(); }", session);
     }
 
