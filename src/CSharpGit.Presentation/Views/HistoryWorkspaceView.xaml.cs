@@ -57,6 +57,10 @@ public sealed partial class HistoryWorkspaceView : UserControl
     private void CommitFilesList_SelectionChanged(object sender, SelectionChangedEventArgs args) =>
         CommitFilesList_SelectionChangedCallback?.Invoke(sender, args);
 
+    internal Action<object, KeyRoutedEventArgs>? CommitFilesList_KeyDownCallback { get; set; }
+    private void CommitFilesList_KeyDown(object sender, KeyRoutedEventArgs args) =>
+        CommitFilesList_KeyDownCallback?.Invoke(sender, args);
+
     internal Action<object, DoubleTappedRoutedEventArgs>? CommitFilesList_DoubleTappedCallback { get; set; }
     private void CommitFilesList_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args) =>
         CommitFilesList_DoubleTappedCallback?.Invoke(sender, args);
