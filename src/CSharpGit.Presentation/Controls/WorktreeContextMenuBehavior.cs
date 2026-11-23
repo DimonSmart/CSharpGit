@@ -38,16 +38,16 @@ public static class WorktreeContextMenuBehavior
             })
             return;
 
-        if (FindMainPage(element) is not { } page) return;
-        page.ShowWorktreeContextMenu(element, worktree, args);
+        if (FindExplorer(element) is not { } explorer) return;
+        explorer.ShowWorktreeContextMenu(element, worktree, args);
     }
 
-    private static MainPage? FindMainPage(DependencyObject start)
+    private static Views.RepositoryExplorerView? FindExplorer(DependencyObject start)
     {
         DependencyObject? current = start;
         while (current is not null)
         {
-            if (current is MainPage page) return page;
+            if (current is Views.RepositoryExplorerView explorer) return explorer;
             current = VisualTreeHelper.GetParent(current);
         }
 
