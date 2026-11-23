@@ -27,7 +27,7 @@ public sealed class WorkingTreeDiffUiContractTests
     public void WorkingTreeUsesHierarchicalLeafOnlyDesktopSelectionAndSingleActivePreview()
     {
         var root = FindRepositoryRoot();
-        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.xaml"));
         var confirmations = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryConfirmationController.cs"));
         var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs"));
         var selection = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeTreeSelection.cs"));
@@ -201,7 +201,7 @@ public sealed class WorkingTreeDiffUiContractTests
     public void CommitClearsConsumedStagedPreviewAndMessageBindingUpdatesImmediately()
     {
         var root = FindRepositoryRoot();
-        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.xaml"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var commitCreation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitCreationViewModel.cs"));
         var commitCreationContext = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.CommitCreation.cs"));
