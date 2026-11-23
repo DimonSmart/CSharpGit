@@ -29,6 +29,8 @@ public sealed partial class MainPage : Page
 
     // Temporary typed facade while WorkingTree feature interactions are moved into WorkingTreeView.
     private Grid WorkingTreeHeader => WorkingTreePane.WorkingTreeHeaderControl;
+    private TreeView UnstagedChangesList => UnstagedChangesTree;
+    private TreeView StagedChangesList => StagedChangesTree;
     private TextBlock UnstagedHeader => WorkingTreePane.UnstagedHeaderControl;
     private TreeView UnstagedChangesTree => WorkingTreePane.UnstagedChangesTreeControl;
     private GridSplitter WorkingTreeStagingSplitter => WorkingTreePane.WorkingTreeStagingSplitterControl;

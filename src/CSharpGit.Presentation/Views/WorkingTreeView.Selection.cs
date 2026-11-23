@@ -175,7 +175,7 @@ public sealed partial class WorkingTreeView
             RebuildWorkingTreeTrees();
     }
 
-    private void RebuildWorkingTreeTrees()
+    internal void RebuildWorkingTreeTrees()
     {
         if (IsShuttingDown) return;
         var repositoryIdentity = _viewModel.Repository?.GitDirectory;
@@ -284,7 +284,7 @@ public sealed partial class WorkingTreeView
         ClearActiveWorkingTreeChange();
     }
 
-    private static WorkingTreeTreeNode? ResolveWorkingTreeNode(object? value) => value switch
+    internal static WorkingTreeTreeNode? ResolveWorkingTreeNode(object? value) => value switch
     {
         WorkingTreeTreeNode node => node,
         TreeViewNode { Content: WorkingTreeTreeNode node } => node,
@@ -295,6 +295,11 @@ public sealed partial class WorkingTreeView
 
     private static bool IsShiftDown() =>
         (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift) & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down;
+
+    internal IEnumerable<WorkingTreeTreeNode> UnstagedTreeRoots => _unstagedTreeRoots;
+    internal IEnumerable<WorkingTreeTreeNode> StagedTreeRoots => _stagedTreeRoots;
+    internal void InvokeWorkingTreeNodeForCheck(WorkingTreeTreeNode node, WorkingTreeDiffKind kind) =>
+        WorkingTreeNodeInvoked(node, kind);
 
     internal void SelectWorkingTreeChange(WorkingTreeChange change, WorkingTreeDiffKind kind)
     {

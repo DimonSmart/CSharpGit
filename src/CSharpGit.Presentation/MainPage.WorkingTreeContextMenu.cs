@@ -20,7 +20,7 @@ public sealed partial class MainPage
         WorkingTreeDiffKind kind)
     {
         var source = args.OriginalSource as FrameworkElement;
-        var node = ResolveWorkingTreeNode(source?.DataContext);
+        var node = Views.WorkingTreeView.ResolveWorkingTreeNode(source?.DataContext);
         if (source is null || node is null) return;
 
         var flyout = new MenuFlyout();
