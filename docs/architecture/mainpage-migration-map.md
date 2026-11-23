@@ -390,3 +390,7 @@ Generated from the baseline source declarations to support phase-2 extraction. F
 ## Phase 3 follow-up: toolbar routing
 
 Typed repository-toolbar actions now call their existing workflows directly; no synthetic `RoutedEventArgs` are constructed by `MainPage`. F5 and the toolbar refresh indicator share `RepositoryManualRefreshController`. This is a partial Phase 3 step; feature views and window lifetime still require extraction.
+
+## Phase 3 follow-up: branch deletion ownership
+
+Local/remote branch deletion (including the optional paired remote/local deletion) and branch-folder deletion now share `Workflows/BranchDeletionController`. `BranchesViewModel` retains mutation semantics; `MainPage.BranchDeletion.cs` contains only the remaining reference context-menu, tag checkout and remote removal UI, which must still migrate to the owning explorer views.

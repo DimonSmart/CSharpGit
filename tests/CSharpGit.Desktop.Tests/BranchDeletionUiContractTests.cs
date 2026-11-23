@@ -9,35 +9,36 @@ public sealed class BranchDeletionUiContractTests
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryExplorerView.xaml"));
         var treeState = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryTreeState.cs"));
         var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchDeletion.cs"));
+        var controller = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "BranchDeletionController.cs"));
 
         Assert.Contains("RightTapped=\"Tree_RightTapped\"", xaml, StringComparison.Ordinal);
         var explorer = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryExplorerView.xaml.cs"));
         Assert.Contains("ReferenceMenuRequested?.Invoke(sender, e);", explorer, StringComparison.Ordinal);
         Assert.DoesNotContain("RightTapped -= RepositoryTree_RightTapped", treeState, StringComparison.Ordinal);
         Assert.DoesNotContain("RightTapped += RepositoryTreeBranchDeletion_RightTapped", treeState, StringComparison.Ordinal);
-        Assert.Contains("ConfirmDeleteLocalBranchAsync(branch)", workflow, StringComparison.Ordinal);
-        Assert.Contains("Title = \"Delete local branch?\"", workflow, StringComparison.Ordinal);
+        Assert.Contains("_branchDeletion.ConfirmDeleteLocalAsync(branch)", workflow, StringComparison.Ordinal);
+        Assert.Contains("Title = \"Delete local branch?\"", controller, StringComparison.Ordinal);
         Assert.Contains("!branch.IsCurrent && branchWorktree is null && !_viewModel.IsBusy", workflow, StringComparison.Ordinal);
-        Assert.Contains("var forceDeleteCheckBox = new CheckBox", workflow, StringComparison.Ordinal);
-        Assert.Contains("Content = \"Force delete even if the branch is not fully merged\"", workflow, StringComparison.Ordinal);
-        Assert.Contains("Force delete may remove the only branch reference to commits. Those commits may become difficult to recover.", workflow, StringComparison.Ordinal);
-        Assert.Contains("forceDeleteCheckBox.IsChecked == true", workflow, StringComparison.Ordinal);
-        Assert.Contains("? BranchDeletionMode.Force", workflow, StringComparison.Ordinal);
-        Assert.Contains(": BranchDeletionMode.Safe;", workflow, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.Branches.DeleteLocalBranchAsync(", workflow, StringComparison.Ordinal);
-        Assert.Equal(1, CountOccurrences(workflow, "Force delete even if the branch is not fully merged"));
-        Assert.Contains("_viewModel.Branches.ResolveRemoteDeletionTargetForLocal(branch)", workflow, StringComparison.Ordinal);
-        Assert.Contains("deleteRemoteCheckBox = new CheckBox", workflow, StringComparison.Ordinal);
-        Assert.Contains("Content = $\"Also delete remote branch '{remoteTarget.Remote.Name}/{remoteTarget.BranchName}'\"", workflow, StringComparison.Ordinal);
+        Assert.Contains("var forceDeleteCheckBox = new CheckBox", controller, StringComparison.Ordinal);
+        Assert.Contains("Content = \"Force delete even if the branch is not fully merged\"", controller, StringComparison.Ordinal);
+        Assert.Contains("Force delete may remove the only branch reference to commits. Those commits may become difficult to recover.", controller, StringComparison.Ordinal);
+        Assert.Contains("forceDeleteCheckBox.IsChecked == true", controller, StringComparison.Ordinal);
+        Assert.Contains("? BranchDeletionMode.Force", controller, StringComparison.Ordinal);
+        Assert.Contains(": BranchDeletionMode.Safe;", controller, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.Branches.DeleteLocalBranchAsync(", controller, StringComparison.Ordinal);
+        Assert.Equal(1, CountOccurrences(controller, "Force delete even if the branch is not fully merged"));
+        Assert.Contains("_viewModel.Branches.ResolveRemoteDeletionTargetForLocal(branch)", controller, StringComparison.Ordinal);
+        Assert.Contains("deleteRemoteCheckBox = new CheckBox", controller, StringComparison.Ordinal);
+        Assert.Contains("Content = $\"Also delete remote branch '{remoteTarget.Remote.Name}/{remoteTarget.BranchName}'\"", controller, StringComparison.Ordinal);
 
-        Assert.Contains("Title = \"Delete remote branch?\"", workflow, StringComparison.Ordinal);
-        Assert.Contains("Content = $\"Also delete local branch '{localBranch.Name}'\"", workflow, StringComparison.Ordinal);
-        Assert.Contains("Content = \"Force delete local branch even if it is not fully merged\"", workflow, StringComparison.Ordinal);
-        Assert.Contains("IsEnabled = !localBranch.IsCurrent", workflow, StringComparison.Ordinal);
-        Assert.Contains("deleteLocalCheckBox.Checked += (_, _) => forceCheckBox.IsEnabled = true;", workflow, StringComparison.Ordinal);
-        Assert.Contains("The local branch is currently checked out and cannot be deleted.", workflow, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.Branches.DeleteRemoteBranchAsync(", workflow, StringComparison.Ordinal);
-        Assert.Contains("AddMenuItem(flyout, \"Delete\", !_viewModel.IsBusy, () => ConfirmDeleteRemoteBranchAsync(remoteBranch))", workflow, StringComparison.Ordinal);
+        Assert.Contains("Title = \"Delete remote branch?\"", controller, StringComparison.Ordinal);
+        Assert.Contains("Content = $\"Also delete local branch '{localBranch.Name}'\"", controller, StringComparison.Ordinal);
+        Assert.Contains("Content = \"Force delete local branch even if it is not fully merged\"", controller, StringComparison.Ordinal);
+        Assert.Contains("IsEnabled = !localBranch.IsCurrent", controller, StringComparison.Ordinal);
+        Assert.Contains("deleteLocalCheckBox.Checked += (_, _) => forceCheckBox.IsEnabled = true;", controller, StringComparison.Ordinal);
+        Assert.Contains("The local branch is currently checked out and cannot be deleted.", controller, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.Branches.DeleteRemoteBranchAsync(", controller, StringComparison.Ordinal);
+        Assert.Contains("AddMenuItem(flyout, \"Delete\", !_viewModel.IsBusy, () => _branchDeletion.ConfirmDeleteRemoteAsync(remoteBranch))", workflow, StringComparison.Ordinal);
         Assert.Equal(2, CountOccurrences(workflow, "Show branch history only"));
         Assert.Contains("ShowReferenceHistoryAsync(branch.Name", workflow, StringComparison.Ordinal);
         Assert.Contains("ShowReferenceHistoryAsync(remoteBranch.Name", workflow, StringComparison.Ordinal);
@@ -91,7 +92,7 @@ public sealed class BranchDeletionUiContractTests
         Assert.Contains("Delete all branches in this folder…", menu, StringComparison.Ordinal);
         Assert.Contains("Delete all remote branches in this folder…", menu, StringComparison.Ordinal);
         Assert.Contains("!_viewModel.IsBusy", menu, StringComparison.Ordinal);
-        Assert.Contains("_branchFolderDeletion.ConfirmDeleteAsync(node, folderInfo)", menu, StringComparison.Ordinal);
+        Assert.Contains("_branchDeletion.ConfirmDeleteAsync(node, folderInfo)", menu, StringComparison.Ordinal);
         Assert.DoesNotContain("case RepositoryTreeNodeKind.Group when node.Name == \"Branches\"", menu, StringComparison.Ordinal);
         Assert.Contains("case RepositoryTreeNodeKind.Remote when node.Value is GitRemote remote:", menu, StringComparison.Ordinal);
         Assert.Contains("Remove remote…", menu, StringComparison.Ordinal);
@@ -102,7 +103,7 @@ public sealed class BranchDeletionUiContractTests
     public void BranchFolderDeletionLeavesTreeTranslationInViewAndMutationInFeature()
     {
         var root = FindRepositoryRoot();
-        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "BranchFolderDeletionController.cs"));
+        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "BranchDeletionController.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "BranchesViewModel.cs"));
         var planner = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "BranchFolderDeletionPlanning.cs"));
 
