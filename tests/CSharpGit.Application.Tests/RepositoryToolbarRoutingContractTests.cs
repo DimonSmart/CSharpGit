@@ -7,8 +7,8 @@ public sealed class RepositoryToolbarRoutingContractTests
     {
         var page = ReadMainPage();
         Assert.Contains("HandleRepositoryToolbarAction(RepositoryToolbarAction action)", page);
-        Assert.Contains("RunPageUiOperation(RunForcePushWithLeaseAsync", page);
-        Assert.Contains("RunPageUiOperation(ShowPushToDialogAsync", page);
+        Assert.Contains("RunPageUiOperation(_repositoryPush.ForcePushWithLeaseAsync", page);
+        Assert.Contains("RunPageUiOperation(_repositoryPush.PushToAsync", page);
         Assert.Contains("RunPageUiOperation(_maintenanceController.OptimizeAsync", page);
         Assert.DoesNotContain("new RoutedEventArgs()", page);
         Assert.DoesNotContain("_Click(this, args)", page);

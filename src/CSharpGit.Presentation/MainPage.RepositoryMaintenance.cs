@@ -17,6 +17,7 @@ public sealed partial class MainPage
     private IAppSettingsService _gitConsoleSettings = null!;
     private Dialogs.GitCommandFeedbackController _feedback = null!;
     private readonly Workflows.RepositoryManualRefreshController _manualRefresh = null!;
+    private readonly Workflows.RepositoryPushController _repositoryPush = null!;
     private readonly Workflows.RepositoryConfirmationController _confirmationController = null!;
     private readonly Workflows.BranchRenameController _branchRename = null!;
     private readonly Workflows.WorktreeController _worktrees = null!;
@@ -203,6 +204,10 @@ public sealed partial class MainPage
             RefreshPresentationCollections,
             ReportUiFailure,
             ShowErrorAsync);
+        _repositoryPush = new Workflows.RepositoryPushController(
+            _viewModel, () => XamlRoot, ShowPageDialogAsync,
+            ShowErrorAsync, RefreshPresentationCollections,
+            () => IsShuttingDown);
         StartScreenHost.Configure(_viewModel, _recentRepositorySettings, _repositoryImageService,
             _desktopShellService.OpenFolderDescription,
             new StartScreenActions(

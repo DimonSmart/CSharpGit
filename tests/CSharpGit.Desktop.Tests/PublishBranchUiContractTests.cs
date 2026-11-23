@@ -9,7 +9,7 @@ public sealed class PublishBranchUiContractTests
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var xaml = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryToolbarView.xaml"));
         var converter = File.ReadAllText(Path.Combine(presentation, "Controls", "BranchTrackingActionTextConverter.cs"));
-        var workflow = File.ReadAllText(Path.Combine(presentation, "MainPage.ForcePush.cs"));
+        var workflow = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryPushController.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySyncViewModel.cs"));
         var branches = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "BranchesViewModel.cs"));
         var settings = File.ReadAllText(Path.Combine(presentation, "SettingsPage.xaml"));
@@ -21,7 +21,7 @@ public sealed class PublishBranchUiContractTests
         Assert.Contains("IsEnabled=\"{Binding RepositorySync.CanPushTo}\"", xaml, StringComparison.Ordinal);
 
         Assert.Contains("ShowPublishBranchDialogAsync", workflow, StringComparison.Ordinal);
-        Assert.Contains("ShowPushToDialogAsync", workflow, StringComparison.Ordinal);
+        Assert.Contains("PushToAsync", workflow, StringComparison.Ordinal);
         Assert.Contains("ShowPushTargetDialogAsync", workflow, StringComparison.Ordinal);
         Assert.Contains("_viewModel.RepositorySync.PreparePublishBranchAsync", workflow, StringComparison.Ordinal);
         Assert.Contains("_viewModel.RepositorySync.PublishBranchAsync", workflow, StringComparison.Ordinal);
