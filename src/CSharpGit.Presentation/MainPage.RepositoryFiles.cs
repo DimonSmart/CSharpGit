@@ -469,6 +469,12 @@ public sealed partial class MainPage
                 () => _viewModel.CanStartUserGitOperation,
                 () => OpenRepositorySnapshotFileAsync(entry, openInEditor: true));
             flyout.Items.Add(new MenuFlyoutSeparator());
+            AddMenuItem(
+                flyout,
+                "Remove from repository history…",
+                () => !_viewModel.IsBusy && !_viewModel.RepositoryHistoryRewrite.IsInProgress,
+                () => _historyRewrite.RemovePathAsync(entry));
+            flyout.Items.Add(new MenuFlyoutSeparator());
         }
 
         AddMenuItem(flyout, "Copy path", true, () => CopyTextAsync(entry.Path));

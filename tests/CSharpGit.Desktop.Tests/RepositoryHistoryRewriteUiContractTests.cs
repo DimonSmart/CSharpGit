@@ -5,7 +5,7 @@ public sealed class RepositoryHistoryRewriteUiContractTests
     [Fact]
     public void HistoricalFileMenuExposesExplicitLocalHistoryRewriteAction()
     {
-        var source = ReadSource("src/CSharpGit.Presentation/MainPage.HistoryRewrite.cs");
+        var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
         var workflow = ReadSource("src/CSharpGit.Presentation/Workflows/HistoryRewriteController.cs");
 
         Assert.Contains("Remove from repository history…", source, StringComparison.Ordinal);
@@ -19,13 +19,16 @@ public sealed class RepositoryHistoryRewriteUiContractTests
     [Fact]
     public void HistoryRewriteUsesExistingMutationWorkflowAndInvalidatesHistoricalPresentation()
     {
-        var source = ReadSource("src/CSharpGit.Presentation/MainPage.HistoryRewrite.cs");
+        var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
         var workflow = ReadSource("src/CSharpGit.Presentation/Workflows/HistoryRewriteController.cs");
         var viewModel = ReadSource("src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.HistoryRewrite.cs");
         var repositoryFiles = ReadSource("src/CSharpGit.Presentation.Core/ViewModels/RepositoryFilesViewModel.cs");
 
         Assert.Contains("_viewModel.RepositoryHistoryRewrite.RemovePathAsync", workflow, StringComparison.Ordinal);
         Assert.Contains("_historyRewrite.RemovePathAsync(entry)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("InstallRepositoryHistoryRewriteMenus", ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs"), StringComparison.Ordinal);
+        Assert.DoesNotContain("ShutdownRepositoryHistoryRewriteMenus", ReadSource("src/CSharpGit.Presentation/MainPage.Lifecycle.cs"), StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(FindRepositoryRoot(), "src/CSharpGit.Presentation/MainPage.HistoryRewrite.cs")));
         Assert.Contains("localOnlyRefresh: true", viewModel, StringComparison.Ordinal);
         Assert.Contains("_repositoryFilesViewModel.Invalidate(", workflow, StringComparison.Ordinal);
         Assert.Contains("CancelRequests()", repositoryFiles, StringComparison.Ordinal);
@@ -50,15 +53,16 @@ public sealed class RepositoryHistoryRewriteUiContractTests
     }
 
     [Fact]
-    public void SubmoduleMenuIsPreservedWhenHistoryRewriteOverridesTreeContextMenu()
+    public void SubmoduleMenuIsPreservedInUnifiedRepositoryTreeContextMenu()
     {
-        var history = ReadSource("src/CSharpGit.Presentation/MainPage.HistoryRewrite.cs");
+        var history = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
         var files = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
         var submodules = ReadSource("src/CSharpGit.Presentation/MainPage.Submodules.cs");
         var clone = ReadSource("src/CSharpGit.Presentation/Workflows/RepositoryCloneWorkflow.cs");
 
         Assert.Contains("entry.Kind == RepositorySnapshotEntryKind.Submodule", history, StringComparison.Ordinal);
         Assert.Contains("ShowSubmoduleMenuAsync(source, entry)", history, StringComparison.Ordinal);
+        Assert.Contains("ShowRepositorySnapshotFileMenu(source, entry)", history, StringComparison.Ordinal);
         Assert.Contains("OpenSelectedSubmoduleAsync(entry)", files, StringComparison.Ordinal);
         Assert.Contains("Initialize submodule", submodules, StringComparison.Ordinal);
         Assert.Contains("Update All Submodules", submodules, StringComparison.Ordinal);

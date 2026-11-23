@@ -43,6 +43,7 @@ public sealed partial class MainPage
 
     internal bool IsRepositoryMaintenanceInProgress => _repositoryMaintenance.IsRunning;
     internal bool IsApplicationUpdateInProgress => _aboutUpdate.IsRunning;
+    internal bool IsHistoryRewriteInProgress => _viewModel.RepositoryHistoryRewrite.IsInProgress;
 
     public MainPage(
         OpenRepositoryViewModel viewModel,
@@ -96,7 +97,6 @@ public sealed partial class MainPage
             RestoreCommitActionSelectionAsync,
             UpdateRepositoryFilesModeSurface, UpdateHistoryScopePresentation,
             () => { HistoryPane.Visibility = Visibility.Visible; WorkingTreePane.Visibility = Visibility.Collapsed; });
-        InstallRepositoryHistoryRewriteMenus();
         _stashDialogs = new Workflows.StashDialogController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
             () => IsShuttingDown, ExecuteCommandAsync);
