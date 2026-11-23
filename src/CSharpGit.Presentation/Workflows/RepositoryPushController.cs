@@ -11,13 +11,15 @@ internal sealed class RepositoryPushController(
     Func<XamlRoot?> xamlRoot,
     Func<ContentDialog, Task<ContentDialogResult>> showDialog,
     Func<string, string, Task> showError,
-    Action refreshPresentation)
+    Action refreshPresentation,
+    Func<bool> isShuttingDown)
 {
     private readonly OpenRepositoryViewModel _viewModel = viewModel;
     private readonly Func<XamlRoot?> _xamlRoot = xamlRoot;
     private readonly Func<ContentDialog, Task<ContentDialogResult>> _showDialog = showDialog;
     private readonly Func<string, string, Task> _showError = showError;
     private readonly Action _refreshPresentation = refreshPresentation;
+    private readonly Func<bool> _isShuttingDown = isShuttingDown;
 
     internal Task PushPrimaryAsync() => _viewModel.RepositorySync.DefaultPushAction switch
     {
@@ -32,6 +34,7 @@ internal sealed class RepositoryPushController(
         var repository = _viewModel.Repository;
 
         var result = await _viewModel.RepositorySync.PushAsync(repository);
+        if (!IsCurrent(repository)) return;
         _refreshPresentation();
 
         switch (result.Kind)
@@ -39,7 +42,7 @@ internal sealed class RepositoryPushController(
             case PushExecutionKind.Completed:
                 return;
             case PushExecutionKind.PublishTargetRequired:
-                await OfferChoosePublishTargetAsync(
+                await OfferChoosePublishTargetAsync(repository,
                     result.Message ?? "Choose the publish target explicitly to continue.");
                 return;
             case PushExecutionKind.NonFastForwardRejected:
@@ -54,7 +57,7 @@ internal sealed class RepositoryPushController(
         }
     }
 
-    private async Task OfferChoosePublishTargetAsync(string message)
+    private async Task OfferChoosePublishTargetAsync(Repository repository, string message)
     {
         var dialog = new ContentDialog
         {
@@ -66,7 +69,7 @@ internal sealed class RepositoryPushController(
             DefaultButton = ContentDialogButton.Primary
         };
 
-        if (await _showDialog(dialog) == ContentDialogResult.Primary)
+        if (await _showDialog(dialog) == ContentDialogResult.Primary && IsCurrent(repository))
             await ShowPublishBranchDialogAsync();
     }
 
@@ -126,6 +129,7 @@ internal sealed class RepositoryPushController(
         PushTargetDialogOptions options)
     {
         var preparationResult = await _viewModel.RepositorySync.PreparePublishBranchAsync(repository);
+        if (!IsCurrent(repository)) return null;
         if (!preparationResult.Succeeded || preparationResult.Preparation is not { } preparation)
         {
             await _showError(
@@ -198,7 +202,7 @@ internal sealed class RepositoryPushController(
         remoteBranchBox.TextChanged += (_, _) => UpdatePrimaryState();
         UpdatePrimaryState();
 
-        if (await _showDialog(dialog) != ContentDialogResult.Primary) return null;
+        if (await _showDialog(dialog) != ContentDialogResult.Primary || !IsCurrent(repository)) return null;
         if (remoteCombo.SelectedItem is not GitRemote selectedRemote) return null;
 
         return new PushTargetDialogResult(
@@ -223,6 +227,7 @@ internal sealed class RepositoryPushController(
             target.RemoteBranch,
             target.SetUpstream);
 
+        if (!IsCurrent(repository)) return;
         _refreshPresentation();
         if (result.Kind == PushExecutionKind.Completed) return;
 
@@ -259,10 +264,11 @@ internal sealed class RepositoryPushController(
             DefaultButton = ContentDialogButton.Close
         };
         var result = await _showDialog(dialog);
+        if (!IsCurrent(repository)) return;
         if (result == ContentDialogResult.Secondary)
         {
             await _viewModel.RepositorySync.FetchAllAsync(repository);
-            _refreshPresentation();
+            if (IsCurrent(repository)) _refreshPresentation();
         }
         else if (result == ContentDialogResult.Primary)
         {
@@ -281,6 +287,7 @@ internal sealed class RepositoryPushController(
 
         var repository = _viewModel.Repository;
         var preparation = await _viewModel.RepositorySync.PrepareForcePushWithLeaseAsync(repository);
+        if (!IsCurrent(repository)) return;
 
         if (preparation.Kind == ForcePushPreparationKind.ExplicitTargetRequired)
         {
@@ -302,7 +309,7 @@ internal sealed class RepositoryPushController(
             }
 
             var target = await ShowForcePushTargetDialogAsync(currentBranch.Name);
-            if (target is null) return;
+            if (target is null || !IsCurrent(repository)) return;
 
             preparation = await _viewModel.RepositorySync.PrepareForcePushWithLeaseAsync(
                 repository,
@@ -317,8 +324,7 @@ internal sealed class RepositoryPushController(
             return;
         }
 
-        if (!ReferenceEquals(repository, _viewModel.Repository))
-            return;
+        if (!IsCurrent(repository)) return;
 
         var confirmation = new StackPanel { Spacing = 8, Width = 540 };
         confirmation.Children.Add(new TextBlock { Text = "Rewrite remote branch history?", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
@@ -341,9 +347,10 @@ internal sealed class RepositoryPushController(
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await _showDialog(dialog) != ContentDialogResult.Primary) return;
+        if (await _showDialog(dialog) != ContentDialogResult.Primary || !IsCurrent(repository)) return;
 
         var execution = await _viewModel.RepositorySync.ForcePushWithLeaseAsync(repository, snapshot);
+        if (!IsCurrent(repository)) return;
         _refreshPresentation();
 
         switch (execution.Kind)
@@ -381,10 +388,10 @@ internal sealed class RepositoryPushController(
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close
         };
-        if (await _showDialog(rejection) == ContentDialogResult.Primary)
+        if (await _showDialog(rejection) == ContentDialogResult.Primary && IsCurrent(repository))
         {
             await _viewModel.RepositorySync.FetchAsync(repository, snapshot.Remote);
-            _refreshPresentation();
+            if (IsCurrent(repository)) _refreshPresentation();
         }
     }
 
@@ -460,6 +467,9 @@ internal sealed class RepositoryPushController(
             title,
             preparation.Message ?? "Force push with lease is unavailable.");
     }
+
+    private bool IsCurrent(Repository repository) =>
+        !_isShuttingDown() && ReferenceEquals(repository, _viewModel.Repository);
 
     private static string ShortOid(string oid) => oid[..Math.Min(10, oid.Length)];
     private static string FormatSubject(string? subject) => string.IsNullOrWhiteSpace(subject) ? string.Empty : $"  {subject}";

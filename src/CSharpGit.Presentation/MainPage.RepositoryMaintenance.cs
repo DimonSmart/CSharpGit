@@ -206,7 +206,8 @@ public sealed partial class MainPage
             ShowErrorAsync);
         _repositoryPush = new Workflows.RepositoryPushController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
-            ShowErrorAsync, RefreshPresentationCollections);
+            ShowErrorAsync, RefreshPresentationCollections,
+            () => IsShuttingDown);
         StartScreenHost.Configure(_viewModel, _recentRepositorySettings, _repositoryImageService,
             _desktopShellService.OpenFolderDescription,
             new StartScreenActions(
