@@ -399,6 +399,10 @@ Push, Push To, Publish Branch and Force Push with Lease operations and dialogs a
 
 The temporary `IWindowContentLifetime` interface has been removed. `WindowSessionFactory` supplies explicit preparation and completion callbacks to `WindowSession`; session idempotency, close protection and DI-scope disposal remain unchanged. Remaining feature-owned subscriptions and shutdown cleanup still need to migrate out of `MainPage` before Phase 3 can be declared complete.
 
+## Phase 3 follow-up: worktree context menu ownership
+
+The worktree attached right-tap behavior now resolves `RepositoryExplorerView` rather than `MainPage`; the explorer owns placement and routes menu actions to the scoped `WorktreeController`. `MainPage.WorktreeContextMenu.cs` was removed. The behavior no longer depends on the application's root page.
+
 ## Phase 3 follow-up: branch deletion ownership
 
 Local/remote branch deletion (including the optional paired remote/local deletion) and branch-folder deletion now share `Workflows/BranchDeletionController`. `BranchesViewModel` retains mutation semantics; `MainPage.BranchDeletion.cs` contains only the remaining reference context-menu, tag checkout and remote removal UI, which must still migrate to the owning explorer views.
