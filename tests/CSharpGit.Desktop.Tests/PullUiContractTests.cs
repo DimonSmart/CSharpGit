@@ -9,6 +9,7 @@ public sealed class PullUiContractTests
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var ui = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryToolbarView.xaml"));
         var view = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+        var toolbar = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryToolbarView.xaml.cs"));
         var syncVm = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySyncViewModel.cs"));
 
         Assert.Contains("x:Name=\"PullPrimaryButton\"", ui, StringComparison.Ordinal);
@@ -22,7 +23,8 @@ public sealed class PullUiContractTests
         foreach (var action in new[] { "PullFastForwardOnly_Click", "PullMerge_Click", "PullRebase_Click" })
         {
             Assert.Contains($"Click=\"{action}\"", ui, StringComparison.Ordinal);
-            Assert.Contains($"void {action}(", view, StringComparison.Ordinal);
+            Assert.Contains($"void {action}(", toolbar, StringComparison.Ordinal);
+            Assert.Contains($"case RepositoryToolbarAction.{action[..^6]}:", view, StringComparison.Ordinal);
         }
         Assert.Contains("RepositorySync.FastForwardPullAccessibleName", ui, StringComparison.Ordinal);
         Assert.Contains("RepositorySync.MergePullAccessibleName", ui, StringComparison.Ordinal);
@@ -47,8 +49,9 @@ public sealed class PullUiContractTests
         var ui = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryToolbarView.xaml"));
         var view = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
 
-        Assert.Contains("PullDefaultAsync() => PullFromUiAsync(null)", view, StringComparison.Ordinal);
-        Assert.Contains("PullOnceFromUiAsync(PullStrategy strategy) => PullFromUiAsync(strategy)", view, StringComparison.Ordinal);
+        Assert.Contains("RunPageUiOperation(() => PullFromUiAsync(null), \"Pull\")", view, StringComparison.Ordinal);
+        foreach (var strategy in new[] { "FastForwardOnly", "Merge", "Rebase" })
+            Assert.Contains($"RunPageUiOperation(() => PullFromUiAsync(PullStrategy.{strategy})", view, StringComparison.Ordinal);
         Assert.Contains("result.Kind == PullExecutionKind.Completed", view, StringComparison.Ordinal);
         Assert.Contains("history.SelectionIntentVersion == selectionIntentVersion", view, StringComparison.Ordinal);
         Assert.Contains("history.SelectCommitInCurrentHistoryAsync(", view, StringComparison.Ordinal);
