@@ -11,6 +11,8 @@ public sealed partial class HistoryWorkspaceView : UserControl
 {
     public HistoryWorkspaceView() => InitializeComponent();
 
+    internal RowDefinitionCollection RowDefinitions => HistoryWorkspaceLayout.RowDefinitions;
+
     internal HistoryView HistoryViewControl => HistoryView;
     internal Pivot DetailsTabsControl => DetailsTabs;
     internal PivotItem SummaryTabControl => SummaryTab;
