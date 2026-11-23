@@ -5,7 +5,8 @@ namespace CSharpGit.Presentation.Windowing;
 
 internal sealed class WindowSession(
     IServiceScope scope,
-    IWindowContentLifetime content,
+    Func<CancellationToken, Task> prepareContent,
+    Action completeContent,
     OpenRepositoryViewModel repository,
     WorkspaceNavigator navigator,
     WindowCloseSafetyProvider closeSafety,
@@ -31,12 +32,12 @@ internal sealed class WindowSession(
         _lifetime.InitializeAsync(initializeContent, CompleteShutdown, cancellationToken);
 
     internal Task PrepareForShutdownAsync(CancellationToken cancellationToken) =>
-        _lifetime.PrepareAsync(content.PrepareForShutdownAsync, cancellationToken);
+        _lifetime.PrepareAsync(prepareContent, cancellationToken);
 
     internal void CompleteShutdown()
     {
         if (!_lifetime.TryComplete()) return;
-        try { content.CompleteShutdown(); }
+        try { completeContent(); }
         finally
         {
             try { titleState.Dispose(); }

@@ -394,3 +394,7 @@ Typed repository-toolbar actions now call their existing workflows directly; no 
 ## Phase 3 follow-up: repository push workflow
 
 Push, Push To, Publish Branch and Force Push with Lease operations and dialogs are owned by `Workflows/RepositoryPushController`; `RepositorySyncViewModel` retains Git semantics. `MainPage.ForcePush.cs` was removed. Remaining feature views and window composition are not yet migrated.
+
+## Phase 3 follow-up: window lifetime bridge
+
+The temporary `IWindowContentLifetime` interface has been removed. `WindowSessionFactory` supplies explicit preparation and completion callbacks to `WindowSession`; session idempotency, close protection and DI-scope disposal remain unchanged. Remaining feature-owned subscriptions and shutdown cleanup still need to migrate out of `MainPage` before Phase 3 can be declared complete.

@@ -38,7 +38,7 @@ public sealed class WindowMigrationArchitectureTests
         Assert.DoesNotContain("await mainPage.OpenInitialRepositoryAsync();", app);
         Assert.Contains("scope.ServiceProvider.GetRequiredService<MainPage>()", factory);
         Assert.Contains("finally { scope.Dispose(); }", session);
-        Assert.Contains("content.CompleteShutdown();", session);
+        Assert.Contains("completeContent();", session);
         Assert.DoesNotContain("MainPage", session);
         Assert.Contains("services.AddScoped<SettingsWindowController>();", app);
         Assert.Contains("services.AddScoped<RecentRepositoryFolderPicker>", app);
