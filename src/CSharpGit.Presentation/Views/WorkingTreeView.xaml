@@ -1,0 +1,226 @@
+<UserControl x:Class="CSharpGit.Presentation.Views.WorkingTreeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:CSharpGit.Presentation.Controls"
+             xmlns:views="using:CSharpGit.Presentation.Views">
+  <Grid x:Name="WorkingTreeLayout"
+                  RowDefinitions="Auto,*,Auto"
+                  Padding="{StaticResource Padding.WorkspaceCompact}">
+              <Grid x:Name="WorkingTreeHeader"
+                    MinHeight="{StaticResource Height.Control}"
+                    Margin="0,0,0,4">
+                <TextBlock Text="Working tree"
+                           Style="{StaticResource PaneHeaderTextStyle}"
+                           VerticalAlignment="Center" />
+              </Grid>
+  
+              <Grid Grid.Row="1" ColumnDefinitions="330,4,*" MinHeight="180">
+                <Grid Grid.Column="0">
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="{StaticResource Spacing.S}" />
+                    <RowDefinition Height="*" />
+                  </Grid.RowDefinitions>
+  
+                  <Grid Grid.Row="0" RowDefinitions="Auto,*">
+                    <Grid MinHeight="{StaticResource Height.Control}" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.XS}">
+                      <TextBlock x:Name="UnstagedHeader"
+                                 Text="Unstaged changes"
+                                 Style="{StaticResource BodyStrongTextStyle}"
+                                 VerticalAlignment="Center" />
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                        <Button Command="{Binding WorkingTree.StageAllCommand}" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Stage all" ToolTipService.ToolTip="Stage all">
+                          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                            <FontIcon Glyph="{StaticResource Icon.Glyph.Stage}" FontSize="{StaticResource Icon.Small}" />
+                            <TextBlock Text="Stage all" Style="{StaticResource BodyTextStyle}" />
+                          </StackPanel>
+                        </Button>
+                        <Button Command="{Binding WorkingTree.RequestDiscardAllCommand}" Style="{StaticResource DestructiveActionButtonStyle}" AutomationProperties.Name="Discard all" ToolTipService.ToolTip="Discard all…">
+                          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                            <FontIcon Glyph="{StaticResource Icon.Glyph.Discard}" FontSize="{StaticResource Icon.Small}" />
+                            <TextBlock Text="Discard all" Style="{StaticResource BodyTextStyle}" />
+                          </StackPanel>
+                        </Button>
+                      </StackPanel>
+                    </Grid>
+                    <TreeView x:Name="UnstagedChangesTree"
+                              Grid.Row="1"
+                              Style="{StaticResource DenseTreeViewStyle}"
+                              ItemContainerStyle="{StaticResource DenseTreeItemStyle}"
+                              ItemTemplate="{StaticResource WorkingTreeTreeItemTemplate}"
+                              SelectionMode="None"
+                              ItemInvoked="UnstagedChangesTree_ItemInvoked"
+                              RightTapped="UnstagedChangesTree_RightTapped" />
+                  </Grid>
+  
+                  <controls:GridSplitter x:Name="WorkingTreeStagingSplitter"
+                                         Grid.Row="1"
+                                         ResizeDirection="Rows"
+                                         ResizeBehavior="PreviousAndNext"
+                                         MinimumFirst="80"
+                                         MinimumSecond="80"
+                                         VerticalAlignment="Stretch"
+                                         Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+  
+                  <Grid Grid.Row="2" RowDefinitions="Auto,*">
+                    <Grid MinHeight="{StaticResource Height.Control}" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Spacing.XS}">
+                      <TextBlock x:Name="StagedHeader"
+                                 Text="Staged changes"
+                                 Style="{StaticResource BodyStrongTextStyle}"
+                                 VerticalAlignment="Center" />
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                        <Button Command="{Binding WorkingTree.UnstageAllCommand}" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Unstage all" ToolTipService.ToolTip="Unstage all">
+                          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                            <FontIcon Glyph="{StaticResource Icon.Glyph.Unstage}" FontSize="{StaticResource Icon.Small}" />
+                            <TextBlock Text="Unstage all" Style="{StaticResource BodyTextStyle}" />
+                          </StackPanel>
+                        </Button>
+                      </StackPanel>
+                    </Grid>
+                    <TreeView x:Name="StagedChangesTree"
+                              Grid.Row="1"
+                              Style="{StaticResource DenseTreeViewStyle}"
+                              ItemContainerStyle="{StaticResource DenseTreeItemStyle}"
+                              ItemTemplate="{StaticResource WorkingTreeTreeItemTemplate}"
+                              SelectionMode="None"
+                              ItemInvoked="StagedChangesTree_ItemInvoked"
+                              RightTapped="StagedChangesTree_RightTapped" />
+                  </Grid>
+                </Grid>
+  
+                <controls:GridSplitter Grid.Column="1"
+                                       ResizeDirection="Columns"
+                                       ResizeBehavior="PreviousAndNext"
+                                       MinimumFirst="220"
+                                       MinimumSecond="280"
+                                       HorizontalAlignment="Stretch"
+                                       Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+  
+                <Grid Grid.Column="2" RowDefinitions="Auto,Auto,*" Margin="8,0,0,0">
+                  <Border Style="{StaticResource PaneHeaderSurfaceStyle}">
+                    <Grid ColumnDefinitions="*,Auto,2*" ColumnSpacing="{StaticResource Spacing.L}">
+                      <TextBlock x:Name="WorkingTreeDiffHeader"
+                                 Style="{StaticResource BodyStrongTextStyle}"
+                                 TextTrimming="CharacterEllipsis"
+                                 VerticalAlignment="Center" />
+                      <TextBlock x:Name="WorkingTreeDiffKindText"
+                                 Grid.Column="1"
+                                 Style="{StaticResource CaptionStrongTextStyle}"
+                                 VerticalAlignment="Center" />
+                      <ScrollViewer Grid.Column="2" HorizontalScrollMode="Enabled" HorizontalScrollBarVisibility="Auto" VerticalScrollMode="Disabled" VerticalScrollBarVisibility="Disabled">
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}" VerticalAlignment="Center">
+                        <Button x:Name="WorkingTreeOpenOriginalButton" Click="WorkingTreeOpenOriginal_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Open original version">
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                              <FontIcon Glyph="{StaticResource Icon.Glyph.Original}" FontSize="{StaticResource Icon.Small}" />
+                              <TextBlock Text="Original" Style="{StaticResource BodyTextStyle}" />
+                            </StackPanel>
+                          </Button>
+                          <Button x:Name="WorkingTreeOpenChangedButton" Click="WorkingTreeOpenChanged_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Open changed version">
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                              <FontIcon Glyph="{StaticResource Icon.Glyph.Changed}" FontSize="{StaticResource Icon.Small}" />
+                              <TextBlock Text="Changed" Style="{StaticResource BodyTextStyle}" />
+                            </StackPanel>
+                          </Button>
+                          <Button x:Name="WorkingTreeExternalDiffButton" Click="WorkingTreeExternalDiff_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Open in Diff Tool">
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                              <FontIcon Glyph="{StaticResource Icon.Glyph.Diff}" FontSize="{StaticResource Icon.Small}" />
+                              <TextBlock Text="Diff tool" Style="{StaticResource BodyTextStyle}" />
+                            </StackPanel>
+                          </Button>
+                          <Button x:Name="WorkingTreeRevealButton" Click="WorkingTreeReveal_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Reveal file">
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                              <FontIcon Glyph="{StaticResource Icon.Glyph.Reveal}" FontSize="{StaticResource Icon.Small}" />
+                              <TextBlock Text="Reveal" Style="{StaticResource BodyTextStyle}" />
+                            </StackPanel>
+                      
+                          </Button>
+                      </StackPanel>
+                      </ScrollViewer>
+                    </Grid>
+                  </Border>
+  
+                  <Border x:Name="WorkingTreeTextDiffHeader"
+                          Grid.Row="1"
+                          Visibility="Collapsed"
+                          Style="{StaticResource DiffHeaderSurfaceStyle}">
+                    <Grid ColumnDefinitions="38,38,*">
+                      <TextBlock Text="OLD"
+                                 Style="{StaticResource CaptionTextStyle}"
+                                 HorizontalAlignment="Right"
+                                 Margin="0,0,5,0"
+                                 VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1"
+                                 Text="NEW"
+                                 Style="{StaticResource CaptionTextStyle}"
+                                 HorizontalAlignment="Right"
+                                 Margin="0,0,5,0"
+                                 VerticalAlignment="Center" />
+                    </Grid>
+                  </Border>
+  
+                  <Grid Grid.Row="2">
+                    <StackPanel x:Name="WorkingTreeLargeDiffInfo"
+                                Visibility="Collapsed"
+                                Margin="12"
+                                Spacing="8"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Top">
+                      <TextBlock Text="Large diff"
+                                 Style="{StaticResource BodyStrongTextStyle}" />
+                      <TextBlock x:Name="WorkingTreeLargeDiffMessage"
+                                 TextWrapping="Wrap" />
+                      <Button x:Name="WorkingTreeLargeDiffButton"
+                              Content="Load diff"
+                              HorizontalAlignment="Left"
+                              Style="{StaticResource PrimaryActionButtonStyle}"
+                              Click="WorkingTreeLargeDiffButton_Click" />
+                    </StackPanel>
+                    <StackPanel x:Name="WorkingTreeDiffLoading"
+                                Visibility="Collapsed"
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                      <ProgressRing Width="18" Height="18" IsActive="True" />
+                      <TextBlock Text="Loading diff…" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <InfoBar x:Name="WorkingTreeBinaryInfo"
+                             IsOpen="True"
+                             Severity="Informational"
+                             Title="Binary file"
+                             Message="Binary file — text diff is not available."
+                             Visibility="Collapsed"
+                             IsClosable="False"
+                             VerticalAlignment="Top" />
+                    <InfoBar x:Name="WorkingTreeNoChangesInfo"
+                             IsOpen="True"
+                             Severity="Informational"
+                             Title="No changes"
+                             Message="The selected delta no longer exists."
+                             Visibility="Collapsed"
+                             IsClosable="False"
+                             VerticalAlignment="Top" />
+                    <StackPanel x:Name="WorkingTreeImageLoading"
+                                Visibility="Collapsed"
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                      <ProgressRing Width="18" Height="18" IsActive="True" />
+                      <TextBlock Text="Loading image comparison…" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <controls:ImageDiffPreviewHost x:Name="WorkingTreeImageDiffHost"
+                                                   Visibility="Collapsed"
+                                                   HorizontalAlignment="Stretch"
+                                                   VerticalAlignment="Stretch" />
+                    <controls:SelectableDiffViewer x:Name="WorkingTreeDiffViewer"
+                                                   Visibility="Collapsed"
+                                                   HorizontalAlignment="Stretch"
+                                                   VerticalAlignment="Stretch" />
+                  </Grid>
+                </Grid>
+              </Grid>
+  
+              <views:WorkingTreeCommitEditorView x:Name="WorkingTreeCommitEditor" Grid.Row="2" />
+            </Grid>
+</UserControl>

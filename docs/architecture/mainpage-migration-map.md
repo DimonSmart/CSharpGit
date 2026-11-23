@@ -398,3 +398,7 @@ Push, Push To, Publish Branch and Force Push with Lease operations and dialogs a
 ## Phase 3 follow-up: window lifetime bridge
 
 The temporary `IWindowContentLifetime` interface has been removed. `WindowSessionFactory` supplies explicit preparation and completion callbacks to `WindowSession`; session idempotency, close protection and DI-scope disposal remain unchanged. Remaining feature-owned subscriptions and shutdown cleanup still need to migrate out of `MainPage` before Phase 3 can be declared complete.
+
+## Phase 3 follow-up: working-tree visual composition
+
+The staging trees, working-tree diff surface, buttons and commit editor are now visually owned by `Views/WorkingTreeView.xaml` instead of being declared inline in `MainPage.xaml`. The parent page retains temporary typed event callbacks and control facades for the existing workflow controllers. This is a staging step, not completion of the required feature-owned state/handler migration; remove the facades during the next stage.
