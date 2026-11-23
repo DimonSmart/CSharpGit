@@ -173,7 +173,7 @@ public sealed partial class MainPage
                     app.CompleteApplicationUpdateRestart(this);
             });
 
-        RepositoryExplorer.Configure(_viewModel, _worktreesViewModel, _workspaceNavigator);
+        RepositoryExplorer.Configure(_viewModel, _worktreesViewModel, _workspaceNavigator, _worktrees);
         RepositoryExplorer.NavigateRequested += (node, version) =>
             RunPageUiOperation(() => SelectRepositoryNodeAsync(node, version), "Repository tree navigation");
         RepositoryExplorer.CheckoutRequested += (branch, version) =>
