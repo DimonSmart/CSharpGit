@@ -9,7 +9,7 @@ public sealed class ForcePushUiContractTests
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var xaml = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryToolbarView.xaml"));
         var trackingConverter = File.ReadAllText(Path.Combine(presentation, "Controls", "BranchTrackingActionTextConverter.cs"));
-        var workflow = File.ReadAllText(Path.Combine(presentation, "MainPage.ForcePush.cs"));
+        var workflow = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryPushController.cs"));
 
         Assert.Contains("ConverterParameter=Push", xaml, StringComparison.Ordinal);
         Assert.Contains("\"Push ▼\"", trackingConverter, StringComparison.Ordinal);
@@ -58,9 +58,9 @@ public sealed class ForcePushUiContractTests
     public void MissingUpstreamUsesStructuredExplicitTargetResult()
     {
         var root = FindRepositoryRoot();
-        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.ForcePush.cs"));
+        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryPushController.cs"));
 
-        var forcePush = ExtractMethod(workflow, "private async Task RunForcePushWithLeaseAsync()");
+        var forcePush = ExtractMethod(workflow, "internal async Task ForcePushWithLeaseAsync()");
         var targetDialog = ExtractMethod(workflow, "private async Task<(string Remote, string RemoteBranch)?> ShowForcePushTargetDialogAsync(string localBranch)");
 
         Assert.Contains("ForcePushPreparationKind.ExplicitTargetRequired", forcePush, StringComparison.Ordinal);
