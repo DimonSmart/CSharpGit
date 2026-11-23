@@ -445,19 +445,4 @@ public sealed partial class MainPage
     private static string ShortOid(string oid) => oid[..Math.Min(10, oid.Length)];
     private static string FormatSubject(string? subject) => string.IsNullOrWhiteSpace(subject) ? string.Empty : $"  {subject}";
 
-    private void PushTo_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(() => PushTo_ClickCoreAsync(sender, e), "PushTo_Click");
-
-    private async Task PushTo_ClickCoreAsync(object sender, RoutedEventArgs e)
-    {
-        await ShowPushToDialogAsync();
-    }
-
-    private void ForcePushWithLease_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(() => ForcePushWithLease_ClickCoreAsync(sender, e), "ForcePushWithLease_Click");
-
-    private async Task ForcePushWithLease_ClickCoreAsync(object sender, RoutedEventArgs e)
-    {
-        await RunForcePushWithLeaseAsync();
-    }
 }
