@@ -216,7 +216,7 @@ public sealed class DesignSystemContractTests
         {
             "Workflows/RepositoryCloneWorkflow.cs", "Workflows/RepositoryCreationWorkflow.cs",
             "Workflows/RepositoryPushController.cs", "Workflows/StashDialogController.cs", "Workflows/WorktreeController.cs",
-            "MainPage.BranchDeletion.cs", "MainPage.Tags.cs", "Dialogs/AboutUpdateDialogController.cs"
+            "MainPage.BranchDeletion.cs", "Workflows/TagWorkflowController.cs", "Dialogs/AboutUpdateDialogController.cs"
         })
         {
             var dialog = Read(root, "src", "CSharpGit.Presentation", file);
