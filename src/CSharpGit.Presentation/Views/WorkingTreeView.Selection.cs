@@ -296,8 +296,8 @@ public sealed partial class WorkingTreeView
     private static bool IsShiftDown() =>
         (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift) & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down;
 
-    internal IEnumerable<WorkingTreeTreeNode> UnstagedTreeRoots => _unstagedTreeRoots;
-    internal IEnumerable<WorkingTreeTreeNode> StagedTreeRoots => _stagedTreeRoots;
+    internal IReadOnlyList<WorkingTreeTreeNode> UnstagedTreeRoots => _unstagedTreeRoots;
+    internal IReadOnlyList<WorkingTreeTreeNode> StagedTreeRoots => _stagedTreeRoots;
     internal void InvokeWorkingTreeNodeForCheck(WorkingTreeTreeNode node, WorkingTreeDiffKind kind) =>
         WorkingTreeNodeInvoked(node, kind);
 
