@@ -373,5 +373,7 @@ public sealed partial class MainPage
         return true;
     }
 
+    private static string ShortOid(string oid) => oid[..Math.Min(10, oid.Length)];
+
     private sealed record MainlineChoice(int Number, string Label);
 }

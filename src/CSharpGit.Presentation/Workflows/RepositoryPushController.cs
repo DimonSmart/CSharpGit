@@ -1,3 +1,4 @@
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
