@@ -22,6 +22,8 @@ public sealed class GitCommandExecutorStreamingTests
                 stderr.TrySetResult(true);
         };
         var executor = CreateShellExecutor(history);
+        var releaseFileName = $"csharpgit-stream-release-{Guid.NewGuid():N}.ready";
+        var releasePath = Path.Combine(Path.GetTempPath(), releaseFileName);
 
         var task = executor.ExecuteForResultAsync(
             Path.GetTempPath(),
@@ -29,13 +31,25 @@ public sealed class GitCommandExecutorStreamingTests
             GitCommandKind.Internal,
             CancellationToken.None,
             null,
-            CommandsThenDelayShellArguments("echo out", "echo err 1>&2", 2));
+            CommandsUntilFileExistsShellArguments("echo out", "echo err 1>&2", releaseFileName));
 
-        await Task.WhenAll(
-            stdout.Task.WaitAsync(TimeSpan.FromSeconds(5)),
-            stderr.Task.WaitAsync(TimeSpan.FromSeconds(5)));
-        Assert.False(task.IsCompleted);
-        var result = await task.WaitAsync(TimeSpan.FromSeconds(10));
+        GitCommandResult? result = null;
+        try
+        {
+            await Task.WhenAll(
+                stdout.Task.WaitAsync(TimeSpan.FromSeconds(10)),
+                stderr.Task.WaitAsync(TimeSpan.FromSeconds(10)));
+            // The child cannot exit until released, regardless of runner scheduling.
+            Assert.False(task.IsCompleted);
+        }
+        finally
+        {
+            File.WriteAllText(releasePath, string.Empty);
+            try { result = await task.WaitAsync(TimeSpan.FromSeconds(10)); }
+            finally { File.Delete(releasePath); }
+        }
+
+        Assert.NotNull(result);
         Assert.Contains("out", result.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("err", result.StandardError, StringComparison.Ordinal);
     }
@@ -189,6 +203,14 @@ public sealed class GitCommandExecutorStreamingTests
 
     private static string[] DelayedShellArguments(string first, string second, int delaySeconds) =>
         WrapShellCommand($"{first} & {DelayCommand(delaySeconds)} & {second}");
+
+    private static string[] CommandsUntilFileExistsShellArguments(string first, string second, string fileName)
+    {
+        var waitForRelease = OperatingSystem.IsWindows()
+            ? $"for /L %i in (1,1,120) do @if not exist {fileName} ping -n 2 127.0.0.1 >nul"
+            : $"while [ ! -f {fileName} ]; do sleep 0.1; done";
+        return WrapShellCommand($"{first} & {second} & {waitForRelease}");
+    }
 
     private static string[] CommandsThenDelayShellArguments(string first, string second, int delaySeconds) =>
         WrapShellCommand($"{first} & {second} & {DelayCommand(delaySeconds)}");
