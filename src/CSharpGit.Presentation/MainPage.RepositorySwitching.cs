@@ -1,22 +1,11 @@
 using System.Collections.ObjectModel;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Presentation.ViewModels;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 
 namespace CSharpGit.Presentation;
 
 public sealed partial class MainPage
 {
-    private void OpenRepository_Click(object sender, RoutedEventArgs args) =>
-        RunPageUiOperation(OpenRepositoryPickerAsync, "OpenRepository_Click");
-
-    private void Repositories_Click(object sender, RoutedEventArgs args) =>
-        RunPageUiOperation(async () => { await TryCloseRepositoryAsync(); }, "Repositories_Click");
-
-    private void CloseRepository_Click(object sender, RoutedEventArgs args) =>
-        RunPageUiOperation(async () => { await TryCloseRepositoryAsync(); }, "CloseRepository_Click");
-
     private Task<bool> TrySwitchRepositoryAsync(string path) =>
         _repositorySwitch.TrySwitchAsync(path);
 

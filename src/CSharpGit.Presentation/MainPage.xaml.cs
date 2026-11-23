@@ -409,51 +409,88 @@ public sealed partial class MainPage : Page
         }
     }
 
-    // Typed transitional bridge for phase-3 Git/dialog workflows.
+    // Dispatch typed toolbar actions directly to their existing workflows.
     private void HandleRepositoryToolbarAction(RepositoryToolbarAction action)
     {
-        var args = new RoutedEventArgs();
         switch (action)
         {
-            case RepositoryToolbarAction.CommitNavigation: CommitNavigation_Click(this, args); break;
-            case RepositoryToolbarAction.Fetch: Fetch_Click(this, args); break;
-            case RepositoryToolbarAction.Pull: Pull_Click(this, args); break;
-            case RepositoryToolbarAction.PullFastForwardOnly: PullFastForwardOnly_Click(this, args); break;
-            case RepositoryToolbarAction.PullMerge: PullMerge_Click(this, args); break;
-            case RepositoryToolbarAction.PullRebase: PullRebase_Click(this, args); break;
-            case RepositoryToolbarAction.PullSettings: _settingsWindowController.Open(SettingsSection.General, focusPullStrategy: true); break;
-            case RepositoryToolbarAction.PushPrimary: PushPrimary_Click(this, args); break;
-            case RepositoryToolbarAction.Push: Push_Click(this, args); break;
-            case RepositoryToolbarAction.PushTo: PushTo_Click(this, args); break;
-            case RepositoryToolbarAction.ForcePushWithLease: ForcePushWithLease_Click(this, args); break;
-            case RepositoryToolbarAction.PushSetDefault: PushSetDefault_Click(this, args); break;
-            case RepositoryToolbarAction.PushToSetDefault: PushToSetDefault_Click(this, args); break;
-            case RepositoryToolbarAction.ForcePushWithLeaseSetDefault: ForcePushWithLeaseSetDefault_Click(this, args); break;
+            case RepositoryToolbarAction.CommitNavigation:
+                if (WorkingTreePane.Visibility == Visibility.Visible)
+                    RunPageUiOperation(ShowAllHistoryAsync, "Back to history");
+                else if (!IsShuttingDown)
+                    ShowWorkingTree();
+                break;
+            case RepositoryToolbarAction.Fetch:
+                RunPageUiOperation(() => ExecuteCommandAsync(_viewModel.RepositorySync.FetchCommand), "Fetch");
+                break;
+            case RepositoryToolbarAction.Pull:
+                RunPageUiOperation(() => PullFromUiAsync(null), "Pull");
+                break;
+            case RepositoryToolbarAction.PullFastForwardOnly:
+                RunPageUiOperation(() => PullFromUiAsync(PullStrategy.FastForwardOnly), "Fast-forward pull");
+                break;
+            case RepositoryToolbarAction.PullMerge:
+                RunPageUiOperation(() => PullFromUiAsync(PullStrategy.Merge), "Merge pull");
+                break;
+            case RepositoryToolbarAction.PullRebase:
+                RunPageUiOperation(() => PullFromUiAsync(PullStrategy.Rebase), "Rebase pull");
+                break;
+            case RepositoryToolbarAction.PullSettings:
+                _settingsWindowController.Open(SettingsSection.General, focusPullStrategy: true);
+                break;
+            case RepositoryToolbarAction.PushPrimary:
+                RunPageUiOperation(PushPrimaryAsync, "Push");
+                break;
+            case RepositoryToolbarAction.Push:
+                RunPageUiOperation(PushFromUiAsync, "Push");
+                break;
+            case RepositoryToolbarAction.PushTo:
+                RunPageUiOperation(ShowPushToDialogAsync, "PushTo_Click");
+                break;
+            case RepositoryToolbarAction.ForcePushWithLease:
+                RunPageUiOperation(RunForcePushWithLeaseAsync, "ForcePushWithLease_Click");
+                break;
+            case RepositoryToolbarAction.PushSetDefault:
+                RunPageUiOperation(() => _viewModel.RepositorySync.SetDefaultPushActionAsync(PushToolbarAction.Push), "Set default Push");
+                break;
+            case RepositoryToolbarAction.PushToSetDefault:
+                RunPageUiOperation(() => _viewModel.RepositorySync.SetDefaultPushActionAsync(PushToolbarAction.PushTo), "Set default Push to");
+                break;
+            case RepositoryToolbarAction.ForcePushWithLeaseSetDefault:
+                RunPageUiOperation(() => _viewModel.RepositorySync.SetDefaultPushActionAsync(PushToolbarAction.ForcePushWithLease), "Set default Force push with lease");
+                break;
             case RepositoryToolbarAction.RefreshIndicator:
-                RunPageUiOperation(_manualRefresh.RefreshAsync, "Repository refresh indicator"); break;
-            case RepositoryToolbarAction.OpenRepository: OpenRepository_Click(this, args); break;
+                RunPageUiOperation(_manualRefresh.RefreshAsync, "Repository refresh indicator");
+                break;
+            case RepositoryToolbarAction.OpenRepository:
+                RunPageUiOperation(OpenRepositoryPickerAsync, "OpenRepository_Click");
+                break;
             case RepositoryToolbarAction.CloneRepository:
-                RunPageUiOperation(_cloneWorkflow.ShowAsync, "CloneRepository_Click"); break;
+                RunPageUiOperation(_cloneWorkflow.ShowAsync, "CloneRepository_Click");
+                break;
             case RepositoryToolbarAction.CreateRepository:
-                RunPageUiOperation(_creationWorkflow.ShowAsync, "CreateRepository_Click"); break;
-            case RepositoryToolbarAction.Repositories: Repositories_Click(this, args); break;
-            case RepositoryToolbarAction.CloseRepository: CloseRepository_Click(this, args); break;
-            case RepositoryToolbarAction.RepositorySettings: _settingsWindowController.Open(SettingsSection.Identity); break;
-            case RepositoryToolbarAction.OptimizeRepository: OptimizeRepository_Click(this, args); break;
-            case RepositoryToolbarAction.Settings: _settingsWindowController.Open(SettingsSection.General); break;
+                RunPageUiOperation(_creationWorkflow.ShowAsync, "CreateRepository_Click");
+                break;
+            case RepositoryToolbarAction.Repositories:
+            case RepositoryToolbarAction.CloseRepository:
+                RunPageUiOperation(async () => { await TryCloseRepositoryAsync(); }, "CloseRepository_Click");
+                break;
+            case RepositoryToolbarAction.RepositorySettings:
+                _settingsWindowController.Open(SettingsSection.Identity);
+                break;
+            case RepositoryToolbarAction.OptimizeRepository:
+                RunPageUiOperation(_maintenanceController.OptimizeAsync, "Optimize repository");
+                break;
+            case RepositoryToolbarAction.Settings:
+                _settingsWindowController.Open(SettingsSection.General);
+                break;
             case RepositoryToolbarAction.About:
-                RunPageUiOperation(_aboutUpdate.ShowAboutAsync, "About dialog"); break;
-            default: throw new ArgumentOutOfRangeException(nameof(action), action, null);
+                RunPageUiOperation(_aboutUpdate.ShowAboutAsync, "About dialog");
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(action), action, null);
         }
     }
-
-    private void Fetch_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(() => ExecuteCommandAsync(_viewModel.RepositorySync.FetchCommand), "Fetch");
-
-    private void Pull_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(PullDefaultAsync, "Pull");
-
-    private Task PullDefaultAsync() => PullFromUiAsync(null);
 
     private async Task PullFromUiAsync(PullStrategy? strategy)
     {
@@ -515,60 +552,12 @@ public sealed partial class MainPage : Page
         await ShowErrorAsync(title, result.Message);
     }
 
-    private Task PullOnceFromUiAsync(PullStrategy strategy) => PullFromUiAsync(strategy);
-
-    private void PullMerge_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(() => PullOnceFromUiAsync(PullStrategy.Merge), "Merge pull");
-    private void PullRebase_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(() => PullOnceFromUiAsync(PullStrategy.Rebase), "Rebase pull");
-    private void PullFastForwardOnly_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(() => PullOnceFromUiAsync(PullStrategy.FastForwardOnly), "Fast-forward pull");
-
-    private void PushPrimary_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(PushPrimaryAsync, "Push");
-
     private Task PushPrimaryAsync() => _viewModel.RepositorySync.DefaultPushAction switch
     {
         PushToolbarAction.PushTo => ShowPushToDialogAsync(),
         PushToolbarAction.ForcePushWithLease => RunForcePushWithLeaseAsync(),
         _ => PushFromUiAsync()
     };
-
-    private void Push_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(PushFromUiAsync, "Push");
-
-    private void PushSetDefault_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(() => _viewModel.RepositorySync.SetDefaultPushActionAsync(PushToolbarAction.Push), "Set default Push");
-
-    private void PushToSetDefault_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(() => _viewModel.RepositorySync.SetDefaultPushActionAsync(PushToolbarAction.PushTo), "Set default Push to");
-
-    private void ForcePushWithLeaseSetDefault_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(() => _viewModel.RepositorySync.SetDefaultPushActionAsync(PushToolbarAction.ForcePushWithLease), "Set default Force push with lease");
-
-    private void RefreshAll_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(RefreshRepositoryFromUiAsync, "Refresh repository");
-
-    private async Task RefreshRepositoryFromUiAsync()
-    {
-        if (IsShuttingDown) return;
-        try
-        {
-            await _viewModel.RefreshAsyncForDesktopCheck();
-            if (!IsShuttingDown)
-                RefreshPresentationCollections();
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception exception)
-        {
-            if (!IsShuttingDown && !_viewModel.HasError)
-                await ShowErrorAsync("Refresh failed", exception.Message);
-        }
-    }
-
-
 
     private void ApplyHistoryFilter_Click(object sender, RoutedEventArgs e) =>
         RunPageUiOperation(RefreshVisibleHistoryAsync, "Apply history filter");
@@ -593,14 +582,6 @@ public sealed partial class MainPage : Page
 
     private void ClearReference_Click(object sender, RoutedEventArgs e) =>
         RunPageUiOperation(ShowAllHistoryAsync, "Clear history reference");
-
-    private void CommitNavigation_Click(object sender, RoutedEventArgs e)
-    {
-        if (WorkingTreePane.Visibility == Visibility.Visible)
-            RunPageUiOperation(ShowAllHistoryAsync, "Back to history");
-        else if (!IsShuttingDown)
-            ShowWorkingTree();
-    }
 
     private void UnstagedChangesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -654,7 +635,7 @@ public sealed partial class MainPage : Page
         else if (e.Key == VirtualKey.F5)
         {
             e.Handled = true;
-            RunPageUiOperation(RefreshRepositoryFromUiAsync, "Refresh shortcut");
+            RunPageUiOperation(_manualRefresh.RefreshAsync, "Refresh shortcut");
         }
         else if (control && e.Key == VirtualKey.Enter && WorkingTreePane.Visibility == Visibility.Visible)
         {

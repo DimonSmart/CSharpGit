@@ -4,6 +4,8 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
+Typed repository-toolbar actions now call their existing workflows directly; no synthetic `RoutedEventArgs` are constructed by `MainPage`. F5 and the toolbar refresh indicator share `RepositoryManualRefreshController`. This is a partial Phase 3 step; feature views and window lifetime still require extraction.
+
 Destructive path-history rewrite confirmation, operation admission, error reporting
 and invalidation are now owned by `Workflows/HistoryRewriteController`.
 `MainPage.HistoryRewrite.cs` retains only right-tap routing and menu composition;

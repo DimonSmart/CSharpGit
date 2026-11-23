@@ -260,7 +260,4 @@ public sealed partial class MainPage
 
     private Task OpenRepositoryPickerAsync() => _repositoryPicker.OpenAsync();
 
-    private void OptimizeRepository_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(_maintenanceController.OptimizeAsync, "Optimize repository");
-
 }
