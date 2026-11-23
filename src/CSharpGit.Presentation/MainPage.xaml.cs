@@ -103,6 +103,7 @@ public sealed partial class MainPage : Page
         HistoryPane.ChangedFilesTree_ItemInvokedCallback = ChangedFilesTree_ItemInvoked;
         HistoryPane.CommitFilesList_SelectionChangedCallback = CommitFilesList_SelectionChanged;
         HistoryPane.CommitFilesList_DoubleTappedCallback = CommitFilesList_DoubleTapped;
+        HistoryPane.CommitFilesList_KeyDownCallback = CommitFilesList_KeyDown;
         HistoryPane.CommitOpenOriginal_ClickCallback = CommitOpenOriginal_Click;
         HistoryPane.CommitOpenChanged_ClickCallback = CommitOpenChanged_Click;
         HistoryPane.CommitExternalDiff_ClickCallback = CommitExternalDiff_Click;
