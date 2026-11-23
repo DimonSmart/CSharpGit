@@ -439,16 +439,16 @@ public sealed partial class MainPage : Page
                 _settingsWindowController.Open(SettingsSection.General, focusPullStrategy: true);
                 break;
             case RepositoryToolbarAction.PushPrimary:
-                RunPageUiOperation(PushPrimaryAsync, "Push");
+                RunPageUiOperation(_repositoryPush.PushPrimaryAsync, "Push");
                 break;
             case RepositoryToolbarAction.Push:
-                RunPageUiOperation(PushFromUiAsync, "Push");
+                RunPageUiOperation(_repositoryPush.PushAsync, "Push");
                 break;
             case RepositoryToolbarAction.PushTo:
-                RunPageUiOperation(ShowPushToDialogAsync, "PushTo_Click");
+                RunPageUiOperation(_repositoryPush.PushToAsync, "PushTo_Click");
                 break;
             case RepositoryToolbarAction.ForcePushWithLease:
-                RunPageUiOperation(RunForcePushWithLeaseAsync, "ForcePushWithLease_Click");
+                RunPageUiOperation(_repositoryPush.ForcePushWithLeaseAsync, "ForcePushWithLease_Click");
                 break;
             case RepositoryToolbarAction.PushSetDefault:
                 RunPageUiOperation(() => _viewModel.RepositorySync.SetDefaultPushActionAsync(PushToolbarAction.Push), "Set default Push");
@@ -551,13 +551,6 @@ public sealed partial class MainPage : Page
         };
         await ShowErrorAsync(title, result.Message);
     }
-
-    private Task PushPrimaryAsync() => _viewModel.RepositorySync.DefaultPushAction switch
-    {
-        PushToolbarAction.PushTo => ShowPushToDialogAsync(),
-        PushToolbarAction.ForcePushWithLease => RunForcePushWithLeaseAsync(),
-        _ => PushFromUiAsync()
-    };
 
     private void ApplyHistoryFilter_Click(object sender, RoutedEventArgs e) =>
         RunPageUiOperation(RefreshVisibleHistoryAsync, "Apply history filter");
