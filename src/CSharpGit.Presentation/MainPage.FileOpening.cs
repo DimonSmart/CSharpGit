@@ -311,7 +311,7 @@ public sealed partial class MainPage
             ? WorkingTreeDiffKind.Staged : WorkingTreeDiffKind.Unstaged;
         var request = CaptureWorkingTreeRequest(change, kind);
         if (request is null) return;
-        SelectWorkingTreeChange(change, kind);
+        WorkingTreePane.SelectWorkingTreeChange(change, kind);
         args.Handled = true;
         await ExecuteFileActionAsync(request, FileActionKind.Preferred, "Could not open file");
     }
@@ -391,14 +391,14 @@ public sealed partial class MainPage
                 CaptureWorkingTreeRequest() is { } current
                 && ReferenceEquals(current.Repository, change.Repository)
                 && current.Kind == change.Kind
-                && SameWorkingTreeChange(current.Change, change.Change),
+                && Views.WorkingTreeView.SameWorkingTreeChange(current.Change, change.Change),
             _ => false
         };
     }
 
     private void SelectWorkingTreeContextRow(ListView list, WorkingTreeChange change, WorkingTreeDiffKind kind)
     {
-        _workingTreeSelectionSync = true;
+        WorkingTreePane.SetSelectionSync(true);
         try
         {
             list.SelectedItems.Clear();
@@ -406,11 +406,11 @@ public sealed partial class MainPage
         }
         finally
         {
-            _workingTreeSelectionSync = false;
+            WorkingTreePane.SetSelectionSync(false);
         }
 
         _viewModel.WorkingTree.SetSelection(kind, [change]);
-        SelectWorkingTreeChange(change, kind);
+        WorkingTreePane.SelectWorkingTreeChange(change, kind);
     }
 
     private MenuFlyout BuildWorkingTreeFileMenu(

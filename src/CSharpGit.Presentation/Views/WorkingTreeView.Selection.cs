@@ -1,3 +1,4 @@
+using CSharpGit.Presentation.Workflows;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
@@ -10,10 +11,86 @@ using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using Windows.UI.Core;
 
-namespace CSharpGit.Presentation;
+namespace CSharpGit.Presentation.Views;
 
-public sealed partial class MainPage
+public sealed partial class WorkingTreeView
 {
+    private OpenRepositoryViewModel _viewModel = null!;
+    private BulkObservableCollection<WorkingTreeChange> _unstagedChanges = null!;
+    private BulkObservableCollection<WorkingTreeChange> _stagedChanges = null!;
+    private WorkingTreeImageDiffWorkflow _workingTreeImageDiff = null!;
+    private DiffPresentationController _diffPresentation = null!;
+    private Func<bool> _isShuttingDown = null!;
+    private Action<Func<Task>, string> _runUiOperation = null!;
+    private Func<string, string, Task> _showError = null!;
+    private bool _configured;
+    private long _visibilityCallbackToken;
+    private WorkingTreeView WorkingTreePane => this;
+    private bool IsShuttingDown => _isShuttingDown();
+
+    internal void Configure(
+        OpenRepositoryViewModel viewModel,
+        BulkObservableCollection<WorkingTreeChange> unstaged,
+        BulkObservableCollection<WorkingTreeChange> staged,
+        WorkingTreeImageDiffWorkflow imageDiff,
+        DiffPresentationController diffPresentation,
+        Func<bool> isShuttingDown,
+        Action<Func<Task>, string> runUiOperation,
+        Func<string, string, Task> showError)
+    {
+        if (_configured) throw new InvalidOperationException("WorkingTreeView is already configured.");
+        _configured = true;
+        _viewModel = viewModel;
+        _unstagedChanges = unstaged;
+        _stagedChanges = staged;
+        _workingTreeImageDiff = imageDiff;
+        _diffPresentation = diffPresentation;
+        _isShuttingDown = isShuttingDown;
+        _runUiOperation = runUiOperation;
+        _showError = showError;
+    }
+
+    private void RunPageUiOperation(Func<Task> action, string description) => _runUiOperation(action, description);
+    private Task ShowErrorAsync(string title, string message) => _showError(title, message);
+    private static bool IsControlDown() =>
+        (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control) & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down;
+
+    internal void SetSelectionSync(bool value)
+    {
+        _workingTreeSelectionSync = value;
+        if (!value) ScheduleWorkingTreeTreeRefreshIfNeeded();
+    }
+
+    internal IReadOnlyList<WorkingTreeChange> SelectWorkingTreeContextTarget(
+        WorkingTreeTreeNode node, WorkingTreeDiffKind kind)
+    {
+        var roots = kind == WorkingTreeDiffKind.Unstaged ? _unstagedTreeRoots : _stagedTreeRoots;
+        var selection = kind == WorkingTreeDiffKind.Unstaged ? _unstagedTreeSelection : _stagedTreeSelection;
+        if (!selection.IsSelected(node.Path)) selection.SelectSingle(node, roots);
+        var selected = selection.GetSelectedLeaves(roots).Select(n => n.Change!).ToArray();
+        _viewModel.WorkingTree.SetSelection(kind, selected);
+        SelectWorkingTreeChange(node.Change!, kind);
+        return selected;
+    }
+
+    internal void ShutdownWorkingTreeDiffSurface()
+    {
+        if (!_configured) return;
+        _configured = false;
+        _unstagedChanges.CollectionChanged -= WorkingTreePresentationSourceChanged;
+        _stagedChanges.CollectionChanged -= WorkingTreePresentationSourceChanged;
+        _viewModel.WorkingTree.PropertyChanged -= WorkingTreeViewModel_PropertyChanged;
+        UnstagedChangesTree.Expanding -= WorkingTreeTree_Expanding;
+        UnstagedChangesTree.Collapsed -= WorkingTreeTree_Collapsed;
+        StagedChangesTree.Expanding -= WorkingTreeTree_Expanding;
+        StagedChangesTree.Collapsed -= WorkingTreeTree_Collapsed;
+        UnregisterPropertyChangedCallback(VisibilityProperty, _visibilityCallbackToken);
+        _unstagedViewport?.Dispose();
+        _stagedViewport?.Dispose();
+        _workingTreeImageDiff.Cancel();
+    }
+
+
     private readonly BulkObservableCollection<WorkingTreeTreeNode> _unstagedTreeRoots = [];
     private readonly BulkObservableCollection<WorkingTreeTreeNode> _stagedTreeRoots = [];
     private readonly WorkingTreeTreeSelection _unstagedTreeSelection = new();
@@ -32,7 +109,7 @@ public sealed partial class MainPage
     private TreeView UnstagedChangesList => UnstagedChangesTree;
     private TreeView StagedChangesList => StagedChangesTree;
 
-    private void InitializeWorkingTreeDiffSurface()
+    internal void InitializeWorkingTreeDiffSurface()
     {
         UnstagedChangesTree.ItemsSource = _unstagedTreeRoots;
         StagedChangesTree.ItemsSource = _stagedTreeRoots;
@@ -46,7 +123,7 @@ public sealed partial class MainPage
         _unstagedChanges.CollectionChanged += WorkingTreePresentationSourceChanged;
         _stagedChanges.CollectionChanged += WorkingTreePresentationSourceChanged;
         _viewModel.WorkingTree.PropertyChanged += WorkingTreeViewModel_PropertyChanged;
-        WorkingTreePane.RegisterPropertyChangedCallback(VisibilityProperty, (_, _) =>
+        _visibilityCallbackToken = RegisterPropertyChangedCallback(VisibilityProperty, (_, _) =>
         {
             if (IsShuttingDown) return;
             if (WorkingTreePane.Visibility == Visibility.Visible)
@@ -219,7 +296,7 @@ public sealed partial class MainPage
     private static bool IsShiftDown() =>
         (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift) & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down;
 
-    private void SelectWorkingTreeChange(WorkingTreeChange change, WorkingTreeDiffKind kind)
+    internal void SelectWorkingTreeChange(WorkingTreeChange change, WorkingTreeDiffKind kind)
     {
         _desiredWorkingTreePath = change.Path;
         UpdateWorkingTreeDiffHeader(change, kind);
@@ -465,7 +542,7 @@ public sealed partial class MainPage
         return null;
     }
 
-    private static bool SameWorkingTreeChange(WorkingTreeChange left, WorkingTreeChange right) =>
+    internal static bool SameWorkingTreeChange(WorkingTreeChange left, WorkingTreeChange right) =>
         string.Equals(left.Path, right.Path, StringComparison.Ordinal) &&
         left.IndexStatus == right.IndexStatus &&
         left.WorkingTreeStatus == right.WorkingTreeStatus &&
@@ -525,29 +602,5 @@ public sealed partial class MainPage
             ? change.Path
             : $"{change.OriginalPath} → {change.Path}";
         return $"{status}  {path}";
-    }
-}
-
-internal static class WorkingTreeTreeViewExtensions
-{
-    public static void ScrollIntoView(this TreeView tree, object item)
-    {
-        object? treeItem = item;
-        if (item is WorkingTreeChange change && tree.ItemsSource is IEnumerable<WorkingTreeTreeNode> roots)
-            treeItem = FindLeaf(roots, change.Path);
-
-        if (treeItem is not null && tree.ContainerFromItem(treeItem) is FrameworkElement container)
-            container.StartBringIntoView();
-    }
-
-    private static WorkingTreeTreeNode? FindLeaf(IEnumerable<WorkingTreeTreeNode> nodes, string path)
-    {
-        foreach (var node in nodes)
-        {
-            if (node.Change is not null && string.Equals(node.Path, path, StringComparison.Ordinal)) return node;
-            if (FindLeaf(node.Children, path) is { } match) return match;
-        }
-
-        return null;
     }
 }
