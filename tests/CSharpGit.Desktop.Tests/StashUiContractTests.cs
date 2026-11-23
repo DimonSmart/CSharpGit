@@ -22,7 +22,8 @@ public sealed class StashUiContractTests
     public void RepositoryLevelStashUsesOneDialogAndSemanticRequest()
     {
         var root = FindRepositoryRoot();
-        var xaml = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
+        var xaml = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml")
+            + Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.xaml");
         var editor = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeCommitEditorView.xaml");
         var editorCode = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeCommitEditorView.xaml.cs");
         var composer = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs");

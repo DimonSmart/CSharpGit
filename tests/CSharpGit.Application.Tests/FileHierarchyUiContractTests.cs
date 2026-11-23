@@ -6,7 +6,7 @@ public sealed class FileHierarchyUiContractTests
     public void FileTreesUseSharedHierarchyChrome()
     {
         var root = FindRepositoryRoot();
-        var main = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
+        var main = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml") + Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.xaml");
         var files = Read(root, "src", "CSharpGit.Presentation", "Controls", "RepositoryFilesSurface.cs");
         var repositoryTree = Read(root, "src", "CSharpGit.Presentation", "Styles", "RepositoryTree.xaml");
         var workspace = Read(root, "src", "CSharpGit.Presentation", "Styles", "Workspace.xaml");
