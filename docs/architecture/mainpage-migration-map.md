@@ -4,8 +4,6 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 
 ## Phase 3 incremental implementation
 
-Typed repository-toolbar actions now call their existing workflows directly; no synthetic `RoutedEventArgs` are constructed by `MainPage`. F5 and the toolbar refresh indicator share `RepositoryManualRefreshController`. This is a partial Phase 3 step; feature views and window lifetime still require extraction.
-
 Destructive path-history rewrite confirmation, operation admission, error reporting
 and invalidation are now owned by `Workflows/HistoryRewriteController`.
 `MainPage.HistoryRewrite.cs` retains only right-tap routing and menu composition;
@@ -386,3 +384,7 @@ Generated from the baseline source declarations to support phase-2 extraction. F
 | `MainPage.WorktreeContextMenu.cs` | — | `ShowWorktreeContextMenu` | — |
 | `MainPage.Worktrees.cs` | `_worktreesViewModel`, `_worktreeShutdown` | `InitializeWorktreeSupport`, `ShutdownWorktreeSupport`, `OpenInitialRepositoryAsync`, `WorktreesViewModel_PropertyChanged`, `FindWorktreeForBranch`, `CreateWorktreeFromBranchAsync`, `CreateNewWorktreeAsync`, `PopulateWorktreeMenu` | `_worktreesViewModel.PropertyChanged += WorktreesViewModel_Propert`, `_worktreesViewModel.PropertyChanged -= WorktreesViewModel_Propert`, `branch.TextChanged += (_, _) =>`, `directory.TextChanged += (_, _) =>` |
 | `MainPage.xaml.cs` | `_viewModel`, `_repositoryTreeRoots`, `_unstagedChanges`, `_stagedChanges`, `_commitFiles`, `_wasBusy`, `_repositoryTreeNavigation`, `_busyPulseStoryboard` | `RepositoryPresentationChanges_CollectionChanged`, `RepositoryPresentationLocalBranches_CollectionChanged`, `RepositoryPresentationRemoteBranches_CollectionChanged`, `RepositoryPresentationRemotes_CollectionChanged`, `RepositoryPresentationTags_CollectionChanged`, `RepositoryPresentationStashes_CollectionChanged`, `ConfirmCloseAsync`, `ViewModel_PropertyChanged` | `_viewModel.PropertyChanged += ViewModel_PropertyChanged;`, `_viewModel.Stashes.PropertyChanged += StashesViewModel_PropertyCh`, `_viewModel.CommitDetails.PropertyChanged += CommitDetailsViewMode`, `_viewModel.History.PropertyChanged += HistoryViewModel_PropertyCh`, `_viewModel.History.CommitLookupCompleted += History_CommitLookupC`, `_viewModel.WorkingTree.Changes.CollectionChanged += RepositoryPre`, `_viewModel.Branches.LocalBranches.CollectionChanged += Repository`, `_viewModel.Branches.RemoteBranches.CollectionChanged += Repositor` |
+
+## Phase 3 follow-up: toolbar routing
+
+Typed repository-toolbar actions now call their existing workflows directly; no synthetic `RoutedEventArgs` are constructed by `MainPage`. F5 and the toolbar refresh indicator share `RepositoryManualRefreshController`. This is a partial Phase 3 step; feature views and window lifetime still require extraction.
