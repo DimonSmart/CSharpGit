@@ -100,9 +100,9 @@ def main():
     lines = [
         "## Test timing report",
         "",
-        f"Commit: \`{os.getenv('GITHUB_SHA', 'local')}\`  ",
-        f"OS: \`{os.getenv('RUNNER_OS', sys.platform)}\`  ",
-        f".NET SDK: \`{sdk}\`",
+        f"Commit: `{os.getenv('GITHUB_SHA', 'local')}`  ",
+        f"OS: `{os.getenv('RUNNER_OS', sys.platform)}`  ",
+        f".NET SDK: `{sdk}`",
         "",
         f"TRX files: **{len(paths)}**",
         "",
@@ -162,6 +162,8 @@ def main():
     if not paths:
         lines.append("No TRX files were found. The build or test execution may have failed before producing results.")
     report = "\n".join(lines) + "\n"
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     print(report)
     if os.getenv("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
