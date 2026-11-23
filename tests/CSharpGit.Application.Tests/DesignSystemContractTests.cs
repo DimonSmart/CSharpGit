@@ -145,12 +145,13 @@ public sealed class DesignSystemContractTests
         var root = FindRepositoryRoot();
         var main = XDocument.Parse(Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var workingTreeView = XDocument.Parse(Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.xaml"));
+        var historyView = XDocument.Parse(Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml"));
         var icons = XDocument.Parse(Read(root, "src", "CSharpGit.Presentation", "Styles", "Icons.xaml"));
         var code = Read(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs");
         var menu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
         XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
 
-        XElement Named(string name) => Assert.Single(main.Descendants().Concat(workingTreeView.Descendants()), element =>
+        XElement Named(string name) => Assert.Single(main.Descendants().Concat(workingTreeView.Descendants()).Concat(historyView.Descendants()), element =>
             (string?)element.Attribute(x + "Name") == name);
         var semanticIcons = icons.Descendants()
             .Where(element => element.Attribute(x + "Key") is not null)

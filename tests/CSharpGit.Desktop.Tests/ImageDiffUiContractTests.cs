@@ -6,7 +6,9 @@ public sealed class ImageDiffUiContractTests
     public void CommitAndWorkingTreeUseExplicitImageDiffPresentationStates()
     {
         var root = FindRepositoryRoot();
-        var xaml = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml") + Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.xaml");
+        var xaml = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml")
+            + Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.xaml")
+            + Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml");
         var changes = Read(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs");
         var workingTree = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs");
         var lifecycle = Read(root, "src", "CSharpGit.Presentation", "Workflows", "CommitImageDiffWorkflow.cs");
