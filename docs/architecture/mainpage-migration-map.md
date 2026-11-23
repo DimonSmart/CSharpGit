@@ -402,3 +402,7 @@ The temporary `IWindowContentLifetime` interface has been removed. `WindowSessio
 ## Phase 3 follow-up: working-tree visual composition
 
 The staging trees, working-tree diff surface, buttons and commit editor are now visually owned by `Views/WorkingTreeView.xaml` instead of being declared inline in `MainPage.xaml`. The parent page retains temporary typed event callbacks and control facades for the existing workflow controllers. This is a staging step, not completion of the required feature-owned state/handler migration; remove the facades during the next stage.
+
+## Phase 3 follow-up: history and commit-details visual composition
+
+The History graph, Commit Summary, Changed Files and commit diff viewer are visually grouped in `Views/HistoryWorkspaceView.xaml`. `MainPage.xaml` composes this host and the separate `WorkingTreeView` rather than declaring either feature's controls inline. Existing callbacks and control facades remain transitional and must migrate to feature controllers before the Phase 3 Definition of Done is met.

@@ -27,6 +27,32 @@ public sealed partial class MainPage : Page
 {
     private readonly OpenRepositoryViewModel _viewModel;
 
+    // Temporary typed facade for history/commit-details feature handlers.
+    private HistoryView HistoryView => HistoryPane.HistoryViewControl;
+    private Pivot DetailsTabs => HistoryPane.DetailsTabsControl;
+    private PivotItem SummaryTab => HistoryPane.SummaryTabControl;
+    private ScrollViewer DetailsScroller => HistoryPane.DetailsScrollerControl;
+    private CommitDetailsView CommitDetailsContent => HistoryPane.CommitDetailsContentControl;
+    private ScrollViewer StashDetailsScroller => HistoryPane.StashDetailsScrollerControl;
+    private PivotItem ChangesTab => HistoryPane.ChangesTabControl;
+    private Border ChangedFilesHeader => HistoryPane.ChangedFilesHeaderControl;
+    private TreeView ChangedFilesTree => HistoryPane.ChangedFilesTreeControl;
+    private ListView CommitFilesList => HistoryPane.CommitFilesListControl;
+    private Border CommitDiffHeader => HistoryPane.CommitDiffHeaderControl;
+    private Grid CommitTextDiffHeader => HistoryPane.CommitTextDiffHeaderControl;
+    private Button CommitOpenOriginalButton => HistoryPane.CommitOpenOriginalButtonControl;
+    private Button CommitOpenChangedButton => HistoryPane.CommitOpenChangedButtonControl;
+    private Button CommitExternalDiffButton => HistoryPane.CommitExternalDiffButtonControl;
+    private Button CommitRevealButton => HistoryPane.CommitRevealButtonControl;
+    private StackPanel CommitLargeDiffInfo => HistoryPane.CommitLargeDiffInfoControl;
+    private TextBlock CommitLargeDiffMessage => HistoryPane.CommitLargeDiffMessageControl;
+    private Button CommitLargeDiffButton => HistoryPane.CommitLargeDiffButtonControl;
+    private InfoBar CommitBinaryInfo => HistoryPane.CommitBinaryInfoControl;
+    private StackPanel CommitImageLoading => HistoryPane.CommitImageLoadingControl;
+    private ImageDiffPreviewHost CommitImageDiffHost => HistoryPane.CommitImageDiffHostControl;
+    private SelectableDiffViewer CompactDiffViewer => HistoryPane.CompactDiffViewerControl;
+
+
     // Temporary typed facade while WorkingTree feature interactions are moved into WorkingTreeView.
     private Grid WorkingTreeHeader => WorkingTreePane.WorkingTreeHeaderControl;
     private TextBlock UnstagedHeader => WorkingTreePane.UnstagedHeaderControl;
@@ -71,6 +97,17 @@ public sealed partial class MainPage : Page
         WorkspaceNavigator workspaceNavigator)
     {
         InitializeComponent();
+        HistoryPane.DetailsTabs_SelectionChangedCallback = DetailsTabs_SelectionChanged;
+        HistoryPane.DropSelectedStash_ClickCallback = DropSelectedStash_Click;
+        HistoryPane.ChangesSurface_LoadedCallback = ChangesSurface_Loaded;
+        HistoryPane.ChangedFilesTree_ItemInvokedCallback = ChangedFilesTree_ItemInvoked;
+        HistoryPane.CommitFilesList_SelectionChangedCallback = CommitFilesList_SelectionChanged;
+        HistoryPane.CommitFilesList_DoubleTappedCallback = CommitFilesList_DoubleTapped;
+        HistoryPane.CommitOpenOriginal_ClickCallback = CommitOpenOriginal_Click;
+        HistoryPane.CommitOpenChanged_ClickCallback = CommitOpenChanged_Click;
+        HistoryPane.CommitExternalDiff_ClickCallback = CommitExternalDiff_Click;
+        HistoryPane.CommitReveal_ClickCallback = CommitReveal_Click;
+        HistoryPane.CommitLargeDiffButton_ClickCallback = CommitLargeDiffButton_Click;
         WorkingTreePane.UnstagedChangesTree_ItemInvokedCallback = UnstagedChangesTree_ItemInvoked;
         WorkingTreePane.UnstagedChangesTree_RightTappedCallback = UnstagedChangesTree_RightTapped;
         WorkingTreePane.StagedChangesTree_ItemInvokedCallback = StagedChangesTree_ItemInvoked;
