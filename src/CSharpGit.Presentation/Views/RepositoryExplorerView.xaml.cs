@@ -4,6 +4,7 @@ using System.Diagnostics;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.Controls;
 using CSharpGit.Presentation.ViewModels;
+using CSharpGit.Presentation.Workflows;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -23,6 +24,7 @@ public sealed partial class RepositoryExplorerView : UserControl
     private OpenRepositoryViewModel? _repository;
     private WorktreesViewModel? _worktrees;
     private WorkspaceNavigator? _navigator;
+    private WorktreeController? _worktreeController;
     private bool _disposed;
     private bool _configured;
 
@@ -42,13 +44,14 @@ public sealed partial class RepositoryExplorerView : UserControl
     internal event Action<object, RightTappedRoutedEventArgs>? ReferenceMenuRequested;
 
     internal void Configure(OpenRepositoryViewModel repository,
-        WorktreesViewModel worktrees, WorkspaceNavigator navigator)
+        WorktreesViewModel worktrees, WorkspaceNavigator navigator, WorktreeController worktreeController)
     {
         if (_disposed || _configured) return;
         _configured = true;
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _worktrees = worktrees ?? throw new ArgumentNullException(nameof(worktrees));
         _navigator = navigator ?? throw new ArgumentNullException(nameof(navigator));
+        _worktreeController = worktreeController ?? throw new ArgumentNullException(nameof(worktreeController));
         Tree.Expanding += Tree_Expanding;
         Tree.Collapsed += Tree_Collapsed;
         _repository.PropertyChanged += Repository_PropertyChanged;
@@ -203,6 +206,15 @@ public sealed partial class RepositoryExplorerView : UserControl
         ReferenceMenuRequested?.Invoke(sender, e);
     }
 
+    internal void ShowWorktreeContextMenu(FrameworkElement source, WorktreeInfo worktree, RightTappedRoutedEventArgs args)
+    {
+        if (_disposed || _worktreeController is null) return;
+        var flyout = new MenuFlyout();
+        _worktreeController.PopulateWorktreeMenu(flyout, worktree);
+        flyout.ShowAt(source, args.GetPosition(source));
+        args.Handled = true;
+    }
+
     internal static RepositoryTreeNode? ResolveNode(object? value) => value switch
     {
         RepositoryTreeNode node => node,
@@ -226,6 +238,7 @@ public sealed partial class RepositoryExplorerView : UserControl
         _repository = null;
         _worktrees = null;
         _navigator = null;
+        _worktreeController = null;
         _viewport.Dispose();
         _roots.Clear();
         Tree.ItemsSource = null;
