@@ -26,6 +26,32 @@ namespace CSharpGit.Presentation;
 public sealed partial class MainPage : Page
 {
     private readonly OpenRepositoryViewModel _viewModel;
+
+    // Temporary typed facade while WorkingTree feature interactions are moved into WorkingTreeView.
+    private Grid WorkingTreeHeader => WorkingTreePane.WorkingTreeHeaderControl;
+    private TextBlock UnstagedHeader => WorkingTreePane.UnstagedHeaderControl;
+    private TreeView UnstagedChangesTree => WorkingTreePane.UnstagedChangesTreeControl;
+    private GridSplitter WorkingTreeStagingSplitter => WorkingTreePane.WorkingTreeStagingSplitterControl;
+    private TextBlock StagedHeader => WorkingTreePane.StagedHeaderControl;
+    private TreeView StagedChangesTree => WorkingTreePane.StagedChangesTreeControl;
+    private TextBlock WorkingTreeDiffHeader => WorkingTreePane.WorkingTreeDiffHeaderControl;
+    private TextBlock WorkingTreeDiffKindText => WorkingTreePane.WorkingTreeDiffKindTextControl;
+    private Button WorkingTreeOpenOriginalButton => WorkingTreePane.WorkingTreeOpenOriginalButtonControl;
+    private Button WorkingTreeOpenChangedButton => WorkingTreePane.WorkingTreeOpenChangedButtonControl;
+    private Button WorkingTreeExternalDiffButton => WorkingTreePane.WorkingTreeExternalDiffButtonControl;
+    private Button WorkingTreeRevealButton => WorkingTreePane.WorkingTreeRevealButtonControl;
+    private Border WorkingTreeTextDiffHeader => WorkingTreePane.WorkingTreeTextDiffHeaderControl;
+    private StackPanel WorkingTreeLargeDiffInfo => WorkingTreePane.WorkingTreeLargeDiffInfoControl;
+    private TextBlock WorkingTreeLargeDiffMessage => WorkingTreePane.WorkingTreeLargeDiffMessageControl;
+    private Button WorkingTreeLargeDiffButton => WorkingTreePane.WorkingTreeLargeDiffButtonControl;
+    private StackPanel WorkingTreeDiffLoading => WorkingTreePane.WorkingTreeDiffLoadingControl;
+    private InfoBar WorkingTreeBinaryInfo => WorkingTreePane.WorkingTreeBinaryInfoControl;
+    private InfoBar WorkingTreeNoChangesInfo => WorkingTreePane.WorkingTreeNoChangesInfoControl;
+    private StackPanel WorkingTreeImageLoading => WorkingTreePane.WorkingTreeImageLoadingControl;
+    private ImageDiffPreviewHost WorkingTreeImageDiffHost => WorkingTreePane.WorkingTreeImageDiffHostControl;
+    private SelectableDiffViewer WorkingTreeDiffViewer => WorkingTreePane.WorkingTreeDiffViewerControl;
+    private WorkingTreeCommitEditorView WorkingTreeCommitEditor => WorkingTreePane.WorkingTreeCommitEditorControl;
+
     internal OpenRepositoryViewModel WindowRepository => _viewModel;
     private readonly BulkObservableCollection<WorkingTreeChange> _unstagedChanges = [];
     private readonly BulkObservableCollection<WorkingTreeChange> _stagedChanges = [];
@@ -45,6 +71,15 @@ public sealed partial class MainPage : Page
         WorkspaceNavigator workspaceNavigator)
     {
         InitializeComponent();
+        WorkingTreePane.UnstagedChangesTree_ItemInvokedCallback = UnstagedChangesTree_ItemInvoked;
+        WorkingTreePane.UnstagedChangesTree_RightTappedCallback = UnstagedChangesTree_RightTapped;
+        WorkingTreePane.StagedChangesTree_ItemInvokedCallback = StagedChangesTree_ItemInvoked;
+        WorkingTreePane.StagedChangesTree_RightTappedCallback = StagedChangesTree_RightTapped;
+        WorkingTreePane.WorkingTreeOpenOriginal_ClickCallback = WorkingTreeOpenOriginal_Click;
+        WorkingTreePane.WorkingTreeOpenChanged_ClickCallback = WorkingTreeOpenChanged_Click;
+        WorkingTreePane.WorkingTreeExternalDiff_ClickCallback = WorkingTreeExternalDiff_Click;
+        WorkingTreePane.WorkingTreeReveal_ClickCallback = WorkingTreeReveal_Click;
+        WorkingTreePane.WorkingTreeLargeDiffButton_ClickCallback = WorkingTreeLargeDiffButton_Click;
         DataContext = _viewModel = viewModel;
         _pageDialogs = new Dialogs.PageDialogController(this, _viewModel, () => IsShuttingDown);
         _diffPresentation = new Workflows.DiffPresentationController(

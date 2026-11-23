@@ -47,7 +47,8 @@ public sealed class SelectableTextUiContractTests
     public void CommitAndWorkingTreeDiffsShareOneSelectableViewer()
     {
         var root = FindRepositoryRoot();
-        var main = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
+        var main = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml")
+            + Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.xaml");
         var viewerXaml = Read(root, "src", "CSharpGit.Presentation", "Controls", "SelectableDiffViewer.xaml");
         var viewerCode = Read(root, "src", "CSharpGit.Presentation", "Controls", "SelectableDiffViewer.xaml.cs");
         var changes = Read(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs");

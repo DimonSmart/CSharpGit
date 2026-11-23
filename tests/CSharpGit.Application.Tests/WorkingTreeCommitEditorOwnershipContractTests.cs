@@ -7,7 +7,7 @@ public sealed class WorkingTreeCommitEditorOwnershipContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
+        var page = File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeView.xaml"));
         var editor = File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeCommitEditorView.xaml"));
         var codeBehind = File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeCommitEditorView.xaml.cs"));
         var owner = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryMaintenance.cs"));

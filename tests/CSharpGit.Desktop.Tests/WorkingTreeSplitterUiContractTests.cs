@@ -6,7 +6,7 @@ public sealed class WorkingTreeSplitterUiContractTests
     public void WorkingTreeStagedAndUnstagedAreasHaveResizableSplitter()
     {
         var root = FindRepositoryRoot();
-        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.xaml"));
 
         const string splitterName = "x:Name=\"WorkingTreeStagingSplitter\"";
         var splitterStart = xaml.IndexOf(splitterName, StringComparison.Ordinal);
