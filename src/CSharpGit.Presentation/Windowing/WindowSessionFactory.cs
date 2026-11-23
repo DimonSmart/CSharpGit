@@ -38,7 +38,8 @@ internal sealed class WindowSessionFactory(IServiceScopeFactory scopeFactory)
                 nameof(OpenRepositoryViewModel.IsDetachedHead));
             return (page, new WindowSession(
                 scope,
-                page,
+                _ => page.PrepareForShutdown(),
+                page.BeginShutdown,
                 repository,
                 navigator,
                 safety,

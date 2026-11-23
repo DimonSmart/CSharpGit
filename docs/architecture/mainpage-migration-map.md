@@ -390,3 +390,7 @@ Generated from the baseline source declarations to support phase-2 extraction. F
 ## Phase 3 follow-up: toolbar routing
 
 Typed repository-toolbar actions now call their existing workflows directly; no synthetic `RoutedEventArgs` are constructed by `MainPage`. F5 and the toolbar refresh indicator share `RepositoryManualRefreshController`. This is a partial Phase 3 step; feature views and window lifetime still require extraction.
+
+## Phase 3 follow-up: window lifetime bridge
+
+The temporary `IWindowContentLifetime` interface has been removed. `WindowSessionFactory` supplies explicit preparation and completion callbacks to `WindowSession`; session idempotency, close protection and DI-scope disposal remain unchanged. Remaining feature-owned subscriptions and shutdown cleanup still need to migrate out of `MainPage` before Phase 3 can be declared complete.
