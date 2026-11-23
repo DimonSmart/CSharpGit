@@ -168,52 +168,8 @@ public sealed partial class MainPage
         var flyout = new MenuFlyout();
         switch (node.Kind)
         {
-            case RepositoryTreeNodeKind.LocalBranch when node.Value is GitBranch branch:
-                AddMenuItem(flyout, "Switch / Checkout", () => !branch.IsCurrent && _viewModel.CanStartUserGitOperation, async () =>
-                {
-                    _viewModel.Branches.SelectedLocalBranch = branch;
-                    await ExecuteCommandAsync(_viewModel.Branches.SwitchBranchCommand);
-                });
-                AddMenuItem(flyout, "Create branch from here…", () => _viewModel.CanStartUserGitOperation, () => CreateBranchFromAsync(branch.Name));
-                AddMenuItem(flyout, "Merge into current branch", () => !branch.IsCurrent && _viewModel.CanStartUserGitOperation, async () =>
-                {
-                    _viewModel.RepositoryOperations.SelectedMergeBranch = branch;
-                    await ExecuteCommandAsync(_viewModel.RepositoryOperations.MergeCommand);
-                });
-                AddMenuItem(
-                    flyout,
-                    "Delete",
-                    () => !branch.IsCurrent && _viewModel.CanStartUserGitOperation,
-                    () => ConfirmDeleteLocalBranchAsync(branch));
-                flyout.Items.Add(new MenuFlyoutSeparator());
-                AddMenuItem(flyout, "Show branch history only", () => _viewModel.CanStartUserGitOperation,
-                    () => ShowReferenceHistoryAsync(branch.Name, $"Branch: {branch.Name}"));
-                AddMenuItem(flyout, "Copy branch name", true, () => CopyTextAsync(branch.Name));
-                break;
-
             case RepositoryTreeNodeKind.Group when node.Name == "Remotes":
                 AddMenuItem(flyout, "Fetch all", () => _viewModel.CanStartUserGitOperation, async () => await ExecuteCommandAsync(_viewModel.RepositorySync.FetchAllCommand));
-                break;
-
-            case RepositoryTreeNodeKind.Remote when node.Value is GitRemote remote:
-                AddMenuItem(flyout, "Fetch", () => _viewModel.CanStartUserGitOperation, async () =>
-                {
-                    _viewModel.RepositorySync.SelectedRemote = remote;
-                    await ExecuteCommandAsync(_viewModel.RepositorySync.FetchCommand);
-                });
-                break;
-
-            case RepositoryTreeNodeKind.RemoteBranch when node.Value is GitBranch remoteBranch:
-                AddMenuItem(flyout, "Checkout as tracking branch", () => _viewModel.CanStartUserGitOperation, async () =>
-                {
-                    _viewModel.Branches.SelectedRemoteBranch = remoteBranch;
-                    var slash = remoteBranch.Name.IndexOf('/');
-                    _viewModel.Branches.NewBranchName = slash >= 0 ? remoteBranch.Name[(slash + 1)..] : remoteBranch.Name;
-                    await ExecuteCommandAsync(_viewModel.Branches.CheckoutRemoteCommand);
-                });
-                AddMenuItem(flyout, "Show branch history only", () => _viewModel.CanStartUserGitOperation,
-                    () => ShowReferenceHistoryAsync(remoteBranch.Name, $"Remote: {remoteBranch.Name}"));
-                AddMenuItem(flyout, "Copy branch name", true, () => CopyTextAsync(remoteBranch.Name));
                 break;
 
             case RepositoryTreeNodeKind.Tag when node.Value is GitTag tag:

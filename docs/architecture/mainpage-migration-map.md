@@ -403,6 +403,10 @@ The temporary `IWindowContentLifetime` interface has been removed. `WindowSessio
 
 The worktree attached right-tap behavior now resolves `RepositoryExplorerView` rather than `MainPage`; the explorer owns placement and routes menu actions to the scoped `WorktreeController`. `MainPage.WorktreeContextMenu.cs` was removed. The behavior no longer depends on the application's root page.
 
+## Phase 3 follow-up: branch deletion ownership
+
+Local/remote branch deletion (including the optional paired remote/local deletion) and branch-folder deletion now share `Workflows/BranchDeletionController`. `BranchesViewModel` retains mutation semantics; `MainPage.BranchDeletion.cs` contains only the remaining reference context-menu, tag checkout and remote removal UI, which must still migrate to the owning explorer views.
+
 ## Phase 3 follow-up: tag workflow ownership
 
 Tag creation, deletion, remote selection, fetch/push and remote-tag dialogs now belong to `Workflows/TagWorkflowController`, with mutation semantics remaining in `TagsViewModel`. `MainPage.Tags.cs` retains only tag menu composition and the shared information dialog; full reference-menu ownership still needs to move to `RepositoryExplorerView`.

@@ -27,7 +27,7 @@ public sealed partial class MainPage
     private readonly Workflows.BranchDragDropController _branchDragDrop = null!;
     private readonly Workflows.StashDialogController _stashDialogs = null!;
     private readonly Workflows.TagWorkflowController _tagWorkflows = null!;
-    private readonly Workflows.BranchFolderDeletionController _branchFolderDeletion = null!;
+    private readonly Workflows.BranchDeletionController _branchDeletion = null!;
     private readonly Workflows.EditCommitMessageController _editCommitMessage = null!;
     private readonly CloneRepositoryViewModel _cloneRepositoryViewModel = null!;
     private readonly CreateRepositoryViewModel _createRepositoryViewModel = null!;
@@ -111,7 +111,7 @@ public sealed partial class MainPage
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
             () => IsShuttingDown, HandleCommitActionExecutionResultAsync,
             RestoreCommitActionSelectionAsync);
-        _branchFolderDeletion = new Workflows.BranchFolderDeletionController(
+        _branchDeletion = new Workflows.BranchDeletionController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
             () => IsShuttingDown, ShowErrorAsync, ShowInformationAsync);
         WorkingTreeCommitEditor.StashRequested += CreateStash_Click;
