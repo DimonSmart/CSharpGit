@@ -1,3 +1,4 @@
+using CSharpGit.Application;
 using CSharpGit.Domain;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -7,8 +8,8 @@ using CSharpGit.Presentation.ViewModels;
 
 namespace CSharpGit.Presentation.Workflows;
 
-// Owns the two branch-folder deletion confirmation flows and partial-failure reports.
-internal sealed class BranchFolderDeletionController(
+// Owns local and remote branch deletion confirmations, including branch folders, and partial-failure reports.
+internal sealed class BranchDeletionController(
     OpenRepositoryViewModel viewModel,
     Func<XamlRoot?> xamlRoot,
     Func<ContentDialog, Task<ContentDialogResult>> showDialog,
@@ -328,4 +329,211 @@ internal sealed class BranchFolderDeletionController(
         BranchFolderDeletionSkipReason.UsedByWorktree => "used by worktree",
         _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, null)
     };
+    internal async Task ConfirmDeleteLocalAsync(GitBranch branch)
+    {
+        var originalRepository = _viewModel.Repository;
+        if (originalRepository is null || branch.IsCurrent || _viewModel.IsBusy)
+        {
+            return;
+        }
+
+        var remoteTarget = _viewModel.Branches.ResolveRemoteDeletionTargetForLocal(branch);
+
+        var content = new StackPanel { Spacing = UiStyles.Resolve<double>("Spacing.L") };
+        content.Children.Add(new TextBlock
+        {
+            Text = $"Delete local branch '{branch.Name}'?",
+            TextWrapping = TextWrapping.Wrap
+        });
+
+        var forceDeleteCheckBox = new CheckBox
+        { Style = UiStyles.Resolve<Style>("CompactCheckBoxStyle"),
+            Content = "Force delete even if the branch is not fully merged",
+            IsChecked = false
+        };
+        content.Children.Add(forceDeleteCheckBox);
+        content.Children.Add(new TextBlock
+        {
+            Text = "Force delete may remove the only branch reference to commits. Those commits may become difficult to recover.",
+            TextWrapping = TextWrapping.Wrap,
+            Opacity = 0.72
+        });
+
+        CheckBox? deleteRemoteCheckBox = null;
+        if (remoteTarget is not null)
+        {
+            deleteRemoteCheckBox = new CheckBox
+            { Style = UiStyles.Resolve<Style>("CompactCheckBoxStyle"),
+                Content = $"Also delete remote branch '{remoteTarget.Remote.Name}/{remoteTarget.BranchName}'",
+                IsChecked = false
+            };
+            content.Children.Add(deleteRemoteCheckBox);
+        }
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = _xamlRoot(),
+            Title = "Delete local branch?",
+            Content = content,
+            PrimaryButtonText = "Delete",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close
+        };
+
+        if (await _showDialog(dialog) != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        if (_isShuttingDown() || !ReferenceEquals(originalRepository, _viewModel.Repository)
+            || _viewModel.IsBusy || branch.IsCurrent) return;
+        var repository = originalRepository;
+
+        var deletionMode = forceDeleteCheckBox.IsChecked == true
+            ? BranchDeletionMode.Force
+            : BranchDeletionMode.Safe;
+        var deleteRemote = deleteRemoteCheckBox?.IsChecked == true && remoteTarget is not null;
+
+        var result = await _viewModel.Branches.DeleteLocalBranchAsync(
+            repository,
+            branch,
+            deletionMode,
+            deleteRemote,
+            reference =>
+            {
+                _viewModel.History.HandleReferenceDeleted(reference);
+            });
+
+        if (result.LocalDeleted
+            && deleteRemote
+            && !result.RemoteDeleted
+            && result.SecondaryFailureMessage is { } remoteFailure
+            && remoteTarget is not null)
+        {
+            await _showError(
+                "Local branch deleted; remote branch retained",
+                $"Local branch '{branch.Name}' was deleted, but remote branch '{remoteTarget.Remote.Name}/{remoteTarget.BranchName}' could not be deleted.\n\nGit: {remoteFailure}");
+        }
+    }
+
+    internal async Task ConfirmDeleteRemoteAsync(GitBranch remoteBranch)
+    {
+        var originalRepository = _viewModel.Repository;
+        if (_viewModel.Repository is null || _viewModel.IsBusy)
+        {
+            return;
+        }
+
+        RemoteBranchDeletionTarget target;
+        try
+        {
+            target = _viewModel.Branches.ResolveRemoteDeletionTarget(remoteBranch);
+        }
+        catch (Exception exception)
+        {
+            await _showError("Could not delete remote branch", exception.Message);
+            return;
+        }
+
+        var content = new StackPanel { Spacing = UiStyles.Resolve<double>("Spacing.L") };
+        content.Children.Add(new TextBlock
+        {
+            Text = $"Delete remote branch '{remoteBranch.Name}'?",
+            TextWrapping = TextWrapping.Wrap
+        });
+
+        CheckBox? deleteLocalCheckBox = null;
+        CheckBox? forceDeleteLocalCheckBox = null;
+        if (target.LocalBranch is { } localBranch)
+        {
+            deleteLocalCheckBox = new CheckBox
+            { Style = UiStyles.Resolve<Style>("CompactCheckBoxStyle"),
+                Content = $"Also delete local branch '{localBranch.Name}'",
+                IsChecked = false,
+                IsEnabled = !localBranch.IsCurrent
+            };
+            content.Children.Add(deleteLocalCheckBox);
+
+            var forceCheckBox = new CheckBox
+            { Style = UiStyles.Resolve<Style>("CompactCheckBoxStyle"),
+                Content = "Force delete local branch even if it is not fully merged",
+                IsChecked = false,
+                IsEnabled = false
+            };
+            forceDeleteLocalCheckBox = forceCheckBox;
+            deleteLocalCheckBox.Checked += (_, _) => forceCheckBox.IsEnabled = true;
+            deleteLocalCheckBox.Unchecked += (_, _) =>
+            {
+                forceCheckBox.IsChecked = false;
+                forceCheckBox.IsEnabled = false;
+            };
+            content.Children.Add(forceCheckBox);
+            content.Children.Add(new TextBlock
+            {
+                Text = "Force delete may remove the only branch reference to commits. Those commits may become difficult to recover.",
+                TextWrapping = TextWrapping.Wrap,
+                Opacity = 0.72
+            });
+
+            if (localBranch.IsCurrent)
+            {
+                content.Children.Add(new TextBlock
+                {
+                    Text = "The local branch is currently checked out and cannot be deleted.",
+                    TextWrapping = TextWrapping.Wrap,
+                    Opacity = 0.72
+                });
+            }
+        }
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = _xamlRoot(),
+            Title = "Delete remote branch?",
+            Content = content,
+            PrimaryButtonText = "Delete",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close
+        };
+
+        if (await _showDialog(dialog) != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        if (_isShuttingDown() || !ReferenceEquals(originalRepository, _viewModel.Repository)
+            || _viewModel.IsBusy) return;
+        var repository = originalRepository;
+
+        _viewModel.Branches.SelectedRemoteBranch = remoteBranch;
+        var deleteLocal = deleteLocalCheckBox?.IsChecked == true && target.LocalBranch is { IsCurrent: false };
+        var forceDeleteLocal = deleteLocal && forceDeleteLocalCheckBox?.IsChecked == true;
+        var localDeletionMode = forceDeleteLocal
+            ? BranchDeletionMode.Force
+            : BranchDeletionMode.Safe;
+
+        var result = await _viewModel.Branches.DeleteRemoteBranchAsync(
+            repository,
+            remoteBranch,
+            target,
+            deleteLocal,
+            localDeletionMode,
+            reference =>
+            {
+                _viewModel.History.HandleReferenceDeleted(reference);
+            });
+
+        if (result.RemoteDeleted
+            && deleteLocal
+            && !result.LocalDeleted
+            && result.SecondaryFailureMessage is { } localFailure
+            && target.LocalBranch is { } retainedLocalBranch)
+        {
+            await _showError(
+                "Remote branch deleted; local branch retained",
+                $"Remote branch '{remoteBranch.Name}' was deleted, but local branch '{retainedLocalBranch.Name}' could not be deleted.\n\nGit: {localFailure}");
+        }
+    }
+
+
 }
