@@ -14,6 +14,11 @@ public sealed class BranchDeletionUiContractTests
         Assert.Contains("RightTapped=\"Tree_RightTapped\"", xaml, StringComparison.Ordinal);
         var explorer = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryExplorerView.xaml.cs"));
         Assert.Contains("ReferenceMenuRequested?.Invoke(sender, e);", explorer, StringComparison.Ordinal);
+        var fallback = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs"));
+        var fallbackMenu = fallback[fallback.IndexOf("private void RepositoryTree_RightTapped", StringComparison.Ordinal)..];
+        Assert.DoesNotContain("case RepositoryTreeNodeKind.LocalBranch when", fallbackMenu, StringComparison.Ordinal);
+        Assert.DoesNotContain("case RepositoryTreeNodeKind.RemoteBranch when", fallbackMenu, StringComparison.Ordinal);
+        Assert.DoesNotContain("case RepositoryTreeNodeKind.Remote when", fallbackMenu, StringComparison.Ordinal);
         Assert.DoesNotContain("RightTapped -= RepositoryTree_RightTapped", treeState, StringComparison.Ordinal);
         Assert.DoesNotContain("RightTapped += RepositoryTreeBranchDeletion_RightTapped", treeState, StringComparison.Ordinal);
         Assert.Contains("_branchDeletion.ConfirmDeleteLocalAsync(branch)", workflow, StringComparison.Ordinal);
