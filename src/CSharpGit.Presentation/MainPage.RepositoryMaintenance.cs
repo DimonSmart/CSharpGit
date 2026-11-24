@@ -5,6 +5,7 @@ using CSharpGit.Presentation.Controls;
 using CSharpGit.Presentation.Previewing;
 using CSharpGit.Presentation.Views;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace CSharpGit.Presentation;
 
@@ -92,6 +93,33 @@ public sealed partial class MainPage
             () => IsShuttingDown,
             (operation, description) => RunPageUiOperation(operation, description));
         _fileActionInteractions.Initialize();
+    }
+
+    private void AddMenuItem(MenuFlyout flyout, string text, bool enabled, Func<Task> action) =>
+        AddMenuItem(flyout, text, () => enabled, action);
+
+    private void AddMenuItem(MenuFlyout flyout, string text, Func<bool> canExecute, Func<Task> action)
+    {
+        var item = new MenuFlyoutItem { Text = text, IsEnabled = canExecute() };
+
+        void UpdateAvailability(object? sender, PropertyChangedEventArgs args)
+        {
+            if (args.PropertyName is nameof(OpenRepositoryViewModel.IsBusy)
+                or nameof(OpenRepositoryViewModel.Repository)
+                or nameof(OpenRepositoryViewModel.CanChangeRepository))
+                item.IsEnabled = canExecute();
+        }
+
+        void Detach(object? sender, object args)
+        {
+            _viewModel.PropertyChanged -= UpdateAvailability;
+            flyout.Closed -= Detach;
+        }
+
+        _viewModel.PropertyChanged += UpdateAvailability;
+        flyout.Closed += Detach;
+        item.Click += (_, _) => RunPageUiOperation(action, "Menu action", showError: true);
+        flyout.Items.Add(item);
     }
 
     internal bool IsRepositoryMaintenanceInProgress => _repositoryMaintenance.IsRunning;
@@ -214,7 +242,7 @@ public sealed partial class MainPage
         _referenceMenus = new Workflows.RepositoryReferenceMenuController(
             _viewModel, _worktreesViewModel, _worktrees, _branchRename, _branchDeletion,
             _tagWorkflows, _stashDialogs, _commitActions,
-            ShowReferenceHistoryAsync, CopyTextAsync, ExecuteCommandAsync,
+            _workspaceNavigation.ShowReferenceHistoryAsync, CopyTextAsync, ExecuteCommandAsync,
             () => XamlRoot, ShowPageDialogAsync, () => IsShuttingDown,
             (operation, description) => RunPageUiOperation(operation, description));
         _repositoryImageService = repositoryImageService ?? throw new ArgumentNullException(nameof(repositoryImageService));
@@ -254,9 +282,9 @@ public sealed partial class MainPage
 
         RepositoryExplorer.Configure(_viewModel, _worktreesViewModel, _workspaceNavigator, _worktrees, _referenceMenus);
         RepositoryExplorer.NavigateRequested += (node, version) =>
-            RunPageUiOperation(() => SelectRepositoryNodeAsync(node, version), "Repository tree navigation");
+            RunPageUiOperation(() => _workspaceNavigation.SelectRepositoryNodeAsync(node, version), "Repository tree navigation");
         RepositoryExplorer.CheckoutRequested += (branch, version) =>
-            RunPageUiOperation(() => SwitchRepositoryTreeBranchAsync(branch, version), "Switch branch");
+            RunPageUiOperation(() => _workspaceNavigation.SwitchBranchAsync(branch, version), "Switch branch");
 
         _repositoryMaintenance.Attach(_viewModel, () => _worktreesViewModel.RefreshAsync(throwOnError: true));
         _maintenanceController = new Workflows.RepositoryMaintenanceController(
