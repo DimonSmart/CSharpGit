@@ -100,14 +100,6 @@ public sealed partial class MainPage : Page
     {
         InitializeComponent();
         HistoryPane.DropSelectedStash_ClickCallback = DropSelectedStash_Click;
-        HistoryPane.CommitOpenOriginal_ClickCallback = CommitOpenOriginal_Click;
-        HistoryPane.CommitOpenChanged_ClickCallback = CommitOpenChanged_Click;
-        HistoryPane.CommitExternalDiff_ClickCallback = CommitExternalDiff_Click;
-        HistoryPane.CommitReveal_ClickCallback = CommitReveal_Click;
-        WorkingTreePane.WorkingTreeOpenOriginal_ClickCallback = WorkingTreeOpenOriginal_Click;
-        WorkingTreePane.WorkingTreeOpenChanged_ClickCallback = WorkingTreeOpenChanged_Click;
-        WorkingTreePane.WorkingTreeExternalDiff_ClickCallback = WorkingTreeExternalDiff_Click;
-        WorkingTreePane.WorkingTreeReveal_ClickCallback = WorkingTreeReveal_Click;
         DataContext = _viewModel = viewModel;
         _pageDialogs = new Dialogs.PageDialogController(this, _viewModel, () => IsShuttingDown);
         _diffPresentation = new Workflows.DiffPresentationController(
