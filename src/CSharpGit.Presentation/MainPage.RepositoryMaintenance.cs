@@ -364,6 +364,7 @@ public sealed partial class MainPage
             () => _ui.ExecuteCommandAsync(_viewModel.CommitCreation.CommitCommand),
             (operation, description) => _ui.RunPageUiOperation(operation, description));
         _keyboardShortcuts.Initialize();
+        ConfigureWorkspaceLifetime();
         Loaded += MainPage_Loaded;
     }
 
