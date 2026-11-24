@@ -147,6 +147,10 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
                 });
                 services.AddScoped<CreateRepositoryViewModel>();
                 services.AddScoped<CloneRepositoryViewModel>();
+                services.AddScoped<MainPageRepositoryDependencies>();
+                services.AddScoped<MainPageGitDependencies>();
+                services.AddScoped<MainPageUiDependencies>();
+                services.AddScoped<MainPageUpdateDependencies>();
                 services.AddTransient<MainPage>();
                 services.AddSingleton<WindowSessionFactory>();
             })
