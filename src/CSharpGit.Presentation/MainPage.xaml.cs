@@ -131,13 +131,13 @@ public sealed partial class MainPage : Page
         _viewModel.Tags.Items.CollectionChanged += RepositoryPresentationTags_CollectionChanged;
         _viewModel.Stashes.Items.CollectionChanged += RepositoryPresentationStashes_CollectionChanged;
         Loaded += RunDesktopCheckWhenRequested;
-        RefreshPresentationCollections();
         WorkingTreePane.Configure(
             _viewModel, _unstagedChanges, _stagedChanges,
             _workingTreeImageDiff, _diffPresentation,
             () => IsShuttingDown,
             (operation, description) => RunPageUiOperation(operation, description),
             ShowErrorAsync);
+        RefreshPresentationCollections();
         WorkingTreePane.InitializeWorkingTreeDiffSurface();
         InitializeCommitActions();
         UpdateHistoryScopePresentation();

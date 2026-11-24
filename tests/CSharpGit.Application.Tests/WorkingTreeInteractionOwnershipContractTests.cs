@@ -20,6 +20,9 @@ public sealed class WorkingTreeInteractionOwnershipContractTests
         Assert.Contains("_viewModel.WorkingTree.PropertyChanged -= WorkingTreeViewModel_PropertyChanged", view);
         Assert.Contains("UnregisterPropertyChangedCallback(VisibilityProperty, _visibilityCallbackToken)", view);
         Assert.Contains("WorkingTreePane.Configure(", code);
+        Assert.True(code.IndexOf("        WorkingTreePane.Configure(", StringComparison.Ordinal)
+            < code.IndexOf("        RefreshPresentationCollections();", StringComparison.Ordinal),
+            "WorkingTreeView must receive dependencies before the initial collection refresh.");
         Assert.Contains("WorkingTreePane.ShutdownWorkingTreeDiffSurface();", lifetime);
         Assert.Contains("WorkingTreePane.SelectWorkingTreeContextTarget(", context);
         Assert.DoesNotContain("_unstagedTreeRoots", context);
