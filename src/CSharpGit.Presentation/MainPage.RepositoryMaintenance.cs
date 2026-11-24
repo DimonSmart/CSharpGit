@@ -20,6 +20,8 @@ public sealed partial class MainPage
     private Dialogs.GitCommandFeedbackController _feedback = null!;
     private readonly Workflows.RepositoryManualRefreshController _manualRefresh = null!;
     private readonly Workflows.RepositoryPushController _repositoryPush = null!;
+    private readonly Workflows.RepositoryPullController _repositoryPull = null!;
+    private readonly Workflows.RepositoryToolbarActionController _toolbarActions = null!;
     private readonly Workflows.RepositoryConfirmationController _confirmationController = null!;
     private readonly Workflows.BranchRenameController _branchRename = null!;
     private readonly Workflows.WorktreeController _worktrees = null!;
@@ -363,6 +365,14 @@ public sealed partial class MainPage
             _repositorySwitch.SwitchCoreAsync,
             () => XamlRoot,
             ShowPageDialogAsync,
+            (operation, description) => RunPageUiOperation(operation, description));
+        _repositoryPull = new Workflows.RepositoryPullController(
+            _viewModel, HistoryPane, ExecuteCommandAsync, ShowErrorAsync, () => IsShuttingDown);
+        _toolbarActions = new Workflows.RepositoryToolbarActionController(
+            _viewModel, _workspaceNavigation, _repositoryPull, _repositoryPush,
+            _manualRefresh, _repositoryPicker, _cloneWorkflow, _creationWorkflow,
+            _repositorySwitch, _settingsWindowController, _maintenanceController,
+            _aboutUpdate, ExecuteCommandAsync,
             (operation, description) => RunPageUiOperation(operation, description));
         _feedback.InitializeGitCommandFeedback();
         GitConsoleHost.Configure(
