@@ -1,22 +1,58 @@
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Presentation.Controls;
+using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace CSharpGit.Presentation;
+namespace CSharpGit.Presentation.Workflows;
 
-public sealed partial class MainPage
+// Owns the Change Author interaction within the existing interactive-rebase editor.
+internal sealed class InteractiveRebaseAuthorController(
+    OpenRepositoryViewModel viewModel,
+    ContentDialog rebaseDialog,
+    Func<bool> isShuttingDown,
+    Action<Func<Task>, string> runUiOperation,
+    Action<Exception, string> reportUiFailure)
 {
+    private readonly OpenRepositoryViewModel _viewModel = viewModel;
+    private readonly ContentDialog _rebaseDialog = rebaseDialog;
+    private readonly Func<bool> _isShuttingDown = isShuttingDown;
+    private readonly Action<Func<Task>, string> _runUiOperation = runUiOperation;
+    private readonly Action<Exception, string> _reportUiFailure = reportUiFailure;
+    private Button? _button;
+
+    internal void Initialize() => _rebaseDialog.Loaded += RebaseDialog_Loaded;
+
+    private void RebaseDialog_Loaded(object sender, RoutedEventArgs args)
+    {
+        if (_button is not null || _isShuttingDown()) return;
+        var root = _rebaseDialog.Content as DependencyObject ?? _rebaseDialog;
+        _button = Dialogs.PageDialogController.FindNamedDescendant<Button>(
+            root, "ChangeInteractiveRebaseAuthorButton");
+        if (_button is not null)
+            _button.Click += ChangeInteractiveRebaseAuthor_Click;
+    }
+
+    internal void Shutdown()
+    {
+        _rebaseDialog.Loaded -= RebaseDialog_Loaded;
+        if (_button is not null)
+        {
+            _button.Click -= ChangeInteractiveRebaseAuthor_Click;
+            _button = null;
+        }
+    }
+
     private void ChangeInteractiveRebaseAuthor_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(() => ChangeInteractiveRebaseAuthorAsync(sender), "Change rebase author");
+        _runUiOperation(() => ChangeInteractiveRebaseAuthorAsync(sender), "Change rebase author");
 
     private async Task ChangeInteractiveRebaseAuthorAsync(object sender)
     {
         var repository = _viewModel.Repository;
-        if (repository is null || IsShuttingDown) return;
+        if (repository is null || _isShuttingDown()) return;
         if (sender is not FrameworkElement target
-            || FindNamedDescendant<InteractiveRebaseTodoEditor>(
-                InteractiveRebaseDialog,
+            || Dialogs.PageDialogController.FindNamedDescendant<InteractiveRebaseTodoEditor>(
+                _rebaseDialog,
                 "InteractiveRebaseTodoEditor") is not { } editor)
         {
             return;
@@ -36,7 +72,7 @@ public sealed partial class MainPage
         }
         catch (Exception exception)
         {
-            if (!IsShuttingDown)
+            if (!_isShuttingDown())
                 ShowChangeAuthorErrorFlyout(target, exception.Message);
             return;
         }
@@ -52,7 +88,7 @@ public sealed partial class MainPage
             identityFailure = exception.Message;
         }
 
-        if (IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository))
+        if (_isShuttingDown() || !ReferenceEquals(repository, _viewModel.Repository))
             return;
 
         var effectiveName = identity?.Name.EffectiveValue?.Trim();
@@ -222,11 +258,11 @@ public sealed partial class MainPage
         {
             Content = content
         };
-        var rebaseDialog = InteractiveRebaseDialog;
+        var rebaseDialog = _rebaseDialog;
         var startRebaseWasEnabled = rebaseDialog.IsPrimaryButtonEnabled;
         flyout.Closed += (_, _) =>
         {
-            if (!IsShuttingDown)
+            if (!_isShuttingDown())
                 rebaseDialog.IsPrimaryButtonEnabled = startRebaseWasEnabled;
         };
 
@@ -272,7 +308,7 @@ public sealed partial class MainPage
         allScope.Checked += (_, _) => UpdateScopeInfo();
         cancel.Click += (_, _) => flyout.Hide();
         apply.Click += (_, _) =>
-            RunPageUiOperation(ApplyAuthorAsync, "Apply rebase author change");
+            _runUiOperation(ApplyAuthorAsync, "Apply rebase author change");
 
         async Task ApplyAuthorAsync()
         {
@@ -297,7 +333,7 @@ public sealed partial class MainPage
                         resetAuthorDate.IsChecked == true,
                         ResetToCurrentGitIdentity: useCurrentIdentity));
 
-                if (IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository))
+                if (_isShuttingDown() || !ReferenceEquals(repository, _viewModel.Repository))
                     return;
                 _viewModel.InteractiveRebase.RebaseTodoText = result.TodoText;
                 editor.Text = result.TodoText;
@@ -305,8 +341,8 @@ public sealed partial class MainPage
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                ReportUiFailure(exception, "Apply rebase author change");
-                if (!IsShuttingDown && ReferenceEquals(repository, _viewModel.Repository))
+                _reportUiFailure(exception, "Apply rebase author change");
+                if (!_isShuttingDown() && ReferenceEquals(repository, _viewModel.Repository))
                 {
                     validationError.Text = exception.Message;
                     validationError.Visibility = Visibility.Visible;

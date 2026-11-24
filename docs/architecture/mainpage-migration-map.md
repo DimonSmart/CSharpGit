@@ -426,3 +426,7 @@ The Working Tree selection model, tree roots, expansion/viewport tracking, diff 
 ## Phase 3 follow-up: submodule workflow owner
 
 Submodule inspection, context menus, open-in-new-process, initialization and update progress now belong to `Workflows/SubmoduleWorkflowController`. The historical file surface invokes its two typed entry points, and `MainPage.Submodules.cs` has been removed. The service remains the only Git-mutation owner. Controller rechecks the active repository after awaits and refreshes both repository and history-file state after partial updates; the remaining Repository Files surface extraction is tracked separately.
+
+## Phase 3 follow-up: interactive-rebase author editor ownership
+
+`Workflows/InteractiveRebaseAuthorController` now owns the Change Author flyout, raw-todo selection analysis, apply flow and its button subscription. The controller attaches when the existing rebase dialog loads and detaches at window shutdown. `MainPage.InteractiveRebaseAuthor.cs`, the XAML event handler and its private dialog/visual-tree adapters have been removed; rebase mutations still belong to the existing InteractiveRebase ViewModel.

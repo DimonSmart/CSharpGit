@@ -8,7 +8,9 @@ public sealed class InteractiveRebaseAuthorChangeUiContractTests
         var xaml = ReadSource("src/CSharpGit.Presentation/MainPage.xaml");
 
         Assert.Contains("Change author…", xaml, StringComparison.Ordinal);
-        Assert.Contains("ChangeInteractiveRebaseAuthor_Click", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Click=\"ChangeInteractiveRebaseAuthor_Click\"", xaml, StringComparison.Ordinal);
+        var controller = ReadSource("src/CSharpGit.Presentation/Workflows/InteractiveRebaseAuthorController.cs");
+        Assert.Contains("_button.Click += ChangeInteractiveRebaseAuthor_Click", controller, StringComparison.Ordinal);
         Assert.Contains("InteractiveRebaseTodoEditor", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("InteractiveRebasePlan", xaml, StringComparison.Ordinal);
     }
@@ -17,13 +19,13 @@ public sealed class InteractiveRebaseAuthorChangeUiContractTests
     public void ChangeAuthorUsesRawTextSelectionAndOnlyPreparesTodo()
     {
         var editor = ReadSource("src/CSharpGit.Presentation/Controls/InteractiveRebaseTodoEditor.xaml.cs");
-        var source = ReadSource("src/CSharpGit.Presentation/MainPage.InteractiveRebaseAuthor.cs");
+        var source = ReadSource("src/CSharpGit.Presentation/Workflows/InteractiveRebaseAuthorController.cs");
 
         Assert.Contains("internal int SelectionStart => Editor.SelectionStart;", editor, StringComparison.Ordinal);
         Assert.Contains("internal int SelectionLength => Editor.SelectionLength;", editor, StringComparison.Ordinal);
         Assert.Contains("AnalyzeInteractiveRebaseAuthorChange", source, StringComparison.Ordinal);
         Assert.Contains("ApplyInteractiveRebaseAuthorChangeAsync", source, StringComparison.Ordinal);
-        Assert.Contains("RunPageUiOperation(ApplyAuthorAsync", source, StringComparison.Ordinal);
+        Assert.Contains("_runUiOperation(ApplyAuthorAsync", source, StringComparison.Ordinal);
         Assert.Contains("!ReferenceEquals(repository, _viewModel.Repository)", source, StringComparison.Ordinal);
         Assert.Contains("await _viewModel.InteractiveRebase.ApplyInteractiveRebaseAuthorChangeAsync", source, StringComparison.Ordinal);
         Assert.Contains("_viewModel.InteractiveRebase.RebaseTodoText = result.TodoText;", source, StringComparison.Ordinal);
@@ -34,7 +36,7 @@ public sealed class InteractiveRebaseAuthorChangeUiContractTests
     [Fact]
     public void ResetModeUsesNativeGitResetAndPreservesAuthorDateByDefault()
     {
-        var source = ReadSource("src/CSharpGit.Presentation/MainPage.InteractiveRebaseAuthor.cs");
+        var source = ReadSource("src/CSharpGit.Presentation/Workflows/InteractiveRebaseAuthorController.cs");
 
         Assert.Contains("ReadInteractiveRebaseAuthorIdentityAsync", source, StringComparison.Ordinal);
         Assert.Contains("ResetToCurrentGitIdentity: useCurrentIdentity", source, StringComparison.Ordinal);
@@ -48,7 +50,7 @@ public sealed class InteractiveRebaseAuthorChangeUiContractTests
     [Fact]
     public void ChangeAuthorFlyoutUsesCompactDesignSystemAndCollapsesExplicitFields()
     {
-        var source = ReadSource("src/CSharpGit.Presentation/MainPage.InteractiveRebaseAuthor.cs");
+        var source = ReadSource("src/CSharpGit.Presentation/Workflows/InteractiveRebaseAuthorController.cs");
 
         Assert.Contains("Width = 400", source, StringComparison.Ordinal);
         Assert.Contains("Spacing.M", source, StringComparison.Ordinal);
@@ -64,7 +66,7 @@ public sealed class InteractiveRebaseAuthorChangeUiContractTests
     [Fact]
     public void DialogShowsScopeCountsAndHistoryRewriteWarning()
     {
-        var source = ReadSource("src/CSharpGit.Presentation/MainPage.InteractiveRebaseAuthor.cs");
+        var source = ReadSource("src/CSharpGit.Presentation/Workflows/InteractiveRebaseAuthorController.cs");
 
         Assert.Contains("Selected commit lines", source, StringComparison.Ordinal);
         Assert.Contains("All eligible commits", source, StringComparison.Ordinal);
