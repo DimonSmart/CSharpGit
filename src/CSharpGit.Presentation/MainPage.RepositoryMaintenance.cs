@@ -382,6 +382,16 @@ public sealed partial class MainPage
             _feedback.RenderGitCommandFeedback,
             () => GitCommandFeedbackModalHost.Visibility == Visibility.Visible);
         _worktrees.Initialize();
+        _keyboardShortcuts = new Workflows.WorkspaceKeyboardController(
+            RootLayout, () => IsShuttingDown,
+            () => GitCommandFeedbackModalHost.Visibility == Visibility.Visible,
+            () => WorkingTreePane.Visibility == Visibility.Visible,
+            OpenRepositoryPickerAsync, _workspaceNavigation.ShowAllHistoryAsync,
+            HistoryView.FocusFilter, _manualRefresh.RefreshAsync,
+            () => ExecuteCommandAsync(_viewModel.CommitCreation.CommitCommand),
+            (operation, description) => RunPageUiOperation(operation, description));
+        _keyboardShortcuts.Initialize();
+        Loaded += MainPage_Loaded;
     }
 
     internal Task<bool> ConfirmedSwitchForDesktopCheckAsync(string path) =>

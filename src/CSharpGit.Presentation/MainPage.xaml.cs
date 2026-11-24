@@ -83,6 +83,7 @@ public sealed partial class MainPage : Page
     internal OpenRepositoryViewModel WindowRepository => _viewModel;
     private readonly WorkspaceNavigator _workspaceNavigator;
     private readonly Workflows.WorkspaceNavigationController _workspaceNavigation;
+    private Workflows.WorkspaceKeyboardController _keyboardShortcuts = null!;
     private readonly Workflows.RepositoryRefreshController _repositoryRefresh;
     private readonly Dialogs.PageDialogController _pageDialogs;
     private readonly Workflows.DiffPresentationController _diffPresentation;
@@ -288,49 +289,6 @@ public sealed partial class MainPage : Page
             ReportUiFailure(exception, "Error notification");
         }
     }
-
-    // Dispatch typed toolbar actions directly to their existing workflows.
-    private void Page_KeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (IsShuttingDown || GitCommandFeedbackModalHost.Visibility == Visibility.Visible) return;
-        var control = IsControlDown();
-        if (control && e.Key == VirtualKey.O)
-        {
-            e.Handled = true;
-            RunPageUiOperation(OpenRepositoryPickerAsync, "Open repository shortcut");
-        }
-        else if (control && e.Key == VirtualKey.F)
-        {
-            e.Handled = true;
-            RunPageUiOperation(async () =>
-            {
-                if (WorkingTreePane.Visibility == Visibility.Visible)
-                    await _workspaceNavigation.ShowAllHistoryAsync();
-                if (!IsShuttingDown)
-                    HistoryView.FocusFilter();
-            }, "History search shortcut");
-        }
-        else if (e.Key == VirtualKey.F5)
-        {
-            e.Handled = true;
-            RunPageUiOperation(_manualRefresh.RefreshAsync, "Refresh shortcut");
-        }
-        else if (control && e.Key == VirtualKey.Enter && WorkingTreePane.Visibility == Visibility.Visible)
-        {
-            e.Handled = true;
-            RunPageUiOperation(
-                () => ExecuteCommandAsync(_viewModel.CommitCreation.CommitCommand),
-                "Commit shortcut");
-        }
-        else if (e.Key == VirtualKey.Escape && WorkingTreePane.Visibility == Visibility.Visible)
-        {
-            e.Handled = true;
-            RunPageUiOperation(_workspaceNavigation.ShowAllHistoryAsync, "Back to history shortcut");
-        }
-    }
-
-    private static bool IsControlDown() =>
-        (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control) & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down;
 
     private async void RunDesktopCheckWhenRequested(object sender, RoutedEventArgs args)
     {

@@ -17,6 +17,7 @@ public sealed partial class MainPage
 
     private void MainPage_Loaded(object sender, RoutedEventArgs args)
     {
+        Loaded -= MainPage_Loaded;
         _commitDetailsLayout.Initialize();
         _confirmationController.Initialize();
         _branchRename.Initialize();
@@ -56,6 +57,8 @@ public sealed partial class MainPage
         _pageDialogs.Shutdown();
         _cloneRepositoryViewModel.Cancel();
         Loaded -= RunDesktopCheckWhenRequested;
+        Loaded -= MainPage_Loaded;
+        _keyboardShortcuts.Shutdown();
         _rebaseAuthor.Shutdown();
         _presentationRefresh.Shutdown();
         DetachRepositoryTreeStateTracking();

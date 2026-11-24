@@ -1,4 +1,4 @@
-<Page x:Class="CSharpGit.Presentation.MainPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:CSharpGit.Presentation.Controls" xmlns:views="using:CSharpGit.Presentation.Views" xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives" Loaded="MainPage_Loaded">
+<Page x:Class="CSharpGit.Presentation.MainPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:CSharpGit.Presentation.Controls" xmlns:views="using:CSharpGit.Presentation.Views" xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives">
   <Page.Resources>
     <controls:BranchTrackingActionTextConverter x:Key="BranchTrackingActionTextConverter" />
     <controls:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
@@ -34,7 +34,7 @@
     </ContentDialog>
   </Page.Resources>
 
-  <Grid x:Name="RootLayout" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" KeyDown="Page_KeyDown">
+  <Grid x:Name="RootLayout" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
     <views:StartScreenView x:Name="StartScreenHost"
                           Visibility="{Binding HasRepository, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}" />
 
