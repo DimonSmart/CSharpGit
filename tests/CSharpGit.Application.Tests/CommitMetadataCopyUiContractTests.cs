@@ -8,7 +8,7 @@ public sealed class CommitMetadataCopyUiContractTests
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitDetailsView.xaml"));
         var codeBehind = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitDetailsView.xaml.cs"));
-        var mainPageXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var mainPageXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml"));
         var wiring = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "CommitDetailsLayoutController.cs"));
         var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
         var history = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Domain", "History.cs"));

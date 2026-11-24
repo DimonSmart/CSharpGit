@@ -6,7 +6,7 @@ public sealed class RepositoryFilesUiContractTests
     public void CommitDetailsExposeDistinctChangesAndRepositoryFilesSurfaces()
     {
         var root = FindRepositoryRoot();
-        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml"));
         var filesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs"));
         var changesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs"));
 

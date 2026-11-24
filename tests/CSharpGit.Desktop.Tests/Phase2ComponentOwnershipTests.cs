@@ -21,6 +21,7 @@ public sealed class Phase2ComponentOwnershipTests
     {
         var presentation = Path.Combine(FindRoot(), "src", "CSharpGit.Presentation");
         var page = XDocument.Load(Path.Combine(presentation, "MainPage.xaml"));
+        var historyWorkspace = XDocument.Load(Path.Combine(presentation, "Views", "HistoryWorkspaceView.xaml"));
         foreach (var component in Components)
         {
             var path = Path.Combine(presentation, "Views", component + ".xaml");
@@ -32,7 +33,9 @@ public sealed class Phase2ComponentOwnershipTests
                          .Descendants().Any(child => child.Name.LocalName == component)) ||
                     (component == "StatusBarView" &&
                      XDocument.Load(Path.Combine(presentation, "Views", "GitConsoleHostView.xaml"))
-                         .Descendants().Any(child => child.Name.LocalName == component)));
+                         .Descendants().Any(child => child.Name.LocalName == component)) ||
+                    (component == "HistoryView" && historyWorkspace.Descendants()
+                         .Any(child => child.Name.LocalName == component)));
         }
 
         Assert.DoesNotContain(page.Descendants(),
