@@ -418,3 +418,7 @@ Tag creation, deletion, remote selection, fetch/push and remote-tag dialogs now 
 ## Phase 3 follow-up: history and commit-details visual composition
 
 The History graph, Commit Summary, Changed Files and commit diff viewer are visually grouped in `Views/HistoryWorkspaceView.xaml`. `MainPage.xaml` composes this host and the separate `WorkingTreeView` rather than declaring either feature's controls inline. Existing callbacks and control facades remain transitional and must migrate to feature controllers before the Phase 3 Definition of Done is met.
+
+## Phase 3 follow-up: interactive-rebase author editor ownership
+
+`Workflows/InteractiveRebaseAuthorController` now owns the Change Author flyout, raw-todo selection analysis, apply flow and its button subscription. The controller attaches when the existing rebase dialog loads and detaches at window shutdown. `MainPage.InteractiveRebaseAuthor.cs`, the XAML event handler and its private dialog/visual-tree adapters have been removed; rebase mutations still belong to the existing InteractiveRebase ViewModel.

@@ -27,6 +27,7 @@ public sealed partial class MainPage
     private readonly Workflows.BranchDragDropController _branchDragDrop = null!;
     private readonly Workflows.StashDialogController _stashDialogs = null!;
     private readonly Workflows.TagWorkflowController _tagWorkflows = null!;
+    private readonly Workflows.InteractiveRebaseAuthorController _rebaseAuthor = null!;
     private readonly Workflows.BranchDeletionController _branchDeletion = null!;
     private readonly Workflows.EditCommitMessageController _editCommitMessage = null!;
     private readonly CloneRepositoryViewModel _cloneRepositoryViewModel = null!;
@@ -107,6 +108,12 @@ public sealed partial class MainPage
             () => IsShuttingDown, ShowErrorAsync, ShowInformationAsync,
             ReportUiFailure,
             (operation, description) => RunPageUiOperation(operation, description));
+        _rebaseAuthor = new Workflows.InteractiveRebaseAuthorController(
+            _viewModel, _pageDialogs.GetDialog("InteractiveRebaseDialog"),
+            () => IsShuttingDown,
+            (operation, description) => RunPageUiOperation(operation, description),
+            ReportUiFailure);
+        _rebaseAuthor.Initialize();
         _editCommitMessage = new Workflows.EditCommitMessageController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
             () => IsShuttingDown, HandleCommitActionExecutionResultAsync,
