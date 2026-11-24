@@ -21,7 +21,7 @@ public sealed partial class MainPage
         _confirmationController.Initialize();
         _branchRename.Initialize();
         _branchDragDrop.Initialize();
-        RepositoryToolbar.Configure(HandleRepositoryToolbarAction);
+        RepositoryToolbar.Configure(_toolbarActions.Handle);
         RepositoryHeader.Configure(_viewModel, _recentRepositorySettings, _desktopShellService,
             new RepositorySelectorActions(
                 _repositorySwitch.TrySwitchAsync,
