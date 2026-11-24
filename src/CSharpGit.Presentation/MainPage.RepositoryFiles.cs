@@ -71,6 +71,12 @@ public sealed partial class MainPage
             _repositoryFilesActions.ShowMenu);
     }
 
+    private void SetRepositoryFilesStashMode(bool hasSelectedStash)
+    {
+        if (_repositoryFilesTab is not null)
+            _repositoryFilesTab.Header = hasSelectedStash ? "Tracked files" : "Files";
+    }
+
     private void UpdateRepositoryFilesViewActivity() => _repositoryFilesSurface?.UpdateActivity();
     private void UpdateRepositoryFilesModeSurface() => _repositoryFilesSurface?.UpdateModeSurface();
 }
