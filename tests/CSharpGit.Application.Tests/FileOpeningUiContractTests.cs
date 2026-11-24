@@ -26,8 +26,11 @@ public sealed class FileOpeningUiContractTests
         Assert.Contains("FileActionRequest", page);
         Assert.Contains("ChangedFilesTree.RightTapped", page);
         Assert.Contains("ChangedFilesTree.DoubleTapped", page);
-        Assert.Contains("UnstagedChangesList.RightTapped", page);
-        Assert.Contains("StagedChangesList.DoubleTapped", page);
+        var worktreeMenu = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.ContextMenu.cs"));
+        Assert.DoesNotContain("UnstagedChangesList.RightTapped", page);
+        Assert.DoesNotContain("StagedChangesList.DoubleTapped", page);
+        Assert.Contains("private void UnstagedChangesTree_RightTapped(", worktreeMenu);
+        Assert.Contains("private void StagedChangesTree_RightTapped(", worktreeMenu);
         Assert.Contains("Open original", page);
         Assert.Contains("Open changed", page);
         Assert.Contains("Open in Diff Tool", page);
