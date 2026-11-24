@@ -65,6 +65,7 @@ public sealed partial class MainPage
         _viewModel.Stashes.Items.CollectionChanged -= RepositoryPresentationStashes_CollectionChanged;
         DetachRepositoryTreeStateTracking();
         WorkingTreeCommitEditor.StashRequested -= CreateStash_Click;
+        _commitActions.Shutdown();
         HistoryView.Shutdown();
         GitConsoleHost.Shutdown();
         _feedback.ShutdownGitCommandFeedback();
