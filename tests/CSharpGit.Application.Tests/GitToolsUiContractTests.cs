@@ -60,7 +60,7 @@ public sealed class GitToolsUiContractTests
     public void ExternalDiffAndMergeWorkflowsUseCentralGitToolsBoundary()
     {
         var root = FindRepositoryRoot();
-        var fileOpening = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
+        var fileOpening = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "FileActionInteractionController.cs"));
         var repositoryOperations = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryOperationsViewModel.cs"));
         var gitTools = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "ExternalGitToolService.cs"));
 
