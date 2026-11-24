@@ -1,10 +1,13 @@
 using System.ComponentModel;
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.ViewModels;
+using CSharpGit.Presentation.Previewing;
 using CSharpGit.Presentation.Views;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 
 namespace CSharpGit.Presentation.Workflows;
 
