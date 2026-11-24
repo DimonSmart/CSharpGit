@@ -12,7 +12,7 @@ public sealed class RepositoryIdentityUiContractTests
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryIdentitySettingsViewModel.cs"));
         var mainXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"))
             + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml"));
-        var mainSettings = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+        var mainSettings = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryToolbarActionController.cs"));
         var appSettings = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IAppSettingsService.cs"));
 
         Assert.Contains("x:Name=\"IdentitySettingsPanel\"", xaml);
@@ -41,7 +41,8 @@ public sealed class RepositoryIdentityUiContractTests
 
         Assert.Contains("Repository settings…", mainXaml);
         Assert.Contains("RepositorySettings_Click", mainXaml);
-        Assert.Contains("_settingsWindowController.Open(SettingsSection.Identity)", mainSettings);
+        Assert.Contains("case RepositoryToolbarAction.RepositorySettings:", mainSettings);
+        Assert.Contains("_settings.Open(SettingsSection.Identity)", mainSettings);
         Assert.Contains("Func<Repository?> _repositoryAccessor", viewModel);
         Assert.DoesNotContain("IAppSettingsService", viewModel);
         Assert.DoesNotContain("userName", appSettings, StringComparison.OrdinalIgnoreCase);

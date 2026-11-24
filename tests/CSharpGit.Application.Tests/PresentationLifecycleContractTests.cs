@@ -47,7 +47,9 @@ public sealed class PresentationLifecycleContractTests
             "src", "CSharpGit.Presentation", "Views", "HistoryView.xaml.cs"));
         Assert.Contains("_history.LoadMoreCommand.CanExecute(null)", historyView);
         Assert.Contains("nameof(OpenRepositoryViewModel.CanChangeRepository)", mainPage);
-        Assert.Contains("UpdateLoadMoreHistoryAvailability();", mainPage);
+        Assert.Contains("_workspaceNavigation.UpdateLoadMoreAvailability();", mainPage);
+        var navigation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "WorkspaceNavigationController.cs"));
+        Assert.Contains("UpdateLoadMoreAvailability() => HistoryView.UpdateLoadMoreAvailability();", navigation);
         Assert.DoesNotContain("LoadMoreHistoryButton.IsEnabled = history.HasMore", mainPage);
     }
 

@@ -37,7 +37,8 @@ public sealed class SelectedCommitActionsContractTests
         Assert.Contains("WorkingTree.ApplyRepositoryState(repository, state.Changes)", viewModel);
         Assert.Contains("ReplaceAll(snapshot)", workingTree);
         Assert.Contains("NotifyCollectionChangedAction.Reset", bulk);
-        Assert.Contains("QueueRepositoryPresentationRefresh(workingTreeChanged: true)", page);
+        Assert.Contains("Queue(workingTreeChanged: true)", coalescing);
+        Assert.DoesNotContain("QueueRepositoryPresentationRefresh", page);
         Assert.Contains("_dispatcher.TryEnqueue(FlushRepositoryPresentationRefresh)", coalescing);
     }
 
@@ -52,7 +53,8 @@ public sealed class SelectedCommitActionsContractTests
         foreach (var label in new[] { "Copy hash", "Create branch here…", "Checkout this commit", "Cherry-pick", "Revert", "Edit commit message…", "Fixup into previous commit", "Interactive rebase from here…", "Reset current branch to here", "Soft…", "Mixed…", "Hard…" })
             Assert.Contains(label, actions);
 
-        Assert.Contains("HistoryView.List.RightTapped", actions);
+        Assert.Contains("_historyView.List.RightTapped += HistoryList_RightTapped", actions);
+        Assert.Contains("_historyView.List.RightTapped -= HistoryList_RightTapped", actions);
         Assert.Contains("commit.Parents.Count > 1", actions);
         Assert.Contains("Mainline parent", actions);
         Assert.Contains("Uncommitted tracked changes will be lost", actions);
