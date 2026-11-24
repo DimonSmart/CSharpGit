@@ -26,7 +26,7 @@ public sealed class WorkspaceNavigationArchitectureTests
     public void ExplorerOwnsIncrementalReconciliationAndExplicitDisposal()
     {
         var explorer = Read("src/CSharpGit.Presentation/Views/RepositoryExplorerView.xaml.cs");
-        var page = Read("src/CSharpGit.Presentation/MainPage.RepositoryTreeState.cs");
+        var page = Read("src/CSharpGit.Presentation/MainPage.Shell.cs");
         Assert.Contains("new RepositoryTreeSynchronizer(_roots)", explorer, StringComparison.Ordinal);
         Assert.Contains("_synchronizer.ReconcileRepository(", explorer, StringComparison.Ordinal);
         Assert.Contains("_synchronizer.ReconcileWorktrees(", explorer, StringComparison.Ordinal);
