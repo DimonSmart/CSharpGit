@@ -173,7 +173,7 @@ public sealed partial class MainPage
             _viewModel, _repositoryFilesViewModel, _repositoryFilePreview,
             () => IsShuttingDown, () => XamlRoot, ShowPageDialogAsync,
             hash => _commitActions.RestoreSelectionAsync(hash),
-            UpdateRepositoryFilesModeSurface, UpdateHistoryScopePresentation,
+            UpdateRepositoryFilesModeSurface, _workspaceNavigation.UpdateHistoryPresentation,
             () => { HistoryPane.Visibility = Visibility.Visible; WorkingTreePane.Visibility = Visibility.Collapsed; });
         _stashDialogs = new Workflows.StashDialogController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
@@ -253,7 +253,7 @@ public sealed partial class MainPage
             recentRepositoryFolderPicker ?? throw new ArgumentNullException(nameof(recentRepositoryFolderPicker)),
             () => !_repositoryCloningWorkflowActive && !_repositoryCreationWorkflowActive
                   && _viewModel.CanChangeRepository && !IsShuttingDown,
-            TrySwitchRepositoryAsync,
+            _repositorySwitch.TrySwitchAsync,
             ShowPageDialogAsync);
         _settingsWindowController = settingsWindowController ?? throw new ArgumentNullException(nameof(settingsWindowController));
         _settingsWindowController.ConfigureWindowContext(
@@ -320,8 +320,8 @@ public sealed partial class MainPage
                 OpenRepositoryPickerAsync,
                 () => _cloneWorkflow.ShowAsync(),
                 () => _creationWorkflow.ShowAsync(),
-                TrySwitchRepositoryAsync,
-                ShowUnavailableRepositoryAsync,
+                _repositorySwitch.TrySwitchAsync,
+                _repositorySwitch.ShowUnavailableAsync,
                 path => OpenFolderInDesktopShellAsync(path, "Could not open repository folder"),
                 CopyTextAsync,
                 () => _settingsWindowController.Open(SettingsSection.General),
@@ -345,8 +345,8 @@ public sealed partial class MainPage
             _viewModel, _cloneRepositoryViewModel,
             () => _repositoryCreationWorkflowActive,
             () => IsShuttingDown,
-            () => ConfirmDiscardCommitMessageAsync(closing: false),
-            SwitchRepositoryCoreAsync,
+            () => _repositorySwitch.ConfirmDiscardAsync(closing: false),
+            _repositorySwitch.SwitchCoreAsync,
             () => XamlRoot,
             ShowPageDialogAsync,
             (operation, description) => RunPageUiOperation(operation, description),
@@ -355,8 +355,8 @@ public sealed partial class MainPage
             _viewModel, _createRepositoryViewModel,
             () => _repositoryCloningWorkflowActive,
             () => IsShuttingDown,
-            () => ConfirmDiscardCommitMessageAsync(closing: false),
-            SwitchRepositoryCoreAsync,
+            () => _repositorySwitch.ConfirmDiscardAsync(closing: false),
+            _repositorySwitch.SwitchCoreAsync,
             () => XamlRoot,
             ShowPageDialogAsync,
             (operation, description) => RunPageUiOperation(operation, description));
@@ -367,6 +367,27 @@ public sealed partial class MainPage
             _feedback.RenderGitCommandFeedback,
             () => GitCommandFeedbackModalHost.Visibility == Visibility.Visible);
         _worktrees.Initialize();
+    }
+
+    internal Task<bool> ConfirmedSwitchForDesktopCheckAsync(string path) =>
+        _repositorySwitch.ConfirmedSwitchForDesktopCheckAsync(path);
+
+    internal bool ConfirmedCloseForDesktopCheck() =>
+        _repositorySwitch.ConfirmedCloseForDesktopCheck();
+
+    private async Task OpenFolderInDesktopShellAsync(string path, string errorTitle)
+    {
+        try
+        {
+            await _desktopShellService.OpenFolderAsync(path);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            await ShowErrorAsync(errorTitle, exception.Message);
+        }
     }
 
     private Task OpenRepositoryPickerAsync() => _repositoryPicker.OpenAsync();
