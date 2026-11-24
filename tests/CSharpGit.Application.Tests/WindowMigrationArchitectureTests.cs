@@ -36,7 +36,7 @@ public sealed class WindowMigrationArchitectureTests
         Assert.Contains("_lifetime.InitializeAsync(initializeContent, CompleteShutdown, cancellationToken)", session);
         Assert.Contains("await _windowSession.InitializeAsync(CancellationToken.None);", app);
         Assert.DoesNotContain("await mainPage.OpenInitialRepositoryAsync();", app);
-        Assert.Contains("scope.ServiceProvider.GetRequiredService<MainPage>()", factory);
+        Assert.Contains("scope.ServiceProvider.GetRequiredService<WindowWorkspaceComposition>()", factory);
         Assert.Contains("finally { scope.Dispose(); }", session);
         Assert.Contains("completeContent();", session);
         Assert.DoesNotContain("MainPage", session);

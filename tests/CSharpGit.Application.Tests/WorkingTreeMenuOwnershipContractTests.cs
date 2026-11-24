@@ -23,7 +23,7 @@ public sealed class WorkingTreeMenuOwnershipContractTests
         Assert.Contains("ReferenceEquals(repository, _viewModel.Repository)", menu, StringComparison.Ordinal);
         Assert.Contains("_showDialog(dialog)", menu, StringComparison.Ordinal);
         Assert.False(File.Exists(Path.Combine(p, "MainPage.FileOpening.cs")));
-        Assert.DoesNotContain("WorkingTreeChanges_RightTapped", File.ReadAllText(Path.Combine(p, "MainPage.Lifecycle.cs")), StringComparison.Ordinal);
+        Assert.DoesNotContain("WorkingTreeChanges_RightTapped", File.ReadAllText(Path.Combine(p, "Composition", "WindowWorkspaceComposition.Lifetime.cs")), StringComparison.Ordinal);
     }
 
     private static string FindRoot()

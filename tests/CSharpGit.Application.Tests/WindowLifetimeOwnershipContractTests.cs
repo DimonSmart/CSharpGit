@@ -17,9 +17,10 @@ public sealed class WindowLifetimeOwnershipContractTests
         Assert.Contains("if (!_lifetime.TryComplete()) return;", session);
         Assert.Contains("try { completeContent(); }", session);
         Assert.Contains("finally { scope.Dispose(); }", session);
-        Assert.Contains("_ => page.PrepareForShutdown()", factory);
-        Assert.Contains("page.BeginShutdown,", factory);
-        Assert.Contains("Interlocked.Exchange(ref _shutdownFinalized, 1)", page);
+        Assert.Contains("_ => composition.PrepareForShutdown()", factory);
+        Assert.Contains("composition.BeginShutdown,", factory);
+        Assert.Contains("_workspaceLifetime.Complete()", page);
+        Assert.Contains("Interlocked.Exchange(ref _shutdownFinalized, 1)", File.ReadAllText(Path.Combine(presentation, "Windowing", "WindowWorkspaceLifetime.cs")));
     }
 
     private static string FindRoot()

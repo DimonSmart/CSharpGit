@@ -128,7 +128,7 @@ public sealed class PresentationLifecycleContractTests
         Assert.Contains("Volatile.Read(ref _disposed)", openRepositoryViewModel, StringComparison.Ordinal);
 
         Assert.Contains("private bool IsShuttingDown", lifecycle, StringComparison.Ordinal);
-        Assert.Contains("Volatile.Read(ref _shutdownStarted)", lifecycle, StringComparison.Ordinal);
+        Assert.Contains("Volatile.Read(ref _shutdownStarted)", File.ReadAllText(Path.Combine(presentation, "Windowing", "WindowWorkspaceLifetime.cs")), StringComparison.Ordinal);
 
         Assert.Contains("DispatcherQueue.HasThreadAccess", recent, StringComparison.Ordinal);
         Assert.Contains("!_recentRepositoriesShutdown", recent, StringComparison.Ordinal);
@@ -202,7 +202,7 @@ public sealed class PresentationLifecycleContractTests
         var transition = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation.Core", "WindowSessionLifecycle.cs"));
         Assert.Contains("lock (_gate)", transition, StringComparison.Ordinal);
         Assert.Contains("scope.Dispose()", session, StringComparison.Ordinal);
-        Assert.Contains("Interlocked.Exchange(ref _shutdownFinalized, 1)", lifecycle, StringComparison.Ordinal);
+        Assert.Contains("Interlocked.Exchange(ref _shutdownFinalized, 1)", File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Windowing", "WindowWorkspaceLifetime.cs")), StringComparison.Ordinal);
         var prepare = lifecycle.IndexOf("public Task PrepareForShutdown()", StringComparison.Ordinal);
         var stopMonitoring = lifecycle.IndexOf("ShutdownRepositoryChangeMonitoring();", prepare, StringComparison.Ordinal);
         var beginShutdown = lifecycle.IndexOf("public void BeginShutdown()", prepare, StringComparison.Ordinal);

@@ -109,8 +109,9 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("_creationWorkflow.ShowAsync()", shellComposition);
         Assert.Contains("_repositorySwitch.ShowUnavailableAsync", switchingWorkflow);
 
-        Assert.Contains("e.Key == VirtualKey.O", page);
-        Assert.Contains("RunPageUiOperation(OpenRepositoryPickerAsync, \"Open repository shortcut\")", page);
+        var keyboard = File.ReadAllText(Path.Combine(presentation, "Workflows", "WorkspaceKeyboardController.cs"));
+        Assert.Contains("e.Key == VirtualKey.O", keyboard);
+        Assert.Contains("runOperation(openRepository, \"Open repository shortcut\")", keyboard);
     }
 
 

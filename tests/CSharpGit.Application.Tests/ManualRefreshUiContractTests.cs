@@ -98,7 +98,7 @@ public sealed class ManualRefreshUiContractTests
         Assert.False(File.Exists(Path.Combine(application, "Abstractions", "IRepositoryStateSession.cs")));
         Assert.DoesNotContain("IRepositoryStateSession", app, StringComparison.Ordinal);
 
-        Assert.Contains("_repositoryRefresh.ShutdownRepositoryChangeMonitoring();", lifecycle);
+        Assert.Contains("_repositoryRefresh.ShutdownRepositoryChangeMonitoring()", lifecycle);
         Assert.Contains("IDD-0018", intentIndex);
     }
 

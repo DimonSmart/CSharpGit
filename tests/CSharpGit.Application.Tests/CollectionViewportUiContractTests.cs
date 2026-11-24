@@ -30,6 +30,7 @@ public sealed class CollectionViewportUiContractTests
         Assert.Contains("CountVisibleWorkingTreeNodes", workingTree);
         Assert.Contains("WorkingTreeTree_Collapsed", workingTree);
         Assert.Contains("tree.ScrollIntoView(target)", workingTree);
+        Assert.Contains("SynchronizeDetailsViewport()", changes);
         Assert.DoesNotContain("HistoryPane.SynchronizeDetailsViewport()", page);
         Assert.Contains("x:Name=\"StashDetailsScroller\"", xaml);
         Assert.Contains("_commitSummaryViewport?.Dispose()", changes);

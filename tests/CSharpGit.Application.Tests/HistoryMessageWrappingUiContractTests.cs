@@ -64,7 +64,7 @@ public sealed class HistoryMessageWrappingUiContractTests
         Assert.Contains("<controls:CommitDetailsView x:Name=\"CommitDetailsContent\" />", mainPageXaml);
         Assert.Equal(1, CountOccurrences(mainPageXaml, "<controls:CommitDetailsView"));
         Assert.DoesNotContain("Text=\"{Binding History.SelectedRow.Commit.Message}\"", mainPageXaml);
-        Assert.Contains("Loaded=\"MainPage_Loaded\"", File.ReadAllText(Path.Combine(root,
+        Assert.DoesNotContain("Loaded=\"MainPage_Loaded\"", File.ReadAllText(Path.Combine(root,
             "src", "CSharpGit.Presentation", "MainPage.xaml")));
 
         Assert.DoesNotContain("new CommitDetailsView", detailsHost);
@@ -84,8 +84,9 @@ public sealed class HistoryMessageWrappingUiContractTests
         Assert.Contains("_mainWindowClientWidth() / rasterizationScale", detailsHost);
         Assert.Contains("var visibleWidth = windowWidth - origin.X", detailsHost);
         Assert.Contains("_detailsScroller.Width = visibleWidth", detailsHost);
-        Assert.Contains("if (eventArgs.DidSizeChange) mainPage.QueueCommitDetailsLayout()", appHost);
+        Assert.Contains("if (eventArgs.DidSizeChange) windowContent.QueueCommitDetailsLayout()", appHost);
         Assert.Contains("!double.IsFinite(_commitDetailsView.Width)", detailsHost);
+        Assert.Contains("private void MainPage_Loaded", lifecycle);
         Assert.Contains("_commitDetailsLayout.Initialize();", lifecycle);
         Assert.DoesNotContain("InitializeCommitDetailsSurface", confirmationDialogs);
         Assert.Contains("internal double MainWindowClientWidth => _window?.AppWindow.ClientSize.Width ?? 0", appHost);
