@@ -77,10 +77,7 @@ public sealed partial class MainPage
         _settingsWindowController.Shutdown();
 
         _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
-        _viewModel.Stashes.PropertyChanged -= StashesViewModel_PropertyChanged;
-        _viewModel.CommitDetails.PropertyChanged -= CommitDetailsViewModel_PropertyChanged;
-        _viewModel.History.PropertyChanged -= HistoryViewModel_PropertyChanged;
-        _viewModel.History.CommitLookupCompleted -= History_CommitLookupCompleted;
+        _workspaceNavigation.Shutdown();
         _confirmationController.Shutdown();
         _fileActionInteractions.Shutdown();
         // Window DI scope owns disposal of resolved feature models.

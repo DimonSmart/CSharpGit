@@ -262,8 +262,7 @@ public sealed partial class MainPage
             _repositorySwitch.TrySwitchAsync,
             ShowPageDialogAsync);
         _settingsWindowController = settingsWindowController ?? throw new ArgumentNullException(nameof(settingsWindowController));
-        _settingsWindowController.ConfigureWindowContext(
-            () => _viewModel.Repository, _viewModel.TryBeginGitSettingsOperation);
+        _settingsWindowController.ConfigureWindowContext(_viewModel);
         ConfigureRepositoryFilesActions();
         _aboutUpdate = new Dialogs.AboutUpdateDialogController(
             applicationVersionProvider ?? throw new ArgumentNullException(nameof(applicationVersionProvider)),

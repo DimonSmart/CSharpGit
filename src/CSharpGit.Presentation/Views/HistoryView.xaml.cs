@@ -55,6 +55,7 @@ public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvide
         _avatarService = avatarService ?? throw new ArgumentNullException(nameof(avatarService));
         _avatarSettings = avatarSettings ?? throw new ArgumentNullException(nameof(avatarSettings));
         _history.PropertyChanged += History_PropertyChanged;
+        _history.CommitLookupCompleted += History_CommitLookupCompleted;
         _history.Rows.CollectionChanged += HistoryRows_ViewportCollectionChanged;
         _historyViewport = new CollectionViewportController(HistoryList);
         _historyViewport.Observe(HistoryViewportKey(), _history.Rows.Count);
@@ -65,6 +66,9 @@ public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvide
         UpdateLoadMoreAvailability();
         InitializeScroll();
     }
+
+    private static void History_CommitLookupCompleted(long startedAt, int itemsExamined) =>
+        HistoryRenderDiagnostics.CommitLookupCompleted(startedAt, itemsExamined);
 
     internal void InitializeScroll()
     {
@@ -258,6 +262,7 @@ public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvide
         if (_history is not null)
         {
             _history.PropertyChanged -= History_PropertyChanged;
+            _history.CommitLookupCompleted -= History_CommitLookupCompleted;
             _history.Rows.CollectionChanged -= HistoryRows_ViewportCollectionChanged;
         }
         _historyViewport?.Dispose();

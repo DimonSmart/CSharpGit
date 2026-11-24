@@ -120,7 +120,8 @@ public sealed partial class MainPage : Page
         _workspaceNavigator = workspaceNavigator ?? throw new ArgumentNullException(nameof(workspaceNavigator));
         _workspaceNavigation = new Workflows.WorkspaceNavigationController(
             _viewModel, _workspaceNavigator, HistoryPane, WorkingTreePane, RepositoryToolbar,
-            DispatcherQueue, ExecuteCommandAsync, () => IsShuttingDown, SetRepositoryFilesStashMode);
+            DispatcherQueue, ExecuteCommandAsync, () => IsShuttingDown, SetRepositoryFilesStashMode,
+            (operation, description) => RunPageUiOperation(operation, description));
         _repositoryRefresh = new Workflows.RepositoryRefreshController(
             _viewModel,
             new RepositoryChangeCoordinator(
@@ -137,10 +138,7 @@ public sealed partial class MainPage : Page
 
 
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
-        _viewModel.Stashes.PropertyChanged += StashesViewModel_PropertyChanged;
-        _viewModel.CommitDetails.PropertyChanged += CommitDetailsViewModel_PropertyChanged;
-        _viewModel.History.PropertyChanged += HistoryViewModel_PropertyChanged;
-        _viewModel.History.CommitLookupCompleted += History_CommitLookupCompleted;
+        _workspaceNavigation.Initialize();
         _presentationRefresh.Initialize();
         Loaded += RunDesktopCheckWhenRequested;
         WorkingTreePane.Configure(
@@ -194,10 +192,7 @@ public sealed partial class MainPage : Page
     {
         if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.Repository))
         {
-            _workspaceNavigation.ResetForRepositoryChange();
             UpdateStatusBar();
-            RepositoryHeader.Refresh();
-            _settingsWindowController.RepositoryChanged();
         }
         else if (eventArgs.PropertyName is nameof(OpenRepositoryViewModel.HeadDisplay)
                  or nameof(OpenRepositoryViewModel.CurrentBranchName)
@@ -210,7 +205,6 @@ public sealed partial class MainPage : Page
             var becameIdle = _wasBusy && !_viewModel.IsBusy;
             _wasBusy = _viewModel.IsBusy;
             UpdateStatusBar();
-            _workspaceNavigation.UpdateLoadMoreAvailability();
             if (becameIdle && _editCommitMessage.ShouldRestorePendingEditedCommitSelection)
                 RunPageUiOperation(_editCommitMessage.RestorePendingEditedCommitSelectionAsync,
                     "Restore edited commit selection");
@@ -218,45 +212,8 @@ public sealed partial class MainPage : Page
                 RunPageUiOperation(_repositoryFilePreview.ResumeAsync, "Resume repository file preview");
             if (becameIdle && _commitImageDiff.HasPending)
                 RunPageUiOperation(_commitImageDiff.ResumeAsync, "Resume commit image preview");
-            if (becameIdle)
-                RunPageUiOperation(_workspaceNavigation.ResumePendingAsync, "Resume repository tree navigation");
-        }
-        else if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.CanChangeRepository))
-        {
-            _workspaceNavigation.UpdateLoadMoreAvailability();
         }
     }
-
-    private void StashesViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
-    {
-        if (eventArgs.PropertyName is nameof(StashesViewModel.SelectedStash)
-            or nameof(StashesViewModel.HasSelectedStash))
-            _workspaceNavigation.UpdateStashPresentation();
-    }
-
-    private void CommitDetailsViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
-    {
-        if (eventArgs.PropertyName is nameof(CommitDetailsViewModel.SelectedStashDetails)
-                 or nameof(CommitDetailsViewModel.HasSelectedStash))
-            _workspaceNavigation.UpdateStashPresentation();
-    }
-
-    private void HistoryViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
-    {
-        if (eventArgs.PropertyName is nameof(HistoryViewModel.IsReferenceScoped)
-            or nameof(HistoryViewModel.ActiveReferenceLabel))
-        {
-            _workspaceNavigation.UpdateHistoryPresentation();
-        }
-        else if (eventArgs.PropertyName is nameof(HistoryViewModel.HasMore)
-                 or nameof(HistoryViewModel.IsLoading))
-        {
-            _workspaceNavigation.UpdateLoadMoreAvailability();
-        }
-    }
-
-    private static void History_CommitLookupCompleted(long startedAt, int itemsExamined) =>
-        HistoryRenderDiagnostics.CommitLookupCompleted(startedAt, itemsExamined);
 
     private void RefreshPresentationCollections()
     {
