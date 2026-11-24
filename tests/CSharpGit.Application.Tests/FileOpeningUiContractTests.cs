@@ -6,7 +6,7 @@ public sealed class FileOpeningUiContractTests
     public void DiffFileActionsShareOneResolverAndDesktopShellBoundary()
     {
         var root = FindRepositoryRoot();
-        var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
+        var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "FileActionInteractionController.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "FileActionsViewModel.cs"));
         var abstractions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "IRepositoryFileVersionService.cs"));
         var app = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml.cs"));
@@ -24,8 +24,8 @@ public sealed class FileOpeningUiContractTests
         Assert.Contains("_shell.OpenFileAsync", feature);
         Assert.Contains("_tools.RunExternalDiffAsync", feature);
         Assert.Contains("FileActionRequest", page);
-        Assert.Contains("ChangedFilesTree.RightTapped", page);
-        Assert.Contains("ChangedFilesTree.DoubleTapped", page);
+        Assert.Contains("_changedFilesTree.RightTapped", page);
+        Assert.Contains("_changedFilesTree.DoubleTapped", page);
         var worktreeMenu = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.ContextMenu.cs"));
         Assert.DoesNotContain("UnstagedChangesList.RightTapped", page);
         Assert.DoesNotContain("StagedChangesList.DoubleTapped", page);
@@ -59,7 +59,7 @@ public sealed class FileOpeningUiContractTests
         var versions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitRepositoryFileVersionService.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "FileActionsViewModel.cs"));
         var executor = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitCommandExecutor.cs"));
-        var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
+        var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "FileActionInteractionController.cs"));
 
         Assert.Contains("ExecuteToFileAsync", versions);
         Assert.Contains("StandardOutput.BaseStream.CopyToAsync", executor);
