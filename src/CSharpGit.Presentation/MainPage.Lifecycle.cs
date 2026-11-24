@@ -24,11 +24,11 @@ public sealed partial class MainPage
         RepositoryToolbar.Configure(HandleRepositoryToolbarAction);
         RepositoryHeader.Configure(_viewModel, _recentRepositorySettings, _desktopShellService,
             new RepositorySelectorActions(
-                TrySwitchRepositoryAsync,
+                _repositorySwitch.TrySwitchAsync,
                 OpenRepositoryPickerAsync,
                 () => _cloneWorkflow.ShowAsync(),
                 () => _creationWorkflow.ShowAsync(),
-                TryCloseRepositoryAsync,
+                _repositorySwitch.TryCloseAsync,
                 path => OpenFolderInDesktopShellAsync(path, "Could not open repository folder"),
                 CopyTextAsync,
                 ShowErrorAsync));
