@@ -3,14 +3,16 @@ namespace CSharpGit.Application.Tests;
 public sealed class TagWorkflowOwnershipContractTests
 {
     [Fact]
-    public void MainPageOnlyBuildsTagMenusAndWorkflowOwnsTagDialogs()
+    public void FeatureControllersBuildTagMenusAndWorkflowOwnsTagDialogs()
     {
         var root = FindRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var page = File.ReadAllText(Path.Combine(presentation, "MainPage.Tags.cs"));
+        var page = File.ReadAllText(Path.Combine(presentation, "Workflows", "CommitActionController.cs"))
+            + File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryReferenceMenuController.cs"));
         var workflow = File.ReadAllText(Path.Combine(presentation, "Workflows", "TagWorkflowController.cs"));
         var composition = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryMaintenance.cs"));
 
+        Assert.False(File.Exists(Path.Combine(presentation, "MainPage.Tags.cs")));
         Assert.Contains("_tagWorkflows.ShowCreateTagDialogAsync(", page, StringComparison.Ordinal);
         Assert.Contains("_tagWorkflows.DeleteTagFromUiAsync(", page, StringComparison.Ordinal);
         Assert.Contains("new Workflows.TagWorkflowController(", composition, StringComparison.Ordinal);
