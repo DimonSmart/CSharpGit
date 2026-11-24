@@ -12,7 +12,7 @@ public sealed class PresentationArchitectureGuardrailTests
         var viewModels = Path.Combine(presentation, "ViewModels");
         var parentSources = string.Join("\n", Directory.GetFiles(viewModels, "OpenRepositoryViewModel*.cs")
             .Select(File.ReadAllText));
-        var mainPageSources = string.Join("\n", Directory.GetFiles(presentation, "MainPage*.cs")
+        var mainPageSources = string.Join("\n", Directory.GetFiles(Path.Combine(presentation, "Composition"), "WindowWorkspaceComposition*.cs")
             .Select(File.ReadAllText));
         var actions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitActionsViewModel.cs"));
         var rewrite = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryHistoryRewriteViewModel.cs"));
@@ -80,7 +80,7 @@ public sealed class PresentationArchitectureGuardrailTests
             Assert.DoesNotContain("GetRequiredService<", source, StringComparison.Ordinal);
         }
 
-        Assert.Contains("scope.ServiceProvider.GetRequiredService<MainPage>()", File.ReadAllText(factoryPath), StringComparison.Ordinal);
+        Assert.Contains("scope.ServiceProvider.GetRequiredService<WindowWorkspaceComposition>()", File.ReadAllText(factoryPath), StringComparison.Ordinal);
         Assert.Contains("new JsonAppSettingsService()", app, StringComparison.Ordinal);
         Assert.Contains("AddSingleton<IRepositoryImageService, RepositoryImageService>()", app, StringComparison.Ordinal);
         Assert.Contains("AddSingleton<GitCommandActivityHistory>()", app, StringComparison.Ordinal);
@@ -93,14 +93,14 @@ public sealed class PresentationArchitectureGuardrailTests
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
         var mainPageSources = Directory
-            .GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+            .GetFiles(Path.Combine(presentation, "Composition"), "WindowWorkspaceComposition*.cs", SearchOption.TopDirectoryOnly)
             .Select(File.ReadAllText)
             .ToArray();
         var combined = string.Join(Environment.NewLine, mainPageSources);
 
-        Assert.Empty(Regex.Matches(combined, @"\bpublic\s+MainPage\s*\(").Cast<Match>());
-        Assert.Single(Regex.Matches(combined, @"\binternal\s+MainPage\s*\(").Cast<Match>());
-        Assert.Contains("new MainPage(", app, StringComparison.Ordinal);
+        Assert.Empty(Regex.Matches(combined, @"\bpublic\s+WindowWorkspaceComposition\s*\(").Cast<Match>());
+        Assert.Single(Regex.Matches(combined, @"\binternal\s+WindowWorkspaceComposition\s*\(").Cast<Match>());
+        Assert.Contains("new WindowWorkspaceComposition(", app, StringComparison.Ordinal);
         Assert.Contains("MainPageRepositoryDependencies", combined, StringComparison.Ordinal);
         Assert.Contains("MainPageGitDependencies", combined, StringComparison.Ordinal);
         Assert.Contains("MainPageUiDependencies", combined, StringComparison.Ordinal);
@@ -120,7 +120,7 @@ public sealed class PresentationArchitectureGuardrailTests
 
         var controller = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryPresentationRefreshController.cs"));
         Assert.Contains("_presentationRefresh.Initialize();", mainPage, StringComparison.Ordinal);
-        Assert.Contains("_presentationRefresh.Shutdown();", lifecycle, StringComparison.Ordinal);
+        Assert.Contains("_presentationRefresh.Shutdown()", lifecycle, StringComparison.Ordinal);
 
         var subscriptions = new[]
         {
@@ -149,7 +149,7 @@ public sealed class PresentationArchitectureGuardrailTests
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var viewModels = Path.Combine(presentation, "ViewModels");
         var mainPageSources = Directory
-            .GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+            .GetFiles(Path.Combine(presentation, "Composition"), "WindowWorkspaceComposition*.cs", SearchOption.TopDirectoryOnly)
             .Select(File.ReadAllText)
             .ToArray();
         var combinedMainPage = string.Join(Environment.NewLine, mainPageSources);
@@ -164,7 +164,9 @@ public sealed class PresentationArchitectureGuardrailTests
         Assert.DoesNotContain("_tagService", combinedMainPage, StringComparison.Ordinal);
         Assert.DoesNotContain("_tagsViewModel", combinedMainPage, StringComparison.Ordinal);
         Assert.DoesNotContain("TagsViewModel tagsViewModel", combinedMainPage, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.Tags.", combinedMainPage, StringComparison.Ordinal);
+        var tagsWorkflow = File.ReadAllText(Path.Combine(presentation, "Workflows", "TagWorkflowController.cs"));
+        Assert.Contains("_viewModel.Tags.", tagsWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("_viewModel.Tags.", combinedMainPage, StringComparison.Ordinal);
 
         Assert.Contains(
             "public sealed class TagsViewModel : INotifyPropertyChanged, IDisposable",
@@ -192,7 +194,7 @@ public sealed class PresentationArchitectureGuardrailTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var mainPageSources = Directory
-            .GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+            .GetFiles(Path.Combine(presentation, "Composition"), "WindowWorkspaceComposition*.cs", SearchOption.TopDirectoryOnly)
             .Select(File.ReadAllText)
             .ToArray();
         var combined = string.Join(Environment.NewLine, mainPageSources);
@@ -211,7 +213,7 @@ public sealed class PresentationArchitectureGuardrailTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var mainPageSources = Directory
-            .GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+            .GetFiles(Path.Combine(presentation, "Composition"), "WindowWorkspaceComposition*.cs", SearchOption.TopDirectoryOnly)
             .Select(File.ReadAllText)
             .ToArray();
         var combined = string.Join(Environment.NewLine, mainPageSources);
@@ -232,7 +234,7 @@ public sealed class PresentationArchitectureGuardrailTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var mainPageSources = Directory
-            .GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+            .GetFiles(Path.Combine(presentation, "Composition"), "WindowWorkspaceComposition*.cs", SearchOption.TopDirectoryOnly)
             .Select(File.ReadAllText)
             .ToArray();
         var combined = string.Join(Environment.NewLine, mainPageSources);
@@ -260,7 +262,7 @@ public sealed class PresentationArchitectureGuardrailTests
         var viewModels = Path.Combine(presentation, "ViewModels");
         var mainPage = string.Join(
             Environment.NewLine,
-            Directory.GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+            Directory.GetFiles(Path.Combine(presentation, "Composition"), "WindowWorkspaceComposition*.cs", SearchOption.TopDirectoryOnly)
                 .Select(File.ReadAllText));
         var branchesViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "BranchesViewModel.cs"));
         var repositorySync = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySyncViewModel.cs"));
@@ -312,7 +314,7 @@ public sealed class PresentationArchitectureGuardrailTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var mainPageSources = Directory
-            .GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+            .GetFiles(Path.Combine(presentation, "Composition"), "WindowWorkspaceComposition*.cs", SearchOption.TopDirectoryOnly)
             .Select(File.ReadAllText)
             .ToArray();
         var combined = string.Join(Environment.NewLine, mainPageSources);
@@ -358,7 +360,7 @@ public sealed class PresentationArchitectureGuardrailTests
         var repositoryFilesSurface = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Files.cs"));
         var mainPage = string.Join(
             Environment.NewLine,
-            Directory.GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+            Directory.GetFiles(Path.Combine(presentation, "Composition"), "WindowWorkspaceComposition*.cs", SearchOption.TopDirectoryOnly)
                 .Select(File.ReadAllText));
 
         Assert.False(File.Exists(Path.Combine(viewModels, "OpenRepositoryViewModel.CommitChanges.cs")));
@@ -395,7 +397,7 @@ public sealed class PresentationArchitectureGuardrailTests
         var viewModels = Path.Combine(presentation, "ViewModels");
         var mainPage = string.Join(
             Environment.NewLine,
-            Directory.GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+            Directory.GetFiles(Path.Combine(presentation, "Composition"), "WindowWorkspaceComposition*.cs", SearchOption.TopDirectoryOnly)
                 .Select(File.ReadAllText));
         var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitActionsViewModel.cs"));
         var openRepository = File.ReadAllText(Path.Combine(viewModels, "OpenRepositoryViewModel.cs"));
@@ -449,7 +451,7 @@ public sealed class PresentationArchitectureGuardrailTests
             + File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeCommitEditorView.xaml"));
         var mainPage = string.Join(
             Environment.NewLine,
-            Directory.GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+            Directory.GetFiles(Path.Combine(presentation, "Composition"), "WindowWorkspaceComposition*.cs", SearchOption.TopDirectoryOnly)
                 .Select(File.ReadAllText));
 
         Assert.Contains("public sealed class CommitCreationViewModel : INotifyPropertyChanged", commitCreation, StringComparison.Ordinal);
@@ -515,7 +517,7 @@ public sealed class PresentationArchitectureGuardrailTests
             Path.Combine(presentation, "Controls", "OperationBanner.xaml"));
         var mainPage = string.Join(
             Environment.NewLine,
-            Directory.GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
+            Directory.GetFiles(Path.Combine(presentation, "Composition"), "WindowWorkspaceComposition*.cs", SearchOption.TopDirectoryOnly)
                 .Select(File.ReadAllText));
         var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
 
@@ -592,7 +594,10 @@ public sealed class PresentationArchitectureGuardrailTests
         var commitActions = File.ReadAllText(Path.Combine(presentation, "Workflows", "CommitActionController.cs"));
         Assert.Contains("_viewModel.InteractiveRebase.PrepareInteractiveRebaseFromCommitAsync", commitActions, StringComparison.Ordinal);
         Assert.DoesNotContain("_viewModel.InteractiveRebase.", mainPage, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.RepositoryOperations.", mainPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("_viewModel.RepositoryOperations.", mainPage, StringComparison.Ordinal);
+        var confirmationWorkflow = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryConfirmationController.cs"));
+        var toolbarWorkflow = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryToolbarActionController.cs"));
+        Assert.Contains("_viewModel.RepositoryOperations.", confirmationWorkflow + toolbarWorkflow, StringComparison.Ordinal);
     }
 
     [Fact]

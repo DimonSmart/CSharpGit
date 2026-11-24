@@ -109,7 +109,7 @@ public sealed class PullUiContractTests
     public void PullFailureUsesBoundedScrollableAndNormalizedErrorPresentation()
     {
         var root = FindRepositoryRoot();
-        var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.cs"));
+        var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Windowing/WindowUiOperations.cs"));
         var syncService = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitRepositorySyncService.cs"));
 
         Assert.Contains("Text = new GitOutputDisplayBuffer().Reset(message)", mainPage, StringComparison.Ordinal);
