@@ -146,9 +146,6 @@ internal sealed partial class RepositoryFilesSurface
         }
     }
 
-    private bool IsRepositoryFilesActive =>
-        _repositoryFilesTab is not null && ReferenceEquals(DetailsTabs.SelectedItem, _repositoryFilesTab);
-
     private void UpdateRepositoryFilesViewActivity()
     {
         if (!IsRepositoryFilesActive)
