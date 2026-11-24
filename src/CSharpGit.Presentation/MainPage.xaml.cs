@@ -174,7 +174,6 @@ public sealed partial class MainPage : Page
             ShowPageDialogAsync);
         RefreshPresentationCollections();
         WorkingTreePane.InitializeWorkingTreeDiffSurface();
-        InitializeCommitActions();
         UpdateHistoryScopePresentation();
     }
 
