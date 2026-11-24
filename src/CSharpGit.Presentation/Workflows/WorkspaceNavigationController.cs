@@ -128,6 +128,14 @@ internal sealed class WorkspaceNavigationController(
             HistoryView.ScrollTo(selected);
     }
 
+    internal async Task ToggleCommitNavigationAsync()
+    {
+        if (_workingTree.Visibility == Visibility.Visible)
+            await ShowAllHistoryAsync();
+        else
+            ShowWorkingTree();
+    }
+
     internal void ShowWorkingTree()
     {
         _navigator.ShowWorkingTree();
