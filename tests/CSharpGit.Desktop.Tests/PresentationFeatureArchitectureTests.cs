@@ -100,10 +100,11 @@ public sealed class PresentationFeatureArchitectureTests
         var page = Read("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
         var preview = Read("src/CSharpGit.Presentation/Workflows/RepositoryFilePreviewController.cs");
         var surface = Read("src/CSharpGit.Presentation/Controls/RepositoryFilesSurface.cs");
+        var interactions = Read("src/CSharpGit.Presentation/Controls/RepositoryFilesSurface.Interactions.cs");
 
         Assert.Contains("new RepositoryFilesSurface(_repositoryFilesViewModel)", page);
-        Assert.Contains("SearchBox.TextChanged += RepositoryFilesSearch_TextChanged", page);
-        Assert.Contains("FileTree.SelectionChanged += RepositoryFilesTree_SelectionChanged", page);
+        Assert.Contains("SearchBox.TextChanged += RepositoryFilesSearch_TextChanged", interactions);
+        Assert.Contains("FileTree.SelectionChanged += RepositoryFilesTree_SelectionChanged", interactions);
         Assert.Contains("() => _repositoryFilesSurface?.PreviewHost", page);
         Assert.Contains("_previewHost()", preview);
         Assert.DoesNotContain("private Grid BuildRepositoryFilesSplitBody", preview);

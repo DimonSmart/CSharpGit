@@ -118,15 +118,16 @@ public sealed class DesignSystemContractTests
         var files = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs");
         var changes = Read(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs");
         var mainCode = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
+        var interactions = Read(root, "src", "CSharpGit.Presentation", "Controls", "RepositoryFilesSurface.Interactions.cs");
 
         Assert.Contains("new PivotItem { Header = \"Files\", Name = \"FilesTab\" }", files);
         Assert.Contains("DetailsTabs.Items.Add(_repositoryFilesTab)", files);
         Assert.DoesNotContain("_repositoryFilesTab.HeaderTemplate =", files);
         Assert.DoesNotContain("_repositoryFilesTab.Style =", files);
         Assert.Contains("DetailsTabs.SelectedItem", files);
-        Assert.Contains("SetActiveAsync(true)", files);
-        Assert.Contains("SetActiveAsync(false)", files);
-        Assert.Contains("ActivateRepositoryFilesAsync", files);
+        Assert.Contains("SetActiveAsync(true)", interactions);
+        Assert.Contains("SetActiveAsync(false)", interactions);
+        Assert.Contains("ActivateRepositoryFilesAsync", interactions);
         Assert.Contains("DetailsTabs.SelectedItem", changes);
         Assert.Contains("SetActive(active)", changes);
         Assert.Contains("UpdateRepositoryFilesViewActivity();", changes);
