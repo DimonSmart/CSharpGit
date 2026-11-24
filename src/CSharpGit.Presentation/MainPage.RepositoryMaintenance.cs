@@ -31,6 +31,7 @@ public sealed partial class MainPage
     private readonly Workflows.SubmoduleWorkflowController _submodules = null!;
     private readonly Workflows.BranchDeletionController _branchDeletion = null!;
     private readonly Workflows.EditCommitMessageController _editCommitMessage = null!;
+    private readonly Workflows.CommitActionController _commitActions = null!;
     private readonly CloneRepositoryViewModel _cloneRepositoryViewModel = null!;
     private readonly CreateRepositoryViewModel _createRepositoryViewModel = null!;
     private readonly Workflows.RepositoryCloneWorkflow _cloneWorkflow = null!;
@@ -98,7 +99,7 @@ public sealed partial class MainPage
         _historyRewrite = new Workflows.HistoryRewriteController(
             _viewModel, _repositoryFilesViewModel, _repositoryFilePreview,
             () => IsShuttingDown, () => XamlRoot, ShowPageDialogAsync,
-            RestoreCommitActionSelectionAsync,
+            hash => _commitActions.RestoreSelectionAsync(hash),
             UpdateRepositoryFilesModeSurface, UpdateHistoryScopePresentation,
             () => { HistoryPane.Visibility = Visibility.Visible; WorkingTreePane.Visibility = Visibility.Collapsed; });
         _stashDialogs = new Workflows.StashDialogController(
@@ -117,8 +118,15 @@ public sealed partial class MainPage
         _rebaseAuthor.Initialize();
         _editCommitMessage = new Workflows.EditCommitMessageController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
-            () => IsShuttingDown, HandleCommitActionExecutionResultAsync,
-            RestoreCommitActionSelectionAsync);
+            () => IsShuttingDown,
+            result => _commitActions.HandleExecutionResultAsync(result),
+            hash => _commitActions.RestoreSelectionAsync(hash));
+        _commitActions = new Workflows.CommitActionController(
+            _viewModel, HistoryView, _editCommitMessage, _tagWorkflows,
+            () => XamlRoot, ShowPageDialogAsync, ShowErrorAsync,
+            () => IsShuttingDown, ShowInteractiveRebaseEditorAsync,
+            (operation, description) => RunPageUiOperation(operation, description));
+        _commitActions.Initialize();
         _branchDeletion = new Workflows.BranchDeletionController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
             () => IsShuttingDown, ShowErrorAsync, ShowInformationAsync);
