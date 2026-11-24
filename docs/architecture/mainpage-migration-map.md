@@ -419,6 +419,18 @@ Tag creation, deletion, remote selection, fetch/push and remote-tag dialogs now 
 
 The History graph, Commit Summary, Changed Files and commit diff viewer are visually grouped in `Views/HistoryWorkspaceView.xaml`. `MainPage.xaml` composes this host and the separate `WorkingTreeView` rather than declaring either feature's controls inline. Existing callbacks and control facades remain transitional and must migrate to feature controllers before the Phase 3 Definition of Done is met.
 
+## Phase 3 follow-up: working-tree interaction ownership
+
+The Working Tree selection model, tree roots, expansion/viewport tracking, diff preview coordination and subscriptions now belong to `Views/WorkingTreeView.Selection.cs` rather than `MainPage.WorkingTreeDiff.cs`. The feature view exposes narrow entry points for selection and menu targeting; it unsubscribes its own events and viewport observers during shutdown. Git mutation commands remain in the WorkingTreeViewModel and existing workflow controllers. Remaining file-opening menus and other page handlers still need migration.
+
+## Phase 3 follow-up: submodule workflow owner
+
+Submodule inspection, context menus, open-in-new-process, initialization and update progress now belong to `Workflows/SubmoduleWorkflowController`. The historical file surface invokes its two typed entry points, and `MainPage.Submodules.cs` has been removed. The service remains the only Git-mutation owner. Controller rechecks the active repository after awaits and refreshes both repository and history-file state after partial updates; the remaining Repository Files surface extraction is tracked separately.
+
+## Phase 3 follow-up: interactive-rebase author editor ownership
+
+`Workflows/InteractiveRebaseAuthorController` now owns the Change Author flyout, raw-todo selection analysis, apply flow and its button subscription. The controller attaches when the existing rebase dialog loads and detaches at window shutdown. `MainPage.InteractiveRebaseAuthor.cs`, the XAML event handler and its private dialog/visual-tree adapters have been removed; rebase mutations still belong to the existing InteractiveRebase ViewModel.
+
 ## Phase 3 follow-up: Commit Details interaction ownership
 
 Commit changed-file selection, changed-file tree subscriptions and lifetime, diff presentation and the two viewport observers belong to `Views/HistoryWorkspaceView.Changes.cs`. The History workspace configures dependencies once and detaches event subscriptions on shutdown. `MainPage.Changes.cs` is removed. Mutation semantics remain in CommitDetailsViewModel and existing controllers. History context actions and file-opening interactions are separate remaining work.

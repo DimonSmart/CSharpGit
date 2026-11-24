@@ -21,7 +21,6 @@
           <Button x:Name="ChangeInteractiveRebaseAuthorButton"
                   Grid.Column="1"
                   Content="Change author…"
-                  Click="ChangeInteractiveRebaseAuthor_Click"
                   Style="{StaticResource CompactButtonStyle}" />
         </Grid>
         <controls:InteractiveRebaseTodoEditor x:Name="InteractiveRebaseTodoEditor"

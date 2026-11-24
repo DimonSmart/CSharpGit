@@ -5,8 +5,8 @@ using Microsoft.UI.Xaml.Input;
 
 namespace CSharpGit.Presentation.Views;
 
-// Owns the working-tree visual surface. Its typed callback bridge is temporary
-// until staging and diff interactions migrate to the feature controller.
+// Owns working-tree tree selection, diff previews and view lifetime.
+// File menus still forward to window-scoped workflows.
 public sealed partial class WorkingTreeView : UserControl
 {
     public WorkingTreeView() => InitializeComponent();
@@ -35,17 +35,9 @@ public sealed partial class WorkingTreeView : UserControl
     internal SelectableDiffViewer WorkingTreeDiffViewerControl => WorkingTreeDiffViewer;
     internal WorkingTreeCommitEditorView WorkingTreeCommitEditorControl => WorkingTreeCommitEditor;
 
-    internal Action<TreeView, TreeViewItemInvokedEventArgs>? UnstagedChangesTree_ItemInvokedCallback { get; set; }
-    private void UnstagedChangesTree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args) =>
-        UnstagedChangesTree_ItemInvokedCallback?.Invoke(sender, args);
-
     internal Action<object, RightTappedRoutedEventArgs>? UnstagedChangesTree_RightTappedCallback { get; set; }
     private void UnstagedChangesTree_RightTapped(object sender, RightTappedRoutedEventArgs args) =>
         UnstagedChangesTree_RightTappedCallback?.Invoke(sender, args);
-
-    internal Action<TreeView, TreeViewItemInvokedEventArgs>? StagedChangesTree_ItemInvokedCallback { get; set; }
-    private void StagedChangesTree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args) =>
-        StagedChangesTree_ItemInvokedCallback?.Invoke(sender, args);
 
     internal Action<object, RightTappedRoutedEventArgs>? StagedChangesTree_RightTappedCallback { get; set; }
     private void StagedChangesTree_RightTapped(object sender, RightTappedRoutedEventArgs args) =>
@@ -67,7 +59,4 @@ public sealed partial class WorkingTreeView : UserControl
     private void WorkingTreeReveal_Click(object sender, RoutedEventArgs args) =>
         WorkingTreeReveal_ClickCallback?.Invoke(sender, args);
 
-    internal Action<object, RoutedEventArgs>? WorkingTreeLargeDiffButton_ClickCallback { get; set; }
-    private void WorkingTreeLargeDiffButton_Click(object sender, RoutedEventArgs args) =>
-        WorkingTreeLargeDiffButton_ClickCallback?.Invoke(sender, args);
 }

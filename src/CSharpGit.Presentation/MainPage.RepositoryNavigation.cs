@@ -114,12 +114,12 @@ public sealed partial class MainPage
         if (_unstagedChanges.FirstOrDefault() is { } unstaged)
         {
             UnstagedChangesList.SelectedItem = unstaged;
-            SelectWorkingTreeChange(unstaged, WorkingTreeDiffKind.Unstaged);
+            WorkingTreePane.SelectWorkingTreeChange(unstaged, WorkingTreeDiffKind.Unstaged);
         }
         else if (_stagedChanges.FirstOrDefault() is { } staged)
         {
             StagedChangesList.SelectedItem = staged;
-            SelectWorkingTreeChange(staged, WorkingTreeDiffKind.Staged);
+            WorkingTreePane.SelectWorkingTreeChange(staged, WorkingTreeDiffKind.Staged);
         }
     }
 

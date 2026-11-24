@@ -8,7 +8,7 @@ public sealed class CollectionViewportUiContractTests
         var root = FindRepositoryRoot();
         var changes = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.Changes.cs"));
         var changedTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "CommitChangedFileTreeController.cs"));
-        var workingTree = Read(root, "MainPage.WorkingTreeDiff.cs");
+        var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.Selection.cs"));
         var page = Read(root, "MainPage.xaml.cs");
         var lifecycle = Read(root, "MainPage.Lifecycle.cs");
         var history = File.ReadAllText(Path.Combine(root,
@@ -32,8 +32,8 @@ public sealed class CollectionViewportUiContractTests
         Assert.Contains("tree.ScrollIntoView(target)", workingTree);
         Assert.Contains("HistoryPane.SynchronizeDetailsViewport()", page);
         Assert.Contains("x:Name=\"StashDetailsScroller\"", xaml);
-        Assert.Contains("_commitSummaryViewport?.Dispose()", lifecycle);
-        Assert.Contains("_stashSummaryViewport?.Dispose()", lifecycle);
+        Assert.Contains("_commitSummaryViewport?.Dispose()", changes);
+        Assert.Contains("_stashSummaryViewport?.Dispose()", changes);
         Assert.Contains("_viewport?.Dispose()", changedTree);
         Assert.Contains("HistoryPane.ShutdownChanges()", lifecycle);
         Assert.Contains("_changesTree?.Shutdown()", changes);

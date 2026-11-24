@@ -56,6 +56,7 @@ public sealed partial class MainPage
         _pageDialogs.Shutdown();
         _cloneRepositoryViewModel.Cancel();
         Loaded -= RunDesktopCheckWhenRequested;
+        _rebaseAuthor.Shutdown();
         _viewModel.WorkingTree.Changes.CollectionChanged -= RepositoryPresentationChanges_CollectionChanged;
         _viewModel.Branches.LocalBranches.CollectionChanged -= RepositoryPresentationLocalBranches_CollectionChanged;
         _viewModel.Branches.RemoteBranches.CollectionChanged -= RepositoryPresentationRemoteBranches_CollectionChanged;
@@ -75,8 +76,7 @@ public sealed partial class MainPage
         RepositoryToolbar.Shutdown();
         _repositoryRefresh.ShutdownRepositoryChangeMonitoring();
         HistoryPane.ShutdownChanges();
-        _unstagedViewport?.Dispose();
-        _stagedViewport?.Dispose();
+        WorkingTreePane.ShutdownWorkingTreeDiffSurface();
         _worktrees.Shutdown();
         _settingsWindowController.Shutdown();
 
@@ -89,14 +89,9 @@ public sealed partial class MainPage
         _viewModel.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
         _viewModel.CommitDetails.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
         _viewModel.History.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
-        _viewModel.WorkingTree.PropertyChanged -= WorkingTreeViewModel_PropertyChanged;
         _viewModel.WorkingTree.PropertyChanged -= WorkingTreeFileOpening_PropertyChanged;
         _fileActions.PropertyChanged -= FileActions_PropertyChanged;
         ChangedFilesTree.RightTapped -= ChangedFilesTree_RightTapped;
-        UnstagedChangesTree.Expanding -= WorkingTreeTree_Expanding;
-        UnstagedChangesTree.Collapsed -= WorkingTreeTree_Collapsed;
-        StagedChangesTree.Expanding -= WorkingTreeTree_Expanding;
-        StagedChangesTree.Collapsed -= WorkingTreeTree_Collapsed;
         ChangedFilesTree.DoubleTapped -= ChangedFilesTree_DoubleTapped;
         UnstagedChangesList.RightTapped -= WorkingTreeChanges_RightTapped;
         StagedChangesList.RightTapped -= WorkingTreeChanges_RightTapped;

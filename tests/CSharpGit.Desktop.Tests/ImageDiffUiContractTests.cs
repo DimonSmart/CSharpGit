@@ -10,7 +10,7 @@ public sealed class ImageDiffUiContractTests
             + Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.xaml")
             + Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml");
         var changes = Read(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs");
-        var workingTree = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs");
+        var workingTree = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.Selection.cs");
         var lifecycle = Read(root, "src", "CSharpGit.Presentation", "Workflows", "CommitImageDiffWorkflow.cs");
         var presentation = Read(root, "src", "CSharpGit.Presentation", "Workflows", "DiffPresentationController.cs");
 
@@ -77,7 +77,7 @@ public sealed class ImageDiffUiContractTests
     {
         var root = FindRepositoryRoot();
         var lifecycle = Read(root, "src", "CSharpGit.Presentation", "Workflows", "CommitImageDiffWorkflow.cs");
-        var workingTree = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs");
+        var workingTree = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.Selection.cs");
 
         Assert.Contains("_commitImageDiffGeneration", lifecycle);
         Assert.Contains("IsCurrentCommitImageDiffRequest", lifecycle);

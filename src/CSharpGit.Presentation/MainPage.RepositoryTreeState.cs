@@ -16,8 +16,6 @@ public sealed partial class MainPage
     private void QueueRepositoryPresentationRefresh(bool workingTreeChanged = false) =>
         _presentationRefresh.Queue(workingTreeChanged);
 
-    private ContentDialog InteractiveRebaseDialog => _pageDialogs.GetDialog("InteractiveRebaseDialog");
-
     private Task<ContentDialogResult> ShowPageDialogAsync(ContentDialog dialog) =>
         _pageDialogs.ShowAsync(dialog);
 
@@ -25,10 +23,6 @@ public sealed partial class MainPage
         _pageDialogs.ShowInteractiveRebaseEditorAsync();
 
     private ContentDialog GetPageDialog(string key) => _pageDialogs.GetDialog(key);
-
-    private static T? FindNamedDescendant<T>(Microsoft.UI.Xaml.DependencyObject root, string name)
-        where T : Microsoft.UI.Xaml.FrameworkElement =>
-        Dialogs.PageDialogController.FindNamedDescendant<T>(root, name);
 
     private bool CanRenameBranch() => _branchRename.CanRenameBranch();
     private Task RenameBranchAsync(GitBranch branch) => _branchRename.RenameAsync(branch);
