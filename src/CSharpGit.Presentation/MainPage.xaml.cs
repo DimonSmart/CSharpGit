@@ -143,7 +143,6 @@ public sealed partial class MainPage : Page
 
         _presentationRefresh = new Workflows.RepositoryPresentationRefreshController(
             DispatcherQueue, () => IsShuttingDown,
-            InitializeTagSupportIfNeeded,
             RefreshPresentationCollections,
             SynchronizeRepositoryTree,
             UpdateStatusBar);
@@ -175,6 +174,19 @@ public sealed partial class MainPage : Page
         RefreshPresentationCollections();
         WorkingTreePane.InitializeWorkingTreeDiffSurface();
         UpdateHistoryScopePresentation();
+    }
+
+    private async Task ShowInformationAsync(string title, string message)
+    {
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = title,
+            Content = message,
+            CloseButtonText = "Close",
+            DefaultButton = ContentDialogButton.Close
+        };
+        await ShowPageDialogAsync(dialog);
     }
 
     private void RepositoryPresentationChanges_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
