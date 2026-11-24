@@ -159,58 +159,6 @@ public sealed partial class MainPage
         }
     }
 
-    private void RepositoryTree_RightTapped(object sender, RightTappedRoutedEventArgs args)
-    {
-        var source = args.OriginalSource as FrameworkElement;
-        var node = ResolveNode(source?.DataContext);
-        if (source is null || node is null) return;
-
-        var flyout = new MenuFlyout();
-        switch (node.Kind)
-        {
-            case RepositoryTreeNodeKind.Group when node.Name == "Remotes":
-                AddMenuItem(flyout, "Fetch all", () => _viewModel.CanStartUserGitOperation, async () => await ExecuteCommandAsync(_viewModel.RepositorySync.FetchAllCommand));
-                break;
-
-            case RepositoryTreeNodeKind.Tag when node.Value is GitTag tag:
-                AddMenuItem(flyout, "Checkout detached", () => _viewModel.CanStartUserGitOperation, async () =>
-                {
-                    _viewModel.Tags.SelectedTag = tag;
-                    await ExecuteCommandAsync(_viewModel.Tags.CheckoutTagCommand);
-                });
-                AddMenuItem(flyout, "Copy tag name", true, () => CopyTextAsync(tag.Name));
-                break;
-
-            case RepositoryTreeNodeKind.Group
-                when string.Equals(node.Key, RepositoryTreeDescriptorBuilder.StashesRootKey, StringComparison.Ordinal):
-                AddMenuItem(flyout, "Stash…", () => _viewModel.Stashes.CanCreateStash, ShowCreateStashDialogAsync);
-                break;
-
-            case RepositoryTreeNodeKind.Stash when node.Value is GitStash stash:
-                AddMenuItem(flyout, "Apply", () => _viewModel.Stashes.CanMutateStash(stash), async () =>
-                {
-                    await _viewModel.Stashes.SelectStashAsync(stash);
-                    await ExecuteCommandAsync(_viewModel.Stashes.ApplyCommand);
-                });
-                AddMenuItem(flyout, "Pop", () => _viewModel.Stashes.CanMutateStash(stash), async () =>
-                {
-                    await _viewModel.Stashes.SelectStashAsync(stash);
-                    await ExecuteCommandAsync(_viewModel.Stashes.PopCommand);
-                });
-                flyout.Items.Add(new MenuFlyoutSeparator());
-                AddMenuItem(flyout, "Drop…", () => _viewModel.Stashes.CanMutateStash(stash), async () =>
-                {
-                    await _viewModel.Stashes.SelectStashAsync(stash);
-                    await ConfirmDropStashAsync(stash);
-                });
-                break;
-        }
-
-        if (flyout.Items.Count == 0) return;
-        flyout.ShowAt(source, args.GetPosition(source));
-        args.Handled = true;
-    }
-
     private void UpdateStashPresentation()
     {
         if (_repositoryFilesTab is not null)
@@ -218,15 +166,6 @@ public sealed partial class MainPage
                 ? "Tracked files"
                 : "Files";
     }
-
-    private static RepositoryTreeNode? ResolveNode(object? value) => value switch
-    {
-        RepositoryTreeNode node => node,
-        TreeViewNode { Content: RepositoryTreeNode node } => node,
-        TreeViewItem { DataContext: RepositoryTreeNode node } => node,
-        FrameworkElement { DataContext: RepositoryTreeNode node } => node,
-        _ => null
-    };
 
     private void AddMenuItem(MenuFlyout flyout, string text, bool enabled, Func<Task> action) =>
         AddMenuItem(flyout, text, () => enabled, action);
