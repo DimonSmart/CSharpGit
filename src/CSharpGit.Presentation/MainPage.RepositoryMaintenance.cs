@@ -186,6 +186,7 @@ public sealed partial class MainPage
         _settingsWindowController = settingsWindowController ?? throw new ArgumentNullException(nameof(settingsWindowController));
         _settingsWindowController.ConfigureWindowContext(
             () => _viewModel.Repository, _viewModel.TryBeginGitSettingsOperation);
+        ConfigureRepositoryFilesActions();
         _aboutUpdate = new Dialogs.AboutUpdateDialogController(
             applicationVersionProvider ?? throw new ArgumentNullException(nameof(applicationVersionProvider)),
             updateCheckService ?? throw new ArgumentNullException(nameof(updateCheckService)),
