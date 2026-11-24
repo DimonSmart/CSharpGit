@@ -6,7 +6,7 @@ public sealed class WorkingTreeContextMenuUiContractTests
     public void FileRightClickPreservesExistingMultiSelection()
     {
         var root = FindRepositoryRoot();
-        var contextMenu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
+        var contextMenu = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.ContextMenu.cs");
 
         var selectionOwner = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.Selection.cs");
         var selection = MethodBody(
@@ -26,7 +26,7 @@ public sealed class WorkingTreeContextMenuUiContractTests
     public void FileContextActionsUseImmutableSelectionSnapshot()
     {
         var root = FindRepositoryRoot();
-        var contextMenu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
+        var contextMenu = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.ContextMenu.cs");
 
         var fileMenu = MethodBody(
             contextMenu,
@@ -46,7 +46,7 @@ public sealed class WorkingTreeContextMenuUiContractTests
     public void FolderContextMenuOffersDiscardOnlyOnUnstagedSideWithoutStash()
     {
         var root = FindRepositoryRoot();
-        var contextMenu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
+        var contextMenu = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.ContextMenu.cs");
 
         var folderMenu = MethodBody(
             contextMenu,
@@ -70,7 +70,7 @@ public sealed class WorkingTreeContextMenuUiContractTests
     public void StagedDiscardRemainsSingleFileAndExplicitlyDestructive()
     {
         var root = FindRepositoryRoot();
-        var contextMenu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
+        var contextMenu = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.ContextMenu.cs");
         var viewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs");
 
         Assert.Contains("if (count == 1)", contextMenu, StringComparison.Ordinal);
@@ -85,7 +85,7 @@ public sealed class WorkingTreeContextMenuUiContractTests
     public void GitIgnoreMenuIsLimitedToSingleUntrackedFileOrEligibleUnstagedFolder()
     {
         var root = FindRepositoryRoot();
-        var contextMenu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
+        var contextMenu = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.ContextMenu.cs");
         var viewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs");
         var fileMenu = MethodBody(
             contextMenu,

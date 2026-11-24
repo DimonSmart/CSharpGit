@@ -96,10 +96,6 @@ public sealed partial class MainPage
         _fileActions.PropertyChanged -= FileActions_PropertyChanged;
         ChangedFilesTree.RightTapped -= ChangedFilesTree_RightTapped;
         ChangedFilesTree.DoubleTapped -= ChangedFilesTree_DoubleTapped;
-        UnstagedChangesList.RightTapped -= WorkingTreeChanges_RightTapped;
-        StagedChangesList.RightTapped -= WorkingTreeChanges_RightTapped;
-        UnstagedChangesList.DoubleTapped -= WorkingTreeChanges_DoubleTapped;
-        StagedChangesList.DoubleTapped -= WorkingTreeChanges_DoubleTapped;
         // Window DI scope owns disposal of resolved feature models.
         _repositoryFilesViewModel.PropertyChanged -= RepositoryFilesViewModel_PropertyChanged;
 

@@ -280,7 +280,7 @@ public sealed class WorkingTreeDiscardContractTests
         var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryConfirmationController.cs"));
         var discardViewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "WorkingTreeViewModel.cs"));
 
-        var menu = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs"));
+        var menu = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.ContextMenu.cs"));
         Assert.Contains("WorkingTree.RequestDiscardSelectedCommand", menu);
         Assert.Contains("Command=\"{Binding WorkingTree.RequestDiscardAllCommand}\"", xaml);
         Assert.Contains("ToolTipService.ToolTip=\"Discard all…\"", xaml);

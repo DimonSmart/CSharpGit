@@ -37,7 +37,8 @@ public sealed class PresentationFeatureArchitectureTests
         Assert.Contains("Equals(prepared.Request, request)", feature);
         Assert.Contains("IsMenuSelectionCurrent(request)", page);
         Assert.Contains("CaptureCommitRequest(node.Entry.File.Path)", page);
-        Assert.Contains("CaptureWorkingTreeRequest(change, kind)", page);
+        Assert.Contains("new WorkingTreeFileActionRequest(repository, change, kind.Value)", page);
+        Assert.Contains("CaptureWorkingTreeRequest()", page);
         Assert.Contains("RepositorySessionLifetime", Read("src/CSharpGit.Presentation.Core/ViewModels/FileActionsContext.cs"));
         Assert.Contains("TryAcquire", context);
     }
