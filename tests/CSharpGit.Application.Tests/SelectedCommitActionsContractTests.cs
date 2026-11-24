@@ -52,7 +52,8 @@ public sealed class SelectedCommitActionsContractTests
         foreach (var label in new[] { "Copy hash", "Create branch here…", "Checkout this commit", "Cherry-pick", "Revert", "Edit commit message…", "Fixup into previous commit", "Interactive rebase from here…", "Reset current branch to here", "Soft…", "Mixed…", "Hard…" })
             Assert.Contains(label, actions);
 
-        Assert.Contains("HistoryView.List.RightTapped", actions);
+        Assert.Contains("_historyView.List.RightTapped += HistoryList_RightTapped", actions);
+        Assert.Contains("_historyView.List.RightTapped -= HistoryList_RightTapped", actions);
         Assert.Contains("commit.Parents.Count > 1", actions);
         Assert.Contains("Mainline parent", actions);
         Assert.Contains("Uncommitted tracked changes will be lost", actions);

@@ -10,7 +10,7 @@ public sealed class RepositoryFilesViewOwnershipContractTests
         var interactions = File.ReadAllText(Path.Combine(p, "Controls", "RepositoryFilesSurface.Interactions.cs"));
         var page = File.ReadAllText(Path.Combine(p, "MainPage.RepositoryFiles.cs"));
         var life = File.ReadAllText(Path.Combine(p, "MainPage.Lifecycle.cs"));
-        Assert.Contains("_repositoryFilesSurface.Configure(", page, StringComparison.Ordinal);
+        Assert.Contains("_repositoryFilesSurface!.Configure(", page, StringComparison.Ordinal);
         Assert.Contains("_repositoryFilesSurface?.ShutdownInteractions();", life, StringComparison.Ordinal);
         Assert.Contains("RepositoryFilesTree_SelectionChanged", interactions, StringComparison.Ordinal);
         Assert.Contains("RepositoryFilesTree_RightTapped", interactions, StringComparison.Ordinal);

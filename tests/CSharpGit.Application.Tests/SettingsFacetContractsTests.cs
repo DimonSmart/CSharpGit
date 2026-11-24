@@ -179,7 +179,9 @@ public sealed class SettingsFacetContractsTests
         Assert.False(File.Exists(Path.Combine(presentation, "MainPage.Settings.cs")));
         Assert.Contains("internal void ConfigureWindowContext(", controller);
         Assert.Contains("internal void Open(SettingsSection section", controller);
-        Assert.Contains("_settingsWindowController.Open(SettingsSection.General)", page);
+        var toolbar = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryToolbarActionController.cs"));
+        Assert.Contains("case RepositoryToolbarAction.Settings:", toolbar);
+        Assert.Contains("_settings.Open(SettingsSection.General)", toolbar);
         Assert.DoesNotContain("OpenSettingsWindow(", page);
     }
 

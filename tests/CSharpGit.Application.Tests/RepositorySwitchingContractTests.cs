@@ -107,7 +107,7 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("RepositorySelectorOpenTerminalButton.IsEnabled", switching);
         var shellComposition = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
         Assert.Contains("_creationWorkflow.ShowAsync()", shellComposition);
-        Assert.Contains("ShowUnavailableRepositoryAsync", switchingWorkflow);
+        Assert.Contains("_repositorySwitch.ShowUnavailableAsync", switchingWorkflow);
 
         Assert.Contains("e.Key == VirtualKey.O", page);
         Assert.Contains("RunPageUiOperation(OpenRepositoryPickerAsync, \"Open repository shortcut\")", page);

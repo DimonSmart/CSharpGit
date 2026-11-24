@@ -10,7 +10,7 @@ public sealed class WorkingTreeCommitEditorOwnershipContractTests
         var page = File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeView.xaml"));
         var editor = File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeCommitEditorView.xaml"));
         var codeBehind = File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeCommitEditorView.xaml.cs"));
-        var owner = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryMaintenance.cs"));
+        var owner = File.ReadAllText(Path.Combine(presentation, "Workflows", "StashInteractionController.cs"));
         var lifetime = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
 
         Assert.Contains("<views:WorkingTreeCommitEditorView", page);
@@ -21,8 +21,9 @@ public sealed class WorkingTreeCommitEditorOwnershipContractTests
         Assert.Contains("Stashes.CanCreateStash", editor);
         Assert.Contains("Click=\"Stash_Click\"", editor);
         Assert.Contains("StashRequested?.Invoke", codeBehind);
-        Assert.Contains("WorkingTreeCommitEditor.StashRequested += CreateStash_Click;", owner);
-        Assert.Contains("WorkingTreeCommitEditor.StashRequested -= CreateStash_Click;", lifetime);
+        Assert.Contains("_commitEditor.StashRequested += CreateStash_Click;", owner);
+        Assert.Contains("_commitEditor.StashRequested -= CreateStash_Click;", owner);
+        Assert.Contains("_stashInteractions.Shutdown();", lifetime);
     }
 
     private static string FindRepositoryRoot()
