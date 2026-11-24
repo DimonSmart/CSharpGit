@@ -42,6 +42,7 @@ public sealed partial class MainPage
             ReportUiFailure,
             FileActionsViewModel.UserFacingFileError);
         InitializeRepositoryFiles();
+        _repositoryFilePreview.InitializeIdleContinuation();
     }
 
     private void InitializeRepositoryFiles()

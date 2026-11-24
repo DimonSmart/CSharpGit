@@ -76,7 +76,9 @@ public sealed partial class MainPage
         _worktrees.Shutdown();
         _settingsWindowController.Shutdown();
 
-        _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        _editCommitMessage.ShutdownIdleContinuation();
+        _commitImageDiff.ShutdownIdleContinuation();
+        _repositoryFilePreview.ShutdownIdleContinuation();
         _workspaceNavigation.Shutdown();
         _confirmationController.Shutdown();
         _fileActionInteractions.Shutdown();

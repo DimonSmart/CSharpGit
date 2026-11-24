@@ -81,7 +81,6 @@ public sealed partial class MainPage : Page
     private WorkingTreeCommitEditorView WorkingTreeCommitEditor => WorkingTreePane.WorkingTreeCommitEditorControl;
 
     internal OpenRepositoryViewModel WindowRepository => _viewModel;
-    private bool _wasBusy;
     private readonly WorkspaceNavigator _workspaceNavigator;
     private readonly Workflows.WorkspaceNavigationController _workspaceNavigation;
     private readonly Workflows.RepositoryRefreshController _repositoryRefresh;
@@ -137,7 +136,7 @@ public sealed partial class MainPage : Page
             UpdateStatusBar);
 
 
-        _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+        GitConsoleHost.StatusBar.ConfigureRepository(_viewModel);
         _workspaceNavigation.Initialize();
         _presentationRefresh.Initialize();
         Loaded += RunDesktopCheckWhenRequested;
@@ -188,33 +187,6 @@ public sealed partial class MainPage : Page
             "Close confirmation was not configured."))
         .ConfirmDiscardCommitMessageAsync(CancellationToken.None);
 
-    private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
-    {
-        if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.Repository))
-        {
-            UpdateStatusBar();
-        }
-        else if (eventArgs.PropertyName is nameof(OpenRepositoryViewModel.HeadDisplay)
-                 or nameof(OpenRepositoryViewModel.CurrentBranchName)
-                 or nameof(RepositoryOperationsViewModel.CurrentOperation))
-        {
-            UpdateStatusBar();
-        }
-        else if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.IsBusy))
-        {
-            var becameIdle = _wasBusy && !_viewModel.IsBusy;
-            _wasBusy = _viewModel.IsBusy;
-            UpdateStatusBar();
-            if (becameIdle && _editCommitMessage.ShouldRestorePendingEditedCommitSelection)
-                RunPageUiOperation(_editCommitMessage.RestorePendingEditedCommitSelectionAsync,
-                    "Restore edited commit selection");
-            if (becameIdle && _repositoryFilePreview.HasPending)
-                RunPageUiOperation(_repositoryFilePreview.ResumeAsync, "Resume repository file preview");
-            if (becameIdle && _commitImageDiff.HasPending)
-                RunPageUiOperation(_commitImageDiff.ResumeAsync, "Resume commit image preview");
-        }
-    }
-
     private void RefreshPresentationCollections()
     {
         WorkingTreePane.RefreshChangesProjection();
@@ -228,18 +200,7 @@ public sealed partial class MainPage : Page
 
     private void UpdateStatusBar()
     {
-        var current = _viewModel.Branches.LocalBranches.FirstOrDefault(branch => branch.IsCurrent);
-        var branch = current?.Name
-                     ?? _viewModel.CurrentBranchName
-                     ?? (_viewModel.Repository is null ? string.Empty : "detached HEAD");
-        GitConsoleHost.StatusBar.SetStatus(
-            branch,
-            current is null ? string.Empty : $"↑{current.Ahead} ↓{current.Behind}",
-            _viewModel.WorkingTree.Changes.Count,
-            _viewModel.IsBusy ? "Working…" :
-                _viewModel.RepositoryOperations.CurrentOperation == RepositoryOperation.None
-                    ? "Ready" : _viewModel.RepositoryOperations.CurrentOperation.ToString(),
-            _viewModel.IsBusy);
+        GitConsoleHost.StatusBar.RefreshRepositoryStatus();
         _workspaceNavigation.UpdateCommitNavigationText();
     }
 

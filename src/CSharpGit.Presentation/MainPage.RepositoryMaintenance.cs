@@ -96,6 +96,7 @@ public sealed partial class MainPage
             () => IsShuttingDown,
             (operation, description) => RunPageUiOperation(operation, description));
         _fileActionInteractions.Initialize();
+        _commitImageDiff.InitializeIdleContinuation((operation, description) => RunPageUiOperation(operation, description));
     }
 
     private void AddMenuItem(MenuFlyout flyout, string text, bool enabled, Func<Task> action) =>
@@ -207,6 +208,7 @@ public sealed partial class MainPage
             () => IsShuttingDown, ShowInteractiveRebaseEditorAsync,
             (operation, description) => RunPageUiOperation(operation, description));
         _commitActions.Initialize();
+        _editCommitMessage.InitializeIdleContinuation((operation, description) => RunPageUiOperation(operation, description));
         _branchDeletion = new Workflows.BranchDeletionController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
             () => IsShuttingDown, ShowErrorAsync, ShowInformationAsync);

@@ -49,7 +49,8 @@ public sealed class EditCommitMessageUiContractTests
         Assert.Contains("result.ConflictNewCommit", workflow, StringComparison.Ordinal);
         Assert.Contains("result.ConflictOldCommit", workflow, StringComparison.Ordinal);
         Assert.Contains("_pendingEditedCommitHash = result.ConflictNewCommit;", workflow, StringComparison.Ordinal);
-        Assert.Contains("_editCommitMessage.RestorePendingEditedCommitSelectionAsync", page, StringComparison.Ordinal);
+        Assert.Contains("new RepositoryIdleContinuation(_viewModel", workflow, StringComparison.Ordinal);
+        Assert.Contains("runUiOperation(RestorePendingEditedCommitSelectionAsync", workflow, StringComparison.Ordinal);
         Assert.False(File.Exists(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "MainPage.EditCommitMessage.cs")));
         Assert.Contains("internal async Task<bool> RestoreSelectionAsync", actions, StringComparison.Ordinal);
         Assert.DoesNotContain("git rebase", workflow, StringComparison.OrdinalIgnoreCase);
