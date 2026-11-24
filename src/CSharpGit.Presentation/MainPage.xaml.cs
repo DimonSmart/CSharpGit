@@ -111,8 +111,6 @@ public sealed partial class MainPage : Page
         HistoryPane.CommitExternalDiff_ClickCallback = CommitExternalDiff_Click;
         HistoryPane.CommitReveal_ClickCallback = CommitReveal_Click;
         HistoryPane.CommitLargeDiffButton_ClickCallback = CommitLargeDiffButton_Click;
-        WorkingTreePane.UnstagedChangesTree_RightTappedCallback = UnstagedChangesTree_RightTapped;
-        WorkingTreePane.StagedChangesTree_RightTappedCallback = StagedChangesTree_RightTapped;
         WorkingTreePane.WorkingTreeOpenOriginal_ClickCallback = WorkingTreeOpenOriginal_Click;
         WorkingTreePane.WorkingTreeOpenChanged_ClickCallback = WorkingTreeOpenChanged_Click;
         WorkingTreePane.WorkingTreeExternalDiff_ClickCallback = WorkingTreeExternalDiff_Click;
@@ -174,7 +172,9 @@ public sealed partial class MainPage : Page
             _workingTreeImageDiff, _diffPresentation,
             () => IsShuttingDown,
             (operation, description) => RunPageUiOperation(operation, description),
-            ShowErrorAsync);
+            ShowErrorAsync,
+            AddMenuItem, ExecuteCommandAsync, ShowCreateSelectedStashDialogAsync,
+            ShowPageDialogAsync);
         RefreshPresentationCollections();
         WorkingTreePane.InitializeWorkingTreeDiffSurface();
         InitializeCommitActions();

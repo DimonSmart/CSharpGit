@@ -36,7 +36,11 @@ public sealed partial class WorkingTreeView
         DiffPresentationController diffPresentation,
         Func<bool> isShuttingDown,
         Action<Func<Task>, string> runUiOperation,
-        Func<string, string, Task> showError)
+        Func<string, string, Task> showError,
+        Action<MenuFlyout, string, Func<bool>, Func<Task>> addMenuItem,
+        Func<System.Windows.Input.ICommand, Task> executeCommandAsync,
+        Func<IReadOnlyCollection<WorkingTreeChange>, Task> showSelectedStashDialogAsync,
+        Func<ContentDialog, Task<ContentDialogResult>> showDialog)
     {
         if (_configured) throw new InvalidOperationException("WorkingTreeView is already configured.");
         _configured = true;
@@ -48,6 +52,10 @@ public sealed partial class WorkingTreeView
         _isShuttingDown = isShuttingDown;
         _runUiOperation = runUiOperation;
         _showError = showError;
+        _addMenuItem = addMenuItem;
+        _executeCommandAsync = executeCommandAsync;
+        _showSelectedStashDialogAsync = showSelectedStashDialogAsync;
+        _showDialog = showDialog;
     }
 
     private void RunPageUiOperation(Func<Task> action, string description) => _runUiOperation(action, description);

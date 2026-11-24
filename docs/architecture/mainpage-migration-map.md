@@ -422,3 +422,7 @@ The History graph, Commit Summary, Changed Files and commit diff viewer are visu
 ## Phase 3 follow-up: working-tree interaction ownership
 
 The Working Tree selection model, tree roots, expansion/viewport tracking, diff preview coordination and subscriptions now belong to `Views/WorkingTreeView.Selection.cs` rather than `MainPage.WorkingTreeDiff.cs`. The feature view exposes narrow entry points for selection and menu targeting; it unsubscribes its own events and viewport observers during shutdown. Git mutation commands remain in the WorkingTreeViewModel and existing workflow controllers. Remaining file-opening menus and other page handlers still need migration.
+
+## Phase 3 follow-up: Working Tree menu ownership
+
+The staged/unstaged tree right-tap menus and their confirmations now live in `Views/WorkingTreeView.ContextMenu.cs`, alongside their selection owner. `MainPage.WorkingTreeContextMenu.cs` is deleted. The view uses existing typed command and dialog delegates, revalidates repository identity after modal confirmation and delegates Git mutation to WorkingTreeViewModel. Legacy file-action RightTapped paths in MainPage.FileOpening still require consolidation in the final file-opening phase.
