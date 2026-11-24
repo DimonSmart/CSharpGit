@@ -100,9 +100,6 @@ public sealed partial class MainPage : Page
     {
         InitializeComponent();
         HistoryPane.DropSelectedStash_ClickCallback = DropSelectedStash_Click;
-        HistoryPane.CommitFilesList_SelectionChangedCallback = CommitFilesList_SelectionChanged;
-        HistoryPane.CommitFilesList_DoubleTappedCallback = CommitFilesList_DoubleTapped;
-        HistoryPane.CommitFilesList_KeyDownCallback = CommitFilesList_KeyDown;
         HistoryPane.CommitOpenOriginal_ClickCallback = CommitOpenOriginal_Click;
         HistoryPane.CommitOpenChanged_ClickCallback = CommitOpenChanged_Click;
         HistoryPane.CommitExternalDiff_ClickCallback = CommitExternalDiff_Click;
@@ -669,25 +666,6 @@ public sealed partial class MainPage : Page
     private void StagedChangesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (StagedChangesList.SelectedItem is WorkingTreeChange change) WorkingTreePane.SelectWorkingTreeChange(change, WorkingTreeDiffKind.Staged);
-    }
-
-    private void CommitFilesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (CommitFilesList.SelectedItem is CommitFileRow row) _viewModel.CommitDetails.SelectedFile = row.File;
-    }
-
-    private void CommitFilesList_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
-    {
-        if (CommitFilesList.SelectedItem is null) return;
-        DetailsTabs.SelectedItem = ChangesTab;
-        e.Handled = true;
-    }
-
-    private void CommitFilesList_KeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (e.Key != VirtualKey.Enter || CommitFilesList.SelectedItem is null) return;
-        DetailsTabs.SelectedItem = ChangesTab;
-        e.Handled = true;
     }
 
     private void Page_KeyDown(object sender, KeyRoutedEventArgs e)
