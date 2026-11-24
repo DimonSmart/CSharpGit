@@ -414,3 +414,7 @@ The staging trees, working-tree diff surface, buttons and commit editor are now 
 ## Phase 3 follow-up: tag workflow ownership
 
 Tag creation, deletion, remote selection, fetch/push and remote-tag dialogs now belong to `Workflows/TagWorkflowController`, with mutation semantics remaining in `TagsViewModel`. `MainPage.Tags.cs` retains only tag menu composition and the shared information dialog; full reference-menu ownership still needs to move to `RepositoryExplorerView`.
+
+## Phase 3 follow-up: submodule workflow owner
+
+Submodule inspection, context menus, open-in-new-process, initialization and update progress now belong to `Workflows/SubmoduleWorkflowController`. The historical file surface invokes its two typed entry points, and `MainPage.Submodules.cs` has been removed. The service remains the only Git-mutation owner. Controller rechecks the active repository after awaits and refreshes both repository and history-file state after partial updates; the remaining Repository Files surface extraction is tracked separately.
