@@ -6,7 +6,8 @@ namespace CSharpGit.Presentation.Windowing;
 // The factory alone knows the legacy visual root; WindowSession does not.
 internal sealed class WindowSessionFactory(IServiceScopeFactory scopeFactory)
 {
-    internal (MainPage Page, WindowSession Session, ICloseConfirmationDialog Confirmation) Create()
+    internal (MainPage Page, WindowSession Session, ICloseConfirmationDialog Confirmation,
+        Action QueueCommitDetailsLayout, Diagnostics.DesktopLifecycleCheckContext DesktopLifecycleCheck) Create()
     {
         var scope = scopeFactory.CreateScope();
         try
@@ -19,10 +20,11 @@ internal sealed class WindowSessionFactory(IServiceScopeFactory scopeFactory)
             var maintenance = scope.ServiceProvider.GetRequiredService<RepositoryMaintenanceViewModel>();
             var updateActivity = scope.ServiceProvider.GetRequiredService<ApplicationUpdateActivityState>();
             var navigator = scope.ServiceProvider.GetRequiredService<WorkspaceNavigator>();
-            var page = scope.ServiceProvider.GetRequiredService<MainPage>();
+            var composition = scope.ServiceProvider.GetRequiredService<WindowWorkspaceComposition>();
+            var page = composition.Page;
             var confirmation = new CommitDraftCloseConfirmationDialog(
-                repository, page.ShowCommitDraftDialogAsync, () => page.IsClosingForDialog);
-            page.ConfigureCloseConfirmation(confirmation);
+                repository, composition.ShowCommitDraftDialogAsync, () => composition.IsClosingForDialog);
+            composition.ConfigureCloseConfirmation(confirmation);
             var safety = new WindowCloseSafetyProvider(
                 repository, clone, create, maintenance, updateActivity);
             var titleState = new WindowTitleState(
@@ -38,15 +40,15 @@ internal sealed class WindowSessionFactory(IServiceScopeFactory scopeFactory)
                 nameof(OpenRepositoryViewModel.IsDetachedHead));
             return (page, new WindowSession(
                 scope,
-                _ => page.PrepareForShutdown(),
-                page.BeginShutdown,
+                _ => composition.PrepareForShutdown(),
+                composition.BeginShutdown,
                 repository,
                 navigator,
                 safety,
                 _ => Program.InitialRepositoryPath is not null
-                    ? page.OpenInitialRepositoryAsync()
+                    ? composition.OpenInitialRepositoryAsync()
                     : Task.CompletedTask,
-                titleState), confirmation);
+                titleState), confirmation, composition.QueueCommitDetailsLayout, composition.CreateDesktopLifecycleCheckContext());
         }
         catch
         {

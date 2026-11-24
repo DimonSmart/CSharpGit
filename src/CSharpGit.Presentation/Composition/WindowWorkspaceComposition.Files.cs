@@ -5,7 +5,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace CSharpGit.Presentation;
 
-public sealed partial class MainPage
+internal sealed partial class WindowWorkspaceComposition
 {
     private readonly RepositoryFilesViewModel _repositoryFilesViewModel = null!;
     private PivotItem? _repositoryFilesTab;
@@ -13,7 +13,7 @@ public sealed partial class MainPage
     private readonly Workflows.RepositoryFilePreviewController _repositoryFilePreview = null!;
     private Workflows.RepositoryFilesActionController _repositoryFilesActions = null!;
 
-    private MainPage(
+    private WindowWorkspaceComposition(
         OpenRepositoryViewModel viewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
         IRepositoryFileVersionService fileVersionService,

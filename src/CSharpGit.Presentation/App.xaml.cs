@@ -151,7 +151,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
                 services.AddScoped<MainPageGitDependencies>();
                 services.AddScoped<MainPageUiDependencies>();
                 services.AddScoped<MainPageUpdateDependencies>();
-                services.AddTransient(provider => new MainPage(
+                services.AddTransient(provider => new WindowWorkspaceComposition(
                     provider.GetRequiredService<MainPageRepositoryDependencies>(),
                     provider.GetRequiredService<MainPageGitDependencies>(),
                     provider.GetRequiredService<MainPageUiDependencies>(),
@@ -206,7 +206,7 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
         _mainThemeRegistration = themeManager.Register(mainPage);
         _window.AppWindow.Changed += (_, eventArgs) =>
         {
-            if (eventArgs.DidSizeChange) mainPage.QueueCommitDetailsLayout();
+            if (eventArgs.DidSizeChange) windowContent.QueueCommitDetailsLayout();
         };
         if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_RESULT")))
             _window.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 1400, Height = 900 });
@@ -224,7 +224,10 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
             LogCloseLifecycle("Window.Closed");
         };
         if (Environment.GetEnvironmentVariable("CSHARPGIT_CLOSE_CHECK") == "1")
+        {
+            _desktopLifecycleCheck = windowContent.DesktopLifecycleCheck;
             mainPage.Loaded += RunDesktopCloseCheckWhenLoaded;
+        }
         _window.Content = mainPage;
         SetWindowIcon(_window, startupLogger);
         _window.Activate();

@@ -23,8 +23,29 @@ using Windows.UI.Core;
 
 namespace CSharpGit.Presentation;
 
-public sealed partial class MainPage : Page
+internal sealed partial class WindowWorkspaceComposition
 {
+    private readonly MainPage _page;
+    internal MainPage Page => _page;
+    private DispatcherQueue DispatcherQueue => _page.DispatcherQueue;
+    private XamlRoot XamlRoot => _page.XamlRoot;
+
+    private T Part<T>(string name) where T : FrameworkElement =>
+        _page.FindName(name) as T
+        ?? throw new InvalidOperationException($"Workspace XAML part '{name}' is missing or has the wrong type.");
+
+    private Grid RootLayout => Part<Grid>("RootLayout");
+    private Grid RepositoryWorkspace => Part<Grid>("RepositoryWorkspace");
+    private StartScreenView StartScreenHost => Part<StartScreenView>("StartScreenHost");
+    private RepositoryHeaderView RepositoryHeader => Part<RepositoryHeaderView>("RepositoryHeader");
+    private RepositoryToolbarView RepositoryToolbar => Part<RepositoryToolbarView>("RepositoryToolbar");
+    private RepositoryExplorerView RepositoryExplorer => Part<RepositoryExplorerView>("RepositoryExplorer");
+    private HistoryWorkspaceView HistoryPane => Part<HistoryWorkspaceView>("HistoryPane");
+    private WorkingTreeView WorkingTreePane => Part<WorkingTreeView>("WorkingTreePane");
+    private GitConsoleHostView GitConsoleHost => Part<GitConsoleHostView>("GitConsoleHost");
+    private Grid GitCommandFeedbackModalHost => Part<Grid>("GitCommandFeedbackModalHost");
+    private GitCommandFeedbackView FloatingGitCommandFeedbackView => Part<GitCommandFeedbackView>("FloatingGitCommandFeedbackView");
+
     private readonly OpenRepositoryViewModel _viewModel;
 
     // Temporary typed facade for history/commit-details feature handlers.
@@ -92,14 +113,14 @@ public sealed partial class MainPage : Page
     private readonly Workflows.WorkingTreeImageDiffWorkflow _workingTreeImageDiff;
 
 
-    private MainPage(
+    private WindowWorkspaceComposition(
         OpenRepositoryViewModel viewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
         WorkspaceNavigator workspaceNavigator)
     {
-        InitializeComponent();
-        DataContext = _viewModel = viewModel;
-        _pageDialogs = new Dialogs.PageDialogController(this, _viewModel, () => IsShuttingDown);
+        _page = new MainPage();
+        _page.DataContext = _viewModel = viewModel;
+        _pageDialogs = new Dialogs.PageDialogController(_page, _viewModel, () => IsShuttingDown);
         _ui = new Windowing.WindowUiOperations(() => XamlRoot, () => IsShuttingDown, ShowPageDialogAsync);
         _menu = new Windowing.RepositoryMenuItemFactory(_viewModel, _ui);
         _diffPresentation = new Workflows.DiffPresentationController(
@@ -144,7 +165,7 @@ public sealed partial class MainPage : Page
         GitConsoleHost.StatusBar.ConfigureRepository(_viewModel);
         _workspaceNavigation.Initialize();
         _presentationRefresh.Initialize();
-        Loaded += RunDesktopCheckWhenRequested;
+        _page.Loaded += RunDesktopCheckWhenRequested;
         WorkingTreePane.Configure(
             _viewModel,
             _workingTreeImageDiff, _diffPresentation,
@@ -201,9 +222,9 @@ public sealed partial class MainPage : Page
         var resultPath = Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_RESULT");
         if (string.IsNullOrWhiteSpace(resultPath)) return;
 
-        Loaded -= RunDesktopCheckWhenRequested;
+        _page.Loaded -= RunDesktopCheckWhenRequested;
         await new DesktopUiCheckRunner(new DesktopUiCheckContext(
-            this, RootLayout, RepositoryWorkspace, RepositoryExplorer, RepositoryToolbar,
+            _page, RootLayout, RepositoryWorkspace, RepositoryExplorer, RepositoryToolbar,
             HistoryPane, WorkingTreePane, GitConsoleHost, _viewModel, _workspaceNavigation,
             _recentRepositorySettings, _settingsWindowController, _authorAvatarService,
             _gitCommandActivitySource, RefreshPresentationCollections, _ui.ExecuteCommandAsync))

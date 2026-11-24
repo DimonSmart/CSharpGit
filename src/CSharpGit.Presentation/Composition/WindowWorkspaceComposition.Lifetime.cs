@@ -3,18 +3,23 @@ using CSharpGit.Presentation.Views;
 
 namespace CSharpGit.Presentation;
 
-public sealed partial class MainPage
+internal sealed partial class WindowWorkspaceComposition
 {
     private readonly Windowing.WindowWorkspaceLifetime _workspaceLifetime = new();
     private bool IsShuttingDown => _workspaceLifetime.IsShuttingDown;
 
-    internal CSharpGit.Presentation.ViewModels.CloneRepositoryViewModel DesktopCloneForCheck => _cloneRepositoryViewModel;
-    internal CSharpGit.Presentation.ViewModels.CreateRepositoryViewModel DesktopCreateForCheck => _createRepositoryViewModel;
-    internal CSharpGit.Presentation.ViewModels.RepositoryMaintenanceViewModel DesktopMaintenanceForCheck => _repositoryMaintenance;
+    internal Diagnostics.DesktopLifecycleCheckContext CreateDesktopLifecycleCheckContext() => new(
+        () => IsRefreshRequired,
+        CapturePendingMonitorDeliveryForDesktopCheck,
+        ConfirmedSwitchForDesktopCheckAsync,
+        ConfirmedCloseForDesktopCheck,
+        _cloneRepositoryViewModel, _createRepositoryViewModel, _repositoryMaintenance);
 
     private void MainPage_Loaded(object sender, RoutedEventArgs args)
     {
-        Loaded -= MainPage_Loaded;
+        _page.Loaded -= MainPage_Loaded;
+        HistoryView.InitializeScroll();
+        InitializeLoadingOverlays();
         _commitDetailsLayout.Initialize();
         _confirmationController.Initialize();
         _branchRename.Initialize();
@@ -48,8 +53,8 @@ public sealed partial class MainPage
             [
             () => _pageDialogs.Shutdown(),
             () => _cloneRepositoryViewModel.Cancel(),
-            () => Loaded -= RunDesktopCheckWhenRequested,
-            () => Loaded -= MainPage_Loaded,
+            () => _page.Loaded -= RunDesktopCheckWhenRequested,
+            () => _page.Loaded -= MainPage_Loaded,
             () => _keyboardShortcuts.Shutdown(),
             () => _menu.Shutdown(),
             () => _rebaseAuthor.Shutdown(),

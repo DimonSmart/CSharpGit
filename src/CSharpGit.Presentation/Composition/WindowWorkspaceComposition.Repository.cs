@@ -9,7 +9,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace CSharpGit.Presentation;
 
-public sealed partial class MainPage
+internal sealed partial class WindowWorkspaceComposition
 {
     private readonly RepositoryMaintenanceViewModel _repositoryMaintenance = null!;
     private readonly Workflows.RepositoryMaintenanceController _maintenanceController = null!;
@@ -60,7 +60,7 @@ public sealed partial class MainPage
     private readonly Workflows.FileActionAvailabilityController _fileActionButtons = null!;
     private readonly Workflows.FileActionInteractionController _fileActionInteractions = null!;
 
-    private MainPage(
+    private WindowWorkspaceComposition(
         OpenRepositoryViewModel viewModel,
         IWorkingTreeStatusReader workingTreeStatusReader,
         IRepositoryFileVersionService fileVersionService,
@@ -103,7 +103,7 @@ public sealed partial class MainPage
     internal bool IsApplicationUpdateInProgress => _aboutUpdate.IsRunning;
     internal bool IsHistoryRewriteInProgress => _viewModel.RepositoryHistoryRewrite.IsInProgress;
 
-    internal MainPage(
+    internal WindowWorkspaceComposition(
         MainPageRepositoryDependencies repositoryDependencies,
         MainPageGitDependencies gitDependencies,
         MainPageUiDependencies uiDependencies,
@@ -257,7 +257,7 @@ public sealed partial class MainPage
             () =>
             {
                 if (Microsoft.UI.Xaml.Application.Current is App app)
-                    app.CompleteApplicationUpdateRestart(this);
+                    app.CompleteApplicationUpdateRestart(_page);
             });
 
         RepositoryExplorer.Configure(_viewModel, _worktreesViewModel, _workspaceNavigator, _worktrees, _referenceMenus);
@@ -365,7 +365,7 @@ public sealed partial class MainPage
             (operation, description) => _ui.RunPageUiOperation(operation, description));
         _keyboardShortcuts.Initialize();
         ConfigureWorkspaceLifetime();
-        Loaded += MainPage_Loaded;
+        _page.Loaded += MainPage_Loaded;
     }
 
     internal Task<bool> ConfirmedSwitchForDesktopCheckAsync(string path) =>

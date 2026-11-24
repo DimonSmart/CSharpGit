@@ -3,7 +3,7 @@ using Microsoft.UI.Xaml;
 
 namespace CSharpGit.Presentation;
 
-public sealed partial class MainPage
+internal sealed partial class WindowWorkspaceComposition
 {
     private readonly Workflows.RepositoryPresentationRefreshController _presentationRefresh;
 
@@ -23,13 +23,6 @@ public sealed partial class MainPage
     internal Task OpenInitialRepositoryAsync() => _viewModel.OpenRepositoryAsyncForDesktopCheck();
 
     internal TreeView RepositoryTree => RepositoryExplorer.TreeControl;
-
-    protected override void OnApplyTemplate()
-    {
-        base.OnApplyTemplate();
-        HistoryView.InitializeScroll();
-        InitializeLoadingOverlays();
-    }
 
     private Workflows.CommitLoadingOverlayController? _loadingOverlay;
 
