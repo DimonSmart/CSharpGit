@@ -32,6 +32,7 @@ public sealed partial class MainPage
     private readonly Workflows.BranchDeletionController _branchDeletion = null!;
     private readonly Workflows.EditCommitMessageController _editCommitMessage = null!;
     private readonly Workflows.CommitActionController _commitActions = null!;
+    private readonly Workflows.RepositoryReferenceMenuController _referenceMenus = null!;
     private readonly CloneRepositoryViewModel _cloneRepositoryViewModel = null!;
     private readonly CreateRepositoryViewModel _createRepositoryViewModel = null!;
     private readonly Workflows.RepositoryCloneWorkflow _cloneWorkflow = null!;
@@ -166,6 +167,12 @@ public sealed partial class MainPage
             _branchRename.ExecuteAsync,
             () => IsShuttingDown,
             (operation, description) => RunPageUiOperation(operation, description));
+        _referenceMenus = new Workflows.RepositoryReferenceMenuController(
+            _viewModel, _worktreesViewModel, _worktrees, _branchRename, _branchDeletion,
+            _tagWorkflows, _stashDialogs, _commitActions,
+            ShowReferenceHistoryAsync, CopyTextAsync, ExecuteCommandAsync,
+            () => XamlRoot, ShowPageDialogAsync, () => IsShuttingDown,
+            (operation, description) => RunPageUiOperation(operation, description));
         _repositoryImageService = repositoryImageService ?? throw new ArgumentNullException(nameof(repositoryImageService));
         _authorAvatarService = authorAvatarService ?? throw new ArgumentNullException(nameof(authorAvatarService));
         _authorAvatarSettings = appSettings;
@@ -200,12 +207,11 @@ public sealed partial class MainPage
                     app.CompleteApplicationUpdateRestart(this);
             });
 
-        RepositoryExplorer.Configure(_viewModel, _worktreesViewModel, _workspaceNavigator, _worktrees);
+        RepositoryExplorer.Configure(_viewModel, _worktreesViewModel, _workspaceNavigator, _worktrees, _referenceMenus);
         RepositoryExplorer.NavigateRequested += (node, version) =>
             RunPageUiOperation(() => SelectRepositoryNodeAsync(node, version), "Repository tree navigation");
         RepositoryExplorer.CheckoutRequested += (branch, version) =>
             RunPageUiOperation(() => SwitchRepositoryTreeBranchAsync(branch, version), "Switch branch");
-        RepositoryExplorer.ReferenceMenuRequested += RepositoryTreeBranchDeletion_RightTapped;
 
         _repositoryMaintenance.Attach(_viewModel, () => _worktreesViewModel.RefreshAsync(throwOnError: true));
         _maintenanceController = new Workflows.RepositoryMaintenanceController(
