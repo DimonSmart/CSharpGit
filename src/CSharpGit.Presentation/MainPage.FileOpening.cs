@@ -46,10 +46,6 @@ public sealed partial class MainPage
     {
         ChangedFilesTree.RightTapped += ChangedFilesTree_RightTapped;
         ChangedFilesTree.DoubleTapped += ChangedFilesTree_DoubleTapped;
-        UnstagedChangesList.RightTapped += WorkingTreeChanges_RightTapped;
-        StagedChangesList.RightTapped += WorkingTreeChanges_RightTapped;
-        UnstagedChangesList.DoubleTapped += WorkingTreeChanges_DoubleTapped;
-        StagedChangesList.DoubleTapped += WorkingTreeChanges_DoubleTapped;
         _viewModel.PropertyChanged += FileOpeningViewModel_PropertyChanged;
         _viewModel.CommitDetails.PropertyChanged += FileOpeningViewModel_PropertyChanged;
         _viewModel.History.PropertyChanged += FileOpeningViewModel_PropertyChanged;
@@ -298,24 +294,6 @@ public sealed partial class MainPage
         await ExecuteFileActionAsync(request, FileActionKind.Preferred, "Could not open file");
     }
 
-    private void WorkingTreeChanges_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args) =>
-        RunPageUiOperation(() => WorkingTreeChanges_DoubleTappedCoreAsync(sender, args), "WorkingTreeChanges_DoubleTapped");
-
-    private async Task WorkingTreeChanges_DoubleTappedCoreAsync(object sender, DoubleTappedRoutedEventArgs args)
-    {
-        if (sender is not ListView list
-            || args.OriginalSource is not FrameworkElement element
-            || element.DataContext is not WorkingTreeChange change)
-            return;
-        var kind = ReferenceEquals(list, StagedChangesList)
-            ? WorkingTreeDiffKind.Staged : WorkingTreeDiffKind.Unstaged;
-        var request = CaptureWorkingTreeRequest(change, kind);
-        if (request is null) return;
-        WorkingTreePane.SelectWorkingTreeChange(change, kind);
-        args.Handled = true;
-        await ExecuteFileActionAsync(request, FileActionKind.Preferred, "Could not open file");
-    }
-
     private void ChangedFilesTree_RightTapped(object sender, RightTappedRoutedEventArgs args) =>
         RunPageUiOperation(() => ChangedFilesTree_RightTappedCoreAsync(sender, args), "ChangedFilesTree_RightTapped");
 
@@ -327,24 +305,6 @@ public sealed partial class MainPage
         var request = CaptureCommitRequest(node.Entry.File.Path);
         if (request is null) return;
         _viewModel.CommitDetails.SelectedFile = node.Entry.File;
-        args.Handled = true;
-        await ShowFileMenuAsync(source, request);
-    }
-
-    private void WorkingTreeChanges_RightTapped(object sender, RightTappedRoutedEventArgs args) =>
-        RunPageUiOperation(() => WorkingTreeChanges_RightTappedCoreAsync(sender, args), "WorkingTreeChanges_RightTapped");
-
-    private async Task WorkingTreeChanges_RightTappedCoreAsync(object sender, RightTappedRoutedEventArgs args)
-    {
-        var source = args.OriginalSource as FrameworkElement;
-        if (source is null || sender is not ListView list
-            || source.DataContext is not WorkingTreeChange change)
-            return;
-        var kind = ReferenceEquals(list, StagedChangesList)
-            ? WorkingTreeDiffKind.Staged : WorkingTreeDiffKind.Unstaged;
-        var request = CaptureWorkingTreeRequest(change, kind);
-        if (request is null) return;
-        SelectWorkingTreeContextRow(list, change, kind);
         args.Handled = true;
         await ShowFileMenuAsync(source, request);
     }
@@ -363,9 +323,7 @@ public sealed partial class MainPage
             else if (request is WorkingTreeFileActionRequest change)
                 _fileActions.PublishWorkingTreePreview(change, prepared.Pair);
 
-            var flyout = request is WorkingTreeFileActionRequest working
-                ? BuildWorkingTreeFileMenu(working, prepared)
-                : BuildFileMenu(request, prepared);
+            var flyout = BuildFileMenu(request, prepared);
             flyout.ShowAt(source);
         }
         catch (OperationCanceledException)
@@ -394,63 +352,6 @@ public sealed partial class MainPage
                 && Views.WorkingTreeView.SameWorkingTreeChange(current.Change, change.Change),
             _ => false
         };
-    }
-
-    private void SelectWorkingTreeContextRow(ListView list, WorkingTreeChange change, WorkingTreeDiffKind kind)
-    {
-        WorkingTreePane.SetSelectionSync(true);
-        try
-        {
-            list.SelectedItems.Clear();
-            list.SelectedItem = change;
-        }
-        finally
-        {
-            WorkingTreePane.SetSelectionSync(false);
-        }
-
-        _viewModel.WorkingTree.SetSelection(kind, [change]);
-        WorkingTreePane.SelectWorkingTreeChange(change, kind);
-    }
-
-    private MenuFlyout BuildWorkingTreeFileMenu(
-        WorkingTreeFileActionRequest request, PreparedFileActions prepared)
-    {
-        var flyout = BuildFileMenu(request, prepared, separateReveal: false);
-        flyout.Items.Insert(0, new MenuFlyoutSeparator());
-        if (request.Kind == WorkingTreeDiffKind.Unstaged)
-        {
-            flyout.Items.Insert(0, CreateWorkingTreeCommandMenuItem(
-                "Discard file", "\uE74D", _viewModel.WorkingTree.RequestDiscardSelectedCommand, request, destructive: true));
-            flyout.Items.Insert(0, CreateWorkingTreeCommandMenuItem(
-                "Stage file", "\uE710", _viewModel.WorkingTree.StageCommand, request));
-        }
-        else
-        {
-            flyout.Items.Insert(0, CreateWorkingTreeCommandMenuItem(
-                "Unstage file", "\uE738", _viewModel.WorkingTree.UnstageCommand, request));
-        }
-        return flyout;
-    }
-
-    private MenuFlyoutItem CreateWorkingTreeCommandMenuItem(
-        string text, string glyph, System.Windows.Input.ICommand command,
-        WorkingTreeFileActionRequest request, bool destructive = false)
-    {
-        var item = new MenuFlyoutItem
-        {
-            Text = text,
-            Icon = new FontIcon { Glyph = glyph },
-            IsEnabled = command.CanExecute(null)
-        };
-        // Keep Stage/Unstage/Discard in WorkingTreeViewModel; stale menus cannot mutate B.
-        item.Click += (_, _) =>
-        {
-            if (IsMenuSelectionCurrent(request) && command.CanExecute(null))
-                command.Execute(null);
-        };
-        if (destructive) item.Foreground = CreateDestructiveBrush();
-        return item;
     }
 
     private MenuFlyout BuildFileMenu(
@@ -498,9 +399,6 @@ public sealed partial class MainPage
         item.Click += (_, _) => RunPageUiOperation(action, "File menu action");
         return item;
     }
-
-    private static SolidColorBrush CreateDestructiveBrush() =>
-        new(Microsoft.UI.Colors.Red);
 
     private static string UserFacingFileError(Exception exception) =>
         FileActionsViewModel.UserFacingFileError(exception);
