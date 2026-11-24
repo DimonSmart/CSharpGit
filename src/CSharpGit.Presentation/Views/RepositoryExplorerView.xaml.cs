@@ -13,8 +13,7 @@ namespace CSharpGit.Presentation.Views;
 
 /// <summary>
 /// Owns the tree's visual nodes, incremental synchronization, expansion, selection,
-/// and interaction dispatch. The phase-3 reference-operation menus remain behind
-/// a temporary, narrow ContextRequested adapter.
+/// interaction dispatch and repository-reference context-menu routing.
 /// </summary>
 public sealed partial class RepositoryExplorerView : UserControl
 {
@@ -25,6 +24,7 @@ public sealed partial class RepositoryExplorerView : UserControl
     private WorktreesViewModel? _worktrees;
     private WorkspaceNavigator? _navigator;
     private WorktreeController? _worktreeController;
+    private RepositoryReferenceMenuController? _referenceMenus;
     private bool _disposed;
     private bool _configured;
 
@@ -41,10 +41,10 @@ public sealed partial class RepositoryExplorerView : UserControl
 
     internal event Action<RepositoryTreeNode, long>? NavigateRequested;
     internal event Action<string, long>? CheckoutRequested;
-    internal event Action<object, RightTappedRoutedEventArgs>? ReferenceMenuRequested;
 
     internal void Configure(OpenRepositoryViewModel repository,
-        WorktreesViewModel worktrees, WorkspaceNavigator navigator, WorktreeController worktreeController)
+        WorktreesViewModel worktrees, WorkspaceNavigator navigator, WorktreeController worktreeController,
+        RepositoryReferenceMenuController referenceMenus)
     {
         if (_disposed || _configured) return;
         _configured = true;
@@ -52,6 +52,7 @@ public sealed partial class RepositoryExplorerView : UserControl
         _worktrees = worktrees ?? throw new ArgumentNullException(nameof(worktrees));
         _navigator = navigator ?? throw new ArgumentNullException(nameof(navigator));
         _worktreeController = worktreeController ?? throw new ArgumentNullException(nameof(worktreeController));
+        _referenceMenus = referenceMenus ?? throw new ArgumentNullException(nameof(referenceMenus));
         Tree.Expanding += Tree_Expanding;
         Tree.Collapsed += Tree_Collapsed;
         _repository.PropertyChanged += Repository_PropertyChanged;
@@ -203,7 +204,7 @@ public sealed partial class RepositoryExplorerView : UserControl
     private void Tree_RightTapped(object sender, RightTappedRoutedEventArgs e)
     {
         if (_disposed) return;
-        ReferenceMenuRequested?.Invoke(sender, e);
+        _referenceMenus?.Show(sender, e);
     }
 
     internal void ShowWorktreeContextMenu(FrameworkElement source, WorktreeInfo worktree, RightTappedRoutedEventArgs args)
@@ -234,11 +235,11 @@ public sealed partial class RepositoryExplorerView : UserControl
         Tree.Collapsed -= Tree_Collapsed;
         NavigateRequested = null;
         CheckoutRequested = null;
-        ReferenceMenuRequested = null;
         _repository = null;
         _worktrees = null;
         _navigator = null;
         _worktreeController = null;
+        _referenceMenus = null;
         _viewport.Dispose();
         _roots.Clear();
         Tree.ItemsSource = null;
