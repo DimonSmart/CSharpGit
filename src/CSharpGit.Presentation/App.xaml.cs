@@ -151,7 +151,11 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
                 services.AddScoped<MainPageGitDependencies>();
                 services.AddScoped<MainPageUiDependencies>();
                 services.AddScoped<MainPageUpdateDependencies>();
-                services.AddTransient<MainPage>();
+                services.AddTransient(provider => new MainPage(
+                    provider.GetRequiredService<MainPageRepositoryDependencies>(),
+                    provider.GetRequiredService<MainPageGitDependencies>(),
+                    provider.GetRequiredService<MainPageUiDependencies>(),
+                    provider.GetRequiredService<MainPageUpdateDependencies>()));
                 services.AddSingleton<WindowSessionFactory>();
             })
             .Build();
