@@ -6,11 +6,12 @@ public sealed class TagUiContractTests
     public void TagWorkflowRemainsContextualSemanticAndSafe()
     {
         var root = FindRepositoryRoot();
-        var tags = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Tags.cs"));
-        tags += File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "TagWorkflowController.cs"));
+        var tagWorkflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "TagWorkflowController.cs"));
+        var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "CommitActionController.cs"));
+        var referenceMenus = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryReferenceMenuController.cs"));
+        var tags = tagWorkflow + commitActions + referenceMenus;
         var tagFeature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "TagsViewModel.cs"));
-        var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
-        var branchDeletion = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchDeletion.cs"));
+        var branchDeletion = referenceMenus;
         var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var refresh = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryPresentationRefreshController.cs"));
         var descriptors = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryTreeDescriptor.cs"));
@@ -25,9 +26,9 @@ public sealed class TagUiContractTests
                  })
             Assert.Contains(text, tags);
 
-        Assert.Contains("private bool TryShowTagContextMenu(FrameworkElement source, RightTappedRoutedEventArgs args)", tags);
-        Assert.Contains("if (TryShowTagContextMenu(source, args)) return;", branchDeletion);
-        Assert.DoesNotContain("case RepositoryTreeNodeKind.Tag", branchDeletion, StringComparison.Ordinal);
+        Assert.Contains("private void PopulateTag(MenuFlyout flyout, GitTag tag)", tags);
+        Assert.Contains("case RepositoryTreeNodeKind.Tag when node.Value is GitTag tag:", branchDeletion);
+        Assert.Contains("case RepositoryTreeNodeKind.Tag", branchDeletion, StringComparison.Ordinal);
         Assert.Contains("new MenuFlyoutSubItem { Text = \"Delete tag\" }", tags);
         Assert.Contains("_viewModel.History.SelectedRow?.Commit.Hash", tags);
         Assert.Contains("foreach (var tag in _viewModel.Tags.Items)", tags);
@@ -82,7 +83,7 @@ public sealed class TagUiContractTests
         Assert.Contains("Select the remote explicitly", tags);
         Assert.Contains("CreateBranchFromReferenceAsync($\"refs/tags/{tag.Name}\", tag.TargetCommit)", tags);
         Assert.Contains("CreateBranchFromReferenceAsync(commit.Hash, commit.Hash)", commitActions);
-        Assert.Contains("_commitActionsFlyout.Items.Add(_checkoutCommitItem);", commitActions);
+        Assert.Contains("_flyout.Items.Add(_checkoutCommitItem);", commitActions);
         Assert.Contains("_viewModel.Branches.CreateBranchAsync(", commitActions);
 
         Assert.Contains("public interface IReferenceService", references);
