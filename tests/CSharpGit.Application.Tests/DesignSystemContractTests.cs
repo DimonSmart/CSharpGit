@@ -148,6 +148,7 @@ public sealed class DesignSystemContractTests
         var historyView = XDocument.Parse(Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml"));
         var icons = XDocument.Parse(Read(root, "src", "CSharpGit.Presentation", "Styles", "Icons.xaml"));
         var code = Read(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs");
+        var availability = Read(root, "src", "CSharpGit.Presentation", "Workflows", "FileActionAvailabilityController.cs");
         var menu = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.ContextMenu.cs");
         XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
 
@@ -201,7 +202,7 @@ public sealed class DesignSystemContractTests
         Assert.Contains("WorkingTree.StageSelectedCommand", menu);
         Assert.Contains("WorkingTree.UnstageSelectedCommand", menu);
         Assert.Contains("WorkingTree.RequestDiscardSelectedCommand", menu);
-        Assert.Contains("Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(button)", code);
+        Assert.Contains("Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(button)", availability);
     }
 
     [Fact]
