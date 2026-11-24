@@ -55,14 +55,14 @@ public sealed class RepositoryHistoryRewriteUiContractTests
     [Fact]
     public void SubmoduleMenuIsPreservedInUnifiedRepositoryTreeContextMenu()
     {
-        var history = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
+        var history = ReadSource("src/CSharpGit.Presentation/Controls/RepositoryFilesSurface.Interactions.cs");
         var files = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
         var submodules = ReadSource("src/CSharpGit.Presentation/Workflows/SubmoduleWorkflowController.cs");
         var clone = ReadSource("src/CSharpGit.Presentation/Workflows/RepositoryCloneWorkflow.cs");
 
         Assert.Contains("entry.Kind == RepositorySnapshotEntryKind.Submodule", history, StringComparison.Ordinal);
-        Assert.Contains("ShowSubmoduleMenuAsync(source, entry)", history, StringComparison.Ordinal);
-        Assert.Contains("ShowRepositorySnapshotFileMenu(source, entry)", history, StringComparison.Ordinal);
+        Assert.Contains("_showSubmoduleMenu(source, entry)", history, StringComparison.Ordinal);
+        Assert.Contains("_showFileMenu(source, entry)", history, StringComparison.Ordinal);
         Assert.Contains("OpenSelectedSubmoduleAsync(entry)", files, StringComparison.Ordinal);
         Assert.Contains("Initialize submodule", submodules, StringComparison.Ordinal);
         Assert.Contains("Update All Submodules", submodules, StringComparison.Ordinal);
