@@ -418,3 +418,7 @@ Tag creation, deletion, remote selection, fetch/push and remote-tag dialogs now 
 ## Phase 3 follow-up: history and commit-details visual composition
 
 The History graph, Commit Summary, Changed Files and commit diff viewer are visually grouped in `Views/HistoryWorkspaceView.xaml`. `MainPage.xaml` composes this host and the separate `WorkingTreeView` rather than declaring either feature's controls inline. Existing callbacks and control facades remain transitional and must migrate to feature controllers before the Phase 3 Definition of Done is met.
+
+## Phase 3 follow-up: Commit Details interaction ownership
+
+Commit changed-file selection, changed-file tree subscriptions and lifetime, diff presentation and the two viewport observers belong to `Views/HistoryWorkspaceView.Changes.cs`. The History workspace configures dependencies once and detaches event subscriptions on shutdown. `MainPage.Changes.cs` is removed. Mutation semantics remain in CommitDetailsViewModel and existing controllers. History context actions and file-opening interactions are separate remaining work.

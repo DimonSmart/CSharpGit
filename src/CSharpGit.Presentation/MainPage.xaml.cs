@@ -97,10 +97,7 @@ public sealed partial class MainPage : Page
         WorkspaceNavigator workspaceNavigator)
     {
         InitializeComponent();
-        HistoryPane.DetailsTabs_SelectionChangedCallback = DetailsTabs_SelectionChanged;
         HistoryPane.DropSelectedStash_ClickCallback = DropSelectedStash_Click;
-        HistoryPane.ChangesSurface_LoadedCallback = ChangesSurface_Loaded;
-        HistoryPane.ChangedFilesTree_ItemInvokedCallback = ChangedFilesTree_ItemInvoked;
         HistoryPane.CommitFilesList_SelectionChangedCallback = CommitFilesList_SelectionChanged;
         HistoryPane.CommitFilesList_DoubleTappedCallback = CommitFilesList_DoubleTapped;
         HistoryPane.CommitFilesList_KeyDownCallback = CommitFilesList_KeyDown;
@@ -108,7 +105,6 @@ public sealed partial class MainPage : Page
         HistoryPane.CommitOpenChanged_ClickCallback = CommitOpenChanged_Click;
         HistoryPane.CommitExternalDiff_ClickCallback = CommitExternalDiff_Click;
         HistoryPane.CommitReveal_ClickCallback = CommitReveal_Click;
-        HistoryPane.CommitLargeDiffButton_ClickCallback = CommitLargeDiffButton_Click;
         WorkingTreePane.UnstagedChangesTree_ItemInvokedCallback = UnstagedChangesTree_ItemInvoked;
         WorkingTreePane.UnstagedChangesTree_RightTappedCallback = UnstagedChangesTree_RightTapped;
         WorkingTreePane.StagedChangesTree_ItemInvokedCallback = StagedChangesTree_ItemInvoked;
@@ -135,9 +131,10 @@ public sealed partial class MainPage : Page
             _viewModel, () => _fileActions, () => _imageDiffService,
             WorkingTreeImageDiffHost, () => IsShuttingDown,
             _diffPresentation.RenderWorkingTree, ReportUiFailure);
-        _commitSummaryViewport = new CollectionViewportController(DetailsScroller);
-        _stashSummaryViewport = new CollectionViewportController(StashDetailsScroller);
-        SynchronizeDetailsViewport();
+        HistoryPane.ConfigureChanges(
+            _viewModel, _commitFiles, () => _commitImageDiff, _diffPresentation,
+            UpdateRepositoryFilesViewActivity,
+            (operation, description) => RunPageUiOperation(operation, description));
         _workspaceNavigator = workspaceNavigator ?? throw new ArgumentNullException(nameof(workspaceNavigator));
         _repositoryRefresh = new Workflows.RepositoryRefreshController(
             _viewModel,
@@ -270,7 +267,7 @@ public sealed partial class MainPage : Page
             UpdateStashPresentation();
 
         if (eventArgs.PropertyName == nameof(CommitDetailsViewModel.SelectedObjectCommit))
-            SynchronizeDetailsViewport();
+            HistoryPane.SynchronizeDetailsViewport();
     }
 
     private void HistoryViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)

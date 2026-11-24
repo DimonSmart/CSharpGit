@@ -74,11 +74,9 @@ public sealed partial class MainPage
         _commitDetailsLayout.Shutdown();
         RepositoryToolbar.Shutdown();
         _repositoryRefresh.ShutdownRepositoryChangeMonitoring();
-        _changesTree?.Shutdown();
+        HistoryPane.ShutdownChanges();
         _unstagedViewport?.Dispose();
         _stagedViewport?.Dispose();
-        _commitSummaryViewport?.Dispose();
-        _stashSummaryViewport?.Dispose();
         _worktrees.Shutdown();
         _settingsWindowController.Shutdown();
 
@@ -87,7 +85,6 @@ public sealed partial class MainPage
         _viewModel.CommitDetails.PropertyChanged -= CommitDetailsViewModel_PropertyChanged;
         _viewModel.History.PropertyChanged -= HistoryViewModel_PropertyChanged;
         _viewModel.History.CommitLookupCompleted -= History_CommitLookupCompleted;
-        _viewModel.CommitDetails.PropertyChanged -= ChangesViewModel_PropertyChanged;
         _confirmationController.Shutdown();
         _viewModel.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
         _viewModel.CommitDetails.PropertyChanged -= FileOpeningViewModel_PropertyChanged;

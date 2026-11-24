@@ -5,8 +5,7 @@ using Microsoft.UI.Xaml.Input;
 
 namespace CSharpGit.Presentation.Views;
 
-// Hosts the History graph and Commit Details visual surfaces. Typed callbacks
-// temporarily bridge the remaining feature interactions pending controller extraction.
+// Owns History and Commit Details controls and commit-change interactions.
 public sealed partial class HistoryWorkspaceView : UserControl
 {
     public HistoryWorkspaceView() => InitializeComponent();
@@ -37,21 +36,18 @@ public sealed partial class HistoryWorkspaceView : UserControl
     internal ImageDiffPreviewHost CommitImageDiffHostControl => CommitImageDiffHost;
     internal SelectableDiffViewer CompactDiffViewerControl => CompactDiffViewer;
 
-    internal Action<object, SelectionChangedEventArgs>? DetailsTabs_SelectionChangedCallback { get; set; }
-    private void DetailsTabs_SelectionChanged(object sender, SelectionChangedEventArgs args) =>
-        DetailsTabs_SelectionChangedCallback?.Invoke(sender, args);
+
+
 
     internal Action<object, RoutedEventArgs>? DropSelectedStash_ClickCallback { get; set; }
     private void DropSelectedStash_Click(object sender, RoutedEventArgs args) =>
         DropSelectedStash_ClickCallback?.Invoke(sender, args);
 
-    internal Action<object, RoutedEventArgs>? ChangesSurface_LoadedCallback { get; set; }
-    private void ChangesSurface_Loaded(object sender, RoutedEventArgs args) =>
-        ChangesSurface_LoadedCallback?.Invoke(sender, args);
 
-    internal Action<TreeView, TreeViewItemInvokedEventArgs>? ChangedFilesTree_ItemInvokedCallback { get; set; }
-    private void ChangedFilesTree_ItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args) =>
-        ChangedFilesTree_ItemInvokedCallback?.Invoke(sender, args);
+
+
+
+
 
     internal Action<object, SelectionChangedEventArgs>? CommitFilesList_SelectionChangedCallback { get; set; }
     private void CommitFilesList_SelectionChanged(object sender, SelectionChangedEventArgs args) =>
@@ -81,7 +77,6 @@ public sealed partial class HistoryWorkspaceView : UserControl
     private void CommitReveal_Click(object sender, RoutedEventArgs args) =>
         CommitReveal_ClickCallback?.Invoke(sender, args);
 
-    internal Action<object, RoutedEventArgs>? CommitLargeDiffButton_ClickCallback { get; set; }
-    private void CommitLargeDiffButton_Click(object sender, RoutedEventArgs args) =>
-        CommitLargeDiffButton_ClickCallback?.Invoke(sender, args);
+
+
 }
