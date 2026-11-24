@@ -8,17 +8,13 @@ public sealed class BranchDeletionUiContractTests
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryExplorerView.xaml"));
         var treeState = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryTreeState.cs"));
-        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchDeletion.cs"));
+        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryReferenceMenuController.cs"));
         var controller = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "BranchDeletionController.cs"));
 
         Assert.Contains("RightTapped=\"Tree_RightTapped\"", xaml, StringComparison.Ordinal);
         var explorer = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryExplorerView.xaml.cs"));
-        Assert.Contains("ReferenceMenuRequested?.Invoke(sender, e);", explorer, StringComparison.Ordinal);
-        var fallback = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs"));
-        var fallbackMenu = fallback[fallback.IndexOf("private void RepositoryTree_RightTapped", StringComparison.Ordinal)..];
-        Assert.DoesNotContain("case RepositoryTreeNodeKind.LocalBranch when", fallbackMenu, StringComparison.Ordinal);
-        Assert.DoesNotContain("case RepositoryTreeNodeKind.RemoteBranch when", fallbackMenu, StringComparison.Ordinal);
-        Assert.DoesNotContain("case RepositoryTreeNodeKind.Remote when", fallbackMenu, StringComparison.Ordinal);
+        Assert.Contains("_referenceMenus?.Show(sender, e);", explorer, StringComparison.Ordinal);
+        Assert.DoesNotContain("ReferenceMenuRequested", explorer, StringComparison.Ordinal);
         Assert.DoesNotContain("RightTapped -= RepositoryTree_RightTapped", treeState, StringComparison.Ordinal);
         Assert.DoesNotContain("RightTapped += RepositoryTreeBranchDeletion_RightTapped", treeState, StringComparison.Ordinal);
         Assert.Contains("_branchDeletion.ConfirmDeleteLocalAsync(branch)", workflow, StringComparison.Ordinal);
@@ -43,10 +39,10 @@ public sealed class BranchDeletionUiContractTests
         Assert.Contains("deleteLocalCheckBox.Checked += (_, _) => forceCheckBox.IsEnabled = true;", controller, StringComparison.Ordinal);
         Assert.Contains("The local branch is currently checked out and cannot be deleted.", controller, StringComparison.Ordinal);
         Assert.Contains("_viewModel.Branches.DeleteRemoteBranchAsync(", controller, StringComparison.Ordinal);
-        Assert.Contains("AddMenuItem(flyout, \"Delete\", !_viewModel.IsBusy, () => _branchDeletion.ConfirmDeleteRemoteAsync(remoteBranch))", workflow, StringComparison.Ordinal);
+        Assert.Contains("AddMenuItem(flyout, \"Delete\", () => !_viewModel.IsBusy,\n            () => _branchDeletion.ConfirmDeleteRemoteAsync(remoteBranch))", workflow, StringComparison.Ordinal);
         Assert.Equal(2, CountOccurrences(workflow, "Show branch history only"));
-        Assert.Contains("ShowReferenceHistoryAsync(branch.Name", workflow, StringComparison.Ordinal);
-        Assert.Contains("ShowReferenceHistoryAsync(remoteBranch.Name", workflow, StringComparison.Ordinal);
+        Assert.Contains("_showReferenceHistory(branch.Name", workflow, StringComparison.Ordinal);
+        Assert.Contains("_showReferenceHistory(remoteBranch.Name", workflow, StringComparison.Ordinal);
 
         Assert.DoesNotContain("_referenceService.DeleteBranchAsync", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("_repositorySyncService.DeleteRemoteBranchAsync", workflow, StringComparison.Ordinal);
@@ -91,7 +87,7 @@ public sealed class BranchDeletionUiContractTests
     public void BranchFolderContextMenuUsesStronglyTypedMetadataAndScopedLabels()
     {
         var root = FindRepositoryRoot();
-        var menu = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchDeletion.cs"));
+        var menu = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryReferenceMenuController.cs"));
 
         Assert.Contains("case RepositoryTreeNodeKind.BranchFolder when node.Value is BranchFolderInfo folderInfo:", menu, StringComparison.Ordinal);
         Assert.Contains("Delete all branches in this folder…", menu, StringComparison.Ordinal);
