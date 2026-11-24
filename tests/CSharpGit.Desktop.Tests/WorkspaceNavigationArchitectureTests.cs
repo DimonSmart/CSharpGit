@@ -15,6 +15,11 @@ public sealed class WorkspaceNavigationArchitectureTests
         Assert.Contains("_history.SelectionIntentVersion == target.SelectionIntentVersion", core, StringComparison.Ordinal);
         Assert.Contains("Interactions.DeferReference(", core, StringComparison.Ordinal);
         Assert.Contains("WorkspaceSurface.WorkingTree", core, StringComparison.Ordinal);
+        var ui = Read("src/CSharpGit.Presentation/Workflows/WorkspaceNavigationController.cs");
+        Assert.Contains("Interactions.TryTakeReference(", ui, StringComparison.Ordinal);
+        Assert.Contains("Interactions.TryTakeCheckout(", ui, StringComparison.Ordinal);
+        Assert.Contains("ShowHistorySurface()", ui, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(Root(), "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs")));
     }
 
     [Fact]
@@ -33,12 +38,14 @@ public sealed class WorkspaceNavigationArchitectureTests
         Assert.Contains("RepositoryExplorer.Shutdown();", page, StringComparison.Ordinal);
     }
 
-    private static string Read(string path)
+    private static string Read(string path) =>
+        File.ReadAllText(Path.Combine(Root(), path.Replace('/', Path.DirectorySeparatorChar)));
+
+    private static string Root()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);
         while (current is not null && !File.Exists(Path.Combine(current.FullName, "CSharpGit.slnx")))
             current = current.Parent;
-        return File.ReadAllText(Path.Combine(current!.FullName,
-            path.Replace('/', Path.DirectorySeparatorChar)));
+        return current?.FullName ?? throw new DirectoryNotFoundException("CSharpGit root not found.");
     }
 }
