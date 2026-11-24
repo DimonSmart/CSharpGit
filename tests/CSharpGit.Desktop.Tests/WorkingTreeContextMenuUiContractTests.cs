@@ -8,17 +8,18 @@ public sealed class WorkingTreeContextMenuUiContractTests
         var root = FindRepositoryRoot();
         var contextMenu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
 
+        var selectionOwner = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.Selection.cs");
         var selection = MethodBody(
-            contextMenu,
-            "private IReadOnlyList<WorkingTreeChange> SelectWorkingTreeContextTarget",
-            "private bool CanDiscardStagedFile");
+            selectionOwner,
+            "internal IReadOnlyList<WorkingTreeChange> SelectWorkingTreeContextTarget",
+            "internal void ShutdownWorkingTreeDiffSurface");
 
         Assert.Contains("if (!selection.IsSelected(node.Path))", selection, StringComparison.Ordinal);
         Assert.Contains("selection.SelectSingle(node, roots)", selection, StringComparison.Ordinal);
         Assert.Contains("GetSelectedLeaves(roots)", selection, StringComparison.Ordinal);
         Assert.Contains(".ToArray()", selection, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.WorkingTree.SetSelection(kind, snapshot)", selection, StringComparison.Ordinal);
-        Assert.Contains("return snapshot", selection, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.WorkingTree.SetSelection(kind, selected)", selection, StringComparison.Ordinal);
+        Assert.Contains("return selected", selection, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -50,7 +51,7 @@ public sealed class WorkingTreeContextMenuUiContractTests
         var folderMenu = MethodBody(
             contextMenu,
             "private void AddWorkingTreeFolderContextMenuItems",
-            "private IReadOnlyList<WorkingTreeChange> SelectWorkingTreeContextTarget");
+            "private async Task ConfirmAddFolderToGitIgnoreAsync");
 
         Assert.Contains("_viewModel.WorkingTree.CanStageChanges(changes)", folderMenu, StringComparison.Ordinal);
         Assert.Contains("_viewModel.WorkingTree.CanUnstageChanges(changes)", folderMenu, StringComparison.Ordinal);
@@ -93,7 +94,7 @@ public sealed class WorkingTreeContextMenuUiContractTests
         var folderMenu = MethodBody(
             contextMenu,
             "private void AddWorkingTreeFolderContextMenuItems",
-            "private IReadOnlyList<WorkingTreeChange> SelectWorkingTreeContextTarget");
+            "private async Task ConfirmAddFolderToGitIgnoreAsync");
 
         Assert.Contains("count == 1 && WorkingTreeViewModel.IsGitIgnoreFileCandidate(changes[0])", fileMenu, StringComparison.Ordinal);
         Assert.Contains("Add file to .gitignore", fileMenu, StringComparison.Ordinal);

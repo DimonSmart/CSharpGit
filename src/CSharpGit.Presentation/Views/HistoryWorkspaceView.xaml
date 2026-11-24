@@ -1,0 +1,228 @@
+<UserControl x:Class="CSharpGit.Presentation.Views.HistoryWorkspaceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:CSharpGit.Presentation.Controls"
+             xmlns:views="using:CSharpGit.Presentation.Views"
+             xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives">
+  <UserControl.Resources>
+    <controls:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+  </UserControl.Resources>
+  <Grid x:Name="HistoryWorkspaceLayout">
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" MinHeight="160" />
+                <RowDefinition Height="4" />
+                <RowDefinition Height="220" MinHeight="120" />
+              </Grid.RowDefinitions>
+  
+              <views:HistoryView x:Name="HistoryView" Grid.Row="0" Grid.RowSpan="2" />
+  
+              <controls:GridSplitter Grid.Row="2"
+                                     ResizeDirection="Rows"
+                                     ResizeBehavior="PreviousAndNext"
+                                     MinimumFirst="160"
+                                     MinimumSecond="120"
+                                     VerticalAlignment="Stretch"
+                                     Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+  
+              <Pivot x:Name="DetailsTabs"
+                     Grid.Row="3"
+                     HeaderTemplate="{StaticResource PivotHeaderTemplate}"
+                     SelectionChanged="DetailsTabs_SelectionChanged"
+                     Visibility="{Binding CommitDetails.HasSelectedDetailsObject, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Pivot.Resources>
+                  <Style TargetType="primitives:PivotHeaderItem" BasedOn="{StaticResource CompactPivotHeaderItemStyle}" />
+                </Pivot.Resources>
+                <PivotItem x:Name="SummaryTab" Header="{Binding CommitDetails.SelectedDetailsTitle}">
+                  <Grid>
+                    <ScrollViewer x:Name="DetailsScroller"
+                                  Visibility="{Binding CommitDetails.HasSelectedCommit, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                  HorizontalAlignment="Left"
+                                  HorizontalScrollMode="Disabled"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollMode="Auto"
+                                  VerticalScrollBarVisibility="Auto"
+                                  MinHeight="120">
+                      <controls:CommitDetailsView x:Name="CommitDetailsContent" />
+                    </ScrollViewer>
+  
+                    <ScrollViewer x:Name="StashDetailsScroller" Visibility="{Binding CommitDetails.HasSelectedStash, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                  HorizontalScrollMode="Disabled"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollMode="Auto"
+                                  VerticalScrollBarVisibility="Auto"
+                                  MinHeight="120">
+                      <StackPanel Margin="12" Spacing="8">
+                        <TextBlock Text="{Binding CommitDetails.SelectedStashDisplay}"
+                                   Style="{StaticResource BodyStrongTextStyle}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding CommitDetails.SelectedStashBaseDisplay}"
+                                   Style="{StaticResource SecondaryTextStyle}" />
+                        <TextBlock Text="{Binding CommitDetails.SelectedStashHashDisplay}"
+                                   Style="{StaticResource SecondaryTextStyle}" />
+                        <TextBlock Text="{Binding CommitDetails.SelectedStashStatsDisplay}"
+                                   Style="{StaticResource SecondaryTextStyle}" />
+                        <TextBlock Text="{Binding CommitDetails.SelectedStashDetailsStatus}"
+                                   Style="{StaticResource SecondaryTextStyle}"
+                                   TextWrapping="Wrap" />
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                          <Button Content="Apply"
+                                  Command="{Binding Stashes.ApplyCommand}"
+                                  Style="{StaticResource CompactButtonStyle}" />
+                          <Button Content="Pop"
+                                  Command="{Binding Stashes.PopCommand}"
+                                  Style="{StaticResource CompactButtonStyle}" />
+                          <Button Content="Drop…"
+                                  Click="DropSelectedStash_Click"
+                                  IsEnabled="{Binding Stashes.CanMutateSelectedStash}"
+                                  Style="{StaticResource CompactButtonStyle}" />
+                        </StackPanel>
+                      </StackPanel>
+                    </ScrollViewer>
+                  </Grid>
+                </PivotItem>
+  
+                <PivotItem x:Name="ChangesTab" Header="Changes">
+                  <Grid MinHeight="120" Loaded="ChangesSurface_Loaded">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="38*" MinWidth="210" />
+                      <ColumnDefinition Width="4" />
+                      <ColumnDefinition Width="62*" MinWidth="270" />
+                    </Grid.ColumnDefinitions>
+  
+                    <Grid RowDefinitions="Auto,*">
+                      <Border x:Name="ChangedFilesHeader" Style="{StaticResource PaneHeaderSurfaceStyle}">
+                        <Grid ColumnDefinitions="*,132,46,46">
+                          <TextBlock Text="Changed files" Style="{StaticResource PaneHeaderTextStyle}" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="1" Text="State" Style="{StaticResource CaptionTextStyle}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="2" Text="+" Style="{StaticResource CaptionTextStyle}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="3" Text="−" Style="{StaticResource CaptionTextStyle}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                      </Border>
+  
+                      <TreeView x:Name="ChangedFilesTree"
+                                Grid.Row="1"
+                                Style="{StaticResource DenseTreeViewStyle}"
+                                ItemContainerStyle="{StaticResource DenseTreeItemStyle}"
+                                ItemTemplate="{StaticResource ChangedFileTreeItemTemplate}"
+                                SelectionMode="Single"
+                                ItemInvoked="ChangedFilesTree_ItemInvoked" />
+  
+                      <ListView x:Name="CommitFilesList"
+                                Grid.Row="1"
+                                Visibility="Collapsed"
+                                SelectionChanged="CommitFilesList_SelectionChanged"
+                                DoubleTapped="CommitFilesList_DoubleTapped"
+                                KeyDown="CommitFilesList_KeyDown" />
+                    </Grid>
+  
+                    <controls:GridSplitter Grid.Column="1"
+                                           ResizeDirection="Columns"
+                                           ResizeBehavior="PreviousAndNext"
+                                           MinimumFirst="210"
+                                           MinimumSecond="270"
+                                           HorizontalAlignment="Stretch"
+                                           Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+  
+                    <Grid Grid.Column="2" RowDefinitions="Auto,*">
+                      <Border x:Name="CommitDiffHeader"
+                              Visibility="Collapsed"
+                              Style="{StaticResource DiffHeaderSurfaceStyle}">
+                        <Grid ColumnDefinitions="*,2*" ColumnSpacing="{StaticResource Spacing.S}">
+                          <Grid x:Name="CommitTextDiffHeader"
+                              Visibility="Collapsed"
+                              ColumnDefinitions="38,38,*">
+                          <TextBlock Text="OLD"
+                                     Style="{StaticResource CaptionTextStyle}"
+                                     HorizontalAlignment="Right"
+                                     Margin="0,0,5,0"
+                                     VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="1"
+                                     Text="NEW"
+                                     Style="{StaticResource CaptionTextStyle}"
+                                     HorizontalAlignment="Right"
+                                     Margin="0,0,5,0"
+                                     VerticalAlignment="Center" />
+                        </Grid>
+                          <ScrollViewer Grid.Column="1" HorizontalScrollMode="Enabled" HorizontalScrollBarVisibility="Auto" VerticalScrollMode="Disabled" VerticalScrollBarVisibility="Disabled">
+                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}" VerticalAlignment="Center">
+                            <Button x:Name="CommitOpenOriginalButton" Click="CommitOpenOriginal_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Open original version">
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                              <FontIcon Glyph="{StaticResource Icon.Glyph.Original}" FontSize="{StaticResource Icon.Small}" />
+                              <TextBlock Text="Original" Style="{StaticResource BodyTextStyle}" />
+                            </StackPanel>
+                          </Button>
+                          <Button x:Name="CommitOpenChangedButton" Click="CommitOpenChanged_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Open changed version">
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                              <FontIcon Glyph="{StaticResource Icon.Glyph.Changed}" FontSize="{StaticResource Icon.Small}" />
+                              <TextBlock Text="Changed" Style="{StaticResource BodyTextStyle}" />
+                            </StackPanel>
+                          </Button>
+                          <Button x:Name="CommitExternalDiffButton" Click="CommitExternalDiff_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Open in Diff Tool">
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                              <FontIcon Glyph="{StaticResource Icon.Glyph.Diff}" FontSize="{StaticResource Icon.Small}" />
+                              <TextBlock Text="Diff tool" Style="{StaticResource BodyTextStyle}" />
+                            </StackPanel>
+                          </Button>
+                          <Button x:Name="CommitRevealButton" Click="CommitReveal_Click" Style="{StaticResource CompactButtonStyle}" AutomationProperties.Name="Reveal file">
+                            <StackPanel Orientation="Horizontal" Spacing="{StaticResource Spacing.S}">
+                              <FontIcon Glyph="{StaticResource Icon.Glyph.Reveal}" FontSize="{StaticResource Icon.Small}" />
+                              <TextBlock Text="Reveal" Style="{StaticResource BodyTextStyle}" />
+                            </StackPanel>
+                      
+                          </Button>
+                          </StackPanel>
+                      </ScrollViewer>
+                        </Grid>
+                      </Border>
+  
+                      <Grid Grid.Row="1">
+                        <StackPanel x:Name="CommitLargeDiffInfo"
+                                    Visibility="Collapsed"
+                                    Margin="12"
+                                    Spacing="8"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Top">
+                          <TextBlock Text="Large diff"
+                                     Style="{StaticResource BodyStrongTextStyle}" />
+                          <TextBlock x:Name="CommitLargeDiffMessage"
+                                     TextWrapping="Wrap" />
+                          <Button x:Name="CommitLargeDiffButton"
+                                  Content="Load diff"
+                                  HorizontalAlignment="Left"
+                                  Style="{StaticResource PrimaryActionButtonStyle}"
+                                  Click="CommitLargeDiffButton_Click" />
+                        </StackPanel>
+                        <InfoBar x:Name="CommitBinaryInfo"
+                                 IsOpen="True"
+                                 Severity="Informational"
+                                 Title="Binary file"
+                                 Message="Binary file — text diff is not available."
+                                 Visibility="Collapsed"
+                                 IsClosable="False"
+                                 VerticalAlignment="Top" />
+                        <StackPanel x:Name="CommitImageLoading"
+                                    Visibility="Collapsed"
+                                    Orientation="Horizontal"
+                                    Spacing="8"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+                          <ProgressRing Width="18" Height="18" IsActive="True" />
+                          <TextBlock Text="Loading image comparison…" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <controls:ImageDiffPreviewHost x:Name="CommitImageDiffHost"
+                                                       Visibility="Collapsed"
+                                                       HorizontalAlignment="Stretch"
+                                                       VerticalAlignment="Stretch" />
+                        <controls:SelectableDiffViewer x:Name="CompactDiffViewer"
+                                                       Visibility="Collapsed"
+                                                       MinHeight="96"
+                                                       HorizontalAlignment="Stretch"
+                                                       VerticalAlignment="Stretch" />
+                      </Grid>
+                    </Grid>
+                  </Grid>
+                </PivotItem>
+              </Pivot>
+            </Grid>
+</UserControl>

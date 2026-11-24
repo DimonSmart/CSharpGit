@@ -8,7 +8,7 @@ public sealed class CollectionViewportUiContractTests
         var root = FindRepositoryRoot();
         var changes = Read(root, "MainPage.Changes.cs");
         var changedTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "CommitChangedFileTreeController.cs"));
-        var workingTree = Read(root, "MainPage.WorkingTreeDiff.cs");
+        var workingTree = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.Selection.cs"));
         var page = Read(root, "MainPage.xaml.cs");
         var lifecycle = Read(root, "MainPage.Lifecycle.cs");
         var history = File.ReadAllText(Path.Combine(root,
@@ -18,7 +18,7 @@ public sealed class CollectionViewportUiContractTests
         var controller = File.ReadAllText(Path.Combine(root,
             "src", "CSharpGit.Presentation", "Controls", "CollectionViewportController.cs"));
         var xaml = File.ReadAllText(Path.Combine(root,
-            "src", "CSharpGit.Presentation", "MainPage.xaml"));
+            "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml"));
 
         Assert.Contains("_viewport?.Observe", changedTree);
         Assert.Contains("CountVisibleChangedFileNodes", changedTree);

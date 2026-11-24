@@ -27,8 +27,36 @@ public sealed partial class MainPage : Page
 {
     private readonly OpenRepositoryViewModel _viewModel;
 
+    // Temporary typed facade for history/commit-details feature handlers.
+    private HistoryView HistoryView => HistoryPane.HistoryViewControl;
+    private Pivot DetailsTabs => HistoryPane.DetailsTabsControl;
+    private PivotItem SummaryTab => HistoryPane.SummaryTabControl;
+    private ScrollViewer DetailsScroller => HistoryPane.DetailsScrollerControl;
+    private CommitDetailsView CommitDetailsContent => HistoryPane.CommitDetailsContentControl;
+    private ScrollViewer StashDetailsScroller => HistoryPane.StashDetailsScrollerControl;
+    private PivotItem ChangesTab => HistoryPane.ChangesTabControl;
+    private Border ChangedFilesHeader => HistoryPane.ChangedFilesHeaderControl;
+    private TreeView ChangedFilesTree => HistoryPane.ChangedFilesTreeControl;
+    private ListView CommitFilesList => HistoryPane.CommitFilesListControl;
+    private Border CommitDiffHeader => HistoryPane.CommitDiffHeaderControl;
+    private Grid CommitTextDiffHeader => HistoryPane.CommitTextDiffHeaderControl;
+    private Button CommitOpenOriginalButton => HistoryPane.CommitOpenOriginalButtonControl;
+    private Button CommitOpenChangedButton => HistoryPane.CommitOpenChangedButtonControl;
+    private Button CommitExternalDiffButton => HistoryPane.CommitExternalDiffButtonControl;
+    private Button CommitRevealButton => HistoryPane.CommitRevealButtonControl;
+    private StackPanel CommitLargeDiffInfo => HistoryPane.CommitLargeDiffInfoControl;
+    private TextBlock CommitLargeDiffMessage => HistoryPane.CommitLargeDiffMessageControl;
+    private Button CommitLargeDiffButton => HistoryPane.CommitLargeDiffButtonControl;
+    private InfoBar CommitBinaryInfo => HistoryPane.CommitBinaryInfoControl;
+    private StackPanel CommitImageLoading => HistoryPane.CommitImageLoadingControl;
+    private ImageDiffPreviewHost CommitImageDiffHost => HistoryPane.CommitImageDiffHostControl;
+    private SelectableDiffViewer CompactDiffViewer => HistoryPane.CompactDiffViewerControl;
+
+
     // Temporary typed facade while WorkingTree feature interactions are moved into WorkingTreeView.
     private Grid WorkingTreeHeader => WorkingTreePane.WorkingTreeHeaderControl;
+    private TreeView UnstagedChangesList => UnstagedChangesTree;
+    private TreeView StagedChangesList => StagedChangesTree;
     private TextBlock UnstagedHeader => WorkingTreePane.UnstagedHeaderControl;
     private TreeView UnstagedChangesTree => WorkingTreePane.UnstagedChangesTreeControl;
     private GridSplitter WorkingTreeStagingSplitter => WorkingTreePane.WorkingTreeStagingSplitterControl;
@@ -71,15 +99,24 @@ public sealed partial class MainPage : Page
         WorkspaceNavigator workspaceNavigator)
     {
         InitializeComponent();
-        WorkingTreePane.UnstagedChangesTree_ItemInvokedCallback = UnstagedChangesTree_ItemInvoked;
+        HistoryPane.DetailsTabs_SelectionChangedCallback = DetailsTabs_SelectionChanged;
+        HistoryPane.DropSelectedStash_ClickCallback = DropSelectedStash_Click;
+        HistoryPane.ChangesSurface_LoadedCallback = ChangesSurface_Loaded;
+        HistoryPane.ChangedFilesTree_ItemInvokedCallback = ChangedFilesTree_ItemInvoked;
+        HistoryPane.CommitFilesList_SelectionChangedCallback = CommitFilesList_SelectionChanged;
+        HistoryPane.CommitFilesList_DoubleTappedCallback = CommitFilesList_DoubleTapped;
+        HistoryPane.CommitFilesList_KeyDownCallback = CommitFilesList_KeyDown;
+        HistoryPane.CommitOpenOriginal_ClickCallback = CommitOpenOriginal_Click;
+        HistoryPane.CommitOpenChanged_ClickCallback = CommitOpenChanged_Click;
+        HistoryPane.CommitExternalDiff_ClickCallback = CommitExternalDiff_Click;
+        HistoryPane.CommitReveal_ClickCallback = CommitReveal_Click;
+        HistoryPane.CommitLargeDiffButton_ClickCallback = CommitLargeDiffButton_Click;
         WorkingTreePane.UnstagedChangesTree_RightTappedCallback = UnstagedChangesTree_RightTapped;
-        WorkingTreePane.StagedChangesTree_ItemInvokedCallback = StagedChangesTree_ItemInvoked;
         WorkingTreePane.StagedChangesTree_RightTappedCallback = StagedChangesTree_RightTapped;
         WorkingTreePane.WorkingTreeOpenOriginal_ClickCallback = WorkingTreeOpenOriginal_Click;
         WorkingTreePane.WorkingTreeOpenChanged_ClickCallback = WorkingTreeOpenChanged_Click;
         WorkingTreePane.WorkingTreeExternalDiff_ClickCallback = WorkingTreeExternalDiff_Click;
         WorkingTreePane.WorkingTreeReveal_ClickCallback = WorkingTreeReveal_Click;
-        WorkingTreePane.WorkingTreeLargeDiffButton_ClickCallback = WorkingTreeLargeDiffButton_Click;
         DataContext = _viewModel = viewModel;
         _pageDialogs = new Dialogs.PageDialogController(this, _viewModel, () => IsShuttingDown);
         _diffPresentation = new Workflows.DiffPresentationController(
@@ -132,8 +169,14 @@ public sealed partial class MainPage : Page
         _viewModel.Tags.Items.CollectionChanged += RepositoryPresentationTags_CollectionChanged;
         _viewModel.Stashes.Items.CollectionChanged += RepositoryPresentationStashes_CollectionChanged;
         Loaded += RunDesktopCheckWhenRequested;
+        WorkingTreePane.Configure(
+            _viewModel, _unstagedChanges, _stagedChanges,
+            _workingTreeImageDiff, _diffPresentation,
+            () => IsShuttingDown,
+            (operation, description) => RunPageUiOperation(operation, description),
+            ShowErrorAsync);
         RefreshPresentationCollections();
-        InitializeWorkingTreeDiffSurface();
+        WorkingTreePane.InitializeWorkingTreeDiffSurface();
         InitializeCommitActions();
         UpdateHistoryScopePresentation();
     }
@@ -272,7 +315,7 @@ public sealed partial class MainPage : Page
             if (change.IsStaged) staged.Add(change);
         }
 
-        _workingTreeSelectionSync = true;
+        WorkingTreePane.SetSelectionSync(true);
         try
         {
             _unstagedChanges.ReplaceAll(unstaged);
@@ -280,8 +323,7 @@ public sealed partial class MainPage : Page
         }
         finally
         {
-            _workingTreeSelectionSync = false;
-            ScheduleWorkingTreeTreeRefreshIfNeeded();
+            WorkingTreePane.SetSelectionSync(false);
         }
 
         UnstagedHeader.Text = $"Unstaged changes ({_unstagedChanges.Count})";
@@ -613,12 +655,12 @@ public sealed partial class MainPage : Page
 
     private void UnstagedChangesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (UnstagedChangesList.SelectedItem is WorkingTreeChange change) SelectWorkingTreeChange(change, WorkingTreeDiffKind.Unstaged);
+        if (UnstagedChangesList.SelectedItem is WorkingTreeChange change) WorkingTreePane.SelectWorkingTreeChange(change, WorkingTreeDiffKind.Unstaged);
     }
 
     private void StagedChangesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (StagedChangesList.SelectedItem is WorkingTreeChange change) SelectWorkingTreeChange(change, WorkingTreeDiffKind.Staged);
+        if (StagedChangesList.SelectedItem is WorkingTreeChange change) WorkingTreePane.SelectWorkingTreeChange(change, WorkingTreeDiffKind.Staged);
     }
 
     private void CommitFilesList_SelectionChanged(object sender, SelectionChangedEventArgs e)

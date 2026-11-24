@@ -23,6 +23,7 @@ public sealed class StashUiContractTests
     {
         var root = FindRepositoryRoot();
         var xaml = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml")
+            + Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml")
             + Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.xaml");
         var editor = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeCommitEditorView.xaml");
         var editorCode = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeCommitEditorView.xaml.cs");
@@ -85,7 +86,8 @@ public sealed class StashUiContractTests
     {
         var root = FindRepositoryRoot();
         var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
-        var xaml = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml");
+        var xaml = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml")
+            + Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml");
         var repositoryFiles = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs");
         var historyAdapter = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.History.cs");
         var detailsComposition = Read(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.DetailsComposition.cs");
