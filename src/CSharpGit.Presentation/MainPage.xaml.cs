@@ -99,7 +99,6 @@ public sealed partial class MainPage : Page
         WorkspaceNavigator workspaceNavigator)
     {
         InitializeComponent();
-        HistoryPane.DropSelectedStash_ClickCallback = DropSelectedStash_Click;
         DataContext = _viewModel = viewModel;
         _pageDialogs = new Dialogs.PageDialogController(this, _viewModel, () => IsShuttingDown);
         _diffPresentation = new Workflows.DiffPresentationController(
@@ -161,7 +160,7 @@ public sealed partial class MainPage : Page
             () => IsShuttingDown,
             (operation, description) => RunPageUiOperation(operation, description),
             ShowErrorAsync,
-            AddMenuItem, ExecuteCommandAsync, ShowCreateSelectedStashDialogAsync,
+            AddMenuItem, ExecuteCommandAsync, changes => _stashDialogs.ShowCreateSelectedAsync(changes),
             ShowPageDialogAsync);
         RefreshPresentationCollections();
         WorkingTreePane.InitializeWorkingTreeDiffSurface();
