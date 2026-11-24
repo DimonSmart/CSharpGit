@@ -55,6 +55,8 @@ public sealed partial class MainPage : Page
 
     // Temporary typed facade while WorkingTree feature interactions are moved into WorkingTreeView.
     private Grid WorkingTreeHeader => WorkingTreePane.WorkingTreeHeaderControl;
+    private TreeView UnstagedChangesList => UnstagedChangesTree;
+    private TreeView StagedChangesList => StagedChangesTree;
     private TextBlock UnstagedHeader => WorkingTreePane.UnstagedHeaderControl;
     private TreeView UnstagedChangesTree => WorkingTreePane.UnstagedChangesTreeControl;
     private GridSplitter WorkingTreeStagingSplitter => WorkingTreePane.WorkingTreeStagingSplitterControl;
@@ -109,15 +111,12 @@ public sealed partial class MainPage : Page
         HistoryPane.CommitExternalDiff_ClickCallback = CommitExternalDiff_Click;
         HistoryPane.CommitReveal_ClickCallback = CommitReveal_Click;
         HistoryPane.CommitLargeDiffButton_ClickCallback = CommitLargeDiffButton_Click;
-        WorkingTreePane.UnstagedChangesTree_ItemInvokedCallback = UnstagedChangesTree_ItemInvoked;
         WorkingTreePane.UnstagedChangesTree_RightTappedCallback = UnstagedChangesTree_RightTapped;
-        WorkingTreePane.StagedChangesTree_ItemInvokedCallback = StagedChangesTree_ItemInvoked;
         WorkingTreePane.StagedChangesTree_RightTappedCallback = StagedChangesTree_RightTapped;
         WorkingTreePane.WorkingTreeOpenOriginal_ClickCallback = WorkingTreeOpenOriginal_Click;
         WorkingTreePane.WorkingTreeOpenChanged_ClickCallback = WorkingTreeOpenChanged_Click;
         WorkingTreePane.WorkingTreeExternalDiff_ClickCallback = WorkingTreeExternalDiff_Click;
         WorkingTreePane.WorkingTreeReveal_ClickCallback = WorkingTreeReveal_Click;
-        WorkingTreePane.WorkingTreeLargeDiffButton_ClickCallback = WorkingTreeLargeDiffButton_Click;
         DataContext = _viewModel = viewModel;
         _pageDialogs = new Dialogs.PageDialogController(this, _viewModel, () => IsShuttingDown);
         _diffPresentation = new Workflows.DiffPresentationController(
@@ -170,8 +169,14 @@ public sealed partial class MainPage : Page
         _viewModel.Tags.Items.CollectionChanged += RepositoryPresentationTags_CollectionChanged;
         _viewModel.Stashes.Items.CollectionChanged += RepositoryPresentationStashes_CollectionChanged;
         Loaded += RunDesktopCheckWhenRequested;
+        WorkingTreePane.Configure(
+            _viewModel, _unstagedChanges, _stagedChanges,
+            _workingTreeImageDiff, _diffPresentation,
+            () => IsShuttingDown,
+            (operation, description) => RunPageUiOperation(operation, description),
+            ShowErrorAsync);
         RefreshPresentationCollections();
-        InitializeWorkingTreeDiffSurface();
+        WorkingTreePane.InitializeWorkingTreeDiffSurface();
         InitializeCommitActions();
         UpdateHistoryScopePresentation();
     }
@@ -310,7 +315,7 @@ public sealed partial class MainPage : Page
             if (change.IsStaged) staged.Add(change);
         }
 
-        _workingTreeSelectionSync = true;
+        WorkingTreePane.SetSelectionSync(true);
         try
         {
             _unstagedChanges.ReplaceAll(unstaged);
@@ -318,8 +323,7 @@ public sealed partial class MainPage : Page
         }
         finally
         {
-            _workingTreeSelectionSync = false;
-            ScheduleWorkingTreeTreeRefreshIfNeeded();
+            WorkingTreePane.SetSelectionSync(false);
         }
 
         UnstagedHeader.Text = $"Unstaged changes ({_unstagedChanges.Count})";
@@ -651,12 +655,12 @@ public sealed partial class MainPage : Page
 
     private void UnstagedChangesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (UnstagedChangesList.SelectedItem is WorkingTreeChange change) SelectWorkingTreeChange(change, WorkingTreeDiffKind.Unstaged);
+        if (UnstagedChangesList.SelectedItem is WorkingTreeChange change) WorkingTreePane.SelectWorkingTreeChange(change, WorkingTreeDiffKind.Unstaged);
     }
 
     private void StagedChangesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (StagedChangesList.SelectedItem is WorkingTreeChange change) SelectWorkingTreeChange(change, WorkingTreeDiffKind.Staged);
+        if (StagedChangesList.SelectedItem is WorkingTreeChange change) WorkingTreePane.SelectWorkingTreeChange(change, WorkingTreeDiffKind.Staged);
     }
 
     private void CommitFilesList_SelectionChanged(object sender, SelectionChangedEventArgs e)

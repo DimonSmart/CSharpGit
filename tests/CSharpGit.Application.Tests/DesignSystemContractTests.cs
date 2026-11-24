@@ -247,7 +247,7 @@ public sealed class DesignSystemContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var main = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
-        var workingTree = File.ReadAllText(Path.Combine(presentation, "MainPage.WorkingTreeDiff.cs"));
+        var workingTree = File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeView.Selection.cs"));
         var changes = File.ReadAllText(Path.Combine(presentation, "MainPage.Changes.cs"));
         var mainPageSources = Directory.EnumerateFiles(presentation, "MainPage*.cs")
             .Select(File.ReadAllText)

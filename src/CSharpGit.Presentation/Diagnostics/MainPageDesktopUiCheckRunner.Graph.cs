@@ -421,38 +421,38 @@ public sealed partial class MainPage
 
             _page.ShowWorkingTree();
             await WaitUntilAsync(
-                () => _page.WorkingTreePane.ActualHeight > 0 && WorkingTreeTreeSelection.GetLeaves(_page._unstagedTreeRoots).Count > 0,
+                () => _page.WorkingTreePane.ActualHeight > 0 && WorkingTreeTreeSelection.GetLeaves(_page.WorkingTreePane.UnstagedTreeRoots).Count > 0,
                 TimeSpan.FromSeconds(5));
 
             var stagedByCheck = false;
             try
             {
-                if (WorkingTreeTreeSelection.GetLeaves(_page._unstagedTreeRoots).FirstOrDefault() is { } firstUnstaged)
+                if (WorkingTreeTreeSelection.GetLeaves(_page.WorkingTreePane.UnstagedTreeRoots).FirstOrDefault() is { } firstUnstaged)
                 {
-                    _page.WorkingTreeNodeInvoked(firstUnstaged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Unstaged);
+                    _page.WorkingTreePane.InvokeWorkingTreeNodeForCheck(firstUnstaged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Unstaged);
                     _page.UnstagedChangesTree.ScrollIntoView(firstUnstaged);
                     await WaitUntilAsync(
                         () => _page.UnstagedChangesTree.ContainerFromItem(firstUnstaged) is TreeViewItem,
                         TimeSpan.FromSeconds(5));
                     CheckActualHeight(_page.UnstagedChangesTree.ContainerFromItem(firstUnstaged) as FrameworkElement, 23, 26, "unstaged row", failures);
 
-                    if (WorkingTreeTreeSelection.GetLeaves(_page._stagedTreeRoots).Count == 0)
+                    if (WorkingTreeTreeSelection.GetLeaves(_page.WorkingTreePane.StagedTreeRoots).Count == 0)
                     {
                         await Task.Delay(20);
                         await _page.ExecuteCommandAsync(_page._viewModel.WorkingTree.StageSelectedCommand);
                         await WaitUntilAsync(() => !_page._viewModel.IsBusy, TimeSpan.FromSeconds(20));
                         _page.RefreshPresentationCollections();
-                        _page.RebuildWorkingTreeTrees();
+                        _page.WorkingTreePane.RebuildWorkingTreeTrees();
                         await WaitUntilAsync(
-                            () => WorkingTreeTreeSelection.GetLeaves(_page._stagedTreeRoots).Count > 0,
+                            () => WorkingTreeTreeSelection.GetLeaves(_page.WorkingTreePane.StagedTreeRoots).Count > 0,
                             TimeSpan.FromSeconds(5));
                         stagedByCheck = true;
                     }
                 }
 
-                if (WorkingTreeTreeSelection.GetLeaves(_page._stagedTreeRoots).FirstOrDefault() is { } firstStaged)
+                if (WorkingTreeTreeSelection.GetLeaves(_page.WorkingTreePane.StagedTreeRoots).FirstOrDefault() is { } firstStaged)
                 {
-                    _page.WorkingTreeNodeInvoked(firstStaged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Staged);
+                    _page.WorkingTreePane.InvokeWorkingTreeNodeForCheck(firstStaged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Staged);
                     _page.StagedChangesTree.ScrollIntoView(firstStaged);
                     await WaitUntilAsync(
                         () => _page.StagedChangesTree.ContainerFromItem(firstStaged) is TreeViewItem,
@@ -462,18 +462,18 @@ public sealed partial class MainPage
             }
             finally
             {
-                if (stagedByCheck && WorkingTreeTreeSelection.GetLeaves(_page._stagedTreeRoots).FirstOrDefault() is { } staged)
+                if (stagedByCheck && WorkingTreeTreeSelection.GetLeaves(_page.WorkingTreePane.StagedTreeRoots).FirstOrDefault() is { } staged)
                 {
-                    _page.WorkingTreeNodeInvoked(staged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Staged);
+                    _page.WorkingTreePane.InvokeWorkingTreeNodeForCheck(staged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Staged);
                     await Task.Delay(20);
                     await _page.ExecuteCommandAsync(_page._viewModel.WorkingTree.UnstageSelectedCommand);
                     await WaitUntilAsync(() => !_page._viewModel.IsBusy, TimeSpan.FromSeconds(20));
                     _page.RefreshPresentationCollections();
-                    _page.RebuildWorkingTreeTrees();
+                    _page.WorkingTreePane.RebuildWorkingTreeTrees();
                 }
 
-                if (WorkingTreeTreeSelection.GetLeaves(_page._unstagedTreeRoots).FirstOrDefault() is { } restoredUnstaged)
-                    _page.WorkingTreeNodeInvoked(restoredUnstaged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Unstaged);
+                if (WorkingTreeTreeSelection.GetLeaves(_page.WorkingTreePane.UnstagedTreeRoots).FirstOrDefault() is { } restoredUnstaged)
+                    _page.WorkingTreePane.InvokeWorkingTreeNodeForCheck(restoredUnstaged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Unstaged);
 
                 await _page.ShowAllHistoryAsync();
             }

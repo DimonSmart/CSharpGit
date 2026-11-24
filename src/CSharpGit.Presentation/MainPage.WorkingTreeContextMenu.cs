@@ -20,13 +20,13 @@ public sealed partial class MainPage
         WorkingTreeDiffKind kind)
     {
         var source = args.OriginalSource as FrameworkElement;
-        var node = ResolveWorkingTreeNode(source?.DataContext);
+        var node = Views.WorkingTreeView.ResolveWorkingTreeNode(source?.DataContext);
         if (source is null || node is null) return;
 
         var flyout = new MenuFlyout();
         if (node.Change is not null)
         {
-            var selection = SelectWorkingTreeContextTarget(node, kind);
+            var selection = WorkingTreePane.SelectWorkingTreeContextTarget(node, kind);
             AddWorkingTreeFileContextMenuItems(flyout, kind, selection);
         }
         else if (node.IsFolder)
@@ -156,26 +156,6 @@ public sealed partial class MainPage
                 () => _viewModel.WorkingTree.CanUnstageChanges(changes),
                 () => _viewModel.WorkingTree.UnstageChangesAsync(changes, "Could not unstage folder"));
         }
-    }
-
-    private IReadOnlyList<WorkingTreeChange> SelectWorkingTreeContextTarget(
-        WorkingTreeTreeNode node,
-        WorkingTreeDiffKind kind)
-    {
-        var roots = kind == WorkingTreeDiffKind.Unstaged ? _unstagedTreeRoots : _stagedTreeRoots;
-        var selection = kind == WorkingTreeDiffKind.Unstaged ? _unstagedTreeSelection : _stagedTreeSelection;
-
-        if (!selection.IsSelected(node.Path))
-            selection.SelectSingle(node, roots);
-
-        var snapshot = selection
-            .GetSelectedLeaves(roots)
-            .Select(selected => selected.Change!)
-            .ToArray();
-
-        _viewModel.WorkingTree.SetSelection(kind, snapshot);
-        SelectWorkingTreeChange(node.Change!, kind);
-        return snapshot;
     }
 
     private async Task ConfirmAddFolderToGitIgnoreAsync(

@@ -418,3 +418,7 @@ Tag creation, deletion, remote selection, fetch/push and remote-tag dialogs now 
 ## Phase 3 follow-up: history and commit-details visual composition
 
 The History graph, Commit Summary, Changed Files and commit diff viewer are visually grouped in `Views/HistoryWorkspaceView.xaml`. `MainPage.xaml` composes this host and the separate `WorkingTreeView` rather than declaring either feature's controls inline. Existing callbacks and control facades remain transitional and must migrate to feature controllers before the Phase 3 Definition of Done is met.
+
+## Phase 3 follow-up: working-tree interaction ownership
+
+The Working Tree selection model, tree roots, expansion/viewport tracking, diff preview coordination and subscriptions now belong to `Views/WorkingTreeView.Selection.cs` rather than `MainPage.WorkingTreeDiff.cs`. The feature view exposes narrow entry points for selection and menu targeting; it unsubscribes its own events and viewport observers during shutdown. Git mutation commands remain in the WorkingTreeViewModel and existing workflow controllers. Remaining file-opening menus and other page handlers still need migration.
