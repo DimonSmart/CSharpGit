@@ -7,7 +7,8 @@ public sealed class RepositoryFilesUiContractTests
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml"));
-        var filesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs"));
+        var filesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs"))
+            + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "RepositoryFilesSurface.Interactions.cs"));
         var changesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs"));
 
         Assert.Contains("Header=\"{Binding CommitDetails.SelectedDetailsTitle}\"", xaml, StringComparison.Ordinal);
@@ -23,7 +24,8 @@ public sealed class RepositoryFilesUiContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
+        var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"))
+            + File.ReadAllText(Path.Combine(presentation, "Controls", "RepositoryFilesSurface.Interactions.cs"));
         var previewSurface = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryFilePreviewController.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
 
@@ -50,7 +52,8 @@ public sealed class RepositoryFilesUiContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
+        var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"))
+            + File.ReadAllText(Path.Combine(presentation, "Controls", "RepositoryFilesSurface.Interactions.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
         var model = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySnapshotTreeNode.cs"));
 
@@ -71,7 +74,8 @@ public sealed class RepositoryFilesUiContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
+        var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"))
+            + File.ReadAllText(Path.Combine(presentation, "Controls", "RepositoryFilesSurface.Interactions.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
         var changesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.Changes.cs"));
 
@@ -90,7 +94,8 @@ public sealed class RepositoryFilesUiContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
+        var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"))
+            + File.ReadAllText(Path.Combine(presentation, "Controls", "RepositoryFilesSurface.Interactions.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
         var model = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySnapshotTreeNode.cs"));
 
@@ -106,7 +111,8 @@ public sealed class RepositoryFilesUiContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
+        var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"))
+            + File.ReadAllText(Path.Combine(presentation, "Controls", "RepositoryFilesSurface.Interactions.cs"));
         var previewSurface = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryFilePreviewController.cs"));
         var treeStyles = File.ReadAllText(Path.Combine(presentation, "Styles", "RepositoryTree.xaml"));
         var previewHost = File.ReadAllText(Path.Combine(presentation, "Controls", "FilePreviewHost.cs"));
@@ -134,7 +140,8 @@ public sealed class RepositoryFilesUiContractTests
     public void RepositoryFilesSelectionUsesEventDeltaAndSuppressesReverseFeedback()
     {
         var root = FindRepositoryRoot();
-        var files = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs"));
+        var files = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs"))
+            + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "RepositoryFilesSurface.Interactions.cs"));
         Assert.Contains("args.AddedItems.Cast<object?>()", files, StringComparison.Ordinal);
         Assert.Contains("args.RemovedItems.Cast<object?>()", files, StringComparison.Ordinal);
         Assert.Contains("_repositoryFilesSelectionRouter.Route(", files, StringComparison.Ordinal);

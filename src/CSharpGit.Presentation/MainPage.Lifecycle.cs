@@ -100,7 +100,7 @@ public sealed partial class MainPage
         UnstagedChangesList.DoubleTapped -= WorkingTreeChanges_DoubleTapped;
         StagedChangesList.DoubleTapped -= WorkingTreeChanges_DoubleTapped;
         // Window DI scope owns disposal of resolved feature models.
-        _repositoryFilesViewModel.PropertyChanged -= RepositoryFilesViewModel_PropertyChanged;
+        _repositoryFilesSurface?.ShutdownInteractions();
 
         _maintenanceController.Shutdown();
 
