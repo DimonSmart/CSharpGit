@@ -35,13 +35,11 @@ public sealed partial class WorkingTreeView : UserControl
     internal SelectableDiffViewer WorkingTreeDiffViewerControl => WorkingTreeDiffViewer;
     internal WorkingTreeCommitEditorView WorkingTreeCommitEditorControl => WorkingTreeCommitEditor;
 
-    internal Action<object, RightTappedRoutedEventArgs>? UnstagedChangesTree_RightTappedCallback { get; set; }
-    private void UnstagedChangesTree_RightTapped(object sender, RightTappedRoutedEventArgs args) =>
-        UnstagedChangesTree_RightTappedCallback?.Invoke(sender, args);
 
-    internal Action<object, RightTappedRoutedEventArgs>? StagedChangesTree_RightTappedCallback { get; set; }
-    private void StagedChangesTree_RightTapped(object sender, RightTappedRoutedEventArgs args) =>
-        StagedChangesTree_RightTappedCallback?.Invoke(sender, args);
+
+
+
+
 
     internal Action<object, RoutedEventArgs>? WorkingTreeOpenOriginal_ClickCallback { get; set; }
     private void WorkingTreeOpenOriginal_Click(object sender, RoutedEventArgs args) =>

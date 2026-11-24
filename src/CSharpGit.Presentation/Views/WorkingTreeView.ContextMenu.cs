@@ -5,10 +5,15 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 
-namespace CSharpGit.Presentation;
+namespace CSharpGit.Presentation.Views;
 
-public sealed partial class MainPage
+public sealed partial class WorkingTreeView
 {
+    private Action<MenuFlyout, string, Func<bool>, Func<Task>> _addMenuItem = null!;
+    private Func<System.Windows.Input.ICommand, Task> _executeCommandAsync = null!;
+    private Func<IReadOnlyCollection<WorkingTreeChange>, Task> _showSelectedStashDialogAsync = null!;
+    private Func<ContentDialog, Task<ContentDialogResult>> _showDialog = null!;
+
     private void UnstagedChangesTree_RightTapped(object sender, RightTappedRoutedEventArgs args) =>
         ShowWorkingTreeContextMenu(args, WorkingTreeDiffKind.Unstaged);
 
@@ -20,13 +25,13 @@ public sealed partial class MainPage
         WorkingTreeDiffKind kind)
     {
         var source = args.OriginalSource as FrameworkElement;
-        var node = Views.WorkingTreeView.ResolveWorkingTreeNode(source?.DataContext);
+        var node = ResolveWorkingTreeNode(source?.DataContext);
         if (source is null || node is null) return;
 
         var flyout = new MenuFlyout();
         if (node.Change is not null)
         {
-            var selection = WorkingTreePane.SelectWorkingTreeContextTarget(node, kind);
+            var selection = SelectWorkingTreeContextTarget(node, kind);
             AddWorkingTreeFileContextMenuItems(flyout, kind, selection);
         }
         else if (node.IsFolder)
@@ -53,21 +58,21 @@ public sealed partial class MainPage
         var count = changes.Count;
         if (kind == WorkingTreeDiffKind.Unstaged)
         {
-            AddMenuItem(
+            _addMenuItem(
                 flyout,
                 count == 1 ? "Stage" : $"Stage {count} files",
                 () => _viewModel.WorkingTree.StageSelectedCommand.CanExecute(null),
-                () => ExecuteCommandAsync(_viewModel.WorkingTree.StageSelectedCommand));
-            AddMenuItem(
+                () => _executeCommandAsync(_viewModel.WorkingTree.StageSelectedCommand));
+            _addMenuItem(
                 flyout,
                 count == 1 ? "Stash selected…" : $"Stash {count} files…",
                 () => _viewModel.Stashes.CanCreateSelectedStash(changes),
-                () => ShowCreateSelectedStashDialogAsync(changes));
+                () => _showSelectedStashDialogAsync(changes));
             if (count == 1 && WorkingTreeViewModel.IsGitIgnoreFileCandidate(changes[0]))
             {
                 var change = changes[0];
                 flyout.Items.Add(new MenuFlyoutSeparator());
-                AddMenuItem(
+                _addMenuItem(
                     flyout,
                     "Add file to .gitignore",
                     () => _viewModel.WorkingTree.CanAddFileToGitIgnore(change),
@@ -77,7 +82,7 @@ public sealed partial class MainPage
                 if (separatorIndex > 0)
                 {
                     var folderPath = change.Path[..separatorIndex];
-                    AddMenuItem(
+                    _addMenuItem(
                         flyout,
                         "Add folder to .gitignore…",
                         () => _viewModel.WorkingTree.CanAddFolderToGitIgnore(folderPath, changes),
@@ -86,30 +91,30 @@ public sealed partial class MainPage
             }
 
             flyout.Items.Add(new MenuFlyoutSeparator());
-            AddMenuItem(
+            _addMenuItem(
                 flyout,
                 count == 1 ? "Discard changes…" : $"Discard {count} files…",
                 () => _viewModel.WorkingTree.RequestDiscardSelectedCommand.CanExecute(null),
-                () => ExecuteCommandAsync(_viewModel.WorkingTree.RequestDiscardSelectedCommand));
+                () => _executeCommandAsync(_viewModel.WorkingTree.RequestDiscardSelectedCommand));
         }
         else
         {
-            AddMenuItem(
+            _addMenuItem(
                 flyout,
                 count == 1 ? "Unstage" : $"Unstage {count} files",
                 () => _viewModel.WorkingTree.UnstageSelectedCommand.CanExecute(null),
-                () => ExecuteCommandAsync(_viewModel.WorkingTree.UnstageSelectedCommand));
-            AddMenuItem(
+                () => _executeCommandAsync(_viewModel.WorkingTree.UnstageSelectedCommand));
+            _addMenuItem(
                 flyout,
                 count == 1 ? "Stash selected…" : $"Stash {count} files…",
                 () => _viewModel.Stashes.CanCreateSelectedStash(changes),
-                () => ShowCreateSelectedStashDialogAsync(changes));
+                () => _showSelectedStashDialogAsync(changes));
 
             if (count == 1)
             {
                 flyout.Items.Add(new MenuFlyoutSeparator());
                 var change = changes[0];
-                AddMenuItem(
+                _addMenuItem(
                     flyout,
                     "Discard changes…",
                     () => CanDiscardStagedFile(change),
@@ -126,7 +131,7 @@ public sealed partial class MainPage
     {
         if (kind == WorkingTreeDiffKind.Unstaged)
         {
-            AddMenuItem(
+            _addMenuItem(
                 flyout,
                 "Stage",
                 () => _viewModel.WorkingTree.CanStageChanges(changes),
@@ -134,7 +139,7 @@ public sealed partial class MainPage
             if (WorkingTreeViewModel.IsGitIgnoreFolderCandidate(folderPath, changes))
             {
                 flyout.Items.Add(new MenuFlyoutSeparator());
-                AddMenuItem(
+                _addMenuItem(
                     flyout,
                     "Add folder to .gitignore…",
                     () => _viewModel.WorkingTree.CanAddFolderToGitIgnore(folderPath, changes),
@@ -142,7 +147,7 @@ public sealed partial class MainPage
             }
 
             flyout.Items.Add(new MenuFlyoutSeparator());
-            AddMenuItem(
+            _addMenuItem(
                 flyout,
                 "Discard changes…",
                 () => _viewModel.WorkingTree.CanDiscardFolderChanges(changes),
@@ -150,7 +155,7 @@ public sealed partial class MainPage
         }
         else
         {
-            AddMenuItem(
+            _addMenuItem(
                 flyout,
                 "Unstage",
                 () => _viewModel.WorkingTree.CanUnstageChanges(changes),
@@ -162,7 +167,9 @@ public sealed partial class MainPage
         string folderPath,
         IReadOnlyList<WorkingTreeChange> changes)
     {
-        if (!_viewModel.WorkingTree.CanAddFolderToGitIgnore(folderPath, changes)) return;
+
+        var repository = _viewModel.Repository;
+        if (repository is null || IsShuttingDown) return;        if (!_viewModel.WorkingTree.CanAddFolderToGitIgnore(folderPath, changes)) return;
 
         var content = new StackPanel { Spacing = 8 };
         content.Children.Add(new TextBlock
@@ -186,7 +193,9 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Close
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await _showDialog(dialog) != ContentDialogResult.Primary
+            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+            || !_viewModel.WorkingTree.CanAddFolderToGitIgnore(folderPath, changes)) return;
         await _viewModel.WorkingTree.AddFolderToGitIgnoreAsync(folderPath, changes);
     }
 
@@ -195,7 +204,9 @@ public sealed partial class MainPage
 
     private async Task ConfirmDiscardStagedFileAsync(WorkingTreeChange change)
     {
-        if (!CanDiscardStagedFile(change)) return;
+
+        var repository = _viewModel.Repository;
+        if (repository is null || IsShuttingDown) return;        if (!CanDiscardStagedFile(change)) return;
 
         var content = new StackPanel { Spacing = 8 };
         content.Children.Add(new TextBlock
@@ -239,7 +250,9 @@ public sealed partial class MainPage
             DefaultButton = ContentDialogButton.Close
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        if (await _showDialog(dialog) != ContentDialogResult.Primary
+            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
+            || !CanDiscardStagedFile(change)) return;
         await _viewModel.WorkingTree.DiscardAllFileChangesAsync(change);
     }
 }
