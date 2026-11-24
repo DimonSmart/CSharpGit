@@ -1,14 +1,35 @@
 using System.Diagnostics;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
+using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace CSharpGit.Presentation;
+namespace CSharpGit.Presentation.Workflows;
 
-public sealed partial class MainPage
+// Owns historical submodule menus, dialogs and operation lifetime.
+internal sealed class SubmoduleWorkflowController(
+    ISubmoduleService submoduleService,
+    OpenRepositoryViewModel viewModel,
+    RepositoryFilesViewModel repositoryFilesViewModel,
+    Func<XamlRoot?> xamlRoot,
+    Func<ContentDialog, Task<ContentDialogResult>> showDialog,
+    Func<bool> isShuttingDown,
+    Func<string, string, Task> showError,
+    Action<Func<Task>, string> runUiOperation,
+    Action<MenuFlyout, string, bool, Func<Task>> addMenuItem,
+    Func<string, Task> copyText)
 {
-    private readonly ISubmoduleService _submoduleService = null!;
+    private readonly ISubmoduleService _submoduleService = submoduleService;
+    private readonly OpenRepositoryViewModel _viewModel = viewModel;
+    private readonly RepositoryFilesViewModel _repositoryFilesViewModel = repositoryFilesViewModel;
+    private readonly Func<XamlRoot?> _xamlRoot = xamlRoot;
+    private readonly Func<ContentDialog, Task<ContentDialogResult>> _showDialog = showDialog;
+    private readonly Func<bool> _isShuttingDown = isShuttingDown;
+    private readonly Func<string, string, Task> _showError = showError;
+    private readonly Action<Func<Task>, string> _runUiOperation = runUiOperation;
+    private readonly Action<MenuFlyout, string, bool, Func<Task>> _addMenuItem = addMenuItem;
+    private readonly Func<string, Task> _copyText = copyText;
 
     private async Task<(Repository Repository, SubmoduleInfo? Info)?> FindSubmoduleAsync(
         RepositorySnapshotEntry entry)
@@ -16,12 +37,12 @@ public sealed partial class MainPage
         var repository = _repositoryFilesViewModel.CurrentRepository;
         if (repository is null || !ReferenceEquals(repository, _viewModel.Repository)) return null;
         var infos = await _submoduleService.ReadAsync(repository);
-        if (IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)) return null;
+        if (_isShuttingDown() || !ReferenceEquals(repository, _viewModel.Repository)) return null;
         return (repository, infos.FirstOrDefault(info =>
             string.Equals(info.Path, entry.Path, StringComparison.Ordinal)));
     }
 
-    private async Task OpenSelectedSubmoduleAsync(RepositorySnapshotEntry entry)
+    internal async Task OpenSelectedSubmoduleAsync(RepositorySnapshotEntry entry)
     {
         try
         {
@@ -53,10 +74,10 @@ public sealed partial class MainPage
                 ?? throw new InvalidOperationException("Could not start another CSharpGit process.");
         }
         catch (OperationCanceledException) { }
-        catch (Exception exception) { await ShowErrorAsync("Could not open submodule", exception.Message); }
+        catch (Exception exception) { await _showError("Could not open submodule", exception.Message); }
     }
 
-    private async Task ShowSubmoduleMenuAsync(FrameworkElement target, RepositorySnapshotEntry entry)
+    internal async Task ShowSubmoduleMenuAsync(FrameworkElement target, RepositorySnapshotEntry entry)
     {
         try
         {
@@ -65,34 +86,34 @@ public sealed partial class MainPage
             var repository = item.Repository;
             var info = item.Info;
             var flyout = new MenuFlyout();
-            AddMenuItem(flyout, "Information", true, () => ShowSubmoduleInfoAsync(entry, info));
+            _addMenuItem(flyout, "Information", true, () => ShowSubmoduleInfoAsync(entry, info));
             flyout.Items.Add(new MenuFlyoutSeparator());
-            AddMenuItem(flyout, "Open Repository", info is { CanOpen: true },
+            _addMenuItem(flyout, "Open Repository", info is { CanOpen: true },
                 () => OpenSelectedSubmoduleAsync(entry));
-            AddMenuItem(flyout, "Initialize",
+            _addMenuItem(flyout, "Initialize",
                 info is { IsInitialized: false, IsConflicted: false, ErrorMessage: null },
                 () => RunSubmoduleOperationAsync(repository, "Initialize submodule",
                     token => _submoduleService.InitializeAsync(repository, entry.Path, token)));
-            AddMenuItem(flyout, "Update to Recorded Commit",
+            _addMenuItem(flyout, "Update to Recorded Commit",
                 info is { IsInitialized: true, IsConflicted: false, ErrorMessage: null },
                 () => RunSubmoduleOperationAsync(repository, "Update submodule",
                     token => _submoduleService.UpdateAsync(repository, entry.Path, token)));
-            AddMenuItem(flyout, "Update All Submodules", true,
+            _addMenuItem(flyout, "Update All Submodules", true,
                 () => RunSubmoduleOperationAsync(repository, "Update all submodules",
                     token => _submoduleService.UpdateAllAsync(repository, token)));
             flyout.Items.Add(new MenuFlyoutSeparator());
             if (!string.IsNullOrWhiteSpace(info?.Url))
-                AddMenuItem(flyout, "Copy URL", true, () => CopyTextAsync(info.Url!));
+                _addMenuItem(flyout, "Copy URL", true, () => _copyText(info.Url!));
             if (info is not null)
-                AddMenuItem(flyout, "Copy Recorded Commit Hash", true,
-                    () => CopyTextAsync(info.RecordedCommit));
+                _addMenuItem(flyout, "Copy Recorded Commit Hash", true,
+                    () => _copyText(info.RecordedCommit));
             if (info is null || !string.Equals(info.RecordedCommit, entry.ObjectId, StringComparison.Ordinal))
-                AddMenuItem(flyout, "Copy Historical Commit Hash", true,
-                    () => CopyTextAsync(entry.ObjectId));
+                _addMenuItem(flyout, "Copy Historical Commit Hash", true,
+                    () => _copyText(entry.ObjectId));
             flyout.ShowAt(target);
         }
         catch (OperationCanceledException) { }
-        catch (Exception exception) { await ShowErrorAsync("Could not read submodule", exception.Message); }
+        catch (Exception exception) { await _showError("Could not read submodule", exception.Message); }
     }
 
     private async Task ShowSubmoduleInfoAsync(RepositorySnapshotEntry entry, SubmoduleInfo? info)
@@ -111,18 +132,18 @@ public sealed partial class MainPage
         });
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = "Submodule",
             Content = new TextBlock { Text = details, TextWrapping = TextWrapping.Wrap },
             CloseButtonText = "Close"
         };
-        await ShowPageDialogAsync(dialog);
+        await _showDialog(dialog);
     }
 
     private async Task RunSubmoduleOperationAsync(
         Repository repository, string title, Func<CancellationToken, Task> mutation)
     {
-        if (IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)) return;
+        if (_isShuttingDown() || !ReferenceEquals(repository, _viewModel.Repository)) return;
         using var lease = _viewModel.TryBeginUserGitOperation(repository);
         if (lease is null) return;
         using var cancellation = new CancellationTokenSource();
@@ -132,7 +153,7 @@ public sealed partial class MainPage
         content.Children.Add(ring);
         var dialog = new ContentDialog
         {
-            XamlRoot = XamlRoot,
+            XamlRoot = _xamlRoot(),
             Title = title,
             Content = content,
             CloseButtonText = "Cancel"
@@ -144,7 +165,7 @@ public sealed partial class MainPage
         {
             if (started) return;
             started = true;
-            RunPageUiOperation(async () =>
+            _runUiOperation(async () =>
             {
                 try { await mutation(cancellation.Token); }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
@@ -163,9 +184,9 @@ public sealed partial class MainPage
             cancellation.Cancel();
             args.Cancel = true;
         };
-        await ShowPageDialogAsync(dialog);
+        await _showDialog(dialog);
         lease.Dispose();
-        if (IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)) return;
+        if (_isShuttingDown() || !ReferenceEquals(repository, _viewModel.Repository)) return;
         // A cancelled or failed recursive update may have changed earlier submodules.
         // Always reconcile the UI with Git, including partial success.
         try
@@ -175,9 +196,9 @@ public sealed partial class MainPage
         }
         catch (Exception exception)
         {
-            await ShowErrorAsync(title + " refresh failed", exception.Message);
+            await _showError(title + " refresh failed", exception.Message);
         }
         if (failure is not null)
-            await ShowErrorAsync(title + " failed", failure);
+            await _showError(title + " failed", failure);
     }
 }

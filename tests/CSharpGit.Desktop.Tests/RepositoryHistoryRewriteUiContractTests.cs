@@ -57,7 +57,7 @@ public sealed class RepositoryHistoryRewriteUiContractTests
     {
         var history = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
         var files = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
-        var submodules = ReadSource("src/CSharpGit.Presentation/MainPage.Submodules.cs");
+        var submodules = ReadSource("src/CSharpGit.Presentation/Workflows/SubmoduleWorkflowController.cs");
         var clone = ReadSource("src/CSharpGit.Presentation/Workflows/RepositoryCloneWorkflow.cs");
 
         Assert.Contains("entry.Kind == RepositorySnapshotEntryKind.Submodule", history, StringComparison.Ordinal);

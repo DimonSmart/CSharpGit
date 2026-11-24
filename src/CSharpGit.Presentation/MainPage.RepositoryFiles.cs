@@ -360,7 +360,7 @@ public sealed partial class MainPage
     {
         if (SelectedRepositorySnapshotEntry() is not { } entry) return;
         if (entry.Kind == RepositorySnapshotEntryKind.Submodule)
-            RunPageUiOperation(() => OpenSelectedSubmoduleAsync(entry), "Open submodule");
+            RunPageUiOperation(() => _submodules.OpenSelectedSubmoduleAsync(entry), "Open submodule");
         else if (entry.Kind == RepositorySnapshotEntryKind.File)
             RunPageUiOperation(() => OpenRepositorySnapshotFileAsync(entry, openInEditor: false), "Repository file opening");
         else
@@ -377,7 +377,7 @@ public sealed partial class MainPage
         }
 
         if (entry.Kind == RepositorySnapshotEntryKind.Submodule)
-            RunPageUiOperation(() => ShowSubmoduleMenuAsync(source, entry), "Submodule menu");
+            RunPageUiOperation(() => _submodules.ShowSubmoduleMenuAsync(source, entry), "Submodule menu");
         else
             ShowRepositorySnapshotFileMenu(source, entry);
         args.Handled = true;
