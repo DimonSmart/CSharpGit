@@ -119,7 +119,7 @@ public sealed class PresentationFeatureArchitectureTests
     [Fact]
     public void RemoteTagBrowserOwnsItsDialogAndRejectsOutdatedLookups()
     {
-        var page = Read("src/CSharpGit.Presentation/MainPage.Tags.cs");
+        var page = Read("src/CSharpGit.Presentation/Workflows/TagWorkflowController.cs");
         var browser = Read("src/CSharpGit.Presentation/Dialogs/RemoteTagsDialogController.cs");
 
         Assert.Contains("new RemoteTagsDialogController(", page);

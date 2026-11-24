@@ -23,7 +23,7 @@ public sealed partial class MainPage
         _createTagHereItem.Click += (_, _) =>
         {
             if (_viewModel.History.SelectedRow?.Commit.Hash is { } hash)
-                RunPageUiOperation(() => ShowCreateTagDialogAsync(hash, selectedCommit: true), "Create tag here");
+                RunPageUiOperation(() => _tagWorkflows.ShowCreateTagDialogAsync(hash, selectedCommit: true), "Create tag here");
         };
         _commitActionsFlyout.Items.Insert(3, _createTagHereItem);
 
@@ -63,7 +63,7 @@ public sealed partial class MainPage
                 IsEnabled = canMutate
             };
             item.Click += (_, _) =>
-                RunPageUiOperation(() => DeleteTagFromUiAsync(tag), "Delete tag");
+                RunPageUiOperation(() => _tagWorkflows.DeleteTagFromUiAsync(tag), "Delete tag");
             _deleteTagSubItem.Items.Add(item);
         }
 
@@ -83,10 +83,10 @@ public sealed partial class MainPage
         if (node.Kind == RepositoryTreeNodeKind.Group && node.Name == "Tags")
         {
             var flyout = new MenuFlyout();
-            AddMenuItem(flyout, "Create tag…", () => CanMutateTags(), () => ShowCreateTagDialogAsync("HEAD", selectedCommit: false));
-            AddMenuItem(flyout, "Fetch tags…", () => CanMutateTags(), FetchTagsFromUiAsync);
-            AddMenuItem(flyout, "Remote tags…", () => CanMutateTags(), ShowRemoteTagsAsync);
-            AddMenuItem(flyout, "Push all tags…", () => CanMutateTags(), PushAllTagsFromUiAsync);
+            AddMenuItem(flyout, "Create tag…", () => CanMutateTags(), () => _tagWorkflows.ShowCreateTagDialogAsync("HEAD", selectedCommit: false));
+            AddMenuItem(flyout, "Fetch tags…", () => CanMutateTags(), _tagWorkflows.FetchTagsFromUiAsync);
+            AddMenuItem(flyout, "Remote tags…", () => CanMutateTags(), _tagWorkflows.ShowRemoteTagsAsync);
+            AddMenuItem(flyout, "Push all tags…", () => CanMutateTags(), _tagWorkflows.PushAllTagsFromUiAsync);
             flyout.ShowAt(source, args.GetPosition(source));
             args.Handled = true;
             return true;
@@ -95,16 +95,16 @@ public sealed partial class MainPage
         if (node.Kind == RepositoryTreeNodeKind.Tag && node.Value is GitTag tag)
         {
             var flyout = new MenuFlyout();
-            AddMenuItem(flyout, "Tag details…", true, () => ShowTagDetailsAsync(tag));
+            AddMenuItem(flyout, "Tag details…", true, () => _tagWorkflows.ShowTagDetailsAsync(tag));
             AddMenuItem(flyout, "Show history up to tag", () => _viewModel.CanStartUserGitOperation,
                 () => ShowReferenceHistoryAsync($"refs/tags/{tag.Name}", $"Tag: {tag.Name}"));
             AddMenuItem(flyout, "Create branch from here…", () => CanMutateTags(),
                 () => CreateBranchFromReferenceAsync($"refs/tags/{tag.Name}", tag.TargetCommit));
             AddMenuItem(flyout, "Checkout detached", () => CanMutateTags(), () => ConfirmCheckoutTagDetachedAsync(tag));
             flyout.Items.Add(new MenuFlyoutSeparator());
-            AddMenuItem(flyout, "Push tag…", () => CanMutateTags(), () => PushTagFromUiAsync(tag));
-            AddMenuItem(flyout, "Delete from remote…", () => CanMutateTags(), () => DeleteRemoteTagFromUiAsync(tag));
-            AddMenuItem(flyout, "Delete tag…", () => CanMutateTags(), () => DeleteTagFromUiAsync(tag));
+            AddMenuItem(flyout, "Push tag…", () => CanMutateTags(), () => _tagWorkflows.PushTagFromUiAsync(tag));
+            AddMenuItem(flyout, "Delete from remote…", () => CanMutateTags(), () => _tagWorkflows.DeleteRemoteTagFromUiAsync(tag));
+            AddMenuItem(flyout, "Delete tag…", () => CanMutateTags(), () => _tagWorkflows.DeleteTagFromUiAsync(tag));
             flyout.Items.Add(new MenuFlyoutSeparator());
             AddMenuItem(flyout, "Copy tag name", true, () => CopyTextAsync(tag.Name));
             flyout.ShowAt(source, args.GetPosition(source));
@@ -116,348 +116,6 @@ public sealed partial class MainPage
     }
 
     private bool CanMutateTags() => _viewModel.Tags.CanMutate;
-
-    private async Task ShowCreateTagDialogAsync(string targetCommit, bool selectedCommit)
-    {
-        var repository = _viewModel.Repository;
-        if (repository is null || !CanMutateTags()) return;
-
-        var name = new TextBox { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"), Header = "Tag name", PlaceholderText = "v1.2.0" };
-        var target = new TextBox
-        { Style = UiStyles.Resolve<Style>("CompactTextBoxStyle"),
-            Header = "Target commit",
-            Text = targetCommit,
-            IsReadOnly = true,
-            IsTabStop = false
-        };
-        var type = new ComboBox
-        { Style = UiStyles.Resolve<Style>("CompactComboBoxStyle"),
-            Header = "Type",
-            ItemsSource = new[] { GitTagKind.Annotated, GitTagKind.Lightweight },
-            SelectedItem = GitTagKind.Annotated,
-            MinWidth = 220
-        };
-        var message = new TextBox
-        { Style = UiStyles.Resolve<Style>("CompactMultilineTextBoxStyle"),
-            Header = "Message",
-            AcceptsReturn = true,
-            TextWrapping = TextWrapping.Wrap,
-            MinHeight = 90,
-            PlaceholderText = "Release/tag message"
-        };
-        type.SelectionChanged += (_, _) => message.IsEnabled = type.SelectedItem is GitTagKind.Annotated;
-
-        var content = new StackPanel { Width = 460, Spacing = 10 };
-        content.Children.Add(name);
-        content.Children.Add(target);
-        content.Children.Add(type);
-        content.Children.Add(message);
-
-        var dialog = new ContentDialog
-        {
-            XamlRoot = XamlRoot,
-            Title = selectedCommit ? "Create tag here" : "Create tag",
-            Content = content,
-            PrimaryButtonText = "Create",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary
-        };
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
-            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
-            || !CanMutateTags()) return;
-
-        var kind = type.SelectedItem is GitTagKind selectedKind ? selectedKind : GitTagKind.Annotated;
-        if (string.IsNullOrWhiteSpace(name.Text))
-        {
-            await ShowErrorAsync("Tag name required", "Enter a Git tag name.");
-            return;
-        }
-        if (kind == GitTagKind.Annotated && string.IsNullOrWhiteSpace(message.Text))
-        {
-            await ShowErrorAsync("Tag message required", "Annotated tags require a non-empty message.");
-            return;
-        }
-
-        await _viewModel.Tags.CreateTagAsync(
-            repository,
-            new CreateTagRequest(
-                name.Text.Trim(),
-                target.Text.Trim(),
-                kind,
-                kind == GitTagKind.Annotated ? message.Text : null));
-    }
-
-    private async Task ShowTagDetailsAsync(GitTag tag)
-    {
-        var text = new StringBuilder()
-            .AppendLine($"Name: {tag.Name}")
-            .AppendLine($"Type: {(tag.Kind == GitTagKind.Annotated ? "Annotated" : "Lightweight")}")
-            .AppendLine($"Target commit: {tag.TargetCommit}");
-        if (tag.Kind == GitTagKind.Annotated)
-        {
-            text.AppendLine($"Tag object: {tag.TagObjectId}");
-            var tagger = tag.TaggerName ?? string.Empty;
-            if (!string.IsNullOrWhiteSpace(tag.TaggerEmail))
-                tagger = tagger.Length == 0 ? tag.TaggerEmail : $"{tagger} <{tag.TaggerEmail}>";
-            text.AppendLine($"Tagger: {tagger}");
-            text.AppendLine($"Date: {tag.TaggedAt?.ToString("u") ?? string.Empty}");
-            text.AppendLine().AppendLine("Message:").Append(tag.Message ?? string.Empty);
-        }
-
-        var display = new TextBox
-        { Style = UiStyles.Resolve<Style>("CompactMultilineTextBoxStyle"),
-            Text = text.ToString(),
-            IsReadOnly = true,
-            AcceptsReturn = true,
-            TextWrapping = TextWrapping.Wrap,
-            MinWidth = 520,
-            MinHeight = tag.Kind == GitTagKind.Annotated ? 260 : 100
-        };
-        var dialog = new ContentDialog
-        {
-            XamlRoot = XamlRoot,
-            Title = "Tag details",
-            Content = display,
-            CloseButtonText = "Close",
-            DefaultButton = ContentDialogButton.Close
-        };
-        await ShowPageDialogAsync(dialog);
-    }
-
-    private async Task DeleteTagFromUiAsync(GitTag tag)
-    {
-        var repository = _viewModel.Repository;
-        if (repository is null || !CanMutateTags()) return;
-
-        var hasRemotes = _viewModel.RepositorySync.Remotes.Count > 0;
-        var deleteRemote = new CheckBox
-        { Style = UiStyles.Resolve<Style>("CompactCheckBoxStyle"),
-            Content = "Also delete this tag from remote",
-            IsChecked = hasRemotes,
-            IsEnabled = hasRemotes
-        };
-        var remoteSelector = new ComboBox
-        { Style = UiStyles.Resolve<Style>("CompactComboBoxStyle"),
-            Header = "Remote",
-            ItemsSource = _viewModel.RepositorySync.Remotes,
-            DisplayMemberPath = nameof(GitRemote.Name),
-            SelectedItem = GetPreferredTagRemote(),
-            IsEnabled = hasRemotes,
-            MinWidth = 320
-        };
-        var content = new StackPanel { Width = 440, Spacing = 10 };
-        content.Children.Add(new TextBlock
-        {
-            Text = $"Tag: {tag.Name}\nTarget commit: {tag.TargetCommit}",
-            TextWrapping = TextWrapping.Wrap
-        });
-        content.Children.Add(deleteRemote);
-        content.Children.Add(remoteSelector);
-        content.Children.Add(new TextBlock
-        {
-            Text = "This will delete the local tag and, if selected, the corresponding tag from the selected remote.",
-            TextWrapping = TextWrapping.Wrap
-        });
-
-        var dialog = new ContentDialog
-        {
-            XamlRoot = XamlRoot,
-            Title = "Delete tag?",
-            Content = content,
-            PrimaryButtonText = "Delete tag",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Close
-        };
-
-        void UpdateDeleteAvailability()
-        {
-            var deleteRemoteRequested = deleteRemote.IsChecked == true;
-            remoteSelector.IsEnabled = hasRemotes && deleteRemoteRequested;
-            dialog.IsPrimaryButtonEnabled = !deleteRemoteRequested || remoteSelector.SelectedItem is GitRemote;
-        }
-
-        deleteRemote.Checked += (_, _) => UpdateDeleteAvailability();
-        deleteRemote.Unchecked += (_, _) => UpdateDeleteAvailability();
-        remoteSelector.SelectionChanged += (_, _) => UpdateDeleteAvailability();
-        UpdateDeleteAvailability();
-
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
-            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
-            || !CanMutateTags()) return;
-
-        var selectedRemote = deleteRemote.IsChecked == true
-            ? remoteSelector.SelectedItem as GitRemote
-            : null;
-        if (deleteRemote.IsChecked == true && selectedRemote is null) return;
-
-        var result = await _viewModel.Tags.DeleteTagAsync(repository, tag, selectedRemote);
-        if (result.Succeeded && result.RemoteWasMissing && result.RemoteName is { } remoteName)
-            await ShowInformationAsync(
-                "Tag deleted",
-                $"The local tag was deleted.\nThe tag did not exist on '{remoteName}'.");
-    }
-
-    private async Task PushTagFromUiAsync(GitTag tag)
-    {
-        var repository = _viewModel.Repository;
-        if (repository is null) return;
-        var remote = await SelectTagRemoteAsync("Push tag", $"Push '{tag.Name}' to remote");
-        if (remote is null || IsShuttingDown
-            || !ReferenceEquals(repository, _viewModel.Repository) || !CanMutateTags()) return;
-
-        var result = await _viewModel.Tags.PushTagAsync(repository, tag, remote);
-        if (result is null) return;
-
-        if (result.Kind == PushTagResultKind.Conflict && result.Conflict is { } conflict)
-        {
-            await ConfirmForceUpdateRemoteTagAsync(repository, conflict);
-            return;
-        }
-
-        await ShowInformationAsync(
-            result.Kind == PushTagResultKind.AlreadyUpToDate ? "Tag already up to date" : "Tag pushed",
-            result.Message);
-    }
-
-    private async Task ConfirmForceUpdateRemoteTagAsync(
-        Repository repository,
-        RemoteTagConflictSnapshot snapshot)
-    {
-        if (!ReferenceEquals(_viewModel.Repository, repository)) return;
-        var dialog = new ContentDialog
-        {
-            XamlRoot = XamlRoot,
-            Title = "Force update remote tag?",
-            Content =
-                $"Remote: {snapshot.Remote}\n" +
-                $"Tag: {snapshot.TagName}\n" +
-                $"Current remote target: {snapshot.CurrentRemoteTarget}\n" +
-                $"New local target: {snapshot.NewLocalTarget}\n\n" +
-                "Moving an already published tag may break consumers relying on that release/tag.",
-            PrimaryButtonText = "Force update remote tag",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Close
-        };
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
-            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
-            || !CanMutateTags()) return;
-
-        await _viewModel.Tags.ForceUpdateRemoteTagAsync(repository, snapshot);
-    }
-
-    private async Task DeleteRemoteTagFromUiAsync(GitTag tag)
-    {
-        var repository = _viewModel.Repository;
-        if (repository is null || !CanMutateTags()) return;
-        var remote = await SelectTagRemoteAsync("Delete remote tag", $"Delete '{tag.Name}' from remote");
-        if (remote is null || IsShuttingDown
-            || !ReferenceEquals(repository, _viewModel.Repository) || !CanMutateTags()) return;
-
-        var lookup = await _viewModel.Tags.ReadRemoteTagAsync(repository, remote, tag.Name);
-        if (IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository))
-            return;
-        if (!lookup.Succeeded)
-        {
-            await ShowErrorAsync("Could not read remote tag", lookup.ErrorMessage ?? "Unknown error.");
-            return;
-        }
-
-        var remoteTag = lookup.Value;
-        if (remoteTag is null)
-        {
-            await ShowInformationAsync("Remote tag not found", $"Tag '{tag.Name}' does not exist on '{remote.Name}'.");
-            return;
-        }
-
-        var dialog = new ContentDialog
-        {
-            XamlRoot = XamlRoot,
-            Title = "Delete remote tag?",
-            Content =
-                $"Remote: {remoteTag.Remote}\n" +
-                $"Tag: {remoteTag.Name}\n" +
-                $"Target: {remoteTag.TargetCommit}\n" +
-                $"Object: {remoteTag.ObjectId}\n\n" +
-                "The local tag will remain.",
-            PrimaryButtonText = "Delete remote tag",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Close
-        };
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
-            || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository)
-            || !CanMutateTags()) return;
-
-        await _viewModel.Tags.DeleteRemoteTagAsync(repository, remoteTag);
-    }
-
-    private Task ShowRemoteTagsAsync() =>
-        new RemoteTagsDialogController(
-            _viewModel,
-            XamlRoot,
-            ShowPageDialogAsync,
-            () => IsShuttingDown,
-            ReportUiFailure,
-            (operation, description) => RunPageUiOperation(operation, description))
-        .ShowAsync();
-
-    private async Task FetchTagsFromUiAsync()
-    {
-        var repository = _viewModel.Repository;
-        if (repository is null) return;
-        var remote = await SelectTagRemoteAsync("Fetch tags", "Fetch tags from remote");
-        if (remote is null || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository))
-            return;
-        await _viewModel.Tags.FetchTagsAsync(repository, remote);
-    }
-
-    private async Task PushAllTagsFromUiAsync()
-    {
-        var repository = _viewModel.Repository;
-        if (repository is null) return;
-        var remote = await SelectTagRemoteAsync("Push all tags", "Push all local tags to remote");
-        if (remote is null || IsShuttingDown || !ReferenceEquals(repository, _viewModel.Repository))
-            return;
-        await _viewModel.Tags.PushAllTagsAsync(repository, remote);
-    }
-
-    private GitRemote? GetPreferredTagRemote() => _viewModel.Tags.PreferredRemote;
-
-    private async Task<GitRemote?> SelectTagRemoteAsync(string title, string prompt)
-    {
-        if (_viewModel.RepositorySync.Remotes.Count == 0)
-        {
-            await ShowErrorAsync(title, "This repository has no configured remotes.");
-            return null;
-        }
-
-        var preferred = GetPreferredTagRemote();
-
-        var selector = new ComboBox
-        { Style = UiStyles.Resolve<Style>("CompactComboBoxStyle"),
-            Header = "Remote",
-            ItemsSource = _viewModel.RepositorySync.Remotes,
-            DisplayMemberPath = nameof(GitRemote.Name),
-            SelectedItem = preferred,
-            MinWidth = 320
-        };
-        var content = new StackPanel { Width = 400, Spacing = 10 };
-        content.Children.Add(new TextBlock { Text = prompt, TextWrapping = TextWrapping.Wrap });
-        content.Children.Add(selector);
-        var dialog = new ContentDialog
-        {
-            XamlRoot = XamlRoot,
-            Title = title,
-            Content = content,
-            PrimaryButtonText = "Continue",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary
-        };
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary) return null;
-        if (selector.SelectedItem is GitRemote remote) return remote;
-
-        await ShowErrorAsync("Remote required", "Select the remote explicitly.");
-        return null;
-    }
 
     private async Task ShowInformationAsync(string title, string message)
     {
