@@ -8,13 +8,14 @@ public sealed class RepositoryFilesUiContractTests
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml"));
         var filesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs"));
+        var historyCode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml.cs"));
         var changesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.Changes.cs"));
 
         Assert.Contains("Header=\"{Binding CommitDetails.SelectedDetailsTitle}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ChangesTab\" Header=\"Changes\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("x:Name=\"FilesTab\" Header=\"Changes\"", xaml, StringComparison.Ordinal);
         Assert.Contains("new PivotItem { Header = \"Files\", Name = \"FilesTab\" }", filesSurface, StringComparison.Ordinal);
-        Assert.Contains("_changesTab = ChangesTab", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("DetailsTabs.SelectedItem = ChangesTab", historyCode, StringComparison.Ordinal);
         Assert.Contains("ReferenceEquals(DetailsTabs.SelectedItem, ChangesTabControl)", changesSurface, StringComparison.Ordinal);
     }
 
@@ -24,6 +25,7 @@ public sealed class RepositoryFilesUiContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
+        var actions = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryFilesActionController.cs"));
         var previewSurface = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryFilePreviewController.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
 
@@ -33,10 +35,10 @@ public sealed class RepositoryFilesUiContractTests
         Assert.Contains("_repositorySnapshotService.ReadTreeAsync", feature, StringComparison.Ordinal);
         Assert.Contains("_repositorySnapshotService.SearchContentAsync", feature, StringComparison.Ordinal);
         Assert.Contains("_repositorySnapshotService.ResolveFileVersionAsync", feature, StringComparison.Ordinal);
-        Assert.Contains("_repositoryFilesViewModel.ResolveFileVersionWithinAcceptedOperationAsync", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("_files.ResolveFileVersionWithinAcceptedOperationAsync", actions, StringComparison.Ordinal);
         Assert.Contains("_repositoryFilesViewModel.ResolveFileVersionWithinAcceptedOperationAsync", previewSurface, StringComparison.Ordinal);
-        Assert.Contains("MaterializeAsync", filesSurface, StringComparison.Ordinal);
-        Assert.Contains("OpenEditorAsync", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("MaterializeAsync", actions, StringComparison.Ordinal);
+        Assert.Contains("OpenEditorAsync", actions, StringComparison.Ordinal);
         Assert.Contains("MaterializeAsync", previewSurface, StringComparison.Ordinal);
         Assert.Contains("lease.CancellationToken", previewSurface, StringComparison.Ordinal);
         Assert.DoesNotContain("git ls-tree", feature, StringComparison.OrdinalIgnoreCase);
@@ -51,12 +53,13 @@ public sealed class RepositoryFilesUiContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
+        var interactions = File.ReadAllText(Path.Combine(presentation, "Controls", "RepositoryFilesSurface.Interactions.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
         var model = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySnapshotTreeNode.cs"));
 
-        Assert.Contains("SetActiveAsync(true)", filesSurface, StringComparison.Ordinal);
-        Assert.Contains("SetActiveAsync(false)", filesSurface, StringComparison.Ordinal);
-        Assert.Contains("ActivateRepositoryFilesAsync", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("SetActiveAsync(true)", interactions, StringComparison.Ordinal);
+        Assert.Contains("SetActiveAsync(false)", interactions, StringComparison.Ordinal);
+        Assert.Contains("ActivateRepositoryFilesAsync", interactions, StringComparison.Ordinal);
         Assert.Contains("_snapshotCache.TryGet", feature, StringComparison.Ordinal);
         Assert.Contains("_snapshotLoadedSuccessfully", feature, StringComparison.Ordinal);
         Assert.Contains("CancelRequests", feature, StringComparison.Ordinal);
@@ -94,8 +97,8 @@ public sealed class RepositoryFilesUiContractTests
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
         var model = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySnapshotTreeNode.cs"));
 
-        Assert.Contains("args.Key != VirtualKey.Enter", filesSurface, StringComparison.Ordinal);
-        Assert.Contains("_repositoryFilesViewModel.SearchContentAsync", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("args.Key != VirtualKey.Enter", interactions, StringComparison.Ordinal);
+        Assert.Contains("_repositoryFilesViewModel.SearchContentAsync", interactions, StringComparison.Ordinal);
         Assert.Contains("RepositorySnapshotTreeSynchronizer.Reconcile(TreeRoots, _snapshot, query)", feature, StringComparison.Ordinal);
         Assert.Contains("entry.Path.Contains(query, StringComparison.OrdinalIgnoreCase)", model, StringComparison.Ordinal);
         Assert.Contains("entry.Kind == RepositorySnapshotEntryKind.File", feature, StringComparison.Ordinal);
@@ -124,17 +127,17 @@ public sealed class RepositoryFilesUiContractTests
         Assert.Contains("TextPreviewContent", previewHost, StringComparison.Ordinal);
         Assert.Contains("ImagePreviewContent", previewHost, StringComparison.Ordinal);
         Assert.Contains("BinaryPreviewContent", previewHost, StringComparison.Ordinal);
-        Assert.Contains("RepositoryFilesTree_SelectionChanged", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("RepositoryFilesTree_SelectionChanged", interactions, StringComparison.Ordinal);
         Assert.False(File.Exists(Path.Combine(presentation, "MainPage.RepositoryFilePreview.cs")));
-        Assert.Contains("RepositoryContentResults_SelectionChanged", filesSurface, StringComparison.Ordinal);
-        Assert.Contains("SnapshotMatchesSelection", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("RepositoryContentResults_SelectionChanged", interactions, StringComparison.Ordinal);
+        Assert.Contains("SnapshotMatchesSelection", interactions, StringComparison.Ordinal);
     }
 
     [Fact]
     public void RepositoryFilesSelectionUsesEventDeltaAndSuppressesReverseFeedback()
     {
         var root = FindRepositoryRoot();
-        var files = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs"));
+        var files = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "RepositoryFilesSurface.Interactions.cs"));
         Assert.Contains("args.AddedItems.Cast<object?>()", files, StringComparison.Ordinal);
         Assert.Contains("args.RemovedItems.Cast<object?>()", files, StringComparison.Ordinal);
         Assert.Contains("_repositoryFilesSelectionRouter.Route(", files, StringComparison.Ordinal);
