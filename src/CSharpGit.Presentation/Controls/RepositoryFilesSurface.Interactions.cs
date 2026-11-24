@@ -369,7 +369,7 @@ internal sealed partial class RepositoryFilesSurface
         if (entry.Kind == RepositorySnapshotEntryKind.Submodule)
             RunPageUiOperation(() => _openSubmodule(entry), "Open submodule");
         else if (entry.Kind == RepositorySnapshotEntryKind.File)
-            RunPageUiOperation(() => _openFile(entry, openInEditor: false), "Repository file opening");
+            RunPageUiOperation(() => _openFile(entry, false), "Repository file opening");
         else
             return;
         args.Handled = true;
