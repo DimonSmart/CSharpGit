@@ -116,6 +116,7 @@ public sealed class DesignSystemContractTests
     {
         var root = FindRepositoryRoot();
         var files = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs");
+        var fileInteractions = Read(root, "src", "CSharpGit.Presentation", "Controls", "RepositoryFilesSurface.Interactions.cs");
         var changes = Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.Changes.cs");
         var mainCode = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
 
@@ -124,9 +125,9 @@ public sealed class DesignSystemContractTests
         Assert.DoesNotContain("_repositoryFilesTab.HeaderTemplate =", files);
         Assert.DoesNotContain("_repositoryFilesTab.Style =", files);
         Assert.Contains("DetailsTabs.SelectedItem", files);
-        Assert.Contains("SetActiveAsync(true)", files);
-        Assert.Contains("SetActiveAsync(false)", files);
-        Assert.Contains("ActivateRepositoryFilesAsync", files);
+        Assert.Contains("SetActiveAsync(true)", fileInteractions);
+        Assert.Contains("SetActiveAsync(false)", fileInteractions);
+        Assert.Contains("ActivateRepositoryFilesAsync", fileInteractions);
         Assert.Contains("DetailsTabs.SelectedItem", changes);
         Assert.Contains("SetActive(active)", changes);
         Assert.Contains("_updateRepositoryFilesViewActivity();", changes);
@@ -148,6 +149,7 @@ public sealed class DesignSystemContractTests
         var historyView = XDocument.Parse(Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml"));
         var icons = XDocument.Parse(Read(root, "src", "CSharpGit.Presentation", "Styles", "Icons.xaml"));
         var code = Read(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs");
+        var availability = Read(root, "src", "CSharpGit.Presentation", "Workflows", "FileActionAvailabilityController.cs");
         var menu = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.ContextMenu.cs");
         XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
 
@@ -201,7 +203,7 @@ public sealed class DesignSystemContractTests
         Assert.Contains("WorkingTree.StageSelectedCommand", menu);
         Assert.Contains("WorkingTree.UnstageSelectedCommand", menu);
         Assert.Contains("WorkingTree.RequestDiscardSelectedCommand", menu);
-        Assert.Contains("Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(button)", code);
+        Assert.Contains("Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(button)", availability);
     }
 
     [Fact]
