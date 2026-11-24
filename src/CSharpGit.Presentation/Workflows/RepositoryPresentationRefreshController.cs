@@ -6,14 +6,12 @@ namespace CSharpGit.Presentation.Workflows;
 internal sealed class RepositoryPresentationRefreshController(
     DispatcherQueue dispatcher,
     Func<bool> isShuttingDown,
-    Action initializeTagSupport,
     Action refreshWorkingTree,
     Action refreshRepositoryTree,
     Action updateStatusBar)
 {
     private readonly DispatcherQueue _dispatcher = dispatcher;
     private readonly Func<bool> _isShuttingDown = isShuttingDown;
-    private readonly Action _initializeTagSupport = initializeTagSupport;
     private readonly Action _refreshWorkingTree = refreshWorkingTree;
     private readonly Action _refreshRepositoryTree = refreshRepositoryTree;
     private readonly Action _updateStatusBar = updateStatusBar;
@@ -55,8 +53,6 @@ internal sealed class RepositoryPresentationRefreshController(
         var refreshRepositoryTree = _repositoryTreePresentationDirty;
         _workingTreePresentationDirty = false;
         _repositoryTreePresentationDirty = false;
-        _initializeTagSupport();
-
         if (refreshWorkingTree) _refreshWorkingTree();
         if (refreshRepositoryTree) _refreshRepositoryTree();
         _updateStatusBar();
