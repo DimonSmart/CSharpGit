@@ -86,7 +86,7 @@ public sealed partial class MainPage : Page
     private readonly ObservableCollection<CommitFileRow> _commitFiles = [];
     private bool _wasBusy;
     private readonly WorkspaceNavigator _workspaceNavigator;
-    private RepositoryTreeNavigationCoordinator _repositoryTreeNavigation => _workspaceNavigator.Interactions;
+    private readonly Workflows.WorkspaceNavigationController _workspaceNavigation;
     private readonly Workflows.RepositoryRefreshController _repositoryRefresh;
     private readonly Dialogs.PageDialogController _pageDialogs;
     private readonly Workflows.DiffPresentationController _diffPresentation;
@@ -122,6 +122,9 @@ public sealed partial class MainPage : Page
             UpdateRepositoryFilesViewActivity,
             (operation, description) => RunPageUiOperation(operation, description));
         _workspaceNavigator = workspaceNavigator ?? throw new ArgumentNullException(nameof(workspaceNavigator));
+        _workspaceNavigation = new Workflows.WorkspaceNavigationController(
+            _viewModel, _workspaceNavigator, HistoryPane, WorkingTreePane, RepositoryToolbar,
+            DispatcherQueue, ExecuteCommandAsync, () => IsShuttingDown, SetRepositoryFilesStashMode);
         _repositoryRefresh = new Workflows.RepositoryRefreshController(
             _viewModel,
             new RepositoryChangeCoordinator(
@@ -162,7 +165,7 @@ public sealed partial class MainPage : Page
             ShowPageDialogAsync);
         RefreshPresentationCollections();
         WorkingTreePane.InitializeWorkingTreeDiffSurface();
-        UpdateHistoryScopePresentation();
+        _workspaceNavigation.UpdateHistoryPresentation();
     }
 
     private async Task ShowInformationAsync(string title, string message)
@@ -221,7 +224,7 @@ public sealed partial class MainPage : Page
     {
         if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.Repository))
         {
-            _workspaceNavigator.ResetForRepositoryChange();
+            _workspaceNavigation.ResetForRepositoryChange();
             UpdateStatusBar();
             RepositoryHeader.Refresh();
             _settingsWindowController.RepositoryChanged();
@@ -237,7 +240,7 @@ public sealed partial class MainPage : Page
             var becameIdle = _wasBusy && !_viewModel.IsBusy;
             _wasBusy = _viewModel.IsBusy;
             UpdateStatusBar();
-            UpdateLoadMoreHistoryAvailability();
+            _workspaceNavigation.UpdateLoadMoreAvailability();
             if (becameIdle && _editCommitMessage.ShouldRestorePendingEditedCommitSelection)
                 RunPageUiOperation(_editCommitMessage.RestorePendingEditedCommitSelectionAsync,
                     "Restore edited commit selection");
@@ -245,10 +248,8 @@ public sealed partial class MainPage : Page
                 RunPageUiOperation(_repositoryFilePreview.ResumeAsync, "Resume repository file preview");
             if (becameIdle && _commitImageDiff.HasPending)
                 RunPageUiOperation(_commitImageDiff.ResumeAsync, "Resume commit image preview");
-            if (becameIdle && _repositoryTreeNavigation.HasPendingCheckout)
-                RunPageUiOperation(ResumePendingRepositoryTreeCheckoutAsync, "Resume branch checkout");
-            else if (becameIdle && _repositoryTreeNavigation.HasPendingReference)
-                RunPageUiOperation(ResumePendingRepositoryTreeNavigationAsync, "Resume branch navigation");
+            if (becameIdle)
+                RunPageUiOperation(_workspaceNavigation.ResumePendingAsync, "Resume repository tree navigation");
         }
         else if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.CanChangeRepository))
         {
@@ -260,7 +261,7 @@ public sealed partial class MainPage : Page
     {
         if (eventArgs.PropertyName is nameof(StashesViewModel.SelectedStash)
             or nameof(StashesViewModel.HasSelectedStash))
-            UpdateStashPresentation();
+            _workspaceNavigation.UpdateStashPresentation();
     }
 
     private void CommitDetailsViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
@@ -269,7 +270,7 @@ public sealed partial class MainPage : Page
             RunPageUiOperation(RefreshCommitFilesAsync, "Refresh commit file list");
         else if (eventArgs.PropertyName is nameof(CommitDetailsViewModel.SelectedStashDetails)
                  or nameof(CommitDetailsViewModel.HasSelectedStash))
-            UpdateStashPresentation();
+            _workspaceNavigation.UpdateStashPresentation();
 
         if (eventArgs.PropertyName == nameof(CommitDetailsViewModel.SelectedObjectCommit))
             HistoryPane.SynchronizeDetailsViewport();
@@ -280,7 +281,7 @@ public sealed partial class MainPage : Page
         if (eventArgs.PropertyName is nameof(HistoryViewModel.IsReferenceScoped)
             or nameof(HistoryViewModel.ActiveReferenceLabel))
         {
-            UpdateHistoryScopePresentation();
+            _workspaceNavigation.UpdateHistoryPresentation();
         }
         else if (eventArgs.PropertyName is nameof(HistoryViewModel.HasMore)
                  or nameof(HistoryViewModel.IsLoading))
@@ -291,16 +292,6 @@ public sealed partial class MainPage : Page
 
     private static void History_CommitLookupCompleted(long startedAt, int itemsExamined) =>
         HistoryRenderDiagnostics.CommitLookupCompleted(startedAt, itemsExamined);
-
-    private void UpdateHistoryScopePresentation()
-    {
-        HistoryView.UpdateScopePresentation();
-        UpdateLoadMoreHistoryAvailability();
-        UpdateCommitNavigationText();
-    }
-
-    private void UpdateLoadMoreHistoryAvailability() =>
-        HistoryView.UpdateLoadMoreAvailability();
 
     private void RefreshPresentationCollections()
     {
@@ -347,7 +338,7 @@ public sealed partial class MainPage : Page
                 _viewModel.RepositoryOperations.CurrentOperation == RepositoryOperation.None
                     ? "Ready" : _viewModel.RepositoryOperations.CurrentOperation.ToString(),
             _viewModel.IsBusy);
-        UpdateCommitNavigationText();
+        _workspaceNavigation.UpdateCommitNavigationText();
     }
 
     private Task RefreshCommitFilesAsync()
@@ -490,9 +481,9 @@ public sealed partial class MainPage : Page
         {
             case RepositoryToolbarAction.CommitNavigation:
                 if (WorkingTreePane.Visibility == Visibility.Visible)
-                    RunPageUiOperation(ShowAllHistoryAsync, "Back to history");
+                    RunPageUiOperation(_workspaceNavigation.ShowAllHistoryAsync, "Back to history");
                 else if (!IsShuttingDown)
-                    ShowWorkingTree();
+                    _workspaceNavigation.ShowWorkingTree();
                 break;
             case RepositoryToolbarAction.Fetch:
                 RunPageUiOperation(() => ExecuteCommandAsync(_viewModel.RepositorySync.FetchCommand), "Fetch");
