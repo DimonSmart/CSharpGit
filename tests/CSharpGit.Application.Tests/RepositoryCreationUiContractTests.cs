@@ -16,7 +16,7 @@ public sealed class RepositoryCreationUiContractTests
         var recentViewModel = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "ViewModels", "RecentRepositoriesViewModel.cs"));
         var recentIntegration = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
+            root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Repository.cs"));
         var workflow = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryCreationWorkflow.cs"));
 
@@ -72,7 +72,7 @@ public sealed class RepositoryCreationUiContractTests
         var openViewModel = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var mainPage = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+            root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.cs"));
         var switching = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "Workflows", "RepositorySwitchController.cs"));
 

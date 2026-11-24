@@ -5,7 +5,7 @@ public sealed class PresentationFeatureArchitectureTests
     [Fact]
     public void RepositoryMaintenanceIsFeatureOwnedAndUsesSharedGate()
     {
-        var page = Read("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
+        var page = Read("src/CSharpGit.Presentation/Composition/WindowWorkspaceComposition.Repository.cs");
         var workflow = Read("src/CSharpGit.Presentation.Core/ViewModels/RepositoryMaintenanceViewModel.cs");
         var context = Read("src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.RepositoryMaintenance.cs");
         var dialog = Read("src/CSharpGit.Presentation/RepositoryMaintenanceDialog.cs");
@@ -49,7 +49,7 @@ public sealed class PresentationFeatureArchitectureTests
         var maintenance = Read("src/CSharpGit.Presentation.Core/ViewModels/RepositoryMaintenanceViewModel.cs");
         var files = Read("src/CSharpGit.Presentation.Core/ViewModels/FileActionsViewModel.cs");
         var app = Read("src/CSharpGit.Presentation/App.xaml.cs");
-        var main = Read("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
+        var main = Read("src/CSharpGit.Presentation/Composition/WindowWorkspaceComposition.Repository.cs");
         foreach (var source in new[] { maintenance, files })
         {
             Assert.DoesNotContain("Microsoft.UI.Xaml", source);
@@ -70,7 +70,7 @@ public sealed class PresentationFeatureArchitectureTests
     [Fact]
     public void FeatureLifecycleIsUnsubscribedBeforeScopeDisposal()
     {
-        var lifecycle = Read("src/CSharpGit.Presentation/MainPage.Lifecycle.cs");
+        var lifecycle = Read("src/CSharpGit.Presentation/Composition/WindowWorkspaceComposition.Lifetime.cs");
         var session = Read("src/CSharpGit.Presentation/Windowing/WindowSession.cs");
         Assert.DoesNotContain("_fileActions.Dispose()", lifecycle);
         Assert.DoesNotContain("_repositoryMaintenance.Dispose()", lifecycle);
@@ -98,7 +98,7 @@ public sealed class PresentationFeatureArchitectureTests
     [Fact]
     public void RepositoryFilesOwnsVisualCompositionWithoutOwningGitOperations()
     {
-        var page = Read("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
+        var page = Read("src/CSharpGit.Presentation/Composition/WindowWorkspaceComposition.Files.cs");
         var preview = Read("src/CSharpGit.Presentation/Workflows/RepositoryFilePreviewController.cs");
         var surface = Read("src/CSharpGit.Presentation/Controls/RepositoryFilesSurface.cs");
         var interactions = Read("src/CSharpGit.Presentation/Controls/RepositoryFilesSurface.Interactions.cs");

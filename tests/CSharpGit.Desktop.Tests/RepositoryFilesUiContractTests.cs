@@ -7,7 +7,7 @@ public sealed class RepositoryFilesUiContractTests
     {
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml"));
-        var filesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs"));
+        var filesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Files.cs"));
         var historyCode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml.cs"));
         var changesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.Changes.cs"));
 
@@ -24,7 +24,7 @@ public sealed class RepositoryFilesUiContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
+        var filesSurface = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Files.cs"));
         var actions = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryFilesActionController.cs"));
         var previewSurface = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryFilePreviewController.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
@@ -52,7 +52,7 @@ public sealed class RepositoryFilesUiContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
+        var filesSurface = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Files.cs"));
         var interactions = File.ReadAllText(Path.Combine(presentation, "Controls", "RepositoryFilesSurface.Interactions.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
         var model = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySnapshotTreeNode.cs"));
@@ -74,7 +74,7 @@ public sealed class RepositoryFilesUiContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
+        var filesSurface = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Files.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
         var changesSurface = File.ReadAllText(Path.Combine(presentation, "Views", "HistoryWorkspaceView.Changes.cs"));
 
@@ -93,7 +93,7 @@ public sealed class RepositoryFilesUiContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
+        var filesSurface = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Files.cs"));
         var interactions = File.ReadAllText(Path.Combine(presentation, "Controls", "RepositoryFilesSurface.Interactions.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
         var model = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySnapshotTreeNode.cs"));
@@ -110,7 +110,7 @@ public sealed class RepositoryFilesUiContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
+        var filesSurface = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Files.cs"));
         var interactions = File.ReadAllText(Path.Combine(presentation, "Controls", "RepositoryFilesSurface.Interactions.cs"));
         var previewSurface = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryFilePreviewController.cs"));
         var treeStyles = File.ReadAllText(Path.Combine(presentation, "Styles", "RepositoryTree.xaml"));

@@ -61,7 +61,7 @@ public sealed class HistoryDiffUiContractTests
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml"));
         var changes = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.Changes.cs"));
-        var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+        var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.cs"));
 
         Assert.Contains("SelectionChanged=\"DetailsTabs_SelectionChanged\"", xaml);
         Assert.Contains("_viewModel.CommitDetails.SetActive(active)", changes);

@@ -115,10 +115,10 @@ public sealed class DesignSystemContractTests
     public void DynamicallyNamedDetailsTabsRetainSharedStyleAndLazySelection()
     {
         var root = FindRepositoryRoot();
-        var files = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs");
+        var files = Read(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Files.cs");
         var fileInteractions = Read(root, "src", "CSharpGit.Presentation", "Controls", "RepositoryFilesSurface.Interactions.cs");
         var changes = Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.Changes.cs");
-        var mainCode = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
+        var mainCode = Read(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.cs");
 
         Assert.Contains("new PivotItem { Header = \"Files\", Name = \"FilesTab\" }", files);
         Assert.Contains("DetailsTabs.Items.Add(_repositoryFilesTab)", files);
@@ -134,7 +134,7 @@ public sealed class DesignSystemContractTests
         Assert.Contains("UpdateChangesViewActivity();", changes);
         var changedTree = Read(root, "src", "CSharpGit.Presentation", "Workflows", "CommitChangedFileTreeController.cs");
         Assert.Contains("Changes ({_commitFiles.Count})", changedTree);
-        var navigation = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs");
+        var navigation = Read(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Files.cs");
         Assert.Contains("\"Tracked files\"", navigation);
         Assert.Contains("\"Stash\"", mainCode + changes + files + 
             Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs"));

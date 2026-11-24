@@ -11,7 +11,7 @@ public sealed class WorkingTreeCommitEditorOwnershipContractTests
         var editor = File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeCommitEditorView.xaml"));
         var codeBehind = File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeCommitEditorView.xaml.cs"));
         var owner = File.ReadAllText(Path.Combine(presentation, "Workflows", "StashInteractionController.cs"));
-        var lifetime = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
+        var lifetime = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Lifetime.cs"));
 
         Assert.Contains("<views:WorkingTreeCommitEditorView", page);
         Assert.DoesNotContain("x:Name=\"CommitMessageEditor\"", page);

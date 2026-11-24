@@ -8,8 +8,8 @@ public sealed class WorkingTreeInteractionOwnershipContractTests
         var root = FindRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var view = File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeView.Selection.cs"));
-        var code = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
-        var lifetime = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
+        var code = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.cs"));
+        var lifetime = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Lifetime.cs"));
         var context = File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeView.ContextMenu.cs"));
 
         Assert.False(File.Exists(Path.Combine(presentation, "MainPage.WorkingTreeDiff.cs")));

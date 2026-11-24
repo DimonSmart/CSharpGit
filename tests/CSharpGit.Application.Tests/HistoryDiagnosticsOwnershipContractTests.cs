@@ -7,8 +7,8 @@ public sealed class HistoryDiagnosticsOwnershipContractTests
     {
         var root = FindRepositoryRoot();
         var p = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var composition = File.ReadAllText(Path.Combine(p, "MainPage.RepositoryMaintenance.cs"));
-        var shutdown = File.ReadAllText(Path.Combine(p, "MainPage.Lifecycle.cs"));
+        var composition = File.ReadAllText(Path.Combine(p, "Composition/WindowWorkspaceComposition.Repository.cs"));
+        var shutdown = File.ReadAllText(Path.Combine(p, "Composition/WindowWorkspaceComposition.Lifetime.cs"));
         var history = File.ReadAllText(Path.Combine(p, "Views", "HistoryView.Performance.cs"));
 
         Assert.False(File.Exists(Path.Combine(p, "MainPage.HistoryPerformanceDiagnostics.cs")));

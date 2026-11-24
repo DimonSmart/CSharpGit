@@ -33,7 +33,7 @@ public sealed class HistoryMessageWrappingUiContractTests
             root,
             "src",
             "CSharpGit.Presentation",
-            "MainPage.Lifecycle.cs"));
+            "Composition/WindowWorkspaceComposition.Lifetime.cs"));
         var confirmationDialogs = File.ReadAllText(Path.Combine(
             root,
             "src",

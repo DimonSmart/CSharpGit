@@ -8,8 +8,8 @@ public sealed class RepositoryFilesViewOwnershipContractTests
         var root = FindRoot();
         var p = Path.Combine(root, "src", "CSharpGit.Presentation");
         var interactions = File.ReadAllText(Path.Combine(p, "Controls", "RepositoryFilesSurface.Interactions.cs"));
-        var page = File.ReadAllText(Path.Combine(p, "MainPage.RepositoryFiles.cs"));
-        var life = File.ReadAllText(Path.Combine(p, "MainPage.Lifecycle.cs"));
+        var page = File.ReadAllText(Path.Combine(p, "Composition/WindowWorkspaceComposition.Files.cs"));
+        var life = File.ReadAllText(Path.Combine(p, "Composition/WindowWorkspaceComposition.Lifetime.cs"));
         Assert.Contains("_repositoryFilesSurface!.Configure(", page, StringComparison.Ordinal);
         Assert.Contains("_repositoryFilesSurface?.ShutdownInteractions();", life, StringComparison.Ordinal);
         Assert.Contains("RepositoryFilesTree_SelectionChanged", interactions, StringComparison.Ordinal);

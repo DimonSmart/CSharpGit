@@ -10,7 +10,7 @@ public sealed class WorkspaceNavigatorOwnershipContractTests
         var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
         var factory = File.ReadAllText(Path.Combine(presentation, "Windowing", "WindowSessionFactory.cs"));
         var session = File.ReadAllText(Path.Combine(presentation, "Windowing", "WindowSession.cs"));
-        var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+        var page = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.cs"));
 
         Assert.Contains("services.AddScoped(provider =>", app);
         Assert.Contains("return new WorkspaceNavigator(", app);
@@ -18,7 +18,7 @@ public sealed class WorkspaceNavigatorOwnershipContractTests
         Assert.Contains("WorkspaceNavigator navigator,", session);
         Assert.Contains("WorkspaceNavigator Navigator { get; } = navigator;", session);
         Assert.Contains("WorkspaceNavigator workspaceNavigator)", page);
-        var primary = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryMaintenance.cs"));
+        var primary = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Repository.cs"));
         Assert.Contains("WorkspaceNavigator workspaceNavigator)", primary);
         Assert.DoesNotContain("AttachNavigator(", factory);
         Assert.DoesNotContain("new WorkspaceNavigator(", page);

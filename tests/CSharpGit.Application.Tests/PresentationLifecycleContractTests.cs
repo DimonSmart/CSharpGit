@@ -42,7 +42,7 @@ public sealed class PresentationLifecycleContractTests
         }
 
         var mainPage = File.ReadAllText(Path.Combine(FindRepositoryRoot(),
-            "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+            "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.cs"));
         var historyView = File.ReadAllText(Path.Combine(root,
             "src", "CSharpGit.Presentation", "Views", "HistoryView.xaml.cs"));
         Assert.Contains("_history.LoadMoreCommand.CanExecute(null)", historyView);
@@ -115,7 +115,7 @@ public sealed class PresentationLifecycleContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var openRepositoryViewModel = File.ReadAllText(Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.cs"));
-        var lifecycle = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
+        var lifecycle = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Lifetime.cs"));
         var recent = File.ReadAllText(Path.Combine(presentation, "Views", "StartScreenView.xaml.cs"));
         var gitConsole = File.ReadAllText(Path.Combine(presentation, "Views", "GitConsoleHostView.xaml.cs"));
         var refresh = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryRefreshController.cs"));
@@ -191,7 +191,7 @@ public sealed class PresentationLifecycleContractTests
     {
         var close = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Windowing", "WindowCloseOrchestrator.cs"));
         var session = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Windowing", "WindowSession.cs"));
-        var lifecycle = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
+        var lifecycle = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Lifetime.cs"));
         var perf = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Views", "HistoryView.Performance.cs"));
         Assert.Contains("await UiBoundedTaskWait.WaitAsync(", close, StringComparison.Ordinal);
         Assert.Contains("DiagnosticsShutdownBudget,", close, StringComparison.Ordinal);

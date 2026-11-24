@@ -8,8 +8,8 @@ public sealed class SubmoduleWorkflowOwnershipContractTests
         var root = FindRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var workflow = File.ReadAllText(Path.Combine(presentation, "Workflows", "SubmoduleWorkflowController.cs"));
-        var repositoryFiles = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
-        var composition = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryMaintenance.cs"));
+        var repositoryFiles = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Files.cs"));
+        var composition = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Repository.cs"));
         Assert.False(File.Exists(Path.Combine(presentation, "MainPage.Submodules.cs")));
         Assert.Contains("_submodules.ShowSubmoduleMenuAsync(", repositoryFiles, StringComparison.Ordinal);
         Assert.Contains("_submodules.OpenSelectedSubmoduleAsync(", repositoryFiles, StringComparison.Ordinal);

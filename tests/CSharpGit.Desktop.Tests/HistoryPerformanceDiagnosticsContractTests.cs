@@ -147,7 +147,7 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
     public void CaptureHasAllRequiredTerminationPaths()
     {
         var page = Read("src", "CSharpGit.Presentation", "Views", "HistoryView.Performance.cs");
-        var lifecycle = Read("src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs");
+        var lifecycle = Read("src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Lifetime.cs");
 
         Assert.Contains("HistoryPerformanceStopReason.Manual", page, StringComparison.Ordinal);
         Assert.Contains("HistoryPerformanceStopReason.RepositoryClosed", page, StringComparison.Ordinal);

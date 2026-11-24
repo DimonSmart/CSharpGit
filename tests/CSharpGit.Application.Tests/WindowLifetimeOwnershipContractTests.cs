@@ -9,7 +9,7 @@ public sealed class WindowLifetimeOwnershipContractTests
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var session = File.ReadAllText(Path.Combine(presentation, "Windowing", "WindowSession.cs"));
         var factory = File.ReadAllText(Path.Combine(presentation, "Windowing", "WindowSessionFactory.cs"));
-        var page = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
+        var page = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Lifetime.cs"));
 
         Assert.False(File.Exists(Path.Combine(presentation, "Windowing", "IWindowContentLifetime.cs")));
         Assert.DoesNotContain("IWindowContentLifetime", session + factory + page, StringComparison.Ordinal);

@@ -9,7 +9,7 @@ public sealed class WorkingTreeMenuOwnershipContractTests
         var p = Path.Combine(root, "src", "CSharpGit.Presentation");
         var menu = File.ReadAllText(Path.Combine(p, "Views", "WorkingTreeView.ContextMenu.cs"));
         var view = File.ReadAllText(Path.Combine(p, "Views", "WorkingTreeView.xaml.cs"));
-        var main = File.ReadAllText(Path.Combine(p, "MainPage.xaml.cs"));
+        var main = File.ReadAllText(Path.Combine(p, "Composition/WindowWorkspaceComposition.cs"));
         var selection = File.ReadAllText(Path.Combine(p, "Views", "WorkingTreeView.Selection.cs"));
         Assert.False(File.Exists(Path.Combine(p, "MainPage.WorkingTreeContextMenu.cs")));
         Assert.Contains("private void ShowWorkingTreeContextMenu(", menu, StringComparison.Ordinal);

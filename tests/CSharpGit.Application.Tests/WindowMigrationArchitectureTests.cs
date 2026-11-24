@@ -27,7 +27,7 @@ public sealed class WindowMigrationArchitectureTests
         var app = Read("src/CSharpGit.Presentation/App.xaml.cs");
         var session = Read("src/CSharpGit.Presentation/Windowing/WindowSession.cs");
         var factory = Read("src/CSharpGit.Presentation/Windowing/WindowSessionFactory.cs");
-        var page = Read("src/CSharpGit.Presentation/MainPage.Lifecycle.cs");
+        var page = Read("src/CSharpGit.Presentation/Composition/WindowWorkspaceComposition.Lifetime.cs");
         Assert.Contains("scopeFactory.CreateScope()", factory);
         Assert.Contains("Program.InitialRepositoryPath is not null", factory);
         var transition = Read("src/CSharpGit.Presentation.Core/WindowSessionLifecycle.cs");

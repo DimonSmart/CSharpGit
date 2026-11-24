@@ -56,7 +56,7 @@ public sealed class RepositoryHistoryRewriteUiContractTests
     public void SubmoduleMenuIsPreservedInUnifiedRepositoryTreeContextMenu()
     {
         var history = ReadSource("src/CSharpGit.Presentation/Controls/RepositoryFilesSurface.Interactions.cs");
-        var files = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
+        var files = ReadSource("src/CSharpGit.Presentation/Composition/WindowWorkspaceComposition.Files.cs");
         var submodules = ReadSource("src/CSharpGit.Presentation/Workflows/SubmoduleWorkflowController.cs");
         var clone = ReadSource("src/CSharpGit.Presentation/Workflows/RepositoryCloneWorkflow.cs");
 

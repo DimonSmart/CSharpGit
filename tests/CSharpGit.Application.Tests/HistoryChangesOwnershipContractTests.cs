@@ -8,8 +8,8 @@ public sealed class HistoryChangesOwnershipContractTests
         var root = FindRoot();
         var p = Path.Combine(root, "src", "CSharpGit.Presentation");
         var changes = File.ReadAllText(Path.Combine(p, "Views", "HistoryWorkspaceView.Changes.cs"));
-        var main = File.ReadAllText(Path.Combine(p, "MainPage.xaml.cs"));
-        var lifetime = File.ReadAllText(Path.Combine(p, "MainPage.Lifecycle.cs"));
+        var main = File.ReadAllText(Path.Combine(p, "Composition/WindowWorkspaceComposition.cs"));
+        var lifetime = File.ReadAllText(Path.Combine(p, "Composition/WindowWorkspaceComposition.Lifetime.cs"));
         Assert.False(File.Exists(Path.Combine(p, "MainPage.Changes.cs")));
         Assert.Contains("HistoryPane.ConfigureChanges(", main, StringComparison.Ordinal);
         Assert.Contains("HistoryPane.ShutdownChanges();", lifetime, StringComparison.Ordinal);

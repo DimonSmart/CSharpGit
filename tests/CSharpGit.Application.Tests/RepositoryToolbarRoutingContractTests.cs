@@ -56,6 +56,6 @@ public sealed class RepositoryToolbarRoutingContractTests
             directory = directory.Parent;
         var root = directory?.FullName ??
             throw new DirectoryNotFoundException("CSharpGit repository root was not found.");
-        return File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+        return File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.cs"));
     }
 }

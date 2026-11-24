@@ -7,7 +7,7 @@ public sealed class MainPageResponsibilitiesContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+        var page = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.cs"));
         var runner = File.ReadAllText(Path.Combine(presentation, "Diagnostics", "MainPageDesktopUiCheckRunner.cs"));
         var graph = File.ReadAllText(Path.Combine(presentation, "Diagnostics", "MainPageDesktopUiCheckRunner.Graph.cs"));
 
@@ -27,7 +27,7 @@ public sealed class MainPageResponsibilitiesContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+        var page = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.cs"));
         var navigation = File.ReadAllText(Path.Combine(presentation, "Workflows", "WorkspaceNavigationController.cs"));
         var coordinator = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation.Core", "RepositoryTreeNavigationCoordinator.cs"));

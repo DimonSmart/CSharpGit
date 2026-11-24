@@ -10,7 +10,7 @@ public sealed class CommitMetadataCopyUiContractTests
         var codeBehind = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitDetailsView.xaml.cs"));
         var mainPageXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml"));
         var wiring = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "CommitDetailsLayoutController.cs"));
-        var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
+        var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Lifetime.cs"));
         var history = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Domain", "History.cs"));
 
         Assert.Contains("Tag=\"{Binding History.SelectedRow.Commit.Message}\"", xaml);

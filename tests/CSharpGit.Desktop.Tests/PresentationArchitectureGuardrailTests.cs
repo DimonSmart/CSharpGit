@@ -115,8 +115,8 @@ public sealed class PresentationArchitectureGuardrailTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var mainPage = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
-        var lifecycle = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
+        var mainPage = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.cs"));
+        var lifecycle = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Lifetime.cs"));
 
         var controller = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryPresentationRefreshController.cs"));
         Assert.Contains("_presentationRefresh.Initialize();", mainPage, StringComparison.Ordinal);
@@ -355,7 +355,7 @@ public sealed class PresentationArchitectureGuardrailTests
         var openRepository = string.Join(Environment.NewLine, openRepositorySources);
         var details = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs"));
         var stashes = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "StashesViewModel.cs"));
-        var repositoryFilesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
+        var repositoryFilesSurface = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Files.cs"));
         var mainPage = string.Join(
             Environment.NewLine,
             Directory.GetFiles(presentation, "MainPage*.cs", SearchOption.TopDirectoryOnly)
@@ -601,7 +601,7 @@ public sealed class PresentationArchitectureGuardrailTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var app = File.ReadAllText(Path.Combine(presentation, "App.xaml.cs"));
-        var mainPage = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+        var mainPage = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.cs"));
         var viewModel = File.ReadAllText(Path.Combine(presentation, "ViewModels", "OpenRepositoryViewModel.cs"));
         var formatter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "MainWindowTitleFormatter.cs"));
 

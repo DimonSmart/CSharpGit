@@ -11,14 +11,14 @@ public sealed class ManualRefreshUiContractTests
         var refresh = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryRefreshController.cs"))
             + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryPresentationRefreshController.cs"))
             + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml.cs"));
-        var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
+        var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Repository.cs"));
         var refreshAction = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryManualRefreshController.cs"));
         var monitor = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "RepositoryChangeMonitor.cs"));
         var coordinator = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "RepositoryChangeCoordinator.cs"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var reader = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitWorkingTreeStatusReader.cs"));
         var application = Path.Combine(root, "src", "CSharpGit.Application");
-        var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
+        var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Lifetime.cs"));
         var intentIndex = File.ReadAllText(Path.Combine(root, ".idd", "intent", "INDEX.md"));
 
         Assert.DoesNotContain("_window.Activated +=", app);

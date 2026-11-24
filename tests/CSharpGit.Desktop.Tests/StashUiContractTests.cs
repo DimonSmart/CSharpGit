@@ -27,8 +27,8 @@ public sealed class StashUiContractTests
             + Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.xaml");
         var editor = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeCommitEditorView.xaml");
         var editorCode = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeCommitEditorView.xaml.cs");
-        var composer = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs");
-        var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
+        var composer = Read(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Repository.cs");
+        var page = Read(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.cs");
         var stashPage = Read(root, "src", "CSharpGit.Presentation", "Workflows", "StashDialogController.cs");
         var stashViewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "StashesViewModel.cs");
 
@@ -87,7 +87,7 @@ public sealed class StashUiContractTests
     public void StashSelectionPreservesStashPresentationAndNavigatesMatchingHistoryCommit()
     {
         var root = FindRepositoryRoot();
-        var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
+        var page = Read(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.cs");
         var xaml = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml")
             + Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml");
         var repositoryFiles = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs");
@@ -114,7 +114,7 @@ public sealed class StashUiContractTests
         Assert.Contains("Click=\"DropSelectedStash_Click\"", xaml, StringComparison.Ordinal);
 
         Assert.Contains("context?.SelectedObjectCommit", repositoryFiles, StringComparison.Ordinal);
-        var filesSurface = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs");
+        var filesSurface = Read(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Files.cs");
         Assert.Contains("\"Tracked files\"", filesSurface, StringComparison.Ordinal);
         Assert.Contains("Untracked stash files are shown in Changes.", detailsViewModel, StringComparison.Ordinal);
     }
@@ -123,7 +123,7 @@ public sealed class StashUiContractTests
     public void StashActionsIncludeSafeDropAndStableMutationCommands()
     {
         var root = FindRepositoryRoot();
-        var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
+        var page = Read(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.cs");
         var stashPage = Read(root, "src", "CSharpGit.Presentation", "Workflows", "StashDialogController.cs");
         var stashViewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "StashesViewModel.cs");
 
@@ -153,7 +153,7 @@ public sealed class StashUiContractTests
     public void ChangesExposeHistoricalStashStateAndNetZeroMessage()
     {
         var root = FindRepositoryRoot();
-        var page = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
+        var page = Read(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.cs");
         var changes = Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.Changes.cs");
         var presentation = Read(root, "src", "CSharpGit.Presentation", "Workflows", "DiffPresentationController.cs");
         var detailsViewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs");

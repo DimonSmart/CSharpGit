@@ -175,7 +175,7 @@ public sealed class SettingsFacetContractsTests
         Assert.NotNull(directory);
         var presentation = Path.Combine(directory!.FullName, "src", "CSharpGit.Presentation");
         var controller = File.ReadAllText(Path.Combine(presentation, "SettingsWindowController.cs"));
-        var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+        var page = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.cs"));
         Assert.False(File.Exists(Path.Combine(presentation, "MainPage.Settings.cs")));
         Assert.Contains("internal void ConfigureWindowContext(", controller);
         Assert.Contains("internal void Open(SettingsSection section", controller);
