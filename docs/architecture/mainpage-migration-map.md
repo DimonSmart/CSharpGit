@@ -411,6 +411,10 @@ Local/remote branch deletion (including the optional paired remote/local deletio
 
 The staging trees, working-tree diff surface, buttons and commit editor are now visually owned by `Views/WorkingTreeView.xaml` instead of being declared inline in `MainPage.xaml`. The parent page retains temporary typed event callbacks and control facades for the existing workflow controllers. This is a staging step, not completion of the required feature-owned state/handler migration; remove the facades during the next stage.
 
+## Phase 3 follow-up: tag workflow ownership
+
+Tag creation, deletion, remote selection, fetch/push and remote-tag dialogs now belong to `Workflows/TagWorkflowController`, with mutation semantics remaining in `TagsViewModel`. `MainPage.Tags.cs` retains only tag menu composition and the shared information dialog; full reference-menu ownership still needs to move to `RepositoryExplorerView`.
+
 ## Phase 3 follow-up: working-tree interaction ownership
 
 The Working Tree selection model, tree roots, expansion/viewport tracking, diff preview coordination and subscriptions now belong to `Views/WorkingTreeView.Selection.cs` rather than `MainPage.WorkingTreeDiff.cs`. The feature view exposes narrow entry points for selection and menu targeting; it unsubscribes its own events and viewport observers during shutdown. Git mutation commands remain in the WorkingTreeViewModel and existing workflow controllers. Remaining file-opening menus and other page handlers still need migration.
