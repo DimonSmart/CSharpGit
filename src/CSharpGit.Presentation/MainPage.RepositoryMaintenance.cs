@@ -52,39 +52,36 @@ public sealed partial class MainPage
     internal bool IsHistoryRewriteInProgress => _viewModel.RepositoryHistoryRewrite.IsInProgress;
 
     public MainPage(
-        OpenRepositoryViewModel viewModel,
-        CreateRepositoryViewModel createRepositoryViewModel,
-        CloneRepositoryViewModel cloneRepositoryViewModel,
-        IWorkingTreeStatusReader workingTreeStatusReader,
-        IDesktopShellService desktopShellService,
-        IRepositoryFileVersionService fileVersionService,
-        IExternalGitToolService externalGitToolService,
-        RepositoryFilesViewModel repositoryFilesViewModel,
-        ISubmoduleService submoduleService,
-        FileActionsViewModel fileActions,
-        RepositoryMaintenanceViewModel repositoryMaintenance,
-        IAppSettingsService appSettings,
-        IGitCommandActivitySource gitCommandActivitySource,
-        WorktreesViewModel worktreesViewModel,
-        IRepositoryImageService repositoryImageService,
-        IAuthorAvatarService authorAvatarService,
-        RecentRepositoryFolderPicker recentRepositoryFolderPicker,
-        SettingsWindowController settingsWindowController,
-        IApplicationVersionProvider applicationVersionProvider,
-        IUpdateCheckService updateCheckService,
-        IApplicationUpdateInstaller applicationUpdateInstaller,
-        ISystemUriLauncher systemUriLauncher,
-        ApplicationUpdateActivityState updateActivityState,
-        WorkspaceNavigator workspaceNavigator)
+        MainPageRepositoryDependencies repositoryDependencies,
+        MainPageGitDependencies gitDependencies,
+        MainPageUiDependencies uiDependencies,
+        MainPageUpdateDependencies updateDependencies)
         : this(
-            viewModel,
-            workingTreeStatusReader,
-            fileVersionService,
-            externalGitToolService,
-            fileActions,
-            repositoryFilesViewModel,
-            workspaceNavigator)
+            repositoryDependencies.ViewModel,
+            gitDependencies.WorkingTreeStatusReader,
+            gitDependencies.FileVersionService,
+            gitDependencies.ExternalGitToolService,
+            repositoryDependencies.FileActions,
+            repositoryDependencies.RepositoryFiles,
+            repositoryDependencies.WorkspaceNavigator)
     {
+        var createRepositoryViewModel = repositoryDependencies.CreateRepository;
+        var cloneRepositoryViewModel = repositoryDependencies.CloneRepository;
+        var desktopShellService = gitDependencies.DesktopShell;
+        var submoduleService = gitDependencies.SubmoduleService;
+        var repositoryMaintenance = repositoryDependencies.Maintenance;
+        var appSettings = uiDependencies.AppSettings;
+        var gitCommandActivitySource = uiDependencies.GitCommandActivitySource;
+        var worktreesViewModel = repositoryDependencies.Worktrees;
+        var repositoryImageService = uiDependencies.RepositoryImageService;
+        var authorAvatarService = uiDependencies.AuthorAvatarService;
+        var recentRepositoryFolderPicker = uiDependencies.RecentRepositoryFolderPicker;
+        var settingsWindowController = uiDependencies.SettingsWindowController;
+        var applicationVersionProvider = updateDependencies.ApplicationVersionProvider;
+        var updateCheckService = updateDependencies.UpdateCheckService;
+        var applicationUpdateInstaller = updateDependencies.ApplicationUpdateInstaller;
+        var systemUriLauncher = updateDependencies.SystemUriLauncher;
+        var updateActivityState = updateDependencies.UpdateActivityState;
         _repositorySwitch = new Workflows.RepositorySwitchController(
             _viewModel,
             () => _repositoryCloningWorkflowActive,
