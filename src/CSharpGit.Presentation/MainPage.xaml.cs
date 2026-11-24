@@ -396,38 +396,6 @@ public sealed partial class MainPage : Page
             () => IsShuttingDown);
     }
 
-    private async Task CreateBranchFromAsync(string startPoint)
-    {
-        var originalRepository = _viewModel.Repository;
-        if (originalRepository is null || _viewModel.IsBusy || IsShuttingDown) return;
-        var input = new TextBox { Header = $"New branch from {startPoint}", PlaceholderText = "branch/name" };
-        var dialog = new ContentDialog
-        {
-            XamlRoot = XamlRoot,
-            Title = "Create branch",
-            Content = input,
-            PrimaryButtonText = "Create and switch",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary
-        };
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
-            || string.IsNullOrWhiteSpace(input.Text)
-            || IsShuttingDown
-            || !ReferenceEquals(originalRepository, _viewModel.Repository)
-            || _viewModel.IsBusy) return;
-        var repository = originalRepository;
-
-        if (!await _viewModel.Branches.CreateBranchAsync(
-                repository,
-                input.Text.Trim(),
-                startPoint,
-                switchToBranch: true)
-            && !string.IsNullOrWhiteSpace(_viewModel.ErrorMessage))
-        {
-            await ShowErrorAsync("Could not create branch", _viewModel.ErrorMessage);
-        }
-    }
-
     private static Task CopyTextAsync(string text)
     {
         var package = new DataPackage();
@@ -614,40 +582,6 @@ public sealed partial class MainPage : Page
             _ => "Pull failed"
         };
         await ShowErrorAsync(title, result.Message);
-    }
-
-    private void ApplyHistoryFilter_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(RefreshVisibleHistoryAsync, "Apply history filter");
-    private void RefreshHistory_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(RefreshVisibleHistoryAsync, "Refresh history");
-
-    private Task RefreshVisibleHistoryAsync() =>
-        _viewModel.History.RefreshAsync();
-
-    private void HistoryFilter_KeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (e.Key != VirtualKey.Enter) return;
-        e.Handled = true;
-        RunPageUiOperation(RefreshVisibleHistoryAsync, "Apply history filter");
-    }
-
-    private void LoadMoreHistory_Click(object sender, RoutedEventArgs e)
-    {
-        HistoryRenderDiagnostics.PageLoadStarted();
-        RunPageUiOperation(() => _viewModel.History.LoadMoreAsync(), "Load more history");
-    }
-
-    private void ClearReference_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(_workspaceNavigation.ShowAllHistoryAsync, "Clear history reference");
-
-    private void UnstagedChangesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (UnstagedChangesList.SelectedItem is WorkingTreeChange change) WorkingTreePane.SelectWorkingTreeChange(change, WorkingTreeDiffKind.Unstaged);
-    }
-
-    private void StagedChangesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (StagedChangesList.SelectedItem is WorkingTreeChange change) WorkingTreePane.SelectWorkingTreeChange(change, WorkingTreeDiffKind.Staged);
     }
 
     private void Page_KeyDown(object sender, KeyRoutedEventArgs e)
