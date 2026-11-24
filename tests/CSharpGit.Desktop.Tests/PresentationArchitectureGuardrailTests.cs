@@ -583,7 +583,9 @@ public sealed class PresentationArchitectureGuardrailTests
         Assert.DoesNotContain("IRepositoryIdentityService", mainPage, StringComparison.Ordinal);
         Assert.DoesNotContain("IInteractiveRebaseAuthorChangeService", mainPage, StringComparison.Ordinal);
         Assert.DoesNotContain("ICommitAuthorDateReader", mainPage, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.InteractiveRebase.", mainPage, StringComparison.Ordinal);
+        var commitActions = File.ReadAllText(Path.Combine(presentation, "Workflows", "CommitActionController.cs"));
+        Assert.Contains("_viewModel.InteractiveRebase.PrepareInteractiveRebaseFromCommitAsync", commitActions, StringComparison.Ordinal);
+        Assert.DoesNotContain("_viewModel.InteractiveRebase.", mainPage, StringComparison.Ordinal);
         Assert.Contains("_viewModel.RepositoryOperations.", mainPage, StringComparison.Ordinal);
     }
 
