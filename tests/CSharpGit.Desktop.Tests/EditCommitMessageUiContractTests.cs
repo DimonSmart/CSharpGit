@@ -5,13 +5,13 @@ public sealed class EditCommitMessageUiContractTests
     [Fact]
     public void CommitMenuExposesEditActionWithCheapAvailabilityChecks()
     {
-        var actions = Read("src", "CSharpGit.Presentation", "MainPage.CommitActions.cs");
+        var actions = Read("src", "CSharpGit.Presentation", "Workflows", "CommitActionController.cs");
 
         Assert.Contains("Edit commit message…", actions, StringComparison.Ordinal);
-        Assert.Contains("_editCommitMessageItem.Click += (_, _) =>", actions, StringComparison.Ordinal);
+        Assert.Contains("_editCommitMessageItem.Click += EditCommitMessage_Click", actions, StringComparison.Ordinal);
         Assert.Contains("_editCommitMessage.EditAsync", actions, StringComparison.Ordinal);
         Assert.Contains("_editCommitMessageItem.IsEnabled = canMutate;", actions, StringComparison.Ordinal);
-        Assert.Contains("HistoryView.List.SelectedItem = row;", actions, StringComparison.Ordinal);
+        Assert.Contains("_historyView.List.SelectedItem = row;", actions, StringComparison.Ordinal);
         Assert.Contains("_viewModel.History.SelectedRow = row;", actions, StringComparison.Ordinal);
     }
 
@@ -39,7 +39,7 @@ public sealed class EditCommitMessageUiContractTests
     public void UiDelegatesGitSemanticsAndRestoresServiceComputedSelection()
     {
         var workflow = Read("src", "CSharpGit.Presentation", "Workflows", "EditCommitMessageController.cs");
-        var actions = Read("src", "CSharpGit.Presentation", "MainPage.CommitActions.cs");
+        var actions = Read("src", "CSharpGit.Presentation", "Workflows", "CommitActionController.cs");
         var page = Read("src", "CSharpGit.Presentation", "MainPage.xaml.cs");
         var rewriteOwner = Read("src", "CSharpGit.Presentation.Core", "ViewModels", "CommitActionsViewModel.cs");
 
@@ -51,7 +51,7 @@ public sealed class EditCommitMessageUiContractTests
         Assert.Contains("_pendingEditedCommitHash = result.ConflictNewCommit;", workflow, StringComparison.Ordinal);
         Assert.Contains("_editCommitMessage.RestorePendingEditedCommitSelectionAsync", page, StringComparison.Ordinal);
         Assert.False(File.Exists(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "MainPage.EditCommitMessage.cs")));
-        Assert.Contains("private async Task<bool> RestoreCommitActionSelectionAsync", actions, StringComparison.Ordinal);
+        Assert.Contains("internal async Task<bool> RestoreSelectionAsync", actions, StringComparison.Ordinal);
         Assert.DoesNotContain("git rebase", workflow, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("git commit", workflow, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("OpenAsync(", workflow, StringComparison.Ordinal);
