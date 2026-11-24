@@ -49,17 +49,25 @@ public sealed partial class HistoryWorkspaceView : UserControl
 
 
 
-    internal Action<object, SelectionChangedEventArgs>? CommitFilesList_SelectionChangedCallback { get; set; }
-    private void CommitFilesList_SelectionChanged(object sender, SelectionChangedEventArgs args) =>
-        CommitFilesList_SelectionChangedCallback?.Invoke(sender, args);
+    private void CommitFilesList_SelectionChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (_changesConfigured && CommitFilesList.SelectedItem is ViewModels.CommitFileRow row)
+            _viewModel.CommitDetails.SelectedFile = row.File;
+    }
 
-    internal Action<object, KeyRoutedEventArgs>? CommitFilesList_KeyDownCallback { get; set; }
-    private void CommitFilesList_KeyDown(object sender, KeyRoutedEventArgs args) =>
-        CommitFilesList_KeyDownCallback?.Invoke(sender, args);
+    private void CommitFilesList_KeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (args.Key != Windows.System.VirtualKey.Enter || CommitFilesList.SelectedItem is null) return;
+        DetailsTabs.SelectedItem = ChangesTab;
+        args.Handled = true;
+    }
 
-    internal Action<object, DoubleTappedRoutedEventArgs>? CommitFilesList_DoubleTappedCallback { get; set; }
-    private void CommitFilesList_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args) =>
-        CommitFilesList_DoubleTappedCallback?.Invoke(sender, args);
+    private void CommitFilesList_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args)
+    {
+        if (CommitFilesList.SelectedItem is null) return;
+        DetailsTabs.SelectedItem = ChangesTab;
+        args.Handled = true;
+    }
 
     internal Action<object, RoutedEventArgs>? CommitOpenOriginal_ClickCallback { get; set; }
     private void CommitOpenOriginal_Click(object sender, RoutedEventArgs args) =>
