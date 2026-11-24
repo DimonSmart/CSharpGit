@@ -18,7 +18,7 @@ public sealed class CollectionViewportUiContractTests
         var controller = File.ReadAllText(Path.Combine(root,
             "src", "CSharpGit.Presentation", "Controls", "CollectionViewportController.cs"));
         var xaml = File.ReadAllText(Path.Combine(root,
-            "src", "CSharpGit.Presentation", "MainPage.xaml"));
+            "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml"));
 
         Assert.Contains("_viewport?.Observe", changedTree);
         Assert.Contains("CountVisibleChangedFileNodes", changedTree);

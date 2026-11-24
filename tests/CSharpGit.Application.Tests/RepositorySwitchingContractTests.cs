@@ -199,7 +199,8 @@ public sealed class RepositorySwitchingContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var xaml = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"))
-            + File.ReadAllText(Path.Combine(presentation, "Views", "RepositorySelectorView.xaml"));
+            + File.ReadAllText(Path.Combine(presentation, "Views", "RepositorySelectorView.xaml"))
+            + File.ReadAllText(Path.Combine(presentation, "Views", "HistoryWorkspaceView.xaml"));
         var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
         var switching = File.ReadAllText(Path.Combine(
             presentation,

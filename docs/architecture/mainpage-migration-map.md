@@ -414,3 +414,7 @@ The staging trees, working-tree diff surface, buttons and commit editor are now 
 ## Phase 3 follow-up: tag workflow ownership
 
 Tag creation, deletion, remote selection, fetch/push and remote-tag dialogs now belong to `Workflows/TagWorkflowController`, with mutation semantics remaining in `TagsViewModel`. `MainPage.Tags.cs` retains only tag menu composition and the shared information dialog; full reference-menu ownership still needs to move to `RepositoryExplorerView`.
+
+## Phase 3 follow-up: history and commit-details visual composition
+
+The History graph, Commit Summary, Changed Files and commit diff viewer are visually grouped in `Views/HistoryWorkspaceView.xaml`. `MainPage.xaml` composes this host and the separate `WorkingTreeView` rather than declaring either feature's controls inline. Existing callbacks and control facades remain transitional and must migrate to feature controllers before the Phase 3 Definition of Done is met.
