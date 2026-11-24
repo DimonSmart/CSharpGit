@@ -42,6 +42,38 @@ public sealed class MainPageResponsibilitiesContractTests
         Assert.Contains("TryTakeCheckout(", coordinator);
     }
 
+    [Fact]
+    public void Phase3FeaturePartialsAreRemovedAndHaveDedicatedOwners()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+
+        foreach (var removed in new[]
+                 {
+                     "MainPage.CommitActions.cs",
+                     "MainPage.BranchDeletion.cs",
+                     "MainPage.Tags.cs",
+                     "MainPage.FileOpening.cs",
+                     "MainPage.RepositoryNavigation.cs",
+                     "MainPage.RepositorySwitching.cs",
+                     "MainPage.RepositoryTreeState.cs"
+                 })
+            Assert.False(File.Exists(Path.Combine(presentation, removed)), removed);
+
+        foreach (var owner in new[]
+                 {
+                     "CommitActionController.cs",
+                     "RepositoryReferenceMenuController.cs",
+                     "FileActionInteractionController.cs",
+                     "WorkspaceNavigationController.cs",
+                     "RepositoryFilesActionController.cs",
+                     "StashInteractionController.cs",
+                     "RepositoryPullController.cs",
+                     "RepositoryToolbarActionController.cs"
+                 })
+            Assert.True(File.Exists(Path.Combine(presentation, "Workflows", owner)), owner);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
