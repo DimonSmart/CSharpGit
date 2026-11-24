@@ -1,6 +1,7 @@
 using CSharpGit.Domain;
 using CSharpGit.Presentation.Dialogs;
 using CSharpGit.Presentation.ViewModels;
+using CSharpGit.Presentation.Views;
 
 namespace CSharpGit.Presentation.Workflows;
 
