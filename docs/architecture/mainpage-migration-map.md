@@ -434,3 +434,7 @@ Submodule inspection, context menus, open-in-new-process, initialization and upd
 ## Phase 3 follow-up: Working Tree menu ownership
 
 The staged/unstaged tree right-tap menus and their confirmations now live in `Views/WorkingTreeView.ContextMenu.cs`, alongside their selection owner. `MainPage.WorkingTreeContextMenu.cs` is deleted. The view uses existing typed command and dialog delegates, revalidates repository identity after modal confirmation and delegates Git mutation to WorkingTreeViewModel. Legacy file-action RightTapped paths in MainPage.FileOpening still require consolidation in the final file-opening phase.
+
+## Phase 3 follow-up: file action button availability
+
+Commit and Working Tree file action button enablement/tooltips are now owned by `Workflows/FileActionAvailabilityController`. `MainPage.FileOpening.cs` retains the separate file-action execution and menu bridge while the owning views migrate. The controller uses the existing typed `FileActionsViewModel` prepared request state, without duplicating Git path resolution or file operations.

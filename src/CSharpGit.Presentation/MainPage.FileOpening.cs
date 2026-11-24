@@ -18,6 +18,7 @@ public sealed partial class MainPage
     private readonly FileActionsViewModel _fileActions = null!;
     private readonly ImageDiffPreviewService _imageDiffService = null!;
     private readonly Workflows.CommitImageDiffWorkflow _commitImageDiff = null!;
+    private readonly Workflows.FileActionAvailabilityController _fileActionButtons = null!;
 
     private MainPage(
         OpenRepositoryViewModel viewModel,
@@ -39,6 +40,14 @@ public sealed partial class MainPage
             () => IsShuttingDown,
             _diffPresentation.RenderCommit,
             ReportUiFailure);
+        _fileActionButtons = new Workflows.FileActionAvailabilityController(
+            _viewModel, _fileActions,
+            new Workflows.FileActionAvailabilityController.Controls(
+                CommitOpenOriginalButton, CommitOpenChangedButton,
+                CommitExternalDiffButton, CommitRevealButton),
+            new Workflows.FileActionAvailabilityController.Controls(
+                WorkingTreeOpenOriginalButton, WorkingTreeOpenChangedButton,
+                WorkingTreeExternalDiffButton, WorkingTreeRevealButton));
         InitializeFileOpening();
     }
 
@@ -59,9 +68,9 @@ public sealed partial class MainPage
     private void FileActions_PropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (args.PropertyName == nameof(FileActionsViewModel.Commit))
-            UpdateCommitButtons();
+            _fileActionButtons.UpdateCommitButtons();
         else if (args.PropertyName == nameof(FileActionsViewModel.WorkingTree))
-            UpdateWorkingTreeButtons();
+            _fileActionButtons.UpdateWorkingTreeButtons();
     }
 
     private void FileOpeningViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs args)
@@ -112,76 +121,6 @@ public sealed partial class MainPage
 
     private Task RefreshWorkingTreeFileActionStateAsync() =>
         _fileActions.SelectWorkingTreeAsync(CaptureWorkingTreeRequest());
-
-    private void UpdateCommitButtons()
-    {
-        var pair = _fileActions.Commit.Prepared?.Pair;
-        if (pair is not null)
-        {
-            SetVersionButton(CommitOpenOriginalButton, pair.Original, "No original version is available.");
-            SetVersionButton(CommitOpenChangedButton, pair.Changed, "No changed version is available.");
-            SetExternalDiffButton(CommitExternalDiffButton, pair);
-        }
-        else
-        {
-            // Preserve the existing conservative/optimistic button state during loading.
-            var file = _viewModel.CommitDetails.SelectedFile;
-            SetAvailabilityButton(CommitOpenOriginalButton,
-                file is not null && file.Status != "A", "Open original version",
-                "No original version is available.");
-            SetAvailabilityButton(CommitOpenChangedButton,
-                file is not null && file.Status != "D", "Open changed version",
-                "No changed version is available.");
-            SetAvailabilityButton(CommitExternalDiffButton, file is not null,
-                "Open this exact OLD/NEW pair in the configured external diff tool",
-                "Select a file diff first.");
-        }
-        SetRevealButton(CommitRevealButton, _fileActions.Commit.Prepared?.RevealPath ?? _fileActions.Commit.RevealPath);
-    }
-
-    private void UpdateWorkingTreeButtons()
-    {
-        var prepared = _fileActions.WorkingTree.Prepared;
-        SetVersionButton(WorkingTreeOpenOriginalButton, prepared?.Pair.Original, "No original version is available.");
-        SetVersionButton(WorkingTreeOpenChangedButton, prepared?.Pair.Changed, "No changed version is available.");
-        SetExternalDiffButton(WorkingTreeExternalDiffButton, prepared?.Pair);
-        SetRevealButton(WorkingTreeRevealButton, prepared?.RevealPath);
-    }
-
-    private static void SetAvailabilityButton(Button? button, bool enabled, string enabledText, string disabledText)
-    {
-        if (button is null) return;
-        button.IsEnabled = enabled;
-        ToolTipService.SetToolTip(button, enabled ? enabledText : disabledText);
-    }
-
-    private static void SetVersionButton(Button? button, DiffFileVersion? version, string fallbackReason)
-    {
-        if (button is null) return;
-        button.IsEnabled = version?.CanOpen == true;
-        ToolTipService.SetToolTip(button, version?.CanOpen == true
-            ? Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(button)
-            : version?.UnavailableReason ?? fallbackReason);
-    }
-
-    private static void SetExternalDiffButton(Button? button, DiffFileVersionPair? pair)
-    {
-        if (button is null) return;
-        var enabled = pair is not null && FileActionsViewModel.CanExternalDiff(pair);
-        button.IsEnabled = enabled;
-        ToolTipService.SetToolTip(button, enabled
-            ? "Open this exact OLD/NEW pair in the configured external diff tool"
-            : FileActionsViewModel.ExternalDiffUnavailableReason(pair));
-    }
-
-    private void SetRevealButton(Button? button, string? path)
-    {
-        if (button is null) return;
-        button.IsEnabled = path is not null;
-        ToolTipService.SetToolTip(button, path is null
-            ? "The file is not present in the current working tree."
-            : _fileActions.RevealDescription);
-    }
 
     private async Task ExecuteFileActionAsync(
         FileActionRequest? request,
