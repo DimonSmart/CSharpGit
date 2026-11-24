@@ -55,6 +55,8 @@ public sealed partial class HistoryWorkspaceView
         _changesSurfaceInitialized = false;
     }
 
+    internal IReadOnlyList<ChangedFileTreeNode> ChangedFileRoots => _changesTree?.Roots ?? [];
+
     private bool _changesSurfaceInitialized;
     private Workflows.CommitChangedFileTreeController? _changesTree;
     private CollectionViewportController? _commitSummaryViewport;
