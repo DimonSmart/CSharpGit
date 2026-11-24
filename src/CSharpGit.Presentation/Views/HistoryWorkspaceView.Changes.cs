@@ -6,17 +6,61 @@ using CSharpGit.Presentation.Controls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace CSharpGit.Presentation;
+namespace CSharpGit.Presentation.Views;
 
-public sealed partial class MainPage
+public sealed partial class HistoryWorkspaceView
 {
+    private OpenRepositoryViewModel _viewModel = null!;
+    private ObservableCollection<CommitFileRow> _commitFiles = null!;
+    private Func<Workflows.CommitImageDiffWorkflow> _imageWorkflow = null!;
+    private Workflows.DiffPresentationController _diffPresentation = null!;
+    private Action _updateRepositoryFilesViewActivity = null!;
+    private Action<Func<Task>, string> _runUiOperation = null!;
+    private bool _changesConfigured;
+    private Workflows.CommitImageDiffWorkflow _commitImageDiff => _imageWorkflow();
+
+    internal void ConfigureChanges(
+        OpenRepositoryViewModel viewModel,
+        ObservableCollection<CommitFileRow> commitFiles,
+        Func<Workflows.CommitImageDiffWorkflow> imageWorkflow,
+        Workflows.DiffPresentationController diffPresentation,
+        Action updateRepositoryFilesViewActivity,
+        Action<Func<Task>, string> runUiOperation)
+    {
+        if (_changesConfigured) throw new InvalidOperationException("Commit changes already configured.");
+        _changesConfigured = true;
+        _viewModel = viewModel;
+        _commitFiles = commitFiles;
+        _imageWorkflow = imageWorkflow;
+        _diffPresentation = diffPresentation;
+        _updateRepositoryFilesViewActivity = updateRepositoryFilesViewActivity;
+        _runUiOperation = runUiOperation;
+        _commitSummaryViewport = new CollectionViewportController(DetailsScroller);
+        _stashSummaryViewport = new CollectionViewportController(StashDetailsScroller);
+        SynchronizeDetailsViewport();
+    }
+
+    internal void ShutdownChanges()
+    {
+        if (!_changesConfigured) return;
+        _changesConfigured = false;
+        _changesTree?.Shutdown();
+        _changesTree = null;
+        _commitSummaryViewport?.Dispose();
+        _stashSummaryViewport?.Dispose();
+        _commitSummaryViewport = null;
+        _stashSummaryViewport = null;
+        if (_changesSurfaceInitialized)
+            _viewModel.CommitDetails.PropertyChanged -= ChangesViewModel_PropertyChanged;
+        _changesSurfaceInitialized = false;
+    }
+
+    internal IReadOnlyList<ChangedFileTreeNode> ChangedFileRoots => _changesTree?.Roots ?? [];
+
     private bool _changesSurfaceInitialized;
     private Workflows.CommitChangedFileTreeController? _changesTree;
     private CollectionViewportController? _commitSummaryViewport;
     private CollectionViewportController? _stashSummaryViewport;
-
-    private PivotItem? ChangesTabControl =>
-        DetailsTabs.Items.Count > 1 ? DetailsTabs.Items[1] as PivotItem : null;
 
     private void ChangesSurface_Loaded(object sender, RoutedEventArgs args)
     {
@@ -37,7 +81,7 @@ public sealed partial class MainPage
     private void DetailsTabs_SelectionChanged(object sender, SelectionChangedEventArgs args)
     {
         UpdateChangesViewActivity();
-        UpdateRepositoryFilesViewActivity();
+        _updateRepositoryFilesViewActivity();
     }
 
     private void UpdateChangesViewActivity()
@@ -102,7 +146,7 @@ public sealed partial class MainPage
         {
             case DiffContentPresentation.Binary:
                 CompactDiffViewer.Clear();
-                RunPageUiOperation(_commitImageDiff.LoadAsync, "Commit image diff");
+                _runUiOperation(_commitImageDiff.LoadAsync, "Commit image diff");
                 return;
             case DiffContentPresentation.NoTextualPatch:
                 CompactDiffViewer.Clear();
@@ -117,7 +161,7 @@ public sealed partial class MainPage
         }
     }
 
-    private void SynchronizeDetailsViewport()
+    internal void SynchronizeDetailsViewport()
     {
         var details = _viewModel.CommitDetails;
         var key = SelectedDetailsViewportKey();

@@ -8,7 +8,7 @@ public sealed class RepositoryFilesUiContractTests
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml"));
         var filesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs"));
-        var changesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs"));
+        var changesSurface = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.Changes.cs"));
 
         Assert.Contains("Header=\"{Binding CommitDetails.SelectedDetailsTitle}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ChangesTab\" Header=\"Changes\"", xaml, StringComparison.Ordinal);
@@ -73,7 +73,7 @@ public sealed class RepositoryFilesUiContractTests
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
-        var changesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.Changes.cs"));
+        var changesSurface = File.ReadAllText(Path.Combine(presentation, "Views", "HistoryWorkspaceView.Changes.cs"));
 
         Assert.Contains("public ObservableCollection<RepositorySnapshotTreeNode> TreeRoots { get; } = []", feature, StringComparison.Ordinal);
         var visual = File.ReadAllText(Path.Combine(presentation, "Controls", "RepositoryFilesSurface.cs"));

@@ -19,9 +19,11 @@ public sealed class HistoryWorkspaceCompositionContractTests
             Assert.DoesNotContain($"x:Name=\"{control}\"", main, StringComparison.Ordinal);
             Assert.Contains($"x:Name=\"{control}\"", history, StringComparison.Ordinal);
         }
-        Assert.Contains("HistoryPane.ChangesSurface_LoadedCallback", code, StringComparison.Ordinal);
-        Assert.Contains("HistoryPane.ChangedFilesTree_ItemInvokedCallback", code, StringComparison.Ordinal);
-        Assert.Contains("Action<TreeView, TreeViewItemInvokedEventArgs>", callbacks, StringComparison.Ordinal);
+        Assert.Contains("HistoryPane.ConfigureChanges(", code, StringComparison.Ordinal);
+        var changes = File.ReadAllText(Path.Combine(p, "Views", "HistoryWorkspaceView.Changes.cs"));
+        Assert.Contains("private void ChangesSurface_Loaded(", changes, StringComparison.Ordinal);
+        Assert.Contains("private void ChangedFilesTree_ItemInvoked(", changes, StringComparison.Ordinal);
+        Assert.DoesNotContain("ChangedFilesTree_ItemInvokedCallback", callbacks, StringComparison.Ordinal);
     }
 
     private static string FindRoot()
