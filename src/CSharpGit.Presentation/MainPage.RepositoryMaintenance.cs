@@ -28,6 +28,7 @@ public sealed partial class MainPage
     private readonly Workflows.HistoryRewriteController _historyRewrite = null!;
     private readonly Workflows.BranchDragDropController _branchDragDrop = null!;
     private readonly Workflows.StashDialogController _stashDialogs = null!;
+    private readonly Workflows.StashInteractionController _stashInteractions = null!;
     private readonly Workflows.TagWorkflowController _tagWorkflows = null!;
     private readonly Workflows.InteractiveRebaseAuthorController _rebaseAuthor = null!;
     private readonly Workflows.SubmoduleWorkflowController _submodules = null!;
@@ -178,6 +179,10 @@ public sealed partial class MainPage
         _stashDialogs = new Workflows.StashDialogController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
             () => IsShuttingDown, ExecuteCommandAsync);
+        _stashInteractions = new Workflows.StashInteractionController(
+            _viewModel, _stashDialogs, HistoryPane, WorkingTreeCommitEditor,
+            (operation, description) => RunPageUiOperation(operation, description));
+        _stashInteractions.Initialize();
         _tagWorkflows = new Workflows.TagWorkflowController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
             () => IsShuttingDown, ShowErrorAsync, ShowInformationAsync,
@@ -203,7 +208,6 @@ public sealed partial class MainPage
         _branchDeletion = new Workflows.BranchDeletionController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
             () => IsShuttingDown, ShowErrorAsync, ShowInformationAsync);
-        WorkingTreeCommitEditor.StashRequested += CreateStash_Click;
         _createRepositoryViewModel = createRepositoryViewModel
             ?? throw new ArgumentNullException(nameof(createRepositoryViewModel));
         _cloneRepositoryViewModel = cloneRepositoryViewModel
