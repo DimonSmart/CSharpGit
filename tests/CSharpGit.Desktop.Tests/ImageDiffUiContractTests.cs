@@ -9,7 +9,7 @@ public sealed class ImageDiffUiContractTests
         var xaml = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml")
             + Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.xaml")
             + Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml");
-        var changes = Read(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs");
+        var changes = Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.Changes.cs");
         var workingTree = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.Selection.cs");
         var lifecycle = Read(root, "src", "CSharpGit.Presentation", "Workflows", "CommitImageDiffWorkflow.cs");
         var presentation = Read(root, "src", "CSharpGit.Presentation", "Workflows", "DiffPresentationController.cs");

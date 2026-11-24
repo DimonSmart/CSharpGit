@@ -116,7 +116,7 @@ public sealed class DesignSystemContractTests
     {
         var root = FindRepositoryRoot();
         var files = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryFiles.cs");
-        var changes = Read(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs");
+        var changes = Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.Changes.cs");
         var mainCode = Read(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs");
 
         Assert.Contains("new PivotItem { Header = \"Files\", Name = \"FilesTab\" }", files);
@@ -129,7 +129,7 @@ public sealed class DesignSystemContractTests
         Assert.Contains("ActivateRepositoryFilesAsync", files);
         Assert.Contains("DetailsTabs.SelectedItem", changes);
         Assert.Contains("SetActive(active)", changes);
-        Assert.Contains("UpdateRepositoryFilesViewActivity();", changes);
+        Assert.Contains("_updateRepositoryFilesViewActivity();", changes);
         Assert.Contains("UpdateChangesViewActivity();", changes);
         var changedTree = Read(root, "src", "CSharpGit.Presentation", "Workflows", "CommitChangedFileTreeController.cs");
         Assert.Contains("Changes ({_commitFiles.Count})", changedTree);
@@ -248,7 +248,7 @@ public sealed class DesignSystemContractTests
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var main = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
         var workingTree = File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeView.Selection.cs"));
-        var changes = File.ReadAllText(Path.Combine(presentation, "MainPage.Changes.cs"));
+        var changes = File.ReadAllText(Path.Combine(presentation, "Views", "HistoryWorkspaceView.Changes.cs"));
         var mainPageSources = Directory.EnumerateFiles(presentation, "MainPage*.cs")
             .Select(File.ReadAllText)
             .ToArray();
