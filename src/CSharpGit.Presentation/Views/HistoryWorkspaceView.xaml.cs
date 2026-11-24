@@ -1,4 +1,5 @@
 using CSharpGit.Presentation.Controls;
+using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -51,7 +52,7 @@ public sealed partial class HistoryWorkspaceView : UserControl
 
     private void CommitFilesList_SelectionChanged(object sender, SelectionChangedEventArgs args)
     {
-        if (_changesConfigured && CommitFilesList.SelectedItem is ViewModels.CommitFileRow row)
+        if (_changesConfigured && CommitFilesList.SelectedItem is CommitFileRow row)
             _viewModel.CommitDetails.SelectedFile = row.File;
     }
 
