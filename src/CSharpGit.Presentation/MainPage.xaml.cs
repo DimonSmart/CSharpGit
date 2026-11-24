@@ -253,7 +253,7 @@ public sealed partial class MainPage : Page
         }
         else if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.CanChangeRepository))
         {
-            UpdateLoadMoreHistoryAvailability();
+            _workspaceNavigation.UpdateLoadMoreAvailability();
         }
     }
 
@@ -286,7 +286,7 @@ public sealed partial class MainPage : Page
         else if (eventArgs.PropertyName is nameof(HistoryViewModel.HasMore)
                  or nameof(HistoryViewModel.IsLoading))
         {
-            UpdateLoadMoreHistoryAvailability();
+            _workspaceNavigation.UpdateLoadMoreAvailability();
         }
     }
 
@@ -639,7 +639,7 @@ public sealed partial class MainPage : Page
     }
 
     private void ClearReference_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(ShowAllHistoryAsync, "Clear history reference");
+        RunPageUiOperation(_workspaceNavigation.ShowAllHistoryAsync, "Clear history reference");
 
     private void UnstagedChangesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -666,7 +666,7 @@ public sealed partial class MainPage : Page
             RunPageUiOperation(async () =>
             {
                 if (WorkingTreePane.Visibility == Visibility.Visible)
-                    await ShowAllHistoryAsync();
+                    await _workspaceNavigation.ShowAllHistoryAsync();
                 if (!IsShuttingDown)
                     HistoryView.FocusFilter();
             }, "History search shortcut");
@@ -686,7 +686,7 @@ public sealed partial class MainPage : Page
         else if (e.Key == VirtualKey.Escape && WorkingTreePane.Visibility == Visibility.Visible)
         {
             e.Handled = true;
-            RunPageUiOperation(ShowAllHistoryAsync, "Back to history shortcut");
+            RunPageUiOperation(_workspaceNavigation.ShowAllHistoryAsync, "Back to history shortcut");
         }
     }
 
