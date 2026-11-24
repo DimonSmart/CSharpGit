@@ -2,6 +2,7 @@ using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Presentation.ViewModels;
 using CSharpGit.Presentation.Controls;
+using CSharpGit.Presentation.Previewing;
 using CSharpGit.Presentation.Views;
 using Microsoft.UI.Xaml;
 
@@ -46,6 +47,52 @@ public sealed partial class MainPage
     private IRepositoryImageService _repositoryImageService = null!;
     private IAuthorAvatarService _authorAvatarService = null!;
     private IAppSettingsService _authorAvatarSettings = null!;
+
+    private readonly IRepositoryFileVersionService _fileVersionService = null!;
+    private readonly IExternalGitToolService _externalGitToolService = null!;
+    private readonly FileActionsViewModel _fileActions = null!;
+    private readonly ImageDiffPreviewService _imageDiffService = null!;
+    private readonly Workflows.CommitImageDiffWorkflow _commitImageDiff = null!;
+    private readonly Workflows.FileActionAvailabilityController _fileActionButtons = null!;
+    private readonly Workflows.FileActionInteractionController _fileActionInteractions = null!;
+
+    private MainPage(
+        OpenRepositoryViewModel viewModel,
+        IWorkingTreeStatusReader workingTreeStatusReader,
+        IRepositoryFileVersionService fileVersionService,
+        IExternalGitToolService externalGitToolService,
+        FileActionsViewModel fileActions,
+        WorkspaceNavigator workspaceNavigator)
+        : this(viewModel, workingTreeStatusReader, workspaceNavigator)
+    {
+        _fileVersionService = fileVersionService ?? throw new ArgumentNullException(nameof(fileVersionService));
+        _externalGitToolService = externalGitToolService ?? throw new ArgumentNullException(nameof(externalGitToolService));
+        _fileActions = fileActions ?? throw new ArgumentNullException(nameof(fileActions));
+        _fileActions.Attach(_viewModel);
+        _imageDiffService = new ImageDiffPreviewService(
+            _fileVersionService, _fileActions.PathResolver, SharedImageMetadataReader.Instance);
+        _commitImageDiff = new Workflows.CommitImageDiffWorkflow(
+            _viewModel, _fileActions, _imageDiffService, CommitImageDiffHost,
+            () => IsShuttingDown,
+            _diffPresentation.RenderCommit,
+            ReportUiFailure);
+        _fileActionButtons = new Workflows.FileActionAvailabilityController(
+            _viewModel, _fileActions,
+            new Workflows.FileActionAvailabilityController.Controls(
+                CommitOpenOriginalButton, CommitOpenChangedButton,
+                CommitExternalDiffButton, CommitRevealButton),
+            new Workflows.FileActionAvailabilityController.Controls(
+                WorkingTreeOpenOriginalButton, WorkingTreeOpenChangedButton,
+                WorkingTreeExternalDiffButton, WorkingTreeRevealButton));
+        _fileActionInteractions = new Workflows.FileActionInteractionController(
+            _viewModel, _fileActions, _fileActionButtons, ChangedFilesTree,
+            HistoryPane, WorkingTreePane,
+            () => XamlRoot, ShowPageDialogAsync, ShowErrorAsync, ReportUiFailure,
+            () => _settingsWindowController.Open(SettingsSection.GitTools),
+            () => IsShuttingDown,
+            (operation, description) => RunPageUiOperation(operation, description));
+        _fileActionInteractions.Initialize();
+    }
 
     internal bool IsRepositoryMaintenanceInProgress => _repositoryMaintenance.IsRunning;
     internal bool IsApplicationUpdateInProgress => _aboutUpdate.IsRunning;
