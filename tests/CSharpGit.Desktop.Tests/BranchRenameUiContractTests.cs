@@ -6,7 +6,7 @@ public sealed class BranchRenameUiContractTests
     public void LocalBranchMenuUsesSharedRenameWorkflowWithoutCurrentOrWorktreeRestriction()
     {
         var root = FindRepositoryRoot();
-        var menu = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryReferenceMenuController.cs"));
+        var menu = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryReferenceMenuController.cs")).ReplaceLineEndings("\n");
         var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "BranchRenameController.cs"));
 
         Assert.Contains("AddMenuItem(flyout, \"Rename…\", _branchRename.CanRenameBranch,\n            () => _branchRename.RenameAsync(branch));", menu, StringComparison.Ordinal);
