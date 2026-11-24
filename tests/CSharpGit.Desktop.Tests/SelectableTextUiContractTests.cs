@@ -52,7 +52,7 @@ public sealed class SelectableTextUiContractTests
         var viewerXaml = Read(root, "src", "CSharpGit.Presentation", "Controls", "SelectableDiffViewer.xaml");
         var viewerCode = Read(root, "src", "CSharpGit.Presentation", "Controls", "SelectableDiffViewer.xaml.cs");
         var changes = Read(root, "src", "CSharpGit.Presentation", "MainPage.Changes.cs");
-        var workingTree = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeDiff.cs");
+        var workingTree = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.Selection.cs");
 
         Assert.Contains("controls:SelectableDiffViewer x:Name=\"CompactDiffViewer\"", main, StringComparison.Ordinal);
         Assert.Contains("controls:SelectableDiffViewer x:Name=\"WorkingTreeDiffViewer\"", main, StringComparison.Ordinal);
