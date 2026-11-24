@@ -81,9 +81,6 @@ public sealed partial class MainPage : Page
     private WorkingTreeCommitEditorView WorkingTreeCommitEditor => WorkingTreePane.WorkingTreeCommitEditorControl;
 
     internal OpenRepositoryViewModel WindowRepository => _viewModel;
-    private readonly BulkObservableCollection<WorkingTreeChange> _unstagedChanges = [];
-    private readonly BulkObservableCollection<WorkingTreeChange> _stagedChanges = [];
-    private readonly ObservableCollection<CommitFileRow> _commitFiles = [];
     private bool _wasBusy;
     private readonly WorkspaceNavigator _workspaceNavigator;
     private readonly Workflows.WorkspaceNavigationController _workspaceNavigation;
@@ -117,7 +114,7 @@ public sealed partial class MainPage : Page
             WorkingTreeImageDiffHost, () => IsShuttingDown,
             _diffPresentation.RenderWorkingTree, ReportUiFailure);
         HistoryPane.ConfigureChanges(
-            _viewModel, _commitFiles, () => _commitImageDiff, _diffPresentation,
+            _viewModel, () => _commitImageDiff, _diffPresentation,
             UpdateRepositoryFilesViewActivity,
             (operation, description) => RunPageUiOperation(operation, description));
         _workspaceNavigator = workspaceNavigator ?? throw new ArgumentNullException(nameof(workspaceNavigator));
@@ -138,9 +135,6 @@ public sealed partial class MainPage : Page
             SynchronizeRepositoryTree,
             UpdateStatusBar);
 
-        UnstagedChangesList.ItemsSource = _unstagedChanges;
-        StagedChangesList.ItemsSource = _stagedChanges;
-        CommitFilesList.ItemsSource = _commitFiles;
 
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
         _viewModel.Stashes.PropertyChanged += StashesViewModel_PropertyChanged;
@@ -150,7 +144,7 @@ public sealed partial class MainPage : Page
         _presentationRefresh.Initialize();
         Loaded += RunDesktopCheckWhenRequested;
         WorkingTreePane.Configure(
-            _viewModel, _unstagedChanges, _stagedChanges,
+            _viewModel,
             _workingTreeImageDiff, _diffPresentation,
             () => IsShuttingDown,
             (operation, description) => RunPageUiOperation(operation, description),
@@ -242,14 +236,9 @@ public sealed partial class MainPage : Page
 
     private void CommitDetailsViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
-        if (eventArgs.PropertyName == nameof(CommitDetailsViewModel.ChangedFiles))
-            RunPageUiOperation(RefreshCommitFilesAsync, "Refresh commit file list");
-        else if (eventArgs.PropertyName is nameof(CommitDetailsViewModel.SelectedStashDetails)
+        if (eventArgs.PropertyName is nameof(CommitDetailsViewModel.SelectedStashDetails)
                  or nameof(CommitDetailsViewModel.HasSelectedStash))
             _workspaceNavigation.UpdateStashPresentation();
-
-        if (eventArgs.PropertyName == nameof(CommitDetailsViewModel.SelectedObjectCommit))
-            HistoryPane.SynchronizeDetailsViewport();
     }
 
     private void HistoryViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
@@ -271,27 +260,7 @@ public sealed partial class MainPage : Page
 
     private void RefreshPresentationCollections()
     {
-        var unstaged = new List<WorkingTreeChange>();
-        var staged = new List<WorkingTreeChange>();
-        foreach (var change in _viewModel.WorkingTree.Changes)
-        {
-            if (change.IsUnstaged) unstaged.Add(change);
-            if (change.IsStaged) staged.Add(change);
-        }
-
-        WorkingTreePane.SetSelectionSync(true);
-        try
-        {
-            _unstagedChanges.ReplaceAll(unstaged);
-            _stagedChanges.ReplaceAll(staged);
-        }
-        finally
-        {
-            WorkingTreePane.SetSelectionSync(false);
-        }
-
-        UnstagedHeader.Text = $"Unstaged changes ({_unstagedChanges.Count})";
-        StagedHeader.Text = $"Staged changes ({_stagedChanges.Count})";
+        WorkingTreePane.RefreshChangesProjection();
         UpdateStatusBar();
     }
 
@@ -315,22 +284,6 @@ public sealed partial class MainPage : Page
                     ? "Ready" : _viewModel.RepositoryOperations.CurrentOperation.ToString(),
             _viewModel.IsBusy);
         _workspaceNavigation.UpdateCommitNavigationText();
-    }
-
-    private Task RefreshCommitFilesAsync()
-    {
-        var files = _viewModel.CommitDetails.ChangedFiles;
-        _commitFiles.Clear();
-        ChangesTab.Header = files.Count == 0 ? "Changes" : $"Changes ({files.Count})";
-
-        foreach (var file in files)
-            _commitFiles.Add(new CommitFileRow(
-                _viewModel.CommitDetails.GetChangedFileDisplayStatus(file),
-                file));
-
-        var selected = _commitFiles.FirstOrDefault(row => ReferenceEquals(row.File, _viewModel.CommitDetails.SelectedFile)) ?? _commitFiles.FirstOrDefault();
-        CommitFilesList.SelectedItem = selected;
-        return Task.CompletedTask;
     }
 
     private void ReportUiFailure(Exception exception, string operation)

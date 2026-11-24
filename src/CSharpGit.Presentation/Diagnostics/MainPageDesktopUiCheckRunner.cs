@@ -180,7 +180,7 @@ public sealed partial class MainPage
                 _page._workspaceNavigation.ShowWorkingTree();
                 Check(_page.WorkingTreePane.Visibility == Visibility.Visible && _page.HistoryPane.Visibility == Visibility.Collapsed, "working tree mode did not open", failures);
                 Check(_page.RepositoryToolbar.CommitNavigationLabel == "Back to history", "commit toolbar did not become the history navigation action", failures);
-                Check(_page._unstagedChanges.Count + _page._stagedChanges.Count >= _page._viewModel.WorkingTree.Changes.Count, "working tree staged/unstaged views lost changes", failures);
+                Check(_page.WorkingTreePane.ProjectedChangeCount >= _page._viewModel.WorkingTree.Changes.Count, "working tree staged/unstaged views lost changes", failures);
                 await _page._workspaceNavigation.ShowAllHistoryAsync();
                 Check(_page.RepositoryToolbar.CommitNavigationLabel == $"Commit ({_page._viewModel.WorkingTree.Changes.Count})", "commit toolbar did not restore the change count", failures);
 

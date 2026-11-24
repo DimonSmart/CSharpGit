@@ -28,6 +28,10 @@ public sealed class WorkingTreeInteractionOwnershipContractTests
         Assert.False(File.Exists(Path.Combine(presentation, "MainPage.WorkingTreeContextMenu.cs")));
         Assert.DoesNotContain("_unstagedTreeRoots", context);
         Assert.DoesNotContain("_unstagedTreeRoots", code);
+        Assert.DoesNotContain("_unstagedChanges", code);
+        Assert.DoesNotContain("_stagedChanges", code);
+        Assert.Contains("internal void RefreshChangesProjection()", view);
+        Assert.Contains("WorkingTreePane.RefreshChangesProjection();", code);
     }
 
     private static string FindRoot()

@@ -11,7 +11,7 @@ namespace CSharpGit.Presentation.Views;
 public sealed partial class HistoryWorkspaceView
 {
     private OpenRepositoryViewModel _viewModel = null!;
-    private ObservableCollection<CommitFileRow> _commitFiles = null!;
+    private readonly ObservableCollection<CommitFileRow> _commitFiles = [];
     private Func<Workflows.CommitImageDiffWorkflow> _imageWorkflow = null!;
     private Workflows.DiffPresentationController _diffPresentation = null!;
     private Action _updateRepositoryFilesViewActivity = null!;
@@ -21,7 +21,6 @@ public sealed partial class HistoryWorkspaceView
 
     internal void ConfigureChanges(
         OpenRepositoryViewModel viewModel,
-        ObservableCollection<CommitFileRow> commitFiles,
         Func<Workflows.CommitImageDiffWorkflow> imageWorkflow,
         Workflows.DiffPresentationController diffPresentation,
         Action updateRepositoryFilesViewActivity,
@@ -30,11 +29,12 @@ public sealed partial class HistoryWorkspaceView
         if (_changesConfigured) throw new InvalidOperationException("Commit changes already configured.");
         _changesConfigured = true;
         _viewModel = viewModel;
-        _commitFiles = commitFiles;
+        CommitFilesList.ItemsSource = _commitFiles;
         _imageWorkflow = imageWorkflow;
         _diffPresentation = diffPresentation;
         _updateRepositoryFilesViewActivity = updateRepositoryFilesViewActivity;
         _runUiOperation = runUiOperation;
+        _viewModel.CommitDetails.PropertyChanged += CommitDetailsProjection_PropertyChanged;
         _commitSummaryViewport = new CollectionViewportController(DetailsScroller);
         _stashSummaryViewport = new CollectionViewportController(StashDetailsScroller);
         SynchronizeDetailsViewport();
@@ -44,6 +44,7 @@ public sealed partial class HistoryWorkspaceView
     {
         if (!_changesConfigured) return;
         _changesConfigured = false;
+        _viewModel.CommitDetails.PropertyChanged -= CommitDetailsProjection_PropertyChanged;
         _changesTree?.Shutdown();
         _changesTree = null;
         _commitSummaryViewport?.Dispose();
@@ -53,6 +54,30 @@ public sealed partial class HistoryWorkspaceView
         if (_changesSurfaceInitialized)
             _viewModel.CommitDetails.PropertyChanged -= ChangesViewModel_PropertyChanged;
         _changesSurfaceInitialized = false;
+    }
+
+    private void CommitDetailsProjection_PropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(CommitDetailsViewModel.ChangedFiles))
+            _runUiOperation(RefreshCommitFilesAsync, "Refresh commit file list");
+        else if (args.PropertyName == nameof(CommitDetailsViewModel.SelectedObjectCommit))
+            SynchronizeDetailsViewport();
+    }
+
+    private Task RefreshCommitFilesAsync()
+    {
+        var files = _viewModel.CommitDetails.ChangedFiles;
+        _commitFiles.Clear();
+        ChangesTab.Header = files.Count == 0 ? "Changes" : $"Changes ({files.Count})";
+
+        foreach (var file in files)
+            _commitFiles.Add(new CommitFileRow(
+                _viewModel.CommitDetails.GetChangedFileDisplayStatus(file),
+                file));
+
+        var selected = _commitFiles.FirstOrDefault(row => ReferenceEquals(row.File, _viewModel.CommitDetails.SelectedFile)) ?? _commitFiles.FirstOrDefault();
+        CommitFilesList.SelectedItem = selected;
+        return Task.CompletedTask;
     }
 
     internal IReadOnlyList<ChangedFileTreeNode> ChangedFileRoots => _changesTree?.Roots ?? [];

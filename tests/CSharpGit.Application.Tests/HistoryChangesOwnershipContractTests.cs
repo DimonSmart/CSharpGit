@@ -19,6 +19,11 @@ public sealed class HistoryChangesOwnershipContractTests
         Assert.Contains("_changesTree?.Shutdown()", changes, StringComparison.Ordinal);
         Assert.DoesNotContain("_commitSummaryViewport", main, StringComparison.Ordinal);
         Assert.DoesNotContain("ChangesViewModel_PropertyChanged", lifetime, StringComparison.Ordinal);
+        Assert.Contains("PropertyChanged += CommitDetailsProjection_PropertyChanged", changes, StringComparison.Ordinal);
+        Assert.Contains("PropertyChanged -= CommitDetailsProjection_PropertyChanged", changes, StringComparison.Ordinal);
+        Assert.Contains("private Task RefreshCommitFilesAsync()", changes, StringComparison.Ordinal);
+        Assert.DoesNotContain("_commitFiles", main, StringComparison.Ordinal);
+        Assert.DoesNotContain("RefreshCommitFilesAsync", main, StringComparison.Ordinal);
     }
 
     private static string FindRoot()
