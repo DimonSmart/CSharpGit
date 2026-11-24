@@ -410,3 +410,7 @@ Local/remote branch deletion (including the optional paired remote/local deletio
 ## Phase 3 follow-up: working-tree visual composition
 
 The staging trees, working-tree diff surface, buttons and commit editor are now visually owned by `Views/WorkingTreeView.xaml` instead of being declared inline in `MainPage.xaml`. The parent page retains temporary typed event callbacks and control facades for the existing workflow controllers. This is a staging step, not completion of the required feature-owned state/handler migration; remove the facades during the next stage.
+
+## Phase 3 follow-up: tag workflow ownership
+
+Tag creation, deletion, remote selection, fetch/push and remote-tag dialogs now belong to `Workflows/TagWorkflowController`, with mutation semantics remaining in `TagsViewModel`. `MainPage.Tags.cs` retains only tag menu composition and the shared information dialog; full reference-menu ownership still needs to move to `RepositoryExplorerView`.
