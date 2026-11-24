@@ -40,7 +40,7 @@ public sealed partial class MainPage
             () => _repositoryFilesSurface?.ActivationRevision ?? 0,
             (operation, description) => RunPageUiOperation(operation, description),
             ReportUiFailure,
-            UserFacingFileError);
+            FileActionsViewModel.UserFacingFileError);
         InitializeRepositoryFiles();
     }
 

@@ -14,7 +14,7 @@ public sealed partial class MainPage
     {
         private async Task RunCommitGraphViewportLifecycleCheckAsync(List<string> failures)
         {
-            await _page.ShowAllHistoryAsync();
+            await _page._workspaceNavigation.ShowAllHistoryAsync();
             await WaitUntilAsync(
                 () => _page.HistoryView.List.ActualHeight > 0 && _page.HistoryView.List.ActualWidth > 0,
                 TimeSpan.FromSeconds(10));
@@ -357,7 +357,7 @@ public sealed partial class MainPage
 
         private async Task RunDesktopDensityCheckAsync(List<string> failures)
         {
-            await _page.ShowAllHistoryAsync();
+            await _page._workspaceNavigation.ShowAllHistoryAsync();
             if (_page._viewModel.History.Rows.FirstOrDefault() is { } firstHistory)
             {
                 _page.HistoryView.List.ScrollIntoView(firstHistory);
@@ -419,7 +419,7 @@ public sealed partial class MainPage
                 _page.DetailsTabs.SelectedIndex = originalDetailsTab;
             }
 
-            _page.ShowWorkingTree();
+            _page._workspaceNavigation.ShowWorkingTree();
             await WaitUntilAsync(
                 () => _page.WorkingTreePane.ActualHeight > 0 && WorkingTreeTreeSelection.GetLeaves(_page.WorkingTreePane.UnstagedTreeRoots).Count > 0,
                 TimeSpan.FromSeconds(5));
@@ -475,7 +475,7 @@ public sealed partial class MainPage
                 if (WorkingTreeTreeSelection.GetLeaves(_page.WorkingTreePane.UnstagedTreeRoots).FirstOrDefault() is { } restoredUnstaged)
                     _page.WorkingTreePane.InvokeWorkingTreeNodeForCheck(restoredUnstaged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Unstaged);
 
-                await _page.ShowAllHistoryAsync();
+                await _page._workspaceNavigation.ShowAllHistoryAsync();
             }
         }
 

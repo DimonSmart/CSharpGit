@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.ViewModels;
 using CSharpGit.Presentation.Views;
