@@ -87,13 +87,7 @@ public sealed partial class MainPage
         _viewModel.History.PropertyChanged -= HistoryViewModel_PropertyChanged;
         _viewModel.History.CommitLookupCompleted -= History_CommitLookupCompleted;
         _confirmationController.Shutdown();
-        _viewModel.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
-        _viewModel.CommitDetails.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
-        _viewModel.History.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
-        _viewModel.WorkingTree.PropertyChanged -= WorkingTreeFileOpening_PropertyChanged;
-        _fileActions.PropertyChanged -= FileActions_PropertyChanged;
-        ChangedFilesTree.RightTapped -= ChangedFilesTree_RightTapped;
-        ChangedFilesTree.DoubleTapped -= ChangedFilesTree_DoubleTapped;
+        _fileActionInteractions.Shutdown();
         // Window DI scope owns disposal of resolved feature models.
         _repositoryFilesSurface?.ShutdownInteractions();
 
