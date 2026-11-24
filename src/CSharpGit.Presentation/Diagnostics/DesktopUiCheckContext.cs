@@ -28,7 +28,7 @@ internal sealed record DesktopUiCheckContext(
     Func<ICommand, Task> ExecuteCommandAsync)
 {
     public ElementTheme RequestedTheme => Root.RequestedTheme;
-    public XamlRoot XamlRoot => Root.XamlRoot;
+    public XamlRoot? XamlRoot => Root.XamlRoot;
     public HistoryView HistoryView => HistoryPane.HistoryViewControl;
     public TreeView RepositoryTree => RepositoryExplorer.TreeControl;
     public ScrollViewer DetailsScroller => HistoryPane.DetailsScrollerControl;

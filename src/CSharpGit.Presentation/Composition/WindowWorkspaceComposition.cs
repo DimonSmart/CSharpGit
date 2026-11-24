@@ -28,7 +28,7 @@ internal sealed partial class WindowWorkspaceComposition
     private readonly MainPage _page;
     internal MainPage Page => _page;
     private DispatcherQueue DispatcherQueue => _page.DispatcherQueue;
-    private XamlRoot XamlRoot => _page.XamlRoot;
+    private XamlRoot? XamlRoot => _page.XamlRoot;
 
     private T Part<T>(string name) where T : FrameworkElement =>
         _page.FindName(name) as T
