@@ -16,7 +16,8 @@ public sealed class HistoryMessageWrappingUiContractTests
             root,
             "src",
             "CSharpGit.Presentation",
-            "MainPage.xaml"));
+            "Views",
+            "HistoryWorkspaceView.xaml"));
         var detailsXaml = File.ReadAllText(Path.Combine(
             root,
             "src",
@@ -63,7 +64,8 @@ public sealed class HistoryMessageWrappingUiContractTests
         Assert.Contains("<controls:CommitDetailsView x:Name=\"CommitDetailsContent\" />", mainPageXaml);
         Assert.Equal(1, CountOccurrences(mainPageXaml, "<controls:CommitDetailsView"));
         Assert.DoesNotContain("Text=\"{Binding History.SelectedRow.Commit.Message}\"", mainPageXaml);
-        Assert.Contains("Loaded=\"MainPage_Loaded\"", mainPageXaml);
+        Assert.Contains("Loaded=\"MainPage_Loaded\"", File.ReadAllText(Path.Combine(root,
+            "src", "CSharpGit.Presentation", "MainPage.xaml")));
 
         Assert.DoesNotContain("new CommitDetailsView", detailsHost);
         Assert.DoesNotContain("DetailsScroller.Content =", detailsHost);
