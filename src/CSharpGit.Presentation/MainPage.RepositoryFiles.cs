@@ -38,8 +38,8 @@ public sealed partial class MainPage
             () => IsShuttingDown,
             () => _repositoryFilesSurface?.IsRepositoryFilesActive == true,
             () => _repositoryFilesSurface?.ActivationRevision ?? 0,
-            (operation, description) => RunPageUiOperation(operation, description),
-            ReportUiFailure,
+            (operation, description) => _ui.RunPageUiOperation(operation, description),
+            _ui.ReportUiFailure,
             FileActionsViewModel.UserFacingFileError);
         InitializeRepositoryFiles();
         _repositoryFilePreview.InitializeIdleContinuation();
@@ -59,13 +59,13 @@ public sealed partial class MainPage
             _viewModel, _repositoryFilesViewModel, _fileVersionService,
             _externalGitToolService, _fileActions, _historyRewrite,
             _settingsWindowController, () => XamlRoot, ShowPageDialogAsync,
-            ShowErrorAsync, CopyTextAsync);
+            _ui.ShowErrorAsync, Windowing.WindowUiOperations.CopyTextAsync);
 
         _repositoryFilesSurface!.Configure(
             _repositoryFilesViewModel, _repositoryFilePreview,
             () => ReferenceEquals(DetailsTabs.SelectedItem, _repositoryFilesTab),
             () => IsShuttingDown,
-            (operation, description) => RunPageUiOperation(operation, description),
+            (operation, description) => _ui.RunPageUiOperation(operation, description),
             entry => _submodules.OpenSelectedSubmoduleAsync(entry),
             (target, entry) => _submodules.ShowSubmoduleMenuAsync(target, entry),
             _repositoryFilesActions.OpenAsync,

@@ -86,6 +86,8 @@ public sealed partial class MainPage : Page
     private Workflows.WorkspaceKeyboardController _keyboardShortcuts = null!;
     private readonly Workflows.RepositoryRefreshController _repositoryRefresh;
     private readonly Dialogs.PageDialogController _pageDialogs;
+    private readonly Windowing.WindowUiOperations _ui;
+    private readonly Windowing.RepositoryMenuItemFactory _menu;
     private readonly Workflows.DiffPresentationController _diffPresentation;
     private readonly Workflows.WorkingTreeImageDiffWorkflow _workingTreeImageDiff;
 
@@ -98,6 +100,8 @@ public sealed partial class MainPage : Page
         InitializeComponent();
         DataContext = _viewModel = viewModel;
         _pageDialogs = new Dialogs.PageDialogController(this, _viewModel, () => IsShuttingDown);
+        _ui = new Windowing.WindowUiOperations(() => XamlRoot, () => IsShuttingDown, ShowPageDialogAsync);
+        _menu = new Windowing.RepositoryMenuItemFactory(_viewModel, _ui);
         _diffPresentation = new Workflows.DiffPresentationController(
             _viewModel,
             new Workflows.DiffPresentationController.CommitControls(
@@ -112,23 +116,23 @@ public sealed partial class MainPage : Page
         _workingTreeImageDiff = new Workflows.WorkingTreeImageDiffWorkflow(
             _viewModel, () => _fileActions, () => _imageDiffService,
             WorkingTreeImageDiffHost, () => IsShuttingDown,
-            _diffPresentation.RenderWorkingTree, ReportUiFailure);
+            _diffPresentation.RenderWorkingTree, _ui.ReportUiFailure);
         HistoryPane.ConfigureChanges(
             _viewModel, () => _commitImageDiff, _diffPresentation,
             UpdateRepositoryFilesViewActivity,
-            (operation, description) => RunPageUiOperation(operation, description));
+            (operation, description) => _ui.RunPageUiOperation(operation, description));
         _workspaceNavigator = workspaceNavigator ?? throw new ArgumentNullException(nameof(workspaceNavigator));
         _workspaceNavigation = new Workflows.WorkspaceNavigationController(
             _viewModel, _workspaceNavigator, HistoryPane, WorkingTreePane, RepositoryToolbar,
-            DispatcherQueue, ExecuteCommandAsync, () => IsShuttingDown, SetRepositoryFilesStashMode,
-            (operation, description) => RunPageUiOperation(operation, description));
+            DispatcherQueue, _ui.ExecuteCommandAsync, () => IsShuttingDown, SetRepositoryFilesStashMode,
+            (operation, description) => _ui.RunPageUiOperation(operation, description));
         _repositoryRefresh = new Workflows.RepositoryRefreshController(
             _viewModel,
             new RepositoryChangeCoordinator(
                 workingTreeStatusReader ?? throw new ArgumentNullException(nameof(workingTreeStatusReader)),
                 new UiDispatcher(DispatcherQueue)),
             RepositoryToolbar, () => IsShuttingDown,
-            (operation, description) => RunPageUiOperation(operation, description));
+            (operation, description) => _ui.RunPageUiOperation(operation, description));
 
         _presentationRefresh = new Workflows.RepositoryPresentationRefreshController(
             _viewModel, DispatcherQueue, () => IsShuttingDown,
@@ -145,26 +149,13 @@ public sealed partial class MainPage : Page
             _viewModel,
             _workingTreeImageDiff, _diffPresentation,
             () => IsShuttingDown,
-            (operation, description) => RunPageUiOperation(operation, description),
-            ShowErrorAsync,
-            AddMenuItem, ExecuteCommandAsync, changes => _stashDialogs.ShowCreateSelectedAsync(changes),
+            (operation, description) => _ui.RunPageUiOperation(operation, description),
+            _ui.ShowErrorAsync,
+            _menu.AddMenuItem, _ui.ExecuteCommandAsync, changes => _stashDialogs.ShowCreateSelectedAsync(changes),
             ShowPageDialogAsync);
         RefreshPresentationCollections();
         WorkingTreePane.InitializeWorkingTreeDiffSurface();
         _workspaceNavigation.UpdateHistoryPresentation();
-    }
-
-    private async Task ShowInformationAsync(string title, string message)
-    {
-        var dialog = new ContentDialog
-        {
-            XamlRoot = XamlRoot,
-            Title = title,
-            Content = message,
-            CloseButtonText = "Close",
-            DefaultButton = ContentDialogButton.Close
-        };
-        await ShowPageDialogAsync(dialog);
     }
 
     private Windowing.ICloseConfirmationDialog? _closeConfirmation;
@@ -205,91 +196,6 @@ public sealed partial class MainPage : Page
         _workspaceNavigation.UpdateCommitNavigationText();
     }
 
-    private void ReportUiFailure(Exception exception, string operation)
-    {
-        if (Microsoft.UI.Xaml.Application.Current is App app)
-            app.LogUiFailure(exception, operation);
-        else
-            Trace.TraceError($"{operation} failed: {exception}");
-    }
-
-    private void RunPageUiOperation(Func<Task> operation, string description, bool showError = false)
-    {
-        if (IsShuttingDown) return;
-        _ = UiAsyncOperationRunner.RunAsync(
-            operation,
-            exception =>
-            {
-                ReportUiFailure(exception, description);
-                if (showError && !IsShuttingDown)
-                    RunPageUiOperation(
-                        () => ShowErrorAsync("Could not complete action", "The requested action could not be completed."),
-                        "UI error notification");
-            },
-            () => IsShuttingDown);
-    }
-
-    private async Task ExecuteCommandAsync(ICommand command)
-    {
-        if (IsShuttingDown) return;
-        // ExecuteAsync deliberately propagates; this XAML boundary owns observation.
-        await UiAsyncOperationRunner.RunAsync(
-            async () =>
-            {
-                if (command is AsyncCommand asyncCommand)
-                    await asyncCommand.ExecuteAsync();
-                else if (command.CanExecute(null))
-                    command.Execute(null);
-            },
-            exception => ReportUiFailure(exception, "UI command"),
-            () => IsShuttingDown);
-    }
-
-    private static Task CopyTextAsync(string text)
-    {
-        var package = new DataPackage();
-        package.SetText(text);
-        Clipboard.SetContent(package);
-        return Task.CompletedTask;
-    }
-
-    private async Task ShowErrorAsync(string title, string message)
-    {
-        if (IsShuttingDown || XamlRoot is null) return;
-        try
-        {
-            // Git progress uses CR to rewrite its current line. Preserve that
-            // terminal behavior at the presentation boundary, not in Git results.
-            var details = new TextBlock
-            {
-                Text = new GitOutputDisplayBuffer().Reset(message),
-                TextWrapping = TextWrapping.NoWrap,
-                IsTextSelectionEnabled = true
-            };
-            var dialog = new ContentDialog
-            {
-                XamlRoot = XamlRoot,
-                Title = title,
-                Content = new ScrollViewer
-                {
-                    Content = details,
-                    MaxWidth = 720,
-                    MaxHeight = 400,
-                    HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto
-                },
-                CloseButtonText = "Close",
-                DefaultButton = ContentDialogButton.Close
-            };
-            await ShowPageDialogAsync(dialog);
-        }
-        catch (Exception exception)
-        {
-            // Showing an error can itself fail (concurrent dialog/disposed XamlRoot).
-            ReportUiFailure(exception, "Error notification");
-        }
-    }
-
     private async void RunDesktopCheckWhenRequested(object sender, RoutedEventArgs args)
     {
         var resultPath = Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_RESULT");
@@ -300,7 +206,7 @@ public sealed partial class MainPage : Page
             this, RootLayout, RepositoryWorkspace, RepositoryExplorer, RepositoryToolbar,
             HistoryPane, WorkingTreePane, GitConsoleHost, _viewModel, _workspaceNavigation,
             _recentRepositorySettings, _settingsWindowController, _authorAvatarService,
-            _gitCommandActivitySource, RefreshPresentationCollections, ExecuteCommandAsync))
+            _gitCommandActivitySource, RefreshPresentationCollections, _ui.ExecuteCommandAsync))
             .RunAsync(resultPath);
     }
 

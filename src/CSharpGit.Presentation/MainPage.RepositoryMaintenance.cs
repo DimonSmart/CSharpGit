@@ -79,7 +79,7 @@ public sealed partial class MainPage
             _viewModel, _fileActions, _imageDiffService, CommitImageDiffHost,
             () => IsShuttingDown,
             _diffPresentation.RenderCommit,
-            ReportUiFailure);
+            _ui.ReportUiFailure);
         _fileActionButtons = new Workflows.FileActionAvailabilityController(
             _viewModel, _fileActions,
             new Workflows.FileActionAvailabilityController.Controls(
@@ -91,39 +91,12 @@ public sealed partial class MainPage
         _fileActionInteractions = new Workflows.FileActionInteractionController(
             _viewModel, _fileActions, _fileActionButtons, ChangedFilesTree,
             HistoryPane, WorkingTreePane,
-            () => XamlRoot, ShowPageDialogAsync, ShowErrorAsync, ReportUiFailure,
+            () => XamlRoot, ShowPageDialogAsync, _ui.ShowErrorAsync, _ui.ReportUiFailure,
             () => _settingsWindowController.Open(SettingsSection.GitTools),
             () => IsShuttingDown,
-            (operation, description) => RunPageUiOperation(operation, description));
+            (operation, description) => _ui.RunPageUiOperation(operation, description));
         _fileActionInteractions.Initialize();
-        _commitImageDiff.InitializeIdleContinuation((operation, description) => RunPageUiOperation(operation, description));
-    }
-
-    private void AddMenuItem(MenuFlyout flyout, string text, bool enabled, Func<Task> action) =>
-        AddMenuItem(flyout, text, () => enabled, action);
-
-    private void AddMenuItem(MenuFlyout flyout, string text, Func<bool> canExecute, Func<Task> action)
-    {
-        var item = new MenuFlyoutItem { Text = text, IsEnabled = canExecute() };
-
-        void UpdateAvailability(object? sender, PropertyChangedEventArgs args)
-        {
-            if (args.PropertyName is nameof(OpenRepositoryViewModel.IsBusy)
-                or nameof(OpenRepositoryViewModel.Repository)
-                or nameof(OpenRepositoryViewModel.CanChangeRepository))
-                item.IsEnabled = canExecute();
-        }
-
-        void Detach(object? sender, object args)
-        {
-            _viewModel.PropertyChanged -= UpdateAvailability;
-            flyout.Closed -= Detach;
-        }
-
-        _viewModel.PropertyChanged += UpdateAvailability;
-        flyout.Closed += Detach;
-        item.Click += (_, _) => RunPageUiOperation(action, "Menu action", showError: true);
-        flyout.Items.Add(item);
+        _commitImageDiff.InitializeIdleContinuation((operation, description) => _ui.RunPageUiOperation(operation, description));
     }
 
     internal bool IsRepositoryMaintenanceInProgress => _repositoryMaintenance.IsRunning;
@@ -181,21 +154,21 @@ public sealed partial class MainPage
             () => { HistoryPane.Visibility = Visibility.Visible; WorkingTreePane.Visibility = Visibility.Collapsed; });
         _stashDialogs = new Workflows.StashDialogController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
-            () => IsShuttingDown, ExecuteCommandAsync);
+            () => IsShuttingDown, _ui.ExecuteCommandAsync);
         _stashInteractions = new Workflows.StashInteractionController(
             _viewModel, _stashDialogs, HistoryPane, WorkingTreeCommitEditor,
-            (operation, description) => RunPageUiOperation(operation, description));
+            (operation, description) => _ui.RunPageUiOperation(operation, description));
         _stashInteractions.Initialize();
         _tagWorkflows = new Workflows.TagWorkflowController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
-            () => IsShuttingDown, ShowErrorAsync, ShowInformationAsync,
-            ReportUiFailure,
-            (operation, description) => RunPageUiOperation(operation, description));
+            () => IsShuttingDown, _ui.ShowErrorAsync, _ui.ShowInformationAsync,
+            _ui.ReportUiFailure,
+            (operation, description) => _ui.RunPageUiOperation(operation, description));
         _rebaseAuthor = new Workflows.InteractiveRebaseAuthorController(
             _viewModel, _pageDialogs.GetDialog("InteractiveRebaseDialog"),
             () => IsShuttingDown,
-            (operation, description) => RunPageUiOperation(operation, description),
-            ReportUiFailure);
+            (operation, description) => _ui.RunPageUiOperation(operation, description),
+            _ui.ReportUiFailure);
         _rebaseAuthor.Initialize();
         _editCommitMessage = new Workflows.EditCommitMessageController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
@@ -204,14 +177,14 @@ public sealed partial class MainPage
             hash => _commitActions.RestoreSelectionAsync(hash));
         _commitActions = new Workflows.CommitActionController(
             _viewModel, HistoryView, _editCommitMessage, _tagWorkflows,
-            () => XamlRoot, ShowPageDialogAsync, ShowErrorAsync,
+            () => XamlRoot, ShowPageDialogAsync, _ui.ShowErrorAsync,
             () => IsShuttingDown, ShowInteractiveRebaseEditorAsync,
-            (operation, description) => RunPageUiOperation(operation, description));
+            (operation, description) => _ui.RunPageUiOperation(operation, description));
         _commitActions.Initialize();
-        _editCommitMessage.InitializeIdleContinuation((operation, description) => RunPageUiOperation(operation, description));
+        _editCommitMessage.InitializeIdleContinuation((operation, description) => _ui.RunPageUiOperation(operation, description));
         _branchDeletion = new Workflows.BranchDeletionController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
-            () => IsShuttingDown, ShowErrorAsync, ShowInformationAsync);
+            () => IsShuttingDown, _ui.ShowErrorAsync, _ui.ShowInformationAsync);
         _createRepositoryViewModel = createRepositoryViewModel
             ?? throw new ArgumentNullException(nameof(createRepositoryViewModel));
         _cloneRepositoryViewModel = cloneRepositoryViewModel
@@ -223,8 +196,8 @@ public sealed partial class MainPage
             submoduleService ?? throw new ArgumentNullException(nameof(submoduleService)),
             _viewModel, _repositoryFilesViewModel,
             () => XamlRoot, ShowPageDialogAsync, () => IsShuttingDown,
-            ShowErrorAsync, (operation, description) => RunPageUiOperation(operation, description),
-            AddMenuItem, CopyTextAsync);
+            _ui.ShowErrorAsync, (operation, description) => _ui.RunPageUiOperation(operation, description),
+            _menu.AddMenuItem, Windowing.WindowUiOperations.CopyTextAsync);
         _recentRepositorySettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
         _gitConsoleSettings = appSettings;
         _gitCommandActivitySource = gitCommandActivitySource ?? throw new ArgumentNullException(nameof(gitCommandActivitySource));
@@ -232,27 +205,27 @@ public sealed partial class MainPage
         _worktrees = new Workflows.WorktreeController(
             _viewModel, _worktreesViewModel, _desktopShellService,
             () => XamlRoot, ShowPageDialogAsync, () => IsShuttingDown,
-            SynchronizeWorktreePresentation, ShowErrorAsync,
-            OpenFolderInDesktopShellAsync, CopyTextAsync,
-            AddMenuItem, AddMenuItem);
+            SynchronizeWorktreePresentation, _ui.ShowErrorAsync,
+            OpenFolderInDesktopShellAsync, Windowing.WindowUiOperations.CopyTextAsync,
+            _menu.AddMenuItem, _menu.AddMenuItem);
         _branchRename = new Workflows.BranchRenameController(
             _viewModel, _worktreesViewModel, RepositoryTree,
             () => XamlRoot,
             ShowPageDialogAsync,
             () => IsShuttingDown,
-            (operation, description) => RunPageUiOperation(operation, description));
+            (operation, description) => _ui.RunPageUiOperation(operation, description));
         _branchDragDrop = new Workflows.BranchDragDropController(
             RepositoryTree,
             _branchRename.CanRenameBranch,
             _branchRename.ExecuteAsync,
             () => IsShuttingDown,
-            (operation, description) => RunPageUiOperation(operation, description));
+            (operation, description) => _ui.RunPageUiOperation(operation, description));
         _referenceMenus = new Workflows.RepositoryReferenceMenuController(
             _viewModel, _worktreesViewModel, _worktrees, _branchRename, _branchDeletion,
             _tagWorkflows, _stashDialogs, _commitActions,
-            _workspaceNavigation.ShowReferenceHistoryAsync, CopyTextAsync, ExecuteCommandAsync,
+            _workspaceNavigation.ShowReferenceHistoryAsync, Windowing.WindowUiOperations.CopyTextAsync, _ui.ExecuteCommandAsync,
             () => XamlRoot, ShowPageDialogAsync, () => IsShuttingDown,
-            (operation, description) => RunPageUiOperation(operation, description));
+            (operation, description) => _ui.RunPageUiOperation(operation, description));
         _repositoryImageService = repositoryImageService ?? throw new ArgumentNullException(nameof(repositoryImageService));
         _authorAvatarService = authorAvatarService ?? throw new ArgumentNullException(nameof(authorAvatarService));
         _authorAvatarSettings = appSettings;
@@ -274,8 +247,8 @@ public sealed partial class MainPage
             updateActivityState ?? throw new ArgumentNullException(nameof(updateActivityState)),
             () => XamlRoot,
             ShowPageDialogAsync,
-            (operation, description) => RunPageUiOperation(operation, description),
-            ReportUiFailure,
+            (operation, description) => _ui.RunPageUiOperation(operation, description),
+            _ui.ReportUiFailure,
             () => IsShuttingDown,
             () => IsHistoryRewriteInProgress,
             () => IsRepositoryMaintenanceInProgress,
@@ -289,9 +262,9 @@ public sealed partial class MainPage
 
         RepositoryExplorer.Configure(_viewModel, _worktreesViewModel, _workspaceNavigator, _worktrees, _referenceMenus);
         RepositoryExplorer.NavigateRequested += (node, version) =>
-            RunPageUiOperation(() => _workspaceNavigation.SelectRepositoryNodeAsync(node, version), "Repository tree navigation");
+            _ui.RunPageUiOperation(() => _workspaceNavigation.SelectRepositoryNodeAsync(node, version), "Repository tree navigation");
         RepositoryExplorer.CheckoutRequested += (branch, version) =>
-            RunPageUiOperation(() => _workspaceNavigation.SwitchBranchAsync(branch, version), "Switch branch");
+            _ui.RunPageUiOperation(() => _workspaceNavigation.SwitchBranchAsync(branch, version), "Switch branch");
 
         _repositoryMaintenance.Attach(_viewModel, () => _worktreesViewModel.RefreshAsync(throwOnError: true));
         _maintenanceController = new Workflows.RepositoryMaintenanceController(
@@ -299,15 +272,15 @@ public sealed partial class MainPage
             () => XamlRoot, () => IsShuttingDown,
             RepositoryToolbar.SetOptimizeAvailability,
             () => GitConsoleHost.Open(null, manualOpen: true),
-            ReportUiFailure);
+            _ui.ReportUiFailure);
         _maintenanceController.Initialize();
         _repositoryRefresh.InitializeRepositoryChangeMonitoring();
         _confirmationController = new Workflows.RepositoryConfirmationController(
             _viewModel,
             () => XamlRoot,
             ShowPageDialogAsync,
-            (operation, description) => RunPageUiOperation(operation, description),
-            ExecuteCommandAsync,
+            (operation, description) => _ui.RunPageUiOperation(operation, description),
+            _ui.ExecuteCommandAsync,
             () => IsShuttingDown);
         _manualRefresh = new Workflows.RepositoryManualRefreshController(
             _viewModel,
@@ -315,11 +288,11 @@ public sealed partial class MainPage
             () => _repositoryRefresh.IsRefreshInProgress,
             _repositoryRefresh.SetRefreshInProgress,
             RefreshPresentationCollections,
-            ReportUiFailure,
-            ShowErrorAsync);
+            _ui.ReportUiFailure,
+            _ui.ShowErrorAsync);
         _repositoryPush = new Workflows.RepositoryPushController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
-            ShowErrorAsync, RefreshPresentationCollections,
+            _ui.ShowErrorAsync, RefreshPresentationCollections,
             () => IsShuttingDown);
         StartScreenHost.Configure(_viewModel, _recentRepositorySettings, _repositoryImageService,
             _desktopShellService.OpenFolderDescription,
@@ -330,7 +303,7 @@ public sealed partial class MainPage
                 _repositorySwitch.TrySwitchAsync,
                 _repositorySwitch.ShowUnavailableAsync,
                 path => OpenFolderInDesktopShellAsync(path, "Could not open repository folder"),
-                CopyTextAsync,
+                Windowing.WindowUiOperations.CopyTextAsync,
                 () => _settingsWindowController.Open(SettingsSection.General),
                 _aboutUpdate.ShowAboutAsync));
         HistoryView.Configure(_viewModel.History, _workspaceNavigator,
@@ -341,9 +314,9 @@ public sealed partial class MainPage
             _gitCommandActivitySource,
             _authorAvatarService,
             _desktopShellService,
-            ShowErrorAsync,
+            _ui.ShowErrorAsync,
             async dialog => { await ShowPageDialogAsync(dialog); },
-            ReportUiFailure);
+            _ui.ReportUiFailure);
         _feedback = new Dialogs.GitCommandFeedbackController(
             _gitCommandActivitySource, _gitConsoleSettings,
             FloatingGitCommandFeedbackView, GitCommandFeedbackModalHost,
@@ -356,7 +329,7 @@ public sealed partial class MainPage
             _repositorySwitch.SwitchCoreAsync,
             () => XamlRoot,
             ShowPageDialogAsync,
-            (operation, description) => RunPageUiOperation(operation, description),
+            (operation, description) => _ui.RunPageUiOperation(operation, description),
             _feedback);
         _creationWorkflow = new Workflows.RepositoryCreationWorkflow(
             _viewModel, _createRepositoryViewModel,
@@ -366,15 +339,15 @@ public sealed partial class MainPage
             _repositorySwitch.SwitchCoreAsync,
             () => XamlRoot,
             ShowPageDialogAsync,
-            (operation, description) => RunPageUiOperation(operation, description));
+            (operation, description) => _ui.RunPageUiOperation(operation, description));
         _repositoryPull = new Workflows.RepositoryPullController(
-            _viewModel, HistoryPane, ExecuteCommandAsync, ShowErrorAsync, () => IsShuttingDown);
+            _viewModel, HistoryPane, _ui.ExecuteCommandAsync, _ui.ShowErrorAsync, () => IsShuttingDown);
         _toolbarActions = new Workflows.RepositoryToolbarActionController(
             _viewModel, _workspaceNavigation, _repositoryPull, _repositoryPush,
             _manualRefresh, _repositoryPicker, _cloneWorkflow, _creationWorkflow,
             _repositorySwitch, _settingsWindowController, _maintenanceController,
-            _aboutUpdate, ExecuteCommandAsync,
-            (operation, description) => RunPageUiOperation(operation, description));
+            _aboutUpdate, _ui.ExecuteCommandAsync,
+            (operation, description) => _ui.RunPageUiOperation(operation, description));
         _feedback.InitializeGitCommandFeedback();
         GitConsoleHost.Configure(
             _gitCommandActivitySource, _gitConsoleSettings, RootLayout,
@@ -388,8 +361,8 @@ public sealed partial class MainPage
             () => WorkingTreePane.Visibility == Visibility.Visible,
             OpenRepositoryPickerAsync, _workspaceNavigation.ShowAllHistoryAsync,
             HistoryView.FocusFilter, _manualRefresh.RefreshAsync,
-            () => ExecuteCommandAsync(_viewModel.CommitCreation.CommitCommand),
-            (operation, description) => RunPageUiOperation(operation, description));
+            () => _ui.ExecuteCommandAsync(_viewModel.CommitCreation.CommitCommand),
+            (operation, description) => _ui.RunPageUiOperation(operation, description));
         _keyboardShortcuts.Initialize();
         Loaded += MainPage_Loaded;
     }
@@ -411,7 +384,7 @@ public sealed partial class MainPage
         }
         catch (Exception exception)
         {
-            await ShowErrorAsync(errorTitle, exception.Message);
+            await _ui.ShowErrorAsync(errorTitle, exception.Message);
         }
     }
 

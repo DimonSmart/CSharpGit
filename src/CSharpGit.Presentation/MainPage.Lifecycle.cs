@@ -31,8 +31,8 @@ public sealed partial class MainPage
                 () => _creationWorkflow.ShowAsync(),
                 _repositorySwitch.TryCloseAsync,
                 path => OpenFolderInDesktopShellAsync(path, "Could not open repository folder"),
-                CopyTextAsync,
-                ShowErrorAsync));
+                Windowing.WindowUiOperations.CopyTextAsync,
+                _ui.ShowErrorAsync));
     }
 
     // Close admission is decided by WindowCloseOrchestrator; the page only shuts down UI requests.
@@ -59,6 +59,7 @@ public sealed partial class MainPage
         Loaded -= RunDesktopCheckWhenRequested;
         Loaded -= MainPage_Loaded;
         _keyboardShortcuts.Shutdown();
+        _menu.Shutdown();
         _rebaseAuthor.Shutdown();
         _presentationRefresh.Shutdown();
         DetachRepositoryTreeStateTracking();
