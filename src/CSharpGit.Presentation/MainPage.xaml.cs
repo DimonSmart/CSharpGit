@@ -296,7 +296,12 @@ public sealed partial class MainPage : Page
         if (string.IsNullOrWhiteSpace(resultPath)) return;
 
         Loaded -= RunDesktopCheckWhenRequested;
-        await new DesktopUiCheckRunner(this).RunAsync(resultPath);
+        await new DesktopUiCheckRunner(new DesktopUiCheckContext(
+            this, RootLayout, RepositoryWorkspace, RepositoryExplorer, RepositoryToolbar,
+            HistoryPane, WorkingTreePane, GitConsoleHost, _viewModel, _workspaceNavigation,
+            _recentRepositorySettings, _settingsWindowController, _authorAvatarService,
+            _gitCommandActivitySource, RefreshPresentationCollections, ExecuteCommandAsync))
+            .RunAsync(resultPath);
     }
 
 }
