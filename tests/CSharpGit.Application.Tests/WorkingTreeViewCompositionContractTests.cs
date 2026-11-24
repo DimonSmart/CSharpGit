@@ -19,9 +19,11 @@ public sealed class WorkingTreeViewCompositionContractTests
         Assert.Contains("x:Name=\"UnstagedChangesTree\"", view, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"StagedChangesTree\"", view, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"WorkingTreeCommitEditor\"", view, StringComparison.Ordinal);
-        Assert.Contains("WorkingTreePane.UnstagedChangesTree_ItemInvokedCallback", pageCode, StringComparison.Ordinal);
+        Assert.Contains("WorkingTreePane.InitializeWorkingTreeDiffSurface();", pageCode, StringComparison.Ordinal);
         Assert.Contains("WorkingTreePane.WorkingTreeExternalDiff_ClickCallback", pageCode, StringComparison.Ordinal);
-        Assert.Contains("internal Action<TreeView, TreeViewItemInvokedEventArgs>?", bridge, StringComparison.Ordinal);
+        Assert.DoesNotContain("UnstagedChangesTree_ItemInvokedCallback", bridge, StringComparison.Ordinal);
+        var selection = File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeView.Selection.cs"));
+        Assert.Contains("private void UnstagedChangesTree_ItemInvoked(", selection, StringComparison.Ordinal);
     }
 
     private static string FindRoot()

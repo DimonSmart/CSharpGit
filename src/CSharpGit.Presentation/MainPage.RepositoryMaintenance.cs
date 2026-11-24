@@ -28,6 +28,7 @@ public sealed partial class MainPage
     private readonly Workflows.StashDialogController _stashDialogs = null!;
     private readonly Workflows.TagWorkflowController _tagWorkflows = null!;
     private readonly Workflows.InteractiveRebaseAuthorController _rebaseAuthor = null!;
+    private readonly Workflows.SubmoduleWorkflowController _submodules = null!;
     private readonly Workflows.BranchDeletionController _branchDeletion = null!;
     private readonly Workflows.EditCommitMessageController _editCommitMessage = null!;
     private readonly CloneRepositoryViewModel _cloneRepositoryViewModel = null!;
@@ -129,7 +130,12 @@ public sealed partial class MainPage
         _desktopShellService = desktopShellService ?? throw new ArgumentNullException(nameof(desktopShellService));
         _repositoryMaintenance = repositoryMaintenance
             ?? throw new ArgumentNullException(nameof(repositoryMaintenance));
-        _submoduleService = submoduleService ?? throw new ArgumentNullException(nameof(submoduleService));
+        _submodules = new Workflows.SubmoduleWorkflowController(
+            submoduleService ?? throw new ArgumentNullException(nameof(submoduleService)),
+            _viewModel, _repositoryFilesViewModel,
+            () => XamlRoot, ShowPageDialogAsync, () => IsShuttingDown,
+            ShowErrorAsync, (operation, description) => RunPageUiOperation(operation, description),
+            AddMenuItem, CopyTextAsync);
         _recentRepositorySettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
         _gitConsoleSettings = appSettings;
         _gitCommandActivitySource = gitCommandActivitySource ?? throw new ArgumentNullException(nameof(gitCommandActivitySource));

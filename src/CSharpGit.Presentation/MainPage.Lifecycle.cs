@@ -76,8 +76,7 @@ public sealed partial class MainPage
         RepositoryToolbar.Shutdown();
         _repositoryRefresh.ShutdownRepositoryChangeMonitoring();
         _changesTree?.Shutdown();
-        _unstagedViewport?.Dispose();
-        _stagedViewport?.Dispose();
+        WorkingTreePane.ShutdownWorkingTreeDiffSurface();
         _commitSummaryViewport?.Dispose();
         _stashSummaryViewport?.Dispose();
         _worktrees.Shutdown();
@@ -93,14 +92,9 @@ public sealed partial class MainPage
         _viewModel.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
         _viewModel.CommitDetails.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
         _viewModel.History.PropertyChanged -= FileOpeningViewModel_PropertyChanged;
-        _viewModel.WorkingTree.PropertyChanged -= WorkingTreeViewModel_PropertyChanged;
         _viewModel.WorkingTree.PropertyChanged -= WorkingTreeFileOpening_PropertyChanged;
         _fileActions.PropertyChanged -= FileActions_PropertyChanged;
         ChangedFilesTree.RightTapped -= ChangedFilesTree_RightTapped;
-        UnstagedChangesTree.Expanding -= WorkingTreeTree_Expanding;
-        UnstagedChangesTree.Collapsed -= WorkingTreeTree_Collapsed;
-        StagedChangesTree.Expanding -= WorkingTreeTree_Expanding;
-        StagedChangesTree.Collapsed -= WorkingTreeTree_Collapsed;
         ChangedFilesTree.DoubleTapped -= ChangedFilesTree_DoubleTapped;
         UnstagedChangesList.RightTapped -= WorkingTreeChanges_RightTapped;
         StagedChangesList.RightTapped -= WorkingTreeChanges_RightTapped;
