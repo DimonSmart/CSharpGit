@@ -94,6 +94,7 @@ public sealed class RepositoryFilesUiContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
+        var interactions = File.ReadAllText(Path.Combine(presentation, "Controls", "RepositoryFilesSurface.Interactions.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryFilesViewModel.cs"));
         var model = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySnapshotTreeNode.cs"));
 
@@ -110,6 +111,7 @@ public sealed class RepositoryFilesUiContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var filesSurface = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryFiles.cs"));
+        var interactions = File.ReadAllText(Path.Combine(presentation, "Controls", "RepositoryFilesSurface.Interactions.cs"));
         var previewSurface = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryFilePreviewController.cs"));
         var treeStyles = File.ReadAllText(Path.Combine(presentation, "Styles", "RepositoryTree.xaml"));
         var previewHost = File.ReadAllText(Path.Combine(presentation, "Controls", "FilePreviewHost.cs"));
