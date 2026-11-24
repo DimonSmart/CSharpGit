@@ -57,12 +57,7 @@ public sealed partial class MainPage
         _cloneRepositoryViewModel.Cancel();
         Loaded -= RunDesktopCheckWhenRequested;
         _rebaseAuthor.Shutdown();
-        _viewModel.WorkingTree.Changes.CollectionChanged -= RepositoryPresentationChanges_CollectionChanged;
-        _viewModel.Branches.LocalBranches.CollectionChanged -= RepositoryPresentationLocalBranches_CollectionChanged;
-        _viewModel.Branches.RemoteBranches.CollectionChanged -= RepositoryPresentationRemoteBranches_CollectionChanged;
-        _viewModel.RepositorySync.Remotes.CollectionChanged -= RepositoryPresentationRemotes_CollectionChanged;
-        _viewModel.Tags.Items.CollectionChanged -= RepositoryPresentationTags_CollectionChanged;
-        _viewModel.Stashes.Items.CollectionChanged -= RepositoryPresentationStashes_CollectionChanged;
+        _presentationRefresh.Shutdown();
         DetachRepositoryTreeStateTracking();
         _stashInteractions.Shutdown();
         _commitActions.Shutdown();

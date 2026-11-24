@@ -133,7 +133,7 @@ public sealed partial class MainPage : Page
             (operation, description) => RunPageUiOperation(operation, description));
 
         _presentationRefresh = new Workflows.RepositoryPresentationRefreshController(
-            DispatcherQueue, () => IsShuttingDown,
+            _viewModel, DispatcherQueue, () => IsShuttingDown,
             RefreshPresentationCollections,
             SynchronizeRepositoryTree,
             UpdateStatusBar);
@@ -147,12 +147,7 @@ public sealed partial class MainPage : Page
         _viewModel.CommitDetails.PropertyChanged += CommitDetailsViewModel_PropertyChanged;
         _viewModel.History.PropertyChanged += HistoryViewModel_PropertyChanged;
         _viewModel.History.CommitLookupCompleted += History_CommitLookupCompleted;
-        _viewModel.WorkingTree.Changes.CollectionChanged += RepositoryPresentationChanges_CollectionChanged;
-        _viewModel.Branches.LocalBranches.CollectionChanged += RepositoryPresentationLocalBranches_CollectionChanged;
-        _viewModel.Branches.RemoteBranches.CollectionChanged += RepositoryPresentationRemoteBranches_CollectionChanged;
-        _viewModel.RepositorySync.Remotes.CollectionChanged += RepositoryPresentationRemotes_CollectionChanged;
-        _viewModel.Tags.Items.CollectionChanged += RepositoryPresentationTags_CollectionChanged;
-        _viewModel.Stashes.Items.CollectionChanged += RepositoryPresentationStashes_CollectionChanged;
+        _presentationRefresh.Initialize();
         Loaded += RunDesktopCheckWhenRequested;
         WorkingTreePane.Configure(
             _viewModel, _unstagedChanges, _stagedChanges,
@@ -179,24 +174,6 @@ public sealed partial class MainPage : Page
         };
         await ShowPageDialogAsync(dialog);
     }
-
-    private void RepositoryPresentationChanges_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
-        QueueRepositoryPresentationRefresh(workingTreeChanged: true);
-
-    private void RepositoryPresentationLocalBranches_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
-        QueueRepositoryPresentationRefresh();
-
-    private void RepositoryPresentationRemoteBranches_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
-        QueueRepositoryPresentationRefresh();
-
-    private void RepositoryPresentationRemotes_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
-        QueueRepositoryPresentationRefresh();
-
-    private void RepositoryPresentationTags_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
-        QueueRepositoryPresentationRefresh();
-
-    private void RepositoryPresentationStashes_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
-        QueueRepositoryPresentationRefresh();
 
     private Windowing.ICloseConfirmationDialog? _closeConfirmation;
 

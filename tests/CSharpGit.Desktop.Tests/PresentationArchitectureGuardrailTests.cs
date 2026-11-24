@@ -111,12 +111,16 @@ public sealed class PresentationArchitectureGuardrailTests
     }
 
     [Fact]
-    public void MainPageRepositoryCollectionSubscriptionsAreNamedAndSymmetricallyDetached()
+    public void RepositoryProjectionOwnerSubscribesAndSymmetricallyDetaches()
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var mainPage = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
         var lifecycle = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
+
+        var controller = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryPresentationRefreshController.cs"));
+        Assert.Contains("_presentationRefresh.Initialize();", mainPage, StringComparison.Ordinal);
+        Assert.Contains("_presentationRefresh.Shutdown();", lifecycle, StringComparison.Ordinal);
 
         var subscriptions = new[]
         {
@@ -130,9 +134,11 @@ public sealed class PresentationArchitectureGuardrailTests
 
         foreach (var (collection, handler) in subscriptions)
         {
-            Assert.Contains($"_viewModel.{collection}.CollectionChanged += {handler};", mainPage, StringComparison.Ordinal);
-            Assert.Contains($"_viewModel.{collection}.CollectionChanged -= {handler};", lifecycle, StringComparison.Ordinal);
-            Assert.DoesNotContain($"_viewModel.{collection}.CollectionChanged += (_, _) =>", mainPage, StringComparison.Ordinal);
+            Assert.Contains($"_viewModel.{collection}.CollectionChanged += {handler};", controller, StringComparison.Ordinal);
+            Assert.Contains($"_viewModel.{collection}.CollectionChanged -= {handler};", controller, StringComparison.Ordinal);
+            Assert.DoesNotContain($"_viewModel.{collection}.CollectionChanged +=", mainPage, StringComparison.Ordinal);
+            Assert.DoesNotContain($"_viewModel.{collection}.CollectionChanged -=", lifecycle, StringComparison.Ordinal);
+            Assert.DoesNotContain($"_viewModel.{collection}.CollectionChanged += (_, _) =>", controller, StringComparison.Ordinal);
         }
     }
 

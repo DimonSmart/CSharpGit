@@ -12,9 +12,6 @@ public sealed partial class MainPage
     internal Action CapturePendingMonitorDeliveryForDesktopCheck() =>
         _repositoryRefresh.CapturePendingMonitorDeliveryForDesktopCheck();
 
-    private void QueueRepositoryPresentationRefresh(bool workingTreeChanged = false) =>
-        _presentationRefresh.Queue(workingTreeChanged);
-
     private Task<ContentDialogResult> ShowPageDialogAsync(ContentDialog dialog) =>
         _pageDialogs.ShowAsync(dialog);
 
