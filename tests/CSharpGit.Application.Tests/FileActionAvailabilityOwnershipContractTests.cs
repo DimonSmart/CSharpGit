@@ -7,13 +7,15 @@ public sealed class FileActionAvailabilityOwnershipContractTests
     {
         var root = FindRoot();
         var p = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var page = File.ReadAllText(Path.Combine(p, "MainPage.FileOpening.cs"));
+        var composition = File.ReadAllText(Path.Combine(p, "MainPage.RepositoryMaintenance.cs"));
+        var interaction = File.ReadAllText(Path.Combine(p, "Workflows", "FileActionInteractionController.cs"));
         var owner = File.ReadAllText(Path.Combine(p, "Workflows", "FileActionAvailabilityController.cs"));
-        Assert.Contains("new Workflows.FileActionAvailabilityController(", page);
-        Assert.Contains("_fileActionButtons.UpdateCommitButtons();", page);
-        Assert.Contains("_fileActionButtons.UpdateWorkingTreeButtons();", page);
-        Assert.DoesNotContain("private void UpdateCommitButtons()", page);
-        Assert.DoesNotContain("private void SetRevealButton(", page);
+        Assert.False(File.Exists(Path.Combine(p, "MainPage.FileOpening.cs")));
+        Assert.Contains("new Workflows.FileActionAvailabilityController(", composition);
+        Assert.Contains("_availability.UpdateCommitButtons();", interaction);
+        Assert.Contains("_availability.UpdateWorkingTreeButtons();", interaction);
+        Assert.DoesNotContain("private void UpdateCommitButtons()", interaction);
+        Assert.DoesNotContain("private void SetRevealButton(", interaction);
         Assert.Contains("internal void UpdateCommitButtons()", owner);
         Assert.Contains("internal void UpdateWorkingTreeButtons()", owner);
         Assert.Contains("FileActionsViewModel.CanExternalDiff(pair)", owner);
