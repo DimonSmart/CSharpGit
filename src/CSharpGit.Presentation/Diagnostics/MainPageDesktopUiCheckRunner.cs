@@ -177,11 +177,11 @@ public sealed partial class MainPage
                 Check(splitterGrid is not null && splitterGrid.ColumnDefinitions[0].Width.IsAbsolute && Math.Abs(splitterGrid.ColumnDefinitions[0].Width.Value - oldWidth) > 1, "splitter did not resize its pane", failures);
 
                 Check(_page.RepositoryToolbar.CommitNavigationLabel == $"Commit ({_page._viewModel.WorkingTree.Changes.Count})", "commit toolbar count is incorrect", failures);
-                _page.ShowWorkingTree();
+                _page._workspaceNavigation.ShowWorkingTree();
                 Check(_page.WorkingTreePane.Visibility == Visibility.Visible && _page.HistoryPane.Visibility == Visibility.Collapsed, "working tree mode did not open", failures);
                 Check(_page.RepositoryToolbar.CommitNavigationLabel == "Back to history", "commit toolbar did not become the history navigation action", failures);
                 Check(_page._unstagedChanges.Count + _page._stagedChanges.Count >= _page._viewModel.WorkingTree.Changes.Count, "working tree staged/unstaged views lost changes", failures);
-                await _page.ShowAllHistoryAsync();
+                await _page._workspaceNavigation.ShowAllHistoryAsync();
                 Check(_page.RepositoryToolbar.CommitNavigationLabel == $"Commit ({_page._viewModel.WorkingTree.Changes.Count})", "commit toolbar did not restore the change count", failures);
 
                 if (_page._viewModel.History.Rows.FirstOrDefault() is { } selectedBeforeRefresh)
@@ -195,9 +195,9 @@ public sealed partial class MainPage
 
                 if (_page._viewModel.Branches.LocalBranches.FirstOrDefault(branch => branch.IsCurrent) is { } currentBranch)
                 {
-                    await _page.ShowReferenceHistoryAsync(currentBranch.Name, $"Branch: {currentBranch.Name}");
+                    await _page._workspaceNavigation.ShowReferenceHistoryAsync(currentBranch.Name, $"Branch: {currentBranch.Name}");
                     Check(_page._viewModel.History.Rows.Any(row => ReferenceEquals(row, _page._viewModel.History.SelectedRow)), "scoped history selection is not part of the current ItemsSource", failures);
-                    await _page.ShowAllHistoryAsync();
+                    await _page._workspaceNavigation.ShowAllHistoryAsync();
                     Check(_page._viewModel.History.SelectedRow is null || _page._viewModel.History.Rows.Any(row => ReferenceEquals(row, _page._viewModel.History.SelectedRow)), "all-history selection is not part of the current ItemsSource", failures);
                 }
 

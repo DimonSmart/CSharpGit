@@ -6,8 +6,9 @@ public sealed class TagUiContractTests
     public void TagDeletionAndRemoteTagManagementRemainConsistentAndSafe()
     {
         var root = FindRepositoryRoot();
-        var tags = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Tags.cs"));
-        tags += File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "TagWorkflowController.cs"));
+        var tags = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "TagWorkflowController.cs"));
+        tags += File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "CommitActionController.cs"));
+        tags += File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryReferenceMenuController.cs"));
         var tagFeature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "TagsViewModel.cs"));
         var tagService = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "GitTagService.cs"));
         var contract = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Application", "Abstractions", "ITagService.cs"));
@@ -15,7 +16,7 @@ public sealed class TagUiContractTests
         Assert.Contains("\"Delete tag…\"", tags, StringComparison.Ordinal);
         Assert.DoesNotContain("\"Delete local tag…\"", tags, StringComparison.Ordinal);
         Assert.Contains("item.Click += (_, _) =>", tags, StringComparison.Ordinal);
-        Assert.Contains("RunPageUiOperation(() => _tagWorkflows.DeleteTagFromUiAsync(tag)", tags, StringComparison.Ordinal);
+        Assert.Contains("_runUiOperation(() => _tagWorkflows.DeleteTagFromUiAsync(tag)", tags, StringComparison.Ordinal);
         Assert.Contains("() => _tagWorkflows.DeleteTagFromUiAsync(tag)", tags, StringComparison.Ordinal);
 
         Assert.Contains("Content = \"Also delete this tag from remote\"", tags, StringComparison.Ordinal);

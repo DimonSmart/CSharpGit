@@ -87,7 +87,7 @@ public sealed class PresentationArchitectureGuardrailTests
     }
 
     [Fact]
-    public void MainPageHasOnePublicConstructionPathAndNoExternalInitializationProtocol()
+    public void MainPageHasOneTypedCompositionPathAndNoExternalInitializationProtocol()
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
@@ -98,7 +98,13 @@ public sealed class PresentationArchitectureGuardrailTests
             .ToArray();
         var combined = string.Join(Environment.NewLine, mainPageSources);
 
-        Assert.Single(Regex.Matches(combined, @"\bpublic\s+MainPage\s*\(").Cast<Match>());
+        Assert.Empty(Regex.Matches(combined, @"\bpublic\s+MainPage\s*\(").Cast<Match>());
+        Assert.Single(Regex.Matches(combined, @"\binternal\s+MainPage\s*\(").Cast<Match>());
+        Assert.Contains("new MainPage(", app, StringComparison.Ordinal);
+        Assert.Contains("MainPageRepositoryDependencies", combined, StringComparison.Ordinal);
+        Assert.Contains("MainPageGitDependencies", combined, StringComparison.Ordinal);
+        Assert.Contains("MainPageUiDependencies", combined, StringComparison.Ordinal);
+        Assert.Contains("MainPageUpdateDependencies", combined, StringComparison.Ordinal);
         Assert.DoesNotContain("mainPage.Initialize", app, StringComparison.Ordinal);
         Assert.DoesNotContain("MainPageServices", combined, StringComparison.Ordinal);
         Assert.Contains("SettingsWindowController", combined, StringComparison.Ordinal);
@@ -577,7 +583,9 @@ public sealed class PresentationArchitectureGuardrailTests
         Assert.DoesNotContain("IRepositoryIdentityService", mainPage, StringComparison.Ordinal);
         Assert.DoesNotContain("IInteractiveRebaseAuthorChangeService", mainPage, StringComparison.Ordinal);
         Assert.DoesNotContain("ICommitAuthorDateReader", mainPage, StringComparison.Ordinal);
-        Assert.Contains("_viewModel.InteractiveRebase.", mainPage, StringComparison.Ordinal);
+        var commitActions = File.ReadAllText(Path.Combine(presentation, "Workflows", "CommitActionController.cs"));
+        Assert.Contains("_viewModel.InteractiveRebase.PrepareInteractiveRebaseFromCommitAsync", commitActions, StringComparison.Ordinal);
+        Assert.DoesNotContain("_viewModel.InteractiveRebase.", mainPage, StringComparison.Ordinal);
         Assert.Contains("_viewModel.RepositoryOperations.", mainPage, StringComparison.Ordinal);
     }
 

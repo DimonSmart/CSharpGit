@@ -9,7 +9,7 @@ public sealed class RepositoryTreeIncrementalContractTests
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var refresh = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryPresentationRefreshController.cs"));
         var worktrees = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "WorktreeController.cs"));
-        var tags = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Tags.cs"));
+        var tags = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "TagWorkflowController.cs"));
 
         Assert.DoesNotContain("_repositoryTreeRoots.Clear();", ExtractMethod(page, "private void RebuildRepositoryTree()"), StringComparison.Ordinal);
         Assert.DoesNotContain("RebuildRepositoryTree();\n            UpdateStatusBar();", page, StringComparison.Ordinal);
@@ -26,21 +26,21 @@ public sealed class RepositoryTreeIncrementalContractTests
     public void RepositoryTreeNavigationRetainsLatestClickDuringBusyHistoryRead()
     {
         var root = FindRepositoryRoot();
-        var navigationSource = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs"));
+        var navigationSource = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "WorkspaceNavigationController.cs"));
         var coordinator = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "RepositoryTreeNavigationCoordinator.cs"));
 
         var explorerSource = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryExplorerView.xaml.cs"));
         var workspaceSource = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "WorkspaceNavigator.cs"));
         var click = ExtractMethod(explorerSource, "private void Tree_ItemInvoked(");
         var navigation = ExtractMethod(workspaceSource, "Task<WorkspaceCommitTarget?> NavigateToCommitAsync(");
-        var resume = ExtractMethod(navigationSource, "private Task ResumePendingRepositoryTreeNavigationAsync()");
+        var resume = ExtractMethod(navigationSource, "private Task ResumePendingReferenceAsync()");
         var checkout = ExtractMethod(explorerSource, "private void Tree_DoubleTapped(");
 
         Assert.Contains("Tree.SelectedItem = node;", click, StringComparison.Ordinal);
         Assert.Contains("_repository.History.Invalidate();", click, StringComparison.Ordinal);
         Assert.Contains("Interactions.DeferReference(", navigation, StringComparison.Ordinal);
         Assert.Contains("interactionVersion", navigation, StringComparison.Ordinal);
-        Assert.Contains("_repositoryTreeNavigation.TryTakeReference(", resume, StringComparison.Ordinal);
+        Assert.Contains("Interactions.TryTakeReference(", resume, StringComparison.Ordinal);
         Assert.Contains("candidate.Version != _version", coordinator, StringComparison.Ordinal);
         Assert.Contains("candidate.SelectionIntentVersion != currentSelectionIntentVersion", coordinator, StringComparison.Ordinal);
         Assert.Contains("CheckoutRequested?.Invoke(branch.Name, version);", checkout, StringComparison.Ordinal);

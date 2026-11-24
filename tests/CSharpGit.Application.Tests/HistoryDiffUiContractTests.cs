@@ -151,7 +151,7 @@ public sealed class HistoryDiffUiContractTests
     public void HistoricalFileActionStateRemainsLazy()
     {
         var root = FindRepositoryRoot();
-        var source = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
+        var source = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "FileActionInteractionController.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "FileActionsViewModel.cs"));
 
         Assert.Contains("_fileActions.SelectCommitLazy(CaptureCommitRequest())", source);
@@ -164,7 +164,7 @@ public sealed class HistoryDiffUiContractTests
     public void HistoricalExternalDiffUsesTheSameResolvedPairAsFileVersionActions()
     {
         var root = FindRepositoryRoot();
-        var source = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
+        var source = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "FileActionInteractionController.cs"));
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "FileActionsViewModel.cs"));
 
         Assert.Contains("_versions.ResolveCommitAsync", feature);

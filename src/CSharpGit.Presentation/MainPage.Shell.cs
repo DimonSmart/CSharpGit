@@ -1,5 +1,4 @@
 using Microsoft.UI.Xaml.Controls;
-using CSharpGit.Domain;
 using Microsoft.UI.Xaml;
 
 namespace CSharpGit.Presentation;
@@ -24,30 +23,8 @@ public sealed partial class MainPage
 
     private ContentDialog GetPageDialog(string key) => _pageDialogs.GetDialog(key);
 
-    private bool CanRenameBranch() => _branchRename.CanRenameBranch();
-    private Task RenameBranchAsync(GitBranch branch) => _branchRename.RenameAsync(branch);
-    private Task ExecuteBranchRenameAsync(GitBranch branch, string name) =>
-        _branchRename.ExecuteAsync(branch, name);
-
-    private void CreateStash_Click(object sender, RoutedEventArgs args) =>
-        RunPageUiOperation(_stashDialogs.ShowCreateAsync, "Create stash");
-
-    private Task ShowCreateStashDialogAsync() => _stashDialogs.ShowCreateAsync();
-
-    private Task ShowCreateSelectedStashDialogAsync(IReadOnlyCollection<WorkingTreeChange> changes) =>
-        _stashDialogs.ShowCreateSelectedAsync(changes);
-
-    private void DropSelectedStash_Click(object sender, RoutedEventArgs args)
-    {
-        if (_viewModel.Stashes.SelectedStash is { } stash)
-            RunPageUiOperation(() => _stashDialogs.ConfirmDropAsync(stash), "Drop stash");
-    }
-
-    private Task ConfirmDropStashAsync(GitStash stash) => _stashDialogs.ConfirmDropAsync(stash);
-
     internal Task OpenInitialRepositoryAsync() => _viewModel.OpenRepositoryAsyncForDesktopCheck();
 
-    // Phase-3 Git-reference menus still use the TreeView through this narrow UI adapter.
     internal TreeView RepositoryTree => RepositoryExplorer.TreeControl;
 
     protected override void OnApplyTemplate()

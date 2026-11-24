@@ -25,7 +25,7 @@ public sealed class PresentationFeatureArchitectureTests
     [Fact]
     public void FileActionsAreBoundToCapturedImmutableRequests()
     {
-        var page = Read("src/CSharpGit.Presentation/MainPage.FileOpening.cs");
+        var page = Read("src/CSharpGit.Presentation/Workflows/FileActionInteractionController.cs");
         var feature = Read("src/CSharpGit.Presentation.Core/ViewModels/FileActionsViewModel.cs");
         var context = Read("src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.FileActions.cs");
         Assert.DoesNotContain("ResolveCommitAsync(", page);
@@ -75,7 +75,7 @@ public sealed class PresentationFeatureArchitectureTests
         Assert.DoesNotContain("_fileActions.Dispose()", lifecycle);
         Assert.DoesNotContain("_repositoryMaintenance.Dispose()", lifecycle);
         Assert.DoesNotContain("_viewModel.Dispose()", lifecycle);
-        Assert.Contains("_fileActions.PropertyChanged -= FileActions_PropertyChanged", lifecycle);
+        Assert.Contains("_fileActionInteractions.Shutdown()", lifecycle);
         var maintenanceController = Read("src/CSharpGit.Presentation/Workflows/RepositoryMaintenanceController.cs");
         Assert.Contains("_maintenanceController.Shutdown()", lifecycle);
         Assert.Contains("_maintenance.PropertyChanged -= Maintenance_PropertyChanged", maintenanceController);
@@ -89,7 +89,7 @@ public sealed class PresentationFeatureArchitectureTests
     {
         var git = Read("src/CSharpGit.Git/ExternalGitToolService.cs");
         var feature = Read("src/CSharpGit.Presentation.Core/ViewModels/FileActionsViewModel.cs");
-        var page = Read("src/CSharpGit.Presentation/MainPage.FileOpening.cs");
+        var page = Read("src/CSharpGit.Presentation/Workflows/FileActionInteractionController.cs");
         Assert.Contains("throw new GitToolNotConfiguredException(displayName)", git);
         Assert.Contains("catch (GitToolNotConfiguredException)", feature);
         Assert.DoesNotContain("Message.Contains(\"Diff tool is not configured\"", page);
@@ -101,10 +101,11 @@ public sealed class PresentationFeatureArchitectureTests
         var page = Read("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
         var preview = Read("src/CSharpGit.Presentation/Workflows/RepositoryFilePreviewController.cs");
         var surface = Read("src/CSharpGit.Presentation/Controls/RepositoryFilesSurface.cs");
+        var interactions = Read("src/CSharpGit.Presentation/Controls/RepositoryFilesSurface.Interactions.cs");
 
         Assert.Contains("new RepositoryFilesSurface(_repositoryFilesViewModel)", page);
-        Assert.Contains("SearchBox.TextChanged += RepositoryFilesSearch_TextChanged", page);
-        Assert.Contains("FileTree.SelectionChanged += RepositoryFilesTree_SelectionChanged", page);
+        Assert.Contains("SearchBox.TextChanged += RepositoryFilesSearch_TextChanged", interactions);
+        Assert.Contains("FileTree.SelectionChanged += RepositoryFilesTree_SelectionChanged", interactions);
         Assert.Contains("() => _repositoryFilesSurface?.PreviewHost", page);
         Assert.Contains("_previewHost()", preview);
         Assert.DoesNotContain("private Grid BuildRepositoryFilesSplitBody", preview);

@@ -2,8 +2,10 @@ using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Presentation.ViewModels;
 using CSharpGit.Presentation.Controls;
+using CSharpGit.Presentation.Previewing;
 using CSharpGit.Presentation.Views;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace CSharpGit.Presentation;
 
@@ -18,6 +20,8 @@ public sealed partial class MainPage
     private Dialogs.GitCommandFeedbackController _feedback = null!;
     private readonly Workflows.RepositoryManualRefreshController _manualRefresh = null!;
     private readonly Workflows.RepositoryPushController _repositoryPush = null!;
+    private readonly Workflows.RepositoryPullController _repositoryPull = null!;
+    private readonly Workflows.RepositoryToolbarActionController _toolbarActions = null!;
     private readonly Workflows.RepositoryConfirmationController _confirmationController = null!;
     private readonly Workflows.BranchRenameController _branchRename = null!;
     private readonly Workflows.WorktreeController _worktrees = null!;
@@ -26,11 +30,14 @@ public sealed partial class MainPage
     private readonly Workflows.HistoryRewriteController _historyRewrite = null!;
     private readonly Workflows.BranchDragDropController _branchDragDrop = null!;
     private readonly Workflows.StashDialogController _stashDialogs = null!;
+    private readonly Workflows.StashInteractionController _stashInteractions = null!;
     private readonly Workflows.TagWorkflowController _tagWorkflows = null!;
     private readonly Workflows.InteractiveRebaseAuthorController _rebaseAuthor = null!;
     private readonly Workflows.SubmoduleWorkflowController _submodules = null!;
     private readonly Workflows.BranchDeletionController _branchDeletion = null!;
     private readonly Workflows.EditCommitMessageController _editCommitMessage = null!;
+    private readonly Workflows.CommitActionController _commitActions = null!;
+    private readonly Workflows.RepositoryReferenceMenuController _referenceMenus = null!;
     private readonly CloneRepositoryViewModel _cloneRepositoryViewModel = null!;
     private readonly CreateRepositoryViewModel _createRepositoryViewModel = null!;
     private readonly Workflows.RepositoryCloneWorkflow _cloneWorkflow = null!;
@@ -45,44 +52,114 @@ public sealed partial class MainPage
     private IAuthorAvatarService _authorAvatarService = null!;
     private IAppSettingsService _authorAvatarSettings = null!;
 
+    private readonly IRepositoryFileVersionService _fileVersionService = null!;
+    private readonly IExternalGitToolService _externalGitToolService = null!;
+    private readonly FileActionsViewModel _fileActions = null!;
+    private readonly ImageDiffPreviewService _imageDiffService = null!;
+    private readonly Workflows.CommitImageDiffWorkflow _commitImageDiff = null!;
+    private readonly Workflows.FileActionAvailabilityController _fileActionButtons = null!;
+    private readonly Workflows.FileActionInteractionController _fileActionInteractions = null!;
+
+    private MainPage(
+        OpenRepositoryViewModel viewModel,
+        IWorkingTreeStatusReader workingTreeStatusReader,
+        IRepositoryFileVersionService fileVersionService,
+        IExternalGitToolService externalGitToolService,
+        FileActionsViewModel fileActions,
+        WorkspaceNavigator workspaceNavigator)
+        : this(viewModel, workingTreeStatusReader, workspaceNavigator)
+    {
+        _fileVersionService = fileVersionService ?? throw new ArgumentNullException(nameof(fileVersionService));
+        _externalGitToolService = externalGitToolService ?? throw new ArgumentNullException(nameof(externalGitToolService));
+        _fileActions = fileActions ?? throw new ArgumentNullException(nameof(fileActions));
+        _fileActions.Attach(_viewModel);
+        _imageDiffService = new ImageDiffPreviewService(
+            _fileVersionService, _fileActions.PathResolver, SharedImageMetadataReader.Instance);
+        _commitImageDiff = new Workflows.CommitImageDiffWorkflow(
+            _viewModel, _fileActions, _imageDiffService, CommitImageDiffHost,
+            () => IsShuttingDown,
+            _diffPresentation.RenderCommit,
+            ReportUiFailure);
+        _fileActionButtons = new Workflows.FileActionAvailabilityController(
+            _viewModel, _fileActions,
+            new Workflows.FileActionAvailabilityController.Controls(
+                CommitOpenOriginalButton, CommitOpenChangedButton,
+                CommitExternalDiffButton, CommitRevealButton),
+            new Workflows.FileActionAvailabilityController.Controls(
+                WorkingTreeOpenOriginalButton, WorkingTreeOpenChangedButton,
+                WorkingTreeExternalDiffButton, WorkingTreeRevealButton));
+        _fileActionInteractions = new Workflows.FileActionInteractionController(
+            _viewModel, _fileActions, _fileActionButtons, ChangedFilesTree,
+            HistoryPane, WorkingTreePane,
+            () => XamlRoot, ShowPageDialogAsync, ShowErrorAsync, ReportUiFailure,
+            () => _settingsWindowController.Open(SettingsSection.GitTools),
+            () => IsShuttingDown,
+            (operation, description) => RunPageUiOperation(operation, description));
+        _fileActionInteractions.Initialize();
+    }
+
+    private void AddMenuItem(MenuFlyout flyout, string text, bool enabled, Func<Task> action) =>
+        AddMenuItem(flyout, text, () => enabled, action);
+
+    private void AddMenuItem(MenuFlyout flyout, string text, Func<bool> canExecute, Func<Task> action)
+    {
+        var item = new MenuFlyoutItem { Text = text, IsEnabled = canExecute() };
+
+        void UpdateAvailability(object? sender, PropertyChangedEventArgs args)
+        {
+            if (args.PropertyName is nameof(OpenRepositoryViewModel.IsBusy)
+                or nameof(OpenRepositoryViewModel.Repository)
+                or nameof(OpenRepositoryViewModel.CanChangeRepository))
+                item.IsEnabled = canExecute();
+        }
+
+        void Detach(object? sender, object args)
+        {
+            _viewModel.PropertyChanged -= UpdateAvailability;
+            flyout.Closed -= Detach;
+        }
+
+        _viewModel.PropertyChanged += UpdateAvailability;
+        flyout.Closed += Detach;
+        item.Click += (_, _) => RunPageUiOperation(action, "Menu action", showError: true);
+        flyout.Items.Add(item);
+    }
+
     internal bool IsRepositoryMaintenanceInProgress => _repositoryMaintenance.IsRunning;
     internal bool IsApplicationUpdateInProgress => _aboutUpdate.IsRunning;
     internal bool IsHistoryRewriteInProgress => _viewModel.RepositoryHistoryRewrite.IsInProgress;
 
-    public MainPage(
-        OpenRepositoryViewModel viewModel,
-        CreateRepositoryViewModel createRepositoryViewModel,
-        CloneRepositoryViewModel cloneRepositoryViewModel,
-        IWorkingTreeStatusReader workingTreeStatusReader,
-        IDesktopShellService desktopShellService,
-        IRepositoryFileVersionService fileVersionService,
-        IExternalGitToolService externalGitToolService,
-        RepositoryFilesViewModel repositoryFilesViewModel,
-        ISubmoduleService submoduleService,
-        FileActionsViewModel fileActions,
-        RepositoryMaintenanceViewModel repositoryMaintenance,
-        IAppSettingsService appSettings,
-        IGitCommandActivitySource gitCommandActivitySource,
-        WorktreesViewModel worktreesViewModel,
-        IRepositoryImageService repositoryImageService,
-        IAuthorAvatarService authorAvatarService,
-        RecentRepositoryFolderPicker recentRepositoryFolderPicker,
-        SettingsWindowController settingsWindowController,
-        IApplicationVersionProvider applicationVersionProvider,
-        IUpdateCheckService updateCheckService,
-        IApplicationUpdateInstaller applicationUpdateInstaller,
-        ISystemUriLauncher systemUriLauncher,
-        ApplicationUpdateActivityState updateActivityState,
-        WorkspaceNavigator workspaceNavigator)
+    internal MainPage(
+        MainPageRepositoryDependencies repositoryDependencies,
+        MainPageGitDependencies gitDependencies,
+        MainPageUiDependencies uiDependencies,
+        MainPageUpdateDependencies updateDependencies)
         : this(
-            viewModel,
-            workingTreeStatusReader,
-            fileVersionService,
-            externalGitToolService,
-            fileActions,
-            repositoryFilesViewModel,
-            workspaceNavigator)
+            repositoryDependencies.ViewModel,
+            gitDependencies.WorkingTreeStatusReader,
+            gitDependencies.FileVersionService,
+            gitDependencies.ExternalGitToolService,
+            repositoryDependencies.FileActions,
+            repositoryDependencies.RepositoryFiles,
+            repositoryDependencies.WorkspaceNavigator)
     {
+        var createRepositoryViewModel = repositoryDependencies.CreateRepository;
+        var cloneRepositoryViewModel = repositoryDependencies.CloneRepository;
+        var desktopShellService = gitDependencies.DesktopShell;
+        var submoduleService = gitDependencies.SubmoduleService;
+        var repositoryMaintenance = repositoryDependencies.Maintenance;
+        var appSettings = uiDependencies.AppSettings;
+        var gitCommandActivitySource = uiDependencies.GitCommandActivitySource;
+        var worktreesViewModel = repositoryDependencies.Worktrees;
+        var repositoryImageService = uiDependencies.RepositoryImageService;
+        var authorAvatarService = uiDependencies.AuthorAvatarService;
+        var recentRepositoryFolderPicker = uiDependencies.RecentRepositoryFolderPicker;
+        var settingsWindowController = uiDependencies.SettingsWindowController;
+        var applicationVersionProvider = updateDependencies.ApplicationVersionProvider;
+        var updateCheckService = updateDependencies.UpdateCheckService;
+        var applicationUpdateInstaller = updateDependencies.ApplicationUpdateInstaller;
+        var systemUriLauncher = updateDependencies.SystemUriLauncher;
+        var updateActivityState = updateDependencies.UpdateActivityState;
         _repositorySwitch = new Workflows.RepositorySwitchController(
             _viewModel,
             () => _repositoryCloningWorkflowActive,
@@ -98,12 +175,16 @@ public sealed partial class MainPage
         _historyRewrite = new Workflows.HistoryRewriteController(
             _viewModel, _repositoryFilesViewModel, _repositoryFilePreview,
             () => IsShuttingDown, () => XamlRoot, ShowPageDialogAsync,
-            RestoreCommitActionSelectionAsync,
-            UpdateRepositoryFilesModeSurface, UpdateHistoryScopePresentation,
+            hash => _commitActions.RestoreSelectionAsync(hash),
+            UpdateRepositoryFilesModeSurface, _workspaceNavigation.UpdateHistoryPresentation,
             () => { HistoryPane.Visibility = Visibility.Visible; WorkingTreePane.Visibility = Visibility.Collapsed; });
         _stashDialogs = new Workflows.StashDialogController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
             () => IsShuttingDown, ExecuteCommandAsync);
+        _stashInteractions = new Workflows.StashInteractionController(
+            _viewModel, _stashDialogs, HistoryPane, WorkingTreeCommitEditor,
+            (operation, description) => RunPageUiOperation(operation, description));
+        _stashInteractions.Initialize();
         _tagWorkflows = new Workflows.TagWorkflowController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
             () => IsShuttingDown, ShowErrorAsync, ShowInformationAsync,
@@ -117,12 +198,18 @@ public sealed partial class MainPage
         _rebaseAuthor.Initialize();
         _editCommitMessage = new Workflows.EditCommitMessageController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
-            () => IsShuttingDown, HandleCommitActionExecutionResultAsync,
-            RestoreCommitActionSelectionAsync);
+            () => IsShuttingDown,
+            result => _commitActions.HandleExecutionResultAsync(result),
+            hash => _commitActions.RestoreSelectionAsync(hash));
+        _commitActions = new Workflows.CommitActionController(
+            _viewModel, HistoryView, _editCommitMessage, _tagWorkflows,
+            () => XamlRoot, ShowPageDialogAsync, ShowErrorAsync,
+            () => IsShuttingDown, ShowInteractiveRebaseEditorAsync,
+            (operation, description) => RunPageUiOperation(operation, description));
+        _commitActions.Initialize();
         _branchDeletion = new Workflows.BranchDeletionController(
             _viewModel, () => XamlRoot, ShowPageDialogAsync,
             () => IsShuttingDown, ShowErrorAsync, ShowInformationAsync);
-        WorkingTreeCommitEditor.StashRequested += CreateStash_Click;
         _createRepositoryViewModel = createRepositoryViewModel
             ?? throw new ArgumentNullException(nameof(createRepositoryViewModel));
         _cloneRepositoryViewModel = cloneRepositoryViewModel
@@ -158,6 +245,12 @@ public sealed partial class MainPage
             _branchRename.ExecuteAsync,
             () => IsShuttingDown,
             (operation, description) => RunPageUiOperation(operation, description));
+        _referenceMenus = new Workflows.RepositoryReferenceMenuController(
+            _viewModel, _worktreesViewModel, _worktrees, _branchRename, _branchDeletion,
+            _tagWorkflows, _stashDialogs, _commitActions,
+            _workspaceNavigation.ShowReferenceHistoryAsync, CopyTextAsync, ExecuteCommandAsync,
+            () => XamlRoot, ShowPageDialogAsync, () => IsShuttingDown,
+            (operation, description) => RunPageUiOperation(operation, description));
         _repositoryImageService = repositoryImageService ?? throw new ArgumentNullException(nameof(repositoryImageService));
         _authorAvatarService = authorAvatarService ?? throw new ArgumentNullException(nameof(authorAvatarService));
         _authorAvatarSettings = appSettings;
@@ -166,11 +259,12 @@ public sealed partial class MainPage
             recentRepositoryFolderPicker ?? throw new ArgumentNullException(nameof(recentRepositoryFolderPicker)),
             () => !_repositoryCloningWorkflowActive && !_repositoryCreationWorkflowActive
                   && _viewModel.CanChangeRepository && !IsShuttingDown,
-            TrySwitchRepositoryAsync,
+            _repositorySwitch.TrySwitchAsync,
             ShowPageDialogAsync);
         _settingsWindowController = settingsWindowController ?? throw new ArgumentNullException(nameof(settingsWindowController));
         _settingsWindowController.ConfigureWindowContext(
             () => _viewModel.Repository, _viewModel.TryBeginGitSettingsOperation);
+        ConfigureRepositoryFilesActions();
         _aboutUpdate = new Dialogs.AboutUpdateDialogController(
             applicationVersionProvider ?? throw new ArgumentNullException(nameof(applicationVersionProvider)),
             updateCheckService ?? throw new ArgumentNullException(nameof(updateCheckService)),
@@ -192,12 +286,11 @@ public sealed partial class MainPage
                     app.CompleteApplicationUpdateRestart(this);
             });
 
-        RepositoryExplorer.Configure(_viewModel, _worktreesViewModel, _workspaceNavigator, _worktrees);
+        RepositoryExplorer.Configure(_viewModel, _worktreesViewModel, _workspaceNavigator, _worktrees, _referenceMenus);
         RepositoryExplorer.NavigateRequested += (node, version) =>
-            RunPageUiOperation(() => SelectRepositoryNodeAsync(node, version), "Repository tree navigation");
+            RunPageUiOperation(() => _workspaceNavigation.SelectRepositoryNodeAsync(node, version), "Repository tree navigation");
         RepositoryExplorer.CheckoutRequested += (branch, version) =>
-            RunPageUiOperation(() => SwitchRepositoryTreeBranchAsync(branch, version), "Switch branch");
-        RepositoryExplorer.ReferenceMenuRequested += RepositoryTreeBranchDeletion_RightTapped;
+            RunPageUiOperation(() => _workspaceNavigation.SwitchBranchAsync(branch, version), "Switch branch");
 
         _repositoryMaintenance.Attach(_viewModel, () => _worktreesViewModel.RefreshAsync(throwOnError: true));
         _maintenanceController = new Workflows.RepositoryMaintenanceController(
@@ -233,8 +326,8 @@ public sealed partial class MainPage
                 OpenRepositoryPickerAsync,
                 () => _cloneWorkflow.ShowAsync(),
                 () => _creationWorkflow.ShowAsync(),
-                TrySwitchRepositoryAsync,
-                ShowUnavailableRepositoryAsync,
+                _repositorySwitch.TrySwitchAsync,
+                _repositorySwitch.ShowUnavailableAsync,
                 path => OpenFolderInDesktopShellAsync(path, "Could not open repository folder"),
                 CopyTextAsync,
                 () => _settingsWindowController.Open(SettingsSection.General),
@@ -258,8 +351,8 @@ public sealed partial class MainPage
             _viewModel, _cloneRepositoryViewModel,
             () => _repositoryCreationWorkflowActive,
             () => IsShuttingDown,
-            () => ConfirmDiscardCommitMessageAsync(closing: false),
-            SwitchRepositoryCoreAsync,
+            () => _repositorySwitch.ConfirmDiscardAsync(closing: false),
+            _repositorySwitch.SwitchCoreAsync,
             () => XamlRoot,
             ShowPageDialogAsync,
             (operation, description) => RunPageUiOperation(operation, description),
@@ -268,10 +361,18 @@ public sealed partial class MainPage
             _viewModel, _createRepositoryViewModel,
             () => _repositoryCloningWorkflowActive,
             () => IsShuttingDown,
-            () => ConfirmDiscardCommitMessageAsync(closing: false),
-            SwitchRepositoryCoreAsync,
+            () => _repositorySwitch.ConfirmDiscardAsync(closing: false),
+            _repositorySwitch.SwitchCoreAsync,
             () => XamlRoot,
             ShowPageDialogAsync,
+            (operation, description) => RunPageUiOperation(operation, description));
+        _repositoryPull = new Workflows.RepositoryPullController(
+            _viewModel, HistoryPane, ExecuteCommandAsync, ShowErrorAsync, () => IsShuttingDown);
+        _toolbarActions = new Workflows.RepositoryToolbarActionController(
+            _viewModel, _workspaceNavigation, _repositoryPull, _repositoryPush,
+            _manualRefresh, _repositoryPicker, _cloneWorkflow, _creationWorkflow,
+            _repositorySwitch, _settingsWindowController, _maintenanceController,
+            _aboutUpdate, ExecuteCommandAsync,
             (operation, description) => RunPageUiOperation(operation, description));
         _feedback.InitializeGitCommandFeedback();
         GitConsoleHost.Configure(
@@ -280,6 +381,27 @@ public sealed partial class MainPage
             _feedback.RenderGitCommandFeedback,
             () => GitCommandFeedbackModalHost.Visibility == Visibility.Visible);
         _worktrees.Initialize();
+    }
+
+    internal Task<bool> ConfirmedSwitchForDesktopCheckAsync(string path) =>
+        _repositorySwitch.ConfirmedSwitchForDesktopCheckAsync(path);
+
+    internal bool ConfirmedCloseForDesktopCheck() =>
+        _repositorySwitch.ConfirmedCloseForDesktopCheck();
+
+    private async Task OpenFolderInDesktopShellAsync(string path, string errorTitle)
+    {
+        try
+        {
+            await _desktopShellService.OpenFolderAsync(path);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            await ShowErrorAsync(errorTitle, exception.Message);
+        }
     }
 
     private Task OpenRepositoryPickerAsync() => _repositoryPicker.OpenAsync();

@@ -72,7 +72,7 @@ public sealed class Phase2ComponentOwnershipTests
         Assert.Contains("private readonly CommitGraphLayoutState _historyGraphLayout = new();", graph, StringComparison.Ordinal);
         Assert.Contains("LayoutChanged?.Invoke", graph, StringComparison.Ordinal);
         var historyView = Read("src/CSharpGit.Presentation/Views/HistoryView.xaml.cs");
-        var navigation = Read("src/CSharpGit.Presentation/MainPage.RepositoryNavigation.cs");
+        var navigation = Read("src/CSharpGit.Presentation/Workflows/WorkspaceNavigationController.cs");
         Assert.Contains("HistoryView.ScrollTo(", navigation, StringComparison.Ordinal);
         Assert.DoesNotContain("HistoryList.ScrollIntoView", navigation, StringComparison.Ordinal);
         Assert.Contains("HistoryList.ScrollIntoView", historyView, StringComparison.Ordinal);

@@ -139,11 +139,13 @@ public sealed class DesktopUiContractTests
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var confirmationDialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryConfirmationController.cs"));
         var forcePushPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryPushController.cs"));
-        var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
+        var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "CommitActionController.cs"));
         var workingTreeMenus = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.ContextMenu.cs"));
-        var branchMenus = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchDeletion.cs"));
-        var navigation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs"));
-        var surface = xaml + operationBanner + page + navigation + confirmationDialogs + forcePushPage + commitActions + workingTreeMenus + branchMenus;
+        var branchMenus = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryReferenceMenuController.cs"));
+        var navigation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "WorkspaceNavigationController.cs"));
+        var pull = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryPullController.cs"));
+        var toolbar = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryToolbarActionController.cs"));
+        var surface = xaml + operationBanner + page + navigation + confirmationDialogs + forcePushPage + commitActions + workingTreeMenus + branchMenus + pull + toolbar;
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
         var repositorySync = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySyncViewModel.cs"));
         var repositoryOperations = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryOperationsViewModel.cs"));
@@ -227,7 +229,7 @@ public sealed class DesktopUiContractTests
             + File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml"));
         var confirmationDialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryConfirmationController.cs"));
         var branchDeletion = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "BranchDeletionController.cs"));
-        var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
+        var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "CommitActionController.cs"));
         var forcePush = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryPushController.cs"));
         var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
         var draftConfirmation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Windowing", "CommitDraftCloseConfirmationDialog.cs"));

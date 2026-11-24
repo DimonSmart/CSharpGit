@@ -2,7 +2,47 @@
 
 Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (after phase 2.6). Historical phase-2 baseline: `e8ebd64467519d642978c31ae635f511db432aba` (subsequent phase-1 fixes on `main` are included). This matrix documents the agreed three-phase boundary. A phase-2 feature cannot retain its implementation in `MainPage` after extraction.
 
-## Phase 3 incremental implementation
+## Phase 3 completion
+
+The final Phase 3 ownership pass removes the remaining feature implementations from
+`MainPage` and leaves the page as the window shell/composition boundary.
+
+- History commit actions are owned by `Workflows/CommitActionController`;
+  `MainPage.CommitActions.cs` is removed.
+- Repository-reference menus are owned by
+  `Workflows/RepositoryReferenceMenuController`; `MainPage.BranchDeletion.cs`
+  and `MainPage.Tags.cs` are removed.
+- History/Working Tree navigation and deferred repository-tree interaction are owned by
+  `Workflows/WorkspaceNavigationController`; `MainPage.RepositoryNavigation.cs`
+  is removed.
+- Repository Files browsing/search/selection are owned by
+  `Controls/RepositoryFilesSurface`, while historical-file commands are owned by
+  `Workflows/RepositoryFilesActionController`. The remaining
+  `MainPage.RepositoryFiles.cs` is composition only.
+- Commit/Working Tree file-action interaction is owned by
+  `Workflows/FileActionInteractionController`; `MainPage.FileOpening.cs` is removed.
+- Stash button/drop event routing is owned by `Workflows/StashInteractionController`.
+- Pull execution/selection restoration and toolbar dispatch are owned by
+  `Workflows/RepositoryPullController` and
+  `Workflows/RepositoryToolbarActionController`.
+- Repository switching callers use `Workflows/RepositorySwitchController` directly;
+  `MainPage.RepositorySwitching.cs` is removed.
+- The former repository-tree state partial is reduced to non-feature shell adapters in
+  `MainPage.Shell.cs`; `MainPage.RepositoryTreeState.cs` is removed.
+- The public 24-parameter construction path is replaced by one internal constructor
+  receiving four typed dependency groups. DI resolution remains in `App`, the
+  composition root; no `IServiceProvider` is passed into `MainPage`.
+
+The remaining top-level MainPage files are intentionally shell/composition files:
+`MainPage.xaml(.cs)`, `MainPage.Lifecycle.cs`, `MainPage.Shell.cs`,
+`MainPage.RepositoryFiles.cs`, and `MainPage.RepositoryMaintenance.cs` (the
+historical filename now contains window-scoped controller composition rather than
+repository-maintenance feature implementation).
+
+The chronological notes below document the intermediate migration steps and can
+therefore mention adapters that were removed by the completion pass.
+
+## Phase 3 incremental implementation history
 
 Destructive path-history rewrite confirmation, operation admission, error reporting
 and invalidation are owned by `Workflows/HistoryRewriteController`.

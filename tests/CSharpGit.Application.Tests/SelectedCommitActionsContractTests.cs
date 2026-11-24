@@ -45,23 +45,24 @@ public sealed class SelectedCommitActionsContractTests
     public void CommitMenuExposesRequiredActionsAndMainlineChoice()
     {
         var root = FindRepositoryRoot();
-        var actions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
+        var actions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "CommitActionController.cs"));
         var commitActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitActionsViewModel.cs"));
         var contextAdapter = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.CommitActions.cs"));
 
         foreach (var label in new[] { "Copy hash", "Create branch here…", "Checkout this commit", "Cherry-pick", "Revert", "Edit commit message…", "Fixup into previous commit", "Interactive rebase from here…", "Reset current branch to here", "Soft…", "Mixed…", "Hard…" })
             Assert.Contains(label, actions);
 
-        Assert.Contains("HistoryView.List.RightTapped", actions);
+        Assert.Contains("_historyView.List.RightTapped += HistoryList_RightTapped", actions);
+        Assert.Contains("_historyView.List.RightTapped -= HistoryList_RightTapped", actions);
         Assert.Contains("commit.Parents.Count > 1", actions);
         Assert.Contains("Mainline parent", actions);
         Assert.Contains("Uncommitted tracked changes will be lost", actions);
         Assert.Contains("Untracked files will not be deleted", actions);
         var fixupHandler = ExtractMethod(actions, "FixupIntoPreviousCommit_Click");
-        Assert.Contains("RunPageUiOperation(FixupIntoPreviousCommitAsync", fixupHandler);
+        Assert.Contains("_runUiOperation(FixupIntoPreviousCommitAsync", fixupHandler);
         var fixup = ExtractMethod(actions, "FixupIntoPreviousCommitAsync");
         Assert.Contains("_viewModel.CommitActions.FixupAsync", fixup);
-        Assert.Contains("CanExecuteCapturedCommitAction", fixup);
+        Assert.Contains("CanExecute", fixup);
         Assert.Contains("_commitActionService.FixupIntoPreviousCommitAsync", commitActions);
         Assert.Contains("RunCommitHistoryRewriteMutationAsync", commitActions);
         Assert.Contains("RunHistoryRewriteMutationAsync", contextAdapter);
@@ -74,7 +75,7 @@ public sealed class SelectedCommitActionsContractTests
     {
         var root = FindRepositoryRoot();
         var appXaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "App.xaml"));
-        var actions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.CommitActions.cs"));
+        var actions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "CommitActionController.cs"));
         var dialogs = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Dialogs", "PageDialogController.cs"));
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml"));
         var viewModel = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
@@ -86,9 +87,9 @@ public sealed class SelectedCommitActionsContractTests
         var editorCode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "InteractiveRebaseTodoEditor.xaml.cs"));
 
         Assert.Contains("Interactive rebase from here…", actions);
-        Assert.Contains("HistoryView.List.RightTapped += HistoryList_RightTapped", actions);
+        Assert.Contains("_historyView.List.RightTapped += HistoryList_RightTapped", actions);
         Assert.Contains("var hash = commit.Hash;", actions);
-        Assert.Contains("PrepareInteractiveRebaseFromCommitAsync(hash)", actions);
+        Assert.Contains("PrepareInteractiveRebaseFromCommitAsync(commit.Hash)", actions);
         Assert.Contains("var hasLocalBranch = _viewModel.CurrentBranchName is not null;", actions);
         Assert.DoesNotContain("_workflowService", ExtractMethod(actions, "InteractiveRebaseFromHere_Click"));
         Assert.DoesNotContain("^", ExtractMethod(actions, "InteractiveRebaseFromHere_Click"));

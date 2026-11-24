@@ -8,7 +8,7 @@ namespace CSharpGit.Presentation.Controls;
 /// Owns the dynamically composed repository-files tab. MainPage handles user
 /// actions, while this control owns its visual tree and preview split layout.
 /// </summary>
-internal sealed class RepositoryFilesSurface : Grid
+internal sealed partial class RepositoryFilesSurface : Grid
 {
     internal TextBox SearchBox { get; }
     internal ComboBox SearchMode { get; }

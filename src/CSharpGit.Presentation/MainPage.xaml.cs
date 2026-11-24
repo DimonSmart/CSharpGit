@@ -86,7 +86,7 @@ public sealed partial class MainPage : Page
     private readonly ObservableCollection<CommitFileRow> _commitFiles = [];
     private bool _wasBusy;
     private readonly WorkspaceNavigator _workspaceNavigator;
-    private RepositoryTreeNavigationCoordinator _repositoryTreeNavigation => _workspaceNavigator.Interactions;
+    private readonly Workflows.WorkspaceNavigationController _workspaceNavigation;
     private readonly Workflows.RepositoryRefreshController _repositoryRefresh;
     private readonly Dialogs.PageDialogController _pageDialogs;
     private readonly Workflows.DiffPresentationController _diffPresentation;
@@ -99,18 +99,6 @@ public sealed partial class MainPage : Page
         WorkspaceNavigator workspaceNavigator)
     {
         InitializeComponent();
-        HistoryPane.DropSelectedStash_ClickCallback = DropSelectedStash_Click;
-        HistoryPane.CommitFilesList_SelectionChangedCallback = CommitFilesList_SelectionChanged;
-        HistoryPane.CommitFilesList_DoubleTappedCallback = CommitFilesList_DoubleTapped;
-        HistoryPane.CommitFilesList_KeyDownCallback = CommitFilesList_KeyDown;
-        HistoryPane.CommitOpenOriginal_ClickCallback = CommitOpenOriginal_Click;
-        HistoryPane.CommitOpenChanged_ClickCallback = CommitOpenChanged_Click;
-        HistoryPane.CommitExternalDiff_ClickCallback = CommitExternalDiff_Click;
-        HistoryPane.CommitReveal_ClickCallback = CommitReveal_Click;
-        WorkingTreePane.WorkingTreeOpenOriginal_ClickCallback = WorkingTreeOpenOriginal_Click;
-        WorkingTreePane.WorkingTreeOpenChanged_ClickCallback = WorkingTreeOpenChanged_Click;
-        WorkingTreePane.WorkingTreeExternalDiff_ClickCallback = WorkingTreeExternalDiff_Click;
-        WorkingTreePane.WorkingTreeReveal_ClickCallback = WorkingTreeReveal_Click;
         DataContext = _viewModel = viewModel;
         _pageDialogs = new Dialogs.PageDialogController(this, _viewModel, () => IsShuttingDown);
         _diffPresentation = new Workflows.DiffPresentationController(
@@ -133,6 +121,9 @@ public sealed partial class MainPage : Page
             UpdateRepositoryFilesViewActivity,
             (operation, description) => RunPageUiOperation(operation, description));
         _workspaceNavigator = workspaceNavigator ?? throw new ArgumentNullException(nameof(workspaceNavigator));
+        _workspaceNavigation = new Workflows.WorkspaceNavigationController(
+            _viewModel, _workspaceNavigator, HistoryPane, WorkingTreePane, RepositoryToolbar,
+            DispatcherQueue, ExecuteCommandAsync, () => IsShuttingDown, SetRepositoryFilesStashMode);
         _repositoryRefresh = new Workflows.RepositoryRefreshController(
             _viewModel,
             new RepositoryChangeCoordinator(
@@ -143,7 +134,6 @@ public sealed partial class MainPage : Page
 
         _presentationRefresh = new Workflows.RepositoryPresentationRefreshController(
             DispatcherQueue, () => IsShuttingDown,
-            InitializeTagSupportIfNeeded,
             RefreshPresentationCollections,
             SynchronizeRepositoryTree,
             UpdateStatusBar);
@@ -170,12 +160,24 @@ public sealed partial class MainPage : Page
             () => IsShuttingDown,
             (operation, description) => RunPageUiOperation(operation, description),
             ShowErrorAsync,
-            AddMenuItem, ExecuteCommandAsync, ShowCreateSelectedStashDialogAsync,
+            AddMenuItem, ExecuteCommandAsync, changes => _stashDialogs.ShowCreateSelectedAsync(changes),
             ShowPageDialogAsync);
         RefreshPresentationCollections();
         WorkingTreePane.InitializeWorkingTreeDiffSurface();
-        InitializeCommitActions();
-        UpdateHistoryScopePresentation();
+        _workspaceNavigation.UpdateHistoryPresentation();
+    }
+
+    private async Task ShowInformationAsync(string title, string message)
+    {
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = title,
+            Content = message,
+            CloseButtonText = "Close",
+            DefaultButton = ContentDialogButton.Close
+        };
+        await ShowPageDialogAsync(dialog);
     }
 
     private void RepositoryPresentationChanges_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
@@ -221,7 +223,7 @@ public sealed partial class MainPage : Page
     {
         if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.Repository))
         {
-            _workspaceNavigator.ResetForRepositoryChange();
+            _workspaceNavigation.ResetForRepositoryChange();
             UpdateStatusBar();
             RepositoryHeader.Refresh();
             _settingsWindowController.RepositoryChanged();
@@ -237,7 +239,7 @@ public sealed partial class MainPage : Page
             var becameIdle = _wasBusy && !_viewModel.IsBusy;
             _wasBusy = _viewModel.IsBusy;
             UpdateStatusBar();
-            UpdateLoadMoreHistoryAvailability();
+            _workspaceNavigation.UpdateLoadMoreAvailability();
             if (becameIdle && _editCommitMessage.ShouldRestorePendingEditedCommitSelection)
                 RunPageUiOperation(_editCommitMessage.RestorePendingEditedCommitSelectionAsync,
                     "Restore edited commit selection");
@@ -245,14 +247,12 @@ public sealed partial class MainPage : Page
                 RunPageUiOperation(_repositoryFilePreview.ResumeAsync, "Resume repository file preview");
             if (becameIdle && _commitImageDiff.HasPending)
                 RunPageUiOperation(_commitImageDiff.ResumeAsync, "Resume commit image preview");
-            if (becameIdle && _repositoryTreeNavigation.HasPendingCheckout)
-                RunPageUiOperation(ResumePendingRepositoryTreeCheckoutAsync, "Resume branch checkout");
-            else if (becameIdle && _repositoryTreeNavigation.HasPendingReference)
-                RunPageUiOperation(ResumePendingRepositoryTreeNavigationAsync, "Resume branch navigation");
+            if (becameIdle)
+                RunPageUiOperation(_workspaceNavigation.ResumePendingAsync, "Resume repository tree navigation");
         }
         else if (eventArgs.PropertyName == nameof(OpenRepositoryViewModel.CanChangeRepository))
         {
-            UpdateLoadMoreHistoryAvailability();
+            _workspaceNavigation.UpdateLoadMoreAvailability();
         }
     }
 
@@ -260,7 +260,7 @@ public sealed partial class MainPage : Page
     {
         if (eventArgs.PropertyName is nameof(StashesViewModel.SelectedStash)
             or nameof(StashesViewModel.HasSelectedStash))
-            UpdateStashPresentation();
+            _workspaceNavigation.UpdateStashPresentation();
     }
 
     private void CommitDetailsViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
@@ -269,7 +269,7 @@ public sealed partial class MainPage : Page
             RunPageUiOperation(RefreshCommitFilesAsync, "Refresh commit file list");
         else if (eventArgs.PropertyName is nameof(CommitDetailsViewModel.SelectedStashDetails)
                  or nameof(CommitDetailsViewModel.HasSelectedStash))
-            UpdateStashPresentation();
+            _workspaceNavigation.UpdateStashPresentation();
 
         if (eventArgs.PropertyName == nameof(CommitDetailsViewModel.SelectedObjectCommit))
             HistoryPane.SynchronizeDetailsViewport();
@@ -280,27 +280,17 @@ public sealed partial class MainPage : Page
         if (eventArgs.PropertyName is nameof(HistoryViewModel.IsReferenceScoped)
             or nameof(HistoryViewModel.ActiveReferenceLabel))
         {
-            UpdateHistoryScopePresentation();
+            _workspaceNavigation.UpdateHistoryPresentation();
         }
         else if (eventArgs.PropertyName is nameof(HistoryViewModel.HasMore)
                  or nameof(HistoryViewModel.IsLoading))
         {
-            UpdateLoadMoreHistoryAvailability();
+            _workspaceNavigation.UpdateLoadMoreAvailability();
         }
     }
 
     private static void History_CommitLookupCompleted(long startedAt, int itemsExamined) =>
         HistoryRenderDiagnostics.CommitLookupCompleted(startedAt, itemsExamined);
-
-    private void UpdateHistoryScopePresentation()
-    {
-        HistoryView.UpdateScopePresentation();
-        UpdateLoadMoreHistoryAvailability();
-        UpdateCommitNavigationText();
-    }
-
-    private void UpdateLoadMoreHistoryAvailability() =>
-        HistoryView.UpdateLoadMoreAvailability();
 
     private void RefreshPresentationCollections()
     {
@@ -347,7 +337,7 @@ public sealed partial class MainPage : Page
                 _viewModel.RepositoryOperations.CurrentOperation == RepositoryOperation.None
                     ? "Ready" : _viewModel.RepositoryOperations.CurrentOperation.ToString(),
             _viewModel.IsBusy);
-        UpdateCommitNavigationText();
+        _workspaceNavigation.UpdateCommitNavigationText();
     }
 
     private Task RefreshCommitFilesAsync()
@@ -406,38 +396,6 @@ public sealed partial class MainPage : Page
             () => IsShuttingDown);
     }
 
-    private async Task CreateBranchFromAsync(string startPoint)
-    {
-        var originalRepository = _viewModel.Repository;
-        if (originalRepository is null || _viewModel.IsBusy || IsShuttingDown) return;
-        var input = new TextBox { Header = $"New branch from {startPoint}", PlaceholderText = "branch/name" };
-        var dialog = new ContentDialog
-        {
-            XamlRoot = XamlRoot,
-            Title = "Create branch",
-            Content = input,
-            PrimaryButtonText = "Create and switch",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary
-        };
-        if (await ShowPageDialogAsync(dialog) != ContentDialogResult.Primary
-            || string.IsNullOrWhiteSpace(input.Text)
-            || IsShuttingDown
-            || !ReferenceEquals(originalRepository, _viewModel.Repository)
-            || _viewModel.IsBusy) return;
-        var repository = originalRepository;
-
-        if (!await _viewModel.Branches.CreateBranchAsync(
-                repository,
-                input.Text.Trim(),
-                startPoint,
-                switchToBranch: true)
-            && !string.IsNullOrWhiteSpace(_viewModel.ErrorMessage))
-        {
-            await ShowErrorAsync("Could not create branch", _viewModel.ErrorMessage);
-        }
-    }
-
     private static Task CopyTextAsync(string text)
     {
         var package = new DataPackage();
@@ -484,201 +442,6 @@ public sealed partial class MainPage : Page
     }
 
     // Dispatch typed toolbar actions directly to their existing workflows.
-    private void HandleRepositoryToolbarAction(RepositoryToolbarAction action)
-    {
-        switch (action)
-        {
-            case RepositoryToolbarAction.CommitNavigation:
-                if (WorkingTreePane.Visibility == Visibility.Visible)
-                    RunPageUiOperation(ShowAllHistoryAsync, "Back to history");
-                else if (!IsShuttingDown)
-                    ShowWorkingTree();
-                break;
-            case RepositoryToolbarAction.Fetch:
-                RunPageUiOperation(() => ExecuteCommandAsync(_viewModel.RepositorySync.FetchCommand), "Fetch");
-                break;
-            case RepositoryToolbarAction.Pull:
-                RunPageUiOperation(() => PullFromUiAsync(null), "Pull");
-                break;
-            case RepositoryToolbarAction.PullFastForwardOnly:
-                RunPageUiOperation(() => PullFromUiAsync(PullStrategy.FastForwardOnly), "Fast-forward pull");
-                break;
-            case RepositoryToolbarAction.PullMerge:
-                RunPageUiOperation(() => PullFromUiAsync(PullStrategy.Merge), "Merge pull");
-                break;
-            case RepositoryToolbarAction.PullRebase:
-                RunPageUiOperation(() => PullFromUiAsync(PullStrategy.Rebase), "Rebase pull");
-                break;
-            case RepositoryToolbarAction.PullSettings:
-                _settingsWindowController.Open(SettingsSection.General, focusPullStrategy: true);
-                break;
-            case RepositoryToolbarAction.PushPrimary:
-                RunPageUiOperation(_repositoryPush.PushPrimaryAsync, "Push");
-                break;
-            case RepositoryToolbarAction.Push:
-                RunPageUiOperation(_repositoryPush.PushAsync, "Push");
-                break;
-            case RepositoryToolbarAction.PushTo:
-                RunPageUiOperation(_repositoryPush.PushToAsync, "PushTo_Click");
-                break;
-            case RepositoryToolbarAction.ForcePushWithLease:
-                RunPageUiOperation(_repositoryPush.ForcePushWithLeaseAsync, "ForcePushWithLease_Click");
-                break;
-            case RepositoryToolbarAction.PushSetDefault:
-                RunPageUiOperation(() => _viewModel.RepositorySync.SetDefaultPushActionAsync(PushToolbarAction.Push), "Set default Push");
-                break;
-            case RepositoryToolbarAction.PushToSetDefault:
-                RunPageUiOperation(() => _viewModel.RepositorySync.SetDefaultPushActionAsync(PushToolbarAction.PushTo), "Set default Push to");
-                break;
-            case RepositoryToolbarAction.ForcePushWithLeaseSetDefault:
-                RunPageUiOperation(() => _viewModel.RepositorySync.SetDefaultPushActionAsync(PushToolbarAction.ForcePushWithLease), "Set default Force push with lease");
-                break;
-            case RepositoryToolbarAction.RefreshIndicator:
-                RunPageUiOperation(_manualRefresh.RefreshAsync, "Repository refresh indicator");
-                break;
-            case RepositoryToolbarAction.OpenRepository:
-                RunPageUiOperation(OpenRepositoryPickerAsync, "OpenRepository_Click");
-                break;
-            case RepositoryToolbarAction.CloneRepository:
-                RunPageUiOperation(_cloneWorkflow.ShowAsync, "CloneRepository_Click");
-                break;
-            case RepositoryToolbarAction.CreateRepository:
-                RunPageUiOperation(_creationWorkflow.ShowAsync, "CreateRepository_Click");
-                break;
-            case RepositoryToolbarAction.Repositories:
-            case RepositoryToolbarAction.CloseRepository:
-                RunPageUiOperation(async () => { await TryCloseRepositoryAsync(); }, "CloseRepository_Click");
-                break;
-            case RepositoryToolbarAction.RepositorySettings:
-                _settingsWindowController.Open(SettingsSection.Identity);
-                break;
-            case RepositoryToolbarAction.OptimizeRepository:
-                RunPageUiOperation(_maintenanceController.OptimizeAsync, "Optimize repository");
-                break;
-            case RepositoryToolbarAction.Settings:
-                _settingsWindowController.Open(SettingsSection.General);
-                break;
-            case RepositoryToolbarAction.About:
-                RunPageUiOperation(_aboutUpdate.ShowAboutAsync, "About dialog");
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(action), action, null);
-        }
-    }
-
-    private async Task PullFromUiAsync(PullStrategy? strategy)
-    {
-        var repository = _viewModel.Repository;
-        if (IsShuttingDown || repository is null || !_viewModel.RepositorySync.CanPull)
-            return;
-
-        var previousHead = _viewModel.CurrentHeadCommit;
-        var history = _viewModel.History;
-        var selectionIntentVersion = history.SelectionIntentVersion;
-        PullExecutionResult result;
-        if (strategy is { } requestedStrategy)
-        {
-            result = await _viewModel.RepositorySync.PullAsync(repository, requestedStrategy);
-        }
-        else
-        {
-            var previousResult = _viewModel.RepositorySync.LastPullResult;
-            await ExecuteCommandAsync(_viewModel.RepositorySync.PullCommand);
-            if (_viewModel.RepositorySync.LastPullResult is not { } completedResult
-                || ReferenceEquals(previousResult, completedResult))
-                return;
-            result = completedResult;
-        }
-
-        var currentHead = _viewModel.CurrentHeadCommit;
-        if (!IsShuttingDown
-            && ReferenceEquals(_viewModel.Repository, repository)
-            && result.Kind == PullExecutionKind.Completed
-            && currentHead is not null
-            && !string.Equals(previousHead, currentHead, StringComparison.Ordinal)
-            && history.SelectionIntentVersion == selectionIntentVersion
-            && _viewModel.Stashes.SelectedStash is null
-            && HistoryPane.Visibility == Visibility.Visible)
-        {
-            var target = await history.SelectCommitInCurrentHistoryAsync(
-                currentHead, selectionIntentVersion);
-            if (!IsShuttingDown
-                && ReferenceEquals(_viewModel.Repository, repository)
-                && target is not null
-                && ReferenceEquals(target, history.SelectedRow))
-                HistoryView.ScrollTo(target);
-        }
-
-        await ShowPullResultAsync(result);
-    }
-
-    private async Task ShowPullResultAsync(PullExecutionResult result)
-    {
-        if (result.Kind == PullExecutionKind.Completed
-            || result.Kind == PullExecutionKind.Unavailable)
-            return;
-        var title = result.Kind switch
-        {
-            PullExecutionKind.NeedsAttention => "Pull needs attention",
-            PullExecutionKind.Refused => "Pull cannot fast-forward",
-            _ => "Pull failed"
-        };
-        await ShowErrorAsync(title, result.Message);
-    }
-
-    private void ApplyHistoryFilter_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(RefreshVisibleHistoryAsync, "Apply history filter");
-    private void RefreshHistory_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(RefreshVisibleHistoryAsync, "Refresh history");
-
-    private Task RefreshVisibleHistoryAsync() =>
-        _viewModel.History.RefreshAsync();
-
-    private void HistoryFilter_KeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (e.Key != VirtualKey.Enter) return;
-        e.Handled = true;
-        RunPageUiOperation(RefreshVisibleHistoryAsync, "Apply history filter");
-    }
-
-    private void LoadMoreHistory_Click(object sender, RoutedEventArgs e)
-    {
-        HistoryRenderDiagnostics.PageLoadStarted();
-        RunPageUiOperation(() => _viewModel.History.LoadMoreAsync(), "Load more history");
-    }
-
-    private void ClearReference_Click(object sender, RoutedEventArgs e) =>
-        RunPageUiOperation(ShowAllHistoryAsync, "Clear history reference");
-
-    private void UnstagedChangesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (UnstagedChangesList.SelectedItem is WorkingTreeChange change) WorkingTreePane.SelectWorkingTreeChange(change, WorkingTreeDiffKind.Unstaged);
-    }
-
-    private void StagedChangesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (StagedChangesList.SelectedItem is WorkingTreeChange change) WorkingTreePane.SelectWorkingTreeChange(change, WorkingTreeDiffKind.Staged);
-    }
-
-    private void CommitFilesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (CommitFilesList.SelectedItem is CommitFileRow row) _viewModel.CommitDetails.SelectedFile = row.File;
-    }
-
-    private void CommitFilesList_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
-    {
-        if (CommitFilesList.SelectedItem is null) return;
-        DetailsTabs.SelectedItem = ChangesTab;
-        e.Handled = true;
-    }
-
-    private void CommitFilesList_KeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (e.Key != VirtualKey.Enter || CommitFilesList.SelectedItem is null) return;
-        DetailsTabs.SelectedItem = ChangesTab;
-        e.Handled = true;
-    }
-
     private void Page_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (IsShuttingDown || GitCommandFeedbackModalHost.Visibility == Visibility.Visible) return;
@@ -694,7 +457,7 @@ public sealed partial class MainPage : Page
             RunPageUiOperation(async () =>
             {
                 if (WorkingTreePane.Visibility == Visibility.Visible)
-                    await ShowAllHistoryAsync();
+                    await _workspaceNavigation.ShowAllHistoryAsync();
                 if (!IsShuttingDown)
                     HistoryView.FocusFilter();
             }, "History search shortcut");
@@ -714,7 +477,7 @@ public sealed partial class MainPage : Page
         else if (e.Key == VirtualKey.Escape && WorkingTreePane.Visibility == Visibility.Visible)
         {
             e.Handled = true;
-            RunPageUiOperation(ShowAllHistoryAsync, "Back to history shortcut");
+            RunPageUiOperation(_workspaceNavigation.ShowAllHistoryAsync, "Back to history shortcut");
         }
     }
 

@@ -20,7 +20,8 @@ public sealed class WorkingTreeViewCompositionContractTests
         Assert.Contains("x:Name=\"StagedChangesTree\"", view, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"WorkingTreeCommitEditor\"", view, StringComparison.Ordinal);
         Assert.Contains("WorkingTreePane.InitializeWorkingTreeDiffSurface();", pageCode, StringComparison.Ordinal);
-        Assert.Contains("WorkingTreePane.WorkingTreeExternalDiff_ClickCallback", pageCode, StringComparison.Ordinal);
+        var interactions = File.ReadAllText(Path.Combine(presentation, "Workflows", "FileActionInteractionController.cs"));
+        Assert.Contains("_workingTree.WorkingTreeExternalDiff_ClickCallback = WorkingTreeExternalDiff_Click;", interactions, StringComparison.Ordinal);
         Assert.DoesNotContain("UnstagedChangesTree_ItemInvokedCallback", bridge, StringComparison.Ordinal);
         var selection = File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeView.Selection.cs"));
         Assert.Contains("private void UnstagedChangesTree_ItemInvoked(", selection, StringComparison.Ordinal);

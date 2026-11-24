@@ -26,20 +26,52 @@ public sealed class MainPageResponsibilitiesContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
-        var navigation = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryNavigation.cs"));
+        var navigation = File.ReadAllText(Path.Combine(presentation, "Workflows", "WorkspaceNavigationController.cs"));
         var coordinator = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation.Core", "RepositoryTreeNavigationCoordinator.cs"));
 
         Assert.DoesNotContain("_pendingRepositoryTreeCheckout", page);
         Assert.DoesNotContain("_pendingRepositoryTreeNavigation", page);
-        Assert.DoesNotContain("NavigateToReferenceAsync(", page);
+        Assert.False(File.Exists(Path.Combine(presentation, "MainPage.RepositoryNavigation.cs")));
         var explorer = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryExplorerView.xaml.cs"));
         var navigator = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "WorkspaceNavigator.cs"));
         Assert.Contains("_navigator.Interactions.BeginInteraction()", explorer);
-        Assert.Contains("_repositoryTreeNavigation.DeferCheckout(", navigation);
+        Assert.Contains("Interactions.DeferCheckout(", navigation);
         Assert.Contains("Interactions.DeferReference(", navigator);
         Assert.Contains("TryTakeReference(", coordinator);
         Assert.Contains("TryTakeCheckout(", coordinator);
+    }
+
+    [Fact]
+    public void Phase3FeaturePartialsAreRemovedAndHaveDedicatedOwners()
+    {
+        var root = FindRepositoryRoot();
+        var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
+
+        foreach (var removed in new[]
+                 {
+                     "MainPage.CommitActions.cs",
+                     "MainPage.BranchDeletion.cs",
+                     "MainPage.Tags.cs",
+                     "MainPage.FileOpening.cs",
+                     "MainPage.RepositoryNavigation.cs",
+                     "MainPage.RepositorySwitching.cs",
+                     "MainPage.RepositoryTreeState.cs"
+                 })
+            Assert.False(File.Exists(Path.Combine(presentation, removed)), removed);
+
+        foreach (var owner in new[]
+                 {
+                     "CommitActionController.cs",
+                     "RepositoryReferenceMenuController.cs",
+                     "FileActionInteractionController.cs",
+                     "WorkspaceNavigationController.cs",
+                     "RepositoryFilesActionController.cs",
+                     "StashInteractionController.cs",
+                     "RepositoryPullController.cs",
+                     "RepositoryToolbarActionController.cs"
+                 })
+            Assert.True(File.Exists(Path.Combine(presentation, "Workflows", owner)), owner);
     }
 
     private static string FindRepositoryRoot()

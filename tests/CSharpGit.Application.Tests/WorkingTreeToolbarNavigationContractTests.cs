@@ -16,9 +16,9 @@ public sealed class WorkingTreeToolbarNavigationContractTests
         Assert.DoesNotContain("Content=\"Back to history\"", xaml);
         Assert.DoesNotContain("ShowHistory_Click", xaml + page);
 
-        var navigation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryNavigation.cs"));
+        var navigation = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "WorkspaceNavigationController.cs"));
         var toolbar = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryToolbarView.xaml.cs"));
-        Assert.Contains("RepositoryToolbar.SetCommitNavigationText(", navigation);
+        Assert.Contains("_toolbar.SetCommitNavigationText(", navigation);
         Assert.Contains("\"Back to history\"", toolbar);
         Assert.Contains("$\"Commit ({changes})\"", toolbar);
         Assert.DoesNotContain("RepositoryTreeNodeKind.WorkingTree", page);

@@ -60,7 +60,7 @@ public sealed class GitToolsUiContractTests
     public void ExternalDiffAndMergeWorkflowsUseCentralGitToolsBoundary()
     {
         var root = FindRepositoryRoot();
-        var fileOpening = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs"));
+        var fileOpening = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "FileActionInteractionController.cs"));
         var repositoryOperations = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryOperationsViewModel.cs"));
         var gitTools = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Git", "ExternalGitToolService.cs"));
 
@@ -68,7 +68,9 @@ public sealed class GitToolsUiContractTests
         var feature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "FileActionsViewModel.cs"));
         Assert.Contains("_tools.RunExternalDiffAsync(request.Repository, prepared.Pair)", feature);
         Assert.DoesNotContain("RunExternalDiffAsync(", fileOpening);
-        Assert.Contains("SettingsSection.GitTools", fileOpening);
+        Assert.Contains("_openGitToolsSettings();", fileOpening);
+        var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
+        Assert.Contains("() => _settingsWindowController.Open(SettingsSection.GitTools)", composition);
         Assert.Contains("_externalGitToolService.RunMergeToolForFileAsync", repositoryOperations);
         Assert.Contains("_externalGitToolService.RunMergeToolWorkflowAsync", repositoryOperations);
         Assert.Contains("_externalGitToolService.OpenConflictInEditorAsync", repositoryOperations);
