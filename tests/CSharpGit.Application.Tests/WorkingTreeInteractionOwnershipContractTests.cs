@@ -10,7 +10,7 @@ public sealed class WorkingTreeInteractionOwnershipContractTests
         var view = File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeView.Selection.cs"));
         var code = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
         var lifetime = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
-        var context = File.ReadAllText(Path.Combine(presentation, "MainPage.WorkingTreeContextMenu.cs"));
+        var context = File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeView.ContextMenu.cs"));
 
         Assert.False(File.Exists(Path.Combine(presentation, "MainPage.WorkingTreeDiff.cs")));
         Assert.Contains("internal void SelectWorkingTreeChange(", view);
@@ -24,7 +24,8 @@ public sealed class WorkingTreeInteractionOwnershipContractTests
             < code.IndexOf("        RefreshPresentationCollections();", StringComparison.Ordinal),
             "WorkingTreeView must receive dependencies before the initial collection refresh.");
         Assert.Contains("WorkingTreePane.ShutdownWorkingTreeDiffSurface();", lifetime);
-        Assert.Contains("WorkingTreePane.SelectWorkingTreeContextTarget(", context);
+        Assert.Contains("SelectWorkingTreeContextTarget(", context);
+        Assert.False(File.Exists(Path.Combine(presentation, "MainPage.WorkingTreeContextMenu.cs")));
         Assert.DoesNotContain("_unstagedTreeRoots", context);
         Assert.DoesNotContain("_unstagedTreeRoots", code);
     }

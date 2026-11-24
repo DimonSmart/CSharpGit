@@ -64,13 +64,13 @@ public sealed class StashUiContractTests
     public void SelectedPathStashIsExplicitAndIncludesSelectedUntrackedFiles()
     {
         var root = FindRepositoryRoot();
-        var menu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
+        var menu = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.ContextMenu.cs");
         var stashPage = Read(root, "src", "CSharpGit.Presentation", "Workflows", "StashDialogController.cs");
         var stashViewModel = Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "StashesViewModel.cs");
 
         Assert.Contains("\"Stash selected…\"", menu, StringComparison.Ordinal);
         Assert.Contains("$\"Stash {count} files…\"", menu, StringComparison.Ordinal);
-        Assert.Contains("ShowCreateSelectedStashDialogAsync(changes)", menu, StringComparison.Ordinal);
+        Assert.Contains("_showSelectedStashDialogAsync(changes)", menu, StringComparison.Ordinal);
 
         Assert.Contains("Title = \"Stash selected changes\"", stashPage, StringComparison.Ordinal);
         Assert.Contains("Includes 1 untracked file.", stashPage, StringComparison.Ordinal);

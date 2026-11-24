@@ -148,7 +148,7 @@ public sealed class DesignSystemContractTests
         var historyView = XDocument.Parse(Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml"));
         var icons = XDocument.Parse(Read(root, "src", "CSharpGit.Presentation", "Styles", "Icons.xaml"));
         var code = Read(root, "src", "CSharpGit.Presentation", "MainPage.FileOpening.cs");
-        var menu = Read(root, "src", "CSharpGit.Presentation", "MainPage.WorkingTreeContextMenu.cs");
+        var menu = Read(root, "src", "CSharpGit.Presentation", "Views", "WorkingTreeView.ContextMenu.cs");
         XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
 
         XElement Named(string name) => Assert.Single(main.Descendants().Concat(workingTreeView.Descendants()).Concat(historyView.Descendants()), element =>

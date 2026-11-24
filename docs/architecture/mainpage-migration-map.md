@@ -431,6 +431,10 @@ Submodule inspection, context menus, open-in-new-process, initialization and upd
 
 `Workflows/InteractiveRebaseAuthorController` now owns the Change Author flyout, raw-todo selection analysis, apply flow and its button subscription. The controller attaches when the existing rebase dialog loads and detaches at window shutdown. `MainPage.InteractiveRebaseAuthor.cs`, the XAML event handler and its private dialog/visual-tree adapters have been removed; rebase mutations still belong to the existing InteractiveRebase ViewModel.
 
+## Phase 3 follow-up: Working Tree menu ownership
+
+The staged/unstaged tree right-tap menus and their confirmations now live in `Views/WorkingTreeView.ContextMenu.cs`, alongside their selection owner. `MainPage.WorkingTreeContextMenu.cs` is deleted. The view uses existing typed command and dialog delegates, revalidates repository identity after modal confirmation and delegates Git mutation to WorkingTreeViewModel. Legacy file-action RightTapped paths in MainPage.FileOpening still require consolidation in the final file-opening phase.
+
 ## Phase 3 follow-up: Commit Details interaction ownership
 
 Commit changed-file selection, changed-file tree subscriptions and lifetime, diff presentation and the two viewport observers belong to `Views/HistoryWorkspaceView.Changes.cs`. The History workspace configures dependencies once and detaches event subscriptions on shutdown. `MainPage.Changes.cs` is removed. Mutation semantics remain in CommitDetailsViewModel and existing controllers. History context actions and file-opening interactions are separate remaining work.
