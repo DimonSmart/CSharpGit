@@ -538,7 +538,7 @@ public sealed partial class MainPage : Page
                 break;
             case RepositoryToolbarAction.Repositories:
             case RepositoryToolbarAction.CloseRepository:
-                RunPageUiOperation(async () => { await TryCloseRepositoryAsync(); }, "CloseRepository_Click");
+                RunPageUiOperation(async () => { await _repositorySwitch.TryCloseAsync(); }, "CloseRepository_Click");
                 break;
             case RepositoryToolbarAction.RepositorySettings:
                 _settingsWindowController.Open(SettingsSection.Identity);
