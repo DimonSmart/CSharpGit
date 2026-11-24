@@ -367,7 +367,7 @@ internal sealed partial class RepositoryFilesSurface
     {
         if (SelectedRepositorySnapshotEntry() is not { } entry) return;
         if (entry.Kind == RepositorySnapshotEntryKind.Submodule)
-            RunPageUiOperation(() => _submodules._openSubmodule(entry), "Open submodule");
+            RunPageUiOperation(() => _openSubmodule(entry), "Open submodule");
         else if (entry.Kind == RepositorySnapshotEntryKind.File)
             RunPageUiOperation(() => _openFile(entry, openInEditor: false), "Repository file opening");
         else
@@ -384,7 +384,7 @@ internal sealed partial class RepositoryFilesSurface
         }
 
         if (entry.Kind == RepositorySnapshotEntryKind.Submodule)
-            RunPageUiOperation(() => _submodules._showSubmoduleMenu(source, entry), "Submodule menu");
+            RunPageUiOperation(() => _showSubmoduleMenu(source, entry), "Submodule menu");
         else
             _showFileMenu(source, entry);
         args.Handled = true;
