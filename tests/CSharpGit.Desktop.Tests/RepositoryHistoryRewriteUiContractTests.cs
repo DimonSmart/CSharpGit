@@ -5,7 +5,7 @@ public sealed class RepositoryHistoryRewriteUiContractTests
     [Fact]
     public void HistoricalFileMenuExposesExplicitLocalHistoryRewriteAction()
     {
-        var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
+        var source = ReadSource("src/CSharpGit.Presentation/Workflows/RepositoryFilesActionController.cs");
         var workflow = ReadSource("src/CSharpGit.Presentation/Workflows/HistoryRewriteController.cs");
 
         Assert.Contains("Remove from repository history…", source, StringComparison.Ordinal);
@@ -19,7 +19,7 @@ public sealed class RepositoryHistoryRewriteUiContractTests
     [Fact]
     public void HistoryRewriteUsesExistingMutationWorkflowAndInvalidatesHistoricalPresentation()
     {
-        var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
+        var source = ReadSource("src/CSharpGit.Presentation/Workflows/RepositoryFilesActionController.cs");
         var workflow = ReadSource("src/CSharpGit.Presentation/Workflows/HistoryRewriteController.cs");
         var viewModel = ReadSource("src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.HistoryRewrite.cs");
         var repositoryFiles = ReadSource("src/CSharpGit.Presentation.Core/ViewModels/RepositoryFilesViewModel.cs");
