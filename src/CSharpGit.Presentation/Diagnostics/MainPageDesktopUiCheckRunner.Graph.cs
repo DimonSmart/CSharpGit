@@ -393,7 +393,7 @@ public sealed partial class MainPage
             {
                 _page.DetailsTabs.SelectedIndex = 1;
                 await WaitUntilAsync(
-                    () => (_page.HistoryPane.ChangedFileRoots.Count ?? 0) > 0 && _page.ChangedFilesTree.ActualHeight > 0,
+                    () => _page.HistoryPane.ChangedFileRoots.Count > 0 && _page.ChangedFilesTree.ActualHeight > 0,
                     TimeSpan.FromSeconds(10));
 
                 if (_page.HistoryPane.ChangedFileRoots.FirstOrDefault() is { } firstChangedFile)
