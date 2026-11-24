@@ -8,7 +8,7 @@ public sealed class PullUiContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var ui = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryToolbarView.xaml"));
-        var view = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+        var view = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryToolbarActionController.cs"));
         var toolbar = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryToolbarView.xaml.cs"));
         var syncVm = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositorySyncViewModel.cs"));
 
@@ -47,15 +47,16 @@ public sealed class PullUiContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var ui = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryToolbarView.xaml"));
-        var view = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+        var view = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryToolbarActionController.cs"));
+        var pull = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryPullController.cs"));
 
         Assert.Contains("RunPageUiOperation(() => PullFromUiAsync(null), \"Pull\")", view, StringComparison.Ordinal);
         foreach (var strategy in new[] { "FastForwardOnly", "Merge", "Rebase" })
             Assert.Contains($"RunPageUiOperation(() => PullFromUiAsync(PullStrategy.{strategy})", view, StringComparison.Ordinal);
-        Assert.Contains("result.Kind == PullExecutionKind.Completed", view, StringComparison.Ordinal);
-        Assert.Contains("history.SelectionIntentVersion == selectionIntentVersion", view, StringComparison.Ordinal);
-        Assert.Contains("history.SelectCommitInCurrentHistoryAsync(", view, StringComparison.Ordinal);
-        Assert.Contains("HistoryView.ScrollTo(target);", view, StringComparison.Ordinal);
+        Assert.Contains("result.Kind == PullExecutionKind.Completed", pull, StringComparison.Ordinal);
+        Assert.Contains("history.SelectionIntentVersion == selectionIntentVersion", pull, StringComparison.Ordinal);
+        Assert.Contains("history.SelectCommitInCurrentHistoryAsync(", pull, StringComparison.Ordinal);
+        Assert.Contains("_historyWorkspace.HistoryViewControl.ScrollTo(target);", pull, StringComparison.Ordinal);
         var historyView = File.ReadAllText(Path.Combine(presentation, "Views", "HistoryView.xaml.cs"));
         Assert.Contains("HistoryList.ScrollIntoView(row, ScrollIntoViewAlignment.Leading)", historyView, StringComparison.Ordinal);
         Assert.DoesNotContain("Go to HEAD", ui, StringComparison.OrdinalIgnoreCase);
@@ -67,14 +68,14 @@ public sealed class PullUiContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var ui = File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryToolbarView.xaml"));
-        var mainSettings = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+        var mainSettings = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryToolbarActionController.cs"));
         var controller = File.ReadAllText(Path.Combine(presentation, "SettingsWindowController.cs"));
         var settingsPage = File.ReadAllText(Path.Combine(presentation, "SettingsPage.xaml.cs"));
         var settings = File.ReadAllText(Path.Combine(presentation, "SettingsPage.xaml"));
 
         Assert.Contains("PullStrategyComboBox", settings, StringComparison.Ordinal);
         Assert.Contains("ForcePullAutoStashToggle", settings, StringComparison.Ordinal);
-        Assert.Contains("_settingsWindowController.Open(SettingsSection.General, focusPullStrategy: true)", mainSettings, StringComparison.Ordinal);
+        Assert.Contains("_settings.Open(SettingsSection.General, focusPullStrategy: true)", mainSettings, StringComparison.Ordinal);
         Assert.Contains("_page?.SelectSection(section, focusPullStrategy)", controller, StringComparison.Ordinal);
         Assert.Contains("PullStrategyComboBox.StartBringIntoView()", settingsPage, StringComparison.Ordinal);
         Assert.Contains("PullStrategyComboBox.Focus(FocusState.Programmatic)", settingsPage, StringComparison.Ordinal);
