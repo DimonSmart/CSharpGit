@@ -13,9 +13,6 @@ public sealed class RepositorySwitchingContractTests
             presentation,
             "ViewModels",
             "OpenRepositoryViewModel.cs"));
-        var switching = File.ReadAllText(Path.Combine(
-            presentation,
-            "MainPage.RepositorySwitching.cs"));
         var lifecycleOwner = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositorySwitchController.cs"));
         var recent = File.ReadAllText(Path.Combine(
             presentation,
@@ -41,10 +38,7 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("_isMutating", viewModel);
         Assert.Contains("_repositoryChangeInProgress", viewModel);
 
-        Assert.Contains("TrySwitchRepositoryAsync", switching);
-        Assert.Contains("SwitchRepositoryCoreAsync", switching);
-        Assert.Contains("TryCloseRepositoryAsync", switching);
-        Assert.Contains("ConfirmDiscardCommitMessageAsync", switching);
+        Assert.False(File.Exists(Path.Combine(presentation, "MainPage.RepositorySwitching.cs")));
         Assert.Contains("internal async Task<bool> TrySwitchAsync", lifecycleOwner);
         Assert.Contains("private bool CloseCore", lifecycleOwner);
         Assert.Contains("if (!opened || _isShuttingDown()) return false;", lifecycleOwner);
@@ -77,7 +71,9 @@ public sealed class RepositorySwitchingContractTests
         var switching = File.ReadAllText(Path.Combine(
             presentation,
             "Views", "RepositorySelectorView.xaml.cs"));
-        var switchingWorkflow = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositorySwitching.cs"));
+        var switchingWorkflow =
+            File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryMaintenance.cs"))
+            + File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositorySwitchController.cs"));
 
         Assert.Contains("x:Name=\"RepositorySelectorButton\"", xaml);
         Assert.Contains("Opening=\"RepositorySelectorFlyout_Opening\"", xaml);
@@ -204,7 +200,7 @@ public sealed class RepositorySwitchingContractTests
         var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
         var switching = File.ReadAllText(Path.Combine(
             presentation,
-            "MainPage.RepositorySwitching.cs"));
+            "Workflows", "RepositorySwitchController.cs"));
 
         Assert.Contains("x:Name=\"RepositoryHeader\"", xaml);
         Assert.Contains("<ColumnDefinition Width=\"270\" MinWidth=\"180\" MaxWidth=\"430\" />", xaml);
