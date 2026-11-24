@@ -26,8 +26,8 @@ public sealed class ConfirmationStateCleanupContractTests
     public void DetachedTagCheckoutUsesSafeModalConfirmation()
     {
         var root = FindRepositoryRoot();
-        var branchActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.BranchDeletion.cs"));
-        var tagActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Tags.cs"));
+        var branchActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryReferenceMenuController.cs"));
+        var tagActions = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryReferenceMenuController.cs"));
 
         Assert.Contains("Title = \"Checkout detached HEAD?\"", branchActions);
         Assert.Contains("PrimaryButtonText = \"Checkout detached\"", branchActions);
