@@ -64,11 +64,21 @@ internal sealed class WorkspaceNavigationController(
     {
         if (_isShuttingDown()) return;
         if (args.PropertyName == nameof(OpenRepositoryViewModel.Repository))
+        {
             _navigator.ResetForRepositoryChange();
+            UpdateCommitNavigationText();
+        }
+        else if (args.PropertyName is nameof(OpenRepositoryViewModel.HeadDisplay)
+                 or nameof(OpenRepositoryViewModel.CurrentBranchName)
+                 or nameof(RepositoryOperationsViewModel.CurrentOperation))
+        {
+            UpdateCommitNavigationText();
+        }
         else if (args.PropertyName == nameof(OpenRepositoryViewModel.IsBusy))
         {
             var becameIdle = _wasBusy && !_viewModel.IsBusy;
             _wasBusy = _viewModel.IsBusy;
+            UpdateCommitNavigationText();
             UpdateLoadMoreAvailability();
             if (becameIdle)
                 _runUiOperation(ResumePendingAsync, "Resume repository tree navigation");

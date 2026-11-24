@@ -23,7 +23,7 @@ public sealed class WorkingTreeCommitEditorOwnershipContractTests
         Assert.Contains("StashRequested?.Invoke", codeBehind);
         Assert.Contains("_commitEditor.StashRequested += CreateStash_Click;", owner);
         Assert.Contains("_commitEditor.StashRequested -= CreateStash_Click;", owner);
-        Assert.Contains("_stashInteractions.Shutdown();", lifetime);
+        Assert.Contains("() => _stashInteractions.Shutdown()", lifetime);
     }
 
     private static string FindRepositoryRoot()

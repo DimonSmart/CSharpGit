@@ -165,7 +165,6 @@ internal sealed partial class WindowWorkspaceComposition
         GitConsoleHost.StatusBar.ConfigureRepository(_viewModel);
         _workspaceNavigation.Initialize();
         _presentationRefresh.Initialize();
-        _page.Loaded += RunDesktopCheckWhenRequested;
         WorkingTreePane.Configure(
             _viewModel,
             _workingTreeImageDiff, _diffPresentation,

@@ -12,7 +12,7 @@ public sealed class HistoryChangesOwnershipContractTests
         var lifetime = File.ReadAllText(Path.Combine(p, "Composition/WindowWorkspaceComposition.Lifetime.cs"));
         Assert.False(File.Exists(Path.Combine(p, "MainPage.Changes.cs")));
         Assert.Contains("HistoryPane.ConfigureChanges(", main, StringComparison.Ordinal);
-        Assert.Contains("HistoryPane.ShutdownChanges();", lifetime, StringComparison.Ordinal);
+        Assert.Contains("() => HistoryPane.ShutdownChanges()", lifetime, StringComparison.Ordinal);
         Assert.Contains("_viewModel.CommitDetails.PropertyChanged += ChangesViewModel_PropertyChanged", changes, StringComparison.Ordinal);
         Assert.Contains("_viewModel.CommitDetails.PropertyChanged -= ChangesViewModel_PropertyChanged", changes, StringComparison.Ordinal);
         Assert.Contains("_commitSummaryViewport?.Dispose()", changes, StringComparison.Ordinal);

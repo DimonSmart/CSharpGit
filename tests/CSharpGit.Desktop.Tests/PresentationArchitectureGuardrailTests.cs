@@ -595,9 +595,9 @@ public sealed class PresentationArchitectureGuardrailTests
         Assert.Contains("_viewModel.InteractiveRebase.PrepareInteractiveRebaseFromCommitAsync", commitActions, StringComparison.Ordinal);
         Assert.DoesNotContain("_viewModel.InteractiveRebase.", mainPage, StringComparison.Ordinal);
         Assert.DoesNotContain("_viewModel.RepositoryOperations.", mainPage, StringComparison.Ordinal);
-        var confirmationWorkflow = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryConfirmationController.cs"));
-        var toolbarWorkflow = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryToolbarActionController.cs"));
-        Assert.Contains("_viewModel.RepositoryOperations.", confirmationWorkflow + toolbarWorkflow, StringComparison.Ordinal);
+        var statusBar = File.ReadAllText(Path.Combine(presentation, "Views", "StatusBarView.xaml.cs"));
+        Assert.Contains("_viewModel.RepositoryOperations.CurrentOperation", statusBar, StringComparison.Ordinal);
+        Assert.Contains("RepositoryOperationsViewModel.CurrentOperation", statusBar, StringComparison.Ordinal);
     }
 
     [Fact]

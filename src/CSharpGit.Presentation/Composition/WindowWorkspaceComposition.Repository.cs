@@ -366,6 +366,8 @@ internal sealed partial class WindowWorkspaceComposition
         _keyboardShortcuts.Initialize();
         ConfigureWorkspaceLifetime();
         _page.Loaded += MainPage_Loaded;
+        if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_RESULT")))
+            _page.Loaded += RunDesktopCheckWhenRequested;
     }
 
     internal Task<bool> ConfirmedSwitchForDesktopCheckAsync(string path) =>

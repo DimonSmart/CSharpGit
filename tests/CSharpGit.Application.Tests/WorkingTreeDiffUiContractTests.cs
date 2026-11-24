@@ -158,7 +158,15 @@ public sealed class WorkingTreeDiffUiContractTests
         Assert.Contains("HasCurrentDelta", workingTreeViewModel);
         Assert.Contains("workingTree.HasCurrentDelta", workingTree);
         Assert.Contains("WorkingTreeDiffViewer.SetLines(compactLines, diff.Diagnostics)", workingTree);
-        Assert.DoesNotContain("foreach (var change in _viewModel.WorkingTree.Changes)", workingTree);
+        var projectionStart = workingTree.IndexOf("internal void RefreshChangesProjection()", StringComparison.Ordinal);
+        var projectionEnd = workingTree.IndexOf("internal int ProjectedChangeCount", projectionStart, StringComparison.Ordinal);
+        Assert.True(projectionStart >= 0 && projectionEnd > projectionStart);
+        var projection = workingTree[projectionStart..projectionEnd];
+        Assert.Contains("foreach (var change in _viewModel.WorkingTree.Changes)", projection);
+        Assert.DoesNotContain("SelectChangeAsync(", projection);
+        Assert.DoesNotContain("ReadDiffAsync(", projection);
+        Assert.DoesNotContain("foreach (var change in _viewModel.WorkingTree.Changes)", workingTree.Remove(projectionStart, projectionEnd - projectionStart));
+        Assert.Contains("_viewModel.WorkingTree.SelectChangeAsync(change, kind)", workingTree);
 
         var discardStart = git.IndexOf("public async Task DiscardFileAsync", StringComparison.Ordinal);
         var discardEnd = git.IndexOf("public async Task DiscardAllFileChangesAsync", discardStart, StringComparison.Ordinal);

@@ -23,7 +23,7 @@ public sealed class WorkingTreeInteractionOwnershipContractTests
         Assert.True(code.IndexOf("        WorkingTreePane.Configure(", StringComparison.Ordinal)
             < code.IndexOf("        RefreshPresentationCollections();", StringComparison.Ordinal),
             "WorkingTreeView must receive dependencies before the initial collection refresh.");
-        Assert.Contains("WorkingTreePane.ShutdownWorkingTreeDiffSurface();", lifetime);
+        Assert.Contains("() => WorkingTreePane.ShutdownWorkingTreeDiffSurface()", lifetime);
         Assert.Contains("SelectWorkingTreeContextTarget(", context);
         Assert.False(File.Exists(Path.Combine(presentation, "MainPage.WorkingTreeContextMenu.cs")));
         Assert.DoesNotContain("_unstagedTreeRoots", context);
