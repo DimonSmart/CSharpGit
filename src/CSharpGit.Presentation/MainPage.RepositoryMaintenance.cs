@@ -51,7 +51,7 @@ public sealed partial class MainPage
     internal bool IsApplicationUpdateInProgress => _aboutUpdate.IsRunning;
     internal bool IsHistoryRewriteInProgress => _viewModel.RepositoryHistoryRewrite.IsInProgress;
 
-    public MainPage(
+    internal MainPage(
         MainPageRepositoryDependencies repositoryDependencies,
         MainPageGitDependencies gitDependencies,
         MainPageUiDependencies uiDependencies,
