@@ -50,9 +50,9 @@ public sealed class PullUiContractTests
         var view = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryToolbarActionController.cs"));
         var pull = File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryPullController.cs"));
 
-        Assert.Contains("RunPageUiOperation(() => PullFromUiAsync(null), \"Pull\")", view, StringComparison.Ordinal);
+        Assert.Contains("_runUiOperation(() => _pull.PullAsync(null), \"Pull\")", view, StringComparison.Ordinal);
         foreach (var strategy in new[] { "FastForwardOnly", "Merge", "Rebase" })
-            Assert.Contains($"RunPageUiOperation(() => PullFromUiAsync(PullStrategy.{strategy})", view, StringComparison.Ordinal);
+            Assert.Contains($"_runUiOperation(() => _pull.PullAsync(PullStrategy.{strategy})", view, StringComparison.Ordinal);
         Assert.Contains("result.Kind == PullExecutionKind.Completed", pull, StringComparison.Ordinal);
         Assert.Contains("history.SelectionIntentVersion == selectionIntentVersion", pull, StringComparison.Ordinal);
         Assert.Contains("history.SelectCommitInCurrentHistoryAsync(", pull, StringComparison.Ordinal);
