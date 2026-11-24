@@ -8,7 +8,7 @@ public sealed class BranchDeletionUiContractTests
         var root = FindRepositoryRoot();
         var xaml = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryExplorerView.xaml"));
         var treeState = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Shell.cs"));
-        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryReferenceMenuController.cs"));
+        var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryReferenceMenuController.cs")).ReplaceLineEndings("\n");
         var controller = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "BranchDeletionController.cs"));
 
         Assert.Contains("RightTapped=\"Tree_RightTapped\"", xaml, StringComparison.Ordinal);
@@ -87,7 +87,7 @@ public sealed class BranchDeletionUiContractTests
     public void BranchFolderContextMenuUsesStronglyTypedMetadataAndScopedLabels()
     {
         var root = FindRepositoryRoot();
-        var menu = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryReferenceMenuController.cs"));
+        var menu = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryReferenceMenuController.cs")).ReplaceLineEndings("\n");
 
         Assert.Contains("case RepositoryTreeNodeKind.BranchFolder when node.Value is BranchFolderInfo folderInfo:", menu, StringComparison.Ordinal);
         Assert.Contains("Delete all branches in this folder…", menu, StringComparison.Ordinal);
