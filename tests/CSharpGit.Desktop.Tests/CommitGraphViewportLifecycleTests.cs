@@ -3,6 +3,7 @@ using System.Text.Json;
 
 namespace CSharpGit.Desktop.Tests;
 
+[Collection("Desktop graphical smoke")]
 public sealed class CommitGraphViewportLifecycleTests
 {
     [SkippableFact]
@@ -53,7 +54,12 @@ public sealed class CommitGraphViewportLifecycleTests
             using var document = JsonDocument.Parse(await File.ReadAllTextAsync(result));
             var failures = document.RootElement.GetProperty("Failures").EnumerateArray().Select(item => item.GetString()).ToArray();
             Assert.True(document.RootElement.GetProperty("Passed").GetBoolean(), string.Join(Environment.NewLine, failures));
-            Assert.Equal(0, process.ExitCode);
+            var output = await standardOutput;
+            var error = await standardError;
+            Assert.True(process.ExitCode == 0, $"Graph viewport check exited with {process.ExitCode}.{Environment.NewLine}{output}{Environment.NewLine}{error}");
+            Assert.Contains("DesktopCloseCheck: PageShutdownCompleted", output, StringComparison.Ordinal);
+            Assert.Contains("DesktopCloseCheck: WindowClosed", output, StringComparison.Ordinal);
+            Assert.Contains("DesktopCloseCheck: HostStopped", output, StringComparison.Ordinal);
         }
         finally
         {

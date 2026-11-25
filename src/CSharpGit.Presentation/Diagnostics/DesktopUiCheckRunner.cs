@@ -52,8 +52,6 @@ internal sealed partial class DesktopUiCheckRunner(DesktopUiCheckContext context
                 if (Environment.GetEnvironmentVariable("CSHARPGIT_GRAPH_VIEWPORT_CHECK") == "1")
                 {
                     await RunCommitGraphViewportLifecycleCheckAsync(failures);
-                    await File.WriteAllTextAsync(resultPath, JsonSerializer.Serialize(
-                        new DesktopCheckResult(failures.Count == 0, failures, false)));
                     return;
                 }
 
@@ -185,17 +183,38 @@ internal sealed partial class DesktopUiCheckRunner(DesktopUiCheckContext context
                 Check(_context.Repository.CommitCreation.CommitMessage == "draft retained by close guard", "commit draft was lost", failures);
                 Check(busyObserved && !_context.RepositoryToolbar.IsRefreshBusy, "busy indication did not transition back to idle", failures);
 
-                await File.WriteAllTextAsync(resultPath, JsonSerializer.Serialize(new DesktopCheckResult(failures.Count == 0, failures, _context.Repository.Repository?.IsWorktree ?? false)));
             }
             catch (Exception exception)
             {
                 failures.Add(exception.ToString());
-                await File.WriteAllTextAsync(resultPath, JsonSerializer.Serialize(new DesktopCheckResult(false, failures, false)));
             }
             finally
             {
                 _context.Repository.PropertyChanged -= ObserveBusy;
-                Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().TryEnqueue(() => Environment.Exit(failures.Count == 0 ? 0 : 1));
+                var isWorktree = _context.Repository.Repository?.IsWorktree ?? false;
+                try
+                {
+                    // The fixture owns this draft; never leave its confirmation
+                    // dialog or a Git operation active when requesting native close.
+                    await _context.DismissActiveDialogAsync();
+                    if (_context.Repository.CommitCreation.IsEmptyIndexChoiceOpen)
+                        await _context.ExecuteCommandAsync(_context.Repository.CommitCreation.CancelCommitCommand);
+                    _context.Repository.CommitCreation.CommitMessage = string.Empty;
+                    await WaitUntilAsync(() => !_context.Repository.IsBusy, TimeSpan.FromSeconds(20));
+                }
+                catch (Exception exception)
+                {
+                    failures.Add($"Desktop check cleanup failed: {exception}");
+                }
+
+                await File.WriteAllTextAsync(resultPath, JsonSerializer.Serialize(
+                    new DesktopCheckResult(failures.Count == 0, failures, isWorktree)));
+                Environment.ExitCode = failures.Count == 0 ? 0 : 1;
+                // Let the real window/host lifecycle finish instead of terminating
+                // the native rendering thread with Environment.Exit.
+                if (Application.Current is not App app)
+                    throw new InvalidOperationException("The desktop check has no application host.");
+                app.RequestDesktopUiCheckClose();
             }
             }
         private async Task CheckRepositoryFilesTabAsync(List<string> failures)

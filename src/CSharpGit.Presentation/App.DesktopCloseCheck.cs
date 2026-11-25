@@ -631,9 +631,25 @@ public sealed partial class App
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool PostMessageW(nint window, uint message, nuint wParam, nint lParam);
 
+    internal void RequestDesktopUiCheckClose()
+    {
+        if (_window is null || _windowSession is null || _windowClose is null
+            || _windowSession.IsUnsafeToClose || _windowSession.RequiresCloseConfirmation)
+            throw new InvalidOperationException("The desktop UI check is not ready for normal closure.");
+
+        ReportDesktopCloseCheck("CloseRequested");
+        if (!_window.DispatcherQueue.TryEnqueue(() =>
+            {
+                ReportDesktopCloseCheck("CloseDispatched");
+                RequestNormalWindowCloseForDesktopCheck();
+            }))
+            throw new InvalidOperationException("The UI dispatcher rejected the desktop UI check close request.");
+    }
+
     private static void ReportDesktopCloseCheck(string phase)
     {
-        if (Environment.GetEnvironmentVariable("CSHARPGIT_CLOSE_CHECK") == "1")
+        if (Environment.GetEnvironmentVariable("CSHARPGIT_CLOSE_CHECK") == "1"
+            || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_RESULT")))
             Console.WriteLine($"DesktopCloseCheck: {phase}");
     }
 }

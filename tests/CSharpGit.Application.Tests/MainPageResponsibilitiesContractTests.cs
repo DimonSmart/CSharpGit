@@ -17,6 +17,8 @@ public sealed class MainPageResponsibilitiesContractTests
         Assert.Contains("internal sealed partial class DesktopUiCheckRunner(DesktopUiCheckContext context)", runner);
         Assert.DoesNotContain("partial class MainPage", runner + graph);
         Assert.Contains("PropertyChanged -= ObserveBusy", runner);
+        Assert.DoesNotContain("Environment.Exit(", runner);
+        Assert.Contains("RequestDesktopUiCheckClose()", runner);
         Assert.Contains("RunCommitGraphViewportLifecycleCheckAsync", graph);
         Assert.Contains("RunDesktopDensityCheckAsync", graph);
         Assert.False(File.Exists(Path.Combine(presentation, "MainPage.GraphViewportCheck.cs")));

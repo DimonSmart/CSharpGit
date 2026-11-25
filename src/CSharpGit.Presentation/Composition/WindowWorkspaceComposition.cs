@@ -187,7 +187,8 @@ internal sealed partial class WindowWorkspaceComposition
             _page, RootLayout, RepositoryWorkspace, RepositoryExplorer, RepositoryToolbar,
             HistoryPane, WorkingTreePane, GitConsoleHost, _viewModel, _workspaceNavigation,
             _recentRepositorySettings, _settingsWindowController, _authorAvatarService,
-            _gitCommandActivitySource, RefreshPresentationCollections, _ui.ExecuteCommandAsync))
+            _gitCommandActivitySource, RefreshPresentationCollections, _ui.ExecuteCommandAsync,
+            _pageDialogs.DismissActiveDialogForDesktopCheckAsync))
             .RunAsync(resultPath);
     }
 

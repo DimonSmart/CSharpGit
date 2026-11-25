@@ -4,6 +4,7 @@ using System.Text.Json;
 
 namespace CSharpGit.Desktop.Tests;
 
+[Collection("Desktop graphical smoke")]
 public sealed class DesktopApplicationTests
 {
     [SkippableFact]
@@ -67,7 +68,10 @@ public sealed class DesktopApplicationTests
         var failures = document.RootElement.GetProperty("Failures").EnumerateArray().Select(item => item.GetString()).ToArray();
         Assert.True(document.RootElement.GetProperty("Passed").GetBoolean(), string.Join(Environment.NewLine, failures));
         Assert.Equal(worktree, document.RootElement.GetProperty("IsWorktree").GetBoolean());
-        Assert.Equal(0, process.ExitCode);
+        Assert.True(process.ExitCode == 0, $"Desktop UI check exited with {process.ExitCode}.{Environment.NewLine}{output}{Environment.NewLine}{error}");
+        Assert.Contains("DesktopCloseCheck: PageShutdownCompleted", output, StringComparison.Ordinal);
+        Assert.Contains("DesktopCloseCheck: WindowClosed", output, StringComparison.Ordinal);
+        Assert.Contains("DesktopCloseCheck: HostStopped", output, StringComparison.Ordinal);
     }
 
     private static async Task RunNormalCloseCheckAsync(
