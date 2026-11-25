@@ -20,7 +20,7 @@ public sealed class WindowLifetimeOwnershipContractTests
         Assert.Contains("_ => composition.PrepareForShutdown()", factory);
         Assert.Contains("composition.BeginShutdown,", factory);
         Assert.Contains("_workspaceLifetime.Complete()", page);
-        Assert.Contains("Interlocked.Exchange(ref _shutdownFinalized, 1)", File.ReadAllText(Path.Combine(presentation, "Windowing", "WindowWorkspaceLifetime.cs")));
+        Assert.Contains("Interlocked.Exchange(ref _shutdownFinalized, 1)", File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "WindowWorkspaceLifetime.cs")));
     }
 
     private static string FindRoot()
