@@ -38,8 +38,8 @@ public sealed class CommitMetadataCopyUiContractTests
         var xaml = System.Xml.Linq.XDocument.Load(Path.Combine(controls, "CommitDetailsView.xaml"));
         var ns = xaml.Root!.Name.Namespace;
         const string emailBinding = "{Binding History.SelectedRow.Commit.AuthorEmail}";
-        var email = Assert.Single(xaml.Descendants(ns + "TextBlock")
-            .Where(element => (string?)element.Attribute("Text") == emailBinding));
+        var email = Assert.Single(xaml.Descendants(ns + "TextBlock"),
+            element => (string?)element.Attribute("Text") == emailBinding);
         var row = email.Parent!;
         var copy = Assert.Single(row.Elements(ns + "Button"));
         var author = Assert.Single(row.Parent!.Elements(ns + "TextBlock"));
