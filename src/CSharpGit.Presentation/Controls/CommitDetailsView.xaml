@@ -4,6 +4,7 @@
              xmlns:controls="using:CSharpGit.Presentation.Controls">
   <UserControl.Resources>
     <controls:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    <controls:NonEmptyStringToVisibilityConverter x:Key="NonEmptyStringToVisibilityConverter" />
     <Style x:Key="InlineCopyButtonStyle"
            TargetType="Button"
            BasedOn="{StaticResource IconButtonStyle}">
@@ -60,10 +61,28 @@
                                AuthorEmail="{Binding History.SelectedRow.Commit.AuthorEmail}"
                                AvatarSize="32"
                                Margin="0,0,8,0" />
-        <TextBlock Grid.Column="1"
-                   Text="{Binding History.SelectedRow.Commit.Author}"
-                   Style="{StaticResource SelectableBodyTextStyle}"
-                   VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+          <TextBlock Text="{Binding History.SelectedRow.Commit.Author}"
+                     Style="{StaticResource SelectableBodyTextStyle}" />
+          <Grid ColumnDefinitions="*,Auto"
+                ColumnSpacing="{StaticResource Spacing.XS}"
+                HorizontalAlignment="Left"
+                Visibility="{Binding History.SelectedRow.Commit.AuthorEmail, Converter={StaticResource NonEmptyStringToVisibilityConverter}, FallbackValue=Collapsed}">
+            <TextBlock Text="{Binding History.SelectedRow.Commit.AuthorEmail}"
+                       Style="{StaticResource SelectableSecondaryTextStyle}"
+                       TextWrapping="Wrap"
+                       VerticalAlignment="Center" />
+            <Button Grid.Column="1"
+                    Tag="{Binding History.SelectedRow.Commit.AuthorEmail}"
+                    Click="CopyText_Click"
+                    Style="{StaticResource InlineCopyButtonStyle}"
+                    VerticalAlignment="Center"
+                    ToolTipService.ToolTip="Copy author email"
+                    AutomationProperties.Name="Copy author email">
+              <FontIcon Glyph="&#xE8C8;" FontSize="{StaticResource Icon.Small}" />
+            </Button>
+          </Grid>
+        </StackPanel>
       </Grid>
 
       <TextBlock Grid.Row="1" Text="Date" Style="{StaticResource SecondaryTextStyle}" />
