@@ -10,7 +10,10 @@ public sealed class DesktopApplicationTests
     public async Task LaunchesRealApplicationForRepositoryAndLinkedWorktree()
     {
         var application = FindApplication();
-        Skip.IfNot(HasDesktopSession(), "No supported desktop session is available.");
+        if (Environment.GetEnvironmentVariable("CSHARPGIT_REQUIRE_DESKTOP_CHECK") == "1")
+            Assert.True(HasDesktopSession(), "CI requires a graphical desktop session; smoke tests must not be skipped.");
+        else
+            Skip.IfNot(HasDesktopSession(), "No supported desktop session is available.");
         Assert.True(application is not null, "Build CSharpGit.Presentation first, or set CSHARPGIT_DESKTOP_APP to its executable.");
 
         await using var fixture = await GitFixture.CreateAsync();
@@ -64,6 +67,7 @@ public sealed class DesktopApplicationTests
         var failures = document.RootElement.GetProperty("Failures").EnumerateArray().Select(item => item.GetString()).ToArray();
         Assert.True(document.RootElement.GetProperty("Passed").GetBoolean(), string.Join(Environment.NewLine, failures));
         Assert.Equal(worktree, document.RootElement.GetProperty("IsWorktree").GetBoolean());
+        Assert.Equal(0, process.ExitCode);
     }
 
     private static async Task RunNormalCloseCheckAsync(

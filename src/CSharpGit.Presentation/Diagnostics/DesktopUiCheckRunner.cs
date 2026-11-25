@@ -14,24 +14,6 @@ internal sealed partial class DesktopUiCheckRunner(DesktopUiCheckContext context
 {
     private readonly DesktopUiCheckContext _context = context;
 
-        private sealed class XamlOnlyProbeData : System.ComponentModel.INotifyPropertyChanged
-        {
-            private string _probeText = "XAML-only binding verified";
-            public string ProbeText
-            {
-                get => _probeText;
-                set
-                {
-                    if (_probeText == value) return;
-                    _probeText = value;
-                    PropertyChanged?.Invoke(this,
-                        new System.ComponentModel.PropertyChangedEventArgs(nameof(ProbeText)));
-                }
-            }
-
-            public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
-        }
-
         public async Task RunAsync(string resultPath)
         {
             var failures = new List<string>();
@@ -44,30 +26,8 @@ internal sealed partial class DesktopUiCheckRunner(DesktopUiCheckContext context
             _context.Repository.PropertyChanged += ObserveBusy;
             try
             {
-                var probeData = new XamlOnlyProbeData();
-                var probe = new Views.XamlOnlyProbe { DataContext = probeData };
-                _context.RootLayout.Children.Add(probe);
-                try
-                {
-                    var text = (probe.Content as Grid)?.Children.OfType<TextBlock>().FirstOrDefault();
-                    await WaitUntilAsync(
-                        () => text?.Text == "XAML-only binding verified",
-                        TimeSpan.FromSeconds(5));
-                    Check(text?.Text == "XAML-only binding verified",
-                        "generated XAML-only UserControl did not bind its DataContext", failures);
-                    probeData.ProbeText = "XAML-only binding updated";
-                    await WaitUntilAsync(
-                        () => text?.Text == "XAML-only binding updated",
-                        TimeSpan.FromSeconds(5));
-                    Check(text?.Text == "XAML-only binding updated",
-                        "generated XAML-only UserControl did not react to INotifyPropertyChanged", failures);
-                }
-                finally
-                {
-                    _context.RootLayout.Children.Remove(probe);
-                }
-
-
+                Check(ReferenceEquals(_context.Root.DataContext, _context.Repository),
+                    "generated MainPage did not receive its repository DataContext", failures);
                 await _context.Repository.OpenRepositoryAsyncForDesktopCheck();
                 _context.RefreshPresentationCollections();
                 Check(_context.Repository.Repository is not null, $"repository did not open: {_context.Repository.ErrorMessage}", failures);
@@ -84,6 +44,8 @@ internal sealed partial class DesktopUiCheckRunner(DesktopUiCheckContext context
                     () => _context.RepositoryWorkspace.ActualWidth > 0 && _context.RepositoryWorkspace.ActualHeight > 0 && _context.HistoryView.List.ActualWidth > 0 && _context.HistoryView.List.ActualHeight > 0,
                     TimeSpan.FromSeconds(10));
                 Check(_context.Repository.Repository is not null, "repository did not open", failures);
+                Check(_context.RepositoryWorkspace.Visibility == Visibility.Visible,
+                    "generated MainPage did not update its repository visibility binding", failures);
                 Check(_context.Repository.Repository?.IsWorktree == (Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_WORKTREE") == "1"), "repository kind is incorrect", failures);
                 Check(_context.Repository.History.Scopes.All(scope => scope.Label is "All references" or "Current branch"), "English history scopes are missing", failures);
 
@@ -200,6 +162,9 @@ internal sealed partial class DesktopUiCheckRunner(DesktopUiCheckContext context
                     Check(_context.Repository.History.SelectedRow is null || _context.Repository.History.Rows.Any(row => ReferenceEquals(row, _context.Repository.History.SelectedRow)), "all-history selection is not part of the current ItemsSource", failures);
                 }
 
+                await CheckRepositoryFilesTabAsync(failures);
+                await CheckInitialGraphForWorkspaceAsync(failures);
+
                 _context.Repository.CommitCreation.CommitMessage = "draft retained by close guard";
                 Check(_context.Repository.CommitCreation.HasUnappliedCommitMessage, "commit draft close guard is inactive", failures);
                 if (_context.Repository.WorkingTree.Changes.FirstOrDefault(change => change.IsUnstaged) is { } workingTreeCheckChange)
@@ -233,6 +198,38 @@ internal sealed partial class DesktopUiCheckRunner(DesktopUiCheckContext context
                 Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().TryEnqueue(() => Environment.Exit(failures.Count == 0 ? 0 : 1));
             }
             }
+        private async Task CheckRepositoryFilesTabAsync(List<string> failures)
+        {
+            var tabs = _context.DetailsTabs;
+            var files = tabs.Items.OfType<PivotItem>().SingleOrDefault(item => item.Name == "FilesTab");
+            Check(files?.Content is RepositoryFilesSurface, "declarative Repository Files tab has no configured surface", failures);
+            if (files?.Content is not RepositoryFilesSurface surface) return;
+            var previous = tabs.SelectedItem;
+            try
+            {
+                tabs.SelectedItem = files;
+                await WaitUntilAsync(() => surface.IsRepositoryFilesActive &&
+                    surface.FileTree.ItemsSource is IEnumerable<RepositorySnapshotTreeNode> roots &&
+                    roots.Any(), TimeSpan.FromSeconds(15));
+                Check(surface.FileTree.ActualWidth > 0, "Repository Files tree was not laid out", failures);
+                Check(surface.FileTree.ItemsSource is IEnumerable<RepositorySnapshotTreeNode> items &&
+                    items.Any(node => node.Entry?.Path == "tracked.txt"),
+                    "Repository Files did not load the committed fixture file", failures);
+            }
+            finally
+            {
+                tabs.SelectedItem = previous;
+            }
+            Check(!surface.IsRepositoryFilesActive, "Repository Files remained active after switching tabs", failures);
+        }
+
+        private async Task CheckInitialGraphForWorkspaceAsync(List<string> failures)
+        {
+            var originalTemplate = _context.HistoryView.List.ItemTemplate;
+            try { await CheckInitialHistoryGraphAsync(failures); }
+            finally { _context.HistoryView.List.ItemTemplate = originalTemplate; }
+        }
+
         private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
         {
             var deadline = DateTime.UtcNow + timeout;

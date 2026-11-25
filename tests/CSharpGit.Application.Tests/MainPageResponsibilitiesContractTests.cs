@@ -8,8 +8,8 @@ public sealed class MainPageResponsibilitiesContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var page = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.cs"));
-        var runner = File.ReadAllText(Path.Combine(presentation, "Diagnostics", "MainPageDesktopUiCheckRunner.cs"));
-        var graph = File.ReadAllText(Path.Combine(presentation, "Diagnostics", "MainPageDesktopUiCheckRunner.Graph.cs"));
+        var runner = File.ReadAllText(Path.Combine(presentation, "Diagnostics", "DesktopUiCheckRunner.cs"));
+        var graph = File.ReadAllText(Path.Combine(presentation, "Diagnostics", "DesktopUiCheckRunner.Graph.cs"));
 
         Assert.Contains("new DesktopUiCheckRunner(new DesktopUiCheckContext(", page);
         Assert.DoesNotContain("Environment.Exit", page);

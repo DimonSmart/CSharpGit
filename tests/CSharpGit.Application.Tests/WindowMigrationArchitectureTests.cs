@@ -62,13 +62,14 @@ public sealed class WindowMigrationArchitectureTests
     }
 
     [Fact]
-    public void XamlOnlyProbeParticipatesInDesktopSmokeCheck()
+    public void ActualGeneratedMainPageParticipatesInDesktopSmokeCheck()
     {
-        var runner = Read("src/CSharpGit.Presentation/Diagnostics/MainPageDesktopUiCheckRunner.cs");
-        Assert.Contains("new Views.XamlOnlyProbe", runner);
-        Assert.Contains("DataContext = probeData", runner);
-        Assert.Contains("probeData.ProbeText = \"XAML-only binding updated\"", runner);
-        Assert.Contains("XAML-only binding verified", runner);
+        var runner = Read("src/CSharpGit.Presentation/Diagnostics/DesktopUiCheckRunner.cs");
+        Assert.Contains("ReferenceEquals(_context.Root.DataContext, _context.Repository)", runner);
+        Assert.Contains("_context.RepositoryWorkspace.Visibility == Visibility.Visible", runner);
+        Assert.Contains("CheckRepositoryFilesTabAsync(failures)", runner);
+        Assert.Contains("CheckInitialGraphForWorkspaceAsync(failures)", runner);
+        Assert.DoesNotContain("XamlOnlyProbe", runner);
     }
 
     private static string Read(string relative) =>

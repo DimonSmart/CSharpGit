@@ -57,11 +57,25 @@ jobs:
       - name: Build
         run: dotnet build CSharpGit.slnx --configuration Release --no-restore
 
+      - name: Prepare Linux graphical desktop
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth openbox libgl1-mesa-dri libx11-6 libxext6 libxi6 libxrandr2 libxcursor1 libxinerama1 libfontconfig1 libfreetype6 libice6 libsm6 libxkbcommon0
+
       - name: Test
+        shell: pwsh
         env:
+          CSHARPGIT_REQUIRE_DESKTOP_CHECK: "1"
           CSHARPGIT_TEST_METRICS: "1"
           CSHARPGIT_TEST_METRICS_DIR: ${{ github.workspace }}/TestDiagnostics
-        run: dotnet test CSharpGit.slnx --configuration Release --no-build --verbosity minimal --logger "trx;LogFilePrefix=test-results"
+        run: |
+          if ($IsLinux) {
+            xvfb-run -a -e /dev/stderr -s "-screen 0 1600x1200x24" bash -c 'openbox >/tmp/csharpgit-openbox.log 2>&1 & sleep 1; exec dotnet test CSharpGit.slnx --configuration Release --no-build --verbosity minimal --logger "trx;LogFilePrefix=test-results"'
+          } else {
+            dotnet test CSharpGit.slnx --configuration Release --no-build --verbosity minimal --logger "trx;LogFilePrefix=test-results"
+          }
+          exit $LASTEXITCODE
 
       - name: Publish smoke and verify Core assemblies (Linux x64)
         if: runner.os == 'Linux'
