@@ -59,7 +59,10 @@ internal sealed partial class DesktopUiCheckRunner
                         if (index < 0 || index >= _context.Repository.History.Rows.Count) continue;
                         var row = _context.Repository.History.Rows[index];
                         _context.HistoryView.List.ScrollIntoView(row);
-                        await Task.Delay(80);
+                        await WaitUntilAsync(() =>
+                            _context.HistoryView.List.ContainerFromItem(row) is ListViewItem realized
+                            && FindDescendant<CommitGraphControl>(realized)?.HasCurrentRenderForCheck() == true,
+                            TimeSpan.FromSeconds(5));
 
                         if (_context.HistoryView.List.ContainerFromItem(row) is not ListViewItem container)
                         {
@@ -104,7 +107,10 @@ internal sealed partial class DesktopUiCheckRunner
                 if (_context.Repository.History.Rows.FirstOrDefault() is { } first)
                 {
                     _context.HistoryView.List.ScrollIntoView(first);
-                    await Task.Delay(80);
+                    await WaitUntilAsync(() =>
+                        _context.HistoryView.List.ContainerFromItem(first) is ListViewItem realized
+                        && FindDescendant<CommitGraphControl>(realized)?.HasCurrentRenderForCheck() == true,
+                        TimeSpan.FromSeconds(5));
                     Check(_context.HistoryView.List.ContainerFromItem(first) is ListViewItem firstContainer
                           && FindDescendant<CommitGraphControl>(firstContainer)?.HasCurrentRenderForCheck() == true,
                         "commit graph was stale after returning to the top of history", failures);

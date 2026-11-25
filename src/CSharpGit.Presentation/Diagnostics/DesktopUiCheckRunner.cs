@@ -208,7 +208,7 @@ internal sealed partial class DesktopUiCheckRunner(DesktopUiCheckContext context
             try
             {
                 tabs.SelectedItem = files;
-                await WaitUntilAsync(() => surface.IsRepositoryFilesActive &&
+                await WaitUntilAsync(() => surface.IsRepositoryFilesActive && surface.FileTree.ActualWidth > 0 &&
                     surface.FileTree.ItemsSource is IEnumerable<RepositorySnapshotTreeNode> roots &&
                     roots.Any(), TimeSpan.FromSeconds(15));
                 Check(surface.FileTree.ActualWidth > 0, "Repository Files tree was not laid out", failures);

@@ -5,11 +5,15 @@ namespace CSharpGit.Desktop.Tests;
 
 public sealed class CommitGraphViewportLifecycleTests
 {
-    [Fact]
+    [SkippableFact]
     public async Task GraphRemainsBoundToCurrentRowsAcrossViewportResizeAndRecycling()
     {
         var application = FindApplication();
-        if (!HasDesktopSession() || application is null) return;
+        if (Environment.GetEnvironmentVariable("CSHARPGIT_REQUIRE_DESKTOP_CHECK") == "1")
+            Assert.True(HasDesktopSession(), "CI requires a graphical desktop session for graph smoke.");
+        else
+            Skip.IfNot(HasDesktopSession(), "No supported desktop session is available.");
+        Assert.True(application is not null, "Build CSharpGit.Presentation first, or set CSHARPGIT_DESKTOP_APP.");
 
         var root = Path.Combine(Path.GetTempPath(), "csharpgit-graph-viewport", Guid.NewGuid().ToString("N"));
         var repository = Path.Combine(root, "repository");
@@ -22,7 +26,7 @@ public sealed class CommitGraphViewportLifecycleTests
         {
             await InitializeRepositoryAsync(repository, home);
             var result = Path.Combine(home, $"graph-viewport-{Guid.NewGuid():N}.json");
-            var start = CreateStartInfo(application, repository, home);
+            var start = CreateStartInfo(application!, repository, home);
             start.Environment["CSHARPGIT_UI_CHECK_REPOSITORY"] = repository;
             start.Environment["CSHARPGIT_UI_CHECK_RESULT"] = result;
             start.Environment["CSHARPGIT_UI_CHECK_WORKTREE"] = "0";
@@ -49,6 +53,7 @@ public sealed class CommitGraphViewportLifecycleTests
             using var document = JsonDocument.Parse(await File.ReadAllTextAsync(result));
             var failures = document.RootElement.GetProperty("Failures").EnumerateArray().Select(item => item.GetString()).ToArray();
             Assert.True(document.RootElement.GetProperty("Passed").GetBoolean(), string.Join(Environment.NewLine, failures));
+            Assert.Equal(0, process.ExitCode);
         }
         finally
         {
@@ -143,6 +148,7 @@ public sealed class CommitGraphViewportLifecycleTests
         start.Environment["XDG_CONFIG_HOME"] = home;
         start.Environment["LOCALAPPDATA"] = home;
         start.Environment["APPDATA"] = home;
+        start.Environment["CSHARPGIT_APP_DATA_ROOT"] = Path.Combine(home, "appdata");
         return start;
     }
 

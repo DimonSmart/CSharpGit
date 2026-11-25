@@ -114,8 +114,8 @@ public sealed class StashUiContractTests
         Assert.Contains("Click=\"DropSelectedStash_Click\"", xaml, StringComparison.Ordinal);
 
         Assert.Contains("context?.SelectedObjectCommit", repositoryFiles, StringComparison.Ordinal);
-        var filesSurface = Read(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Files.cs");
-        Assert.Contains("\"Tracked files\"", filesSurface, StringComparison.Ordinal);
+        var historyView = Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml.cs");
+        Assert.Contains("FilesTab.Header = hasSelectedStash ? \"Tracked files\" : \"Files\"", historyView, StringComparison.Ordinal);
         Assert.Contains("Untracked stash files are shown in Changes.", detailsViewModel, StringComparison.Ordinal);
     }
 

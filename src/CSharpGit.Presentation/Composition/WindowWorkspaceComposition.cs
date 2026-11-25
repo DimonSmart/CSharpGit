@@ -69,8 +69,6 @@ internal sealed partial class WindowWorkspaceComposition
 
 
     // Working Tree controls used to wire diff and file-action controllers.
-    private TreeView UnstagedChangesTree => WorkingTreePane.UnstagedChangesTreeControl;
-    private TreeView StagedChangesTree => WorkingTreePane.StagedChangesTreeControl;
     private Button WorkingTreeOpenOriginalButton => WorkingTreePane.WorkingTreeOpenOriginalButtonControl;
     private Button WorkingTreeOpenChangedButton => WorkingTreePane.WorkingTreeOpenChangedButtonControl;
     private Button WorkingTreeExternalDiffButton => WorkingTreePane.WorkingTreeExternalDiffButtonControl;
@@ -171,11 +169,6 @@ internal sealed partial class WindowWorkspaceComposition
     {
         WorkingTreePane.RefreshChangesProjection();
         UpdateStatusBar();
-    }
-
-    private void RebuildRepositoryTree()
-    {
-        SynchronizeRepositoryTree();
     }
 
     private void UpdateStatusBar()

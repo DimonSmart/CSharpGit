@@ -18,8 +18,6 @@ internal sealed partial class WindowWorkspaceComposition
     private Task ShowInteractiveRebaseEditorAsync() =>
         _pageDialogs.ShowInteractiveRebaseEditorAsync();
 
-    private ContentDialog GetPageDialog(string key) => _pageDialogs.GetDialog(key);
-
     internal Task OpenInitialRepositoryAsync() => _viewModel.OpenRepositoryAsyncForDesktopCheck();
 
     internal TreeView RepositoryTree => RepositoryExplorer.TreeControl;

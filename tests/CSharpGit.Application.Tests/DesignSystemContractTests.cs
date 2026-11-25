@@ -112,7 +112,7 @@ public sealed class DesignSystemContractTests
     }
 
     [Fact]
-    public void DynamicallyNamedDetailsTabsRetainSharedStyleAndLazySelection()
+    public void DeclarativeDetailsTabsRetainSharedStyleAndLazySelection()
     {
         var root = FindRepositoryRoot();
         var files = Read(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Files.cs");
@@ -137,8 +137,7 @@ public sealed class DesignSystemContractTests
         Assert.Contains("UpdateChangesViewActivity();", changes);
         var changedTree = Read(root, "src", "CSharpGit.Presentation", "Workflows", "CommitChangedFileTreeController.cs");
         Assert.Contains("Changes ({_commitFiles.Count})", changedTree);
-        var navigation = Read(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Files.cs");
-        Assert.Contains("\"Tracked files\"", navigation);
+        Assert.Contains("FilesTab.Header = hasSelectedStash ? \"Tracked files\" : \"Files\"", historyCode);
         Assert.Contains("\"Stash\"", mainCode + changes + files + 
             Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs"));
     }
