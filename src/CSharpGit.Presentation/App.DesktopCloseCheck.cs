@@ -641,7 +641,22 @@ public sealed partial class App
         if (!_window.DispatcherQueue.TryEnqueue(() =>
             {
                 ReportDesktopCloseCheck("CloseDispatched");
-                RequestNormalWindowCloseForDesktopCheck();
+                try
+                {
+                    // This is an application-initiated close, not a simulated
+                    // title-bar click. In particular, AppKit performClose can
+                    // depend on native window state after repeated resizes.
+                    // The separate normal-close test still exercises that path.
+                    if (TryBeginNormalShutdown())
+                        _window.Close();
+                    else if (_windowClose.Stage == WindowCloseStage.Idle)
+                        throw new InvalidOperationException("Desktop UI check shutdown was rejected.");
+                }
+                catch (Exception exception)
+                {
+                    Console.Error.WriteLine($"DesktopUiCheck: Close failed: {exception}");
+                    LogUiFailure(exception, "Desktop UI check close");
+                }
             }))
             throw new InvalidOperationException("The UI dispatcher rejected the desktop UI check close request.");
     }

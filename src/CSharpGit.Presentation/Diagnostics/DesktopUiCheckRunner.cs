@@ -209,6 +209,9 @@ internal sealed partial class DesktopUiCheckRunner(DesktopUiCheckContext context
 
                 await File.WriteAllTextAsync(resultPath, JsonSerializer.Serialize(
                     new DesktopCheckResult(failures.Count == 0, failures, isWorktree)));
+                Console.WriteLine($"DesktopUiCheck: Result written; failures={failures.Count}");
+                foreach (var failure in failures)
+                    Console.Error.WriteLine(failure);
                 Environment.ExitCode = failures.Count == 0 ? 0 : 1;
                 // Let the real window/host lifecycle finish instead of terminating
                 // the native rendering thread with Environment.Exit.

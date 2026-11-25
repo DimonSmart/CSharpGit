@@ -36,10 +36,28 @@ public sealed class CommitGraphViewportLifecycleTests
             using var process = Process.Start(start) ?? throw new InvalidOperationException("Desktop application could not be started.");
             var standardOutput = process.StandardOutput.ReadToEndAsync();
             var standardError = process.StandardError.ReadToEndAsync();
+            string? timeoutFailure = null;
             try
             {
-                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(150));
-                await process.WaitForExitAsync(timeout.Token);
+                // A loaded runner can take considerably longer to render 30
+                // distinct viewports. Keep the overall bound, and give the
+                // subsequent native shutdown its own much smaller budget.
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(240));
+                while (!File.Exists(result) && !process.HasExited)
+                    await Task.Delay(100, timeout.Token);
+                if (!process.HasExited)
+                {
+                    using var shutdownTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                    try { await process.WaitForExitAsync(shutdownTimeout.Token); }
+                    catch (OperationCanceledException) when (shutdownTimeout.IsCancellationRequested)
+                    {
+                        timeoutFailure = "Graph viewport result was written but normal shutdown exceeded 30 seconds.";
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                timeoutFailure = "Graph viewport check did not produce a result within 240 seconds.";
             }
             finally
             {
@@ -50,12 +68,16 @@ public sealed class CommitGraphViewportLifecycleTests
                 }
             }
 
-            Assert.True(File.Exists(result), $"Desktop application exited with {process.ExitCode} without a graph viewport result.{Environment.NewLine}{await standardOutput}{Environment.NewLine}{await standardError}");
-            using var document = JsonDocument.Parse(await File.ReadAllTextAsync(result));
-            var failures = document.RootElement.GetProperty("Failures").EnumerateArray().Select(item => item.GetString()).ToArray();
-            Assert.True(document.RootElement.GetProperty("Passed").GetBoolean(), string.Join(Environment.NewLine, failures));
             var output = await standardOutput;
             var error = await standardError;
+            var resultText = File.Exists(result) ? await File.ReadAllTextAsync(result) : null;
+            Assert.True(timeoutFailure is null,
+                $"{timeoutFailure}{Environment.NewLine}Result: {resultText}{Environment.NewLine}{output}{Environment.NewLine}{error}");
+            Assert.True(resultText is not null,
+                $"Desktop application exited with {process.ExitCode} without a graph viewport result.{Environment.NewLine}{output}{Environment.NewLine}{error}");
+            using var document = JsonDocument.Parse(resultText!);
+            var failures = document.RootElement.GetProperty("Failures").EnumerateArray().Select(item => item.GetString()).ToArray();
+            Assert.True(document.RootElement.GetProperty("Passed").GetBoolean(), string.Join(Environment.NewLine, failures));
             Assert.True(process.ExitCode == 0, $"Graph viewport check exited with {process.ExitCode}.{Environment.NewLine}{output}{Environment.NewLine}{error}");
             Assert.Contains("DesktopCloseCheck: PageShutdownCompleted", output, StringComparison.Ordinal);
             Assert.Contains("DesktopCloseCheck: WindowClosed", output, StringComparison.Ordinal);
