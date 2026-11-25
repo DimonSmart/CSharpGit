@@ -104,10 +104,10 @@ internal sealed partial class WindowWorkspaceComposition
     internal bool IsHistoryRewriteInProgress => _viewModel.RepositoryHistoryRewrite.IsInProgress;
 
     internal WindowWorkspaceComposition(
-        MainPageRepositoryDependencies repositoryDependencies,
-        MainPageGitDependencies gitDependencies,
-        MainPageUiDependencies uiDependencies,
-        MainPageUpdateDependencies updateDependencies)
+        WorkspaceRepositoryDependencies repositoryDependencies,
+        WorkspaceGitDependencies gitDependencies,
+        WorkspaceUiDependencies uiDependencies,
+        WorkspaceUpdateDependencies updateDependencies)
         : this(
             repositoryDependencies.ViewModel,
             gitDependencies.WorkingTreeStatusReader,
@@ -253,7 +253,7 @@ internal sealed partial class WindowWorkspaceComposition
             () => IsHistoryRewriteInProgress,
             () => IsRepositoryMaintenanceInProgress,
             () => _viewModel.CommitCreation.HasUnappliedCommitMessage,
-            ConfirmCloseAsync,
+            () => CloseConfirmation.ConfirmDiscardCommitMessageAsync(CancellationToken.None),
             () =>
             {
                 if (Microsoft.UI.Xaml.Application.Current is App app)

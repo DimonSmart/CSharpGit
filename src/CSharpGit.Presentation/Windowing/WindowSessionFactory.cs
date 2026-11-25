@@ -3,7 +3,7 @@ using CSharpGit.Presentation.ViewModels;
 
 namespace CSharpGit.Presentation.Windowing;
 
-// The factory alone knows the legacy visual root; WindowSession does not.
+// The factory alone knows the generated visual root; WindowSession does not.
 internal sealed class WindowSessionFactory(IServiceScopeFactory scopeFactory)
 {
     internal (MainPage Page, WindowSession Session, ICloseConfirmationDialog Confirmation,
@@ -22,9 +22,7 @@ internal sealed class WindowSessionFactory(IServiceScopeFactory scopeFactory)
             var navigator = scope.ServiceProvider.GetRequiredService<WorkspaceNavigator>();
             var composition = scope.ServiceProvider.GetRequiredService<WindowWorkspaceComposition>();
             var page = composition.Page;
-            var confirmation = new CommitDraftCloseConfirmationDialog(
-                repository, composition.ShowCommitDraftDialogAsync, () => composition.IsClosingForDialog);
-            composition.ConfigureCloseConfirmation(confirmation);
+            var confirmation = composition.CloseConfirmation;
             var safety = new WindowCloseSafetyProvider(
                 repository, clone, create, maintenance, updateActivity);
             var titleState = new WindowTitleState(
@@ -48,7 +46,7 @@ internal sealed class WindowSessionFactory(IServiceScopeFactory scopeFactory)
                 _ => Program.InitialRepositoryPath is not null
                     ? composition.OpenInitialRepositoryAsync()
                     : Task.CompletedTask,
-                titleState), confirmation, composition.QueueCommitDetailsLayout, composition.CreateDesktopLifecycleCheckContext());
+                titleState), confirmation, composition.CommitDetailsLayoutRequested, composition.CreateDesktopLifecycleCheckContext());
         }
         catch
         {

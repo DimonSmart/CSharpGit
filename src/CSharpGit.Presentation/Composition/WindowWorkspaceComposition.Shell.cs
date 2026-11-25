@@ -35,8 +35,8 @@ internal sealed partial class WindowWorkspaceComposition
 
     private void DetachLoadingOverlays() => _loadingOverlay?.Shutdown();
 
-    // Temporary shell adapter for native resize callbacks until the XAML shell is extracted.
-    internal void QueueCommitDetailsLayout() => _commitDetailsLayout.QueueLayout();
+    // Native resize notifications use the layout owner's callback directly.
+    internal Action CommitDetailsLayoutRequested => _commitDetailsLayout.QueueLayout;
 
     private void SynchronizeRepositoryTree() => RepositoryExplorer.ReconcileRepository();
 

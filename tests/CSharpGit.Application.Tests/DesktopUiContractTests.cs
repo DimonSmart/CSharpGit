@@ -206,7 +206,7 @@ public sealed class DesktopUiContractTests
         Assert.Contains("_workingTreeService.StageAllAsync", commitCreation);
         Assert.Contains("HasUnappliedCommitMessage", draftConfirmation);
         Assert.Contains("Keep editing", draftConfirmation);
-        Assert.Contains("ConfirmCloseAsync()", page);
+        Assert.Contains("CloseConfirmation = new Windowing.CommitDraftCloseConfirmationDialog(", page);
         Assert.Contains("RequiresCloseConfirmation", close);
         Assert.Contains("session.RequiresCloseConfirmation", close);
         Assert.Contains("eventArgs.Cancel = true", app);

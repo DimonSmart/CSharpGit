@@ -3,8 +3,8 @@ using CSharpGit.Presentation.ViewModels;
 
 namespace CSharpGit.Presentation;
 
-// Typed feature groups keep MainPage composition explicit without a service-locator constructor.
-internal sealed record MainPageRepositoryDependencies(
+// Typed feature groups keep window workspace composition explicit without a service-locator constructor.
+internal sealed record WorkspaceRepositoryDependencies(
     OpenRepositoryViewModel ViewModel,
     CreateRepositoryViewModel CreateRepository,
     CloneRepositoryViewModel CloneRepository,
@@ -14,14 +14,14 @@ internal sealed record MainPageRepositoryDependencies(
     WorktreesViewModel Worktrees,
     WorkspaceNavigator WorkspaceNavigator);
 
-internal sealed record MainPageGitDependencies(
+internal sealed record WorkspaceGitDependencies(
     IWorkingTreeStatusReader WorkingTreeStatusReader,
     IDesktopShellService DesktopShell,
     IRepositoryFileVersionService FileVersionService,
     IExternalGitToolService ExternalGitToolService,
     ISubmoduleService SubmoduleService);
 
-internal sealed record MainPageUiDependencies(
+internal sealed record WorkspaceUiDependencies(
     IAppSettingsService AppSettings,
     IGitCommandActivitySource GitCommandActivitySource,
     IRepositoryImageService RepositoryImageService,
@@ -29,7 +29,7 @@ internal sealed record MainPageUiDependencies(
     RecentRepositoryFolderPicker RecentRepositoryFolderPicker,
     SettingsWindowController SettingsWindowController);
 
-internal sealed record MainPageUpdateDependencies(
+internal sealed record WorkspaceUpdateDependencies(
     IApplicationVersionProvider ApplicationVersionProvider,
     IUpdateCheckService UpdateCheckService,
     IApplicationUpdateInstaller ApplicationUpdateInstaller,

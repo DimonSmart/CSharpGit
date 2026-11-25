@@ -48,17 +48,12 @@ internal sealed partial class WindowWorkspaceComposition
 
     private readonly OpenRepositoryViewModel _viewModel;
 
-    // Temporary typed facade for history/commit-details feature handlers.
+    // Typed control references for window-local controller construction.
     private HistoryView HistoryView => HistoryPane.HistoryViewControl;
     private Pivot DetailsTabs => HistoryPane.DetailsTabsControl;
-    private PivotItem SummaryTab => HistoryPane.SummaryTabControl;
     private ScrollViewer DetailsScroller => HistoryPane.DetailsScrollerControl;
     private CommitDetailsView CommitDetailsContent => HistoryPane.CommitDetailsContentControl;
-    private ScrollViewer StashDetailsScroller => HistoryPane.StashDetailsScrollerControl;
-    private PivotItem ChangesTab => HistoryPane.ChangesTabControl;
-    private Border ChangedFilesHeader => HistoryPane.ChangedFilesHeaderControl;
     private TreeView ChangedFilesTree => HistoryPane.ChangedFilesTreeControl;
-    private ListView CommitFilesList => HistoryPane.CommitFilesListControl;
     private Border CommitDiffHeader => HistoryPane.CommitDiffHeaderControl;
     private Grid CommitTextDiffHeader => HistoryPane.CommitTextDiffHeaderControl;
     private Button CommitOpenOriginalButton => HistoryPane.CommitOpenOriginalButtonControl;
@@ -74,17 +69,9 @@ internal sealed partial class WindowWorkspaceComposition
     private SelectableDiffViewer CompactDiffViewer => HistoryPane.CompactDiffViewerControl;
 
 
-    // Temporary typed facade while WorkingTree feature interactions are moved into WorkingTreeView.
-    private Grid WorkingTreeHeader => WorkingTreePane.WorkingTreeHeaderControl;
-    private TreeView UnstagedChangesList => UnstagedChangesTree;
-    private TreeView StagedChangesList => StagedChangesTree;
-    private TextBlock UnstagedHeader => WorkingTreePane.UnstagedHeaderControl;
+    // Working Tree controls used to wire diff and file-action controllers.
     private TreeView UnstagedChangesTree => WorkingTreePane.UnstagedChangesTreeControl;
-    private GridSplitter WorkingTreeStagingSplitter => WorkingTreePane.WorkingTreeStagingSplitterControl;
-    private TextBlock StagedHeader => WorkingTreePane.StagedHeaderControl;
     private TreeView StagedChangesTree => WorkingTreePane.StagedChangesTreeControl;
-    private TextBlock WorkingTreeDiffHeader => WorkingTreePane.WorkingTreeDiffHeaderControl;
-    private TextBlock WorkingTreeDiffKindText => WorkingTreePane.WorkingTreeDiffKindTextControl;
     private Button WorkingTreeOpenOriginalButton => WorkingTreePane.WorkingTreeOpenOriginalButtonControl;
     private Button WorkingTreeOpenChangedButton => WorkingTreePane.WorkingTreeOpenChangedButtonControl;
     private Button WorkingTreeExternalDiffButton => WorkingTreePane.WorkingTreeExternalDiffButtonControl;
@@ -108,6 +95,7 @@ internal sealed partial class WindowWorkspaceComposition
     private readonly Workflows.RepositoryRefreshController _repositoryRefresh;
     private readonly Dialogs.PageDialogController _pageDialogs;
     private readonly Windowing.WindowUiOperations _ui;
+    internal Windowing.ICloseConfirmationDialog CloseConfirmation { get; }
     private readonly Windowing.RepositoryMenuItemFactory _menu;
     private readonly Workflows.DiffPresentationController _diffPresentation;
     private readonly Workflows.WorkingTreeImageDiffWorkflow _workingTreeImageDiff;
@@ -121,6 +109,8 @@ internal sealed partial class WindowWorkspaceComposition
         _page = new MainPage();
         _page.DataContext = _viewModel = viewModel;
         _pageDialogs = new Dialogs.PageDialogController(_page, _viewModel, () => IsShuttingDown);
+        CloseConfirmation = new Windowing.CommitDraftCloseConfirmationDialog(
+            _viewModel, ShowPageDialogAsync, () => IsShuttingDown);
         _ui = new Windowing.WindowUiOperations(() => XamlRoot, () => IsShuttingDown, ShowPageDialogAsync);
         _menu = new Windowing.RepositoryMenuItemFactory(_viewModel, _ui);
         _diffPresentation = new Workflows.DiffPresentationController(
@@ -177,27 +167,6 @@ internal sealed partial class WindowWorkspaceComposition
         WorkingTreePane.InitializeWorkingTreeDiffSurface();
         _workspaceNavigation.UpdateHistoryPresentation();
     }
-
-    private Windowing.ICloseConfirmationDialog? _closeConfirmation;
-
-    // Temporary adapter for legacy repository-switch and restart callers.
-    internal void ConfigureCloseConfirmation(Windowing.ICloseConfirmationDialog confirmation)
-    {
-        ArgumentNullException.ThrowIfNull(confirmation);
-        if (_closeConfirmation is not null)
-            throw new InvalidOperationException("Close confirmation is already configured.");
-        _closeConfirmation = confirmation;
-    }
-
-    internal Task<ContentDialogResult> ShowCommitDraftDialogAsync(ContentDialog dialog) =>
-        ShowPageDialogAsync(dialog);
-
-    internal bool IsClosingForDialog => IsShuttingDown;
-
-    public Task<bool> ConfirmCloseAsync() =>
-        (_closeConfirmation ?? throw new InvalidOperationException(
-            "Close confirmation was not configured."))
-        .ConfirmDiscardCommitMessageAsync(CancellationToken.None);
 
     private void RefreshPresentationCollections()
     {

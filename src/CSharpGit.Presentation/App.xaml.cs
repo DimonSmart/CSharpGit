@@ -147,15 +147,15 @@ public sealed partial class App : Microsoft.UI.Xaml.Application, IWindowCloseHos
                 });
                 services.AddScoped<CreateRepositoryViewModel>();
                 services.AddScoped<CloneRepositoryViewModel>();
-                services.AddScoped<MainPageRepositoryDependencies>();
-                services.AddScoped<MainPageGitDependencies>();
-                services.AddScoped<MainPageUiDependencies>();
-                services.AddScoped<MainPageUpdateDependencies>();
+                services.AddScoped<WorkspaceRepositoryDependencies>();
+                services.AddScoped<WorkspaceGitDependencies>();
+                services.AddScoped<WorkspaceUiDependencies>();
+                services.AddScoped<WorkspaceUpdateDependencies>();
                 services.AddTransient(provider => new WindowWorkspaceComposition(
-                    provider.GetRequiredService<MainPageRepositoryDependencies>(),
-                    provider.GetRequiredService<MainPageGitDependencies>(),
-                    provider.GetRequiredService<MainPageUiDependencies>(),
-                    provider.GetRequiredService<MainPageUpdateDependencies>()));
+                    provider.GetRequiredService<WorkspaceRepositoryDependencies>(),
+                    provider.GetRequiredService<WorkspaceGitDependencies>(),
+                    provider.GetRequiredService<WorkspaceUiDependencies>(),
+                    provider.GetRequiredService<WorkspaceUpdateDependencies>()));
                 services.AddSingleton<WindowSessionFactory>();
             })
             .Build();

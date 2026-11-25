@@ -101,10 +101,10 @@ public sealed class PresentationArchitectureGuardrailTests
         Assert.Empty(Regex.Matches(combined, @"\bpublic\s+WindowWorkspaceComposition\s*\(").Cast<Match>());
         Assert.Single(Regex.Matches(combined, @"\binternal\s+WindowWorkspaceComposition\s*\(").Cast<Match>());
         Assert.Contains("new WindowWorkspaceComposition(", app, StringComparison.Ordinal);
-        Assert.Contains("MainPageRepositoryDependencies", combined, StringComparison.Ordinal);
-        Assert.Contains("MainPageGitDependencies", combined, StringComparison.Ordinal);
-        Assert.Contains("MainPageUiDependencies", combined, StringComparison.Ordinal);
-        Assert.Contains("MainPageUpdateDependencies", combined, StringComparison.Ordinal);
+        Assert.Contains("WorkspaceRepositoryDependencies", combined, StringComparison.Ordinal);
+        Assert.Contains("WorkspaceGitDependencies", combined, StringComparison.Ordinal);
+        Assert.Contains("WorkspaceUiDependencies", combined, StringComparison.Ordinal);
+        Assert.Contains("WorkspaceUpdateDependencies", combined, StringComparison.Ordinal);
         Assert.DoesNotContain("mainPage.Initialize", app, StringComparison.Ordinal);
         Assert.DoesNotContain("MainPageServices", combined, StringComparison.Ordinal);
         Assert.Contains("SettingsWindowController", combined, StringComparison.Ordinal);
