@@ -5,7 +5,7 @@ Phase 3 implementation baseline: `ee3c8909d02db75a9d3ca02117d2d6d6a3b042dc` (aft
 ## Phase 3 implementation and verification status
 
 The Phase 3 ownership passes remove feature implementations from `MainPage`.
-The final external-composition change is subject to cross-platform CI and desktop smoke verification.
+The external-composition change was merged in #95; cross-platform CI succeeded. Final cleanup and explicit non-skipped desktop smoke verification are tracked in the final stabilization PR.
 
 - History commit actions are owned by `Workflows/CommitActionController`;
   `MainPage.CommitActions.cs` is removed.
@@ -47,6 +47,8 @@ contexts rather than private page fields. No global service locator is introduce
 The architecture guard checks both the absence of authored MainPage partials and
 root event attributes. The change is not accepted as complete until CI passes on
 all supported OSes and the real desktop lifecycle/UI scenarios have been run.
+
+The final cleanup removes unused control facades, constructs the close confirmation once in window composition, gives the History workspace the declarative Files tab, renames workspace dependency groups and diagnostic runner files, and replaces the experimental XAML-only probe with real MainPage binding checks. WindowWorkspaceLifetime lives in Presentation.Core and has executable tests for preparation, reentrancy, failure aggregation, bounded completion, and repeated shutdown.
 
 The chronological notes below document the intermediate migration steps and can
 therefore mention adapters that were removed by the completion pass.
