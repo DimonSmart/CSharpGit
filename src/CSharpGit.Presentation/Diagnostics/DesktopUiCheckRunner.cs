@@ -212,7 +212,7 @@ internal sealed partial class DesktopUiCheckRunner(DesktopUiCheckContext context
                 Environment.ExitCode = failures.Count == 0 ? 0 : 1;
                 // Let the real window/host lifecycle finish instead of terminating
                 // the native rendering thread with Environment.Exit.
-                if (Application.Current is not App app)
+                if (Microsoft.UI.Xaml.Application.Current is not App app)
                     throw new InvalidOperationException("The desktop check has no application host.");
                 app.RequestDesktopUiCheckClose();
             }
