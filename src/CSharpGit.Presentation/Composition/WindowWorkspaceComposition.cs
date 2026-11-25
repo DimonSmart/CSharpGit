@@ -50,7 +50,6 @@ internal sealed partial class WindowWorkspaceComposition
 
     // Typed control references for window-local controller construction.
     private HistoryView HistoryView => HistoryPane.HistoryViewControl;
-    private Pivot DetailsTabs => HistoryPane.DetailsTabsControl;
     private ScrollViewer DetailsScroller => HistoryPane.DetailsScrollerControl;
     private CommitDetailsView CommitDetailsContent => HistoryPane.CommitDetailsContentControl;
     private TreeView ChangedFilesTree => HistoryPane.ChangedFilesTreeControl;

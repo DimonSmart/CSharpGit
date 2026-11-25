@@ -15,6 +15,20 @@ public sealed partial class HistoryWorkspaceView : UserControl
 
     internal HistoryView HistoryViewControl => HistoryView;
     internal Pivot DetailsTabsControl => DetailsTabs;
+
+    internal RepositoryFilesSurface CreateRepositoryFilesSurface(RepositoryFilesViewModel viewModel)
+    {
+        if (FilesTab.Content is not null)
+            throw new InvalidOperationException("Repository Files is already configured.");
+        var surface = new RepositoryFilesSurface(viewModel);
+        FilesTab.Content = surface;
+        return surface;
+    }
+
+    internal bool IsRepositoryFilesSelected => ReferenceEquals(DetailsTabs.SelectedItem, FilesTab);
+
+    internal void SetRepositoryFilesStashMode(bool hasSelectedStash) =>
+        FilesTab.Header = hasSelectedStash ? "Tracked files" : "Files";
     internal PivotItem SummaryTabControl => SummaryTab;
     internal ScrollViewer DetailsScrollerControl => DetailsScroller;
     internal CommitDetailsView CommitDetailsContentControl => CommitDetailsContent;

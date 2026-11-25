@@ -223,6 +223,7 @@
                     </Grid>
                   </Grid>
                 </PivotItem>
+                <PivotItem x:Name="FilesTab" Header="Files" />
               </Pivot>
             </Grid>
 </UserControl>

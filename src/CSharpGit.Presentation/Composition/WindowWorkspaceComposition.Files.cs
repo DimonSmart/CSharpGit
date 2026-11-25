@@ -8,7 +8,6 @@ namespace CSharpGit.Presentation;
 internal sealed partial class WindowWorkspaceComposition
 {
     private readonly RepositoryFilesViewModel _repositoryFilesViewModel = null!;
-    private PivotItem? _repositoryFilesTab;
     private RepositoryFilesSurface? _repositoryFilesSurface;
     private readonly Workflows.RepositoryFilePreviewController _repositoryFilePreview = null!;
     private Workflows.RepositoryFilesActionController _repositoryFilesActions = null!;
@@ -41,16 +40,8 @@ internal sealed partial class WindowWorkspaceComposition
             (operation, description) => _ui.RunPageUiOperation(operation, description),
             _ui.ReportUiFailure,
             FileActionsViewModel.UserFacingFileError);
-        InitializeRepositoryFiles();
+        _repositoryFilesSurface = HistoryPane.CreateRepositoryFilesSurface(_repositoryFilesViewModel);
         _repositoryFilePreview.InitializeIdleContinuation();
-    }
-
-    private void InitializeRepositoryFiles()
-    {
-        _repositoryFilesTab = new PivotItem { Header = "Files", Name = "FilesTab" };
-        _repositoryFilesSurface = new RepositoryFilesSurface(_repositoryFilesViewModel);
-        _repositoryFilesTab.Content = _repositoryFilesSurface;
-        DetailsTabs.Items.Add(_repositoryFilesTab);
     }
 
     private void ConfigureRepositoryFilesActions()
@@ -63,7 +54,7 @@ internal sealed partial class WindowWorkspaceComposition
 
         _repositoryFilesSurface!.Configure(
             _repositoryFilesViewModel, _repositoryFilePreview,
-            () => ReferenceEquals(DetailsTabs.SelectedItem, _repositoryFilesTab),
+            () => HistoryPane.IsRepositoryFilesSelected,
             () => IsShuttingDown,
             (operation, description) => _ui.RunPageUiOperation(operation, description),
             entry => _submodules.OpenSelectedSubmoduleAsync(entry),
@@ -72,11 +63,8 @@ internal sealed partial class WindowWorkspaceComposition
             _repositoryFilesActions.ShowMenu);
     }
 
-    private void SetRepositoryFilesStashMode(bool hasSelectedStash)
-    {
-        if (_repositoryFilesTab is not null)
-            _repositoryFilesTab.Header = hasSelectedStash ? "Tracked files" : "Files";
-    }
+    private void SetRepositoryFilesStashMode(bool hasSelectedStash) =>
+        HistoryPane.SetRepositoryFilesStashMode(hasSelectedStash);
 
     private void UpdateRepositoryFilesViewActivity() => _repositoryFilesSurface?.UpdateActivity();
     private void UpdateRepositoryFilesModeSurface() => _repositoryFilesSurface?.UpdateModeSurface();

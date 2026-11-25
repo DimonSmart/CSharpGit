@@ -14,7 +14,9 @@ public sealed class RepositoryFilesUiContractTests
         Assert.Contains("Header=\"{Binding CommitDetails.SelectedDetailsTitle}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ChangesTab\" Header=\"Changes\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("x:Name=\"FilesTab\" Header=\"Changes\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("new PivotItem { Header = \"Files\", Name = \"FilesTab\" }", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"FilesTab\" Header=\"Files\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("HistoryPane.CreateRepositoryFilesSurface", filesSurface, StringComparison.Ordinal);
+        Assert.DoesNotContain("DetailsTabs.Items.Add", filesSurface, StringComparison.Ordinal);
         Assert.Contains("DetailsTabs.SelectedItem = ChangesTab", historyCode, StringComparison.Ordinal);
         Assert.Contains("ReferenceEquals(DetailsTabs.SelectedItem, ChangesTabControl)", changesSurface, StringComparison.Ordinal);
     }
@@ -120,7 +122,9 @@ public sealed class RepositoryFilesUiContractTests
         Assert.Contains("RepositoryFilesTreeItemTemplate", treeStyles, StringComparison.Ordinal);
         Assert.Contains("controls:RepositoryTreeGuides", treeStyles, StringComparison.Ordinal);
         var visual = File.ReadAllText(Path.Combine(presentation, "Controls", "RepositoryFilesSurface.cs"));
-        Assert.Contains("new RepositoryFilesSurface(_repositoryFilesViewModel)", filesSurface, StringComparison.Ordinal);
+        Assert.Contains("HistoryPane.CreateRepositoryFilesSurface(_repositoryFilesViewModel)", filesSurface, StringComparison.Ordinal);
+        var history = File.ReadAllText(Path.Combine(presentation, "Views", "HistoryWorkspaceView.xaml.cs"));
+        Assert.Contains("new RepositoryFilesSurface(viewModel)", history, StringComparison.Ordinal);
         Assert.Contains("new GridSplitter", visual, StringComparison.Ordinal);
         Assert.Contains("new FilePreviewHost()", visual, StringComparison.Ordinal);
         Assert.Contains("_previewHost()", previewSurface, StringComparison.Ordinal);

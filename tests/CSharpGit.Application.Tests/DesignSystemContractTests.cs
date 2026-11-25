@@ -120,11 +120,14 @@ public sealed class DesignSystemContractTests
         var changes = Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.Changes.cs");
         var mainCode = Read(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.cs");
 
-        Assert.Contains("new PivotItem { Header = \"Files\", Name = \"FilesTab\" }", files);
-        Assert.Contains("DetailsTabs.Items.Add(_repositoryFilesTab)", files);
-        Assert.DoesNotContain("_repositoryFilesTab.HeaderTemplate =", files);
-        Assert.DoesNotContain("_repositoryFilesTab.Style =", files);
-        Assert.Contains("DetailsTabs.SelectedItem", files);
+        var historyXaml = Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml");
+        var historyCode = Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml.cs");
+        Assert.Contains("x:Name=\"FilesTab\" Header=\"Files\"", historyXaml);
+        Assert.DoesNotContain("DetailsTabs.Items.Add", files);
+        Assert.Contains("HistoryPane.CreateRepositoryFilesSurface", files);
+        Assert.Contains("ReferenceEquals(DetailsTabs.SelectedItem, FilesTab)", historyCode);
+        Assert.DoesNotContain("FilesTab.HeaderTemplate =", historyCode);
+        Assert.DoesNotContain("FilesTab.Style =", historyCode);
         Assert.Contains("SetActiveAsync(true)", fileInteractions);
         Assert.Contains("SetActiveAsync(false)", fileInteractions);
         Assert.Contains("ActivateRepositoryFilesAsync", fileInteractions);
