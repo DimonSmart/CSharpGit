@@ -30,6 +30,23 @@ internal sealed class RepositoryFilePreviewController(
     private readonly Action<Exception,string> _reportFailure = reportFailure;
     private readonly Func<Exception,string> _userFacingFileError = userFacingFileError;
 
+    private RepositoryIdleContinuation? _idleContinuation;
+
+    internal void InitializeIdleContinuation()
+    {
+        _idleContinuation ??= new RepositoryIdleContinuation(_viewModel, () =>
+        {
+            if (!_isShuttingDown() && HasPending)
+                _runUiOperation(ResumeAsync, "Resume repository file preview");
+        });
+    }
+
+    internal void ShutdownIdleContinuation()
+    {
+        _idleContinuation?.Dispose();
+        _idleContinuation = null;
+    }
+
     private readonly FilePreviewService _repositoryFilePreviewService = new();
     private readonly PreviewPublicationGate<RepositoryPreviewContext> _repositoryPreviewGate = new();
     private RepositoryFileSelection? _pendingRepositoryPreviewSelection;

@@ -10,7 +10,7 @@ public sealed class WorkingTreeViewCompositionContractTests
         var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"));
         var view = File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeView.xaml"));
         var bridge = File.ReadAllText(Path.Combine(presentation, "Views", "WorkingTreeView.xaml.cs"));
-        var pageCode = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+        var pageCode = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.cs"));
 
         Assert.Contains("<views:WorkingTreeView x:Name=\"WorkingTreePane\"", page, StringComparison.Ordinal);
         Assert.DoesNotContain("<Grid x:Name=\"WorkingTreePane\"", page, StringComparison.Ordinal);

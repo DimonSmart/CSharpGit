@@ -10,7 +10,7 @@ public sealed class HistoryWorkspaceCompositionContractTests
         var main = File.ReadAllText(Path.Combine(p, "MainPage.xaml"));
         var history = File.ReadAllText(Path.Combine(p, "Views", "HistoryWorkspaceView.xaml"));
         var callbacks = File.ReadAllText(Path.Combine(p, "Views", "HistoryWorkspaceView.xaml.cs"));
-        var code = File.ReadAllText(Path.Combine(p, "MainPage.xaml.cs"));
+        var code = File.ReadAllText(Path.Combine(p, "Composition/WindowWorkspaceComposition.cs"));
 
         Assert.Contains("<views:HistoryWorkspaceView x:Name=\"HistoryPane\"", main, StringComparison.Ordinal);
         Assert.DoesNotContain("<Grid x:Name=\"HistoryPane\"", main, StringComparison.Ordinal);

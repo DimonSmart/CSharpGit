@@ -7,7 +7,7 @@ public sealed class FileActionAvailabilityOwnershipContractTests
     {
         var root = FindRoot();
         var p = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var composition = File.ReadAllText(Path.Combine(p, "MainPage.RepositoryMaintenance.cs"));
+        var composition = File.ReadAllText(Path.Combine(p, "Composition/WindowWorkspaceComposition.Repository.cs"));
         var interaction = File.ReadAllText(Path.Combine(p, "Workflows", "FileActionInteractionController.cs"));
         var owner = File.ReadAllText(Path.Combine(p, "Workflows", "FileActionAvailabilityController.cs"));
         Assert.False(File.Exists(Path.Combine(p, "MainPage.FileOpening.cs")));

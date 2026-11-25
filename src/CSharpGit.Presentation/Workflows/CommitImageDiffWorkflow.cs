@@ -23,6 +23,23 @@ internal sealed class CommitImageDiffWorkflow(
     private readonly Action<DiffPresentationState> _present = present;
     private readonly Action<Exception, string> _reportFailure = reportFailure;
 
+    private RepositoryIdleContinuation? _idleContinuation;
+
+    internal void InitializeIdleContinuation(Action<Func<Task>, string> runUiOperation)
+    {
+        _idleContinuation ??= new RepositoryIdleContinuation(_viewModel, () =>
+        {
+            if (!_isShuttingDown() && HasPending)
+                runUiOperation(ResumeAsync, "Resume commit image preview");
+        });
+    }
+
+    internal void ShutdownIdleContinuation()
+    {
+        _idleContinuation?.Dispose();
+        _idleContinuation = null;
+    }
+
     private CancellationTokenSource? _commitImageDiffCts;
     private long _commitImageDiffGeneration;
     private bool _pendingCommitImageDiff;

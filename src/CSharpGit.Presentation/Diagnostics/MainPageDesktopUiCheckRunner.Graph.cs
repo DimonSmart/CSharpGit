@@ -8,32 +8,30 @@ using Windows.Foundation;
 
 namespace CSharpGit.Presentation;
 
-public sealed partial class MainPage
+internal sealed partial class DesktopUiCheckRunner
 {
-    private sealed partial class DesktopUiCheckRunner
-    {
         private async Task RunCommitGraphViewportLifecycleCheckAsync(List<string> failures)
         {
-            await _page._workspaceNavigation.ShowAllHistoryAsync();
+            await _context.Navigation.ShowAllHistoryAsync();
             await WaitUntilAsync(
-                () => _page.HistoryView.List.ActualHeight > 0 && _page.HistoryView.List.ActualWidth > 0,
+                () => _context.HistoryView.List.ActualHeight > 0 && _context.HistoryView.List.ActualWidth > 0,
                 TimeSpan.FromSeconds(10));
 
-            var originalDetailsHeight = _page.HistoryPane.RowDefinitions[3].Height;
-            var originalItemTemplate = _page.HistoryView.List.ItemTemplate;
+            var originalDetailsHeight = _context.HistoryPane.RowDefinitions[3].Height;
+            var originalItemTemplate = _context.HistoryView.List.ItemTemplate;
             try
             {
                 await CheckInitialHistoryGraphAsync(failures);
-                _page.HistoryView.List.ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["HistoryTextGraphItemTemplate"];
-                while (_page._viewModel.History.Rows.Count < 300 && _page._viewModel.History.HasMore)
+                _context.HistoryView.List.ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["HistoryTextGraphItemTemplate"];
+                while (_context.Repository.History.Rows.Count < 300 && _context.Repository.History.HasMore)
                 {
-                    if (_page._viewModel.History.LoadMoreCommand is not AsyncCommand preload)
+                    if (_context.Repository.History.LoadMoreCommand is not AsyncCommand preload)
                         break;
                     await preload.ExecuteAsync();
                 }
 
-                Check(_page._viewModel.History.Rows.Count >= 300,
-                    $"graph viewport fixture loaded only {_page._viewModel.History.Rows.Count} rows; expected at least 300",
+                Check(_context.Repository.History.Rows.Count >= 300,
+                    $"graph viewport fixture loaded only {_context.Repository.History.Rows.Count} rows; expected at least 300",
                     failures);
                 await RunHistoryPerformanceCaptureCheckAsync(failures);
                 HistoryRenderDiagnostics.EnableForCheck();
@@ -44,26 +42,26 @@ public sealed partial class MainPage
 
                 for (var cycle = 0; cycle < 6; cycle++)
                 {
-                    _page.HistoryPane.RowDefinitions[3].Height = new GridLength(cycle % 2 == 0 ? 520 : 140);
+                    _context.HistoryPane.RowDefinitions[3].Height = new GridLength(cycle % 2 == 0 ? 520 : 140);
                     await Task.Delay(120);
 
                     var indexes = new[]
                     {
                         0,
-                        Math.Min(_page._viewModel.History.Rows.Count - 1, 75),
-                        Math.Min(_page._viewModel.History.Rows.Count - 1, 160),
-                        Math.Min(_page._viewModel.History.Rows.Count - 1, 260),
-                        Math.Min(_page._viewModel.History.Rows.Count - 1, 20),
+                        Math.Min(_context.Repository.History.Rows.Count - 1, 75),
+                        Math.Min(_context.Repository.History.Rows.Count - 1, 160),
+                        Math.Min(_context.Repository.History.Rows.Count - 1, 260),
+                        Math.Min(_context.Repository.History.Rows.Count - 1, 20),
                     };
 
                     foreach (var index in indexes)
                     {
-                        if (index < 0 || index >= _page._viewModel.History.Rows.Count) continue;
-                        var row = _page._viewModel.History.Rows[index];
-                        _page.HistoryView.List.ScrollIntoView(row);
+                        if (index < 0 || index >= _context.Repository.History.Rows.Count) continue;
+                        var row = _context.Repository.History.Rows[index];
+                        _context.HistoryView.List.ScrollIntoView(row);
                         await Task.Delay(80);
 
-                        if (_page.HistoryView.List.ContainerFromItem(row) is not ListViewItem container)
+                        if (_context.HistoryView.List.ContainerFromItem(row) is not ListViewItem container)
                         {
                             failures.Add($"history row {index} was not realized after scrolling");
                             continue;
@@ -77,7 +75,7 @@ public sealed partial class MainPage
                             $"history row {index} graph clip does not match its render area", failures);
                         if (graph is not null)
                         {
-                            var layout = _page.HistoryView.Layout;
+                            var layout = _context.HistoryView.Layout;
                             Check(Math.Abs(graph.ActualWidth - layout.GraphWidth) <= 0.25,
                                 $"history row {index} graph width {graph.ActualWidth:0.###} does not match session width {layout.GraphWidth:0.###}",
                                 failures);
@@ -89,25 +87,25 @@ public sealed partial class MainPage
                     }
                 }
 
-                if (_page._viewModel.History.HasMore)
+                if (_context.Repository.History.HasMore)
                 {
-                    var beforeLoadMore = _page._viewModel.History.Rows.Count;
-                    var beforeGraphWidth = _page.HistoryView.Layout.GraphWidth;
-                    var beforeLaneWidth = _page.HistoryView.Layout.LaneWidth;
-                    if (_page._viewModel.History.LoadMoreCommand is AsyncCommand loadMore)
+                    var beforeLoadMore = _context.Repository.History.Rows.Count;
+                    var beforeGraphWidth = _context.HistoryView.Layout.GraphWidth;
+                    var beforeLaneWidth = _context.HistoryView.Layout.LaneWidth;
+                    if (_context.Repository.History.LoadMoreCommand is AsyncCommand loadMore)
                         await loadMore.ExecuteAsync();
-                    Check(_page._viewModel.History.Rows.Count > beforeLoadMore, "Load more did not append history during graph viewport check", failures);
-                    Check(_page.HistoryView.Layout.GraphWidth + 0.001 >= beforeGraphWidth,
+                    Check(_context.Repository.History.Rows.Count > beforeLoadMore, "Load more did not append history during graph viewport check", failures);
+                    Check(_context.HistoryView.Layout.GraphWidth + 0.001 >= beforeGraphWidth,
                         "Load more decreased the session graph width", failures);
-                    Check(_page.HistoryView.Layout.LaneWidth <= beforeLaneWidth + 0.001,
+                    Check(_context.HistoryView.Layout.LaneWidth <= beforeLaneWidth + 0.001,
                         "Load more increased the session lane width", failures);
                 }
 
-                if (_page._viewModel.History.Rows.FirstOrDefault() is { } first)
+                if (_context.Repository.History.Rows.FirstOrDefault() is { } first)
                 {
-                    _page.HistoryView.List.ScrollIntoView(first);
+                    _context.HistoryView.List.ScrollIntoView(first);
                     await Task.Delay(80);
-                    Check(_page.HistoryView.List.ContainerFromItem(first) is ListViewItem firstContainer
+                    Check(_context.HistoryView.List.ContainerFromItem(first) is ListViewItem firstContainer
                           && FindDescendant<CommitGraphControl>(firstContainer)?.HasCurrentRenderForCheck() == true,
                         "commit graph was stale after returning to the top of history", failures);
                     CheckAdjacentHistoryGraphSurfaces(0, failures);
@@ -140,14 +138,14 @@ public sealed partial class MainPage
             }
             finally
             {
-                _page.HistoryPane.RowDefinitions[3].Height = originalDetailsHeight;
-                _page.HistoryView.List.ItemTemplate = originalItemTemplate;
+                _context.HistoryPane.RowDefinitions[3].Height = originalDetailsHeight;
+                _context.HistoryView.List.ItemTemplate = originalItemTemplate;
             }
         }
 
         private async Task CheckInitialHistoryGraphAsync(ICollection<string> failures)
         {
-            if (_page._viewModel.History.Rows.FirstOrDefault() is not { } first)
+            if (_context.Repository.History.Rows.FirstOrDefault() is not { } first)
                 return;
 
             var app = Microsoft.UI.Xaml.Application.Current as App;
@@ -158,18 +156,18 @@ public sealed partial class MainPage
                 // multiple long refs: natural and allocated badge plans differ.
                 foreach (var templateKey in new[] { "HistoryItemTemplate", "HistoryTextGraphReferencesItemTemplate" })
                 {
-                    _page.HistoryView.List.ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources[templateKey];
-                    _page.HistoryView.List.ScrollIntoView(first);
+                    _context.HistoryView.List.ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources[templateKey];
+                    _context.HistoryView.List.ScrollIntoView(first);
                     await WaitUntilAsync(() =>
-                        _page.HistoryView.List.ContainerFromItem(first) is ListViewItem container
+                        _context.HistoryView.List.ContainerFromItem(first) is ListViewItem container
                         && FindDescendant<CommitGraphControl>(container)?.HasCurrentRenderForCheck() == true,
                         TimeSpan.FromSeconds(5));
 
-                    var graph = _page.HistoryView.List.ContainerFromItem(first) is ListViewItem item
+                    var graph = _context.HistoryView.List.ContainerFromItem(first) is ListViewItem item
                         ? FindDescendant<CommitGraphControl>(item) : null;
                     Check(graph?.HasCurrentRenderForCheck() == true,
                         $"{templateKey} did not paint the initial graph after reference layout settled", failures);
-                    Check(graph?.ActualWidth == _page.HistoryView.Layout.GraphWidth,
+                    Check(graph?.ActualWidth == _context.HistoryView.Layout.GraphWidth,
                         $"{templateKey} lost the initial graph column width", failures);
                 }
             }
@@ -181,54 +179,54 @@ public sealed partial class MainPage
 
         private async Task RunHistoryPerformanceCaptureCheckAsync(ICollection<string> failures)
         {
-            var layout = _page.HistoryView.Layout;
+            var layout = _context.HistoryView.Layout;
             var context = new HistoryPerformanceStartContext(
                 "main",
-                _page._viewModel.History.Rows.Count,
-                _page._viewModel.History.Rows.Count,
+                _context.Repository.History.Rows.Count,
+                _context.Repository.History.Rows.Count,
                 100,
                 "topo-order",
-                _page._viewModel.History.HasMore,
-                _page._recentRepositorySettings.ShowReflog,
-                !string.IsNullOrWhiteSpace(_page._viewModel.History.FilterText),
-                _page._viewModel.Branches.LocalBranches.Count,
-                _page._viewModel.Branches.RemoteBranches.Count,
-                _page._viewModel.Tags.Items.Count,
-                _page._viewModel.Branches.LocalBranches.Count + _page._viewModel.Branches.RemoteBranches.Count + _page._viewModel.Tags.Items.Count,
+                _context.Repository.History.HasMore,
+                _context.Settings.ShowReflog,
+                !string.IsNullOrWhiteSpace(_context.Repository.History.FilterText),
+                _context.Repository.Branches.LocalBranches.Count,
+                _context.Repository.Branches.RemoteBranches.Count,
+                _context.Repository.Tags.Items.Count,
+                _context.Repository.Branches.LocalBranches.Count + _context.Repository.Branches.RemoteBranches.Count + _context.Repository.Tags.Items.Count,
                 layout.GraphWidth,
                 layout.ObservedMaxLaneCount,
-                _page._recentRepositorySettings.ShowAuthorAvatars,
-                _page._recentRepositorySettings.OnlineAvatarLookupEnabled,
-                _page._recentRepositorySettings.HistoryRenderingMode,
-                _page.RootLayout.ActualWidth,
-                _page.RootLayout.ActualHeight,
-                _page.XamlRoot?.RasterizationScale);
+                _context.Settings.ShowAuthorAvatars,
+                _context.Settings.OnlineAvatarLookupEnabled,
+                _context.Settings.HistoryRenderingMode,
+                _context.RootLayout.ActualWidth,
+                _context.RootLayout.ActualHeight,
+                _context.XamlRoot?.RasterizationScale);
 
             HistoryPerformanceCaptureFiles? result = null;
             try
             {
-                var started = await HistoryPerformanceDiagnostics.StartAsync(context, _page._gitCommandActivitySource, _page._authorAvatarService);
+                var started = await HistoryPerformanceDiagnostics.StartAsync(context, _context.Activity, _context.Avatars);
                 Check(started, "History performance capture did not start", failures);
                 if (!started) return;
 
-                _page.HistoryView.AttachHistoryPerformanceSubscriptions();
+                _context.HistoryView.AttachHistoryPerformanceSubscriptions();
                 var indexes = new[]
                 {
                     0,
-                    Math.Min(_page._viewModel.History.Rows.Count - 1, 90),
-                    Math.Min(_page._viewModel.History.Rows.Count - 1, 180),
-                    Math.Min(_page._viewModel.History.Rows.Count - 1, 30)
+                    Math.Min(_context.Repository.History.Rows.Count - 1, 90),
+                    Math.Min(_context.Repository.History.Rows.Count - 1, 180),
+                    Math.Min(_context.Repository.History.Rows.Count - 1, 30)
                 };
                 foreach (var index in indexes)
                 {
                     if (index < 0) continue;
-                    _page.HistoryView.List.ScrollIntoView(_page._viewModel.History.Rows[index]);
+                    _context.HistoryView.List.ScrollIntoView(_context.Repository.History.Rows[index]);
                     await Task.Delay(90);
                 }
             }
             finally
             {
-                _page.HistoryView.DetachHistoryPerformanceSubscriptions();
+                _context.HistoryView.DetachHistoryPerformanceSubscriptions();
                 if (HistoryPerformanceDiagnostics.IsCaptureActive)
                     result = await HistoryPerformanceDiagnostics.StopAsync(HistoryPerformanceStopReason.Manual);
             }
@@ -295,14 +293,14 @@ public sealed partial class MainPage
             const double tolerance = 0.25;
             var checkedPair = false;
             var firstIndex = Math.Max(0, anchorIndex - 2);
-            var lastIndex = Math.Min(_page._viewModel.History.Rows.Count - 2, anchorIndex + 2);
+            var lastIndex = Math.Min(_context.Repository.History.Rows.Count - 2, anchorIndex + 2);
 
             for (var index = firstIndex; index <= lastIndex; index++)
             {
-                var firstRow = _page._viewModel.History.Rows[index];
-                var secondRow = _page._viewModel.History.Rows[index + 1];
-                if (_page.HistoryView.List.ContainerFromItem(firstRow) is not ListViewItem firstContainer
-                    || _page.HistoryView.List.ContainerFromItem(secondRow) is not ListViewItem secondContainer)
+                var firstRow = _context.Repository.History.Rows[index];
+                var secondRow = _context.Repository.History.Rows[index + 1];
+                if (_context.HistoryView.List.ContainerFromItem(firstRow) is not ListViewItem firstContainer
+                    || _context.HistoryView.List.ContainerFromItem(secondRow) is not ListViewItem secondContainer)
                 {
                     continue;
                 }
@@ -320,10 +318,10 @@ public sealed partial class MainPage
                 Point secondContainerTop;
                 try
                 {
-                    firstGraphTop = firstGraph.TransformToVisual(_page.HistoryView.List).TransformPoint(new Point(0, 0));
-                    secondGraphTop = secondGraph.TransformToVisual(_page.HistoryView.List).TransformPoint(new Point(0, 0));
-                    firstContainerTop = firstContainer.TransformToVisual(_page.HistoryView.List).TransformPoint(new Point(0, 0));
-                    secondContainerTop = secondContainer.TransformToVisual(_page.HistoryView.List).TransformPoint(new Point(0, 0));
+                    firstGraphTop = firstGraph.TransformToVisual(_context.HistoryView.List).TransformPoint(new Point(0, 0));
+                    secondGraphTop = secondGraph.TransformToVisual(_context.HistoryView.List).TransformPoint(new Point(0, 0));
+                    firstContainerTop = firstContainer.TransformToVisual(_context.HistoryView.List).TransformPoint(new Point(0, 0));
+                    secondContainerTop = secondContainer.TransformToVisual(_context.HistoryView.List).TransformPoint(new Point(0, 0));
                 }
                 catch (InvalidOperationException)
                 {
@@ -357,125 +355,125 @@ public sealed partial class MainPage
 
         private async Task RunDesktopDensityCheckAsync(List<string> failures)
         {
-            await _page._workspaceNavigation.ShowAllHistoryAsync();
-            if (_page._viewModel.History.Rows.FirstOrDefault() is { } firstHistory)
+            await _context.Navigation.ShowAllHistoryAsync();
+            if (_context.Repository.History.Rows.FirstOrDefault() is { } firstHistory)
             {
-                _page.HistoryView.List.ScrollIntoView(firstHistory);
+                _context.HistoryView.List.ScrollIntoView(firstHistory);
                 await WaitUntilAsync(
-                    () => _page.HistoryView.List.ContainerFromItem(firstHistory) is ListViewItem,
+                    () => _context.HistoryView.List.ContainerFromItem(firstHistory) is ListViewItem,
                     TimeSpan.FromSeconds(5));
-                CheckActualHeight(_page.HistoryView.List.ContainerFromItem(firstHistory) as FrameworkElement, 23, 26, "history row", failures);
+                CheckActualHeight(_context.HistoryView.List.ContainerFromItem(firstHistory) as FrameworkElement, 23, 26, "history row", failures);
             }
 
-            if (_page.RepositoryExplorer.RootsForCheck.FirstOrDefault() is { } firstRepositoryNode)
+            if (_context.RepositoryExplorer.RootsForCheck.FirstOrDefault() is { } firstRepositoryNode)
             {
                 await WaitUntilAsync(
-                    () => _page.RepositoryTree.ContainerFromItem(firstRepositoryNode) is TreeViewItem,
+                    () => _context.RepositoryTree.ContainerFromItem(firstRepositoryNode) is TreeViewItem,
                     TimeSpan.FromSeconds(5));
-                CheckActualHeight(_page.RepositoryTree.ContainerFromItem(firstRepositoryNode) as FrameworkElement, 23, 26, "repository tree row", failures);
+                CheckActualHeight(_context.RepositoryTree.ContainerFromItem(firstRepositoryNode) as FrameworkElement, 23, 26, "repository tree row", failures);
             }
 
-            CheckActualHeight(_page.RepositoryToolbar, 0, 34, "main toolbar", failures);
-            CheckActualHeight(_page.HistoryView.FilterToolbar, 0, 34, "history filter toolbar", failures);
-            CheckActualHeight(_page.HistoryView.ColumnHeader, 0, 26, "history column header", failures);
-            CheckActualHeight(_page.GitConsoleHost.StatusBar, 0, 22, "status bar", failures);
+            CheckActualHeight(_context.RepositoryToolbar, 0, 34, "main toolbar", failures);
+            CheckActualHeight(_context.HistoryView.FilterToolbar, 0, 34, "history filter toolbar", failures);
+            CheckActualHeight(_context.HistoryView.ColumnHeader, 0, 26, "history column header", failures);
+            CheckActualHeight(_context.GitConsoleHost.StatusBar, 0, 22, "status bar", failures);
 
-            var pivotHeader = FindDescendant<PivotHeaderItem>(_page.DetailsTabs);
+            var pivotHeader = FindDescendant<PivotHeaderItem>(_context.DetailsTabs);
             CheckActualHeight(pivotHeader, 0, 28, "details tab header", failures);
 
-            var fullyVisibleHistoryRows = CountFullyVisibleListRows(_page.HistoryView.List, _page._viewModel.History.Rows.Cast<object>());
+            var fullyVisibleHistoryRows = CountFullyVisibleListRows(_context.HistoryView.List, _context.Repository.History.Rows.Cast<object>());
             Check(fullyVisibleHistoryRows >= 20,
                 $"history viewport shows only {fullyVisibleHistoryRows} fully visible rows; expected at least 20",
                 failures);
 
-            var originalDetailsTab = _page.DetailsTabs.SelectedIndex;
+            var originalDetailsTab = _context.DetailsTabs.SelectedIndex;
             try
             {
-                _page.DetailsTabs.SelectedIndex = 1;
+                _context.DetailsTabs.SelectedIndex = 1;
                 await WaitUntilAsync(
-                    () => _page.HistoryPane.ChangedFileRoots.Count > 0 && _page.ChangedFilesTree.ActualHeight > 0,
+                    () => _context.HistoryPane.ChangedFileRoots.Count > 0 && _context.ChangedFilesTree.ActualHeight > 0,
                     TimeSpan.FromSeconds(10));
 
-                if (_page.HistoryPane.ChangedFileRoots.FirstOrDefault() is { } firstChangedFile)
+                if (_context.HistoryPane.ChangedFileRoots.FirstOrDefault() is { } firstChangedFile)
                 {
                     await WaitUntilAsync(
-                        () => _page.ChangedFilesTree.ContainerFromItem(firstChangedFile) is TreeViewItem,
+                        () => _context.ChangedFilesTree.ContainerFromItem(firstChangedFile) is TreeViewItem,
                         TimeSpan.FromSeconds(5));
-                    CheckActualHeight(_page.ChangedFilesTree.ContainerFromItem(firstChangedFile) as FrameworkElement, 23, 26, "changed files tree row", failures);
+                    CheckActualHeight(_context.ChangedFilesTree.ContainerFromItem(firstChangedFile) as FrameworkElement, 23, 26, "changed files tree row", failures);
                 }
 
-                CheckActualHeight(_page.ChangedFilesHeader, 0, 26, "changed files header", failures);
+                CheckActualHeight(_context.ChangedFilesHeader, 0, 26, "changed files header", failures);
 
-                if (!string.IsNullOrEmpty(_page.CompactDiffViewer.LogicalText))
+                if (!string.IsNullOrEmpty(_context.CompactDiffViewer.LogicalText))
                 {
                     await WaitUntilAsync(
-                        () => _page.CompactDiffViewer.FirstRealizedRow is not null,
+                        () => _context.CompactDiffViewer.FirstRealizedRow is not null,
                         TimeSpan.FromSeconds(5));
-                    CheckActualHeight(_page.CompactDiffViewer.FirstRealizedRow, 19, 21, "diff row", failures);
+                    CheckActualHeight(_context.CompactDiffViewer.FirstRealizedRow, 19, 21, "diff row", failures);
                 }
             }
             finally
             {
-                _page.DetailsTabs.SelectedIndex = originalDetailsTab;
+                _context.DetailsTabs.SelectedIndex = originalDetailsTab;
             }
 
-            _page._workspaceNavigation.ShowWorkingTree();
+            _context.Navigation.ShowWorkingTree();
             await WaitUntilAsync(
-                () => _page.WorkingTreePane.ActualHeight > 0 && WorkingTreeTreeSelection.GetLeaves(_page.WorkingTreePane.UnstagedTreeRoots).Count > 0,
+                () => _context.WorkingTreePane.ActualHeight > 0 && WorkingTreeTreeSelection.GetLeaves(_context.WorkingTreePane.UnstagedTreeRoots).Count > 0,
                 TimeSpan.FromSeconds(5));
 
             var stagedByCheck = false;
             try
             {
-                if (WorkingTreeTreeSelection.GetLeaves(_page.WorkingTreePane.UnstagedTreeRoots).FirstOrDefault() is { } firstUnstaged)
+                if (WorkingTreeTreeSelection.GetLeaves(_context.WorkingTreePane.UnstagedTreeRoots).FirstOrDefault() is { } firstUnstaged)
                 {
-                    _page.WorkingTreePane.InvokeWorkingTreeNodeForCheck(firstUnstaged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Unstaged);
-                    _page.UnstagedChangesTree.ScrollIntoView(firstUnstaged);
+                    _context.WorkingTreePane.InvokeWorkingTreeNodeForCheck(firstUnstaged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Unstaged);
+                    _context.UnstagedChangesTree.ScrollIntoView(firstUnstaged);
                     await WaitUntilAsync(
-                        () => _page.UnstagedChangesTree.ContainerFromItem(firstUnstaged) is TreeViewItem,
+                        () => _context.UnstagedChangesTree.ContainerFromItem(firstUnstaged) is TreeViewItem,
                         TimeSpan.FromSeconds(5));
-                    CheckActualHeight(_page.UnstagedChangesTree.ContainerFromItem(firstUnstaged) as FrameworkElement, 23, 26, "unstaged row", failures);
+                    CheckActualHeight(_context.UnstagedChangesTree.ContainerFromItem(firstUnstaged) as FrameworkElement, 23, 26, "unstaged row", failures);
 
-                    if (WorkingTreeTreeSelection.GetLeaves(_page.WorkingTreePane.StagedTreeRoots).Count == 0)
+                    if (WorkingTreeTreeSelection.GetLeaves(_context.WorkingTreePane.StagedTreeRoots).Count == 0)
                     {
                         await Task.Delay(20);
-                        await _page.ExecuteCommandAsync(_page._viewModel.WorkingTree.StageSelectedCommand);
-                        await WaitUntilAsync(() => !_page._viewModel.IsBusy, TimeSpan.FromSeconds(20));
-                        _page.RefreshPresentationCollections();
-                        _page.WorkingTreePane.RebuildWorkingTreeTrees();
+                        await _context.ExecuteCommandAsync(_context.Repository.WorkingTree.StageSelectedCommand);
+                        await WaitUntilAsync(() => !_context.Repository.IsBusy, TimeSpan.FromSeconds(20));
+                        _context.RefreshPresentationCollections();
+                        _context.WorkingTreePane.RebuildWorkingTreeTrees();
                         await WaitUntilAsync(
-                            () => WorkingTreeTreeSelection.GetLeaves(_page.WorkingTreePane.StagedTreeRoots).Count > 0,
+                            () => WorkingTreeTreeSelection.GetLeaves(_context.WorkingTreePane.StagedTreeRoots).Count > 0,
                             TimeSpan.FromSeconds(5));
                         stagedByCheck = true;
                     }
                 }
 
-                if (WorkingTreeTreeSelection.GetLeaves(_page.WorkingTreePane.StagedTreeRoots).FirstOrDefault() is { } firstStaged)
+                if (WorkingTreeTreeSelection.GetLeaves(_context.WorkingTreePane.StagedTreeRoots).FirstOrDefault() is { } firstStaged)
                 {
-                    _page.WorkingTreePane.InvokeWorkingTreeNodeForCheck(firstStaged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Staged);
-                    _page.StagedChangesTree.ScrollIntoView(firstStaged);
+                    _context.WorkingTreePane.InvokeWorkingTreeNodeForCheck(firstStaged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Staged);
+                    _context.StagedChangesTree.ScrollIntoView(firstStaged);
                     await WaitUntilAsync(
-                        () => _page.StagedChangesTree.ContainerFromItem(firstStaged) is TreeViewItem,
+                        () => _context.StagedChangesTree.ContainerFromItem(firstStaged) is TreeViewItem,
                         TimeSpan.FromSeconds(5));
-                    CheckActualHeight(_page.StagedChangesTree.ContainerFromItem(firstStaged) as FrameworkElement, 23, 26, "staged row", failures);
+                    CheckActualHeight(_context.StagedChangesTree.ContainerFromItem(firstStaged) as FrameworkElement, 23, 26, "staged row", failures);
                 }
             }
             finally
             {
-                if (stagedByCheck && WorkingTreeTreeSelection.GetLeaves(_page.WorkingTreePane.StagedTreeRoots).FirstOrDefault() is { } staged)
+                if (stagedByCheck && WorkingTreeTreeSelection.GetLeaves(_context.WorkingTreePane.StagedTreeRoots).FirstOrDefault() is { } staged)
                 {
-                    _page.WorkingTreePane.InvokeWorkingTreeNodeForCheck(staged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Staged);
+                    _context.WorkingTreePane.InvokeWorkingTreeNodeForCheck(staged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Staged);
                     await Task.Delay(20);
-                    await _page.ExecuteCommandAsync(_page._viewModel.WorkingTree.UnstageSelectedCommand);
-                    await WaitUntilAsync(() => !_page._viewModel.IsBusy, TimeSpan.FromSeconds(20));
-                    _page.RefreshPresentationCollections();
-                    _page.WorkingTreePane.RebuildWorkingTreeTrees();
+                    await _context.ExecuteCommandAsync(_context.Repository.WorkingTree.UnstageSelectedCommand);
+                    await WaitUntilAsync(() => !_context.Repository.IsBusy, TimeSpan.FromSeconds(20));
+                    _context.RefreshPresentationCollections();
+                    _context.WorkingTreePane.RebuildWorkingTreeTrees();
                 }
 
-                if (WorkingTreeTreeSelection.GetLeaves(_page.WorkingTreePane.UnstagedTreeRoots).FirstOrDefault() is { } restoredUnstaged)
-                    _page.WorkingTreePane.InvokeWorkingTreeNodeForCheck(restoredUnstaged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Unstaged);
+                if (WorkingTreeTreeSelection.GetLeaves(_context.WorkingTreePane.UnstagedTreeRoots).FirstOrDefault() is { } restoredUnstaged)
+                    _context.WorkingTreePane.InvokeWorkingTreeNodeForCheck(restoredUnstaged, CSharpGit.Application.Abstractions.WorkingTreeDiffKind.Unstaged);
 
-                await _page._workspaceNavigation.ShowAllHistoryAsync();
+                await _context.Navigation.ShowAllHistoryAsync();
             }
         }
 
@@ -522,4 +520,3 @@ public sealed partial class MainPage
             return count;
         }
     }
-}

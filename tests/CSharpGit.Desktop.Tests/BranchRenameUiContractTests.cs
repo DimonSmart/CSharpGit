@@ -20,7 +20,7 @@ public sealed class BranchRenameUiContractTests
     public void F2IsScopedToRepositoryTreeAndUsesItsSelectedLocalBranch()
     {
         var root = FindRepositoryRoot();
-        var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
+        var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Lifetime.cs"));
         var workflow = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "BranchRenameController.cs"));
 
         Assert.Contains("_branchRename.Initialize();", lifecycle, StringComparison.Ordinal);

@@ -101,7 +101,7 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
     public void HistoryScanDiagnosticsDistinguishPotentialLinearWork()
     {
         var source = Read("src", "CSharpGit.Presentation", "Diagnostics", "HistoryPerformanceDiagnostics.cs");
-        var page = Read("src", "CSharpGit.Presentation", "MainPage.xaml.cs");
+        var history = Read("src", "CSharpGit.Presentation", "Views", "HistoryView.xaml.cs");
 
         Assert.Contains("HistoryGlobalScan", source, StringComparison.Ordinal);
         Assert.Contains("HistoryIndexLookup", source, StringComparison.Ordinal);
@@ -109,7 +109,8 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
         Assert.Contains("ParentLookup", source, StringComparison.Ordinal);
         Assert.Contains("RefLookup", source, StringComparison.Ordinal);
         Assert.Contains("ItemsExamined", source, StringComparison.Ordinal);
-        Assert.Contains("CommitLookupCompleted", page, StringComparison.Ordinal);
+        Assert.Contains("_history.CommitLookupCompleted += History_CommitLookupCompleted;", history, StringComparison.Ordinal);
+        Assert.Contains("_history.CommitLookupCompleted -= History_CommitLookupCompleted;", history, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -146,7 +147,7 @@ public sealed class HistoryPerformanceDiagnosticsContractTests
     public void CaptureHasAllRequiredTerminationPaths()
     {
         var page = Read("src", "CSharpGit.Presentation", "Views", "HistoryView.Performance.cs");
-        var lifecycle = Read("src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs");
+        var lifecycle = Read("src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Lifetime.cs");
 
         Assert.Contains("HistoryPerformanceStopReason.Manual", page, StringComparison.Ordinal);
         Assert.Contains("HistoryPerformanceStopReason.RepositoryClosed", page, StringComparison.Ordinal);

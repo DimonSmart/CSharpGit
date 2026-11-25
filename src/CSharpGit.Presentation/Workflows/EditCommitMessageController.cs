@@ -21,6 +21,23 @@ internal sealed class EditCommitMessageController(
     private readonly Func<CommitActionExecutionResult, Task> _handleResult = handleResult;
     private readonly Func<string?, Task<bool>> _restoreSelection = restoreSelection;
 
+    private RepositoryIdleContinuation? _idleContinuation;
+
+    internal void InitializeIdleContinuation(Action<Func<Task>, string> runUiOperation)
+    {
+        _idleContinuation ??= new RepositoryIdleContinuation(_viewModel, () =>
+        {
+            if (!_isShuttingDown() && ShouldRestorePendingEditedCommitSelection)
+                runUiOperation(RestorePendingEditedCommitSelectionAsync, "Restore edited commit selection");
+        });
+    }
+
+    internal void ShutdownIdleContinuation()
+    {
+        _idleContinuation?.Dispose();
+        _idleContinuation = null;
+    }
+
     private string? _pendingEditedCommitHash;
     private string? _pendingOriginalEditedCommitHash;
 

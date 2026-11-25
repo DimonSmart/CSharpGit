@@ -16,7 +16,7 @@ public sealed class RepositoryCreationUiContractTests
         var recentViewModel = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "ViewModels", "RecentRepositoriesViewModel.cs"));
         var recentIntegration = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
+            root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Repository.cs"));
         var workflow = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryCreationWorkflow.cs"));
 
@@ -71,8 +71,8 @@ public sealed class RepositoryCreationUiContractTests
             root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryCreationWorkflow.cs"));
         var openViewModel = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "ViewModels", "OpenRepositoryViewModel.cs"));
-        var mainPage = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+        var statusBar = File.ReadAllText(Path.Combine(
+            root, "src", "CSharpGit.Presentation", "Views", "StatusBarView.xaml.cs"));
         var switching = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "Workflows", "RepositorySwitchController.cs"));
 
@@ -101,8 +101,8 @@ public sealed class RepositoryCreationUiContractTests
             workflow);
 
         Assert.Contains("CurrentBranchName", openViewModel);
-        Assert.Contains("CurrentBranchName", mainPage);
-        Assert.Contains("?? _viewModel.CurrentBranchName", mainPage);
+        Assert.Contains("CurrentBranchName", statusBar);
+        Assert.Contains("?? _viewModel.CurrentBranchName", statusBar);
     }
 
     [Fact]

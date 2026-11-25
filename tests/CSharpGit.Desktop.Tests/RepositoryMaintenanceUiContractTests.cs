@@ -19,7 +19,7 @@ public sealed class RepositoryMaintenanceUiContractTests
     [Fact]
     public void MaintenanceUsesTypedServiceAndExistingMutationGate()
     {
-        var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
+        var source = ReadSource("src/CSharpGit.Presentation/Composition/WindowWorkspaceComposition.Repository.cs");
         var viewModel = ReadSource(
             "src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.RepositoryMaintenance.cs");
 
@@ -40,7 +40,7 @@ public sealed class RepositoryMaintenanceUiContractTests
     [Fact]
     public void AvailabilityUsesAnyRepositoryOperationAndRunningState()
     {
-        var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
+        var source = ReadSource("src/CSharpGit.Presentation/Composition/WindowWorkspaceComposition.Repository.cs");
 
         var context = ReadSource("src/CSharpGit.Presentation/ViewModels/OpenRepositoryViewModel.RepositoryMaintenance.cs");
         Assert.Contains("RepositoryOperations.CurrentOperation == RepositoryOperation.None", context, StringComparison.Ordinal);
@@ -57,7 +57,7 @@ public sealed class RepositoryMaintenanceUiContractTests
     [Fact]
     public void RunningDialogStaysOpenAndBlocksRepeatAndWindowClose()
     {
-        var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
+        var source = ReadSource("src/CSharpGit.Presentation/Composition/WindowWorkspaceComposition.Repository.cs");
         var app = ReadSource("src/CSharpGit.Presentation/App.xaml.cs");
 
         var dialog = ReadSource("src/CSharpGit.Presentation/RepositoryMaintenanceDialog.cs");
@@ -76,7 +76,7 @@ public sealed class RepositoryMaintenanceUiContractTests
     [Fact]
     public void PostGcRefreshIsTargetedAndUsesReflogAndWorktreeState()
     {
-        var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
+        var source = ReadSource("src/CSharpGit.Presentation/Composition/WindowWorkspaceComposition.Repository.cs");
         var feature = ReadSource("src/CSharpGit.Presentation.Core/ViewModels/RepositoryMaintenanceViewModel.cs");
 
         Assert.Contains("includeHistory: _context.ShowMaintenanceReflog", feature, StringComparison.Ordinal);
@@ -99,7 +99,7 @@ public sealed class RepositoryMaintenanceUiContractTests
     [Fact]
     public void FailureUsesExistingGitConsole()
     {
-        var source = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
+        var source = ReadSource("src/CSharpGit.Presentation/Composition/WindowWorkspaceComposition.Repository.cs");
         var dialog = ReadSource("src/CSharpGit.Presentation/RepositoryMaintenanceDialog.cs");
 
         Assert.Contains("View Git console", dialog, StringComparison.Ordinal);
@@ -110,9 +110,9 @@ public sealed class RepositoryMaintenanceUiContractTests
     [Fact]
     public void MaintenanceControllerOwnsSubscriptionsAndDialog()
     {
-        var page = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs");
+        var page = ReadSource("src/CSharpGit.Presentation/Composition/WindowWorkspaceComposition.Repository.cs");
         var controller = ReadSource("src/CSharpGit.Presentation/Workflows/RepositoryMaintenanceController.cs");
-        var lifetime = ReadSource("src/CSharpGit.Presentation/MainPage.Lifecycle.cs");
+        var lifetime = ReadSource("src/CSharpGit.Presentation/Composition/WindowWorkspaceComposition.Lifetime.cs");
 
         Assert.Contains("_maintenanceController.Initialize()", page, StringComparison.Ordinal);
         Assert.Contains("_maintenanceController.Shutdown()", lifetime, StringComparison.Ordinal);

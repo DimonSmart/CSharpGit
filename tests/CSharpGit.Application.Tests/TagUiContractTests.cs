@@ -12,7 +12,7 @@ public sealed class TagUiContractTests
         var tags = tagWorkflow + commitActions + referenceMenus;
         var tagFeature = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "TagsViewModel.cs"));
         var branchDeletion = referenceMenus;
-        var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+        var mainPage = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.cs"));
         var refresh = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryPresentationRefreshController.cs"));
         var descriptors = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "RepositoryTreeDescriptor.cs"));
         var reconciler = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "IncrementalTreeReconciler.cs"));

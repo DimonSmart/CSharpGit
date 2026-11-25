@@ -27,7 +27,7 @@ public sealed class AuthorAvatarUiContractTests
         var root = FindRepositoryRoot();
         var details = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitDetailsView.xaml"));
         var detailsCode = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitDetailsView.xaml.cs"));
-        var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
+        var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Repository.cs"));
         var presentationFiles = Directory.EnumerateFiles(
                 Path.Combine(root, "src", "CSharpGit.Presentation"),
                 "*.cs",
@@ -66,7 +66,7 @@ public sealed class AuthorAvatarUiContractTests
         var root = FindRepositoryRoot();
         var control = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "AuthorAvatar.xaml.cs"));
         var host = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryView.xaml.cs"));
-        var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
+        var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Repository.cs"));
 
         Assert.Contains("internal void Configure(", control, StringComparison.Ordinal);
         Assert.Contains("IAuthorAvatarDependencyProvider provider", control, StringComparison.Ordinal);

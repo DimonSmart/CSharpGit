@@ -38,7 +38,7 @@ public sealed class ImageDiffUiContractTests
         var root = FindRepositoryRoot();
         var service = Read(root, "src", "CSharpGit.Presentation", "Previewing", "ImageDiffPreviewService.cs");
         var resolver = Read(root, "src", "CSharpGit.Presentation.Core", "Previewing", "DiffFileVersionPathResolver.cs");
-        var fileOpening = Read(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs");
+        var fileOpening = Read(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Repository.cs");
 
         Assert.Contains("ResolveCommitAsync", service);
         Assert.Contains("ResolveWorkingTreeAsync", service);

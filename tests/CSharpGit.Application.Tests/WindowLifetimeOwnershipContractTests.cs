@@ -9,7 +9,7 @@ public sealed class WindowLifetimeOwnershipContractTests
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var session = File.ReadAllText(Path.Combine(presentation, "Windowing", "WindowSession.cs"));
         var factory = File.ReadAllText(Path.Combine(presentation, "Windowing", "WindowSessionFactory.cs"));
-        var page = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
+        var page = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Lifetime.cs"));
 
         Assert.False(File.Exists(Path.Combine(presentation, "Windowing", "IWindowContentLifetime.cs")));
         Assert.DoesNotContain("IWindowContentLifetime", session + factory + page, StringComparison.Ordinal);
@@ -17,9 +17,10 @@ public sealed class WindowLifetimeOwnershipContractTests
         Assert.Contains("if (!_lifetime.TryComplete()) return;", session);
         Assert.Contains("try { completeContent(); }", session);
         Assert.Contains("finally { scope.Dispose(); }", session);
-        Assert.Contains("_ => page.PrepareForShutdown()", factory);
-        Assert.Contains("page.BeginShutdown,", factory);
-        Assert.Contains("Interlocked.Exchange(ref _shutdownFinalized, 1)", page);
+        Assert.Contains("_ => composition.PrepareForShutdown()", factory);
+        Assert.Contains("composition.BeginShutdown,", factory);
+        Assert.Contains("_workspaceLifetime.Complete()", page);
+        Assert.Contains("Interlocked.Exchange(ref _shutdownFinalized, 1)", File.ReadAllText(Path.Combine(presentation, "Windowing", "WindowWorkspaceLifetime.cs")));
     }
 
     private static string FindRoot()

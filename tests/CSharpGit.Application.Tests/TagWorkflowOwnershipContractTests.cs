@@ -10,7 +10,7 @@ public sealed class TagWorkflowOwnershipContractTests
         var page = File.ReadAllText(Path.Combine(presentation, "Workflows", "CommitActionController.cs"))
             + File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositoryReferenceMenuController.cs"));
         var workflow = File.ReadAllText(Path.Combine(presentation, "Workflows", "TagWorkflowController.cs"));
-        var composition = File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryMaintenance.cs"));
+        var composition = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Repository.cs"));
 
         Assert.False(File.Exists(Path.Combine(presentation, "MainPage.Tags.cs")));
         Assert.Contains("_tagWorkflows.ShowCreateTagDialogAsync(", page, StringComparison.Ordinal);

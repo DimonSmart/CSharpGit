@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Windows.Input;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
@@ -19,7 +20,8 @@ internal sealed class WorkspaceNavigationController(
     DispatcherQueue dispatcher,
     Func<ICommand, Task> executeCommand,
     Func<bool> isShuttingDown,
-    Action<bool> setStashFilesMode)
+    Action<bool> setStashFilesMode,
+    Action<Func<Task>, string> runUiOperation)
 {
     private readonly OpenRepositoryViewModel _viewModel = viewModel;
     private readonly WorkspaceNavigator _navigator = navigator;
@@ -30,11 +32,88 @@ internal sealed class WorkspaceNavigationController(
     private readonly Func<ICommand, Task> _executeCommand = executeCommand;
     private readonly Func<bool> _isShuttingDown = isShuttingDown;
     private readonly Action<bool> _setStashFilesMode = setStashFilesMode;
+    private readonly Action<Func<Task>, string> _runUiOperation = runUiOperation;
+    private bool _initialized;
+    private bool _wasBusy;
 
     private RepositoryTreeNavigationCoordinator Interactions => _navigator.Interactions;
     private HistoryView HistoryView => _historyWorkspace.HistoryViewControl;
 
-    internal void ResetForRepositoryChange() => _navigator.ResetForRepositoryChange();
+    internal void Initialize()
+    {
+        if (_initialized) return;
+        _initialized = true;
+        _wasBusy = _viewModel.IsBusy;
+        _viewModel.PropertyChanged += Repository_PropertyChanged;
+        _viewModel.Stashes.PropertyChanged += StashesViewModel_PropertyChanged;
+        _viewModel.CommitDetails.PropertyChanged += CommitDetailsViewModel_PropertyChanged;
+        _viewModel.History.PropertyChanged += HistoryViewModel_PropertyChanged;
+    }
+
+    internal void Shutdown()
+    {
+        if (!_initialized) return;
+        _initialized = false;
+        _viewModel.PropertyChanged -= Repository_PropertyChanged;
+        _viewModel.Stashes.PropertyChanged -= StashesViewModel_PropertyChanged;
+        _viewModel.CommitDetails.PropertyChanged -= CommitDetailsViewModel_PropertyChanged;
+        _viewModel.History.PropertyChanged -= HistoryViewModel_PropertyChanged;
+    }
+
+    private void Repository_PropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (_isShuttingDown()) return;
+        if (args.PropertyName == nameof(OpenRepositoryViewModel.Repository))
+        {
+            _navigator.ResetForRepositoryChange();
+            UpdateCommitNavigationText();
+        }
+        else if (args.PropertyName is nameof(OpenRepositoryViewModel.HeadDisplay)
+                 or nameof(OpenRepositoryViewModel.CurrentBranchName)
+                 or nameof(RepositoryOperationsViewModel.CurrentOperation))
+        {
+            UpdateCommitNavigationText();
+        }
+        else if (args.PropertyName == nameof(OpenRepositoryViewModel.IsBusy))
+        {
+            var becameIdle = _wasBusy && !_viewModel.IsBusy;
+            _wasBusy = _viewModel.IsBusy;
+            UpdateCommitNavigationText();
+            UpdateLoadMoreAvailability();
+            if (becameIdle)
+                _runUiOperation(ResumePendingAsync, "Resume repository tree navigation");
+        }
+        else if (args.PropertyName == nameof(OpenRepositoryViewModel.CanChangeRepository))
+            UpdateLoadMoreAvailability();
+    }
+
+    private void StashesViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+    {
+        if (eventArgs.PropertyName is nameof(StashesViewModel.SelectedStash)
+            or nameof(StashesViewModel.HasSelectedStash))
+            UpdateStashPresentation();
+    }
+
+    private void CommitDetailsViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+    {
+        if (eventArgs.PropertyName is nameof(CommitDetailsViewModel.SelectedStashDetails)
+                 or nameof(CommitDetailsViewModel.HasSelectedStash))
+            UpdateStashPresentation();
+    }
+
+    private void HistoryViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+    {
+        if (eventArgs.PropertyName is nameof(HistoryViewModel.IsReferenceScoped)
+            or nameof(HistoryViewModel.ActiveReferenceLabel))
+        {
+            UpdateHistoryPresentation();
+        }
+        else if (eventArgs.PropertyName is nameof(HistoryViewModel.HasMore)
+                 or nameof(HistoryViewModel.IsLoading))
+        {
+            UpdateLoadMoreAvailability();
+        }
+    }
 
     internal async Task NavigateToReferenceAsync(
         string commitHash,

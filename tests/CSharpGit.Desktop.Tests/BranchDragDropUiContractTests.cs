@@ -6,7 +6,7 @@ public sealed class BranchDragDropUiContractTests
     public void RepositoryTreeUsesCustomMoveDragDropWithoutGenericReorder()
     {
         var root = FindRepositoryRoot();
-        var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.Lifecycle.cs"));
+        var lifecycle = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Lifetime.cs"));
         var dragDrop = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "BranchDragDropController.cs"));
 
         Assert.Contains("_branchDragDrop.Initialize();", lifecycle, StringComparison.Ordinal);

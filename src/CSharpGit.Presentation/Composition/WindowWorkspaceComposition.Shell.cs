@@ -3,7 +3,7 @@ using Microsoft.UI.Xaml;
 
 namespace CSharpGit.Presentation;
 
-public sealed partial class MainPage
+internal sealed partial class WindowWorkspaceComposition
 {
     private readonly Workflows.RepositoryPresentationRefreshController _presentationRefresh;
 
@@ -11,9 +11,6 @@ public sealed partial class MainPage
 
     internal Action CapturePendingMonitorDeliveryForDesktopCheck() =>
         _repositoryRefresh.CapturePendingMonitorDeliveryForDesktopCheck();
-
-    private void QueueRepositoryPresentationRefresh(bool workingTreeChanged = false) =>
-        _presentationRefresh.Queue(workingTreeChanged);
 
     private Task<ContentDialogResult> ShowPageDialogAsync(ContentDialog dialog) =>
         _pageDialogs.ShowAsync(dialog);
@@ -26,13 +23,6 @@ public sealed partial class MainPage
     internal Task OpenInitialRepositoryAsync() => _viewModel.OpenRepositoryAsyncForDesktopCheck();
 
     internal TreeView RepositoryTree => RepositoryExplorer.TreeControl;
-
-    protected override void OnApplyTemplate()
-    {
-        base.OnApplyTemplate();
-        HistoryView.InitializeScroll();
-        InitializeLoadingOverlays();
-    }
 
     private Workflows.CommitLoadingOverlayController? _loadingOverlay;
 

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
 using CSharpGit.Domain;
 using CSharpGit.Presentation.Diagnostics;
@@ -17,6 +18,7 @@ public sealed class SettingsWindowController : IDisposable
     private readonly IDesktopShellService _desktopShellService;
     private readonly IFolderPicker _folderPicker;
     private readonly IUiDispatcher _uiDispatcher;
+    private OpenRepositoryViewModel? _observedRepository;
     private Func<Repository?>? _repositoryAccessor;
     private Func<Repository?, IDisposable?>? _gitAdmission;
     private Window? _window;
@@ -45,14 +47,20 @@ public sealed class SettingsWindowController : IDisposable
     }
 
     // Window-scoped context, supplied once by the composition root.
-    internal void ConfigureWindowContext(
-        Func<Repository?> repositoryAccessor,
-        Func<Repository?, IDisposable?> gitAdmission)
+    internal void ConfigureWindowContext(OpenRepositoryViewModel repository)
     {
         if (_repositoryAccessor is not null)
             throw new InvalidOperationException("Settings controller is already configured.");
-        _repositoryAccessor = repositoryAccessor ?? throw new ArgumentNullException(nameof(repositoryAccessor));
-        _gitAdmission = gitAdmission ?? throw new ArgumentNullException(nameof(gitAdmission));
+        _observedRepository = repository ?? throw new ArgumentNullException(nameof(repository));
+        _repositoryAccessor = () => repository.Repository;
+        _gitAdmission = repository.TryBeginGitSettingsOperation;
+        repository.PropertyChanged += ObservedRepository_PropertyChanged;
+    }
+
+    private void ObservedRepository_PropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(OpenRepositoryViewModel.Repository))
+            RepositoryChanged();
     }
 
     internal void Open(SettingsSection section, bool focusPullStrategy = false)
@@ -126,6 +134,11 @@ public sealed class SettingsWindowController : IDisposable
     internal void Shutdown()
     {
         if (Interlocked.Exchange(ref _shutdownStarted, 1) != 0) return;
+        if (_observedRepository is not null)
+        {
+            _observedRepository.PropertyChanged -= ObservedRepository_PropertyChanged;
+            _observedRepository = null;
+        }
 
         if (_window is { } window)
         {

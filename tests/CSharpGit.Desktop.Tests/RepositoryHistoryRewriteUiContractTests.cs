@@ -26,8 +26,8 @@ public sealed class RepositoryHistoryRewriteUiContractTests
 
         Assert.Contains("_viewModel.RepositoryHistoryRewrite.RemovePathAsync", workflow, StringComparison.Ordinal);
         Assert.Contains("_historyRewrite.RemovePathAsync(entry)", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("InstallRepositoryHistoryRewriteMenus", ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryMaintenance.cs"), StringComparison.Ordinal);
-        Assert.DoesNotContain("ShutdownRepositoryHistoryRewriteMenus", ReadSource("src/CSharpGit.Presentation/MainPage.Lifecycle.cs"), StringComparison.Ordinal);
+        Assert.DoesNotContain("InstallRepositoryHistoryRewriteMenus", ReadSource("src/CSharpGit.Presentation/Composition/WindowWorkspaceComposition.Repository.cs"), StringComparison.Ordinal);
+        Assert.DoesNotContain("ShutdownRepositoryHistoryRewriteMenus", ReadSource("src/CSharpGit.Presentation/Composition/WindowWorkspaceComposition.Lifetime.cs"), StringComparison.Ordinal);
         Assert.False(File.Exists(Path.Combine(FindRepositoryRoot(), "src/CSharpGit.Presentation/MainPage.HistoryRewrite.cs")));
         Assert.Contains("localOnlyRefresh: true", viewModel, StringComparison.Ordinal);
         Assert.Contains("_repositoryFilesViewModel.Invalidate(", workflow, StringComparison.Ordinal);
@@ -56,7 +56,7 @@ public sealed class RepositoryHistoryRewriteUiContractTests
     public void SubmoduleMenuIsPreservedInUnifiedRepositoryTreeContextMenu()
     {
         var history = ReadSource("src/CSharpGit.Presentation/Controls/RepositoryFilesSurface.Interactions.cs");
-        var files = ReadSource("src/CSharpGit.Presentation/MainPage.RepositoryFiles.cs");
+        var files = ReadSource("src/CSharpGit.Presentation/Composition/WindowWorkspaceComposition.Files.cs");
         var submodules = ReadSource("src/CSharpGit.Presentation/Workflows/SubmoduleWorkflowController.cs");
         var clone = ReadSource("src/CSharpGit.Presentation/Workflows/RepositoryCloneWorkflow.cs");
 

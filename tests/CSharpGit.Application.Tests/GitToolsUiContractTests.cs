@@ -69,7 +69,7 @@ public sealed class GitToolsUiContractTests
         Assert.Contains("_tools.RunExternalDiffAsync(request.Repository, prepared.Pair)", feature);
         Assert.DoesNotContain("RunExternalDiffAsync(", fileOpening);
         Assert.Contains("_openGitToolsSettings();", fileOpening);
-        var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
+        var composition = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Repository.cs"));
         Assert.Contains("() => _settingsWindowController.Open(SettingsSection.GitTools)", composition);
         Assert.Contains("_externalGitToolService.RunMergeToolForFileAsync", repositoryOperations);
         Assert.Contains("_externalGitToolService.RunMergeToolWorkflowAsync", repositoryOperations);

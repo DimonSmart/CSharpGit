@@ -1,3 +1,6 @@
+using System.ComponentModel;
+using CSharpGit.Domain;
+using CSharpGit.Presentation.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -12,6 +15,7 @@ public sealed partial class StatusBarView : UserControl
     private readonly SolidColorBrush _busyBackground = new(Windows.UI.Color.FromArgb(28, 34, 197, 94));
     private bool _busy;
     private bool _disposed;
+    private OpenRepositoryViewModel? _repository;
 
     public StatusBarView()
     {
@@ -38,6 +42,41 @@ public sealed partial class StatusBarView : UserControl
     }
 
     public event EventHandler? GitCommandStatusClicked;
+
+    internal void ConfigureRepository(OpenRepositoryViewModel repository)
+    {
+        if (_repository is not null) throw new InvalidOperationException("Status bar already configured.");
+        _repository = repository;
+        repository.PropertyChanged += Repository_PropertyChanged;
+        RefreshRepositoryStatus();
+    }
+
+    private void Repository_PropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is nameof(OpenRepositoryViewModel.Repository)
+            or nameof(OpenRepositoryViewModel.HeadDisplay)
+            or nameof(OpenRepositoryViewModel.CurrentBranchName)
+            or nameof(RepositoryOperationsViewModel.CurrentOperation)
+            or nameof(OpenRepositoryViewModel.IsBusy))
+            RefreshRepositoryStatus();
+    }
+
+    internal void RefreshRepositoryStatus()
+    {
+        if (_repository is not { } _viewModel || _disposed) return;
+        var current = _viewModel.Branches.LocalBranches.FirstOrDefault(branch => branch.IsCurrent);
+        var branch = current?.Name
+                     ?? _viewModel.CurrentBranchName
+                     ?? (_viewModel.Repository is null ? string.Empty : "detached HEAD");
+        SetStatus(
+            branch,
+            current is null ? string.Empty : $"↑{current.Ahead} ↓{current.Behind}",
+            _viewModel.WorkingTree.Changes.Count,
+            _viewModel.IsBusy ? "Working…" :
+                _viewModel.RepositoryOperations.CurrentOperation == RepositoryOperation.None
+                    ? "Ready" : _viewModel.RepositoryOperations.CurrentOperation.ToString(),
+            _viewModel.IsBusy);
+    }
 
     internal void SetStatus(string branch, string tracking, int changes, string operation, bool busy)
     {
@@ -70,6 +109,11 @@ public sealed partial class StatusBarView : UserControl
     {
         if (_disposed) return;
         _disposed = true;
+        if (_repository is not null)
+        {
+            _repository.PropertyChanged -= Repository_PropertyChanged;
+            _repository = null;
+        }
         _pulse.Stop();
         GitCommandStatusClicked = null;
     }

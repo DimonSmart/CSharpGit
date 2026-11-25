@@ -16,8 +16,8 @@ namespace CSharpGit.Presentation.Views;
 public sealed partial class WorkingTreeView
 {
     private OpenRepositoryViewModel _viewModel = null!;
-    private BulkObservableCollection<WorkingTreeChange> _unstagedChanges = null!;
-    private BulkObservableCollection<WorkingTreeChange> _stagedChanges = null!;
+    private readonly BulkObservableCollection<WorkingTreeChange> _unstagedChanges = [];
+    private readonly BulkObservableCollection<WorkingTreeChange> _stagedChanges = [];
     private WorkingTreeImageDiffWorkflow _workingTreeImageDiff = null!;
     private DiffPresentationController _diffPresentation = null!;
     private Func<bool> _isShuttingDown = null!;
@@ -30,8 +30,6 @@ public sealed partial class WorkingTreeView
 
     internal void Configure(
         OpenRepositoryViewModel viewModel,
-        BulkObservableCollection<WorkingTreeChange> unstaged,
-        BulkObservableCollection<WorkingTreeChange> staged,
         WorkingTreeImageDiffWorkflow imageDiff,
         DiffPresentationController diffPresentation,
         Func<bool> isShuttingDown,
@@ -45,8 +43,6 @@ public sealed partial class WorkingTreeView
         if (_configured) throw new InvalidOperationException("WorkingTreeView is already configured.");
         _configured = true;
         _viewModel = viewModel;
-        _unstagedChanges = unstaged;
-        _stagedChanges = staged;
         _workingTreeImageDiff = imageDiff;
         _diffPresentation = diffPresentation;
         _isShuttingDown = isShuttingDown;
@@ -57,6 +53,33 @@ public sealed partial class WorkingTreeView
         _showSelectedStashDialogAsync = showSelectedStashDialogAsync;
         _showDialog = showDialog;
     }
+
+    internal void RefreshChangesProjection()
+    {
+        var unstaged = new List<WorkingTreeChange>();
+        var staged = new List<WorkingTreeChange>();
+        foreach (var change in _viewModel.WorkingTree.Changes)
+        {
+            if (change.IsUnstaged) unstaged.Add(change);
+            if (change.IsStaged) staged.Add(change);
+        }
+
+        SetSelectionSync(true);
+        try
+        {
+            _unstagedChanges.ReplaceAll(unstaged);
+            _stagedChanges.ReplaceAll(staged);
+        }
+        finally
+        {
+            SetSelectionSync(false);
+        }
+
+        UnstagedHeader.Text = $"Unstaged changes ({_unstagedChanges.Count})";
+        StagedHeader.Text = $"Staged changes ({_stagedChanges.Count})";
+    }
+
+    internal int ProjectedChangeCount => _unstagedChanges.Count + _stagedChanges.Count;
 
     private void RunPageUiOperation(Func<Task> action, string description) => _runUiOperation(action, description);
     private Task ShowErrorAsync(string title, string message) => _showError(title, message);

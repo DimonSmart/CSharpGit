@@ -67,12 +67,12 @@ public sealed class RepositorySwitchingContractTests
         var xaml = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"))
             + File.ReadAllText(Path.Combine(presentation, "Views", "RepositorySelectorView.xaml"))
             + File.ReadAllText(Path.Combine(presentation, "Views", "RepositoryToolbarView.xaml"));
-        var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+        var page = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.cs"));
         var switching = File.ReadAllText(Path.Combine(
             presentation,
             "Views", "RepositorySelectorView.xaml.cs"));
         var switchingWorkflow =
-            File.ReadAllText(Path.Combine(presentation, "MainPage.RepositoryMaintenance.cs"))
+            File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Repository.cs"))
             + File.ReadAllText(Path.Combine(presentation, "Workflows", "RepositorySwitchController.cs"));
 
         Assert.Contains("x:Name=\"RepositorySelectorButton\"", xaml);
@@ -105,12 +105,13 @@ public sealed class RepositorySwitchingContractTests
         Assert.Contains("Open Terminal Here", xaml);
         Assert.Contains("_desktopShellService.OpenTerminalAsync(path)", switching);
         Assert.Contains("RepositorySelectorOpenTerminalButton.IsEnabled", switching);
-        var shellComposition = File.ReadAllText(Path.Combine(presentation, "MainPage.Lifecycle.cs"));
+        var shellComposition = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.Lifetime.cs"));
         Assert.Contains("_creationWorkflow.ShowAsync()", shellComposition);
         Assert.Contains("_repositorySwitch.ShowUnavailableAsync", switchingWorkflow);
 
-        Assert.Contains("e.Key == VirtualKey.O", page);
-        Assert.Contains("RunPageUiOperation(OpenRepositoryPickerAsync, \"Open repository shortcut\")", page);
+        var keyboard = File.ReadAllText(Path.Combine(presentation, "Workflows", "WorkspaceKeyboardController.cs"));
+        Assert.Contains("e.Key == VirtualKey.O", keyboard);
+        Assert.Contains("runOperation(openRepository, \"Open repository shortcut\")", keyboard);
     }
 
 
@@ -197,7 +198,7 @@ public sealed class RepositorySwitchingContractTests
         var xaml = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml"))
             + File.ReadAllText(Path.Combine(presentation, "Views", "RepositorySelectorView.xaml"))
             + File.ReadAllText(Path.Combine(presentation, "Views", "HistoryWorkspaceView.xaml"));
-        var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+        var page = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.cs"));
         var switching = File.ReadAllText(Path.Combine(
             presentation,
             "Workflows", "RepositorySwitchController.cs"));

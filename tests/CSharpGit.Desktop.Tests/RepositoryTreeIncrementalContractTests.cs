@@ -6,7 +6,7 @@ public sealed class RepositoryTreeIncrementalContractTests
     public void RepositoryRefreshIsCoalescedAndNonStructuralPropertiesDoNotRebuildTree()
     {
         var root = FindRepositoryRoot();
-        var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "MainPage.xaml.cs"));
+        var page = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.cs"));
         var refresh = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "RepositoryPresentationRefreshController.cs"));
         var worktrees = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "WorktreeController.cs"));
         var tags = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "TagWorkflowController.cs"));

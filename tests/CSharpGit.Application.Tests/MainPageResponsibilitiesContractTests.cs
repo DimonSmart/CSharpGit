@@ -7,14 +7,16 @@ public sealed class MainPageResponsibilitiesContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+        var page = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.cs"));
         var runner = File.ReadAllText(Path.Combine(presentation, "Diagnostics", "MainPageDesktopUiCheckRunner.cs"));
         var graph = File.ReadAllText(Path.Combine(presentation, "Diagnostics", "MainPageDesktopUiCheckRunner.Graph.cs"));
 
-        Assert.Contains("await new DesktopUiCheckRunner(this).RunAsync(resultPath);", page);
+        Assert.Contains("new DesktopUiCheckRunner(new DesktopUiCheckContext(", page);
         Assert.DoesNotContain("Environment.Exit", page);
         Assert.DoesNotContain("RunCommitGraphViewportLifecycleCheckAsync", page);
-        Assert.Contains("private sealed partial class DesktopUiCheckRunner", runner);
+        Assert.Contains("internal sealed partial class DesktopUiCheckRunner(DesktopUiCheckContext context)", runner);
+        Assert.DoesNotContain("partial class MainPage", runner + graph);
+        Assert.Contains("PropertyChanged -= ObserveBusy", runner);
         Assert.Contains("RunCommitGraphViewportLifecycleCheckAsync", graph);
         Assert.Contains("RunDesktopDensityCheckAsync", graph);
         Assert.False(File.Exists(Path.Combine(presentation, "MainPage.GraphViewportCheck.cs")));
@@ -25,7 +27,7 @@ public sealed class MainPageResponsibilitiesContractTests
     {
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
-        var page = File.ReadAllText(Path.Combine(presentation, "MainPage.xaml.cs"));
+        var page = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.cs"));
         var navigation = File.ReadAllText(Path.Combine(presentation, "Workflows", "WorkspaceNavigationController.cs"));
         var coordinator = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation.Core", "RepositoryTreeNavigationCoordinator.cs"));

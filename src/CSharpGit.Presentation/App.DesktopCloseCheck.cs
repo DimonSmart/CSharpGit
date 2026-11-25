@@ -15,6 +15,8 @@ namespace CSharpGit.Presentation;
 
 public sealed partial class App
 {
+    private Diagnostics.DesktopLifecycleCheckContext? _desktopLifecycleCheck;
+
     private async void RunDesktopCloseCheckWhenLoaded(object sender, RoutedEventArgs args)
     {
         if (_closeCheckStarted) return;
@@ -54,7 +56,7 @@ public sealed partial class App
             }).AsMemory(), timeout.Token);
 
             if (Environment.GetEnvironmentVariable("CSHARPGIT_CLOSE_CHECK_EXTENDED") == "1")
-                await RunDesktopLifecycleCommandsAsync(page, viewModel, reader, writer, timeout.Token);
+                await RunDesktopLifecycleCommandsAsync(_desktopLifecycleCheck ?? throw new InvalidOperationException("Desktop lifecycle check was not configured."), viewModel, reader, writer, timeout.Token);
             else if (await reader.ReadLineAsync(timeout.Token) != "Close")
                 throw new InvalidOperationException("The desktop close-check pipe did not receive a Close command.");
 
@@ -84,9 +86,9 @@ public sealed partial class App
     }
 
 
-    // Runs inside the real desktop UI, sharing the production ViewModel and MainPage.
+    // Runs inside the real desktop UI, using a diagnostic-only context and the production ViewModel.
     private async Task RunDesktopLifecycleCommandsAsync(
-        MainPage page, OpenRepositoryViewModel vm,
+        Diagnostics.DesktopLifecycleCheckContext page, OpenRepositoryViewModel vm,
         StreamReader reader, StreamWriter writer, CancellationToken token)
     {
         TaskCompletionSource? release = null;

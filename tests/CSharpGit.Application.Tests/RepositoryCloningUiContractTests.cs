@@ -37,7 +37,7 @@ public sealed class RepositoryCloningUiContractTests
     {
         var root = FindRepositoryRoot();
         var composition = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "MainPage.RepositoryMaintenance.cs"));
+            root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Repository.cs"));
 
         var dependencies = File.ReadAllText(Path.Combine(
             root, "src", "CSharpGit.Presentation", "Composition", "MainPageDependencies.cs"));

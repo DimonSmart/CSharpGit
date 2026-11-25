@@ -27,7 +27,7 @@ public sealed class WindowMigrationArchitectureTests
         var app = Read("src/CSharpGit.Presentation/App.xaml.cs");
         var session = Read("src/CSharpGit.Presentation/Windowing/WindowSession.cs");
         var factory = Read("src/CSharpGit.Presentation/Windowing/WindowSessionFactory.cs");
-        var page = Read("src/CSharpGit.Presentation/MainPage.Lifecycle.cs");
+        var page = Read("src/CSharpGit.Presentation/Composition/WindowWorkspaceComposition.Lifetime.cs");
         Assert.Contains("scopeFactory.CreateScope()", factory);
         Assert.Contains("Program.InitialRepositoryPath is not null", factory);
         var transition = Read("src/CSharpGit.Presentation.Core/WindowSessionLifecycle.cs");
@@ -36,7 +36,7 @@ public sealed class WindowMigrationArchitectureTests
         Assert.Contains("_lifetime.InitializeAsync(initializeContent, CompleteShutdown, cancellationToken)", session);
         Assert.Contains("await _windowSession.InitializeAsync(CancellationToken.None);", app);
         Assert.DoesNotContain("await mainPage.OpenInitialRepositoryAsync();", app);
-        Assert.Contains("scope.ServiceProvider.GetRequiredService<MainPage>()", factory);
+        Assert.Contains("scope.ServiceProvider.GetRequiredService<WindowWorkspaceComposition>()", factory);
         Assert.Contains("finally { scope.Dispose(); }", session);
         Assert.Contains("completeContent();", session);
         Assert.DoesNotContain("MainPage", session);

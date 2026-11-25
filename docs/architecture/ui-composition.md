@@ -9,7 +9,7 @@ App (host, global services, native application events)
       ├─ WindowCloseOrchestrator → WindowCloseCoordinator (existing state machine)
       ├─ WindowCloseSafetyProvider → operation owners (read-only status)
       ├─ OpenRepositoryViewModel (repository state and Git work)
-      └─ Workspace view (MainPage during migration)
+      └─ WindowWorkspaceComposition → MainPage.xaml (generated visual root)
          ├─ RepositoryLauncherView / RepositorySelectorView
          ├─ RepositoryTreeView
          ├─ HistoryView → CommitDetailsView
@@ -35,13 +35,13 @@ View → own ViewModel or focused UI controller; coordinator → feature contrac
 ## Lifetime policy
 
 - App owns IHost and singleton cross-window services.
-- Window factory owns IServiceScope and resolves scoped session and transient visual root from it.
+- Window factory owns IServiceScope and resolves the window-local composition and session dependencies from it. The composition creates the generated XAML root.
 - Session owns one-way Created → Active → PreparingForShutdown → Disposed state transitions, never runs Git commands itself.
-- Existing page disposal has child-owned cascades: audit before changing registrations to scoped; do not rely on multiple owners disposing the same feature object.
+- WindowWorkspaceLifetime runs the explicitly registered prepare and completion callbacks; each feature owns its subscriptions, and the DI scope owns resolved models. Do not rely on multiple owners disposing the same feature object.
 - Session shutdown blocks new UI work, cancels previews and bounded diagnostics, preserves running protected Git operations by rejecting close at admission, then disposes UI resources before releasing scope.
 - Window-session events must be unregistered before scope disposal; callbacks after shutdown cannot publish to controls.
-- Temporary IWindowContentLifetime bridge is removed by **phase 3**.
+- The temporary IWindowContentLifetime bridge is removed.
 
 ## Phase acceptance and migration guardrails
 
-Phase 1 preserves existing XAML and behavior. Phase 2 separates repository/tree/history/working-tree/file views. Phase 3 removes legacy MainPage partial files and compatibility adapter. No event bus, global services bag, new functional MainPage partials, or extra constructor arguments.
+Phase 1 preserves existing XAML and behavior. Phase 2 separates repository/tree/history/working-tree/file views. Phase 3 removes every authored MainPage partial and the compatibility adapter; the architecture contract enforces a declarative root. Verify real desktop behavior and all supported platforms before accepting the phase. No event bus, global services bag, new functional MainPage partials, or extra constructor arguments.
