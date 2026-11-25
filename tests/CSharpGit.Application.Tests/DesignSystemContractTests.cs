@@ -112,7 +112,7 @@ public sealed class DesignSystemContractTests
     }
 
     [Fact]
-    public void DynamicallyNamedDetailsTabsRetainSharedStyleAndLazySelection()
+    public void DeclarativeDetailsTabsRetainSharedStyleAndLazySelection()
     {
         var root = FindRepositoryRoot();
         var files = Read(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Files.cs");
@@ -120,11 +120,14 @@ public sealed class DesignSystemContractTests
         var changes = Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.Changes.cs");
         var mainCode = Read(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.cs");
 
-        Assert.Contains("new PivotItem { Header = \"Files\", Name = \"FilesTab\" }", files);
-        Assert.Contains("DetailsTabs.Items.Add(_repositoryFilesTab)", files);
-        Assert.DoesNotContain("_repositoryFilesTab.HeaderTemplate =", files);
-        Assert.DoesNotContain("_repositoryFilesTab.Style =", files);
-        Assert.Contains("DetailsTabs.SelectedItem", files);
+        var historyXaml = Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml");
+        var historyCode = Read(root, "src", "CSharpGit.Presentation", "Views", "HistoryWorkspaceView.xaml.cs");
+        Assert.Contains("x:Name=\"FilesTab\" Header=\"Files\"", historyXaml);
+        Assert.DoesNotContain("DetailsTabs.Items.Add", files);
+        Assert.Contains("HistoryPane.CreateRepositoryFilesSurface", files);
+        Assert.Contains("ReferenceEquals(DetailsTabs.SelectedItem, FilesTab)", historyCode);
+        Assert.DoesNotContain("FilesTab.HeaderTemplate =", historyCode);
+        Assert.DoesNotContain("FilesTab.Style =", historyCode);
         Assert.Contains("SetActiveAsync(true)", fileInteractions);
         Assert.Contains("SetActiveAsync(false)", fileInteractions);
         Assert.Contains("ActivateRepositoryFilesAsync", fileInteractions);
@@ -134,8 +137,7 @@ public sealed class DesignSystemContractTests
         Assert.Contains("UpdateChangesViewActivity();", changes);
         var changedTree = Read(root, "src", "CSharpGit.Presentation", "Workflows", "CommitChangedFileTreeController.cs");
         Assert.Contains("Changes ({_commitFiles.Count})", changedTree);
-        var navigation = Read(root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Files.cs");
-        Assert.Contains("\"Tracked files\"", navigation);
+        Assert.Contains("FilesTab.Header = hasSelectedStash ? \"Tracked files\" : \"Files\"", historyCode);
         Assert.Contains("\"Stash\"", mainCode + changes + files + 
             Read(root, "src", "CSharpGit.Presentation.Core", "ViewModels", "CommitDetailsViewModel.cs"));
     }

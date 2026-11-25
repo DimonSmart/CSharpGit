@@ -18,7 +18,22 @@ internal sealed class PageDialogController(Page page, OpenRepositoryViewModel vi
     private readonly UiPageDialogGate _pageDialogGate = new();
     private readonly CancellationTokenSource _pageDialogLifetime = new();
 
-    internal void Shutdown() => _pageDialogLifetime.Cancel();
+    private ContentDialog? _activeDialog;
+    private TaskCompletionSource? _activeDialogCompletion;
+
+    internal void Shutdown()
+    {
+        _pageDialogLifetime.Cancel();
+        _activeDialog?.Hide();
+    }
+
+    internal async Task DismissActiveDialogForDesktopCheckAsync()
+    {
+        var completion = _activeDialogCompletion;
+        if (completion is null) return;
+        _activeDialog?.Hide();
+        await completion.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    }
 
     internal Task<ContentDialogResult> ShowAsync(ContentDialog dialog) =>
         _pageDialogGate.ExecuteAsync(
@@ -28,7 +43,16 @@ internal sealed class PageDialogController(Page page, OpenRepositoryViewModel vi
                     return ContentDialogResult.None;
 
                 dialog.XamlRoot = _page.XamlRoot;
-                return await dialog.ShowAsync();
+                var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                _activeDialog = dialog;
+                _activeDialogCompletion = completion;
+                try { return await dialog.ShowAsync(); }
+                finally
+                {
+                    _activeDialog = null;
+                    _activeDialogCompletion = null;
+                    completion.TrySetResult();
+                }
             },
             ContentDialogResult.None,
             _pageDialogLifetime.Token);

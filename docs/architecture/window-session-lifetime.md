@@ -4,9 +4,10 @@ Baseline: `e64f849`. Reviewed production registrations in `App.xaml.cs`.
 
 | Dependency | Registration | Ownership and release |
 |---|---|---|
-| `OpenRepositoryViewModel` | Transient, created inside the window scope | Scope; cascaded feature cleanup is idempotent |
-| `CreateRepositoryViewModel`, `CloneRepositoryViewModel` | Transient inside window scope | Scope, after UI event handlers are detached |
-| `RepositoryMaintenanceViewModel`, `RepositoryFilesViewModel`, `FileActionsViewModel` | Transient inside window scope | Scope; legacy MainPage no longer calls their Dispose |
+| `OpenRepositoryViewModel` | Scoped | Scope; cascaded feature cleanup is idempotent |
+| `CreateRepositoryViewModel`, `CloneRepositoryViewModel` | Scoped | Scope, after UI event handlers are detached |
+| `RepositoryMaintenanceViewModel` | Scoped | Scope |
+| `RepositoryFilesViewModel`, `FileActionsViewModel` | Transient inside window scope, resolved by scoped dependency group | Scope |
 | `WorktreesViewModel`, history, branches, stashes, sync and commit feature ViewModels | Transient inside window scope | Scope; do not register as Singleton |
 | `SettingsWindowController` | Scoped | Window scope; page requests Shutdown first |
 | `RecentRepositoryFolderPicker`, `IFolderPicker` | Scoped | Window scope; native handle remains an App-provided factory (single-window limitation) |
@@ -21,11 +22,11 @@ Baseline: `e64f849`. Reviewed production registrations in `App.xaml.cs`.
 2. The existing `WindowCloseCoordinator` accepts or rejects the request and rechecks after commit-draft confirmation.
 3. `WindowCloseOrchestrator` begins shutdown after macOS native callback returns, or directly on Windows/Linux.
 4. Window-scoped preparation callback cancels page-owned operations and diagnostics. Diagnostics use the existing three-second budget; active Git mutation never uses this timeout.
-5. The page unsubscribes its own callbacks, then the window scope disposes transient models once; the host remains alive until the native close sequence allows shutdown.
+5. The window composition invokes feature-owned cleanup callbacks, then the window scope disposes its models once; the host remains alive until the native close sequence allows shutdown.
 6. On macOS host stop precedes final native close; other platforms preserve the existing native close path.
 
-## Remaining migration
+## Final migration
 
-- Phase 2: replace remaining direct App-to-MainPage title/layout and desktop-check dependencies with focused window-shell interfaces; move repository/history/file UI components.
-- Phase 3: the temporary `IWindowContentLifetime` bridge is removed. Remaining work: move component-owned shutdown out of `MainPage`, remove legacy `MainPage.*.cs` partial files and the transitional factory reference to `MainPage`.
-- Native desktop close checks on Windows, macOS and Linux need explicit execution; ordinary CI unit test success is not evidence that native close smoke tests ran.
+- The generated MainPage is only the visual root; WindowSession has no concrete page reference. WindowWorkspaceComposition wires feature-owned controls and explicit lifetime callbacks. The temporary IWindowContentLifetime bridge and authored root partials are gone.
+- WindowWorkspaceLifetime in Presentation.Core shares the preparation task and aggregates errors without skipping other preparation or completion callbacks. Close admission is still the separate WindowCloseCoordinator. The outer orchestrator preserves the diagnostics shutdown budget.
+- The production desktop lifecycle test is mandatory in CI on all three supported OSes. Linux uses Xvfb with Openbox; local headless runs may skip. Check the actual run on the final commit, not a prior green build.

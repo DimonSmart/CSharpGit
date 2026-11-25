@@ -25,7 +25,8 @@ internal sealed record DesktopUiCheckContext(
     IAuthorAvatarService Avatars,
     IGitCommandActivitySource Activity,
     Action RefreshPresentationCollections,
-    Func<ICommand, Task> ExecuteCommandAsync)
+    Func<ICommand, Task> ExecuteCommandAsync,
+    Func<Task> DismissActiveDialogAsync)
 {
     public ElementTheme RequestedTheme => Root.RequestedTheme;
     public XamlRoot? XamlRoot => Root.XamlRoot;

@@ -17,10 +17,11 @@ public sealed class CommitDraftCloseConfirmationOwnershipContractTests
         Assert.Contains("ReferenceEquals(originalRepository, repository.Repository)", dialog);
         Assert.Contains("!cancellationToken.IsCancellationRequested", dialog);
         Assert.Contains("!isShuttingDown()", dialog);
-        Assert.Contains("composition.ShowCommitDraftDialogAsync", factory);
-        Assert.Contains("composition.ConfigureCloseConfirmation(confirmation);", factory);
+        Assert.Contains("composition.CloseConfirmation", factory);
+        Assert.Contains("CloseConfirmation = new Windowing.CommitDraftCloseConfirmationDialog(", page);
+        Assert.Contains("_viewModel, ShowPageDialogAsync, () => IsShuttingDown", page);
+        Assert.DoesNotContain("ConfigureCloseConfirmation", page + factory);
         Assert.Contains("windowContent.Confirmation", app);
-        Assert.Contains("ShowPageDialogAsync(dialog)", page);
         Assert.DoesNotContain("class MainPage : Page, Windowing.ICloseConfirmationDialog", page);
         Assert.DoesNotContain("Title = \"Discard commit message?\"", page);
     }

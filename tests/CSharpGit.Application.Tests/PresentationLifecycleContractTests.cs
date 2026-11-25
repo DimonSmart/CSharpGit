@@ -128,7 +128,7 @@ public sealed class PresentationLifecycleContractTests
         Assert.Contains("Volatile.Read(ref _disposed)", openRepositoryViewModel, StringComparison.Ordinal);
 
         Assert.Contains("private bool IsShuttingDown", lifecycle, StringComparison.Ordinal);
-        Assert.Contains("Volatile.Read(ref _shutdownStarted)", File.ReadAllText(Path.Combine(presentation, "Windowing", "WindowWorkspaceLifetime.cs")), StringComparison.Ordinal);
+        Assert.Contains("Volatile.Read(ref _shutdownStarted)", File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation.Core", "WindowWorkspaceLifetime.cs")), StringComparison.Ordinal);
 
         Assert.Contains("DispatcherQueue.HasThreadAccess", recent, StringComparison.Ordinal);
         Assert.Contains("!_recentRepositoriesShutdown", recent, StringComparison.Ordinal);
@@ -202,16 +202,16 @@ public sealed class PresentationLifecycleContractTests
         var transition = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation.Core", "WindowSessionLifecycle.cs"));
         Assert.Contains("lock (_gate)", transition, StringComparison.Ordinal);
         Assert.Contains("scope.Dispose()", session, StringComparison.Ordinal);
-        Assert.Contains("Interlocked.Exchange(ref _shutdownFinalized, 1)", File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Windowing", "WindowWorkspaceLifetime.cs")), StringComparison.Ordinal);
+        Assert.Contains("Interlocked.Exchange(ref _shutdownFinalized, 1)", File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation.Core", "WindowWorkspaceLifetime.cs")), StringComparison.Ordinal);
         var prepare = lifecycle.IndexOf("_workspaceLifetime.Configure(", StringComparison.Ordinal);
         var stopMonitoring = lifecycle.IndexOf("() => _repositoryRefresh.ShutdownRepositoryChangeMonitoring()", prepare, StringComparison.Ordinal);
         var waitForDiagnostics = lifecycle.IndexOf("() => HistoryView.StopHistoryPerformanceCaptureOnShutdown()", prepare, StringComparison.Ordinal);
         Assert.True(prepare >= 0 && stopMonitoring > prepare && waitForDiagnostics > stopMonitoring);
-        var lifetime = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation", "Windowing", "WindowWorkspaceLifetime.cs"));
+        var lifetime = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "CSharpGit.Presentation.Core", "WindowWorkspaceLifetime.cs"));
         Assert.Contains("PrepareForShutdown() => _workspaceLifetime.PrepareAsync()", lifecycle, StringComparison.Ordinal);
         Assert.Contains("BeginShutdown() => _workspaceLifetime.Complete()", lifecycle, StringComparison.Ordinal);
         var prepareActions = lifetime.IndexOf("RunAll(_prepare);", StringComparison.Ordinal);
-        var diagnosticWait = lifetime.IndexOf("return _waitForDiagnostics();", StringComparison.Ordinal);
+        var diagnosticWait = lifetime.IndexOf("await _waitForDiagnostics();", StringComparison.Ordinal);
         Assert.True(prepareActions >= 0 && diagnosticWait > prepareActions);
         Assert.Contains("HistoryView.StopHistoryPerformanceCaptureOnShutdown()", lifecycle, StringComparison.Ordinal);
         Assert.DoesNotContain(".GetAwaiter()\\n            .GetResult()", perf, StringComparison.Ordinal);

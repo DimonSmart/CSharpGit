@@ -4,13 +4,17 @@ using System.Text.Json;
 
 namespace CSharpGit.Desktop.Tests;
 
+[Collection("Desktop graphical smoke")]
 public sealed class DesktopApplicationTests
 {
     [SkippableFact]
     public async Task LaunchesRealApplicationForRepositoryAndLinkedWorktree()
     {
         var application = FindApplication();
-        Skip.IfNot(HasDesktopSession(), "No supported desktop session is available.");
+        if (Environment.GetEnvironmentVariable("CSHARPGIT_REQUIRE_DESKTOP_CHECK") == "1")
+            Assert.True(HasDesktopSession(), "CI requires a graphical desktop session; smoke tests must not be skipped.");
+        else
+            Skip.IfNot(HasDesktopSession(), "No supported desktop session is available.");
         Assert.True(application is not null, "Build CSharpGit.Presentation first, or set CSHARPGIT_DESKTOP_APP to its executable.");
 
         await using var fixture = await GitFixture.CreateAsync();
@@ -64,6 +68,10 @@ public sealed class DesktopApplicationTests
         var failures = document.RootElement.GetProperty("Failures").EnumerateArray().Select(item => item.GetString()).ToArray();
         Assert.True(document.RootElement.GetProperty("Passed").GetBoolean(), string.Join(Environment.NewLine, failures));
         Assert.Equal(worktree, document.RootElement.GetProperty("IsWorktree").GetBoolean());
+        Assert.True(process.ExitCode == 0, $"Desktop UI check exited with {process.ExitCode}.{Environment.NewLine}{output}{Environment.NewLine}{error}");
+        Assert.Contains("DesktopCloseCheck: PageShutdownCompleted", output, StringComparison.Ordinal);
+        Assert.Contains("DesktopCloseCheck: WindowClosed", output, StringComparison.Ordinal);
+        Assert.Contains("DesktopCloseCheck: HostStopped", output, StringComparison.Ordinal);
     }
 
     private static async Task RunNormalCloseCheckAsync(

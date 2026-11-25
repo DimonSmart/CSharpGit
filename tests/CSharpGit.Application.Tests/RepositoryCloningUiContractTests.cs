@@ -40,7 +40,7 @@ public sealed class RepositoryCloningUiContractTests
             root, "src", "CSharpGit.Presentation", "Composition/WindowWorkspaceComposition.Repository.cs"));
 
         var dependencies = File.ReadAllText(Path.Combine(
-            root, "src", "CSharpGit.Presentation", "Composition", "MainPageDependencies.cs"));
+            root, "src", "CSharpGit.Presentation", "Composition", "WindowWorkspaceDependencies.cs"));
         Assert.Contains("CreateRepositoryViewModel CreateRepository", dependencies);
         Assert.Contains("CloneRepositoryViewModel CloneRepository", dependencies);
         Assert.Contains("var createRepositoryViewModel = repositoryDependencies.CreateRepository;", composition);

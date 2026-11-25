@@ -11,8 +11,11 @@ public sealed class RepositoryTreeIncrementalContractTests
         var worktrees = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "WorktreeController.cs"));
         var tags = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Workflows", "TagWorkflowController.cs"));
 
-        Assert.DoesNotContain("_repositoryTreeRoots.Clear();", ExtractMethod(page, "private void RebuildRepositoryTree()"), StringComparison.Ordinal);
-        Assert.DoesNotContain("RebuildRepositoryTree();\n            UpdateStatusBar();", page, StringComparison.Ordinal);
+        var explorer = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "RepositoryExplorerView.xaml.cs"));
+        var reconcile = ExtractMethod(explorer, "internal void ReconcileRepository()");
+        Assert.DoesNotContain("_roots.Clear();", reconcile, StringComparison.Ordinal);
+        Assert.Contains("_synchronizer.ReconcileRepository(", reconcile, StringComparison.Ordinal);
+        Assert.DoesNotContain("RebuildRepositoryTree()", page, StringComparison.Ordinal);
         Assert.Contains("_repositoryTreePresentationDirty", refresh, StringComparison.Ordinal);
         Assert.Equal(1, CountOccurrences(ExtractMethod(refresh, "private void FlushRepositoryPresentationRefresh()"), "_refreshRepositoryTree();"));
         Assert.DoesNotContain("ApplyTagOrderingToRepositoryTree();", ExtractMethod(refresh, "private void FlushRepositoryPresentationRefresh()"), StringComparison.Ordinal);

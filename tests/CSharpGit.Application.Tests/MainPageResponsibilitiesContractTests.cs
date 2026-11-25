@@ -8,8 +8,8 @@ public sealed class MainPageResponsibilitiesContractTests
         var root = FindRepositoryRoot();
         var presentation = Path.Combine(root, "src", "CSharpGit.Presentation");
         var page = File.ReadAllText(Path.Combine(presentation, "Composition/WindowWorkspaceComposition.cs"));
-        var runner = File.ReadAllText(Path.Combine(presentation, "Diagnostics", "MainPageDesktopUiCheckRunner.cs"));
-        var graph = File.ReadAllText(Path.Combine(presentation, "Diagnostics", "MainPageDesktopUiCheckRunner.Graph.cs"));
+        var runner = File.ReadAllText(Path.Combine(presentation, "Diagnostics", "DesktopUiCheckRunner.cs"));
+        var graph = File.ReadAllText(Path.Combine(presentation, "Diagnostics", "DesktopUiCheckRunner.Graph.cs"));
 
         Assert.Contains("new DesktopUiCheckRunner(new DesktopUiCheckContext(", page);
         Assert.DoesNotContain("Environment.Exit", page);
@@ -17,6 +17,8 @@ public sealed class MainPageResponsibilitiesContractTests
         Assert.Contains("internal sealed partial class DesktopUiCheckRunner(DesktopUiCheckContext context)", runner);
         Assert.DoesNotContain("partial class MainPage", runner + graph);
         Assert.Contains("PropertyChanged -= ObserveBusy", runner);
+        Assert.DoesNotContain("Environment.Exit(", runner);
+        Assert.Contains("RequestDesktopUiCheckClose()", runner);
         Assert.Contains("RunCommitGraphViewportLifecycleCheckAsync", graph);
         Assert.Contains("RunDesktopDensityCheckAsync", graph);
         Assert.False(File.Exists(Path.Combine(presentation, "MainPage.GraphViewportCheck.cs")));

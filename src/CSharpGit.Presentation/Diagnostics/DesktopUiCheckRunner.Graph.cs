@@ -12,6 +12,7 @@ internal sealed partial class DesktopUiCheckRunner
 {
         private async Task RunCommitGraphViewportLifecycleCheckAsync(List<string> failures)
         {
+            Console.WriteLine("DesktopGraphCheck: Opening all history");
             await _context.Navigation.ShowAllHistoryAsync();
             await WaitUntilAsync(
                 () => _context.HistoryView.List.ActualHeight > 0 && _context.HistoryView.List.ActualWidth > 0,
@@ -21,19 +22,34 @@ internal sealed partial class DesktopUiCheckRunner
             var originalItemTemplate = _context.HistoryView.List.ItemTemplate;
             try
             {
+                Console.WriteLine("DesktopGraphCheck: Initial graph");
                 await CheckInitialHistoryGraphAsync(failures);
                 _context.HistoryView.List.ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["HistoryTextGraphItemTemplate"];
-                while (_context.Repository.History.Rows.Count < 300 && _context.Repository.History.HasMore)
+                var history = _context.Repository.History;
+                Console.WriteLine("DesktopGraphCheck: Loading history pages");
+                while (history.Rows.Count < 300 && history.HasMore)
                 {
-                    if (_context.Repository.History.LoadMoreCommand is not AsyncCommand preload)
-                        break;
+                    if (history.LoadMoreCommand is not AsyncCommand preload)
+                        throw new InvalidOperationException("History load-more command is unavailable.");
+                    var before = history.Rows.Count;
+                    // A concurrent reactive read can temporarily disable the command.
+                    // ExecuteAsync then completes synchronously without loading a page.
+                    // Wait asynchronously, rather than spinning on the UI dispatcher.
+                    await WaitUntilAsync(() => history.Rows.Count > before || !history.HasMore
+                        || preload.CanExecute(null), TimeSpan.FromSeconds(30));
+                    if (history.Rows.Count > before || !history.HasMore) continue;
                     await preload.ExecuteAsync();
+                    await WaitUntilAsync(() => history.Rows.Count > before || !history.HasMore,
+                        TimeSpan.FromSeconds(30));
+                    Console.WriteLine($"DesktopGraphCheck: Loaded {history.Rows.Count} rows");
                 }
 
                 Check(_context.Repository.History.Rows.Count >= 300,
                     $"graph viewport fixture loaded only {_context.Repository.History.Rows.Count} rows; expected at least 300",
                     failures);
+                Console.WriteLine("DesktopGraphCheck: Performance capture");
                 await RunHistoryPerformanceCaptureCheckAsync(failures);
+                Console.WriteLine("DesktopGraphCheck: Viewport recycling");
                 HistoryRenderDiagnostics.EnableForCheck();
                 HistoryRenderDiagnostics.Reset();
                 using var benchmarkProcess = System.Diagnostics.Process.GetCurrentProcess();
@@ -42,6 +58,7 @@ internal sealed partial class DesktopUiCheckRunner
 
                 for (var cycle = 0; cycle < 6; cycle++)
                 {
+                    Console.WriteLine($"DesktopGraphCheck: Viewport cycle {cycle + 1}/6");
                     _context.HistoryPane.RowDefinitions[3].Height = new GridLength(cycle % 2 == 0 ? 520 : 140);
                     await Task.Delay(120);
 
@@ -59,7 +76,10 @@ internal sealed partial class DesktopUiCheckRunner
                         if (index < 0 || index >= _context.Repository.History.Rows.Count) continue;
                         var row = _context.Repository.History.Rows[index];
                         _context.HistoryView.List.ScrollIntoView(row);
-                        await Task.Delay(80);
+                        await WaitUntilAsync(() =>
+                            _context.HistoryView.List.ContainerFromItem(row) is ListViewItem realized
+                            && FindDescendant<CommitGraphControl>(realized)?.HasCurrentRenderForCheck() == true,
+                            TimeSpan.FromSeconds(5));
 
                         if (_context.HistoryView.List.ContainerFromItem(row) is not ListViewItem container)
                         {
@@ -93,7 +113,14 @@ internal sealed partial class DesktopUiCheckRunner
                     var beforeGraphWidth = _context.HistoryView.Layout.GraphWidth;
                     var beforeLaneWidth = _context.HistoryView.Layout.LaneWidth;
                     if (_context.Repository.History.LoadMoreCommand is AsyncCommand loadMore)
-                        await loadMore.ExecuteAsync();
+                    {
+                        await WaitUntilAsync(() => history.Rows.Count > beforeLoadMore || !history.HasMore
+                            || loadMore.CanExecute(null), TimeSpan.FromSeconds(30));
+                        if (history.Rows.Count == beforeLoadMore && history.HasMore)
+                            await loadMore.ExecuteAsync();
+                        await WaitUntilAsync(() => history.Rows.Count > beforeLoadMore || !history.HasMore,
+                            TimeSpan.FromSeconds(30));
+                    }
                     Check(_context.Repository.History.Rows.Count > beforeLoadMore, "Load more did not append history during graph viewport check", failures);
                     Check(_context.HistoryView.Layout.GraphWidth + 0.001 >= beforeGraphWidth,
                         "Load more decreased the session graph width", failures);
@@ -104,7 +131,10 @@ internal sealed partial class DesktopUiCheckRunner
                 if (_context.Repository.History.Rows.FirstOrDefault() is { } first)
                 {
                     _context.HistoryView.List.ScrollIntoView(first);
-                    await Task.Delay(80);
+                    await WaitUntilAsync(() =>
+                        _context.HistoryView.List.ContainerFromItem(first) is ListViewItem realized
+                        && FindDescendant<CommitGraphControl>(realized)?.HasCurrentRenderForCheck() == true,
+                        TimeSpan.FromSeconds(5));
                     Check(_context.HistoryView.List.ContainerFromItem(first) is ListViewItem firstContainer
                           && FindDescendant<CommitGraphControl>(firstContainer)?.HasCurrentRenderForCheck() == true,
                         "commit graph was stale after returning to the top of history", failures);

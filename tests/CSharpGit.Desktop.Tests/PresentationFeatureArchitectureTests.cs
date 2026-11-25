@@ -103,7 +103,9 @@ public sealed class PresentationFeatureArchitectureTests
         var surface = Read("src/CSharpGit.Presentation/Controls/RepositoryFilesSurface.cs");
         var interactions = Read("src/CSharpGit.Presentation/Controls/RepositoryFilesSurface.Interactions.cs");
 
-        Assert.Contains("new RepositoryFilesSurface(_repositoryFilesViewModel)", page);
+        var history = Read("src/CSharpGit.Presentation/Views/HistoryWorkspaceView.xaml.cs");
+        Assert.Contains("HistoryPane.CreateRepositoryFilesSurface(_repositoryFilesViewModel)", page);
+        Assert.Contains("new RepositoryFilesSurface(viewModel)", history);
         Assert.Contains("SearchBox.TextChanged += RepositoryFilesSearch_TextChanged", interactions);
         Assert.Contains("FileTree.SelectionChanged += RepositoryFilesTree_SelectionChanged", interactions);
         Assert.Contains("() => _repositoryFilesSurface?.PreviewHost", page);

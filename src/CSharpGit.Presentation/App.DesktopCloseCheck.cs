@@ -631,9 +631,40 @@ public sealed partial class App
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool PostMessageW(nint window, uint message, nuint wParam, nint lParam);
 
+    internal void RequestDesktopUiCheckClose()
+    {
+        if (_window is null || _windowSession is null || _windowClose is null
+            || _windowSession.IsUnsafeToClose || _windowSession.RequiresCloseConfirmation)
+            throw new InvalidOperationException("The desktop UI check is not ready for normal closure.");
+
+        ReportDesktopCloseCheck("CloseRequested");
+        if (!_window.DispatcherQueue.TryEnqueue(() =>
+            {
+                ReportDesktopCloseCheck("CloseDispatched");
+                try
+                {
+                    // This is an application-initiated close, not a simulated
+                    // title-bar click. In particular, AppKit performClose can
+                    // depend on native window state after repeated resizes.
+                    // The separate normal-close test still exercises that path.
+                    if (TryBeginNormalShutdown())
+                        _window.Close();
+                    else if (_windowClose.Stage == WindowCloseStage.Idle)
+                        throw new InvalidOperationException("Desktop UI check shutdown was rejected.");
+                }
+                catch (Exception exception)
+                {
+                    Console.Error.WriteLine($"DesktopUiCheck: Close failed: {exception}");
+                    LogUiFailure(exception, "Desktop UI check close");
+                }
+            }))
+            throw new InvalidOperationException("The UI dispatcher rejected the desktop UI check close request.");
+    }
+
     private static void ReportDesktopCloseCheck(string phase)
     {
-        if (Environment.GetEnvironmentVariable("CSHARPGIT_CLOSE_CHECK") == "1")
+        if (Environment.GetEnvironmentVariable("CSHARPGIT_CLOSE_CHECK") == "1"
+            || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CSHARPGIT_UI_CHECK_RESULT")))
             Console.WriteLine($"DesktopCloseCheck: {phase}");
     }
 }

@@ -5,8 +5,8 @@ using Microsoft.UI.Xaml.Controls;
 namespace CSharpGit.Presentation.Controls;
 
 /// <summary>
-/// Owns the dynamically composed repository-files tab. MainPage handles user
-/// actions, while this control owns its visual tree and preview split layout.
+/// Owns the repository-files content, its interactions and preview split layout.
+/// HistoryWorkspaceView owns the containing tab.
 /// </summary>
 internal sealed partial class RepositoryFilesSurface : Grid
 {

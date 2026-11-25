@@ -89,7 +89,7 @@ public sealed partial class HistoryWorkspaceView
 
     private void ChangesSurface_Loaded(object sender, RoutedEventArgs args)
     {
-        if (_changesSurfaceInitialized) return;
+        if (!_changesConfigured || _changesSurfaceInitialized) return;
         _changesSurfaceInitialized = true;
 
         _changesTree = new Workflows.CommitChangedFileTreeController(
@@ -105,6 +105,7 @@ public sealed partial class HistoryWorkspaceView
 
     private void DetailsTabs_SelectionChanged(object sender, SelectionChangedEventArgs args)
     {
+        if (!_changesConfigured) return;
         UpdateChangesViewActivity();
         _updateRepositoryFilesViewActivity();
     }
