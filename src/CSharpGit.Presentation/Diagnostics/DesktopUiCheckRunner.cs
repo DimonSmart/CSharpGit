@@ -95,6 +95,7 @@ internal sealed partial class DesktopUiCheckRunner(DesktopUiCheckContext context
                 await WaitUntilAsync(
                     () => _context.CommitDetailsContent is { ActualWidth: > 0 } && _context.DetailsScroller.ViewportWidth > 0,
                     TimeSpan.FromSeconds(5));
+                await CheckCommitTimeDisplayAsync(failures);
                 var commitMessageText = _context.CommitDetailsContent is null ? null : FindDescendant<TextBlock>(_context.CommitDetailsContent);
                 var historyOrigin = _context.HistoryPane.TransformToVisual(null).TransformPoint(default);
                 var availableDetailsWidth = ((Microsoft.UI.Xaml.Application.Current as App)?.MainWindowClientWidth ?? 0) /
@@ -243,6 +244,50 @@ internal sealed partial class DesktopUiCheckRunner(DesktopUiCheckContext context
                 tabs.SelectedItem = previous;
             }
             Check(!surface.IsRepositoryFilesActive, "Repository Files remained active after switching tabs", failures);
+        }
+
+        private async Task CheckCommitTimeDisplayAsync(List<string> failures)
+        {
+            var settings = _context.Settings;
+            var originalMode = settings.CommitTimeDisplayMode;
+            var history = _context.Repository.History;
+            var selected = history.SelectedRow
+                ?? throw new InvalidOperationException("No selected history row for commit-time check.");
+            var list = _context.HistoryView.List;
+            list.ScrollIntoView(selected);
+            await WaitUntilAsync(() =>
+                list.ContainerFromItem(selected) is ListViewItem realized
+                && FindDescendant<CommitTimeText>(realized) is { IsLoaded: true }
+                && FindDescendant<CommitTimeText>(_context.CommitDetailsContent) is { IsLoaded: true },
+                TimeSpan.FromSeconds(5));
+
+            var container = (ListViewItem)list.ContainerFromItem(selected);
+            var cell = FindDescendant<CommitTimeText>(container)!;
+            var details = FindDescendant<CommitTimeText>(_context.CommitDetailsContent)!;
+            try
+            {
+                foreach (var mode in new[] { CommitTimeDisplayMode.Smart, CommitTimeDisplayMode.Relative, CommitTimeDisplayMode.Absolute })
+                {
+                    await settings.SetCommitTimeDisplayModeAsync(mode);
+                    await WaitUntilAsync(() =>
+                        cell.Mode == mode && details.Mode == mode
+                        && cell.Value == selected.Commit.AuthoredAt
+                        && details.Value == selected.Commit.AuthoredAt
+                        && cell.Text == details.Text && !string.IsNullOrEmpty(cell.Text),
+                        TimeSpan.FromSeconds(5));
+                    Check(cell.Text == CommitTimeFormatter.Format(cell.Value, mode, DateTimeOffset.Now)
+                        || cell.Text == CommitTimeFormatter.Format(cell.Value, mode, DateTimeOffset.Now.AddMinutes(-1)),
+                        $"commit time text did not reflect {mode}", failures);
+                    Check(ReferenceEquals(container, list.ContainerFromItem(selected))
+                        && ReferenceEquals(cell, FindDescendant<CommitTimeText>(container))
+                        && ReferenceEquals(selected, history.SelectedRow),
+                        "commit time setting replaced the realized row or changed selection", failures);
+                }
+            }
+            finally
+            {
+                await settings.SetCommitTimeDisplayModeAsync(originalMode);
+            }
         }
 
         private async Task CheckInitialGraphForWorkspaceAsync(List<string> failures)

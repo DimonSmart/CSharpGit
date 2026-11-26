@@ -1,3 +1,4 @@
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Presentation.Controls;
 using CSharpGit.Presentation.Diagnostics;
 using CSharpGit.Presentation.ViewModels;
@@ -20,8 +21,10 @@ internal sealed partial class DesktopUiCheckRunner
 
             var originalDetailsHeight = _context.HistoryPane.RowDefinitions[3].Height;
             var originalItemTemplate = _context.HistoryView.List.ItemTemplate;
+            var originalCommitTimeMode = _context.Settings.CommitTimeDisplayMode;
             try
             {
+                await _context.Settings.SetCommitTimeDisplayModeAsync(CommitTimeDisplayMode.Absolute);
                 Console.WriteLine("DesktopGraphCheck: Initial graph");
                 await CheckInitialHistoryGraphAsync(failures);
                 _context.HistoryView.List.ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["HistoryTextGraphItemTemplate"];
@@ -86,6 +89,12 @@ internal sealed partial class DesktopUiCheckRunner
                             failures.Add($"history row {index} was not realized after scrolling");
                             continue;
                         }
+
+                        var time = FindDescendant<CommitTimeText>(container);
+                        Check(time is { Mode: CommitTimeDisplayMode.Absolute }
+                            && time.Value == row.Commit.AuthoredAt
+                            && time.Text == CommitTimeFormatter.Format(row.Commit.AuthoredAt, CommitTimeDisplayMode.Absolute, DateTimeOffset.Now),
+                            $"history row {index} did not receive current commit time mode and timestamp after recycling", failures);
 
                         var graph = FindDescendant<CommitGraphControl>(container);
                         Check(graph is not null, $"history row {index} has no commit graph control", failures);
@@ -168,6 +177,7 @@ internal sealed partial class DesktopUiCheckRunner
             }
             finally
             {
+                await _context.Settings.SetCommitTimeDisplayModeAsync(originalCommitTimeMode);
                 _context.HistoryPane.RowDefinitions[3].Height = originalDetailsHeight;
                 _context.HistoryView.List.ItemTemplate = originalItemTemplate;
             }
