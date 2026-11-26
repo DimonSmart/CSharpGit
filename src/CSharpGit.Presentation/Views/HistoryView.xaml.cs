@@ -19,7 +19,7 @@ namespace CSharpGit.Presentation.Views;
 /// Owns history filtering, display mode and virtual-scroll subscription for one window.
 /// Commit Details remains a separate phase-3 UI; performance dialogs are transitional callbacks.
 /// </summary>
-public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvider, IAuthorAvatarDependencyProvider
+public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvider, IAuthorAvatarDependencyProvider, ICommitTimeModeProvider
 {
     private const double LoadMoreThreshold = 68;
     private IAppSettingsService? _avatarSettings;
@@ -39,6 +39,8 @@ public sealed partial class HistoryView : UserControl, ICommitGraphLayoutProvide
         _avatarService ?? throw new InvalidOperationException("History avatar dependencies not configured.");
     IAppSettingsService IAuthorAvatarDependencyProvider.AppSettings =>
         _avatarSettings ?? throw new InvalidOperationException("History avatar settings not configured.");
+
+    HistoryViewModel? ICommitTimeModeProvider.CommitTimeModeSource => _history;
 
     internal ListView List => HistoryList;
     internal Border ColumnHeader => HistoryColumnHeader;

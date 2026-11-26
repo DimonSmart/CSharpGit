@@ -1,8 +1,16 @@
 using CSharpGit.Application.Abstractions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Media;
+using CSharpGit.Presentation.ViewModels;
 
 namespace CSharpGit.Presentation.Controls;
+
+internal interface ICommitTimeModeProvider
+{
+    HistoryViewModel? CommitTimeModeSource { get; }
+}
 
 public sealed class CommitTimeText : UserControl
 {
@@ -31,16 +39,51 @@ public sealed class CommitTimeText : UserControl
     };
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMinutes(1) };
 
+    private bool _historyModeBound;
+
     public CommitTimeText()
     {
         Content = _textBlock;
         _timer.Tick += (_, _) => UpdateDisplay();
         Loaded += (_, _) =>
         {
+            BindHistoryMode();
             _timer.Start();
             UpdateDisplay();
         };
-        Unloaded += (_, _) => _timer.Stop();
+        Unloaded += (_, _) =>
+        {
+            _timer.Stop();
+            if (_historyModeBound)
+            {
+                ClearValue(ModeProperty);
+                _historyModeBound = false;
+            }
+        };
+    }
+
+    private void BindHistoryMode()
+    {
+        if (_historyModeBound) return;
+
+        for (var ancestor = VisualTreeHelper.GetParent(this);
+             ancestor is not null;
+             ancestor = VisualTreeHelper.GetParent(ancestor))
+        {
+            if (ancestor is not ICommitTimeModeProvider provider) continue;
+            if (provider.CommitTimeModeSource is { } source)
+            {
+                SetBinding(ModeProperty, new Binding
+                {
+                    Source = source,
+                    Path = new PropertyPath(nameof(HistoryViewModel.CommitTimeDisplayMode)),
+                    Mode = BindingMode.OneWay
+                });
+                _historyModeBound = true;
+            }
+
+            break;
+        }
     }
 
     public DateTimeOffset Value

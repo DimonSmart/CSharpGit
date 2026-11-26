@@ -124,7 +124,12 @@
       </Grid.ColumnDefinitions>
       <TextBlock Grid.Column="1" Text="{x:Bind Commit.Subject, Mode=OneWay}" Style="{StaticResource BodyStrongTextStyle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
       <TextBlock Grid.Column="2" Text="{x:Bind Commit.Author, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-      <TextBlock Grid.Column="3" Text="{Binding Commit.AuthoredAt}" Style="{StaticResource SecondaryTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+      <controls:CommitTimeText Grid.Column="3"
+                               Value="{x:Bind Commit.AuthoredAt, Mode=OneWay}"
+                               FontSize="{StaticResource Font.Caption}"
+                               Opacity="0.68"
+                               Margin="{StaticResource Margin.HistoryColumnGap}"
+                               VerticalAlignment="Center" />
       <TextBlock Grid.Column="4" Text="{x:Bind Commit.ShortHash, Mode=OneWay}" Style="{StaticResource TechnicalSecondaryTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" VerticalAlignment="Center" />
     </Grid>
   </DataTemplate>
@@ -142,7 +147,12 @@
       <controls:CommitGraphControl Graph="{x:Bind Topology, Mode=OneWay, Converter={StaticResource CommitTopologyToGraphVisualConverter}}" IsReflogOnly="{x:Bind IsReflogOnly, Mode=OneWay}" VerticalAlignment="Stretch" />
       <TextBlock Grid.Column="1" Text="{x:Bind Commit.Subject, Mode=OneWay}" Style="{StaticResource BodyStrongTextStyle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
       <TextBlock Grid.Column="2" Text="{x:Bind Commit.Author, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-      <TextBlock Grid.Column="3" Text="{Binding Commit.AuthoredAt}" Style="{StaticResource SecondaryTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+      <controls:CommitTimeText Grid.Column="3"
+                               Value="{x:Bind Commit.AuthoredAt, Mode=OneWay}"
+                               FontSize="{StaticResource Font.Caption}"
+                               Opacity="0.68"
+                               Margin="{StaticResource Margin.HistoryColumnGap}"
+                               VerticalAlignment="Center" />
       <TextBlock Grid.Column="4" Text="{x:Bind Commit.ShortHash, Mode=OneWay}" Style="{StaticResource TechnicalSecondaryTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" VerticalAlignment="Center" />
     </Grid>
   </DataTemplate>
@@ -180,7 +190,12 @@
                                              VerticalAlignment="Center" />
       </controls:HistorySubjectReferencesPanel>
       <TextBlock Grid.Column="2" Text="{x:Bind Commit.Author, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-      <TextBlock Grid.Column="3" Text="{Binding Commit.AuthoredAt}" Style="{StaticResource SecondaryTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+      <controls:CommitTimeText Grid.Column="3"
+                               Value="{x:Bind Commit.AuthoredAt, Mode=OneWay}"
+                               FontSize="{StaticResource Font.Caption}"
+                               Opacity="0.68"
+                               Margin="{StaticResource Margin.HistoryColumnGap}"
+                               VerticalAlignment="Center" />
       <TextBlock Grid.Column="4" Text="{x:Bind Commit.ShortHash, Mode=OneWay}" Style="{StaticResource TechnicalSecondaryTextStyle}" Margin="{StaticResource Margin.HistoryColumnGap}" VerticalAlignment="Center" />
     </Grid>
   </DataTemplate>
