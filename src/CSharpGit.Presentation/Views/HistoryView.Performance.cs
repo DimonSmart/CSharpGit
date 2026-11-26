@@ -342,7 +342,8 @@ public sealed partial class HistoryView
             HistoryRenderingMode.Full => "HistoryItemTemplate",
             _ => "HistoryItemTemplate"
         };
-        if (Microsoft.UI.Xaml.Application.Current.Resources[resourceKey] is DataTemplate template)
+        if (Microsoft.UI.Xaml.Application.Current.Resources[resourceKey] is DataTemplate template
+            && !ReferenceEquals(HistoryList.ItemTemplate, template))
             HistoryList.ItemTemplate = template;
     }
 

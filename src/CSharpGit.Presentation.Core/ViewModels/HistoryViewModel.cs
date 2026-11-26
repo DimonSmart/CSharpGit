@@ -54,6 +54,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
     private bool _hasMore;
     private bool _isLoading;
     private bool _showReflog;
+    private CommitTimeDisplayMode _commitTimeDisplayMode;
     private Repository? _pendingReactiveRepository;
     private int _disposed;
 
@@ -67,6 +68,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
         _selectedScope = Scopes[0];
         _showReflog = _settings.ShowReflog;
+        _commitTimeDisplayMode = _settings.CommitTimeDisplayMode;
         _settings.Changed += AppSettings_Changed;
 
         RefreshCommand = new AsyncCommand(
@@ -83,6 +85,7 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
 
     public ObservableCollection<HistoryRow> Rows => _rows;
     public long SelectionIntentVersion => _selectionIntentVersion;
+    public CommitTimeDisplayMode CommitTimeDisplayMode => _commitTimeDisplayMode;
 
     public IReadOnlyList<UiChoice<HistoryScope>> Scopes { get; } =
     [
@@ -751,6 +754,13 @@ public sealed class HistoryViewModel : INotifyPropertyChanged, IDisposable
 
     private void ApplySettingsChangeOnUiThread()
     {
+        var mode = _settings.CommitTimeDisplayMode;
+        if (_commitTimeDisplayMode != mode)
+        {
+            _commitTimeDisplayMode = mode;
+            Notify(nameof(CommitTimeDisplayMode));
+        }
+
         var value = _settings.ShowReflog;
         if (IsReferenceScoped && value)
         {

@@ -33,7 +33,29 @@ public sealed class HistoryBindingUiContractTests
         Assert.DoesNotContain("Binding IsReflogOnly", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("ItemsSource=\"{Binding Commit.References}\"", xaml, StringComparison.Ordinal);
 
-        Assert.Contains("Text=\"{Binding Commit.AuthoredAt}\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Text=\"{Binding Commit.AuthoredAt}\"", xaml, StringComparison.Ordinal);
+        Assert.Equal(4, CountOccurrences(xaml, "<controls:CommitTimeText "));
+        Assert.Equal(4, CountOccurrences(xaml, "Value=\"{x:Bind Commit.AuthoredAt, Mode=OneWay}\""));
+    }
+
+    [Fact]
+    public void CommitTimeControlsBindToTheirWindowHistoryModeAndReleaseItOnUnload()
+    {
+        var root = FindRepositoryRoot();
+        var control = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitTimeText.cs"));
+        var history = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Views", "HistoryView.xaml.cs"));
+        var details = File.ReadAllText(Path.Combine(root, "src", "CSharpGit.Presentation", "Controls", "CommitDetailsView.xaml"));
+
+        Assert.Contains("ICommitTimeModeProvider.CommitTimeModeSource => _history", history, StringComparison.Ordinal);
+        Assert.Contains("BindHistoryMode();", control, StringComparison.Ordinal);
+        Assert.Contains("VisualTreeHelper.GetParent(ancestor)", control, StringComparison.Ordinal);
+        Assert.Contains("source.PropertyChanged += HistoryModeChanged", control, StringComparison.Ordinal);
+        Assert.Contains("nameof(HistoryViewModel.CommitTimeDisplayMode)", control, StringComparison.Ordinal);
+        Assert.Contains("Mode = source.CommitTimeDisplayMode", control, StringComparison.Ordinal);
+        Assert.Contains("_historyModeSource.PropertyChanged -= HistoryModeChanged", control, StringComparison.Ordinal);
+        Assert.Contains("DetachHistoryMode();", control, StringComparison.Ordinal);
+        Assert.Contains("DataContextChanged +=", control, StringComparison.Ordinal);
+        Assert.Contains("Mode=\"{Binding CommitTimeDisplayMode}\"", details, StringComparison.Ordinal);
     }
 
     private static int CountOccurrences(string text, string value)

@@ -259,6 +259,39 @@ public sealed class HistoryViewModelTests
     }
 
     [Fact]
+    public async Task CommitTimeModeChangesNotifyWithoutReloadingOrReplacingHistoryRows()
+    {
+        using var fixture = new Fixture();
+        var row = Row("commit");
+        fixture.Service.Enqueue(new HistoryPage([row], HasMore: false));
+        await fixture.ViewModel.RefreshAsync();
+        fixture.ViewModel.SelectedRow = row;
+        var reads = fixture.Service.Reads.Count;
+        var selectionVersion = fixture.ViewModel.SelectionIntentVersion;
+        var notifications = new List<CommitTimeDisplayMode>();
+        var collectionChanges = 0;
+        fixture.ViewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(HistoryViewModel.CommitTimeDisplayMode))
+                notifications.Add(fixture.ViewModel.CommitTimeDisplayMode);
+        };
+        fixture.ViewModel.Rows.CollectionChanged += (_, _) => collectionChanges++;
+
+        Assert.Equal(CommitTimeDisplayMode.Smart, fixture.ViewModel.CommitTimeDisplayMode);
+        await fixture.Settings.SetCommitTimeDisplayModeAsync(CommitTimeDisplayMode.Relative);
+        await fixture.Settings.SetCommitTimeDisplayModeAsync(CommitTimeDisplayMode.Absolute);
+        await fixture.Settings.SetCommitTimeDisplayModeAsync(CommitTimeDisplayMode.Absolute);
+        await fixture.Settings.SetCommitTimeDisplayModeAsync(CommitTimeDisplayMode.Smart);
+
+        Assert.Equal(new[] { CommitTimeDisplayMode.Relative, CommitTimeDisplayMode.Absolute, CommitTimeDisplayMode.Smart }, notifications);
+        Assert.Equal(reads, fixture.Service.Reads.Count);
+        Assert.Equal(0, collectionChanges);
+        Assert.Same(row, Assert.Single(fixture.ViewModel.Rows));
+        Assert.Same(row, fixture.ViewModel.SelectedRow);
+        Assert.Equal(selectionVersion, fixture.ViewModel.SelectionIntentVersion);
+    }
+
+    [Fact]
     public async Task ReflogFlowsIntoNormalQueryAndReferenceScopeDisablesIt()
     {
         using var fixture = new Fixture(showReflog: true);
@@ -542,7 +575,7 @@ public sealed class HistoryViewModelTests
     private sealed class FakeSettings : IAppearanceSettings
     {
         public ApplicationThemeMode ThemeMode => ApplicationThemeMode.System;
-        public CommitTimeDisplayMode CommitTimeDisplayMode => CommitTimeDisplayMode.Smart;
+        public CommitTimeDisplayMode CommitTimeDisplayMode { get; private set; } = CommitTimeDisplayMode.Smart;
         public HistoryRenderingMode HistoryRenderingMode => HistoryRenderingMode.Full;
         public bool ShowReflog { get; set; }
         public bool ShowAuthorAvatars => false;
@@ -560,7 +593,12 @@ public sealed class HistoryViewModelTests
         }
 
         public Task SetThemeModeAsync(ApplicationThemeMode mode, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SetCommitTimeDisplayModeAsync(CommitTimeDisplayMode mode, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task SetCommitTimeDisplayModeAsync(CommitTimeDisplayMode mode, CancellationToken cancellationToken = default)
+        {
+            CommitTimeDisplayMode = mode;
+            Changed?.Invoke(this, EventArgs.Empty);
+            return Task.CompletedTask;
+        }
         public Task SetHistoryRenderingModeAsync(HistoryRenderingMode mode, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SetShowAuthorAvatarsAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SetOnlineAvatarLookupEnabledAsync(bool value, CancellationToken cancellationToken = default) => Task.CompletedTask;

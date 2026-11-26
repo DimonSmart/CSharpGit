@@ -1,3 +1,4 @@
+using CSharpGit.Application.Abstractions;
 using CSharpGit.Presentation.Controls;
 using CSharpGit.Presentation.Diagnostics;
 using CSharpGit.Presentation.ViewModels;
@@ -20,8 +21,10 @@ internal sealed partial class DesktopUiCheckRunner
 
             var originalDetailsHeight = _context.HistoryPane.RowDefinitions[3].Height;
             var originalItemTemplate = _context.HistoryView.List.ItemTemplate;
+            var originalCommitTimeMode = _context.Settings.CommitTimeDisplayMode;
             try
             {
+                await _context.Settings.SetCommitTimeDisplayModeAsync(CommitTimeDisplayMode.Absolute);
                 Console.WriteLine("DesktopGraphCheck: Initial graph");
                 await CheckInitialHistoryGraphAsync(failures);
                 _context.HistoryView.List.ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["HistoryTextGraphItemTemplate"];
@@ -85,6 +88,27 @@ internal sealed partial class DesktopUiCheckRunner
                         {
                             failures.Add($"history row {index} was not realized after scrolling");
                             continue;
+                        }
+
+                        bool HasCurrentTime()
+                        {
+                            var time = FindDescendant<CommitTimeText>(container);
+                            return time is { IsLoaded: true, Mode: CommitTimeDisplayMode.Absolute }
+                                && time.Value == row.Commit.AuthoredAt
+                                && time.Text == CommitTimeFormatter.Format(row.Commit.AuthoredAt, CommitTimeDisplayMode.Absolute, DateTimeOffset.Now);
+                        }
+
+                        try
+                        {
+                            await WaitUntilAsync(HasCurrentTime, TimeSpan.FromSeconds(5));
+                        }
+                        catch (TimeoutException)
+                        {
+                            var time = FindDescendant<CommitTimeText>(container);
+                            failures.Add($"history row {index} did not receive current commit time after recycling: "
+                                + $"loaded={time?.IsLoaded}, mode={time?.Mode}, settings={_context.Settings.CommitTimeDisplayMode}, "
+                                + $"historyMode={history.CommitTimeDisplayMode}, timestamp={time?.Value:O}, expected={row.Commit.AuthoredAt:O}, text={time?.Text}");
+                            return;
                         }
 
                         var graph = FindDescendant<CommitGraphControl>(container);
@@ -168,6 +192,7 @@ internal sealed partial class DesktopUiCheckRunner
             }
             finally
             {
+                await _context.Settings.SetCommitTimeDisplayModeAsync(originalCommitTimeMode);
                 _context.HistoryPane.RowDefinitions[3].Height = originalDetailsHeight;
                 _context.HistoryView.List.ItemTemplate = originalItemTemplate;
             }
