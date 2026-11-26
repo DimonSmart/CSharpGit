@@ -48,12 +48,13 @@ public sealed class HistoryBindingUiContractTests
 
         Assert.Contains("ICommitTimeModeProvider.CommitTimeModeSource => _history", history, StringComparison.Ordinal);
         Assert.Contains("BindHistoryMode();", control, StringComparison.Ordinal);
-        Assert.Contains("VisualTreeHelper.GetParent(this)", control, StringComparison.Ordinal);
-        Assert.Contains("SetBinding(ModeProperty, new Binding", control, StringComparison.Ordinal);
-        Assert.Contains("Source = source", control, StringComparison.Ordinal);
+        Assert.Contains("VisualTreeHelper.GetParent(ancestor)", control, StringComparison.Ordinal);
+        Assert.Contains("source.PropertyChanged += HistoryModeChanged", control, StringComparison.Ordinal);
         Assert.Contains("nameof(HistoryViewModel.CommitTimeDisplayMode)", control, StringComparison.Ordinal);
-        Assert.Contains("Mode = BindingMode.OneWay", control, StringComparison.Ordinal);
-        Assert.Contains("ClearValue(ModeProperty);", control, StringComparison.Ordinal);
+        Assert.Contains("Mode = source.CommitTimeDisplayMode", control, StringComparison.Ordinal);
+        Assert.Contains("_historyModeSource.PropertyChanged -= HistoryModeChanged", control, StringComparison.Ordinal);
+        Assert.Contains("DetachHistoryMode();", control, StringComparison.Ordinal);
+        Assert.Contains("DataContextChanged +=", control, StringComparison.Ordinal);
         Assert.Contains("Mode=\"{Binding CommitTimeDisplayMode}\"", details, StringComparison.Ordinal);
     }
 

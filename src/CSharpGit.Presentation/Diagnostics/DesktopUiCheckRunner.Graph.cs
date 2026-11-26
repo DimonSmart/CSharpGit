@@ -90,11 +90,26 @@ internal sealed partial class DesktopUiCheckRunner
                             continue;
                         }
 
-                        var time = FindDescendant<CommitTimeText>(container);
-                        Check(time is { Mode: CommitTimeDisplayMode.Absolute }
-                            && time.Value == row.Commit.AuthoredAt
-                            && time.Text == CommitTimeFormatter.Format(row.Commit.AuthoredAt, CommitTimeDisplayMode.Absolute, DateTimeOffset.Now),
-                            $"history row {index} did not receive current commit time mode and timestamp after recycling", failures);
+                        bool HasCurrentTime()
+                        {
+                            var time = FindDescendant<CommitTimeText>(container);
+                            return time is { IsLoaded: true, Mode: CommitTimeDisplayMode.Absolute }
+                                && time.Value == row.Commit.AuthoredAt
+                                && time.Text == CommitTimeFormatter.Format(row.Commit.AuthoredAt, CommitTimeDisplayMode.Absolute, DateTimeOffset.Now);
+                        }
+
+                        try
+                        {
+                            await WaitUntilAsync(HasCurrentTime, TimeSpan.FromSeconds(5));
+                        }
+                        catch (TimeoutException)
+                        {
+                            var time = FindDescendant<CommitTimeText>(container);
+                            failures.Add($"history row {index} did not receive current commit time after recycling: "
+                                + $"loaded={time?.IsLoaded}, mode={time?.Mode}, settings={_context.Settings.CommitTimeDisplayMode}, "
+                                + $"historyMode={history.CommitTimeDisplayMode}, timestamp={time?.Value:O}, expected={row.Commit.AuthoredAt:O}, text={time?.Text}");
+                            return;
+                        }
 
                         var graph = FindDescendant<CommitGraphControl>(container);
                         Check(graph is not null, $"history row {index} has no commit graph control", failures);

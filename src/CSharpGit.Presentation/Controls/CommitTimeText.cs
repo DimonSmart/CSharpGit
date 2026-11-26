@@ -1,7 +1,7 @@
+using System.ComponentModel;
 using CSharpGit.Application.Abstractions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using CSharpGit.Presentation.ViewModels;
 
@@ -39,7 +39,7 @@ public sealed class CommitTimeText : UserControl
     };
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMinutes(1) };
 
-    private bool _historyModeBound;
+    private HistoryViewModel? _historyModeSource;
 
     public CommitTimeText()
     {
@@ -54,36 +54,59 @@ public sealed class CommitTimeText : UserControl
         Unloaded += (_, _) =>
         {
             _timer.Stop();
-            if (_historyModeBound)
-            {
-                ClearValue(ModeProperty);
-                _historyModeBound = false;
-            }
+            DetachHistoryMode();
+        };
+        DataContextChanged += (_, _) =>
+        {
+            if (IsLoaded) BindHistoryMode();
+        };
+        SizeChanged += (_, _) =>
+        {
+            if (IsLoaded && _historyModeSource is null) BindHistoryMode();
         };
     }
 
     private void BindHistoryMode()
     {
-        if (_historyModeBound) return;
-
-        for (var ancestor = VisualTreeHelper.GetParent(this);
-             ancestor is not null;
-             ancestor = VisualTreeHelper.GetParent(ancestor))
+        HistoryViewModel? source = null;
+        DependencyObject? ancestor = this;
+        for (var depth = 0; ancestor is not null && depth < 64; depth++)
         {
-            if (ancestor is not ICommitTimeModeProvider provider) continue;
-            if (provider.CommitTimeModeSource is { } source)
+            if (ancestor is ICommitTimeModeProvider provider)
             {
-                SetBinding(ModeProperty, new Binding
-                {
-                    Source = source,
-                    Path = new PropertyPath(nameof(HistoryViewModel.CommitTimeDisplayMode)),
-                    Mode = BindingMode.OneWay
-                });
-                _historyModeBound = true;
+                source = provider.CommitTimeModeSource;
+                break;
             }
 
-            break;
+            ancestor = (ancestor as FrameworkElement)?.Parent
+                ?? VisualTreeHelper.GetParent(ancestor);
         }
+
+        if (!ReferenceEquals(source, _historyModeSource))
+        {
+            DetachHistoryMode();
+            _historyModeSource = source;
+            if (source is not null)
+                source.PropertyChanged += HistoryModeChanged;
+        }
+
+        if (source is not null)
+            Mode = source.CommitTimeDisplayMode;
+    }
+
+    private void DetachHistoryMode()
+    {
+        if (_historyModeSource is not null)
+            _historyModeSource.PropertyChanged -= HistoryModeChanged;
+        _historyModeSource = null;
+    }
+
+    private void HistoryModeChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (ReferenceEquals(sender, _historyModeSource)
+            && args.PropertyName == nameof(HistoryViewModel.CommitTimeDisplayMode)
+            && _historyModeSource is { } source)
+            Mode = source.CommitTimeDisplayMode;
     }
 
     public DateTimeOffset Value

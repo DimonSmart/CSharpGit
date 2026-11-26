@@ -22,11 +22,15 @@ public sealed class XamlOnlyMigrationContractTests
     }
 
     [Fact]
-    public void PhaseOneArchitectureDocumentsExist()
+    public void ConsolidatedWorkspaceArchitectureIntentExists()
     {
-        var architecture = Path.Combine(FindRepositoryRoot(), "docs", "architecture");
-        Assert.True(File.Exists(Path.Combine(architecture, "mainpage-migration-map.md")));
-        Assert.True(File.Exists(Path.Combine(architecture, "ui-composition.md")));
+        var intent = Path.Combine(FindRepositoryRoot(), ".idd", "intent",
+            "IDD-0047.adr-ui-composition-and-window-lifetime.md");
+        Assert.True(File.Exists(intent), intent);
+        var content = File.ReadAllText(intent);
+        Assert.Contains("MainPage.xaml is the declarative visual root", content, StringComparison.Ordinal);
+        Assert.Contains("WindowWorkspaceComposition explicitly wires", content, StringComparison.Ordinal);
+        Assert.Contains("CSHARPGIT_REQUIRE_DESKTOP_CHECK=1", content, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()
